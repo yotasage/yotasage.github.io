@@ -2,8 +2,12 @@ import Head from 'next/head'
 import Link from 'next/link';
 
 import styles from '../../styles/Home.module.css';
+import boardstyles from '../../styles/board.module.css';
 
 export default function Hexagon() {
+    //let viewBox = this.state.viewBox.x + ' ' + this.state.viewBox.y + ' ' + this.state.viewBox.h + ' ' + this.state.viewBox.w
+    let viewBox = '-150 -125 300 300'
+
     return (
         <div className={styles.container}>
             <Head>
@@ -13,7 +17,7 @@ export default function Hexagon() {
 
             <main>
                 <h1 className={styles.title}>
-                    Welcome to Jonathan's Hexagon project based on <a href="https://nextjs.org">Next.js!</a>.
+                    Welcome to Jonathan's Hexagon project based on <a href="https://nextjs.org">Next.js!</a>
                 </h1>
 
                 <p className={styles.description}>
@@ -25,6 +29,13 @@ export default function Hexagon() {
                         <h3>Return to Homepage &rarr;</h3>
                         <p>Go back to the previous page</p>
                     </Link>
+                </div>
+
+                <div id={boardstyles.boardContainer}>
+                    <svg xmlns="http://www.w3.org/2000/svg" version="1.1" id={boardstyles.Map} strokeWidth="0.2" stroke="black"
+                         viewBox={viewBox}>
+                        <polygon points="6.92820323027551,-3.9999999999999996 6.92820323027551,3.9999999999999996 4.898587196589413e-16,8 -6.92820323027551,3.9999999999999996 -6.928203230275509,-4.000000000000001 -1.4695761589768238e-15,-8 "></polygon>
+                    </svg>
                 </div>
             </main>
 
