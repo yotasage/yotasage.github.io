@@ -4,6 +4,8 @@ import Tile from './tileHexagon';
 import Entity from './entity';
 //import * as tools from "../tools";
 
+import Dndem from "../styles/board.module.css";
+
 //import {ThemeContext, PaintingContext} from '../contexts';
 //import { paintBrush, paintBucket } from "../tools";
 
@@ -286,7 +288,7 @@ class Board extends React.Component<IProps, IState> {
         console.log("RENDER BOARD")
 
         return (
-            <svg xmlns="http://www.w3.org/2000/svg" version="1.1" id="Map" strokeWidth="0.2" stroke="black"
+            <svg xmlns="http://www.w3.org/2000/svg" version="1.1" id={Dndem.Map} strokeWidth="0.2" stroke="black"
                  ref={this.svgRef}
                  viewBox={viewBox}
                  tabIndex={-1}

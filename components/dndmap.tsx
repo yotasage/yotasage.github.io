@@ -3,6 +3,8 @@ import boardstyles from "../styles/board.module.css";
 import Board from "../components/svgBoard";
 import React from "react";
 
+import Dndem from "../styles/board.module.css";
+
 interface Iqrs {
     q: number;
     r: number;
@@ -239,7 +241,7 @@ export default class Dndmap extends React.Component<{}, IState> {
     public render()
     {
         return (
-            <div id={boardstyles.boardContainer}>
+            <div id={Dndem.boardContainer}>
                 <Board mapData={this.state.mapData}
                        //saveMap={this.saveSessionMap}
                        //onTileMouseClick={this.onTileMouseClick}

@@ -29,9 +29,9 @@ export default function Hexagon() {
                         <h3>Return to Homepage &rarr;</h3>
                         <p>Go back to the previous page</p>
                     </Link>
-                    <Link href="/dndmap" className={styles.card}>
-                        <h3>DnD map &rarr;</h3>
-                        <p>Check out the DnD map</p>
+                    <Link href="../dndem/dndem" className={styles.card}>
+                        <h3>DnD encounter map &rarr;</h3>
+                        <p>Check out the DnD encounter map</p>
                     </Link>
 
                     <div id={styles.card}>

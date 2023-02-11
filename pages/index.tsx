@@ -27,8 +27,8 @@ export default function Home() {
           </Link>
 
           <Link href="/" className={styles.card}>
-            <h3>Nothing here yet &rarr;</h3>
-            <p>There is nothing here yet, but maybe something will pop up over the next few months.</p>
+            <h3>jschem &rarr;</h3>
+            <p>Future Project. Online schematic drawing program.x</p>
           </Link>
 
           <Link href="/" className={styles.card}>
