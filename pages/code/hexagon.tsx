@@ -29,14 +29,20 @@ export default function Hexagon() {
                         <h3>Return to Homepage &rarr;</h3>
                         <p>Go back to the previous page</p>
                     </Link>
+                    <Link href="/dndmap" className={styles.card}>
+                        <h3>DnD map &rarr;</h3>
+                        <p>Check out the DnD map</p>
+                    </Link>
+
+                    <div id={styles.card}>
+                        <svg xmlns="http://www.w3.org/2000/svg" version="1.1" id={boardstyles.Map} strokeWidth="0.2" stroke="black"
+                             viewBox={viewBox}>
+                            <polygon points="6.92820323027551,-3.9999999999999996 6.92820323027551,3.9999999999999996 4.898587196589413e-16,8 -6.92820323027551,3.9999999999999996 -6.928203230275509,-4.000000000000001 -1.4695761589768238e-15,-8 "></polygon>
+                        </svg>
+                    </div>
                 </div>
 
-                <div id={boardstyles.boardContainer}>
-                    <svg xmlns="http://www.w3.org/2000/svg" version="1.1" id={boardstyles.Map} strokeWidth="0.2" stroke="black"
-                         viewBox={viewBox}>
-                        <polygon points="6.92820323027551,-3.9999999999999996 6.92820323027551,3.9999999999999996 4.898587196589413e-16,8 -6.92820323027551,3.9999999999999996 -6.928203230275509,-4.000000000000001 -1.4695761589768238e-15,-8 "></polygon>
-                    </svg>
-                </div>
+
             </main>
 
             <footer>
