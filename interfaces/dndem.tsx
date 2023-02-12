@@ -20,6 +20,13 @@ export interface IGameSession {
     timeCreated: number[];
 }
 
+export interface IviewBox {
+    x: number;
+    y: number;
+    h: number;
+    w: number;
+}
+
 export interface IMapData {
     key: string;
     name: string;
@@ -42,4 +49,50 @@ export interface IState {
     signedIn: boolean;
     selectedSession: string | undefined;
     mapData: IMap;
+}
+
+export interface IPropsBoard {
+    mapData: IMap;
+    sizeTile: number;
+    getMap?: Function;
+    saveMap?: Function;
+
+    onTileMouseDown?: Function;
+    onTileMouseEnter?: Function;
+    onTileMouseClick?: Function;
+
+    onEntityMouseUp?: Function;
+    onEntityMouseDown?: Function;
+    onEntityMouseMove?: Function;
+    onEntityMouseLeave?: Function;
+    onEntityMouseEnter?: Function;
+    onEntityMouseClick?: Function;
+
+    onMapKeyDown?: Function;
+}
+
+export interface IStateBoard {
+    viewBox: IviewBox;
+}
+
+export interface IPropsEntity {
+    qrs?: Iqrs;
+    xy?: Ixy;
+    color?: string;
+    stepSize?: number;
+    size?: number | string;
+
+    onMouseUp?: Function;
+    onMouseDown?: Function;
+    onMouseMove?: Function;
+    onMouseLeave?: Function;
+    onMouseEnter?: Function;
+    onMouseClick?: Function;
+}
+
+export interface IStateEntity {
+    color: string;
+    qrs: Iqrs;
+    xy: Ixy;
+    size: number;
 }

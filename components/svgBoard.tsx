@@ -6,54 +6,16 @@ import Entity from './entity';
 
 import Dndem from "../styles/board.module.css";
 
+import {getSVGCoord} from "../tools/tools";
+
+import {IPropsBoard, Iqrs, IStateBoard, IviewBox, Ixy} from "../interfaces/dndem";
+
 //import {ThemeContext, PaintingContext} from '../contexts';
 //import { paintBrush, paintBucket } from "../tools";
 
-interface Iqrs {
-    q: number;
-    r: number;
-    s?: number;
-}
-
-interface Ixy {
-    x: number;
-    y: number;
-}
-
-interface IviewBox {
-    x: number;
-    y: number;
-    h: number;
-    w: number;
-}
-
-interface IMap {
-    key: string;
-    name: string;
-    height: number;
-    radius: number;
-    colorMap: Array<Array<string>>;
-    loaded: boolean;
-}
-
-interface IProps {
-    mapData: IMap;
-    sizeTile: number;
-    getMap?: Function;
-    saveMap?: Function;
-    onTileMouseClick?: Function;
-    onTileMouseDown?: Function;
-    onTileMouseEnter?: Function;
-    onMapKeyDown?: Function;
-}
-
-interface IState {
-    viewBox: IviewBox;
-}
-
 // React.Component subclass
-class Board extends React.Component<IProps, IState> {
-    constructor(props: IProps) {
+class Board extends React.Component<IPropsBoard, IStateBoard> {
+    constructor(props: IPropsBoard) {
         super(props);
         this._radius = props.mapData.radius;
         this._height = props.mapData.height;
@@ -62,12 +24,24 @@ class Board extends React.Component<IProps, IState> {
 
         // This function/method must be bound (using bind) to this (this Board).
         // If it is not bound, this will refer to the caller of the method, and not this Board.
-        this.handleTileClick = this.handleTileClick.bind(this);
-        this.handleTileEnter = this.handleTileEnter.bind(this);
+
         this.handleTileDown = this.handleTileDown.bind(this);
+        this.handleMouseMove = this.handleMouseMove.bind(this);
+        this.handleTileEnter = this.handleTileEnter.bind(this);
+        this.handleTileClick = this.handleTileClick.bind(this);
+
+        this.handleEntityUp = this.handleEntityUp.bind(this);
+        this.handleEntityDown = this.handleEntityDown.bind(this);
+        this.handleEntityMove = this.handleEntityMove.bind(this);
+        this.handleEntityLeave = this.handleEntityLeave.bind(this);
+        this.handleEntityEnter = this.handleEntityEnter.bind(this);
+        this.handleEntityClick = this.handleEntityClick.bind(this);
+
+        this.handleMouseUp = this.handleMouseUp.bind(this);
+        this.handleMouseDown = this.handleMouseDown.bind(this);
         this.handleWheel = this.handleWheel.bind(this);
         this.colorMapCopy = this.colorMapCopy.bind(this);
-        this.handleMouseDown = this.handleMouseDown.bind(this);
+
         // this.resize = this.resize.bind(this);
         this.onKeyDown = this.onKeyDown.bind(this);
 
@@ -226,9 +200,7 @@ class Board extends React.Component<IProps, IState> {
         return qrsList;
     }
 
-    handleTileClick(e: React.MouseEvent<SVGElement>, target: Tile) {
-        if (this.props.onTileMouseClick !== undefined) this.props.onTileMouseClick(e, target);
-    }
+    // ########### TILE MOUSE INTERACT - BEGIN ###########
 
     handleTileDown(e: React.MouseEvent<SVGElement>, target: Tile) {
         if (this.props.onTileMouseDown !== undefined) this.props.onTileMouseDown(e, target);
@@ -237,6 +209,59 @@ class Board extends React.Component<IProps, IState> {
     handleTileEnter(e: React.MouseEvent<SVGElement>, target: Tile) {
         if (this.props.onTileMouseEnter !== undefined) this.props.onTileMouseEnter(e, target);
     }
+
+    handleTileClick(e: React.MouseEvent<SVGElement>, target: Tile) {
+        if (this.props.onTileMouseClick !== undefined) this.props.onTileMouseClick(e, target);
+    }
+
+    // ########### TILE MOUSE INTERACT - END ###########
+
+    // ########### ENTITY MOUSE INTERACT - BEGIN ###########
+
+    private moveEntity: boolean = false;
+    private selectedEntity: Entity | undefined;
+
+    handleEntityUp(e: React.MouseEvent<SVGElement>, target: Entity) {
+        if (this.props.onEntityMouseUp !== undefined) this.props.onEntityMouseUp(e, target);
+        else {
+            this.moveEntity = false;
+        }
+    }
+
+    handleEntityDown(e: React.MouseEvent<SVGElement>, target: Entity) {
+        if (this.props.onEntityMouseDown !== undefined) this.props.onEntityMouseDown(e, target);
+        else {
+            this.moveEntity = true;
+            this.selectedEntity = target;
+        }
+    }
+
+    handleEntityMove(e: React.MouseEvent<SVGElement>, target: Entity) {
+        if (this.props.onEntityMouseMove !== undefined) this.props.onEntityMouseMove(e, target);
+        else {
+            if (this.moveEntity && this.selectedEntity == target) {
+                //console.log(getSVGCoord(e));
+            }
+        }
+    }
+
+    handleEntityLeave(e: React.MouseEvent<SVGElement>, target: Entity) {
+        if (this.props.onEntityMouseLeave !== undefined) this.props.onEntityMouseLeave(e, target);
+        else {
+            //this.moveEntity = false;
+            //this.selectedEntity = target;
+        }
+    }
+
+    handleEntityEnter(e: React.MouseEvent<SVGElement>, target: Entity) {
+        if (this.props.onEntityMouseEnter !== undefined) this.props.onEntityMouseEnter(e, target);
+    }
+
+    handleEntityClick(e: React.MouseEvent<SVGElement>, target: Entity) {
+        if (this.props.onEntityMouseClick !== undefined) this.props.onEntityMouseClick(e, target);
+    }
+
+    // ########### ENTITY MOUSE INTERACT - END ###########
 
     colorMapCopy(size: number) {
         // Create 2D array and fill it with empty strings -> ''
@@ -247,6 +272,40 @@ class Board extends React.Component<IProps, IState> {
                 colorMapCopy[i][j] = this.props.mapData.colorMap[i][j];
 
         return colorMapCopy;
+    }
+
+    // ########### SVG MOUSE INTERACT - BEGIN ###########
+
+    handleMouseUp(e: React.MouseEvent<SVGElement>) {
+        this.moveEntity = false;
+    }
+
+    handleMouseDown(e: React.MouseEvent<SVGElement>) {
+        // console.log(e);
+    }
+
+    handleOnClick(e: React.MouseEvent<SVGElement>) {
+
+        /*console.log(this);
+        console.log(e.target);
+        console.log(e.currentTarget);*/
+
+        //this.color = 'rgb(255, 0, 0)';
+    }
+
+    handleMouseMove(e: React.MouseEvent<SVGElement>) {
+        if (this.moveEntity && this.selectedEntity !== undefined) {
+            //console.log(getSVGCoord(e));
+
+            let xy: Ixy = getSVGCoord(e);
+            if (xy === null) return;
+
+            let qrs: Iqrs = this.selectedEntity.xyToQrs(xy);
+            let TargetQrs: Iqrs = this.selectedEntity.qrs;
+            let DeltaQrs: Iqrs = {q: qrs.q - TargetQrs.q, r: qrs.r - TargetQrs.r};
+
+            this.selectedEntity.move(DeltaQrs);
+        }
     }
 
     handleWheel(e: React.WheelEvent<SVGElement>) {
@@ -268,17 +327,7 @@ class Board extends React.Component<IProps, IState> {
         }
     }
 
-    handleOnClick(e: React.MouseEvent<SVGElement>) {
-        /*console.log(this);
-        console.log(e.target);
-        console.log(e.currentTarget);*/
-
-        //this.color = 'rgb(255, 0, 0)';
-    }
-
-    handleMouseDown(e: React.MouseEvent<SVGElement>) {
-
-    }
+    // ########### SVG MOUSE INTERACT - END ###########
 
     // https://stackoverflow.com/questions/63005791/props-dont-update-when-state-updates-in-react
     render() {
@@ -293,7 +342,10 @@ class Board extends React.Component<IProps, IState> {
                  viewBox={viewBox}
                  tabIndex={-1}
                  onKeyDown={this.onKeyDown}
+
+                 onMouseUp={this.handleMouseUp}
                  onMouseDown={this.handleMouseDown}
+                 onMouseMove={this.handleMouseMove}
                  onClick={this.handleOnClick}
                  onWheel={this.handleWheel}>
 
@@ -301,8 +353,22 @@ class Board extends React.Component<IProps, IState> {
                     {this.renderTiles(this.props.mapData.radius)}
                 </g>
                 <g id="entityContainer">
-                    <Entity></Entity>
-                    <Entity qrs={{q: 1, r: 1, s: 0}}></Entity>
+                    <Entity onMouseUp={this.handleEntityUp}
+                            onMouseDown={this.handleEntityDown}
+                            onMouseMove={this.handleEntityMove}
+                            onMouseLeave={this.handleEntityLeave}
+                            onMouseEnter={this.handleEntityEnter}
+                            onMouseClick={this.handleEntityClick}
+
+                    ></Entity>
+                    <Entity onMouseUp={this.handleEntityUp}
+                            onMouseDown={this.handleEntityDown}
+                            onMouseMove={this.handleEntityMove}
+                            onMouseLeave={this.handleEntityLeave}
+                            onMouseEnter={this.handleEntityEnter}
+                            onMouseClick={this.handleEntityClick}
+
+                            qrs={{q: 1, r: 1, s: 0}}></Entity>
                 </g>
                 <g id="structureContainer"></g>
                 <g id="structureGrabPointContainer"></g>

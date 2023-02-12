@@ -97,7 +97,7 @@ export default class TileHexagon extends React.Component<IProps, IState> {
         return this._color;
     }
     set color(value: string) {
-        // console.log(value);
+        //console.log(value);
         if (this._color === value) return;
         this._color = value;
         //this.setState({color: value})

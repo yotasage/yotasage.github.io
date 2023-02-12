@@ -1,50 +1,39 @@
 import * as React from 'react';
 
-//import {ThemeContext, PaintingContext} from '../contexts';
+import {ThemeContext, themes, PaintingContext, painting} from '../tools/contexts';
 
-interface Iqrs {
-    q: number;
-    r: number;
-    s?: number;
-}
+import {Iqrs, Ixy, IPropsEntity, IStateEntity, IviewBox} from "../interfaces/dndem";
 
-interface Ixy {
-    x: number;
-    y: number;
-}
+import DndemEntity from "../styles/board.module.css";
 
-interface IProps {
-    qrs?: Iqrs;
-    xy?: Ixy;
-    color?: string;
-    stepSize?: number;
-    size?: number | string;
-}
+import {getSVGCoord} from "../tools/tools";
+import Tile from "./tileHexagon";
 
-interface IState {
-    color: string;
-    qrs: Iqrs;
-    xy: Ixy;
-    size: number;
-}
-
-class Entity extends React.Component<IProps, IState> {
+class Entity extends React.Component<IPropsEntity, IStateEntity> {
     static id = 1;
     private timerID: NodeJS.Timer;
 
-    constructor(props: IProps) {
+    constructor(props: IPropsEntity) {
         super(props);
 
         this.handleOnClick = this.handleOnClick.bind(this);
         this.onKeyDown = this.onKeyDown.bind(this);
         this.handleSelect = this.handleSelect.bind(this);
+        this.handleMove = this.handleMove.bind(this);
         this.handleExit = this.handleExit.bind(this);
         this.tick = this.tick.bind(this);
+
+        this.handleOnMouseUp = this.handleOnMouseUp.bind(this);
+        this.handleOnMouseDown = this.handleOnMouseDown.bind(this);
+        this.handleOnMouseMove = this.handleOnMouseMove.bind(this);
+        this.handleOnMouseLeave = this.handleOnMouseLeave.bind(this);
+        this.handleOnMouseEnter = this.handleOnMouseEnter.bind(this);
+        this.handleOnMouseClick = this.handleOnMouseClick.bind(this);
 
         this._id = Entity.id++;
 
         // Create timer and stop it again.
-        this.timerID = setInterval(() => this.tick(), 1000);
+        this.timerID = setInterval(() => this.tick(null), 1000);
         clearInterval(this.timerID);
 
         if (this.props.color !== undefined) {
@@ -100,6 +89,8 @@ class Entity extends React.Component<IProps, IState> {
         console.log("Entity Constructor");
     }
 
+    private EntityRef = React.createRef<SVGGElement>();
+
     private _id: number;
     get id(): number {
         return this._id;
@@ -151,6 +142,11 @@ class Entity extends React.Component<IProps, IState> {
         this.setState({color: value})
     }
 
+    /*private selected: boolean = false;
+    private SVG_width: number = 0;
+    private SVG_height: number = 0;
+    private SVG_viewBox: IviewBox = {x: 0, y: 0, h: 0, w: 0};*/
+
     qrsToXy(qrs: Iqrs) {
         let xy: Ixy = {x: 0, y: 0};
         xy.x = this.stepSize * (Math.sqrt(3) * this.qrs.q  +  Math.sqrt(3)/2 * this.qrs.r)
@@ -185,16 +181,16 @@ class Entity extends React.Component<IProps, IState> {
 
         let newXy: Ixy = this.qrsToXy(newQrs);
 
-        console.log('deltaXy', this.qrsToXy(deltaQrs));
-        console.log('newXy', newXy);
-        console.log('this.state.xy', this.state.xy);
+        //console.log('deltaXy', this.qrsToXy(deltaQrs));
+        //console.log('newXy', newXy);
+        //console.log('this.state.xy', this.state.xy);
 
         this.xy = newXy;
         this.qrs = newQrs;
         this.setState({xy: newXy, qrs: newQrs}); // check out call back for setState
         // this.setState({xy: newXy});
 
-        console.log('this.state.xy', this.state.xy);
+        //console.log('this.state.xy', this.state.xy);
 
     }
 
@@ -224,24 +220,77 @@ class Entity extends React.Component<IProps, IState> {
     }
 
     handleExit(e: React.MouseEvent<SVGElement>) {
-        console.log(e);
-        clearInterval(this.timerID);
+        //console.log(e);
+        //this.selected = false;
+        //clearInterval(this.timerID);
     }
 
     handleSelect(e: React.MouseEvent<SVGElement>) {
-        console.log(e);
-        this.timerID = setInterval(
-            () => this.tick(),
+        //console.log(getSVGCoord(e));
+
+        //console.log(e);
+        //this.selected = true;
+
+        /*this.timerID = setInterval(
+            () => this.tick(e),
             1000
-        );
+        );*/
     }
 
-    tick() {
-        console.log('tick: ' + this.id);
+    handleMove(e: React.MouseEvent<SVGElement>) {
+        /*if (this.selected) {
+            //console.log(getSVGCoord(e));
+            //console.log(e.clientX);
+
+            let xy: Ixy = getSVGCoord(e);
+            let qrs: Iqrs = this.xyToQrs(xy);
+
+            let deltaQrs: Iqrs = {q: qrs.q - this.qrs.q, r: qrs.r - this.qrs.r};
+
+            console.log("¤¤¤¤¤¤¤¤¤¤¤¤");
+            console.log(qrs);
+            console.log(this.qrs);
+            console.log(this.xy);
+            console.log(deltaQrs);
+            //this.move(deltaQrs);
+            //console.log(e.nativeEvent);
+        }*/
+
+    }
+
+    tick(e: React.MouseEvent<SVGElement>) {
+        //console.log('tick: ' + this.id);
+        /*console.log(e);
+        console.log(e.clientY);
+        console.log(e.clientX);*/
+    }
+
+    handleOnMouseUp(e: React.MouseEvent<SVGElement>) {
+        if (this.props.onMouseUp !== undefined) this.props.onMouseUp(e, this);
+    }
+
+    handleOnMouseDown(e: React.MouseEvent<SVGElement>) {
+        if (this.props.onMouseDown !== undefined) this.props.onMouseDown(e, this);
+    }
+
+    handleOnMouseMove(e: React.MouseEvent<SVGElement>) {
+        if (this.props.onMouseMove !== undefined) this.props.onMouseMove(e, this);
+    }
+
+    handleOnMouseLeave(e: React.MouseEvent<SVGElement>) {
+        if (this.props.onMouseLeave !== undefined) this.props.onMouseLeave(e, this);
+    }
+
+    handleOnMouseEnter(e: React.MouseEvent<SVGElement>) {
+        if (this.props.onMouseEnter !== undefined) this.props.onMouseEnter(e, this);
+    }
+
+    handleOnMouseClick(e: React.MouseEvent<SVGElement>) {
+        if (this.props.onMouseClick !== undefined) this.props.onMouseClick(e, this);
     }
 
     render() {
-        let className: string = 'entity';
+        //let className: string = 'entity';
 
         let fontSize: string = this.size/10 + "em";
 
@@ -249,10 +298,16 @@ class Entity extends React.Component<IProps, IState> {
         let xy: Ixy = this.qrsToXy(this.state.qrs);
 
         return (
-            <g onClick={this.handleOnClick}
-               onMouseDown={this.handleSelect}
-               onMouseLeave={this.handleExit}
-               onMouseUp={this.handleExit}
+            <g className={DndemEntity.entity}
+               ref={this.EntityRef}
+
+               onMouseUp={this.handleOnMouseUp}
+               onMouseDown={this.handleOnMouseDown}
+               onMouseMove={this.handleOnMouseMove}
+               onMouseLeave={this.handleOnMouseLeave}
+               onMouseEnter={this.handleOnMouseEnter}
+               onClick={this.handleOnMouseClick}
+
                onKeyDown={this.onKeyDown}
                tabIndex={-1}>
                 <defs>
@@ -260,13 +315,15 @@ class Entity extends React.Component<IProps, IState> {
                         <circle cx={xy.x} cy={xy.y} r={this.state.size}></circle>
                     </clipPath>
                 </defs>
-                <circle className={className} id={this.id.toString()} cx={xy.x} cy={xy.y} r={this.state.size} fill={this.state.color}/>
-                <text fontSize={fontSize}
+                <circle className={DndemEntity.entity} id={this.id.toString()} cx={xy.x} cy={xy.y} r={this.state.size} fill={this.state.color}/>
+                <text className={DndemEntity.entity}
+                      fontSize={fontSize}
                       x={xy.x}
                       y={xy.y}>{this.id}</text>
                 <image width={this.state.size*2} height={this.state.size*2}
                        x={xy.x - this.state.size} y={xy.y - this.state.size}
-                       clipPath={"url(#entityClipPath" +  this.id + ")"}>
+                       clipPath={"url(#entityClipPath" +  this.id + ")"}
+                       className={DndemEntity.entity}>
 
                 </image>
             </g>

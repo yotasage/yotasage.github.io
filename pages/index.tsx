@@ -28,7 +28,7 @@ export default function Home() {
 
           <Link href="/" className={styles.card}>
             <h3>jschem &rarr;</h3>
-            <p>Future Project. Online schematic drawing program.x</p>
+            <p>Future Project. Online schematic drawing program.</p>
           </Link>
 
           <Link href="/" className={styles.card}>

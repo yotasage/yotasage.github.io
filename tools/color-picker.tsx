@@ -2,17 +2,17 @@ import * as React from 'react';
 import * as iro from '@jaames/iro'
 import {ColorPickerProps} from "@jaames/iro/dist/ColorPicker";
 
-import '../styles/color-picker.module.css';
+import colorTool from '../styles/color-picker.module.css';
 
 // https://svg2jsx.com/
 
 const toolsGraphics: { [key: string]: string } = {
-    brush: 'url(./assets/svg/brush.svg)',
-    bucket: 'url(./assets/svg/bucket.svg)',
-    pencil: 'url(./assets/svg/pencil.svg)',
-    picker: 'url(./assets/svg/picker.svg)',
-    tree: 'url(./assets/svg/tree.svg)',
-    eraser: 'url(./assets/svg/eraser.svg)'
+    brush: 'url(../svg/brush.svg)',
+    bucket: 'url(../svg/bucket.svg)',
+    pencil: 'url(../svg/pencil.svg)',
+    picker: 'url(../svg/pick.svg)',
+    tree: 'url(../svg/tree.svg)',
+    eraser: 'url(../svg/eraser.svg)'
 }
 
 interface ColorPickerLayoutDefinition {
@@ -68,7 +68,7 @@ class ColorPickerContainer extends React.Component<IProps, IState> {
         // console.log('color');
         if (this.props.onColorChange) {
             this.props.onColorChange(color);
-            this.setState({color: color.rgbaString});
+            //this.setState({color: color.rgbaString});
         }
     }
 
@@ -180,7 +180,7 @@ class PaintingTool extends React.Component<IPaintingToolProps, IPaintingToolStat
         return (
             <div onClick={this.onClick}
                  id={'paintTool' + this._type}
-                 className={'paintingTool'}
+                 className={colorTool.paintingTool}
                  style={{ backgroundColor: color,
                      backgroundImage: toolsGraphics[this.props.type] }}/>
         )

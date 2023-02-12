@@ -3,6 +3,8 @@ import boardstyles from "../styles/board.module.css";
 import Board from "../../components/svgBoard";
 import React from "react";
 
+import {ThemeContext, themes, PaintingContext, painting} from '../../tools/contexts';
+
 import ColorPickerContainer from '../../tools/color-picker';
 import Dndem from "../../styles/board.module.css";
 
@@ -229,6 +231,7 @@ export default class Dndmap extends React.Component<{}, IDndem.IState> {
     }
 
     onTileMouseClick(e: React.MouseEvent<SVGElement>, target: TileHexagon) {
+        console.log("onTileMouseClick");
         if (this.paintTool.tool !== 'none') {
             let coord: IDndem.Iqrs = target.qrs;
             let color: string = this.paintTool.color;
@@ -248,10 +251,12 @@ export default class Dndmap extends React.Component<{}, IDndem.IState> {
     }
 
     onTileMouseDown(e: React.MouseEvent<SVGElement>, target: TileHexagon) {
+        console.log("onTileMouseDown");
         if (e.buttons & 1) this.paint(target);
     }
 
     onTileMouseEnter(e: React.MouseEvent<SVGElement>, target: TileHexagon) {
+        console.log("onTileMouseEnter");
         /*if      (event.button == 0) mouseMainLeft = true;         // 001
         else if (event.button == 1) mouseMainMiddle = true;         // 010
         else if (event.button == 2) mouseMainRight = true;*/        // 100
@@ -403,9 +408,6 @@ export default class Dndmap extends React.Component<{}, IDndem.IState> {
 
                 </div>
                 <>
-                    <ColorPickerContainer onColorChange={this.onPaintToolColorChange}
-                                          onToolChange={this.onPaintToolChange}
-                                          color={this.paintTool.color}/>
                     <div id={Dndem.boardContainer}
                         //tabIndex={0}
                         //onKeyDown={this.resize}

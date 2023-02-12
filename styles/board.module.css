@@ -9,56 +9,63 @@
 #root {
     /*background-color: #2B2B2B;*/
 
-    margin            : 0;
+    margin          : 0;
     height			: 100%;
 
-    overflow          : hidden;
+    overflow        : hidden;
 }
 
 #boardContainer {
-    position			: fixed;
+    position		: fixed;
     top				: 0;
-    left				: 0;
+    left			: 0;
     bottom			: 0;
-    right				: 0;
+    right			: 0;
     z-index			: -1;
 
-    overflow          : hidden;
+    overflow        : hidden;
 }
 
 #Map {
-    display			: flex;
-    background-color  : #2B2B2B;
+    display			    : flex;
+    background-color    : #2B2B2B;
     width			    : 100%;
-    height			: 100%;
+    height			    : 100%;
 }
 
-/*g image:hover {
+g.entity image:hover {
     opacity: 0.0;
-}*/
+}
 
 circle.entity {
-    fill-opacity		: 0.5;
+    fill-opacity: 0.5;
+    stroke-width: 0.4;
 }
 
-/*g text {
-    pointer-events	    : none; *//*Makes SVG text not selectable*/
-    /*text-anchor		    : middle;
-    dominant-baseline	    : middle; *//*VS Code says that this is an unknown property even though it works?*/
-    /*fill				    : black;*/
+g.entity text.entity {
+    pointer-events	    : none; /*Makes SVG text not selectable*/
+    text-anchor		    : middle;
+    dominant-baseline	: middle; /*VS Code says that this is an unknown property even though it works?*/
+    fill				: black;
 
     /*Prevent text from being marked*/
-    /*-webkit-user-select   : none;
-    -moz-user-select	    : none;
+    -webkit-user-select : none;
+    -moz-user-select	: none;
     -ms-user-select		: none;
     user-select			: none;
-}*/
+}
 
-/*g circle {
+g.entity {
     stroke-width: 0.4;
-}*/
+}
 
-
+image.entity {
+    -webkit-user-drag: none;
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+}
 
 
 /*@media (orientation: landscape) {
