@@ -149,8 +149,8 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
 
     qrsToXy(qrs: Iqrs) {
         let xy: Ixy = {x: 0, y: 0};
-        xy.x = this.stepSize * (Math.sqrt(3) * this.qrs.q  +  Math.sqrt(3)/2 * this.qrs.r)
-        xy.y = this.stepSize * (                                              3./2 * this.qrs.r)
+        xy.x = this.stepSize * (Math.sqrt(3) * qrs.q  +  Math.sqrt(3)/2 * qrs.r)
+        xy.y = this.stepSize * (                                         3./2 * qrs.r)
         return xy;
     }
 
@@ -195,18 +195,14 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
     }
 
     handleOnClick(e: React.MouseEvent<SVGElement>) {
-        /*console.log(this);
-        console.log(e.target);
-        console.log(e.currentTarget);*/
 
-        //this.color = 'rgb(255, 0, 0)';
     }
 
     onKeyDown(e: React.KeyboardEvent<SVGElement>) {
         let deltaQrs: Iqrs = {q: 0, r: 0};
         let xy: Ixy = {x: 0, y: 0};
         let key: string = e.key.toLowerCase();
-        console.log(e.key);
+        //console.log(e.key);
 
         if (key === 'arrowleft' || key === 'a')         deltaQrs = {q: -1, r: 0};
         else if (key === 'arrowright' || key === 'd')   deltaQrs = {q: 1, r: 0};
@@ -214,7 +210,24 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
         else if (key === 'arrowdown' || key === 'z')    deltaQrs = {q: -1, r: 1};
         else if (key === 'w')                           deltaQrs = {q: 0, r: -1};
         else if (key === 'x')                           deltaQrs = {q: 0, r: 1};
-        else if (key === 's') { /* center the piece on the tile */ }
+        else if (key === 's') {
+
+            let remQ: number = this.qrs.q % 1; // remainder
+            let remR: number = this.qrs.r % 1; // remainder
+
+            //let remAbsQ: number = Math.abs(remQ); // Absolute remainder
+            //let remAbsR: number = Math.abs(remR); // Absolute remainder
+
+            if (remQ >= 0.5) deltaQrs.q = 1 - (this.qrs.q % 1);
+            else if (0.5 > remQ && remQ > -0.5) deltaQrs.q = -(this.qrs.q % 1);
+            else if (remQ <= -0.5) deltaQrs.q = -((this.qrs.q % 1) + 1);
+            else deltaQrs.q = - (this.qrs.q % 1);
+
+            if (remR >= 0.5) deltaQrs.r = 1 - (this.qrs.r % 1);
+            else if (0.5 > remR && remR > -0.5) deltaQrs.r = -(this.qrs.r % 1);
+            else if (remR <= -0.5) deltaQrs.r = -((this.qrs.r % 1) + 1);
+            else deltaQrs.r = - (this.qrs.r % 1);
+        }
 
         if (deltaQrs.q !== 0 || deltaQrs.r !== 0) this.move(deltaQrs);
     }
