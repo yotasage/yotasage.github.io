@@ -11,7 +11,6 @@ import Tile from "./tileHexagon";
 
 class Entity extends React.Component<IPropsEntity, IStateEntity> {
     static id = 1;
-    private timerID: NodeJS.Timer;
 
     constructor(props: IPropsEntity) {
         super(props);
@@ -21,7 +20,6 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
         this.handleSelect = this.handleSelect.bind(this);
         this.handleMove = this.handleMove.bind(this);
         this.handleExit = this.handleExit.bind(this);
-        this.tick = this.tick.bind(this);
 
         this.handleOnMouseUp = this.handleOnMouseUp.bind(this);
         this.handleOnMouseDown = this.handleOnMouseDown.bind(this);
@@ -31,10 +29,6 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
         this.handleOnMouseClick = this.handleOnMouseClick.bind(this);
 
         this._id = Entity.id++;
-
-        // Create timer and stop it again.
-        this.timerID = setInterval(() => this.tick(null), 1000);
-        clearInterval(this.timerID);
 
         if (this.props.color !== undefined) {
             this._color = this.props.color;
@@ -89,8 +83,6 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
         console.log("Entity Constructor");
     }
 
-    private EntityRef = React.createRef<SVGGElement>();
-
     private _id: number;
     get id(): number {
         return this._id;
@@ -142,11 +134,6 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
         this.setState({color: value})
     }
 
-    /*private selected: boolean = false;
-    private SVG_width: number = 0;
-    private SVG_height: number = 0;
-    private SVG_viewBox: IviewBox = {x: 0, y: 0, h: 0, w: 0};*/
-
     qrsToXy(qrs: Iqrs) {
         let xy: Ixy = {x: 0, y: 0};
         xy.x = this.stepSize * (Math.sqrt(3) * qrs.q  +  Math.sqrt(3)/2 * qrs.r)
@@ -181,17 +168,9 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
 
         let newXy: Ixy = this.qrsToXy(newQrs);
 
-        //console.log('deltaXy', this.qrsToXy(deltaQrs));
-        //console.log('newXy', newXy);
-        //console.log('this.state.xy', this.state.xy);
-
         this.xy = newXy;
         this.qrs = newQrs;
         this.setState({xy: newXy, qrs: newQrs}); // check out call back for setState
-        // this.setState({xy: newXy});
-
-        //console.log('this.state.xy', this.state.xy);
-
     }
 
     handleOnClick(e: React.MouseEvent<SVGElement>) {
@@ -210,7 +189,7 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
         else if (key === 'arrowdown' || key === 'z')    deltaQrs = {q: -1, r: 1};
         else if (key === 'w')                           deltaQrs = {q: 0, r: -1};
         else if (key === 'x')                           deltaQrs = {q: 0, r: 1};
-        else if (key === 's') {
+        else if (key === 's') {                         // Centering entity to the tile with the closest center.
 
             let remQ: number = this.qrs.q % 1; // remainder
             let remR: number = this.qrs.r % 1; // remainder
@@ -233,49 +212,15 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
     }
 
     handleExit(e: React.MouseEvent<SVGElement>) {
-        //console.log(e);
-        //this.selected = false;
-        //clearInterval(this.timerID);
+
     }
 
     handleSelect(e: React.MouseEvent<SVGElement>) {
-        //console.log(getSVGCoord(e));
 
-        //console.log(e);
-        //this.selected = true;
-
-        /*this.timerID = setInterval(
-            () => this.tick(e),
-            1000
-        );*/
     }
 
     handleMove(e: React.MouseEvent<SVGElement>) {
-        /*if (this.selected) {
-            //console.log(getSVGCoord(e));
-            //console.log(e.clientX);
 
-            let xy: Ixy = getSVGCoord(e);
-            let qrs: Iqrs = this.xyToQrs(xy);
-
-            let deltaQrs: Iqrs = {q: qrs.q - this.qrs.q, r: qrs.r - this.qrs.r};
-
-            console.log("¤¤¤¤¤¤¤¤¤¤¤¤");
-            console.log(qrs);
-            console.log(this.qrs);
-            console.log(this.xy);
-            console.log(deltaQrs);
-            //this.move(deltaQrs);
-            //console.log(e.nativeEvent);
-        }*/
-
-    }
-
-    tick(e: React.MouseEvent<SVGElement>) {
-        //console.log('tick: ' + this.id);
-        /*console.log(e);
-        console.log(e.clientY);
-        console.log(e.clientX);*/
     }
 
     handleOnMouseUp(e: React.MouseEvent<SVGElement>) {
@@ -312,7 +257,6 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
 
         return (
             <g className={DndemEntity.entity}
-               ref={this.EntityRef}
 
                onMouseUp={this.handleOnMouseUp}
                onMouseDown={this.handleOnMouseDown}
@@ -344,9 +288,5 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
         );
     }
 }
-
-/*function isFoo(object: any): object is Foo {
-    return 'fooProperty' in object;
-}*/
 
 export default Entity;

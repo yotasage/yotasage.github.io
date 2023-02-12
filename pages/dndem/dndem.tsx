@@ -8,15 +8,15 @@ import {ThemeContext, themes, PaintingContext, painting} from '../../tools/conte
 import ColorPickerContainer from '../../tools/color-picker';
 import Dndem from "../../styles/board.module.css";
 
-import * as IDndem from "../../interfaces/dndem";
-import * as ITools from "../../interfaces/tools";
+import {Icoordinate, Iqrs, IState, Ixy, IMap} from "../../interfaces/dndem";
+import {IpaintTool} from "../../interfaces/tools";
 
 import TileHexagon from "../../components/tileHexagon";
-import * as tools from "../../tools/tools";
+import {paintBrush, paintBucket} from "../../tools/tools";
 
 import {IroColor} from "@irojs/iro-core";
 
-export default class Dndmap extends React.Component<{}, IDndem.IState> {
+export default class Dndmap extends React.Component<{}, IState> {
     constructor(props: object) {
         super(props);
 
@@ -56,9 +56,9 @@ export default class Dndmap extends React.Component<{}, IDndem.IState> {
             mapData: {
                 key: "",
                 name: "",
-                height: 9, // radius*2 -1
-                radius: 5,
-                colorMap: [...Array(9)].map(e => Array(9).fill(this.defaultTileColor)),
+                height: 3, // radius*2 -1
+                radius: 2,
+                colorMap: [...Array(3)].map(e => Array(3).fill(this.defaultTileColor)),
                 loaded: false
             }
         };
@@ -157,7 +157,7 @@ export default class Dndmap extends React.Component<{}, IDndem.IState> {
         }
     }*/
 
-    paintTool: ITools.IpaintTool = {   tool: 'none',
+    paintTool: IpaintTool = {   tool: 'none',
         used: false,
         size: 2,
         color: "rgb(238, 232, 170)"};
@@ -220,10 +220,14 @@ export default class Dndmap extends React.Component<{}, IDndem.IState> {
         }
     }*/
 
-    paintToolPencil(coord: IDndem.Ixy | IDndem.Iqrs, color: string) {
-        let mapCopy: IDndem.IMap = this.colorMapCopy();
+    paintToolPencil(coord: Ixy | Iqrs, color: string) {
+        let mapCopy: IMap = this.colorMapCopy();
         if ("x" in coord) mapCopy.colorMap[coord.x][coord.y] = color;
         //if ("q" in coord) mapCopy[coord.x][coord.y] = color;
+
+        //console.log("big wow", color);
+
+        //console.log(mapCopy);
 
         this.setState((state) => ({
             mapData: mapCopy
@@ -232,16 +236,16 @@ export default class Dndmap extends React.Component<{}, IDndem.IState> {
 
     onTileMouseClick(e: React.MouseEvent<SVGElement>, target: TileHexagon) {
         console.log("onTileMouseClick");
-        if (this.paintTool.tool !== 'none') {
-            let coord: IDndem.Iqrs = target.qrs;
+        if (this.paintTool.tool === 'bucket' || this.paintTool.tool === 'tree') {
+            let coord: Iqrs = target.qrs;
             let color: string = this.paintTool.color;
-            let mapCopy: IDndem.IMap = this.colorMapCopy();
-            let coordinateStack: IDndem.Icoordinate[] = [];
+            let mapCopy: IMap = this.colorMapCopy();
+            let coordinateStack: Icoordinate[] = [];
 
             if (this.paintTool.tool === 'bucket')
-                coordinateStack = tools.paintBucket(mapCopy.colorMap, coord, color);
+                coordinateStack = paintBucket(mapCopy.colorMap, coord, color);
             if (this.paintTool.tool === 'tree')
-                coordinateStack = tools.paintBrush(mapCopy.colorMap, coord, color, 2);
+                coordinateStack = paintBrush(mapCopy.colorMap, coord, color, 2);
 
             //this.transmitTileColors(coordinateStack, [color]);
             this.setState((state) => ({
@@ -265,38 +269,38 @@ export default class Dndmap extends React.Component<{}, IDndem.IState> {
 
     paint(target: TileHexagon) {
         if (this.paintTool.tool === 'pencil') {
-            let coord: IDndem.Ixy = this.qrsToXy(target.qrs);
+            let coord: Ixy = this.qrsToXy(target.qrs);
             let color: string = this.paintTool.color;
             this.paintToolPencil(coord, color);
             //this.transmitTileColors([{xy: coord}], [color]);
         }
         else if (this.paintTool.tool === 'brush') {
-            let coord: IDndem.Iqrs = target.qrs;
+            let coord: Iqrs = target.qrs;
             let color: string = this.paintTool.color;
             let size: number = this.paintTool.size;
-            let mapCopy: IDndem.IMap = this.colorMapCopy();
-            let coordinateStack: IDndem.Icoordinate[] = tools.paintBrush(mapCopy.colorMap, coord, color, size);
+            let mapCopy: IMap = this.colorMapCopy();
+            let coordinateStack: Icoordinate[] = paintBrush(mapCopy.colorMap, coord, color, size);
             //this.transmitTileColors(coordinateStack, [color]);
             this.setState((state) => ({
                 mapData: mapCopy
             }));
         }
         else if (this.paintTool.tool === 'eraser') {
-            let coord: IDndem.Ixy = this.qrsToXy(target.qrs);
+            let coord: Ixy = this.qrsToXy(target.qrs);
             let color: string = this.defaultTileColor;
             this.paintToolPencil(coord, color);
             //this.transmitTileColors([{xy: coord}], [color]);
         }
         else if (this.paintTool.tool === 'picker') {
-            let coord: IDndem.Ixy = this.qrsToXy(target.qrs);
+            let coord: Ixy = this.qrsToXy(target.qrs);
             let color: string = this.state.mapData.colorMap[coord.x][coord.y];
             this.paintTool.color = color;
-            console.log(color);
+            console.log("picker", color);
         }
     }
 
-    public qrsToXy(qrs: IDndem.Iqrs) {
-        let xyCoord: IDndem.Ixy = {x: 0, y: 0};
+    public qrsToXy(qrs: Iqrs) {
+        let xyCoord: Ixy = {x: 0, y: 0};
         xyCoord.x = qrs.q + this.state.mapData.radius - 1;
         xyCoord.y = qrs.r + this.state.mapData.radius - 1;
 
@@ -345,7 +349,7 @@ export default class Dndmap extends React.Component<{}, IDndem.IState> {
             radius = newRadius;
         }
 
-        let qrs: IDndem.Iqrs = {q: 0, r: 0, s: 0};
+        let qrs: Iqrs = {q: 0, r: 0, s: 0};
 
         // Copy values from the old array into the new array
         for (qrs.q = -radius + 1; qrs.q < radius; qrs.q++) {
@@ -363,7 +367,7 @@ export default class Dndmap extends React.Component<{}, IDndem.IState> {
             }
         }
 
-        let mapCopy: IDndem.IMap = this.colorMapCopy();
+        let mapCopy: IMap = this.colorMapCopy();
         mapCopy.colorMap = newArrayColor;
         mapCopy.height = new_height;
         mapCopy.radius = newRadius;
@@ -374,7 +378,7 @@ export default class Dndmap extends React.Component<{}, IDndem.IState> {
     }
 
     colorMapCopy() {
-        let mapDataCopy: IDndem.IMap = {
+        let mapDataCopy: IMap = {
             key: this.state.mapData.key,
             name: this.state.mapData.name,
             height: this.state.mapData.height,
@@ -397,7 +401,7 @@ export default class Dndmap extends React.Component<{}, IDndem.IState> {
 
     public render() {
         console.log('RENDER APP');
-
+        //console.log("render", this.state.mapData);
 
         return (
             <>
@@ -408,6 +412,10 @@ export default class Dndmap extends React.Component<{}, IDndem.IState> {
 
                 </div>
                 <>
+                    <ColorPickerContainer onColorChange={this.onPaintToolColorChange}
+                                          onToolChange={this.onPaintToolChange}
+                                          color={this.paintTool.color}/>
+
                     <div id={Dndem.boardContainer}
                         //tabIndex={0}
                         //onKeyDown={this.resize}

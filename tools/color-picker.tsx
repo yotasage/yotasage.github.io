@@ -49,6 +49,8 @@ class ColorPickerContainer extends React.Component<IProps, IState> {
 
         this._selectedToolType = 'none';
 
+
+
         this.state = {
             color: 'rgb(255, 0, 0)',
             width: '50px',
@@ -60,6 +62,8 @@ class ColorPickerContainer extends React.Component<IProps, IState> {
     private displayBox: JSX.Element | undefined;
     private _selectedToolType: string;
 
+    private color = 'rgb(255, 0, 0)';
+
     componentDidMount() {
 
     }
@@ -68,7 +72,7 @@ class ColorPickerContainer extends React.Component<IProps, IState> {
         // console.log('color');
         if (this.props.onColorChange) {
             this.props.onColorChange(color);
-            //this.setState({color: color.rgbaString});
+            this.setState({color: color.rgbaString});
         }
     }
 
@@ -124,7 +128,7 @@ class ColorPickerContainer extends React.Component<IProps, IState> {
         // <div style={{width: 50, height: 50, backgroundColor: this.state.color, float: "right"}}></div>
 
         return (
-            <div className={'colorPickerContainer'}
+            <div className={colorTool.colorPickerContainer}
                  style={{width: this.state.width, height: this.state.height}}
                  onMouseLeave={this.onMouseLeave}
                  onClick={this.onClick}>
@@ -244,6 +248,8 @@ class ColorPicker extends React.Component<IColorPickerProps, {}> {
         // isolate color from the rest of the props
         const { color } = this.props;
 
+        console.log("Color-picker UPDATE");
+
         // update color
         if (this.colorPicker !== undefined) {
             if (color) this.colorPicker.color.set(color);
@@ -253,13 +259,13 @@ class ColorPicker extends React.Component<IColorPickerProps, {}> {
     render() {
         console.log("RENDER ColorPicker")
 
-        if (this.props.initColor !== undefined && this.props.initColor !== this.currentColor) {
+        /*if (this.props.initColor !== undefined && this.props.initColor !== this.currentColor) {
             if (this.colorPicker !== undefined) {
                 console.log("Chaning color from '%s' to '%s'", this.currentColor, this.props.initColor);
                 this.currentColor = this.props.initColor;
                 this.colorPicker.color.set(this.props.initColor);
             }
-        }
+        }*/
 
         return <div ref={el => (this.el = el)}></div>;
     }

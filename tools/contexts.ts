@@ -26,7 +26,3 @@ export const themes = {
 export const ThemeContext = createContext(
     themes.dark // default value
 );
-
-export const selectionContext = createContext(
-    null
-);

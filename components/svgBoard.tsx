@@ -152,6 +152,7 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
         let xy: Ixy = this.qrsToXy(qrs);
         let color: string = this.props.mapData.colorMap[xy.x][xy.y];
         // console.log(xyCoord);
+        //console.log(color);
 
         return <Tile key={key} coords={qrs} color={color}
                      handleOnClick={this.handleTileClick}

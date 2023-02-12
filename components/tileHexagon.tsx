@@ -144,8 +144,10 @@ export default class TileHexagon extends React.Component<IProps, IState> {
     }
 
     render() {
+        console.log("TILE RENDER", this.qrs);
+
         return (
-            <polygon points={this._points} fill={this.color}
+            <polygon points={this._points} fill={this.props.color}
                      onMouseEnter={this.handleOnEnter}
                      onMouseDown={this.handleOnDown}
                      onClick={this.handleOnClick}></polygon>
