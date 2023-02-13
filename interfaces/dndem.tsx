@@ -17,6 +17,11 @@ export interface Icoordinate {
     qrs?: Iqrs;
 }
 
+export interface Ihw {
+    h: number;
+    w: number;
+}
+
 export interface IGameSession {
     key: string;
     name: string;
@@ -51,6 +56,8 @@ export interface IState {
     paintColor: string;
     signedIn: boolean;
     selectedSession: string | undefined;
+    context: boolean;
+    contextCoord: Ixy;
     mapData: IMap;
 }
 

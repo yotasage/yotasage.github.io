@@ -67,6 +67,21 @@ image.entity {
     -ms-user-select: none;
 }
 
+div.contextMenu {
+    background-color    : #463a3a;
+    width			    : 10%;
+    height			    : 10%;
+
+    opacity: 0.8;
+
+    border-radius		: 100%;
+
+    /*top				: 50%;
+    left			: 50%;*/
+
+    position		: absolute;
+    z-index			: 1;
+}
 
 /*@media (orientation: landscape) {
   #Map {

@@ -85,19 +85,34 @@ export function getSVGCoord(e: React.MouseEvent<SVGElement>, offsetCorrection: b
     //console.log(this.SVG_width, this.SVG_height, viewBox)
 
     // ((e.target as SVGImageElement)["viewportElement"] as HTMLOrSVGElement)["viewBox"];
-    let target: EventTarget = e.target;
-    let targetViewPort: HTMLOrSVGElement = target["viewportElement"];
+    let mouseTarget: EventTarget = e.target;
+    let targetViewPort: HTMLOrSVGElement = null;
+    let viewBox: SVGAnimatedRect = null;
 
-    if (targetViewPort === null) return null;
+    let target: any = null;
+
+    if ((mouseTarget as SVGElement).id.includes("board_Map")) {
+        target = mouseTarget;
+        viewBox = (target as SVGElement)["viewBox"];
+    }
+    else if (mouseTarget === undefined) {
+        console.log(mouseTarget);
+    }
+    else {
+        target = mouseTarget["viewportElement"];
+        viewBox = target["viewBox"];
+
+        if (target === null) return null;
+    }
 
     // Get coordinate system max and min values of SVG viewport
-    let viewBox: SVGAnimatedRect = targetViewPort["viewBox"];
     let chartBaseHeight = viewBox.baseVal.height;
     let chartBaseWidth = viewBox.baseVal.width;
 
     // Get coordinates inside the SVG-element / Smith Chart
-    let chartWidth = ((e.target as HTMLImageElement)["viewportElement"] as HTMLOrSVGElement)["clientWidth"];
-    let chartHeight = ((e.target as HTMLImageElement)["viewportElement"] as HTMLOrSVGElement)["clientHeight"];
+    // ((e.target as HTMLImageElement)["viewportElement"] as HTMLOrSVGElement)["clientWidth"];
+    let chartWidth = target["clientWidth"];
+    let chartHeight = target["clientHeight"];
     let AR = chartWidth/chartHeight; // Aspect Ratio
 
     // Calculate the x and y coordinates inside the viewport
@@ -118,3 +133,36 @@ export function getSVGCoord(e: React.MouseEvent<SVGElement>, offsetCorrection: b
 
     return {x: x, y: y};
 }
+
+export function getSVGHeight(e: React.MouseEvent<SVGElement> | React.MouseEvent<HTMLDivElement>) {
+    //console.log(this.SVG_width, this.SVG_height, viewBox)
+
+    // ((e.target as SVGImageElement)["viewportElement"] as HTMLOrSVGElement)["viewBox"];
+    let mouseTarget: EventTarget = e.target;
+    let targetViewPort: HTMLOrSVGElement = null;
+    let viewBox: SVGAnimatedRect = null;
+
+    let target: any = null;
+
+    if ((mouseTarget as SVGElement).id.includes("board_Map")) {
+        target = mouseTarget;
+        viewBox = (target as SVGElement)["viewBox"];
+    }
+    else if (mouseTarget === undefined) {
+        console.log(mouseTarget);
+    }
+    else {
+        target = mouseTarget["viewportElement"];
+        viewBox = target["viewBox"];
+
+        if (target === null) return null;
+    }
+
+    // Get coordinate system max and min values of SVG viewport
+    let chartBaseHeight = viewBox.baseVal.height;
+    let chartBaseWidth = viewBox.baseVal.width;
+
+
+    return {h: chartBaseHeight, w: chartBaseWidth};
+}
+

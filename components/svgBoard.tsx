@@ -26,7 +26,6 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
         // If it is not bound, this will refer to the caller of the method, and not this Board.
 
         this.handleTileDown = this.handleTileDown.bind(this);
-        this.handleMouseMove = this.handleMouseMove.bind(this);
         this.handleTileEnter = this.handleTileEnter.bind(this);
         this.handleTileClick = this.handleTileClick.bind(this);
 
@@ -39,6 +38,7 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
 
         this.handleMouseUp = this.handleMouseUp.bind(this);
         this.handleMouseDown = this.handleMouseDown.bind(this);
+        this.handleMouseMove = this.handleMouseMove.bind(this);
         this.handleWheel = this.handleWheel.bind(this);
         this.colorMapCopy = this.colorMapCopy.bind(this);
 
@@ -295,6 +295,7 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
     }
 
     handleMouseMove(e: React.MouseEvent<SVGElement>) {
+        //console.log(getSVGCoord(e));
         if (this.moveEntity && this.selectedEntity !== undefined) {
             //console.log(getSVGCoord(e));
 

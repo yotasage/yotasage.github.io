@@ -8,11 +8,11 @@ import {ThemeContext, themes, PaintingContext, painting} from '../../tools/conte
 import ColorPickerContainer from '../../tools/color-picker';
 import Dndem from "../../styles/board.module.css";
 
-import {Icoordinate, Iqrs, IState, Ixy, IMap} from "../../interfaces/dndem";
+import {Icoordinate, Iqrs, IState, Ixy, IMap, Ihw} from "../../interfaces/dndem";
 import {IpaintTool} from "../../interfaces/tools";
 
 import TileHexagon from "../../components/tileHexagon";
-import {paintBrush, paintBucket} from "../../tools/tools";
+import {getSVGCoord, getSVGHeight, paintBrush, paintBucket} from "../../tools/tools";
 
 import {IroColor} from "@irojs/iro-core";
 
@@ -36,12 +36,17 @@ export default class Dndmap extends React.Component<{}, IState> {
         this.onTileMouseClick = this.onTileMouseClick.bind(this);
         this.onTileMouseDown = this.onTileMouseDown.bind(this);
         this.onTileMouseEnter = this.onTileMouseEnter.bind(this);
+
         this.onMapKeyDown = this.onMapKeyDown.bind(this);
 
         this.onPaintToolColorChange = this.onPaintToolColorChange.bind(this);
         this.onPaintToolChange = this.onPaintToolChange.bind(this);
 
         this.changeArraySize = this.changeArraySize.bind(this);
+
+        this.handleMouseMove = this.handleMouseMove.bind(this);
+        this.handleOnClick = this.handleOnClick.bind(this);
+        this.handleOnContextMenu = this.handleOnContextMenu.bind(this); // Right-click
 
         //let sessionRoom = window.location.pathname.replace(/[\W_]+/g, "");
         //console.log(sessionRoom);
@@ -53,6 +58,8 @@ export default class Dndmap extends React.Component<{}, IState> {
             paintColor: "rgb(238, 232, 170)",
             signedIn: false,
             selectedSession: undefined,
+            context: false,
+            contextCoord: {x: 0, y: 0},
             mapData: {
                 key: "",
                 name: "",
@@ -404,6 +411,41 @@ export default class Dndmap extends React.Component<{}, IState> {
         return mapDataCopy;
     }
 
+    // ########### MAP CONTAINER MOUSE INTERACT - BEGIN ###########
+
+    handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+        //console.log(getSVGCoord(e));
+        //console.log(e);
+    }
+
+    handleOnClick(e: React.MouseEvent<HTMLDivElement>) {
+        this.setState((state) => ({
+            context: false
+        }));
+    }
+
+    handleOnContextMenu(e: React.MouseEvent<HTMLDivElement>) {
+        e.preventDefault();
+        console.log("CONTEXT", e);
+
+        let hw: Ihw = getSVGHeight(e);
+        let coord: Ixy = {x: e.clientX - hw.w*0.1, y: e.clientY - hw.h*0.1};
+
+
+        this.setState((state) => ({
+            context: true,
+            contextCoord: coord
+        }));
+    }
+
+
+
+    // ########### MAP CONTAINER MOUSE INTERACT - END ###########
+
+    // ########### CONTEXT MENU MOUSE INTERACT - BEGIN ###########
+
+    // ########### CONTEXT MENU MOUSE INTERACT - END ###########
+
     public render() {
         console.log('RENDER APP');
         //console.log("render", this.state.mapData);
@@ -421,7 +463,12 @@ export default class Dndmap extends React.Component<{}, IState> {
                                           onToolChange={this.onPaintToolChange}
                                           color={ this.paintTool.color}/>
 
+                    {this.state.context && <div className={Dndem.contextMenu} style={{top: this.state.contextCoord.y, left: this.state.contextCoord.x}}></div>}
+
                     <div id={Dndem.boardContainer}
+                         onMouseMove={this.handleMouseMove}
+                         onClick={this.handleOnClick}
+                         onContextMenu={this.handleOnContextMenu}
                         //tabIndex={0}
                         //onKeyDown={this.resize}
                     >
