@@ -1,30 +1,11 @@
 import React from "react";
 
-interface Iqrs {
-    q: number;
-    r: number;
-    s?: number;
-}
+import {IPropsTileHexagon, Iqrs, IStateTileHexagon, Ixy} from "../interfaces/dndem";
 
-interface Ixy {
-    x: number;
-    y: number;
-}
 
-interface IProps {
-    coords: Iqrs;
-    color: string;
-    handleOnClick: (e: React.MouseEvent<SVGElement, MouseEvent>, target: TileHexagon) => void;
-    handleOnEnter: (e: React.MouseEvent<SVGElement, MouseEvent>, target: TileHexagon) => void;
-    handleOnDown: (e: React.MouseEvent<SVGElement, MouseEvent>, target: TileHexagon) => void;
-}
 
-interface IState {
-    color: string;
-}
-
-export default class TileHexagon extends React.Component<IProps, IState> {
-    constructor(props: IProps) {
+export default class TileHexagon extends React.Component<IPropsTileHexagon, IStateTileHexagon> {
+    constructor(props: IPropsTileHexagon) {
         super(props);
         this.handleOnClick = this.handleOnClick.bind(this);
         this.handleOnEnter = this.handleOnEnter.bind(this);
@@ -138,13 +119,13 @@ export default class TileHexagon extends React.Component<IProps, IState> {
         return neighbourList;
     }
 
-    shouldComponentUpdate(nextProps: IProps, nextState: IState) {
+    shouldComponentUpdate(nextProps: IPropsTileHexagon, nextState: IStateTileHexagon) {
         // Prevents all tiles from re-rendering when only 1 changes color
         return this.props.color !== nextProps.color;
     }
 
     render() {
-        console.log("TILE RENDER", this.qrs);
+        // console.log("TILE RENDER", this.qrs);
 
         return (
             <polygon points={this._points} fill={this.props.color}

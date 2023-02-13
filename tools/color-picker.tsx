@@ -6,6 +6,13 @@ import colorTool from '../styles/color-picker.module.css';
 
 // https://svg2jsx.com/
 
+import {
+    IPaintingToolProps, IPaintingToolState,
+    IpaintTool,
+    IPropsColorPickerContainer,
+    IStateColorPickerContainer
+} from "../interfaces/tools";
+
 const toolsGraphics: { [key: string]: string } = {
     brush: 'url(../svg/brush.svg)',
     bucket: 'url(../svg/bucket.svg)',
@@ -20,27 +27,10 @@ interface ColorPickerLayoutDefinition {
     options?: any;
 }
 
-interface IpaintTool {
-    tool: string;
-    size: number;
-    color: string;
-}
 
-interface IProps {
-    onColorChange?: Function;
-    onToolChange?: Function;
-    paintTool?: IpaintTool;
-    color?: string;
-}
 
-interface IState {
-    color: string;
-    width: string;
-    height: string;
-}
-
-class ColorPickerContainer extends React.Component<IProps, IState> {
-    constructor(props: IProps) {
+export default class ColorPickerContainer extends React.Component<IPropsColorPickerContainer, IStateColorPickerContainer> {
+    constructor(props: IPropsColorPickerContainer) {
         super(props);
 
         this.onColorChange = this.onColorChange.bind(this);
@@ -50,10 +40,8 @@ class ColorPickerContainer extends React.Component<IProps, IState> {
 
         this._selectedToolType = 'none';
 
-
-
         this.state = {
-            color: 'rgb(255, 0, 0)',
+            color: props.color,
             width: '50px',
             height: '50px'
         };
@@ -62,8 +50,6 @@ class ColorPickerContainer extends React.Component<IProps, IState> {
     private selectedTool: PaintingTool | undefined;
     private displayBox: JSX.Element | undefined;
     private _selectedToolType: string;
-
-    private color = 'rgb(255, 0, 0)';
 
     componentDidMount() {
 
@@ -115,7 +101,8 @@ class ColorPickerContainer extends React.Component<IProps, IState> {
     }
 
     render() {
-        console.log("RENDER ColorPickerContainer")
+        //console.log("RENDER ColorPickerContainer")
+        // console.log(this.selectedTool);
 
         this.displayBox = <PaintingTool type={this._selectedToolType} color={this.state.color}/>;
 
@@ -141,31 +128,20 @@ class ColorPickerContainer extends React.Component<IProps, IState> {
                 <PaintingTool onClick={this.onToolClick} type={'picker'}/>
                 <PaintingTool onClick={this.onToolClick} type={'tree'}/>
 
-                <ColorPicker margin={10} onColorChange={this.onColorChange} layout={layout} initColor={this.props.color}/>
+                <ColorPicker margin={10} onColorChange={this.onColorChange} layout={layout} tool={this.selectedTool} color={this.props.color}/>
             </div>
         )
     }
 }
 
-interface IPaintingToolProps {
-    type: string;
-    color?: string;
-    float?: string;
-    onClick?: Function;
-}
-
-interface IPaintingToolState {
-    color: string;
-}
-
 class PaintingTool extends React.Component<IPaintingToolProps, IPaintingToolState> {
-    private _type: string;
+    public type: string;
     constructor(props: IPaintingToolProps) {
         super(props);
 
         this.onClick = this.onClick.bind(this);
 
-        this._type = this.props.type;
+        this.type = this.props.type;
 
         this.state = {
             color: 'rgb(201, 201, 201)'
@@ -184,7 +160,7 @@ class PaintingTool extends React.Component<IPaintingToolProps, IPaintingToolStat
 
         return (
             <div onClick={this.onClick}
-                 id={'paintTool' + this._type}
+                 id={'paintTool' + this.type}
                  className={colorTool.paintingTool}
                  style={{ backgroundColor: color,
                      backgroundImage: toolsGraphics[this.props.type] }}/>
@@ -209,18 +185,9 @@ https://codesandbox.io/s/github/spicynaresh/React-Color-Picker-IRO?file=/src/Iro
 
 interface IColorPickerProps extends ColorPickerProps {
     onColorChange?: Function;
-    initColor?: string;
+    tool?: PaintingTool;
+    color?: string;
 }
-
-/*
-let layout: ColorPickerLayoutDefinition[] = [{component: iro.ui.Wheel},
-            {component: iro.ui.Slider, options: {sliderType: 'hue'}},
-            {component: iro.ui.Slider, options: {sliderType: 'saturation'}},
-            {component: iro.ui.Slider, options: {sliderType: 'value'}},
-            {component: iro.ui.Slider, options: {sliderType: 'alpha'}}];
-
-<ColorPicker margin={10} onColorChange={this.onColorChange} layout={layout}/>
- */
 
 class ColorPicker extends React.Component<IColorPickerProps, {}> {
     // | undefined was added such that the fields would not have to be declared in the constructor
@@ -231,13 +198,15 @@ class ColorPicker extends React.Component<IColorPickerProps, {}> {
     componentDidMount() {
         const { props } = this;
 
+        //console.log("Color-picker DID MOUNT");
+
         if (this.currentColor === '') this.currentColor =
-            (this.props.initColor !== undefined ? this.props.initColor : 'rgb(0, 0, 0)');
+            (this.props.color !== undefined ? this.props.color : 'rgb(0, 0, 0)');
 
         if (this.el !== undefined && this.el !== null) {
             this.colorPicker = iro.default.ColorPicker(this.el, props);
             this.colorPicker.on('color:change', this.onColorChange);
-            if (this.props.initColor !== undefined) this.colorPicker.color.set(this.props.initColor);
+            if (this.props.color !== undefined) this.colorPicker.color.set(this.props.color);
         }
     }
 
@@ -247,21 +216,19 @@ class ColorPicker extends React.Component<IColorPickerProps, {}> {
 
     componentDidUpdate() {
         // isolate color from the rest of the props
-        const { initColor } = this.props;
+        const { color, tool } = this.props;
 
-        console.log("Color-picker UPDATE", initColor);
+        //console.log("Color-picker DID_UPDATE", color);
 
         // update color
-        if (this.colorPicker !== undefined) {
-            if (initColor) this.colorPicker.color.set(initColor);
+        if ((tool !== undefined) && (tool as PaintingTool).type == "picker") {
+            this.colorPicker.color.set(color);
         }
     }
 
     render() {
-        console.log("RENDER ColorPicker")
+        //console.log("RENDER ColorPicker")
 
         return <div ref={el => (this.el = el)}></div>;
     }
 }
-
-export default ColorPickerContainer;

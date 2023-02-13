@@ -1,3 +1,6 @@
+import React from "react";
+import TileHexagon from "../components/tileHexagon";
+
 export interface Iqrs {
     q: number;
     r: number;
@@ -95,4 +98,16 @@ export interface IStateEntity {
     qrs: Iqrs;
     xy: Ixy;
     size: number;
+}
+
+export interface IPropsTileHexagon {
+    coords: Iqrs;
+    color: string;
+    handleOnClick: (e: React.MouseEvent<SVGElement, MouseEvent>, target: TileHexagon) => void;
+    handleOnEnter: (e: React.MouseEvent<SVGElement, MouseEvent>, target: TileHexagon) => void;
+    handleOnDown: (e: React.MouseEvent<SVGElement, MouseEvent>, target: TileHexagon) => void;
+}
+
+export interface IStateTileHexagon {
+    color: string;
 }

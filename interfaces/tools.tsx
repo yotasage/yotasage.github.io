@@ -9,9 +9,35 @@
 //const iro = require('@jaames/iro');
 
 
+import ColorPickerContainer from "../tools/color-picker";
+
 export interface IpaintTool {
     tool: string;
     size: number;
     color: string;
-    used: boolean;
+    used?: boolean;
+}
+
+export interface IPropsColorPickerContainer {
+    onColorChange?: Function;
+    onToolChange?: Function;
+    paintTool?: IpaintTool;
+    color?: string;
+}
+
+export interface IStateColorPickerContainer {
+    color: string;
+    width: string;
+    height: string;
+}
+
+export interface IPaintingToolProps {
+    type: string;
+    color?: string;
+    float?: string;
+    onClick?: Function;
+}
+
+export interface IPaintingToolState {
+    color: string;
 }

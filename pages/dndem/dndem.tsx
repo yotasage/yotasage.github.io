@@ -171,13 +171,13 @@ export default class Dndmap extends React.Component<{}, IState> {
 
         /*console.log(color.rgbaString);
         console.log(rgba);*/
-        console.log(colorString);
+        //console.log(colorString);
 
         this.paintTool.color = colorString;
     }
 
     onPaintToolChange(tool: string) {
-        console.log(tool);
+        //console.log(tool);
         this.paintTool.tool = tool;
     }
 
@@ -235,7 +235,7 @@ export default class Dndmap extends React.Component<{}, IState> {
     }
 
     onTileMouseClick(e: React.MouseEvent<SVGElement>, target: TileHexagon) {
-        console.log("onTileMouseClick");
+        //console.log("onTileMouseClick");
         if (this.paintTool.tool === 'bucket' || this.paintTool.tool === 'tree') {
             let coord: Iqrs = target.qrs;
             let color: string = this.paintTool.color;
@@ -255,12 +255,12 @@ export default class Dndmap extends React.Component<{}, IState> {
     }
 
     onTileMouseDown(e: React.MouseEvent<SVGElement>, target: TileHexagon) {
-        console.log("onTileMouseDown");
+        //console.log("onTileMouseDown");
         if (e.buttons & 1) this.paint(target);
     }
 
     onTileMouseEnter(e: React.MouseEvent<SVGElement>, target: TileHexagon) {
-        console.log("onTileMouseEnter");
+        //console.log("onTileMouseEnter");
         /*if      (event.button == 0) mouseMainLeft = true;         // 001
         else if (event.button == 1) mouseMainMiddle = true;         // 010
         else if (event.button == 2) mouseMainRight = true;*/        // 100
@@ -300,7 +300,7 @@ export default class Dndmap extends React.Component<{}, IState> {
                 paintColor: color
             }));
 
-            console.log("picker", color);
+            //console.log("picker", color);
         }
     }
 
