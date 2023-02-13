@@ -29,6 +29,7 @@ interface IpaintTool {
 interface IProps {
     onColorChange?: Function;
     onToolChange?: Function;
+    paintTool?: IpaintTool;
     color?: string;
 }
 
@@ -246,26 +247,18 @@ class ColorPicker extends React.Component<IColorPickerProps, {}> {
 
     componentDidUpdate() {
         // isolate color from the rest of the props
-        const { color } = this.props;
+        const { initColor } = this.props;
 
-        console.log("Color-picker UPDATE");
+        console.log("Color-picker UPDATE", initColor);
 
         // update color
         if (this.colorPicker !== undefined) {
-            if (color) this.colorPicker.color.set(color);
+            if (initColor) this.colorPicker.color.set(initColor);
         }
     }
 
     render() {
         console.log("RENDER ColorPicker")
-
-        /*if (this.props.initColor !== undefined && this.props.initColor !== this.currentColor) {
-            if (this.colorPicker !== undefined) {
-                console.log("Chaning color from '%s' to '%s'", this.currentColor, this.props.initColor);
-                this.currentColor = this.props.initColor;
-                this.colorPicker.color.set(this.props.initColor);
-            }
-        }*/
 
         return <div ref={el => (this.el = el)}></div>;
     }

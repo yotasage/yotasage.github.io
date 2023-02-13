@@ -56,9 +56,9 @@ export default class Dndmap extends React.Component<{}, IState> {
             mapData: {
                 key: "",
                 name: "",
-                height: 3, // radius*2 -1
-                radius: 2,
-                colorMap: [...Array(3)].map(e => Array(3).fill(this.defaultTileColor)),
+                height: 9, // radius*2 -1
+                radius: 5,
+                colorMap: [...Array(9)].map(e => Array(9).fill(this.defaultTileColor)),
                 loaded: false
             }
         };
@@ -295,6 +295,11 @@ export default class Dndmap extends React.Component<{}, IState> {
             let coord: Ixy = this.qrsToXy(target.qrs);
             let color: string = this.state.mapData.colorMap[coord.x][coord.y];
             this.paintTool.color = color;
+
+            this.setState((state) => ({
+                paintColor: color
+            }));
+
             console.log("picker", color);
         }
     }
@@ -414,7 +419,7 @@ export default class Dndmap extends React.Component<{}, IState> {
                 <>
                     <ColorPickerContainer onColorChange={this.onPaintToolColorChange}
                                           onToolChange={this.onPaintToolChange}
-                                          color={this.paintTool.color}/>
+                                          color={ this.paintTool.color}/>
 
                     <div id={Dndem.boardContainer}
                         //tabIndex={0}
