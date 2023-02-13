@@ -15,6 +15,7 @@ import TileHexagon from "../../components/tileHexagon";
 import {getSVGCoord, getSVGHeight, paintBrush, paintBucket} from "../../tools/tools";
 
 import {IroColor} from "@irojs/iro-core";
+import {saveMap} from "../../tools/fileSaveLoad";
 
 export default class Dndmap extends React.Component<{}, IState> {
     constructor(props: object) {
@@ -47,6 +48,8 @@ export default class Dndmap extends React.Component<{}, IState> {
         this.handleMouseMove = this.handleMouseMove.bind(this);
         this.handleOnClick = this.handleOnClick.bind(this);
         this.handleOnContextMenu = this.handleOnContextMenu.bind(this); // Right-click
+
+        this.handleOnContextMenuClick = this.handleOnContextMenuClick.bind(this);
 
         //let sessionRoom = window.location.pathname.replace(/[\W_]+/g, "");
         //console.log(sessionRoom);
@@ -444,6 +447,14 @@ export default class Dndmap extends React.Component<{}, IState> {
 
     // ########### CONTEXT MENU MOUSE INTERACT - BEGIN ###########
 
+    handleOnContextMenuClick(e: React.MouseEvent<HTMLDivElement>) {
+        saveMap(this.state.mapData);
+
+        this.setState((state) => ({
+            context: false
+        }));
+    }
+
     // ########### CONTEXT MENU MOUSE INTERACT - END ###########
 
     public render() {
@@ -463,7 +474,11 @@ export default class Dndmap extends React.Component<{}, IState> {
                                           onToolChange={this.onPaintToolChange}
                                           color={ this.paintTool.color}/>
 
-                    {this.state.context && <div className={Dndem.contextMenu} style={{top: this.state.contextCoord.y, left: this.state.contextCoord.x}}></div>}
+                    {this.state.context && <div className={Dndem.contextMenu}
+                                                onClick={this.handleOnContextMenuClick}
+                                                style={{top: this.state.contextCoord.y, left: this.state.contextCoord.x}}>
+                        <p className={Dndem.contextMenu}>SAVE MAP</p>
+                    </div>}
 
                     <div id={Dndem.boardContainer}
                          onMouseMove={this.handleMouseMove}
