@@ -2,7 +2,7 @@ import Head from 'next/head'
 import Link from 'next/link';
 
 import styles from '../../styles/Home.module.css';
-import boardstyles from '../../styles/board.module.css';
+import boardstyles from '../dndem/styles/board.module.css';
 
 export default function Hexagon() {
     //let viewBox = this.state.viewBox.x + ' ' + this.state.viewBox.y + ' ' + this.state.viewBox.h + ' ' + this.state.viewBox.w
@@ -29,7 +29,7 @@ export default function Hexagon() {
                         <h3>Return to Homepage &rarr;</h3>
                         <p>Go back to the previous page</p>
                     </Link>
-                    <Link href="../dndem/dndem" className={styles.card}>
+                    <Link href="../dndem/indexDndem" className={styles.card}>
                         <h3>DnD encounter map &rarr;</h3>
                         <p>Check out the DnD encounter map</p>
                     </Link>

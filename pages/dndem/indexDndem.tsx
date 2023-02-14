@@ -1,21 +1,21 @@
 import styles from "../styles/Home.module.css";
 import boardstyles from "../styles/board.module.css";
-import Board from "../../components/svgBoard";
+import Board from "./components/svgBoard";
 import React from "react";
 
-import {ThemeContext, themes, PaintingContext, painting} from '../../tools/contexts';
+import {ThemeContext, themes, PaintingContext, painting} from './tools/contexts';
 
-import ColorPickerContainer from '../../tools/color-picker';
-import Dndem from "../../styles/board.module.css";
+import ColorPickerContainer from './tools/color-picker';
+import Dndem from "./styles/board.module.css";
 
-import {Icoordinate, Iqrs, IState, Ixy, IMap, Ihw} from "../../interfaces/dndem";
-import {IpaintTool} from "../../interfaces/tools";
+import {Icoordinate, Iqrs, IState, Ixy, IMap, Ihw} from "./interfaces/dndem";
+import {IpaintTool} from "./interfaces/tools";
 
-import TileHexagon from "../../components/tileHexagon";
-import {getSVGCoord, getSVGHeight, paintBrush, paintBucket} from "../../tools/tools";
+import TileHexagon from "./components/tileHexagon";
+import {getSVGCoord, getSVGHeight, paintBrush, paintBucket} from "./tools/tools";
 
 import {IroColor} from "@irojs/iro-core";
-import {saveMap} from "../../tools/fileSaveLoad";
+import {saveMap} from "./tools/fileSaveLoad";
 
 export default class Dndmap extends React.Component<{}, IState> {
     constructor(props: object) {
