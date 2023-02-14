@@ -23,3 +23,23 @@ export function download(filename: string, text: string) {
 
     document.body.removeChild(element);
 }
+
+// https://web.dev/read-files/
+// https://www.html5rocks.com/en/tutorials/file/dndfiles//
+/*export function loadMap(e) {
+    let fileList: FileList = e.target.files;
+    let f: File = fileList[0];
+    let reader: FileReader = new FileReader();
+
+    reader.onload = mapReaderOnLoad;   // Function to perform when reading of file is complete
+    reader.readAsText(f);           // Start reading the file
+
+}
+
+export function mapReaderOnLoad(e) {
+    let result = e.target.result;
+    // console.log(result);
+    let loadedArray = JSON.parse(result);
+    //console.log(loadedArray);
+    modifyMapFromArray(loadedArray);
+}*/

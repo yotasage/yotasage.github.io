@@ -38,7 +38,7 @@ export default class ContextMenu extends React.Component<IPropsContextMenu, {}> 
             buttonList.push(<ContextMenuItem key={index} label={element} coord={coords} onButton={this.props.onButton ? this.props.onButton[index] : null}/>);
 
         });
-        
+
         return (
             <>
                 <div className={styles.contextMenuContainer}

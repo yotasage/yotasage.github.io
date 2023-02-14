@@ -54,6 +54,7 @@ export default class Dndmap extends React.Component<{}, IState> {
         this.handleOnContextMenuClick = this.handleOnContextMenuClick.bind(this);
         this.saveMapFile = this.saveMapFile.bind(this);
         this.loadMapFile = this.loadMapFile.bind(this);
+        this.loadMap = this.loadMap.bind(this);
         this.createPlayer = this.createPlayer.bind(this);
         this.createEnemy = this.createEnemy.bind(this);
 
@@ -470,12 +471,43 @@ export default class Dndmap extends React.Component<{}, IState> {
         }));
     }
 
+    // https://web.dev/read-files/
     loadMapFile(e: React.MouseEvent<HTMLDivElement>) {
         console.log("loadMapFile");
+
+        let element: HTMLInputElement = document.createElement('input');
+        element.setAttribute('type', 'file');
+        element.setAttribute('file-selector', 'single');
+        element.setAttribute('accept', '.dem');
+        element.addEventListener('change', this.loadMap, false);
+
+        element.style.display = 'none';
+        document.body.appendChild(element);
+
+        element.click();
+
+        document.body.removeChild(element);
 
         this.setState((state) => ({
             context: false
         }));
+    }
+
+    loadMap(e) {
+        let fileList: FileList = e.target.files;
+        let f: File = fileList[0];
+        let reader: FileReader = new FileReader();
+
+        // Function to perform when reading of file is complete
+        reader.onloadend = (e) => {
+            let loadedMap = JSON.parse(reader.result as string);
+            console.log(loadedMap);
+
+            this.setState((state) => ({
+                mapData: loadedMap
+            }));
+        }
+        reader.readAsText(f);           // Start reading the file
     }
 
     createPlayer(e: React.MouseEvent<HTMLDivElement>) {
