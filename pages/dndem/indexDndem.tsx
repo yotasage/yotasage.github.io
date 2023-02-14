@@ -8,11 +8,11 @@ import {ThemeContext, themes, PaintingContext, painting} from '../../tools/conte
 import ColorPickerContainer from '../../tools/color-picker';
 import Dndem from "../../styles/board.module.css";
 
-import {Icoordinate, Iqrs, IState, Ixy, IMap, Ihw} from "../../interfaces/dndem";
+import {Icoordinate, Iqrs, IState, Ixy, IMap, Ihw, IEntity} from "../../interfaces/dndem";
 import {IpaintTool} from "../../interfaces/tools";
 
 import TileHexagon from "../../components/tileHexagon";
-import {getSVGCoord, getSVGHeight, paintBrush, paintBucket} from "../../tools/tools";
+import {getSVGCoord, getSVGHeight, paintBrush, paintBucket, xyToQrs} from "../../tools/tools";
 
 import {IroColor} from "@irojs/iro-core";
 import {saveMap} from "../../tools/fileSaveLoad";
@@ -70,12 +70,14 @@ export default class Dndmap extends React.Component<{}, IState> {
             selectedSession: undefined,
             context: false,
             contextCoord: {x: 0, y: 0},
+            contextSVGCoord: {x: 0, y: 0},
             mapData: {
                 key: "",
                 name: "",
                 height: 9, // radius*2 -1
                 radius: 5,
                 colorMap: [...Array(9)].map(e => Array(9).fill(this.defaultTileColor)),
+                entities: [],
                 loaded: false
             }
         };
@@ -406,6 +408,7 @@ export default class Dndmap extends React.Component<{}, IState> {
             height: this.state.mapData.height,
             radius: this.state.mapData.radius,
             colorMap: this.state.mapData.colorMap,
+            entities: this.state.mapData.entities,
             loaded: this.state.mapData.loaded
         };
 
@@ -438,13 +441,20 @@ export default class Dndmap extends React.Component<{}, IState> {
         e.preventDefault();
         console.log("CONTEXT", e);
 
+        if (this.paintTool.tool != "none") return;
+
         //let hw: Ihw = getSVGHeight(e);
         let coord: Ixy = {x: e.clientX - 200, y: e.clientY - 200};
+        let SVGCoord: Ixy = getSVGCoord(e);
 
+        //console.log(coord, SVGCoord);
+
+            // contextSVGCoord
 
         this.setState((state) => ({
             context: true,
-            contextCoord: coord
+            contextCoord: coord,
+            contextSVGCoord: SVGCoord
         }));
     }
 
@@ -513,8 +523,28 @@ export default class Dndmap extends React.Component<{}, IState> {
     createPlayer(e: React.MouseEvent<HTMLDivElement>) {
         console.log("createPlayer");
 
+        let xy: Ixy = this.state.contextSVGCoord;
+        let qrs: Iqrs = xyToQrs(xy, this.state.sizeTile);
+        //this.state.contextSVGCoord
+
+        let mapCopy: IMap = this.colorMapCopy();
+
+        const array = new Uint32Array(10);
+        crypto.getRandomValues(array);
+
+        let sid: string = array.toString();
+
+        let entity: IEntity = {
+            type: 'player',
+            sid: sid,
+            qrs: qrs
+        };
+
+        mapCopy.entities.push(entity);
+
         this.setState((state) => ({
-            context: false
+            context: false,
+            mapData: mapCopy
         }));
     }
 

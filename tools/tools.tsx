@@ -81,7 +81,15 @@ export function paintBucket(array: string[][], coord: Iqrs, color: string) {
     return returnStack;
 }
 
-export function getSVGCoord(e: React.MouseEvent<SVGElement>, offsetCorrection: boolean = true) {
+export function xyToQrs(xy: Ixy, scale: number) {
+    let qrs: Iqrs = {q: 0, r: 0, s: 0};
+    qrs.q = (Math.sqrt(3)/3 * xy.x  -  1./3 * xy.y) / scale
+    qrs.r = (                             2./3 * xy.y) / scale
+    qrs.s = -qrs.q - qrs.r
+    return qrs;
+}
+
+export function getSVGCoord(e: React.MouseEvent<SVGElement> | React.MouseEvent<HTMLDivElement>, offsetCorrection: boolean = true) {
     //console.log(this.SVG_width, this.SVG_height, viewBox)
 
     // ((e.target as SVGImageElement)["viewportElement"] as HTMLOrSVGElement)["viewBox"];

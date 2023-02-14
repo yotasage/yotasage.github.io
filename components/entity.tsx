@@ -45,13 +45,14 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
         }
 
         if (typeof this.props.size == 'string') {
-            if      (this.props.size == 'small')       this._size = 3;
-            else if (this.props.size == 'medium')      this._size = 6;
-            else if (this.props.size == 'large')       this._size = 8;
-            else if (this.props.size == 'huge')        this._size = 16;
-            else if (this.props.size == 'gargantuan')  this._size = 24;
-            else if (this.props.size == 'colossal')    this._size = 30;
-            else                                       this._size = 6;
+            if      (this.props.size == 'small')       this._size = this._stepSize*0.375;
+            else if (this.props.size == 'medium')      this._size = this._stepSize*0.75;
+            else if (this.props.size == 'large')       this._size = this._stepSize;
+            else if (this.props.size == 'huge')        this._size = this._stepSize*2;
+            else if (this.props.size == 'gargantuan')  this._size = this._stepSize*3;
+            else if (this.props.size == 'colossal')    this._size = this._stepSize*4; // 30 before, now 32
+            else                                       this._size = this._stepSize;
+            this._size = Math.round(this._size);
         }
         else if (typeof this.props.size == 'number') {
             this._size = this.props.size;

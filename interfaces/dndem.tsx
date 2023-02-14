@@ -1,5 +1,6 @@
 import React from "react";
 import TileHexagon from "../components/tileHexagon";
+import Entity from "../components/entity";
 
 export interface Iqrs {
     q: number;
@@ -48,6 +49,7 @@ export interface IMap {
     height: number;
     radius: number;
     colorMap: Array<Array<string>>;
+    entities?: IEntity[];
     loaded: boolean;
 }
 
@@ -58,6 +60,7 @@ export interface IState {
     selectedSession: string | undefined;
     context: boolean;
     contextCoord: Ixy;
+    contextSVGCoord: Ixy;
     mapData: IMap;
 }
 
@@ -83,6 +86,19 @@ export interface IPropsBoard {
 
 export interface IStateBoard {
     viewBox: IviewBox;
+}
+
+export interface IEntity {
+    type: string,
+    id?: number,
+    uid?: string,
+    sid?: string,
+    name?: string,
+    qrs?: Iqrs;
+    xy?: Ixy;
+    color?: string;
+    stepSize?: number;
+    size?: number | string;
 }
 
 export interface IPropsEntity {

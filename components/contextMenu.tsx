@@ -20,11 +20,8 @@ export default class ContextMenu extends React.Component<IPropsContextMenu, {}> 
         console.log('RENDER CONTEXT MENU');
         //console.log("render", this.state.mapData);
 
-        let buttonCoordinates: Ixy[];
-        let buttonList: JSX.Element[] = [];
-
-
         // https://math.stackexchange.com/questions/2820194/how-to-plot-n-coords-to-distribute-evenly-as-a-ring-of-points-around-a-circle
+        let buttonList: JSX.Element[] = [];
         this.props.buttons.forEach((element: string, index: number) => {
             console.log(element, index);
 

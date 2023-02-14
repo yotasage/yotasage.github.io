@@ -8,7 +8,7 @@ import Dndem from "../styles/board.module.css";
 
 import {getSVGCoord} from "../tools/tools";
 
-import {IPropsBoard, Iqrs, IStateBoard, IviewBox, Ixy} from "../interfaces/dndem";
+import {IEntity, IPropsBoard, Iqrs, IStateBoard, IviewBox, Ixy} from "../interfaces/dndem";
 
 //import {ThemeContext, PaintingContext} from '../contexts';
 //import { paintBrush, paintBucket } from "../tools";
@@ -160,9 +160,9 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
                      handleOnDown={this.handleTileDown}/>;
     }
 
-    renderTiles(radius: number) {
+    renderTiles(radius: number = this.props.mapData.radius) {
         let qrs: Iqrs = {q: 0, r: 0, s: 0};
-        let qrsList: Iqrs[] = []; // [{q: 0, r: 0}, {q: 0, r: 1}, {q: 1, r: 0}, {q: 1, r: 1}];
+        let qrsList: Iqrs[] = [];
         let ReactElementList: React.ReactElement[] = [];
 
         ReactElementList = ReactElementList.concat(this.addTile(qrs)); // Add the center Tile
@@ -199,6 +199,37 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
             }
         }
         return qrsList;
+    }
+
+    createEntities() {
+        let ReactElementList: React.ReactElement[] = [];
+        //console.log(this.props.mapData.entities);
+
+        if (this.props.mapData.entities.length == 0) {
+            //ReactElementList = ReactElementList.concat(this.createEntity({q: 0, r: 0}));
+        }
+        else {
+            this.props.mapData.entities.forEach((element: IEntity, index: number) => {
+                let qrs: Iqrs = element.qrs;
+                ReactElementList.push(this.createEntity(qrs, element.sid));
+            });
+        }
+
+        //console.log(ReactElementList);
+
+        return ReactElementList;
+    }
+
+    createEntity(qrs: Iqrs, sid: string) {
+        return <Entity key={sid}
+                        qrs={qrs}
+                        onMouseUp={this.handleEntityUp}
+                        onMouseDown={this.handleEntityDown}
+                        onMouseMove={this.handleEntityMove}
+                        onMouseLeave={this.handleEntityLeave}
+                        onMouseEnter={this.handleEntityEnter}
+                        onMouseClick={this.handleEntityClick}
+        ></Entity>
     }
 
     // ########### TILE MOUSE INTERACT - BEGIN ###########
@@ -296,6 +327,7 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
 
     handleMouseMove(e: React.MouseEvent<SVGElement>) {
         //console.log(getSVGCoord(e));
+
         if (this.moveEntity && this.selectedEntity !== undefined) {
             //console.log(getSVGCoord(e));
 
@@ -352,25 +384,10 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
                  onWheel={this.handleWheel}>
 
                 <g id="tileContainer">
-                    {this.renderTiles(this.props.mapData.radius)}
+                    {this.renderTiles()}
                 </g>
                 <g id="entityContainer">
-                    <Entity onMouseUp={this.handleEntityUp}
-                            onMouseDown={this.handleEntityDown}
-                            onMouseMove={this.handleEntityMove}
-                            onMouseLeave={this.handleEntityLeave}
-                            onMouseEnter={this.handleEntityEnter}
-                            onMouseClick={this.handleEntityClick}
-
-                    ></Entity>
-                    <Entity onMouseUp={this.handleEntityUp}
-                            onMouseDown={this.handleEntityDown}
-                            onMouseMove={this.handleEntityMove}
-                            onMouseLeave={this.handleEntityLeave}
-                            onMouseEnter={this.handleEntityEnter}
-                            onMouseClick={this.handleEntityClick}
-
-                            qrs={{q: 1, r: 1, s: 0}}></Entity>
+                    {this.createEntities()}
                 </g>
                 <g id="structureContainer"></g>
                 <g id="structureGrabPointContainer"></g>
