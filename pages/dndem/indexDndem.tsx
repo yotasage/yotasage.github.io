@@ -16,6 +16,8 @@ import {getSVGCoord, getSVGHeight, paintBrush, paintBucket} from "../../tools/to
 
 import {IroColor} from "@irojs/iro-core";
 import {saveMap} from "../../tools/fileSaveLoad";
+import contextMenu from "../../components/contextMenu";
+import ContextMenu from "../../components/contextMenu";
 
 export default class Dndmap extends React.Component<{}, IState> {
     constructor(props: object) {
@@ -50,6 +52,10 @@ export default class Dndmap extends React.Component<{}, IState> {
         this.handleOnContextMenu = this.handleOnContextMenu.bind(this); // Right-click
 
         this.handleOnContextMenuClick = this.handleOnContextMenuClick.bind(this);
+        this.saveMapFile = this.saveMapFile.bind(this);
+        this.loadMapFile = this.loadMapFile.bind(this);
+        this.createPlayer = this.createPlayer.bind(this);
+        this.createEnemy = this.createEnemy.bind(this);
 
         //let sessionRoom = window.location.pathname.replace(/[\W_]+/g, "");
         //console.log(sessionRoom);
@@ -431,8 +437,8 @@ export default class Dndmap extends React.Component<{}, IState> {
         e.preventDefault();
         console.log("CONTEXT", e);
 
-        let hw: Ihw = getSVGHeight(e);
-        let coord: Ixy = {x: e.clientX - hw.w*0.1, y: e.clientY - hw.h*0.1};
+        //let hw: Ihw = getSVGHeight(e);
+        let coord: Ixy = {x: e.clientX - 200, y: e.clientY - 200};
 
 
         this.setState((state) => ({
@@ -448,7 +454,40 @@ export default class Dndmap extends React.Component<{}, IState> {
     // ########### CONTEXT MENU MOUSE INTERACT - BEGIN ###########
 
     handleOnContextMenuClick(e: React.MouseEvent<HTMLDivElement>) {
+        console.log("handleOnContextMenuClick");
+
+        this.setState((state) => ({
+            context: false
+        }));
+    }
+
+    saveMapFile(e: React.MouseEvent<HTMLDivElement>) {
+        console.log("saveMapFile");
         saveMap(this.state.mapData);
+
+        this.setState((state) => ({
+            context: false
+        }));
+    }
+
+    loadMapFile(e: React.MouseEvent<HTMLDivElement>) {
+        console.log("loadMapFile");
+
+        this.setState((state) => ({
+            context: false
+        }));
+    }
+
+    createPlayer(e: React.MouseEvent<HTMLDivElement>) {
+        console.log("createPlayer");
+
+        this.setState((state) => ({
+            context: false
+        }));
+    }
+
+    createEnemy(e: React.MouseEvent<HTMLDivElement>) {
+        console.log("createEnemy");
 
         this.setState((state) => ({
             context: false
@@ -474,11 +513,10 @@ export default class Dndmap extends React.Component<{}, IState> {
                                           onToolChange={this.onPaintToolChange}
                                           color={ this.paintTool.color}/>
 
-                    {this.state.context && <div className={Dndem.contextMenu}
-                                                onClick={this.handleOnContextMenuClick}
-                                                style={{top: this.state.contextCoord.y, left: this.state.contextCoord.x}}>
-                        <p className={Dndem.contextMenu}>SAVE MAP</p>
-                    </div>}
+                    {this.state.context && <ContextMenu coord={this.state.contextCoord}
+                            onClick={this.handleOnContextMenuClick}
+                            buttons={['SAVE MAP', 'LOAD MAP', 'CREATE PLAYER', 'CREATE ENEMY']}
+                            onButton={[this.saveMapFile, this.loadMapFile, this.createPlayer, this.createEnemy]}/>}
 
                     <div id={Dndem.boardContainer}
                          onMouseMove={this.handleMouseMove}
