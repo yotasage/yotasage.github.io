@@ -2,7 +2,7 @@ import Head from 'next/head'
 import Link from 'next/link';
 
 import styles from '../../styles/Home.module.css';
-import boardstyles from '../dndem/styles/board.module.css';
+import boardstyles from '../../styles/board.module.css';
 
 export default function Hexagon() {
     //let viewBox = this.state.viewBox.x + ' ' + this.state.viewBox.y + ' ' + this.state.viewBox.h + ' ' + this.state.viewBox.w
