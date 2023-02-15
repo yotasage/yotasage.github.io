@@ -541,11 +541,21 @@ export default class Dndmap extends React.Component<{}, IState> {
 
         // Function to perform when reading of file is complete
         reader.onloadend = (e) => {
-            let loadedMap = JSON.parse(reader.result as string);
+            let loadedMap: IMap = JSON.parse(reader.result as string);
             console.log(loadedMap);
 
+
+            let newEntity: React.ReactElement;
+            let newEntityList: React.ReactElement[] = [];
+
+            for (let i: number = 0; i < loadedMap.entities.length; i++) {
+                newEntity = this.createEntity(loadedMap.entities[i]);
+                newEntityList.push(newEntity);
+            }
+
             this.setState((state) => ({
-                mapData: loadedMap
+                mapData: loadedMap,
+                entities: newEntityList
             }));
         }
         reader.readAsText(f);           // Start reading the file
@@ -568,13 +578,15 @@ export default class Dndmap extends React.Component<{}, IState> {
         newEntityData.xy = this.state.contextSVGCoord;
         newEntityData.qrs = xyToQrs(newEntityData.xy, this.state.sizeTile);
 
-        let newEntity: React.ReactElement = <Entity key={newEntityData.sid} {...newEntityData}
+        /*let newEntity: React.ReactElement = <Entity key={newEntityData.sid} {...newEntityData}
                                                     onMouseUp={this.handleEntityUp}
                                                     onMouseDown={this.handleEntityDown}
                                                     onMouseMove={this.handleEntityMove}
                                                     onMouseLeave={this.handleEntityLeave}
                                                     onMouseEnter={this.handleEntityEnter}
-                                                    onMouseClick={this.handleEntityClick}></Entity>;
+                                                    onMouseClick={this.handleEntityClick}></Entity>;*/
+
+        let newEntity: React.ReactElement = this.createEntity(newEntityData);
 
         // TODO: Figure out how to add ID to newEntityData
 
@@ -591,6 +603,17 @@ export default class Dndmap extends React.Component<{}, IState> {
             mapData: mapCopy,
             entities: newEntityList
         }));
+    }
+
+    createEntity(props: IEntity) {
+        let newEntity: React.ReactElement = <Entity key={props.sid} {...props}
+                                                    onMouseUp={this.handleEntityUp}
+                                                    onMouseDown={this.handleEntityDown}
+                                                    onMouseMove={this.handleEntityMove}
+                                                    onMouseLeave={this.handleEntityLeave}
+                                                    onMouseEnter={this.handleEntityEnter}
+                                                    onMouseClick={this.handleEntityClick}></Entity>;
+        return newEntity;
     }
 
     createEnemy(e: React.MouseEvent<HTMLDivElement>) {
