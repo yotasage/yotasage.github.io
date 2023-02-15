@@ -1,17 +1,10 @@
 import * as React from 'react';
 import Tile from './tileHexagon';
-//import App from '../App';
-import Entity from './entity';
-//import * as tools from "../tools";
 
 import Dndem from "../styles/board.module.css";
 
-import {getSVGCoord} from "../tools/tools";
-
-import {IEntity, IPropsBoard, Iqrs, IStateBoard, IviewBox, Ixy} from "../interfaces/dndem";
-
-//import {ThemeContext, PaintingContext} from '../contexts';
-//import { paintBrush, paintBucket } from "../tools";
+import {IPropsBoard, Iqrs, IStateBoard, IviewBox, Ixy} from "../interfaces/dndem";
+import ContextMenuItem from "./contextMenuItem";
 
 // React.Component subclass
 class Board extends React.Component<IPropsBoard, IStateBoard> {
@@ -28,13 +21,6 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
         this.handleTileDown = this.handleTileDown.bind(this);
         this.handleTileEnter = this.handleTileEnter.bind(this);
         this.handleTileClick = this.handleTileClick.bind(this);
-
-        this.handleEntityUp = this.handleEntityUp.bind(this);
-        this.handleEntityDown = this.handleEntityDown.bind(this);
-        this.handleEntityMove = this.handleEntityMove.bind(this);
-        this.handleEntityLeave = this.handleEntityLeave.bind(this);
-        this.handleEntityEnter = this.handleEntityEnter.bind(this);
-        this.handleEntityClick = this.handleEntityClick.bind(this);
 
         this.handleMouseUp = this.handleMouseUp.bind(this);
         this.handleMouseDown = this.handleMouseDown.bind(this);
@@ -201,37 +187,6 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
         return qrsList;
     }
 
-    createEntities() {
-        let ReactElementList: React.ReactElement[] = [];
-        //console.log(this.props.mapData.entities);
-
-        if (this.props.mapData.entities.length == 0) {
-            //ReactElementList = ReactElementList.concat(this.createEntity({q: 0, r: 0}));
-        }
-        else {
-            this.props.mapData.entities.forEach((element: IEntity, index: number) => {
-                let qrs: Iqrs = element.qrs;
-                ReactElementList.push(this.createEntity(qrs, element.sid));
-            });
-        }
-
-        //console.log(ReactElementList);
-
-        return ReactElementList;
-    }
-
-    createEntity(qrs: Iqrs, sid: string) {
-        return <Entity key={sid}
-                        qrs={qrs}
-                        onMouseUp={this.handleEntityUp}
-                        onMouseDown={this.handleEntityDown}
-                        onMouseMove={this.handleEntityMove}
-                        onMouseLeave={this.handleEntityLeave}
-                        onMouseEnter={this.handleEntityEnter}
-                        onMouseClick={this.handleEntityClick}
-        ></Entity>
-    }
-
     // ########### TILE MOUSE INTERACT - BEGIN ###########
 
     handleTileDown(e: React.MouseEvent<SVGElement>, target: Tile) {
@@ -248,53 +203,6 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
 
     // ########### TILE MOUSE INTERACT - END ###########
 
-    // ########### ENTITY MOUSE INTERACT - BEGIN ###########
-
-    private moveEntity: boolean = false;
-    private selectedEntity: Entity | undefined;
-
-    handleEntityUp(e: React.MouseEvent<SVGElement>, target: Entity) {
-        if (this.props.onEntityMouseUp !== undefined) this.props.onEntityMouseUp(e, target);
-        else {
-            this.moveEntity = false;
-        }
-    }
-
-    handleEntityDown(e: React.MouseEvent<SVGElement>, target: Entity) {
-        if (this.props.onEntityMouseDown !== undefined) this.props.onEntityMouseDown(e, target);
-        else {
-            this.moveEntity = true;
-            this.selectedEntity = target;
-        }
-    }
-
-    handleEntityMove(e: React.MouseEvent<SVGElement>, target: Entity) {
-        if (this.props.onEntityMouseMove !== undefined) this.props.onEntityMouseMove(e, target);
-        else {
-            if (this.moveEntity && this.selectedEntity == target) {
-                //console.log(getSVGCoord(e));
-            }
-        }
-    }
-
-    handleEntityLeave(e: React.MouseEvent<SVGElement>, target: Entity) {
-        if (this.props.onEntityMouseLeave !== undefined) this.props.onEntityMouseLeave(e, target);
-        else {
-            //this.moveEntity = false;
-            //this.selectedEntity = target;
-        }
-    }
-
-    handleEntityEnter(e: React.MouseEvent<SVGElement>, target: Entity) {
-        if (this.props.onEntityMouseEnter !== undefined) this.props.onEntityMouseEnter(e, target);
-    }
-
-    handleEntityClick(e: React.MouseEvent<SVGElement>, target: Entity) {
-        if (this.props.onEntityMouseClick !== undefined) this.props.onEntityMouseClick(e, target);
-    }
-
-    // ########### ENTITY MOUSE INTERACT - END ###########
-
     colorMapCopy(size: number) {
         // Create 2D array and fill it with empty strings -> ''
         let colorMapCopy = [...Array(size)].map(e => Array(size).fill(''));
@@ -309,37 +217,19 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
     // ########### SVG MOUSE INTERACT - BEGIN ###########
 
     handleMouseUp(e: React.MouseEvent<SVGElement>) {
-        this.moveEntity = false;
+
     }
 
     handleMouseDown(e: React.MouseEvent<SVGElement>) {
-        // console.log(e);
+
     }
 
     handleOnClick(e: React.MouseEvent<SVGElement>) {
 
-        /*console.log(this);
-        console.log(e.target);
-        console.log(e.currentTarget);*/
-
-        //this.color = 'rgb(255, 0, 0)';
     }
 
     handleMouseMove(e: React.MouseEvent<SVGElement>) {
-        //console.log(getSVGCoord(e));
 
-        if (this.moveEntity && this.selectedEntity !== undefined) {
-            //console.log(getSVGCoord(e));
-
-            let xy: Ixy = getSVGCoord(e);
-            if (xy === null) return;
-
-            let qrs: Iqrs = this.selectedEntity.xyToQrs(xy);
-            let TargetQrs: Iqrs = this.selectedEntity.qrs;
-            let DeltaQrs: Iqrs = {q: qrs.q - TargetQrs.q, r: qrs.r - TargetQrs.r};
-
-            this.selectedEntity.move(DeltaQrs);
-        }
     }
 
     handleWheel(e: React.WheelEvent<SVGElement>) {
@@ -387,7 +277,7 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
                     {this.renderTiles()}
                 </g>
                 <g id="entityContainer">
-                    {this.createEntities()}
+                    {this.props.entities}
                 </g>
                 <g id="structureContainer"></g>
                 <g id="structureGrabPointContainer"></g>

@@ -62,10 +62,12 @@ export interface IState {
     contextCoord: Ixy;
     contextSVGCoord: Ixy;
     mapData: IMap;
+    entities: React.ReactElement[];
 }
 
 export interface IPropsBoard {
     mapData: IMap;
+    entities?: React.ReactElement[];
     sizeTile: number;
     getMap?: Function;
     saveMap?: Function;
@@ -89,24 +91,47 @@ export interface IStateBoard {
 }
 
 export interface IEntity {
-    type: string,
-    id?: number,
-    uid?: string,
-    sid?: string,
-    name?: string,
-    qrs?: Iqrs;
-    xy?: Ixy;
+    id?: number;
+    uid?: string; // ID of owner
+    sid?: string; // key
+    type?: string;
+
+    name?: string;
+    level?: number;
+    experience?: number;
+    hp?: number;
+    ac?: number;
+    initiative?: number;
+    PB?: number;
+
     color?: string;
     stepSize?: number;
     size?: number | string;
+
+    xy?: Ixy;
+    qrs?: Iqrs;
 }
 
 export interface IPropsEntity {
-    qrs?: Iqrs;
-    xy?: Ixy;
+    id?: number;
+    uid?: string; // ID of owner
+    sid?: string; // key
+    type?: string;
+
+    name?: string;
+    level?: number;
+    experience?: number;
+    hp?: number;
+    ac?: number;
+    initiative?: number;
+    PB?: number;
+
     color?: string;
     stepSize?: number;
     size?: number | string;
+
+    qrs?: Iqrs;
+    xy?: Ixy;
 
     onMouseUp?: Function;
     onMouseDown?: Function;

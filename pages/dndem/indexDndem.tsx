@@ -18,6 +18,7 @@ import {IroColor} from "@irojs/iro-core";
 import {saveMap} from "../../tools/fileSaveLoad";
 import contextMenu from "../../components/contextMenu";
 import ContextMenu from "../../components/contextMenu";
+import Entity from "../../components/entity";
 
 export default class Dndmap extends React.Component<{}, IState> {
     constructor(props: object) {
@@ -58,6 +59,13 @@ export default class Dndmap extends React.Component<{}, IState> {
         this.createPlayer = this.createPlayer.bind(this);
         this.createEnemy = this.createEnemy.bind(this);
 
+        this.handleEntityUp = this.handleEntityUp.bind(this);
+        this.handleEntityDown = this.handleEntityDown.bind(this);
+        this.handleEntityMove = this.handleEntityMove.bind(this);
+        this.handleEntityLeave = this.handleEntityLeave.bind(this);
+        this.handleEntityEnter = this.handleEntityEnter.bind(this);
+        this.handleEntityClick = this.handleEntityClick.bind(this);
+
         //let sessionRoom = window.location.pathname.replace(/[\W_]+/g, "");
         //console.log(sessionRoom);
 
@@ -79,7 +87,8 @@ export default class Dndmap extends React.Component<{}, IState> {
                 colorMap: [...Array(9)].map(e => Array(9).fill(this.defaultTileColor)),
                 entities: [],
                 loaded: false
-            }
+            },
+            entities: []
         };
     }
 
@@ -429,6 +438,28 @@ export default class Dndmap extends React.Component<{}, IState> {
     handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
         //console.log(getSVGCoord(e));
         //console.log(e);
+
+        /*if      (event.button == 0) mouseMainLeft = true;         // 001
+        else if (event.button == 1) mouseMainMiddle = true;         // 010
+        else if (event.button == 2) mouseMainRight = true;*/        // 100
+        if (this.moveEntity && this.selectedEntity !== undefined) {
+
+            // If the mouse is not held down. Stop move. This is a backup solution as it is
+            // not always properly detected that the mouse is no longer pressed.
+            if (!(e.buttons & 1)) {
+                this.moveEntity = false;
+                return;
+            }
+
+            let xy: Ixy = getSVGCoord(e);
+            if (xy === null) return;
+
+            let qrs: Iqrs = this.selectedEntity.xyToQrs(xy);
+            let TargetQrs: Iqrs = this.selectedEntity.qrs;
+            let DeltaQrs: Iqrs = {q: qrs.q - TargetQrs.q, r: qrs.r - TargetQrs.r};
+
+            this.selectedEntity.move(DeltaQrs);
+        }
     }
 
     handleOnClick(e: React.MouseEvent<HTMLDivElement>) {
@@ -521,30 +552,44 @@ export default class Dndmap extends React.Component<{}, IState> {
     }
 
     createPlayer(e: React.MouseEvent<HTMLDivElement>) {
-        console.log("createPlayer");
+        let newEntityData: IEntity = {};
 
-        let xy: Ixy = this.state.contextSVGCoord;
-        let qrs: Iqrs = xyToQrs(xy, this.state.sizeTile);
-        //this.state.contextSVGCoord
-
-        let mapCopy: IMap = this.colorMapCopy();
-
+        // Generate unique key / sid (session id)
         const array = new Uint32Array(10);
         crypto.getRandomValues(array);
 
-        let sid: string = array.toString();
+        newEntityData.sid = array.toString();
+        newEntityData.type = 'player';
 
-        let entity: IEntity = {
-            type: 'player',
-            sid: sid,
-            qrs: qrs
-        };
+        newEntityData.color = 'Aquamarine';
+        newEntityData.stepSize = this.state.sizeTile;
+        newEntityData.size = 'medium';
 
-        mapCopy.entities.push(entity);
+        newEntityData.xy = this.state.contextSVGCoord;
+        newEntityData.qrs = xyToQrs(newEntityData.xy, this.state.sizeTile);
 
+        let newEntity: React.ReactElement = <Entity key={newEntityData.sid} {...newEntityData}
+                                                    onMouseUp={this.handleEntityUp}
+                                                    onMouseDown={this.handleEntityDown}
+                                                    onMouseMove={this.handleEntityMove}
+                                                    onMouseLeave={this.handleEntityLeave}
+                                                    onMouseEnter={this.handleEntityEnter}
+                                                    onMouseClick={this.handleEntityClick}></Entity>;
+
+        // TODO: Figure out how to add ID to newEntityData
+
+        // Add the new entity to map data (which will be saved to file and/or DB)
+        let mapCopy: IMap = this.colorMapCopy();
+        mapCopy.entities.push(newEntityData);
+
+        // Update list of react Entities
+        let newEntityList: React.ReactElement[] = this.state.entities.concat([newEntity]);
+
+        // Close the context menu. Update the mapData with the new mapData.
         this.setState((state) => ({
             context: false,
-            mapData: mapCopy
+            mapData: mapCopy,
+            entities: newEntityList
         }));
     }
 
@@ -557,6 +602,40 @@ export default class Dndmap extends React.Component<{}, IState> {
     }
 
     // ########### CONTEXT MENU MOUSE INTERACT - END ###########
+
+    // ########### ENTITY MOUSE INTERACT - BEGIN ###########
+
+    private moveEntity: boolean = false;
+    private selectedEntity: Entity | undefined;
+
+    handleEntityUp(e: React.MouseEvent<SVGElement>, target: Entity) {
+        this.moveEntity = false;
+    }
+
+    handleEntityDown(e: React.MouseEvent<SVGElement>, target: Entity) {
+        this.moveEntity = true;
+        this.selectedEntity = target;
+    }
+
+    handleEntityMove(e: React.MouseEvent<SVGElement>, target: Entity) {
+        if (this.moveEntity && this.selectedEntity == target) {
+            //console.log(getSVGCoord(e));
+        }
+    }
+
+    handleEntityLeave(e: React.MouseEvent<SVGElement>, target: Entity) {
+
+    }
+
+    handleEntityEnter(e: React.MouseEvent<SVGElement>, target: Entity) {
+
+    }
+
+    handleEntityClick(e: React.MouseEvent<SVGElement>, target: Entity) {
+
+    }
+
+    // ########### ENTITY MOUSE INTERACT - END ###########
 
     public render() {
         console.log('RENDER APP');
@@ -589,6 +668,7 @@ export default class Dndmap extends React.Component<{}, IState> {
                     >
                         <Board mapData={this.state.mapData}
                             //saveMap={this.saveSessionMap}
+                            entities={this.state.entities}
                             onTileMouseClick={this.onTileMouseClick}
                             onTileMouseDown={this.onTileMouseDown}
                             onTileMouseEnter={this.onTileMouseEnter}
