@@ -442,7 +442,7 @@ export default class Dndmap extends React.Component<{}, IState> {
         /*if      (event.button == 0) mouseMainLeft = true;         // 001
         else if (event.button == 1) mouseMainMiddle = true;         // 010
         else if (event.button == 2) mouseMainRight = true;*/        // 100
-        if (this.moveEntity && this.selectedEntity !== undefined) {
+        if (this.moveEntity && this.selectedEntity !== undefined && this.paintTool.tool == 'none') {
 
             // If the mouse is not held down. Stop move. This is a backup solution as it is
             // not always properly detected that the mouse is no longer pressed.
@@ -578,14 +578,6 @@ export default class Dndmap extends React.Component<{}, IState> {
         newEntityData.xy = this.state.contextSVGCoord;
         newEntityData.qrs = xyToQrs(newEntityData.xy, this.state.sizeTile);
 
-        /*let newEntity: React.ReactElement = <Entity key={newEntityData.sid} {...newEntityData}
-                                                    onMouseUp={this.handleEntityUp}
-                                                    onMouseDown={this.handleEntityDown}
-                                                    onMouseMove={this.handleEntityMove}
-                                                    onMouseLeave={this.handleEntityLeave}
-                                                    onMouseEnter={this.handleEntityEnter}
-                                                    onMouseClick={this.handleEntityClick}></Entity>;*/
-
         let newEntity: React.ReactElement = this.createEntity(newEntityData);
 
         // TODO: Figure out how to add ID to newEntityData
@@ -636,8 +628,11 @@ export default class Dndmap extends React.Component<{}, IState> {
     }
 
     handleEntityDown(e: React.MouseEvent<SVGElement>, target: Entity) {
-        this.moveEntity = true;
-        this.selectedEntity = target;
+        if (this.paintTool.tool == 'none') {
+            this.moveEntity = true;
+            this.selectedEntity = target;
+        }
+
     }
 
     handleEntityMove(e: React.MouseEvent<SVGElement>, target: Entity) {
