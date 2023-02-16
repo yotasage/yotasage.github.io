@@ -458,7 +458,17 @@ export default class Dndmap extends React.Component<{}, IState> {
             let TargetQrs: Iqrs = this.selectedEntity.qrs;
             let DeltaQrs: Iqrs = {q: qrs.q - TargetQrs.q, r: qrs.r - TargetQrs.r};
 
+            // Move the entity;
             this.selectedEntity.move(DeltaQrs);
+
+            // Update entity data in mapdata.
+            for (let i: number = 0; i < this.state.mapData.entities.length; i++) {
+                if (this.state.mapData.entities[i].sid == this.selectedEntity.props.sid) {
+                    this.state.mapData.entities[i].qrs = this.selectedEntity.qrs;
+                    this.state.mapData.entities[i].xy = this.selectedEntity.xy;
+                    break;
+                }
+            }
         }
     }
 
@@ -552,6 +562,10 @@ export default class Dndmap extends React.Component<{}, IState> {
                 newEntity = this.createEntity(loadedMap.entities[i]);
                 newEntityList.push(newEntity);
             }
+
+            // TODO: Make sure that if there already are entities in the map that they are updated when a new map is loaded.
+            // Currently the entities will be loaded from the map and created in the saved positions if the map is empty
+            // when a map is loaded.
 
             this.setState((state) => ({
                 mapData: loadedMap,
