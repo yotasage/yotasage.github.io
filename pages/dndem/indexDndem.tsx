@@ -12,7 +12,7 @@ import {Icoordinate, Iqrs, IState, Ixy, IMap, Ihw, IEntity} from "../../interfac
 import {IpaintTool} from "../../interfaces/tools";
 
 import TileHexagon from "../../components/tileHexagon";
-import {getSVGCoord, getSVGHeight, paintBrush, paintBucket, xyToQrs} from "../../tools/tools";
+import {deepCopy, getSVGCoord, getSVGHeight, paintBrush, paintBucket, xyToQrs} from "../../tools/tools";
 
 import {IroColor} from "@irojs/iro-core";
 import {saveMap} from "../../tools/fileSaveLoad";
@@ -220,7 +220,7 @@ export default class Dndmap extends React.Component<{}, IState> {
     }
 
     /*onDataReceive(data: IDataPackage[]) {
-        let mapCopy: IMap = this.colorMapCopy();
+        let mapCopy: IMap = deepCopy(this.state.mapData);
 
         for (let i: number = 0; i < data.length; i++) {
             if (data[i].xy !== undefined && data[i].color !== undefined) {
@@ -259,7 +259,7 @@ export default class Dndmap extends React.Component<{}, IState> {
     }*/
 
     paintToolPencil(coord: Ixy | Iqrs, color: string) {
-        let mapCopy: IMap = this.colorMapCopy();
+        let mapCopy: IMap = deepCopy(this.state.mapData);
         if ("x" in coord) mapCopy.colorMap[coord.x][coord.y] = color;
         //if ("q" in coord) mapCopy[coord.x][coord.y] = color;
 
@@ -280,7 +280,7 @@ export default class Dndmap extends React.Component<{}, IState> {
         if (this.paintTool.tool === 'bucket' || this.paintTool.tool === 'tree') {
             let coord: Iqrs = target.qrs;
             let color: string = this.paintTool.color;
-            let mapCopy: IMap = this.colorMapCopy();
+            let mapCopy: IMap = deepCopy(this.state.mapData);
             let coordinateStack: Icoordinate[] = [];
 
             if (this.paintTool.tool === 'bucket')
@@ -299,7 +299,8 @@ export default class Dndmap extends React.Component<{}, IState> {
         console.log("onTileMouseDown");
         if (e.buttons & 1) {
             if (this.paintTool.tool != 'none' && !this.editingMap) {
-                this.mapDataHistory.push(this.colorMapCopy());
+                this.mapDataHistory.push(deepCopy(this.state.mapData));
+                this.mapDataHistoryUndone = [];
                 this.editingMap = true;
             }
             this.paint(target);
@@ -334,7 +335,7 @@ export default class Dndmap extends React.Component<{}, IState> {
             let coord: Iqrs = target.qrs;
             let color: string = this.paintTool.color;
             let size: number = this.paintTool.size;
-            let mapCopy: IMap = this.colorMapCopy();
+            let mapCopy: IMap = deepCopy(this.state.mapData);
             let coordinateStack: Icoordinate[] = paintBrush(mapCopy.colorMap, coord, color, size);
             //this.transmitTileColors(coordinateStack, [color]);
             this.setState((state) => ({
@@ -369,15 +370,21 @@ export default class Dndmap extends React.Component<{}, IState> {
     }
 
     onMapKeyDown(e: React.KeyboardEvent<SVGElement>) {
-        if (e.key === '+' || e.key === '-') {
-            this.mapDataHistory.push(this.colorMapCopy());
+        console.log("Key: %s | CTRL: %s | SHIFT: %s", e.key, e.ctrlKey, e.shiftKey);
+
+        let key: string = e.key.toLowerCase();
+
+        if (key === '+' || key === '-') {
+            console.log('resize map');
+            this.mapDataHistory.push(deepCopy(this.state.mapData));
+            this.mapDataHistoryUndone = [];
             let newRadius: number = 0;
             let prevSize: number = this.state.mapData.radius;
 
             let delta: number = 1;
 
-            if (e.key === '+') newRadius = prevSize + delta;
-            else if (e.key === '-') newRadius = prevSize - delta;
+            if (key === '+') newRadius = prevSize + delta;
+            else if (key === '-') newRadius = prevSize - delta;
             if (newRadius <= 0) return;
 
             this.changeArraySize(newRadius);
@@ -387,15 +394,33 @@ export default class Dndmap extends React.Component<{}, IState> {
 
             this.saveSessionMap();
         }*/
-        else if (e.key === 'u') {
-            console.log('u');
-            console.log(this.mapDataHistory);
+        else if ((!e.shiftKey && key === 'u') || (e.ctrlKey && key === 'z')) {
+            console.log('undo - start', this.mapDataHistory.length, this.mapDataHistoryUndone.length);
 
             if (this.mapDataHistory.length > 0) {
+                console.log('undoing');
+                let data: IMap = this.mapDataHistory.pop();
+                this.mapDataHistoryUndone.push(deepCopy(this.state.mapData));
+
                 this.setState((state) => ({
-                    mapData: this.mapDataHistory.pop()
+                    mapData: deepCopy(data)
                 }));
             }
+            console.log('undo - end', this.mapDataHistory.length, this.mapDataHistoryUndone.length);
+        }
+        else if ((e.shiftKey && key === 'u') || (e.ctrlKey && key === 'y')) {
+            console.log('redo - start', this.mapDataHistory.length, this.mapDataHistoryUndone.length);
+
+            if (this.mapDataHistoryUndone.length > 0) {
+                console.log('redoing');
+                let data: IMap = this.mapDataHistoryUndone.pop();
+                this.mapDataHistory.push(deepCopy(this.state.mapData));
+
+                this.setState((state) => ({
+                    mapData: deepCopy(data)
+                }));
+            }
+            console.log('redo - end', this.mapDataHistory.length, this.mapDataHistoryUndone.length);
         }
     }
 
@@ -439,7 +464,7 @@ export default class Dndmap extends React.Component<{}, IState> {
             }
         }
 
-        let mapCopy: IMap = this.colorMapCopy();
+        let mapCopy: IMap = deepCopy(this.state.mapData);
         mapCopy.colorMap = newArrayColor;
         mapCopy.height = new_height;
         mapCopy.radius = newRadius;
@@ -450,7 +475,7 @@ export default class Dndmap extends React.Component<{}, IState> {
     }
 
     colorMapCopy() {
-        let mapDataCopy: IMap = {
+        /*let mapDataCopy: IMap = {
             key: this.state.mapData.key,
             name: this.state.mapData.name,
             height: this.state.mapData.height,
@@ -467,9 +492,9 @@ export default class Dndmap extends React.Component<{}, IState> {
             for (let j: number = 0; j < this.state.mapData.colorMap[i].length; j++)
                 colorMapCopy[i][j] = this.state.mapData.colorMap[i][j];
 
-        mapDataCopy.colorMap = colorMapCopy;
+        mapDataCopy.colorMap = colorMapCopy;*/
 
-        return mapDataCopy;
+        return JSON.parse(JSON.stringify(this.state.mapData)); //mapDataCopy;
     }
 
     // ########### MAP CONTAINER MOUSE INTERACT - BEGIN ###########
@@ -513,10 +538,11 @@ export default class Dndmap extends React.Component<{}, IState> {
 
     handleOnClick(e: React.MouseEvent<HTMLDivElement>) {
         console.log("handleOnClick");
-
-        this.setState((state) => ({
-            context: false
-        }));
+        if (this.state.context) {
+            this.setState((state) => ({
+                context: false
+            }));
+        }
     }
 
     handleOnContextMenu(e: React.MouseEvent<HTMLDivElement>) {
@@ -620,12 +646,10 @@ export default class Dndmap extends React.Component<{}, IState> {
                 newEntityList.push(newEntity);
             }
 
-            console.log("TEST 1");
             this.setState((state) => ({
                 mapData: loadedMap,
                 entities: newEntityList
             }));
-            console.log("TEST 2");
         }
         reader.readAsText(f);           // Start reading the file
     }
@@ -653,7 +677,7 @@ export default class Dndmap extends React.Component<{}, IState> {
         // TODO: Figure out how to add ID to newEntityData
 
         // Add the new entity to map data (which will be saved to file and/or DB)
-        let mapCopy: IMap = this.colorMapCopy();
+        let mapCopy: IMap = deepCopy(this.state.mapData);
         mapCopy.entities.push(newEntityData);
 
         // Update list of react Entities

@@ -81,6 +81,10 @@ export function paintBucket(array: string[][], coord: Iqrs, color: string) {
     return returnStack;
 }
 
+export function deepCopy(data: any) {
+    return JSON.parse(JSON.stringify(data))
+}
+
 export function xyToQrs(xy: Ixy, scale: number) {
     let qrs: Iqrs = {q: 0, r: 0, s: 0};
     qrs.q = (Math.sqrt(3)/3 * xy.x  -  1./3 * xy.y) / scale
