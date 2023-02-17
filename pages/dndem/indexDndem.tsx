@@ -1,22 +1,17 @@
-import styles from "../styles/Home.module.css";
-import boardstyles from "../styles/board.module.css";
 import Board from "../../components/svgBoard";
 import React from "react";
-
-import {ThemeContext, themes, PaintingContext, painting} from '../../tools/contexts';
 
 import ColorPickerContainer from '../../tools/color-picker';
 import Dndem from "../../styles/board.module.css";
 
-import {Icoordinate, Iqrs, IState, Ixy, IMap, Ihw, IEntity} from "../../interfaces/dndem";
+import {Icoordinate, Iqrs, IState, Ixy, IMap, IEntity} from "../../interfaces/dndem";
 import {IpaintTool} from "../../interfaces/tools";
 
 import TileHexagon from "../../components/tileHexagon";
-import {deepCopy, getSVGCoord, getSVGHeight, paintBrush, paintBucket, xyToQrs} from "../../tools/tools";
+import {deepCopy, getSVGCoord, paintBrush, paintBucket, xyToQrs} from "../../tools/tools";
 
 import {IroColor} from "@irojs/iro-core";
 import {saveMap} from "../../tools/fileSaveLoad";
-import contextMenu from "../../components/contextMenu";
 import ContextMenu from "../../components/contextMenu";
 import Entity from "../../components/entity";
 
@@ -90,7 +85,7 @@ export default class Dndmap extends React.Component<{}, IState> {
                 name: "",
                 height: initHeight,
                 radius: initRadius,
-                colorMap: [...Array(initHeight)].map(e => Array(initHeight).fill(this.defaultTileColor)),
+                colorMap: [...Array(initHeight)].map(() => Array(initHeight).fill(this.defaultTileColor)),
                 entities: [],
                 loaded: false
             },
@@ -110,7 +105,7 @@ export default class Dndmap extends React.Component<{}, IState> {
         signIn(uname, pwd).then(response => response.json()
         ).then((data: IUserInfo | undefined) => {
             this.userInfo = data;
-            this.setState((state) => ({
+            this.setState(() => ({
                 signedIn: true
             }));
         });
@@ -120,7 +115,7 @@ export default class Dndmap extends React.Component<{}, IState> {
         getUserData().then(response => response.json()
         ).then((data: IUserInfo | undefined) => {
             this.userInfo = data;
-            this.setState((state) => ({
+            this.setState(() => ({
                 signedIn: true
             }));
         });
@@ -134,7 +129,7 @@ export default class Dndmap extends React.Component<{}, IState> {
         getSession(sessionKey).then(response => response.json()
         ).then((data: IGameSession) => {
             //console.log(data.key);
-            this.setState((state) => ({
+            this.setState(() => ({
                 selectedSession: data.key
             }));
             this.getSessionMap(data.key);
@@ -170,7 +165,7 @@ export default class Dndmap extends React.Component<{}, IState> {
                         loaded: true
                     };
 
-                    this.setState((state) => ({
+                    this.setState(() => ({
                         mapData: mapData
                     }));
 
@@ -202,7 +197,7 @@ export default class Dndmap extends React.Component<{}, IState> {
 
     onPaintToolColorChange(color: IroColor) {
         let colorString: string = color.rgbaString;
-        let rgba: string[] = colorString.replace(/[^0-9\s]/g, '').split(' ');
+        let rgba: string[] = colorString.replace(/[^\d\s]/g, '').split(' ');
 
         if (rgba[3] === '1')
             colorString = 'rgb(' + rgba[0] + ', ' + rgba[1] + ', ' + rgba[2] + ')';
@@ -234,7 +229,7 @@ export default class Dndmap extends React.Component<{}, IState> {
             }
         }
 
-        this.setState((state) => ({
+        this.setState(() => ({
             mapData: mapCopy
         }));
     }*/
@@ -267,7 +262,7 @@ export default class Dndmap extends React.Component<{}, IState> {
 
         //console.log(mapCopy);
 
-        this.setState((state) => ({
+        this.setState(() => ({
             mapData: mapCopy
         }));
     }
@@ -289,7 +284,7 @@ export default class Dndmap extends React.Component<{}, IState> {
                 coordinateStack = paintBrush(mapCopy.colorMap, coord, color, 2);
 
             //this.transmitTileColors(coordinateStack, [color]);
-            this.setState((state) => ({
+            this.setState(() => ({
                 mapData: mapCopy
             }));
         }
@@ -338,7 +333,7 @@ export default class Dndmap extends React.Component<{}, IState> {
             let mapCopy: IMap = deepCopy(this.state.mapData);
             let coordinateStack: Icoordinate[] = paintBrush(mapCopy.colorMap, coord, color, size);
             //this.transmitTileColors(coordinateStack, [color]);
-            this.setState((state) => ({
+            this.setState(() => ({
                 mapData: mapCopy
             }));
         }
@@ -353,7 +348,7 @@ export default class Dndmap extends React.Component<{}, IState> {
             let color: string = this.state.mapData.colorMap[coord.x][coord.y];
             this.paintTool.color = color;
 
-            this.setState((state) => ({
+            this.setState(() => ({
                 paintColor: color
             }));
 
@@ -374,6 +369,9 @@ export default class Dndmap extends React.Component<{}, IState> {
 
         let key: string = e.key.toLowerCase();
 
+        // TODO? Make a bar/menu pop up with options when holding control.
+        //  Something similar to the context menu can pop up maybe?
+        //  Showing all the options that either can be clicked or used by pressing specified keys.
         if (key === '+' || key === '-') {
             console.log('resize map');
             this.mapDataHistory.push(deepCopy(this.state.mapData));
@@ -389,46 +387,40 @@ export default class Dndmap extends React.Component<{}, IState> {
 
             this.changeArraySize(newRadius);
         }
-        /*else if (e.key === 's' ) {
+        else if (e.ctrlKey && key === 's' ) {
             console.log("save");
+            e.preventDefault();
 
-            this.saveSessionMap();
-        }*/
+            this.saveMapFile(null);
+
+            //this.saveSessionMap();
+        }
         else if ((!e.shiftKey && key === 'u') || (e.ctrlKey && key === 'z')) {
-            console.log('undo - start', this.mapDataHistory.length, this.mapDataHistoryUndone.length);
-
             if (this.mapDataHistory.length > 0) {
-                console.log('undoing');
                 let data: IMap = this.mapDataHistory.pop();
                 this.mapDataHistoryUndone.push(deepCopy(this.state.mapData));
 
-                this.setState((state) => ({
+                this.setState(() => ({
                     mapData: deepCopy(data)
                 }));
             }
-            console.log('undo - end', this.mapDataHistory.length, this.mapDataHistoryUndone.length);
         }
         else if ((e.shiftKey && key === 'u') || (e.ctrlKey && key === 'y')) {
-            console.log('redo - start', this.mapDataHistory.length, this.mapDataHistoryUndone.length);
-
             if (this.mapDataHistoryUndone.length > 0) {
-                console.log('redoing');
                 let data: IMap = this.mapDataHistoryUndone.pop();
                 this.mapDataHistory.push(deepCopy(this.state.mapData));
 
-                this.setState((state) => ({
+                this.setState(() => ({
                     mapData: deepCopy(data)
                 }));
             }
-            console.log('redo - end', this.mapDataHistory.length, this.mapDataHistoryUndone.length);
         }
     }
 
     changeArraySize(newRadius: number) {
         let diff: number = newRadius - this.state.mapData.radius;
         let new_height: number = newRadius*2 - 1;
-        // let newArray = [...Array(new_height)].map(e => Array(new_height).fill(''));
-        let newArrayColor = [...Array(new_height)].map(e => Array(new_height).fill(this.defaultTileColor));
+        let newArrayColor = [...Array(new_height)].map(() => Array(new_height).fill(this.defaultTileColor));
 
         let newOffset: number = 0;
         let prevOffset: number = 0;
@@ -455,12 +447,8 @@ export default class Dndmap extends React.Component<{}, IState> {
                 let x = qrs.q + radius - 1;
                 let y = qrs.r + radius - 1;
 
-                // Check if a tile with the coordinate qrs exists inside this.colorMap
-                //if (this.contains(qrs)) {
                 newArrayColor[x + newOffset][y + newOffset] =
                     this.state.mapData.colorMap[x - prevOffset][y - prevOffset];
-                //}
-                //newArray[x + newOffset][y + newOffset] = this.array[x - prevOffset][y - prevOffset];
             }
         }
 
@@ -469,32 +457,9 @@ export default class Dndmap extends React.Component<{}, IState> {
         mapCopy.height = new_height;
         mapCopy.radius = newRadius;
 
-        this.setState((state) => ({
+        this.setState(() => ({
             mapData: mapCopy
         }));
-    }
-
-    colorMapCopy() {
-        /*let mapDataCopy: IMap = {
-            key: this.state.mapData.key,
-            name: this.state.mapData.name,
-            height: this.state.mapData.height,
-            radius: this.state.mapData.radius,
-            colorMap: this.state.mapData.colorMap,
-            entities: this.state.mapData.entities,
-            loaded: this.state.mapData.loaded
-        };
-
-        // Create 2D array and fill it with empty strings -> ''
-        let colorMapCopy = [...Array(this.state.mapData.height)].map(e => Array(this.state.mapData.height).fill(''));
-
-        for (let i: number = 0; i < this.state.mapData.colorMap.length; i++)
-            for (let j: number = 0; j < this.state.mapData.colorMap[i].length; j++)
-                colorMapCopy[i][j] = this.state.mapData.colorMap[i][j];
-
-        mapDataCopy.colorMap = colorMapCopy;*/
-
-        return JSON.parse(JSON.stringify(this.state.mapData)); //mapDataCopy;
     }
 
     // ########### MAP CONTAINER MOUSE INTERACT - BEGIN ###########
@@ -539,7 +504,7 @@ export default class Dndmap extends React.Component<{}, IState> {
     handleOnClick(e: React.MouseEvent<HTMLDivElement>) {
         console.log("handleOnClick");
         if (this.state.context) {
-            this.setState((state) => ({
+            this.setState(() => ({
                 context: false
             }));
         }
@@ -551,19 +516,10 @@ export default class Dndmap extends React.Component<{}, IState> {
 
         if (this.paintTool.tool != "none") return;
 
-        //let hw: Ihw = getSVGHeight(e);
         let coord: Ixy = {x: e.clientX - 200, y: e.clientY - 200};
         let SVGCoord: Ixy = getSVGCoord(e);
 
-        //console.log(coord, SVGCoord);
-
-            // contextSVGCoord
-
-        //buttons={['SAVE MAP', 'LOAD MAP', 'CREATE PLAYER', 'CREATE ENEMY']}
-        //onButton={[this.saveMapFile, this.loadMapFile, this.createPlayer, this.createEnemy]}/>}
-
-
-        this.setState((state) => ({
+        this.setState(() => ({
             context: true,
             contextCoord: coord,
             contextSVGCoord: SVGCoord,
@@ -572,8 +528,6 @@ export default class Dndmap extends React.Component<{}, IState> {
         }));
     }
 
-
-
     // ########### MAP CONTAINER MOUSE INTERACT - END ###########
 
     // ########### CONTEXT MENU MOUSE INTERACT - BEGIN ###########
@@ -581,7 +535,9 @@ export default class Dndmap extends React.Component<{}, IState> {
     handleOnContextMenuClick(e: React.MouseEvent<HTMLDivElement>) {
         console.log("handleOnContextMenuClick");
 
-        /*this.setState((state) => ({
+        // TODO: Consider if this should be used again, but make sure that clicking buttons
+        //  in the context menu does not hide/unrender it. i.e. when creating entity.
+        /*this.setState(() => ({
             context: false
         }));*/
     }
@@ -590,7 +546,7 @@ export default class Dndmap extends React.Component<{}, IState> {
         console.log("saveMapFile");
         saveMap(this.state.mapData);
 
-        this.setState((state) => ({
+        this.setState(() => ({
             context: false
         }));
     }
@@ -612,7 +568,7 @@ export default class Dndmap extends React.Component<{}, IState> {
 
         document.body.removeChild(element);
 
-        this.setState((state) => ({
+        this.setState(() => ({
             context: false
         }));
     }
@@ -646,7 +602,7 @@ export default class Dndmap extends React.Component<{}, IState> {
                 newEntityList.push(newEntity);
             }
 
-            this.setState((state) => ({
+            this.setState(() => ({
                 mapData: loadedMap,
                 entities: newEntityList
             }));
@@ -684,7 +640,7 @@ export default class Dndmap extends React.Component<{}, IState> {
         let newEntityList: React.ReactElement[] = this.state.entities.concat([newEntity]);
 
         // Close the context menu. Update the mapData with the new mapData.
-        this.setState((state) => ({
+        this.setState(() => ({
             context: false,
             mapData: mapCopy,
             entities: newEntityList
@@ -723,10 +679,7 @@ export default class Dndmap extends React.Component<{}, IState> {
         console.log("createEnemy");
         console.log(e);
 
-        /*let coord: Ixy = {x: e.clientX - 200, y: e.clientY - 200};
-        let SVGCoord: Ixy = getSVGCoord(e);*/
-
-        this.setState((state) => ({
+        this.setState(() => ({
             contextMenuButtons: ['SMALL', 'MEDIUM', 'LARGE', 'HUGE', 'GARGANTUAN', 'COLOSSAL'],
             contextMenuButtonCallback: [this.createEnemy, this.createEnemy, this.createEnemy, this.createEnemy, this.createEnemy, this.createEnemy]
         }));
