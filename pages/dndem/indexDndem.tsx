@@ -52,8 +52,11 @@ export default class Dndmap extends React.Component<{}, IState> {
         this.saveMapFile = this.saveMapFile.bind(this);
         this.loadMapFile = this.loadMapFile.bind(this);
         this.loadMap = this.loadMap.bind(this);
-        this.createPlayer = this.createPlayer.bind(this);
-        this.createEnemy = this.createEnemy.bind(this);
+        this.contextCreatePlayer = this.contextCreatePlayer.bind(this);
+        this.contextCreateEnemy = this.contextCreateEnemy.bind(this);
+        this.contextCreateEntity = this.contextCreateEntity.bind(this);
+        this.contextCreateNPC = this.contextCreateNPC.bind(this);
+
 
         this.handleEntityUp = this.handleEntityUp.bind(this);
         this.handleEntityDown = this.handleEntityDown.bind(this);
@@ -523,8 +526,8 @@ export default class Dndmap extends React.Component<{}, IState> {
             context: true,
             contextCoord: coord,
             contextSVGCoord: SVGCoord,
-            contextMenuButtons: ['SAVE MAP', 'LOAD MAP', 'CREATE PLAYER', 'CREATE ENEMY'],
-            contextMenuButtonCallback: [this.saveMapFile, this.loadMapFile, this.createPlayer, this.createEnemy]
+            contextMenuButtons: ['SAVE MAP', 'LOAD MAP', 'CREATE ENTITY'],
+            contextMenuButtonCallback: [this.saveMapFile, this.loadMapFile, this.contextCreateEntity]
         }));
     }
 
@@ -610,8 +613,8 @@ export default class Dndmap extends React.Component<{}, IState> {
         reader.readAsText(f);           // Start reading the file
     }
 
-    createPlayer(e: React.MouseEvent<HTMLDivElement>) {
-        console.log("createPlayer");
+    contextCreatePlayer(e: React.MouseEvent<HTMLDivElement>) {
+        console.log("contextCreatePlayer", e);
         let newEntityData: IEntity = {};
 
         // Generate unique key / sid (session id)
@@ -675,13 +678,30 @@ export default class Dndmap extends React.Component<{}, IState> {
         return newEntity;
     }
 
-    createEnemy(e: React.MouseEvent<HTMLDivElement>) {
-        console.log("createEnemy");
-        console.log(e);
+    contextCreateEntity(e: React.MouseEvent<HTMLDivElement>) {
+        console.log("contextCreateEntity", e);
+
+        this.setState(() => ({
+            contextMenuButtons: ['ENEMY', 'NPC', 'PLAYER'],
+            contextMenuButtonCallback: [this.contextCreateEnemy, this.contextCreateNPC, this.contextCreatePlayer]
+        }));
+    }
+
+    contextCreateEnemy(e: React.MouseEvent<HTMLDivElement>) {
+        console.log("contextCreateEnemy", e);
 
         this.setState(() => ({
             contextMenuButtons: ['SMALL', 'MEDIUM', 'LARGE', 'HUGE', 'GARGANTUAN', 'COLOSSAL'],
-            contextMenuButtonCallback: [this.createEnemy, this.createEnemy, this.createEnemy, this.createEnemy, this.createEnemy, this.createEnemy]
+            contextMenuButtonCallback: [this.contextCreateEnemy, this.contextCreateEnemy, this.contextCreateEnemy, this.contextCreateEnemy, this.contextCreateEnemy, this.contextCreateEnemy]
+        }));
+    }
+
+    contextCreateNPC(e: React.MouseEvent<HTMLDivElement>) {
+        console.log("contextCreateNPC", e);
+
+        this.setState(() => ({
+            contextMenuButtons: ['SMALL', 'MEDIUM', 'LARGE', 'HUGE', 'GARGANTUAN', 'COLOSSAL'],
+            contextMenuButtonCallback: [this.contextCreateEnemy, this.contextCreateEnemy, this.contextCreateEnemy, this.contextCreateEnemy, this.contextCreateEnemy, this.contextCreateEnemy]
         }));
     }
 
