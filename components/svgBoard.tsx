@@ -19,6 +19,7 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
         // If it is not bound, this will refer to the caller of the method, and not this Board.
 
         this.handleTileDown = this.handleTileDown.bind(this);
+        this.handleTileUp = this.handleTileUp.bind(this);
         this.handleTileEnter = this.handleTileEnter.bind(this);
         this.handleTileClick = this.handleTileClick.bind(this);
 
@@ -143,7 +144,8 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
         return <Tile key={key} coords={qrs} color={color}
                      handleOnClick={this.handleTileClick}
                      handleOnEnter={this.handleTileEnter}
-                     handleOnDown={this.handleTileDown}/>;
+                     handleOnDown={this.handleTileDown}
+                     handleOnUp={this.handleTileUp}/>;
     }
 
     renderTiles(radius: number = this.props.mapData.radius) {
@@ -188,6 +190,10 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
     }
 
     // ########### TILE MOUSE INTERACT - BEGIN ###########
+
+    handleTileUp(e: React.MouseEvent<SVGElement>, target: Tile) {
+        if (this.props.onTileMouseUp !== undefined) this.props.onTileMouseUp(e, target);
+    }
 
     handleTileDown(e: React.MouseEvent<SVGElement>, target: Tile) {
         if (this.props.onTileMouseDown !== undefined) this.props.onTileMouseDown(e, target);

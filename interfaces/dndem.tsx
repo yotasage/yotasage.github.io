@@ -58,11 +58,15 @@ export interface IState {
     paintColor: string;
     signedIn: boolean;
     selectedSession: string | undefined;
+
+    mapData: IMap;
+    entities: React.ReactElement[];
+
     context: boolean;
     contextCoord: Ixy;
     contextSVGCoord: Ixy;
-    mapData: IMap;
-    entities: React.ReactElement[];
+    contextMenuButtons?: string[];
+    contextMenuButtonCallback?: Function[];
 }
 
 export interface IPropsBoard {
@@ -73,6 +77,7 @@ export interface IPropsBoard {
     saveMap?: Function;
 
     onTileMouseDown?: Function;
+    onTileMouseUp?: Function;
     onTileMouseEnter?: Function;
     onTileMouseClick?: Function;
 
@@ -139,6 +144,8 @@ export interface IPropsEntity {
     onMouseLeave?: Function;
     onMouseEnter?: Function;
     onMouseClick?: Function;
+
+    onEntityConstructed?: Function;
 }
 
 export interface IStateEntity {
@@ -154,6 +161,7 @@ export interface IPropsTileHexagon {
     handleOnClick: (e: React.MouseEvent<SVGElement, MouseEvent>, target: TileHexagon) => void;
     handleOnEnter: (e: React.MouseEvent<SVGElement, MouseEvent>, target: TileHexagon) => void;
     handleOnDown: (e: React.MouseEvent<SVGElement, MouseEvent>, target: TileHexagon) => void;
+    handleOnUp: (e: React.MouseEvent<SVGElement, MouseEvent>, target: TileHexagon) => void;
 }
 
 export interface IStateTileHexagon {

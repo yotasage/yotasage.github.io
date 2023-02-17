@@ -10,6 +10,7 @@ export default class TileHexagon extends React.Component<IPropsTileHexagon, ISta
         this.handleOnClick = this.handleOnClick.bind(this);
         this.handleOnEnter = this.handleOnEnter.bind(this);
         this.handleOnDown = this.handleOnDown.bind(this);
+        this.handleOnUp = this.handleOnUp.bind(this);
 
         this._color = this.props.color;
 
@@ -47,6 +48,10 @@ export default class TileHexagon extends React.Component<IPropsTileHexagon, ISta
 
     handleOnDown(e: React.MouseEvent<SVGElement>) {
         this.props.handleOnDown(e, this);
+    }
+
+    handleOnUp(e: React.MouseEvent<SVGElement>) {
+        this.props.handleOnUp(e, this);
     }
 
     private _qrs: Iqrs;
@@ -131,6 +136,7 @@ export default class TileHexagon extends React.Component<IPropsTileHexagon, ISta
             <polygon points={this._points} fill={this.props.color}
                      onMouseEnter={this.handleOnEnter}
                      onMouseDown={this.handleOnDown}
+                     onMouseUp={this.handleOnUp}
                      onClick={this.handleOnClick}></polygon>
         );
     }

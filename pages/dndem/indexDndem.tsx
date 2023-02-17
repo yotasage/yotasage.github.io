@@ -39,6 +39,7 @@ export default class Dndmap extends React.Component<{}, IState> {
 
         this.onTileMouseClick = this.onTileMouseClick.bind(this);
         this.onTileMouseDown = this.onTileMouseDown.bind(this);
+        this.onTileMouseUp = this.onTileMouseUp.bind(this);
         this.onTileMouseEnter = this.onTileMouseEnter.bind(this);
 
         this.onMapKeyDown = this.onMapKeyDown.bind(this);
@@ -66,10 +67,15 @@ export default class Dndmap extends React.Component<{}, IState> {
         this.handleEntityEnter = this.handleEntityEnter.bind(this);
         this.handleEntityClick = this.handleEntityClick.bind(this);
 
+        this.entityConstructed = this.entityConstructed.bind(this);
+
         //let sessionRoom = window.location.pathname.replace(/[\W_]+/g, "");
         //console.log(sessionRoom);
 
         //this.getUser();
+
+        let initRadius: number = 5;
+        let initHeight: number = initRadius*2 - 1;
 
         this.state = {
             sizeTile: 8,
@@ -82,9 +88,9 @@ export default class Dndmap extends React.Component<{}, IState> {
             mapData: {
                 key: "",
                 name: "",
-                height: 9, // radius*2 -1
-                radius: 5,
-                colorMap: [...Array(9)].map(e => Array(9).fill(this.defaultTileColor)),
+                height: initHeight,
+                radius: initRadius,
+                colorMap: [...Array(initHeight)].map(e => Array(initHeight).fill(this.defaultTileColor)),
                 entities: [],
                 loaded: false
             },
@@ -95,6 +101,10 @@ export default class Dndmap extends React.Component<{}, IState> {
     // private userInfo: IUserInfo | undefined;
     // connections: IConnections[] = [];
     private defaultTileColor: string = "rgb(238, 232, 170)";
+
+    private mapDataHistory: IMap[] = [];
+    private mapDataHistoryUndone: IMap[] = [];
+    private editingMap: boolean = false;
 
     /*signIn(uname: string, pwd: string) {
         signIn(uname, pwd).then(response => response.json()
@@ -263,7 +273,10 @@ export default class Dndmap extends React.Component<{}, IState> {
     }
 
     onTileMouseClick(e: React.MouseEvent<SVGElement>, target: TileHexagon) {
-        //console.log("onTileMouseClick");
+        if (this.editingMap) {
+            this.editingMap = false;
+        }
+
         if (this.paintTool.tool === 'bucket' || this.paintTool.tool === 'tree') {
             let coord: Iqrs = target.qrs;
             let color: string = this.paintTool.color;
@@ -283,8 +296,23 @@ export default class Dndmap extends React.Component<{}, IState> {
     }
 
     onTileMouseDown(e: React.MouseEvent<SVGElement>, target: TileHexagon) {
-        //console.log("onTileMouseDown");
-        if (e.buttons & 1) this.paint(target);
+        console.log("onTileMouseDown");
+        if (e.buttons & 1) {
+            if (this.paintTool.tool != 'none' && !this.editingMap) {
+                this.mapDataHistory.push(this.colorMapCopy());
+                this.editingMap = true;
+            }
+            this.paint(target);
+        }
+    }
+
+    onTileMouseUp(e: React.MouseEvent<SVGElement>, target: TileHexagon) {
+        console.log("onTileMouseUp");
+
+        if (this.editingMap) {
+            this.editingMap = false;
+        }
+
     }
 
     onTileMouseEnter(e: React.MouseEvent<SVGElement>, target: TileHexagon) {
@@ -342,6 +370,7 @@ export default class Dndmap extends React.Component<{}, IState> {
 
     onMapKeyDown(e: React.KeyboardEvent<SVGElement>) {
         if (e.key === '+' || e.key === '-') {
+            this.mapDataHistory.push(this.colorMapCopy());
             let newRadius: number = 0;
             let prevSize: number = this.state.mapData.radius;
 
@@ -358,6 +387,16 @@ export default class Dndmap extends React.Component<{}, IState> {
 
             this.saveSessionMap();
         }*/
+        else if (e.key === 'u') {
+            console.log('u');
+            console.log(this.mapDataHistory);
+
+            if (this.mapDataHistory.length > 0) {
+                this.setState((state) => ({
+                    mapData: this.mapDataHistory.pop()
+                }));
+            }
+        }
     }
 
     changeArraySize(newRadius: number) {
@@ -473,6 +512,8 @@ export default class Dndmap extends React.Component<{}, IState> {
     }
 
     handleOnClick(e: React.MouseEvent<HTMLDivElement>) {
+        console.log("handleOnClick");
+
         this.setState((state) => ({
             context: false
         }));
@@ -492,10 +533,16 @@ export default class Dndmap extends React.Component<{}, IState> {
 
             // contextSVGCoord
 
+        //buttons={['SAVE MAP', 'LOAD MAP', 'CREATE PLAYER', 'CREATE ENEMY']}
+        //onButton={[this.saveMapFile, this.loadMapFile, this.createPlayer, this.createEnemy]}/>}
+
+
         this.setState((state) => ({
             context: true,
             contextCoord: coord,
-            contextSVGCoord: SVGCoord
+            contextSVGCoord: SVGCoord,
+            contextMenuButtons: ['SAVE MAP', 'LOAD MAP', 'CREATE PLAYER', 'CREATE ENEMY'],
+            contextMenuButtonCallback: [this.saveMapFile, this.loadMapFile, this.createPlayer, this.createEnemy]
         }));
     }
 
@@ -508,9 +555,9 @@ export default class Dndmap extends React.Component<{}, IState> {
     handleOnContextMenuClick(e: React.MouseEvent<HTMLDivElement>) {
         console.log("handleOnContextMenuClick");
 
-        this.setState((state) => ({
+        /*this.setState((state) => ({
             context: false
-        }));
+        }));*/
     }
 
     saveMapFile(e: React.MouseEvent<HTMLDivElement>) {
@@ -554,28 +601,37 @@ export default class Dndmap extends React.Component<{}, IState> {
             let loadedMap: IMap = JSON.parse(reader.result as string);
             console.log(loadedMap);
 
-
             let newEntity: React.ReactElement;
             let newEntityList: React.ReactElement[] = [];
 
-            for (let i: number = 0; i < loadedMap.entities.length; i++) {
+            //let entityList: React.ReactElement[] = this.state.entities.concat([]);
+
+            //let entityCount: number = entityList.length;
+            let newEntityCount: number = loadedMap.entities.length;
+
+            for (let i: number = 0; i < newEntityCount; i++) {
+                // Generate unique key / sid (session id)
+                // Session id (sid) must be updated for the current entities to be replaced with new ones.
+                const array = new Uint32Array(10);
+                crypto.getRandomValues(array);
+                loadedMap.entities[i].sid = array.toString();
+
                 newEntity = this.createEntity(loadedMap.entities[i]);
                 newEntityList.push(newEntity);
             }
 
-            // TODO: Make sure that if there already are entities in the map that they are updated when a new map is loaded.
-            // Currently the entities will be loaded from the map and created in the saved positions if the map is empty
-            // when a map is loaded.
-
+            console.log("TEST 1");
             this.setState((state) => ({
                 mapData: loadedMap,
                 entities: newEntityList
             }));
+            console.log("TEST 2");
         }
         reader.readAsText(f);           // Start reading the file
     }
 
     createPlayer(e: React.MouseEvent<HTMLDivElement>) {
+        console.log("createPlayer");
         let newEntityData: IEntity = {};
 
         // Generate unique key / sid (session id)
@@ -611,6 +667,22 @@ export default class Dndmap extends React.Component<{}, IState> {
         }));
     }
 
+    entityConstructed(target: Entity) {
+        console.log("Entity constructed");
+
+        // Set ID of entity in mapData and the entities list in this.state
+        let entityList: React.ReactElement[] = this.state.entities;
+        let entityCount: number = entityList.length;
+
+        for (let i: number = 0; i < entityCount; i++) {
+            if (entityList[i].props.sid == target.props.sid) {
+                this.state.mapData.entities[i].id = target.id;
+                //entityList[i].id = target.id;
+            }
+        }
+
+    }
+
     createEntity(props: IEntity) {
         let newEntity: React.ReactElement = <Entity key={props.sid} {...props}
                                                     onMouseUp={this.handleEntityUp}
@@ -618,15 +690,21 @@ export default class Dndmap extends React.Component<{}, IState> {
                                                     onMouseMove={this.handleEntityMove}
                                                     onMouseLeave={this.handleEntityLeave}
                                                     onMouseEnter={this.handleEntityEnter}
-                                                    onMouseClick={this.handleEntityClick}></Entity>;
+                                                    onMouseClick={this.handleEntityClick}
+                                                    onEntityConstructed={this.entityConstructed}></Entity>;
         return newEntity;
     }
 
     createEnemy(e: React.MouseEvent<HTMLDivElement>) {
         console.log("createEnemy");
+        console.log(e);
+
+        /*let coord: Ixy = {x: e.clientX - 200, y: e.clientY - 200};
+        let SVGCoord: Ixy = getSVGCoord(e);*/
 
         this.setState((state) => ({
-            context: false
+            contextMenuButtons: ['SMALL', 'MEDIUM', 'LARGE', 'HUGE', 'GARGANTUAN', 'COLOSSAL'],
+            contextMenuButtonCallback: [this.createEnemy, this.createEnemy, this.createEnemy, this.createEnemy, this.createEnemy, this.createEnemy]
         }));
     }
 
@@ -688,8 +766,8 @@ export default class Dndmap extends React.Component<{}, IState> {
 
                     {this.state.context && <ContextMenu coord={this.state.contextCoord}
                             onClick={this.handleOnContextMenuClick}
-                            buttons={['SAVE MAP', 'LOAD MAP', 'CREATE PLAYER', 'CREATE ENEMY']}
-                            onButton={[this.saveMapFile, this.loadMapFile, this.createPlayer, this.createEnemy]}/>}
+                            buttons={this.state.contextMenuButtons}
+                            onButton={this.state.contextMenuButtonCallback}/>}
 
                     <div id={Dndem.boardContainer}
                          onMouseMove={this.handleMouseMove}
@@ -703,6 +781,7 @@ export default class Dndmap extends React.Component<{}, IState> {
                             entities={this.state.entities}
                             onTileMouseClick={this.onTileMouseClick}
                             onTileMouseDown={this.onTileMouseDown}
+                            onTileMouseUp={this.onTileMouseUp}
                             onTileMouseEnter={this.onTileMouseEnter}
                             onMapKeyDown={this.onMapKeyDown}
                             sizeTile={this.state.sizeTile}/>

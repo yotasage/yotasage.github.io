@@ -10,7 +10,10 @@ import {getSVGCoord} from "../tools/tools";
 import Tile from "./tileHexagon";
 
 class Entity extends React.Component<IPropsEntity, IStateEntity> {
-    static id = 1;
+    static pid = 1;
+    static eid = 1;
+    static npcid = 1;
+
 
     constructor(props: IPropsEntity) {
         super(props);
@@ -28,7 +31,19 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
         this.handleOnMouseEnter = this.handleOnMouseEnter.bind(this);
         this.handleOnMouseClick = this.handleOnMouseClick.bind(this);
 
-        this._id = Entity.id++;
+        // TODO: Re-use IDs. If there are 5 players with IDs from 1 to 5, and player 3 is deleted, the next ID should be 3.
+        if (this.props.id !== undefined) {
+            this._id = this.props.id;
+
+            // I hope this prevents the counter from going higher than it should.
+            if (this.props.type == "player") Entity.pid = this._id + 1;
+            else if (this.props.type == "enemy") Entity.eid = this._id + 1;
+            else if (this.props.type == "npc") Entity.npcid = this._id + 1;
+
+        }
+        else if (this.props.type == "player") this._id = Entity.pid++;
+        else if (this.props.type == "enemy") this._id = Entity.eid++;
+        else if (this.props.type == "npc") this._id = Entity.npcid++;
 
         if (this.props.color !== undefined) {
             this._color = this.props.color;
@@ -81,7 +96,8 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
             size: this._size
         };
 
-        console.log("Entity Constructor");
+        console.log("Entity Constructor", this.id);
+        if (this.props.onEntityConstructed !== undefined) this.props.onEntityConstructed(this);
     }
 
     private _id: number;
@@ -249,12 +265,14 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
     }
 
     render() {
+        //console.log("RENDER ENTITY", this.state.xy);
+
         //let className: string = 'entity';
 
         let fontSize: string = this.size/10 + "em";
 
         //let qrs: Iqrs = this.state.qrs;
-        let xy: Ixy = this.qrsToXy(this.state.qrs);
+        let xy: Ixy = this.state.xy;
 
         return (
             <g className={DndemEntity.entity}
