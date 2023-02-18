@@ -76,6 +76,7 @@ export default class Dndmap extends React.Component<{}, IState> {
         this.handleEntityLeave = this.handleEntityLeave.bind(this);
         this.handleEntityEnter = this.handleEntityEnter.bind(this);
         this.handleEntityClick = this.handleEntityClick.bind(this);
+        this.handleOnEntityMove = this.handleOnEntityMove.bind(this);
 
         this.entityConstructed = this.entityConstructed.bind(this);
 
@@ -508,20 +509,6 @@ export default class Dndmap extends React.Component<{}, IState> {
 
             // Move the entity;
             this.selectedEntity.move(DeltaQrs);
-
-            // Update entity data in mapdata
-            //let entitiesCopy: IEntities = deepCopy(this.state.entities);
-
-            for (let i: number = 0; i < this.state.entities.entityList.length; i++) {
-                if (this.state.entities.entityList[i].sid == this.selectedEntity.props.sid) {
-                    this.state.entities.entityList[i].qrs = this.selectedEntity.qrs;
-                    this.state.entities.entityList[i].xy = this.selectedEntity.xy;
-
-
-
-                    break;
-                }
-            }
         }
     }
 
@@ -628,7 +615,9 @@ export default class Dndmap extends React.Component<{}, IState> {
         let reader: FileReader = new FileReader();
 
         // Function to perform when reading of file is complete
-        reader.onloadend = (e) => {
+        // TODO: I do not know if I need or should do this, but I would like to put the function
+        //  below into "its own function" instead of having it inside this.loadMap.
+        reader.onloadend = () => {
             let loadedGameData: IGameData = JSON.parse(reader.result as string);
             let loadedMapData: IMap = loadedGameData.mapData;
             let loadedEntityData: IEntity[] = loadedGameData.entityList;
@@ -685,6 +674,7 @@ export default class Dndmap extends React.Component<{}, IState> {
                                                     onMouseLeave={this.handleEntityLeave}
                                                     onMouseEnter={this.handleEntityEnter}
                                                     onMouseClick={this.handleEntityClick}
+                                                    onMove={this.handleOnEntityMove}
                                                     onEntityConstructed={this.entityConstructed}></Entity>;
         return newEntity;
     }
@@ -821,7 +811,7 @@ export default class Dndmap extends React.Component<{}, IState> {
 
     // ########### CONTEXT MENU MOUSE INTERACT - END ###########
 
-    // ########### ENTITY MOUSE INTERACT - BEGIN ###########
+    // ########### ENTITY - BEGIN ###########
 
     private moveEntity: boolean = false;
     private selectedEntity: Entity | undefined;
@@ -856,7 +846,23 @@ export default class Dndmap extends React.Component<{}, IState> {
 
     }
 
-    // ########### ENTITY MOUSE INTERACT - END ###########
+    handleOnEntityMove(e: React.MouseEvent<SVGElement>, target: Entity) {
+        // Update entity data in mapdata
+        //let entitiesCopy: IEntities = deepCopy(this.state.entities);
+
+
+
+        for (let i: number = 0; i < this.state.entities.entityList.length; i++) {
+            if (this.state.entities.entityList[i].sid == target.props.sid) {
+                this.state.entities.entityList[i].qrs = target.qrs;
+                this.state.entities.entityList[i].xy = target.xy;
+
+                break;
+            }
+        }
+    }
+
+    // ########### ENTITY - END ###########
 
     public render() {
         console.log('RENDER APP');

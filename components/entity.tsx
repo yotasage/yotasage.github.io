@@ -30,6 +30,7 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
         this.handleOnMouseLeave = this.handleOnMouseLeave.bind(this);
         this.handleOnMouseEnter = this.handleOnMouseEnter.bind(this);
         this.handleOnMouseClick = this.handleOnMouseClick.bind(this);
+        this.handleOnMove = this.handleOnMove.bind(this);
 
         // TODO: Re-use IDs. If there are 5 players with IDs from 1 to 5, and player 3 is deleted, the next ID should be 3.
         if (this.props.id !== undefined) {
@@ -188,10 +189,15 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
         this.xy = newXy;
         this.qrs = newQrs;
         this.setState({xy: newXy, qrs: newQrs}); // check out call back for setState
+        this.handleOnMove();
     }
 
     handleOnClick(e: React.MouseEvent<SVGElement>) {
 
+    }
+
+    handleOnMove() {
+        if (this.props.onMove !== undefined) this.props.onMove(null, this);
     }
 
     onKeyDown(e: React.KeyboardEvent<SVGElement>) {
@@ -225,7 +231,9 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
             else deltaQrs.r = - (this.qrs.r % 1);
         }
 
-        if (deltaQrs.q !== 0 || deltaQrs.r !== 0) this.move(deltaQrs);
+        if (deltaQrs.q !== 0 || deltaQrs.r !== 0) {
+            this.move(deltaQrs);
+        }
     }
 
     handleExit(e: React.MouseEvent<SVGElement>) {

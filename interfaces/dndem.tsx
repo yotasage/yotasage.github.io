@@ -160,6 +160,8 @@ export interface IPropsEntity {
     onMouseEnter?: Function;
     onMouseClick?: Function;
 
+    onMove?: Function;
+
     onEntityConstructed?: Function;
 }
 
