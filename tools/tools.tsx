@@ -135,7 +135,7 @@ export function getSVGCoord(e: React.MouseEvent<SVGElement> | React.MouseEvent<H
     if (AR > 1)         x = (e.clientX - chartWidth/2)*AR/(chartWidth/2)*(chartBaseWidth/2);
     else if (AR < 1)    y = (e.clientY - chartHeight/2)/(AR*chartHeight/2)*(chartBaseHeight/2);
 
-    // Adjust for shifted center after pan/zoom.
+    // Adjust for shifted center after pan/zoom (this should be deactivated when paning and zooming).
     if (offsetCorrection) {
         let viewBoxCenterX = viewBox.baseVal.x + chartBaseWidth/2
         let viewBoxCenterY = viewBox.baseVal.y + chartBaseHeight/2

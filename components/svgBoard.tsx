@@ -5,6 +5,7 @@ import Dndem from "../styles/board.module.css";
 
 import {IPropsBoard, Iqrs, IStateBoard, IviewBox, Ixy} from "../interfaces/dndem";
 import ContextMenuItem from "./contextMenuItem";
+import {deepCopy, getSVGCoord} from "../tools/tools";
 
 // React.Component subclass
 class Board extends React.Component<IPropsBoard, IStateBoard> {
@@ -222,20 +223,47 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
 
     // ########### SVG MOUSE INTERACT - BEGIN ###########
 
-    handleMouseUp(e: React.MouseEvent<SVGElement>) {
+    /*if      (event.button == 0) mouseMainLeft = true;         // 001
+    else if (event.button == 1) mouseMainMiddle = true;         // 010
+    else if (event.button == 2) mouseMainRight = true;*/        // 100
 
+    private isPaning: boolean = false;
+    private InitialPanViewBox?: IviewBox;
+    private panStartCoord: Ixy = {x: 0, y: 0};
+    private panEndCoord: Ixy = {x: 0, y: 0};
+
+    handleMouseUp(e: React.MouseEvent<SVGElement>) {
+        console.log("handleMouseUp")
+        this.isPaning = false;
     }
 
     handleMouseDown(e: React.MouseEvent<SVGElement>) {
+        console.log("handleMouseDown", e.button)
 
+        if (e.button == 1) {
+            this.isPaning = true;
+            this.panStartCoord = getSVGCoord(e, false);
+            this.InitialPanViewBox = deepCopy(this.state.viewBox);
+        }
     }
 
     handleOnClick(e: React.MouseEvent<SVGElement>) {
-
+        console.log("handleOnClick")
     }
 
     handleMouseMove(e: React.MouseEvent<SVGElement>) {
+        console.log("handleOnClick")
 
+        if (this.isPaning) {
+            this.panEndCoord = getSVGCoord(e, false);
+
+            let dx: number = this.panStartCoord.x - this.panEndCoord.x;
+            let dy: number = this.panStartCoord.y - this.panEndCoord.y;
+
+            let viewBoxZoom: IviewBox = this.InitialPanViewBox;
+            viewBoxZoom = {x:viewBoxZoom.x+dx,y:viewBoxZoom.y+dy,w:viewBoxZoom.w,h:viewBoxZoom.h};
+            this.setState({viewBox: viewBoxZoom});
+        }
     }
 
     handleWheel(e: React.WheelEvent<SVGElement>) {
