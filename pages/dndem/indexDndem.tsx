@@ -435,6 +435,7 @@ export default class Dndmap extends React.Component<{}, IState> {
                 }));
             }
         }
+
     }
 
     changeArraySize(newRadius: number) {

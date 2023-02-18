@@ -99,6 +99,19 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
 
     onKeyDown(e: React.KeyboardEvent<SVGElement>) {
         if (this.props.onMapKeyDown !== undefined) this.props.onMapKeyDown(e);
+
+        let key: string = e.key.toLowerCase();
+
+        if (key === 'f') {
+            let xyEdge: number = this.height*this.sizeTile;
+            let whLength: number = xyEdge*2;
+
+            let viewBox: IviewBox =  {  x: -xyEdge,
+                                        y: -xyEdge,
+                                        w: whLength,
+                                        h: whLength};
+            this.setState({viewBox: viewBox});
+        }
     }
 
     contains(qrs: Iqrs, array: string[][]=this.props.mapData.colorMap) {
@@ -265,6 +278,16 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
             this.setState({viewBox: viewBoxZoom});
         }
     }
+
+    // [1]
+    // Where (Direct) : https://stackoverflow.com/a/52640900/2883691
+    // Where          : https://stackoverflow.com/questions/52576376/how-to-zoom-in-on-a-complex-svg-structure
+    // Posted         : answered Oct 4 '18 at 7:05
+    // By             : Access Denied | https://stackoverflow.com/users/1099716/access-denied
+    // Edited         : edited Apr 9 '20 at 4:09
+    // By             : sonntam | https://stackoverflow.com/users/542269/sonntam
+    // Read           : 2022-01-03
+    // Modified by me : 2022-05-27
 
     handleWheel(e: React.WheelEvent<SVGElement>) {
         if (this.svgRef != null && this.svgRef.current != null) {
