@@ -13,7 +13,7 @@ export default class ContextMenu extends React.Component<IPropsContextMenu, {}> 
     }
 
     handleOnClick(e: React.MouseEvent<HTMLDivElement>) {
-        if (this.props.onClick) this.props.onClick();
+        if (this.props.onClick) this.props.onClick(e);
     }
 
     public render() {
@@ -30,7 +30,8 @@ export default class ContextMenu extends React.Component<IPropsContextMenu, {}> 
             let tk: number = 2*Math.PI*index/n;
             let r: number = 200;
             let c: number = 200;
-            let coords: Ixy = {x: c + r*Math.cos(tk), y: c + r*Math.sin(tk)};
+            let rotation: number = Math.PI/6; // 15 degrees rotation to the right.
+            let coords: Ixy = {x: c + r*Math.cos(tk+rotation), y: c + r*Math.sin(tk+rotation)};
 
             buttonList.push(<ContextMenuItem key={index} label={element} coord={coords} onButton={this.props.onButton ? this.props.onButton[index] : null}/>);
 

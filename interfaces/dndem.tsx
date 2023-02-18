@@ -49,8 +49,26 @@ export interface IMap {
     height: number;
     radius: number;
     colorMap: Array<Array<string>>;
-    entities?: IEntity[];
     loaded: boolean;
+}
+
+export interface IContextMenu {
+    render: boolean;
+    coord: Ixy;
+    SVGCoord: Ixy;
+    prevMenuButton?: string;
+    menuButtons?: string[];
+    menuButtonCallback?: Function[];
+}
+
+export interface IGameData {
+    entityList: IEntity[];
+    mapData: IMap;
+}
+
+export interface IEntities {
+    entityList?: IEntity[];
+    reactEntityList?: React.ReactElement[];
 }
 
 export interface IState {
@@ -60,13 +78,9 @@ export interface IState {
     selectedSession: string | undefined;
 
     mapData: IMap;
-    entities: React.ReactElement[];
+    entities: IEntities;
 
-    context: boolean;
-    contextCoord: Ixy;
-    contextSVGCoord: Ixy;
-    contextMenuButtons?: string[];
-    contextMenuButtonCallback?: Function[];
+    contextMenu: IContextMenu;
 }
 
 export interface IPropsBoard {

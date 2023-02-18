@@ -9,6 +9,10 @@ export function saveMap(mapData: IMap) {
     download("map.dem", mapDataJSON);
 }
 
+export function saveToDem(filename: string, data: string) {
+    download((filename + ".dem"), data);
+}
+
 // https://stackoverflow.com/questions/3665115/how-to-create-a-file-in-memory-for-user-to-download-but-not-through-server
 // https://stackoverflow.com/a/18197341/2883691
 export function download(filename: string, text: string) {

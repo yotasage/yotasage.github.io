@@ -11,7 +11,7 @@ export default class ContextMenuItem extends React.Component<IPropsContextItem, 
     }
 
     handleOnButton(e: React.MouseEvent<HTMLDivElement>) {
-        if (this.props.onButton) this.props.onButton();
+        if (this.props.onButton) this.props.onButton(e);
     }
 
     public render() {
