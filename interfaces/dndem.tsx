@@ -57,6 +57,7 @@ export interface IContextMenu {
     coord: Ixy;
     SVGCoord: Ixy;
     prevMenuButton?: string;
+    menuButtonHistory?: string[];
     menuButtons?: string[];
     menuButtonCallback?: Function[];
 }
