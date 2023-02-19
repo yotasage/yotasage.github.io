@@ -265,9 +265,18 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
     }
 
     handleMouseMove(e: React.MouseEvent<SVGElement>) {
-        console.log("handleOnClick")
+        console.log("handleMouseMove");
+        /*
+        https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/buttons
+        0: No button or un-initialized
+        1: Primary button (usually the left button)
+        2: Secondary button (usually the right button)
+        4: Auxiliary button (usually the mouse wheel button or middle button)
+        8: 4th button (typically the "Browser Back" button)
+        16 : 5th button (typically the "Browser Forward" button)*/
 
-        if (this.isPaning) {
+        if (this.isPaning && e.buttons & 100) {
+
             this.panEndCoord = getSVGCoord(e, false);
 
             let dx: number = this.panStartCoord.x - this.panEndCoord.x;
@@ -277,6 +286,7 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
             viewBoxZoom = {x:viewBoxZoom.x+dx,y:viewBoxZoom.y+dy,w:viewBoxZoom.w,h:viewBoxZoom.h};
             this.setState({viewBox: viewBoxZoom});
         }
+        else this.isPaning = false;
     }
 
     // [1]
