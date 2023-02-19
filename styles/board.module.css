@@ -13,6 +13,7 @@
     left			: 0;
     bottom			: 0;
     right			: 0;
+
 }
 
 #root {
@@ -33,6 +34,11 @@
     z-index			: -1;
 
     overflow        : hidden;
+
+    /*Prevents pinch zoom and pan on phones
+    https://developer.mozilla.org/en-US/docs/Web/CSS/touch-action*/
+    -ms-content-zooming: none;
+    touch-action    : none;
 }
 
 #Map {

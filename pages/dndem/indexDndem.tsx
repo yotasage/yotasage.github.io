@@ -1,5 +1,6 @@
 import Board from "../../components/svgBoard";
 import React from "react";
+import Head from "next/head";
 
 import ColorPickerContainer from '../../tools/color-picker';
 import Dndem from "../../styles/board.module.css";
@@ -865,13 +866,41 @@ export default class Dndmap extends React.Component<{}, IState> {
 
     // ########### ENTITY - END ###########
 
+
+    handleOnWheel(e) {
+        // Prevents pinch zoom on laptop trackpad
+        if (e.ctrlKey) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }
+    }
+
+    componentDidMount() {
+        this.gameContainer.addEventListener('wheel', this.handleOnWheel, { passive: false });
+    }
+
+    componentWillUnmount() {
+        this.gameContainer.removeEventListener('wheel', this.handleOnWheel);
+    }
+
+    private gameContainer;
+
     public render() {
         console.log('RENDER APP');
         //console.log("render", this.state.mapData);
 
         return (
             <>
-                <div id={Dndem.gameContainer}>
+                <Head>
+                    <title>DnDem</title>
+                    <meta content={"width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"}/>
+
+                </Head>
+                <div id={Dndem.gameContainer}
+                     onTouchStart={this.handleOnWheel}
+                     ref={ref => this.gameContainer = ref}>
+
                     <ColorPickerContainer onColorChange={this.onPaintToolColorChange}
                                           onToolChange={this.onPaintToolChange}
                                           color={ this.paintTool.color}/>
@@ -885,6 +914,7 @@ export default class Dndmap extends React.Component<{}, IState> {
                          onMouseMove={this.handleMouseMove}
                          onClick={this.handleOnClick}
                          onContextMenu={this.handleOnContextMenu}
+
                         //tabIndex={0}
                         //onKeyDown={this.resize}
                     >

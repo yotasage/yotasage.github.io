@@ -300,6 +300,7 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
     // Modified by me : 2022-05-27
 
     handleWheel(e: React.WheelEvent<SVGElement>) {
+        //e.preventDefault();
         if (this.svgRef != null && this.svgRef.current != null) {
             let viewBoxZoom: IviewBox = this.state.viewBox;
 
@@ -339,6 +340,7 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
                  onMouseMove={this.handleMouseMove}
                  onClick={this.handleOnClick}
                  onWheel={this.handleWheel}>
+
 
                 <g id="tileContainer">
                     {this.renderTiles()}
