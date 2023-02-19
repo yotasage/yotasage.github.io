@@ -871,13 +871,7 @@ export default class Dndmap extends React.Component<{}, IState> {
 
         return (
             <>
-                <div id="buttons">
-
-                </div>
-                <div id="fields">
-
-                </div>
-                <>
+                <div id={Dndem.gameContainer}>
                     <ColorPickerContainer onColorChange={this.onPaintToolColorChange}
                                           onToolChange={this.onPaintToolChange}
                                           color={ this.paintTool.color}/>
@@ -904,7 +898,7 @@ export default class Dndmap extends React.Component<{}, IState> {
                             onMapKeyDown={this.onMapKeyDown}
                             sizeTile={this.state.sizeTile}/>
                     </div>
-                </>
+                </div>
             </>
         );
     }

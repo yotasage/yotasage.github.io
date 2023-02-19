@@ -6,6 +6,15 @@
     overflow          : hidden;
 }*/
 
+#gameContainer {
+    overflow        : hidden;
+    position		: fixed;
+    top				: 0;
+    left			: 0;
+    bottom			: 0;
+    right			: 0;
+}
+
 #root {
     /*background-color: #2B2B2B;*/
 
