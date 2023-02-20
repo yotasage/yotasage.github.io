@@ -253,6 +253,8 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
     handleMouseDown(e: React.MouseEvent<SVGElement>) {
         console.log("handleMouseDown", e.button)
 
+
+
         if (e.button == 1) {
             this.isPaning = true;
             this.panStartCoord = getSVGCoord(e, false);
@@ -300,33 +302,62 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
     // Modified by me : 2022-05-27
 
     handleWheel(e: React.WheelEvent<SVGElement>) {
+        console.log(e.ctrlKey, e.deltaX, e.deltaY, e.deltaZ, e);
         //e.preventDefault();
-        if (this.svgRef != null && this.svgRef.current != null) {
-            let viewBoxZoom: IviewBox = this.state.viewBox;
 
+        if (this.svgRef == null || this.svgRef === undefined) return false;
+        let viewBoxZoom: IviewBox = this.state.viewBox;
+
+        let sensitivityZoomWH: number = 0.1;
+        let sensitivityZoomXY: number = 1.15;
+
+        let dx: number = e.deltaX;
+        let dy: number = e.deltaY;
+
+        let dw: number = 0;
+        let dh: number = 0;
+
+        if (Math.abs(e.deltaX)) { // Pinch-Pan-Zoom
+
+        }
+        else { // Zoom (2 finger or wheel)
             let mx: number = e.nativeEvent.offsetX; // mouse x
             let my: number = e.nativeEvent.offsetY;
 
-            let sensitivityZoomWH: number = 0.1;
-            let sensitivityZoomXY: number = 1.15;
-            let dw: number = -viewBoxZoom.w*Math.sign(e.deltaY)*sensitivityZoomWH;
-            let dh: number = -viewBoxZoom.h*Math.sign(e.deltaY)*sensitivityZoomWH;
-            let dx: number = sensitivityZoomXY*dw*mx/this.svgRef.current.clientWidth;
-            let dy: number = sensitivityZoomXY*dh*my/this.svgRef.current.clientHeight;
+            dw = -viewBoxZoom.w*Math.sign(dy)*sensitivityZoomWH;
+            dh = -viewBoxZoom.h*Math.sign(dy)*sensitivityZoomWH;
 
-            viewBoxZoom = {x:viewBoxZoom.x+dx,y:viewBoxZoom.y+dy,w:viewBoxZoom.w-dw,h:viewBoxZoom.h-dh};
-            this.setState({viewBox: viewBoxZoom});
+            dx = sensitivityZoomXY*dw*mx/this.svgRef.current.clientWidth;
+            dy = sensitivityZoomXY*dh*my/this.svgRef.current.clientHeight;
         }
+
+
+
+
+
+
+
+        viewBoxZoom = {x:viewBoxZoom.x+dx,y:viewBoxZoom.y+dy,w:viewBoxZoom.w-dw,h:viewBoxZoom.h-dh};
+        this.setState({viewBox: viewBoxZoom});
+
     }
 
     // ########### SVG MOUSE INTERACT - END ###########
+
+    // ########### SVG POINTER INTERACT - BEGIN ###########
+
+    handlePointerDown(e){
+        console.log("e, e.pointerId");
+    }
+
+    // ########### SVG POINTER INTERACT - END ###########
 
     // https://stackoverflow.com/questions/63005791/props-dont-update-when-state-updates-in-react
     render() {
 
         let viewBox = this.state.viewBox.x + ' ' + this.state.viewBox.y + ' ' + this.state.viewBox.h + ' ' + this.state.viewBox.w
 
-        console.log("RENDER BOARD")
+        //console.log("RENDER BOARD")
 
         return (
             <svg xmlns="http://www.w3.org/2000/svg" version="1.1" id={Dndem.Map} strokeWidth="0.2" stroke="black"
@@ -339,6 +370,7 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
                  onMouseDown={this.handleMouseDown}
                  onMouseMove={this.handleMouseMove}
                  onClick={this.handleOnClick}
+                 onTouchMove={this.handlePointerDown}
                  onWheel={this.handleWheel}>
 
 

@@ -32,6 +32,8 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
         this.handleOnMouseClick = this.handleOnMouseClick.bind(this);
         this.handleOnMove = this.handleOnMove.bind(this);
 
+        this.handleOnContextMenu = this.handleOnContextMenu.bind(this);
+
         // TODO: Re-use IDs. If there are 5 players with IDs from 1 to 5, and player 3 is deleted, the next ID should be 3.
         if (this.props.id !== undefined) {
             this._id = this.props.id;
@@ -192,6 +194,10 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
         this.handleOnMove();
     }
 
+    handleOnContextMenu(e: React.MouseEvent<SVGElement>) {
+        if (this.props.onContext !== undefined) this.props.onContext(e, this);
+    }
+
     handleOnClick(e: React.MouseEvent<SVGElement>) {
 
     }
@@ -291,6 +297,7 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
                onMouseLeave={this.handleOnMouseLeave}
                onMouseEnter={this.handleOnMouseEnter}
                onClick={this.handleOnMouseClick}
+               onContextMenu={this.handleOnContextMenu}
 
                onKeyDown={this.onKeyDown}
                tabIndex={-1}>

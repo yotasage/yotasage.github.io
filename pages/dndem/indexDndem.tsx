@@ -53,22 +53,23 @@ export default class Dndmap extends React.Component<{}, IState> {
         this.onPaintToolColorChange = this.onPaintToolColorChange.bind(this);
         this.onPaintToolChange = this.onPaintToolChange.bind(this);
 
-        this.changeArraySize = this.changeArraySize.bind(this);
+        this.setArraySize = this.setArraySize.bind(this);
 
         this.handleMouseMove = this.handleMouseMove.bind(this);
         this.handleOnClick = this.handleOnClick.bind(this);
+        this.handleOnContextMenuEntity = this.handleOnContextMenuEntity.bind(this);
         this.handleOnContextMenu = this.handleOnContextMenu.bind(this); // Right-click
 
         this.handleOnContextMenuClick = this.handleOnContextMenuClick.bind(this);
+        this.contextMap = this.contextMap.bind(this);
         this.saveMapFile = this.saveMapFile.bind(this);
         this.loadMapFile = this.loadMapFile.bind(this);
         this.loadMap = this.loadMap.bind(this);
 
-        this.contextCreateEnemy = this.contextCreateEnemy.bind(this);
         this.contextSelectEntitySize = this.contextSelectEntitySize.bind(this);
         this.contextSelectEntityType = this.contextSelectEntityType.bind(this);
         this.contextCreateEntity = this.contextCreateEntity.bind(this);
-        this.contextCreateNPC = this.contextCreateNPC.bind(this);
+        this.contextRemoveEntity = this.contextRemoveEntity.bind(this);
 
 
         this.handleEntityUp = this.handleEntityUp.bind(this);
@@ -377,6 +378,8 @@ export default class Dndmap extends React.Component<{}, IState> {
         }
     }
 
+    // TODO: Modify function name. This is not true xy-coordinates. This is array coordinates.
+    //  At the same time, create a function which truly returns xy-coordinates.
     public qrsToXy(qrs: Iqrs) {
         let xyCoord: Ixy = {x: 0, y: 0};
         xyCoord.x = qrs.q + this.state.mapData.radius - 1;
@@ -393,20 +396,13 @@ export default class Dndmap extends React.Component<{}, IState> {
         // TODO? Make a bar/menu pop up with options when holding control.
         //  Something similar to the context menu can pop up maybe?
         //  Showing all the options that either can be clicked or used by pressing specified keys.
-        if (key === '+' || key === '-') {
-            console.log('resize map');
-            this.mapDataHistory.push(deepCopy(this.state.mapData));
-            this.mapDataHistoryUndone = [];
-            let newRadius: number = 0;
-            let prevSize: number = this.state.mapData.radius;
-
-            let delta: number = 1;
-
-            if (key === '+') newRadius = prevSize + delta;
-            else if (key === '-') newRadius = prevSize - delta;
-            if (newRadius <= 0) return;
-
-            this.changeArraySize(newRadius);
+        if (key === '+') {
+            console.log('resize map - increase');
+            this.changeArraySize(1);
+        }
+        else if (key === '-') {
+            console.log('resize map - decrease');
+            this.changeArraySize(-1);
         }
         else if (e.ctrlKey && key === 's' ) {
             console.log("save");
@@ -417,29 +413,47 @@ export default class Dndmap extends React.Component<{}, IState> {
             //this.saveSessionMap();
         }
         else if ((!e.shiftKey && key === 'u') || (e.ctrlKey && key === 'z')) {
-            if (this.mapDataHistory.length > 0) {
-                let data: IMap = this.mapDataHistory.pop();
-                this.mapDataHistoryUndone.push(deepCopy(this.state.mapData));
-
-                this.setState(() => ({
-                    mapData: deepCopy(data)
-                }));
-            }
+            this.mapUndo();
         }
         else if ((e.shiftKey && key === 'u') || (e.ctrlKey && key === 'y')) {
-            if (this.mapDataHistoryUndone.length > 0) {
-                let data: IMap = this.mapDataHistoryUndone.pop();
-                this.mapDataHistory.push(deepCopy(this.state.mapData));
-
-                this.setState(() => ({
-                    mapData: deepCopy(data)
-                }));
-            }
+            this.mapRedo();
         }
 
     }
 
-    changeArraySize(newRadius: number) {
+    mapUndo() {
+        if (this.mapDataHistory.length > 0) {
+            let data: IMap = this.mapDataHistory.pop();
+            this.mapDataHistoryUndone.push(deepCopy(this.state.mapData));
+
+            this.setState(() => ({
+                mapData: deepCopy(data)
+            }));
+        }
+    }
+
+    mapRedo() {
+        if (this.mapDataHistoryUndone.length > 0) {
+            let data: IMap = this.mapDataHistoryUndone.pop();
+            this.mapDataHistory.push(deepCopy(this.state.mapData));
+
+            this.setState(() => ({
+                mapData: deepCopy(data)
+            }));
+        }
+    }
+
+    changeArraySize(delta: number) {
+        this.mapDataHistory.push(deepCopy(this.state.mapData));
+        this.mapDataHistoryUndone = [];
+        let prevSize: number = this.state.mapData.radius;
+
+        let newRadius: number = prevSize + delta;
+        if (newRadius <= 0) return;
+        this.setArraySize(newRadius);
+    }
+
+    setArraySize(newRadius: number) {
         let diff: number = newRadius - this.state.mapData.radius;
         let new_height: number = newRadius*2 - 1;
         let newArrayColor = [...Array(new_height)].map(() => Array(new_height).fill(this.defaultTileColor));
@@ -526,9 +540,13 @@ export default class Dndmap extends React.Component<{}, IState> {
         }
     }
 
-    handleOnContextMenu(e: React.MouseEvent<HTMLDivElement>) {
+    handleOnContextMenuEntity(e: React.MouseEvent<SVGElement>, target: Entity) {
+        console.log("entity has been right clicked", target.id);
         e.preventDefault();
-        console.log("CONTEXT");
+
+        // stopPropagation prevents the event from propagating further, meaning that it will not trigger
+        // any other functions like handleOnContextMenu.
+        e.stopPropagation();
 
         if (this.paintTool.tool != "none") return;
 
@@ -539,8 +557,44 @@ export default class Dndmap extends React.Component<{}, IState> {
         contextMenu.render = true;
         contextMenu.coord = coord;
         contextMenu.SVGCoord = SVGCoord;
-        contextMenu.menuButtons = ['SAVE MAP', 'LOAD MAP', 'CREATE ENTITY'];
-        contextMenu.menuButtonCallback = [this.saveMapFile, this.loadMapFile, this.contextSelectEntitySize];
+        contextMenu.menuButtons = ['DELETE'];
+        contextMenu.menuButtonCallback = [(() => {this.contextRemoveEntity(target);})];
+
+        this.setState(() => ({
+            contextMenu: contextMenu
+        }));
+
+    }
+
+    handleOnContextMenu(e: React.MouseEvent<HTMLDivElement>) {
+        e.preventDefault();
+        console.log("CONTEXT", e);
+
+        if (this.paintTool.tool != "none") return;
+
+        let coord: Ixy = {x: e.clientX - 200, y: e.clientY - 200};
+        let SVGCoord: Ixy = getSVGCoord(e);
+
+        let contextMenu: IContextMenu = deepCopy(this.state.contextMenu);
+        contextMenu.render = true;
+        contextMenu.coord = coord;
+        contextMenu.SVGCoord = SVGCoord;
+        contextMenu.menuButtons = ['MAP', 'CREATE ENTITY'];
+        contextMenu.menuButtonCallback = [this.contextMap, this.contextSelectEntitySize];
+
+        this.setState(() => ({
+            contextMenu: contextMenu
+        }));
+    }
+
+    contextMap() {
+        //let self = this;
+
+        let contextMenu: IContextMenu = deepCopy(this.state.contextMenu);
+        contextMenu.menuButtons = ['SAVE MAP', 'LOAD MAP', 'DECREASE BY 1', 'INCREASE BY 1'];
+        contextMenu.menuButtonCallback = [this.saveMapFile, this.loadMapFile,
+            (() => {this.changeArraySize(-1);}),
+            (() => {this.changeArraySize(1);})];
 
         this.setState(() => ({
             contextMenu: contextMenu
@@ -677,16 +731,45 @@ export default class Dndmap extends React.Component<{}, IState> {
                                                     onMouseEnter={this.handleEntityEnter}
                                                     onMouseClick={this.handleEntityClick}
                                                     onMove={this.handleOnEntityMove}
+                                                    onContext={this.handleOnContextMenuEntity}
                                                     onEntityConstructed={this.entityConstructed}></Entity>;
         return newEntity;
+    }
+
+    contextRemoveEntity(target: Entity) {
+        console.log(target.id, target.color);
+
+        let contextMenu: IContextMenu = deepCopy(this.state.contextMenu);
+        contextMenu.render = false;
+
+        let entityList: React.ReactElement[] = this.state.entities.reactEntityList;
+        let entityCount: number = entityList.length;
+
+        let newEntityList: IEntity[] = [];
+        let newReactEntityList: React.ReactElement[] = [];
+
+        for (let i: number = 0; i < entityCount; i++) {
+            if (entityList[i].props.sid == target.props.sid) {
+                console.log(true);
+                this.state.entities.entityList.splice(i, 1);
+                this.state.entities.reactEntityList.splice(i, 1);
+                break;
+            }
+        }
+
+        this.setState(() => ({
+            contextMenu: contextMenu
+        }));
     }
 
     contextCreateEntity(e: React.MouseEvent<HTMLDivElement>) {
         console.log("contextCreateEntity");
         let entitySpecs: string[] = (e.target as HTMLDivElement).textContent.split(/\s+/);
 
-        let contextMenu: IContextMenu = deepCopy(this.state.contextMenu);
-        contextMenu.render = false;
+        // TODO: Consider how to handle this. The way it is done now, it is possible to quickly
+        //  create new entities.
+        //let contextMenu: IContextMenu = deepCopy(this.state.contextMenu);
+        //contextMenu.render = true;
 
         let newEntityData: IEntity = {};
 
@@ -723,7 +806,6 @@ export default class Dndmap extends React.Component<{}, IState> {
 
         // Close the context menu. Update the mapData with the new mapData.
         this.setState(() => ({
-            contextMenu: contextMenu,
             entities: entitiesCopy
         }));
     }
@@ -748,9 +830,10 @@ export default class Dndmap extends React.Component<{}, IState> {
         console.log("contextCreateEnemy", e);
 
         let contextMenu: IContextMenu = deepCopy(this.state.contextMenu);
-        contextMenu.menuButtons = ['SMALL', 'MEDIUM', 'LARGE', 'HUGE', 'GARGANTUAN', 'COLOSSAL'];
+        contextMenu.menuButtons = [ 'SMALL', 'MEDIUM', 'LARGE', 'HUGE',
+                                    'GARGANTUAN', 'COLOSSAL'];
         contextMenu.menuButtonCallback =
-            [this.contextSelectEntityType,
+            [   this.contextSelectEntityType,
                 this.contextSelectEntityType,
                 this.contextSelectEntityType,
                 this.contextSelectEntityType,
@@ -760,56 +843,9 @@ export default class Dndmap extends React.Component<{}, IState> {
         this.setState(() => ({
             contextMenu: contextMenu
         }));
-
-        /*console.log("contextCreateEntity");
-
-        let contextMenu: IContextMenu = deepCopy(this.state.contextMenu);
-        contextMenu.menuButtons = ['ENEMY', 'NPC', 'PLAYER'];
-        contextMenu.menuButtonCallback =
-            [this.contextCreateEnemy,
-                this.contextCreateNPC,
-                this.contextCreatePlayer];
-
-        this.setState(() => ({
-            contextMenu: contextMenu
-        }));*/
     }
 
-    contextCreateEnemy(e: React.MouseEvent<HTMLDivElement>) {
-        console.log("contextCreateEnemy", e);
 
-        let contextMenu: IContextMenu = deepCopy(this.state.contextMenu);
-        contextMenu.menuButtons = ['SMALL', 'MEDIUM', 'LARGE', 'HUGE', 'GARGANTUAN', 'COLOSSAL'];
-        contextMenu.menuButtonCallback =
-            [this.contextCreateEnemy,
-                this.contextCreateEnemy,
-                this.contextCreateEnemy,
-                this.contextCreateEnemy,
-                this.contextCreateEnemy,
-                this.contextCreateEnemy]
-
-        this.setState(() => ({
-            contextMenu: contextMenu
-        }));
-    }
-
-    contextCreateNPC(e: React.MouseEvent<HTMLDivElement>) {
-        console.log("contextCreateNPC", e);
-
-        let contextMenu: IContextMenu = deepCopy(this.state.contextMenu);
-        contextMenu.menuButtons = ['SMALL', 'MEDIUM', 'LARGE', 'HUGE', 'GARGANTUAN', 'COLOSSAL'];
-        contextMenu.menuButtonCallback =
-            [this.contextCreateEnemy,
-                this.contextCreateEnemy,
-                this.contextCreateEnemy,
-                this.contextCreateEnemy,
-                this.contextCreateEnemy,
-                this.contextCreateEnemy]
-
-        this.setState(() => ({
-            contextMenu: contextMenu
-        }));
-    }
 
     // ########### CONTEXT MENU MOUSE INTERACT - END ###########
 
@@ -866,13 +902,13 @@ export default class Dndmap extends React.Component<{}, IState> {
 
     // ########### ENTITY - END ###########
 
-
     handleOnWheel(e) {
+        //console.log(e, e.ctrlKey);
         // Prevents pinch zoom on laptop trackpad
-        if (e.ctrlKey) {
+        if (e.ctrlKey) { // When ctrl key is true, it usually means that the trackpad is used to zoom
             e.preventDefault();
-            e.stopPropagation();
-            return false;
+            //e.stopPropagation();
+            //return false;
         }
     }
 

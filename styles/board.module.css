@@ -37,8 +37,7 @@
 
     /*Prevents pinch zoom and pan on phones
     https://developer.mozilla.org/en-US/docs/Web/CSS/touch-action*/
-    -ms-content-zooming: none;
-    touch-action    : none;
+
 }
 
 #Map {

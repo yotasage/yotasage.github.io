@@ -162,6 +162,8 @@ export interface IPropsEntity {
 
     onMove?: Function;
 
+    onContext?: Function;
+
     onEntityConstructed?: Function;
 }
 
