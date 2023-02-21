@@ -34,19 +34,25 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
 
         this.handleOnContextMenu = this.handleOnContextMenu.bind(this);
 
+
+        this.type = this.props.type;
+
+
         // TODO: Re-use IDs. If there are 5 players with IDs from 1 to 5, and player 3 is deleted, the next ID should be 3.
         if (this.props.id !== undefined) {
             this._id = this.props.id;
 
             // I hope this prevents the counter from going higher than it should.
-            if (this.props.type == "player") Entity.pid = this._id + 1;
-            else if (this.props.type == "enemy") Entity.eid = this._id + 1;
-            else if (this.props.type == "npc") Entity.npcid = this._id + 1;
+            if (this.type == "player") Entity.pid = this._id + 1;
+            else if (this.type == "enemy") Entity.eid = this._id + 1;
+            else if (this.type == "npc") Entity.npcid = this._id + 1;
 
         }
-        else if (this.props.type == "player") this._id = Entity.pid++;
-        else if (this.props.type == "enemy") this._id = Entity.eid++;
-        else if (this.props.type == "npc") this._id = Entity.npcid++;
+        else if (this.type == "player") this._id = Entity.pid++;
+        else if (this.type == "enemy") this._id = Entity.eid++;
+        else if (this.type == "npc") this._id = Entity.npcid++;
+
+        this.name = this.type + " " + this.id;
 
         if (this.props.color !== undefined) {
             this._color = this.props.color;
@@ -119,6 +125,22 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
         this._size = value;
     }
 
+    private _type: string;
+    get type(): string {
+        return this._type;
+    }
+    set type(value: string) {
+        this._type = value;
+    }
+
+    private _name: string;
+    get name(): string {
+        return this._name;
+    }
+    set name(value: string) {
+        this._name = value;
+    }
+
     private _stepSize: number;
     get stepSize(): number {
         return this._stepSize;
@@ -169,6 +191,7 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
         return qrs;
     }
 
+    // TODO: Add support for delta s
     move(deltaQrs: Iqrs) { // Ixy | Iqrs
         /*if (typeof coord.q !== undefined) {
 
@@ -279,7 +302,7 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
     }
 
     render() {
-        //console.log("RENDER ENTITY", this.state.xy);
+        console.log("RENDER ENTITY", this.state.xy);
 
         //let className: string = 'entity';
 

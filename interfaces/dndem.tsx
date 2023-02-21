@@ -1,6 +1,7 @@
 import React from "react";
 import TileHexagon from "../components/tileHexagon";
 import Entity from "../components/entity";
+import entity from "../components/entity";
 
 export interface Iqrs {
     q: number;
@@ -181,6 +182,14 @@ export interface IPropsTileHexagon {
     handleOnEnter: (e: React.MouseEvent<SVGElement, MouseEvent>, target: TileHexagon) => void;
     handleOnDown: (e: React.MouseEvent<SVGElement, MouseEvent>, target: TileHexagon) => void;
     handleOnUp: (e: React.MouseEvent<SVGElement, MouseEvent>, target: TileHexagon) => void;
+}
+
+export interface IPropsPropertiesWindow {
+    entity?: Entity;
+}
+
+export interface IStatePropertiesWindow extends IEntity{
+
 }
 
 export interface IStateTileHexagon {

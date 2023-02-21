@@ -25,6 +25,7 @@ import {IroColor} from "@irojs/iro-core";
 import {download, saveMap} from "../../tools/fileSaveLoad";
 import ContextMenu from "../../components/contextMenu";
 import Entity from "../../components/entity";
+import PropertiesWindow from "../../components/propertiesWindow";
 
 export default class Dndmap extends React.Component<{}, IState> {
     constructor(props: object) {
@@ -540,6 +541,8 @@ export default class Dndmap extends React.Component<{}, IState> {
         }
     }
 
+    private showProperties: boolean = false;
+
     handleOnContextMenuEntity(e: React.MouseEvent<SVGElement>, target: Entity) {
         console.log("entity has been right clicked", target.id);
         e.preventDefault();
@@ -550,6 +553,8 @@ export default class Dndmap extends React.Component<{}, IState> {
 
         if (this.paintTool.tool != "none") return;
 
+        this.selectedEntity = target;
+
         let coord: Ixy = {x: e.clientX - 200, y: e.clientY - 200};
         let SVGCoord: Ixy = getSVGCoord(e);
 
@@ -557,13 +562,25 @@ export default class Dndmap extends React.Component<{}, IState> {
         contextMenu.render = true;
         contextMenu.coord = coord;
         contextMenu.SVGCoord = SVGCoord;
-        contextMenu.menuButtons = ['DELETE'];
-        contextMenu.menuButtonCallback = [(() => {this.contextRemoveEntity(target);})];
+        contextMenu.menuButtons = ['DELETE', 'PROPERTIES'];
+        contextMenu.menuButtonCallback = [  (() => {this.contextRemoveEntity(target);}),
+                                            (() => {this.test();})];
 
         this.setState(() => ({
             contextMenu: contextMenu
         }));
 
+    }
+
+    test() {
+        this.showProperties = true;
+
+        let contextMenu: IContextMenu = deepCopy(this.state.contextMenu);
+        contextMenu.render = false;
+
+        this.setState(() => ({
+            contextMenu: contextMenu
+        }));
     }
 
     handleOnContextMenu(e: React.MouseEvent<HTMLDivElement>) {
@@ -940,6 +957,8 @@ export default class Dndmap extends React.Component<{}, IState> {
                     <ColorPickerContainer onColorChange={this.onPaintToolColorChange}
                                           onToolChange={this.onPaintToolChange}
                                           color={ this.paintTool.color}/>
+
+                    {this.showProperties && <PropertiesWindow entity={this.selectedEntity}></PropertiesWindow>}
 
                     {this.state.contextMenu.render && <ContextMenu coord={this.state.contextMenu.coord}
                             onClick={this.handleOnContextMenuClick}

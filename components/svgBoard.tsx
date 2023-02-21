@@ -302,7 +302,7 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
     // Modified by me : 2022-05-27
 
     handleWheel(e: React.WheelEvent<SVGElement>) {
-        console.log(e.ctrlKey, e.deltaX, e.deltaY, e.deltaZ, e);
+        //console.log(e.ctrlKey, e.deltaX, e.deltaY, e.deltaZ, e);
         //e.preventDefault();
 
         if (this.svgRef == null || this.svgRef === undefined) return false;

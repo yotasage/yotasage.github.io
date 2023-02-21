@@ -1,0 +1,18 @@
+#propertyWindowContainer {
+    position		: fixed;
+    top				: 2%;
+    left			: 2%;
+    width           : 20%;
+    height          : 40%;
+    z-index			: 1;
+
+    padding         : 10px;
+
+    overflow        : hidden;
+
+    background-color: #eee8aa;
+
+    /*Prevents pinch zoom and pan on phones
+    https://developer.mozilla.org/en-US/docs/Web/CSS/touch-action*/
+
+}
