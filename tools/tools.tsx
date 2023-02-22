@@ -5,6 +5,31 @@ import {Icoordinate, Iqrs, Ixy} from "../interfaces/dndem";
 import * as ITools from "../interfaces/tools";
 import * as React from "react";
 
+// [1]
+// Where (Direct) : https://stackoverflow.com/a/62415754
+// Where          : https://stackoverflow.com/questions/10744645/detect-touchpad-vs-mouse-in-javascript
+// Posted         : answered Jun 16, 2020 at 19:00
+// By             : Matt Korostoff | https://stackoverflow.com/users/1209832/matt-korostoff
+// Edited         :
+// By             :
+// Read           : 2023-02-22
+// Modified by me : 2023-02-22
+
+export function detectTrackPad(e: any) {
+    let isTrackpad:boolean = false;
+    if (e.nativeEvent['wheelDeltaY']) {
+        if (Math.abs(e.nativeEvent['wheelDeltaY']) !== 120) {
+            isTrackpad = true;
+        }
+    }
+    else if (e.deltaMode === 0) {
+        isTrackpad = true;
+    }
+
+    console.log(isTrackpad ? "Trackpad detected" : "Mousewheel detected");
+    return isTrackpad;
+}
+
 export function paintBrush(array: string[][], coord: Iqrs, color: string, size: number) {
     let fillStack: Iqrs[] = [];
     let returnStack: Icoordinate[] = [];

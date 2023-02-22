@@ -192,10 +192,15 @@ export default class PropertiesWindow extends React.Component<IPropsPropertiesWi
 
         // <image id={styles.propertyWindowToken} href={this.props.entity.state.token}></image><br/><br/><br/>
 
+        let token: string = this.props.entity.token;
+        if (this.props.entity.token === undefined || !this.props.entity.token.includes('data')) {
+            token = "/tokens/person.png";
+        }
+
         return (
             <div id={styles.propertyWindowContainer}>
 
-                <img id={styles.propertyWindowToken} src={this.props.entity.token} alt={'entity token'}
+                <img id={styles.propertyWindowToken} src={token} alt={'entity token'}
                      onClick={this.handleTokenLoad}>
                 </img><br/>
 

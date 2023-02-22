@@ -5,7 +5,7 @@ import Dndem from "../styles/board.module.css";
 
 import {IPropsBoard, Iqrs, IStateBoard, IviewBox, Ixy} from "../interfaces/dndem";
 import ContextMenuItem from "./contextMenuItem";
-import {deepCopy, getSVGCoord} from "../tools/tools";
+import {deepCopy, detectTrackPad, getSVGCoord} from "../tools/tools";
 
 // React.Component subclass
 class Board extends React.Component<IPropsBoard, IStateBoard> {
@@ -305,6 +305,8 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
         //console.log(e.ctrlKey, e.deltaX, e.deltaY, e.deltaZ, e);
         //e.preventDefault();
 
+        let isTrackPad: boolean = detectTrackPad(e);
+
         if (this.svgRef == null || this.svgRef === undefined) return false;
         let viewBoxZoom: IviewBox = this.state.viewBox;
 
@@ -317,10 +319,12 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
         let dw: number = 0;
         let dh: number = 0;
 
-        if (Math.abs(e.deltaX)) { // Pinch-Pan-Zoom
+        if (isTrackPad && !e.ctrlKey) { // Pinch-Pan-Zoom
 
         }
-        else { // Zoom (2 finger or wheel)
+        else { // Zoom ((2 finger or wheel) + ctrl)
+
+            // Zoom depends on location of mouse
             let mx: number = e.nativeEvent.offsetX; // mouse x
             let my: number = e.nativeEvent.offsetY;
 
