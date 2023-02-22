@@ -80,6 +80,7 @@ export default class Dndmap extends React.Component<{}, IState> {
         this.handleEntityEnter = this.handleEntityEnter.bind(this);
         this.handleEntityClick = this.handleEntityClick.bind(this);
         this.handleOnEntityMove = this.handleOnEntityMove.bind(this);
+        this.handleOnEntityChange = this.handleOnEntityChange.bind(this);
 
         this.entityConstructed = this.entityConstructed.bind(this);
 
@@ -508,7 +509,7 @@ export default class Dndmap extends React.Component<{}, IState> {
         /*if      (event.button == 0) mouseMainLeft = true;         // 001
         else if (event.button == 1) mouseMainMiddle = true;         // 010
         else if (event.button == 2) mouseMainRight = true;*/        // 100
-        if (this.moveEntity && this.selectedEntity !== undefined && this.paintTool.tool == 'none') {
+        if (this.moveEntity && this.state.selectedEntity !== undefined && this.paintTool.tool == 'none') {
 
             // If the mouse is not held down. Stop move. This is a backup solution as it is
             // not always properly detected that the mouse is no longer pressed.
@@ -520,12 +521,12 @@ export default class Dndmap extends React.Component<{}, IState> {
             let xy: Ixy = getSVGCoord(e);
             if (xy === null) return;
 
-            let qrs: Iqrs = this.selectedEntity.xyToQrs(xy);
-            let TargetQrs: Iqrs = this.selectedEntity.qrs;
+            let qrs: Iqrs = this.state.selectedEntity.xyToQrs(xy);
+            let TargetQrs: Iqrs = this.state.selectedEntity.qrs;
             let DeltaQrs: Iqrs = {q: qrs.q - TargetQrs.q, r: qrs.r - TargetQrs.r};
 
             // Move the entity;
-            this.selectedEntity.move(DeltaQrs);
+            this.state.selectedEntity.move(DeltaQrs);
         }
     }
 
@@ -553,8 +554,6 @@ export default class Dndmap extends React.Component<{}, IState> {
 
         if (this.paintTool.tool != "none") return;
 
-        this.selectedEntity = target;
-
         let coord: Ixy = {x: e.clientX - 200, y: e.clientY - 200};
         let SVGCoord: Ixy = getSVGCoord(e);
 
@@ -567,7 +566,8 @@ export default class Dndmap extends React.Component<{}, IState> {
                                             (() => {this.test();})];
 
         this.setState(() => ({
-            contextMenu: contextMenu
+            contextMenu: contextMenu,
+            selectedEntity: target
         }));
 
     }
@@ -642,10 +642,14 @@ export default class Dndmap extends React.Component<{}, IState> {
     saveMapFile(e: React.MouseEvent<HTMLDivElement>) {
         console.log("saveMapFile");
 
+        console.log(this.state.entities.entityList);
+
         let gameData: IGameData = { entityList: this.state.entities.entityList,
                                     mapData: this.state.mapData};
 
         let gameDataJSON = JSON.stringify(gameData);
+
+        console.log(gameDataJSON);
 
         download("gamedata.dem", gameDataJSON);
 
@@ -748,9 +752,27 @@ export default class Dndmap extends React.Component<{}, IState> {
                                                     onMouseEnter={this.handleEntityEnter}
                                                     onMouseClick={this.handleEntityClick}
                                                     onMove={this.handleOnEntityMove}
+                                                    onChange={this.handleOnEntityChange}
                                                     onContext={this.handleOnContextMenuEntity}
                                                     onEntityConstructed={this.entityConstructed}></Entity>;
         return newEntity;
+    }
+
+    handleOnEntityChange(target: Entity) {
+    console.log('entity change');
+
+        for (let i: number = 0; i < this.state.entities.entityList.length; i++) {
+            if (this.state.entities.entityList[i].sid == target.props.sid) {
+                this.state.entities.entityList[i].qrs = target.qrs;
+                this.state.entities.entityList[i].xy = target.xy;
+                this.state.entities.entityList[i].color = target.color;
+                this.state.entities.entityList[i].token = target.token;
+
+                this.state.entities.entityList[i].name = target.name;
+
+                break;
+            }
+        }
     }
 
     contextRemoveEntity(target: Entity) {
@@ -869,7 +891,6 @@ export default class Dndmap extends React.Component<{}, IState> {
     // ########### ENTITY - BEGIN ###########
 
     private moveEntity: boolean = false;
-    private selectedEntity: Entity | undefined;
 
     handleEntityUp(e: React.MouseEvent<SVGElement>, target: Entity) {
         this.moveEntity = false;
@@ -878,13 +899,16 @@ export default class Dndmap extends React.Component<{}, IState> {
     handleEntityDown(e: React.MouseEvent<SVGElement>, target: Entity) {
         if (this.paintTool.tool == 'none') {
             this.moveEntity = true;
-            this.selectedEntity = target;
+
+            this.setState(() => ({
+                selectedEntity: target
+            }));
         }
 
     }
 
     handleEntityMove(e: React.MouseEvent<SVGElement>, target: Entity) {
-        if (this.moveEntity && this.selectedEntity == target) {
+        if (this.moveEntity && this.state.selectedEntity == target) {
             //console.log(getSVGCoord(e));
         }
     }
@@ -958,7 +982,7 @@ export default class Dndmap extends React.Component<{}, IState> {
                                           onToolChange={this.onPaintToolChange}
                                           color={ this.paintTool.color}/>
 
-                    {this.showProperties && <PropertiesWindow entity={this.selectedEntity}></PropertiesWindow>}
+                    {this.showProperties && <PropertiesWindow entity={this.state.selectedEntity}></PropertiesWindow>}
 
                     {this.state.contextMenu.render && <ContextMenu coord={this.state.contextMenu.coord}
                             onClick={this.handleOnContextMenuClick}

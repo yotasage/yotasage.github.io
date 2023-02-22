@@ -3,6 +3,21 @@
 
 import {IMap} from "../interfaces/dndem";
 
+export function loadFile(callback: Function, filetype: string = 'dem') {
+    let element: HTMLInputElement = document.createElement('input');
+    element.setAttribute('type', 'file');
+    element.setAttribute('file-selector', 'single');
+    element.setAttribute('accept', filetype);
+    element.addEventListener('change', callback, false);
+
+    element.style.display = 'none';
+    document.body.appendChild(element);
+
+    element.click();
+
+    document.body.removeChild(element);
+}
+
 export function saveMap(mapData: IMap) {
     let mapDataJSON = JSON.stringify(mapData);
     //console.log(mapDataJSON);

@@ -1,6 +1,8 @@
 import * as React from 'react';
 //import Tile from './tileHexagon';
 
+import Image from "next/image";
+
 import styles from "../styles/propertiesWindow.module.css";
 
 import {
@@ -10,6 +12,7 @@ import {
 
 import {deepCopy, getSVGCoord} from "../tools/tools";
 import Entity from "./entity";
+import {loadFile} from "../tools/fileSaveLoad";
 
 // React.Component subclass
 export default class PropertiesWindow extends React.Component<IPropsPropertiesWindow, IStatePropertiesWindow> {
@@ -29,6 +32,9 @@ export default class PropertiesWindow extends React.Component<IPropsPropertiesWi
         this.handleXChange = this.handleXChange.bind(this);
         this.handleYChange = this.handleYChange.bind(this);
 
+        this.handleTokenLoad = this.handleTokenLoad.bind(this);
+        this.handleTokenLoaded = this.handleTokenLoaded.bind(this);
+        this.previewToken = this.previewToken.bind(this);
 
         this.state = {
             id: this.props.entity.id,
@@ -152,37 +158,112 @@ export default class PropertiesWindow extends React.Component<IPropsPropertiesWi
         }));
     }
 
+    handleTokenLoad(e: any) {
+        loadFile(this.handleTokenLoaded, '.png, .jpg, .gif');
+    }
+
+    handleTokenLoaded(e: any) {
+        let loadedTokenFiles = e.target.files; // FileList object
+        let file = loadedTokenFiles[0]; // Get the first file
+
+        let reader = new FileReader();
+        reader.onload = this.previewToken;   // Function to perform when reading of file is complete
+        reader.readAsDataURL(file);
+    }
+
+    previewToken(e: any) {
+        //console.log(e.target.result);
+
+        this.props.entity.token = e.target.result;
+
+        this.setState(() => ({
+            token: e.target.result
+        }));
+    }
+
+    /*shouldComponentUpdate(nextProps: Readonly<IPropsPropertiesWindow>, nextState: Readonly<IStatePropertiesWindow>, nextContext: any): boolean {
+        console.log('yes');
+        return true;
+    }*/
 
     // https://stackoverflow.com/questions/63005791/props-dont-update-when-state-updates-in-react
     render() {
         console.log("RENDER PROPERTIES WINDOW")
 
+        // <image id={styles.propertyWindowToken} href={this.props.entity.state.token}></image><br/><br/><br/>
+
         return (
             <div id={styles.propertyWindowContainer}>
-                <label htmlFor="name">name:</label>
-                <input type="text" id="name" name="name" value={this.state.name} onChange={this.handleNameChange}/><br/>
-                <label htmlFor="id">id:</label>
-                <input type="text" id="id" name="id" value={this.state.id} onChange={this.handleIdChange}/><br/>
-                <label htmlFor="type">type:</label>
-                <input type="text" id="type" name="type" value={this.state.type} onChange={this.handleTypeChange}/><br/>
-                <label htmlFor="color">color:</label>
-                <input type="text" id="color" name="color" value={this.state.color} onChange={this.handleColorChange}/><br/>
-                <label htmlFor="size">size:</label>
-                <input type="text" id="size" name="size" value={this.state.size} onChange={this.handleSizeChange}/><br/><br/>
+
+                <img id={styles.propertyWindowToken} src={this.props.entity.token} alt={'entity token'}
+                     onClick={this.handleTokenLoad}>
+                </img><br/>
+
+                <button id={styles.propertyWindowTokenLoadBtn}
+                    onClick={this.handleTokenLoad}>
+                    Change
+                </button><br/>
+
+                <div>
+                    <label htmlFor="name">name:</label>
+                    <input type="text" className={styles.inputs} id="name" name="name" value={this.props.entity.name} onChange={this.handleNameChange}/>
+                </div>
+
+                <div>
+                    <label htmlFor="id">id:</label>
+                    <input type="text" className={styles.inputs} id="id" name="id" value={this.props.entity.id} onChange={this.handleIdChange}/>
+                </div>
+
+                <div>
+                    <label htmlFor="type">type:</label>
+                    <input type="text" className={styles.inputs} id="type" name="type" value={this.props.entity.type} onChange={this.handleTypeChange}/>
+                </div>
+
+                <div>
+                    <label htmlFor="color">color:</label>
+                    <input type="text" className={styles.inputs} id="color" name="color" value={this.props.entity.color} onChange={this.handleColorChange}/>
+                </div>
+
+                <div>
+                    <label htmlFor="size">size:</label>
+                    <input type="text" className={styles.inputs} id="size" name="size" value={this.props.entity.size} onChange={this.handleSizeChange}/>
+                </div>
 
                 <label htmlFor="qrs">qrs:</label><br/>
-                <label htmlFor="q">q:</label>
-                <input type="text" id="q" name="q" value={this.state.qrs.q} onChange={this.handleQChange}/><br/>
-                <label htmlFor="r">r:</label>
-                <input type="text" id="r" name="r" value={this.state.qrs.r} onChange={this.handleRChange}/><br/>
-                <label htmlFor="s">s:</label>
-                <input type="text" id="s" name="s" value={this.state.qrs.s} onChange={this.handleSChange}/><br/><br/>
 
-                <label htmlFor="xy">xy:</label><br/>
-                <label htmlFor="x">x:</label>
-                <input type="text" id="x" name="x" value={this.state.xy.x} onChange={this.handleXChange}/><br/>
-                <label htmlFor="y">y:</label>
-                <input type="text" id="y" name="y" value={this.state.xy.y} onChange={this.handleYChange}/>
+                <div>
+                    <label htmlFor="q">q:</label>
+                    <input type="text" className={styles.inputs} id="q" name="q" value={this.props.entity.qrs.q} onChange={this.handleQChange}/>
+                </div>
+
+                <div>
+                    <label htmlFor="r">r:</label>
+                    <input type="text" className={styles.inputs} id="r" name="r" value={this.props.entity.qrs.r} onChange={this.handleRChange}/>
+                </div>
+
+                <div>
+                    <label htmlFor="s">s:</label>
+                    <input type="text" className={styles.inputs} id="s" name="s" value={this.props.entity.qrs.s} onChange={this.handleSChange}/>
+                </div>
+
+
+                <div>
+                    <label htmlFor="x">x:</label>
+                    <input type="text" className={styles.inputs} id="x" name="x" value={this.props.entity.xy.x} onChange={this.handleXChange}/>
+                </div>
+
+                <div>
+                    <label htmlFor="y">y:</label>
+                    <input type="text" className={styles.inputs} id="y" name="y" value={this.props.entity.xy.y} onChange={this.handleYChange}/>
+                </div>
+
+                <br/>
+                <br/>
+                <br/><br/>
+
+                
+                <br/>
+
             </div>
         );
     }

@@ -98,11 +98,15 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
             this._xy = {x: 0, y: 0};
         }
 
+        this._token = this.props.token;
+
         this.state = {
             color: this._color,
             qrs: this._qrs,
             xy: this._xy,
-            size: this._size
+            size: this._size,
+            token: this._token,
+            id: this._id
         };
 
         console.log("Entity Constructor", this.id);
@@ -114,7 +118,9 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
         return this._id;
     }
     set id(value: number) {
+        console.log('helluy');
         this._id = value;
+        this.setState({id: this.id});
     }
 
     private _size: number;
@@ -123,6 +129,7 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
     }
     set size(value: number) {
         this._size = value;
+        this.setState({size: this.size});
     }
 
     private _type: string;
@@ -176,6 +183,15 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
         this.setState({color: value})
     }
 
+    private _token: string;
+    get token(): string {
+        return this._token;
+    }
+    set token(value: string) {
+        this._token = value;
+        this.setState({token: value})
+    }
+
     qrsToXy(qrs: Iqrs) {
         let xy: Ixy = {x: 0, y: 0};
         xy.x = this.stepSize * (Math.sqrt(3) * qrs.q  +  Math.sqrt(3)/2 * qrs.r)
@@ -214,7 +230,7 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
         this.xy = newXy;
         this.qrs = newQrs;
         this.setState({xy: newXy, qrs: newQrs}); // check out call back for setState
-        this.handleOnMove();
+        //this.handleOnMove();
     }
 
     handleOnContextMenu(e: React.MouseEvent<SVGElement>) {
@@ -227,6 +243,10 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
 
     handleOnMove() {
         if (this.props.onMove !== undefined) this.props.onMove(null, this);
+    }
+
+    handleOnChange() {
+        if (this.props.onChange !== undefined) this.props.onChange(this);
     }
 
     onKeyDown(e: React.KeyboardEvent<SVGElement>) {
@@ -301,8 +321,13 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
         if (this.props.onMouseClick !== undefined) this.props.onMouseClick(e, this);
     }
 
+    componentDidUpdate(prevProps: Readonly<IPropsEntity>, prevState: Readonly<IStateEntity>, snapshot?: any) {
+        this.handleOnChange();
+        return true;
+    }
+
     render() {
-        console.log("RENDER ENTITY", this.state.xy);
+        //console.log("RENDER ENTITY", this.state.xy);
 
         //let className: string = 'entity';
 
@@ -325,19 +350,20 @@ class Entity extends React.Component<IPropsEntity, IStateEntity> {
                onKeyDown={this.onKeyDown}
                tabIndex={-1}>
                 <defs>
-                    <clipPath id={"entityClipPath" + this.id}>
+                    <clipPath id={"entityClipPath" + this.props.sid}>
                         <circle cx={xy.x} cy={xy.y} r={this.state.size}></circle>
                     </clipPath>
                 </defs>
-                <circle className={DndemEntity.entity} id={this.id.toString()} cx={xy.x} cy={xy.y} r={this.state.size} fill={this.state.color}/>
+                <circle className={DndemEntity.entity} id={this.props.sid.toString()} cx={xy.x} cy={xy.y} r={this.state.size} fill={this.state.color}/>
                 <text className={DndemEntity.entity}
                       fontSize={fontSize}
                       x={xy.x}
-                      y={xy.y}>{this.id}</text>
+                      y={xy.y}>{this.state.id}</text>
                 <image width={this.state.size*2} height={this.state.size*2}
                        x={xy.x - this.state.size} y={xy.y - this.state.size}
-                       clipPath={"url(#entityClipPath" +  this.id + ")"}
-                       className={DndemEntity.entity}>
+                       clipPath={"url(#entityClipPath" +  this.props.sid + ")"}
+                       className={DndemEntity.entity}
+                       href={this.state.token}>
 
                 </image>
             </g>

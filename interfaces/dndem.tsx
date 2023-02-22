@@ -81,6 +81,7 @@ export interface IState {
 
     mapData: IMap;
     entities: IEntities;
+    selectedEntity?: Entity;
 
     contextMenu: IContextMenu;
 }
@@ -128,6 +129,7 @@ export interface IEntity {
     color?: string;
     stepSize?: number;
     size?: number | string;
+    token?: string;
 
     xy?: Ixy;
     qrs?: Iqrs;
@@ -150,6 +152,7 @@ export interface IPropsEntity {
     color?: string;
     stepSize?: number;
     size?: number | string;
+    token?: string;
 
     qrs?: Iqrs;
     xy?: Ixy;
@@ -162,6 +165,7 @@ export interface IPropsEntity {
     onMouseClick?: Function;
 
     onMove?: Function;
+    onChange?: Function;
 
     onContext?: Function;
 
@@ -173,6 +177,8 @@ export interface IStateEntity {
     qrs: Iqrs;
     xy: Ixy;
     size: number;
+    token: string;
+    id: number;
 }
 
 export interface IPropsTileHexagon {
@@ -188,7 +194,7 @@ export interface IPropsPropertiesWindow {
     entity?: Entity;
 }
 
-export interface IStatePropertiesWindow extends IEntity{
+export interface IStatePropertiesWindow extends IEntity {
 
 }
 

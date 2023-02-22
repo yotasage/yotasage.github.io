@@ -2,8 +2,8 @@
     position		: fixed;
     top				: 2%;
     left			: 2%;
-    width           : 20%;
-    height          : 40%;
+    width           : auto;
+    height          : auto;
     z-index			: 1;
 
     padding         : 10px;
@@ -12,7 +12,34 @@
 
     background-color: #eee8aa;
 
+    border-radius		: 10px;
+
     /*Prevents pinch zoom and pan on phones
     https://developer.mozilla.org/en-US/docs/Web/CSS/touch-action*/
 
+}
+
+#propertyWindowToken {
+    width: 200px;
+    margin: 10px;
+
+}
+
+#propertyWindowToken:after {
+    padding-bottom: 100%;
+    margin: 10px;
+}
+
+#propertyWindowTokenLoadBtn {
+    width: 100%;
+    margin-left: 10px;
+    margin-right: 10px;
+    margin-bottom: 10px;
+}
+
+.inputs {
+    display: inline-block;
+        margin-right: 10px;
+        margin-left: 10px;
+    float: right;
 }
