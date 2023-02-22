@@ -8,6 +8,7 @@ export function loadFile(callback: Function, filetype: string = 'dem') {
     element.setAttribute('type', 'file');
     element.setAttribute('file-selector', 'single');
     element.setAttribute('accept', filetype);
+    // @ts-ignore
     element.addEventListener('change', callback, false);
 
     element.style.display = 'none';
