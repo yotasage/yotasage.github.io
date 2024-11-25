@@ -1,9 +1,13 @@
 import Head from 'next/head'
 import Link from 'next/link';
+import React from "react";
 
-import styles from '../styles/Home.module.css';
+import CalcBox from './components/calcBox';
+
+import styles from '../../styles/Home.module.css';
 
 export default function Home() {
+
   return (
     <div className={styles.container}>
       <Head>
@@ -13,34 +17,14 @@ export default function Home() {
 
       <main>
         <h1 className={styles.title}>
-          Welcome to Jonathan's <a href="https://nextjs.org">Next.js!</a> project.
+          Simulator setup tool
         </h1>
 
-        <p className={styles.description}>
-          Get started by checking out the different pages below.
-        </p>
-
-        <div className={styles.grid}>
-          <Link href="/code/hexagon" className={styles.card}>
-            <h3>Hexagon &rarr;</h3>
-            <p>Cool code related to a DnD map website</p>
-          </Link>
-
-          <Link href="/" className={styles.card}>
-            <h3>jschem &rarr;</h3>
-            <p>Future Project. Online schematic drawing program.</p>
-          </Link>
-
-          <Link href="/simsetup/main" className={styles.card}>
-            <h3>Simulation setup &rarr;</h3>
-            <p>A calculator tool for calculating parameters that are useful when doing FFTs and similar.</p>
-          </Link>
-
-          <Link href="/" className={styles.card}>
-            <h3>Nothing here yet &rarr;</h3>
-            <p>There is nothing here yet, but maybe something will pop up over the next few months.</p>
-          </Link>
-        </div>
+        <CalcBox f0_readOnly={true} fs_readOnly={false} ncyc_readOnly={false} npts_readOnly={false}></CalcBox>
+        <CalcBox f0_readOnly={false} fs_readOnly={true} ncyc_readOnly={false} npts_readOnly={false}></CalcBox>
+        <CalcBox f0_readOnly={false} fs_readOnly={false} ncyc_readOnly={true} npts_readOnly={false}></CalcBox>
+        <CalcBox f0_readOnly={false} fs_readOnly={false} ncyc_readOnly={false} npts_readOnly={true}></CalcBox>
+        
       </main>
 
       <footer>
