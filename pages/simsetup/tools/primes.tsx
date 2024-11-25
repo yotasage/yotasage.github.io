@@ -17,9 +17,9 @@ export function SieveOfAtkin(limit)
      
     // 2 and 3 are known to be prime
     if (limit > 2)
-        document.write(2 + " ");
+        console.log(2);
     if (limit > 3)
-        document.write(3 + " ");
+        console.log(3);
  
     // Initialise the sieve array with false values
     let sieve = new Array<boolean>()
@@ -73,10 +73,10 @@ export function SieveOfAtkin(limit)
  
     // Print primes
     // using sieve[]
-    for (let a = 5; a <= limit; a++)
-        if (sieve[a])
-            document.write(a , " ");
-        document.write("<br>");
+    // for (let a = 5; a <= limit; a++)
+    //     if (sieve[a])
+    //         document.write(a , " ");
+    //     document.write("<br>");
 }
 
  
