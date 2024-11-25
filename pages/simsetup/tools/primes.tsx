@@ -254,7 +254,7 @@ export function prevPrime(N)
     let found = false; 
  
     // Loop continuously until isPrime returns 
-    // true for a number greater than n 
+    // true for a number less than n 
     while (!found) { 
         prime--; 
  
