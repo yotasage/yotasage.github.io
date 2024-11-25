@@ -65,7 +65,7 @@ export function SieveOfAtkin(limit)
     // squares as non-prime
     for (let r = 5; r * r <= limit; r++) {
         if (sieve[r]) {
-            for (i = r * r; i <= limit;
+            for (let i = r * r; i <= limit;
                             i += r * r)
                 sieve[i] = false;
         }
