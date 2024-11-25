@@ -5,8 +5,11 @@ import React from "react";
 import CalcBox from './components/calcBox';
 
 import styles from '../../styles/Home.module.css';
+import PrimeBox from './components/primeBox';
+import PowerBox from './components/powerBox';
 
 export default function Home() {
+  
 
   return (
     <div className={styles.container}>
@@ -20,6 +23,8 @@ export default function Home() {
           Simulator setup tool
         </h1>
 
+        <div className={styles.grid}><PrimeBox></PrimeBox><PowerBox></PowerBox></div>
+        
         <CalcBox f0_readOnly={true} fs_readOnly={false} ncyc_readOnly={false} npts_readOnly={false}></CalcBox>
         <CalcBox f0_readOnly={false} fs_readOnly={true} ncyc_readOnly={false} npts_readOnly={false}></CalcBox>
         <CalcBox f0_readOnly={false} fs_readOnly={false} ncyc_readOnly={true} npts_readOnly={false}></CalcBox>
