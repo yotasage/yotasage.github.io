@@ -22,8 +22,8 @@ export function SieveOfAtkin(limit)
         document.write(3 + " ");
  
     // Initialise the sieve array with false values
-    let sieve = new Array()
-    sieve[limit+1] = 0;
+    let sieve = new Array<boolean>()
+    sieve[limit+1] = false;
     for (let i = 0; i <= limit; i++)
         sieve[i] = false;
  
@@ -48,16 +48,16 @@ export function SieveOfAtkin(limit)
             let n = (4 * x * x) + (y * y);
             if (n <= limit && (n % 12 == 1 ||
                                 n % 12 == 5))
-                sieve[n] ^= true;
+                sieve[n] !== true;
  
             n = (3 * x * x) + (y * y);
             if (n <= limit && n % 12 == 7)
-                sieve[n] ^= true;
+                sieve[n] !== true;
  
             n = (3 * x * x) - (y * y);
             if (x > y && n <= limit &&
                             n % 12 == 11)
-                sieve[n] ^= true;
+                sieve[n] !== true;
         }
     }
  
