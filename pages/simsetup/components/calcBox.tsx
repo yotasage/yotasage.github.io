@@ -6,9 +6,9 @@ import styles from '../../../styles/Home.module.css';
 
 export default function CalcBox(props) {
   const [f0, setf0] = React.useState(1000);
-  const [fs, setfs] = React.useState(10000);
   const [ncyc, setncyc] = React.useState(3);
   const [npts, setnpts] = React.useState(1024);
+  const [fs, setfs] = React.useState(npts*f0/ncyc);
 
   const [T0, setT0] = React.useState(1/f0);
   const [Ts, setTs] = React.useState(1/fs);
