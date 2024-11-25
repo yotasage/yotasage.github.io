@@ -210,64 +210,58 @@ export default class PropertiesWindow extends React.Component<IPropsPropertiesWi
                 </button><br/>
 
                 <div>
-                    <label htmlFor="name">name:</label>
+                    <label className={styles.propertyLabel} htmlFor="name">name:</label>
                     <input type="text" className={styles.inputs} id="name" name="name" value={this.props.entity.name} onChange={this.handleNameChange}/>
                 </div>
 
                 <div>
-                    <label htmlFor="id">id:</label>
+                    <label className={styles.propertyLabel} htmlFor="id">id:</label>
                     <input type="text" className={styles.inputs} id="id" name="id" value={this.props.entity.id} onChange={this.handleIdChange}/>
                 </div>
 
                 <div>
-                    <label htmlFor="type">type:</label>
+                    <label className={styles.propertyLabel} htmlFor="type">type:</label>
                     <input type="text" className={styles.inputs} id="type" name="type" value={this.props.entity.type} onChange={this.handleTypeChange}/>
                 </div>
 
                 <div>
-                    <label htmlFor="color">color:</label>
+                    <label className={styles.propertyLabel} htmlFor="color">color:</label>
                     <input type="text" className={styles.inputs} id="color" name="color" value={this.props.entity.color} onChange={this.handleColorChange}/>
                 </div>
 
                 <div>
-                    <label htmlFor="size">size:</label>
+                    <label className={styles.propertyLabel} htmlFor="size">size:</label>
                     <input type="text" className={styles.inputs} id="size" name="size" value={this.props.entity.size} onChange={this.handleSizeChange}/>
                 </div>
 
-                <label htmlFor="qrs">qrs:</label><br/>
+                <label className={styles.propertyLabel} htmlFor="qrs">qrs:</label><br/>
 
                 <div>
-                    <label htmlFor="q">q:</label>
+                    <label className={styles.propertyLabel} htmlFor="q">q:</label>
                     <input type="text" className={styles.inputs} id="q" name="q" value={this.props.entity.qrs.q} onChange={this.handleQChange}/>
                 </div>
 
                 <div>
-                    <label htmlFor="r">r:</label>
+                    <label className={styles.propertyLabel} htmlFor="r">r:</label>
                     <input type="text" className={styles.inputs} id="r" name="r" value={this.props.entity.qrs.r} onChange={this.handleRChange}/>
                 </div>
 
                 <div>
-                    <label htmlFor="s">s:</label>
+                    <label className={styles.propertyLabel} htmlFor="s">s:</label>
                     <input type="text" className={styles.inputs} id="s" name="s" value={this.props.entity.qrs.s} onChange={this.handleSChange}/>
                 </div>
 
+                <label className={styles.propertyLabel} htmlFor="xy">xy:</label><br/>
 
                 <div>
-                    <label htmlFor="x">x:</label>
+                    <label className={styles.propertyLabel} htmlFor="x">x:</label>
                     <input type="text" className={styles.inputs} id="x" name="x" value={this.props.entity.xy.x} onChange={this.handleXChange}/>
                 </div>
 
                 <div>
-                    <label htmlFor="y">y:</label>
+                    <label className={styles.propertyLabel} htmlFor="y">y:</label>
                     <input type="text" className={styles.inputs} id="y" name="y" value={this.props.entity.xy.y} onChange={this.handleYChange}/>
                 </div>
-
-                <br/>
-                <br/>
-                <br/><br/>
-
-                
-                <br/>
 
             </div>
         );

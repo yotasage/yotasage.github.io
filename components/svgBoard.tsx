@@ -302,12 +302,11 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
     // Modified by me : 2022-05-27
 
     handleWheel(e: React.WheelEvent<SVGElement>) {
-        //console.log(e.ctrlKey, e.deltaX, e.deltaY, e.deltaZ, e);
         //e.preventDefault();
 
         let isTrackPad: boolean = detectTrackPad(e);
 
-        if (this.svgRef == null || this.svgRef === undefined) return false;
+        if (this.svgRef === undefined || this.svgRef == null) return false;
         let viewBoxZoom: IviewBox = this.state.viewBox;
 
         let sensitivityZoomWH: number = 0.1;
@@ -335,15 +334,8 @@ class Board extends React.Component<IPropsBoard, IStateBoard> {
             dy = sensitivityZoomXY*dh*my/this.svgRef.current.clientHeight;
         }
 
-
-
-
-
-
-
         viewBoxZoom = {x:viewBoxZoom.x+dx,y:viewBoxZoom.y+dy,w:viewBoxZoom.w-dw,h:viewBoxZoom.h-dh};
         this.setState({viewBox: viewBoxZoom});
-
     }
 
     // ########### SVG MOUSE INTERACT - END ###########
