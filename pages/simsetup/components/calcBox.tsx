@@ -2,7 +2,7 @@ import Head from 'next/head'
 import Link from 'next/link';
 import React, { useEffect } from "react";
 
-import styles from '../../../styles/Home.module.css';
+import styles from '../styles/Home.module.css';
 
 export default function CalcBox(props) {
   const [f0, setf0] = React.useState(1000);
@@ -108,43 +108,50 @@ export default function CalcBox(props) {
         <div className={styles.grid}>
           <div className={styles.card}>
           
-            f0
-            <input type="number" readOnly={props.f0_readOnly} name="f0" value={f0} onChange={updateValue_f0}/><br/>
+            <label htmlFor="f0">f0</label>
+            <input type="number" className={styles.calcBox} readOnly={props.f0_readOnly} name="f0" id="f0" value={f0} onChange={updateValue_f0}/>
 
-            Fs
-            <input type="number" readOnly={props.fs_readOnly} name="fs" value={fs} onChange={updateValue_fs}/><br/>
+            <br/>
+            <label htmlFor="fs">Fs</label>
+            <input type="number" className={styles.calcBox} readOnly={props.fs_readOnly} name="fs" id="fs" value={fs} onChange={updateValue_fs}/>
 
-            Ncyc
-            <input type="number" readOnly={props.ncyc_readOnly} name="ncyc" value={ncyc} onChange={updateValue_ncyc}/><br/>
+            <br/>
+            <label htmlFor="ncyc">Ncyc</label>
+            <input type="number" className={styles.calcBox} readOnly={props.ncyc_readOnly} name="ncyc" id="ncyc" value={ncyc} onChange={updateValue_ncyc}/>
 
-            Npts
-            <input type="number" readOnly={props.npts_readOnly} name="npts" value={npts} onChange={updateValue_npts}/><br/>
-
-          </div>
-
-          <div className={styles.card}>
-            
-            T0
-            <input type="number" readOnly={true} name="T0" value={T0}/><br/>
-
-            Ts
-            <input type="number" readOnly={true} name="TS" value={Ts}/><br/>
-
-            f_res
-            <input type="number" readOnly={true} name="ncyc" value={f_res}/><br/>
-
-            Npts0
-            <input type="number" readOnly={true} name="npts" value={npts0}/><br/>
+            <br/>
+            <label htmlFor="npts">Npts</label>
+            <input type="number" className={styles.calcBox} readOnly={props.npts_readOnly} name="npts" id="npts" value={npts} onChange={updateValue_npts}/>
 
           </div>
 
           <div className={styles.card}>
             
-            t_start
-            <input type="number" readOnly={true} name="T0" value={tstart}/><br/>
+            <label htmlFor="T0">T0</label>
+            <input type="number" className={styles.calcBox} readOnly={true} name="T0" id="T0" value={T0}/>
 
-            t_stop
-            <input type="number" readOnly={true} name="TS" value={tstop}/><br/>
+            <br/>
+            <label htmlFor="TS">Ts</label>
+            <input type="number" className={styles.calcBox} readOnly={true} name="TS" id="TS" value={Ts}/>
+
+            <br/>
+            <label htmlFor="f_Res">f_Res</label>
+            <input type="number" className={styles.calcBox} readOnly={true} name="f_Res" id="f_Res" value={f_res}/>
+
+            <br/>
+            <label htmlFor="npts">Npts</label>
+            <input type="number" className={styles.calcBox} readOnly={true} name="npts" id="npts" value={npts0}/>
+
+          </div>
+
+          <div className={styles.card}>
+            
+            <label htmlFor="t_start">t_start</label>
+            <input type="number" className={styles.calcBox} readOnly={true} name="t_start" id="t_start" value={tstart}/>
+
+            <br/>
+            <label htmlFor="t_stop">t_stop</label>
+            <input type="number" className={styles.calcBox} readOnly={true} name="t_stop" id="t_stop" value={tstop}/>
 
           </div>
 

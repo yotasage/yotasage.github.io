@@ -4,7 +4,7 @@ import React from "react";
 
 import CalcBox from './components/calcBox';
 
-import styles from '../../styles/Home.module.css';
+import styles from '/styles/Home.module.css';
 import PrimeBox from './components/primeBox';
 import PowerBox from './components/powerBox';
 
