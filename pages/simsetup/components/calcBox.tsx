@@ -8,8 +8,8 @@ import Anum, {prefixes} from '../tools/my_numbers'
 
 export default function CalcBox(props) {
   const [f0, setf0] = React.useState('1000');
-  const [ncyc, setncyc] = React.useState('3');
-  const [npts, setnpts] = React.useState('1024');
+  const [ncyc, setncyc] = React.useState('7');
+  const [npts, setnpts] = React.useState('16384');
   const [fs, setfs] = React.useState(calcFs(npts, f0, ncyc));
 
   const [T0, setT0] = React.useState(calcT0(f0));
