@@ -32,7 +32,7 @@ export default class Anum {
             return false;
         }
 
-        let prefix: string = number.replace(/[0-9.]/g, '')
+        let prefix: string = number.replace(/[0-9.e+-]/g, '')
         // console.log(prefix)
 
         if (prefix != '') {
