@@ -14,8 +14,8 @@
             return number;
         }
         
-        let value = Number((number as string).replace(/[^0-9.Ee+-]/g,'')); // /\D/g
-        let prefix: string = (number as string).replace(/[0-9.e+-]/g, '')
+        let value = Number(number.toString().replace(/[^0-9.Ee+-]/g,'')); // /\D/g
+        let prefix: string = number.toString().replace(/[0-9.e+-]/g, '')
         let prefix_value = prefixes[prefix] as number | undefined;
 
         if (prefix_value === undefined) {
@@ -32,7 +32,7 @@
             return false;
         }
 
-        let prefix: string = (number as string).replace(/[0-9.e+-]/g, '')
+        let prefix: string = number.toString().replace(/[0-9.e+-]/g, '')
         // console.log(prefix)
 
         if (prefix != '') {
