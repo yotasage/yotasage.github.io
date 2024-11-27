@@ -21,9 +21,9 @@ export default function Home() {
         </p>
 
         <div className={styles.grid}>
-          <Link href="/code/hexagon" className={styles.card}>
-            <h3>Hexagon &rarr;</h3>
-            <p>Cool code related to a DnD map website</p>
+          <Link href="/" className={styles.card}>
+            <h3>Nothing here yet &rarr;</h3>
+            <p>There is nothing here yet, but maybe something will pop up over the next few months.</p>
           </Link>
 
           <Link href="/" className={styles.card}>
