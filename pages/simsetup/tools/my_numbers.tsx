@@ -3,19 +3,19 @@
 /**
  * Advanced numbers
  */
-export default class Anum {
+// export default class Anum {
     // constructor(value, prefix) {
     //     this.value: Number = value;
     //     this
     // }
     
-    static calcEqivalentValue(number: string | number): number { // , prefix?: undefined | string
+    export default function calcEqivalentValue(number: string | number): number { // , prefix?: undefined | string
         if (typeof number === "number") {
             return number;
         }
         
-        let value = Number(number.replace(/[^0-9.Ee+-]/g,'')); // /\D/g
-        let prefix: string = number.replace(/[0-9.e+-]/g, '')
+        let value = Number((number as string).replace(/[^0-9.Ee+-]/g,'')); // /\D/g
+        let prefix: string = (number as string).replace(/[0-9.e+-]/g, '')
         let prefix_value = prefixes[prefix] as number | undefined;
 
         if (prefix_value === undefined) {
@@ -27,12 +27,12 @@ export default class Anum {
         return value*prefix_value as number
     }
 
-    static containsPrefix(number: string | number): boolean {
+    export function containsPrefix(number: string | number): boolean {
         if (typeof number === "number") {
             return false;
         }
 
-        let prefix: string = number.replace(/[0-9.e+-]/g, '')
+        let prefix: string = (number as string).replace(/[0-9.e+-]/g, '')
         // console.log(prefix)
 
         if (prefix != '') {
@@ -40,7 +40,7 @@ export default class Anum {
         }
         return false;
     }
-}
+// }
 
 
 export const prefixes = {

@@ -4,7 +4,8 @@ import React, { useEffect } from "react";
 
 import styles from '../styles/Home.module.css';
 
-import Anum, {prefixes} from '../tools/my_numbers'
+import containsPrefix from '../tools/my_numbers'
+import calcEqivalentValue from '../tools/my_numbers'
 
 export default function CalcBox(props) {
   const [f0, setf0] = React.useState('1000');
@@ -28,9 +29,9 @@ export default function CalcBox(props) {
    * @returns f0
    */
   function calcF0(ncyc: number | string, fs: number | string, npts: number | string) {
-    ncyc = Anum.calcEqivalentValue(ncyc);
-    fs = Anum.calcEqivalentValue(fs);
-    npts = Anum.calcEqivalentValue(npts);
+    ncyc = calcEqivalentValue(ncyc);
+    fs = calcEqivalentValue(fs);
+    npts = calcEqivalentValue(npts);
 
     if (npts <= 0) {
       return ''
@@ -48,9 +49,9 @@ export default function CalcBox(props) {
    * @returns Fs
    */
   function calcFs(npts: number | string, f0: number | string, ncyc: number | string) {
-    npts = Anum.calcEqivalentValue(npts);
-    f0 = Anum.calcEqivalentValue(f0);
-    ncyc = Anum.calcEqivalentValue(ncyc);
+    npts = calcEqivalentValue(npts);
+    f0 = calcEqivalentValue(f0);
+    ncyc = calcEqivalentValue(ncyc);
 
     if (ncyc <= 0) {
       return ''
@@ -61,9 +62,9 @@ export default function CalcBox(props) {
   }
 
   function calcNcyc(npts: number | string, f0: number | string, fs: number | string) {
-    npts = Anum.calcEqivalentValue(npts);
-    f0 = Anum.calcEqivalentValue(f0);
-    fs = Anum.calcEqivalentValue(fs);
+    npts = calcEqivalentValue(npts);
+    f0 = calcEqivalentValue(f0);
+    fs = calcEqivalentValue(fs);
 
     if (fs <= 0) {
       return ''
@@ -74,9 +75,9 @@ export default function CalcBox(props) {
   }
 
   function calcNpts(ncyc: number | string, fs: number | string, f0: number | string) {
-    ncyc = Anum.calcEqivalentValue(ncyc);
-    fs = Anum.calcEqivalentValue(fs);
-    f0 = Anum.calcEqivalentValue(f0);
+    ncyc = calcEqivalentValue(ncyc);
+    fs = calcEqivalentValue(fs);
+    f0 = calcEqivalentValue(f0);
 
     if (f0 <= 0) {
       return ''
@@ -87,7 +88,7 @@ export default function CalcBox(props) {
   }
 
   function calcT0(f0: number | string) {
-    f0 = Anum.calcEqivalentValue(f0);
+    f0 = calcEqivalentValue(f0);
 
     if (f0 <= 0) {
       return ''
@@ -105,7 +106,7 @@ export default function CalcBox(props) {
    * @returns Ts
    */
   function calcTs(fs: number | string) {
-    fs = Anum.calcEqivalentValue(fs);
+    fs = calcEqivalentValue(fs);
 
     if (fs <= 0) {
       return ''
@@ -116,8 +117,8 @@ export default function CalcBox(props) {
   }
 
   function calcfres(fs: number | string, npts: number | string) {
-    fs = Anum.calcEqivalentValue(fs);
-    npts = Anum.calcEqivalentValue(npts);
+    fs = calcEqivalentValue(fs);
+    npts = calcEqivalentValue(npts);
 
     if (npts <= 0) {
       return ''
@@ -128,8 +129,8 @@ export default function CalcBox(props) {
   }
 
   function calcnpts0(npts: number | string, ncyc: number | string) {
-    npts = Anum.calcEqivalentValue(npts);
-    ncyc = Anum.calcEqivalentValue(ncyc);
+    npts = calcEqivalentValue(npts);
+    ncyc = calcEqivalentValue(ncyc);
 
     if (ncyc <= 0) {
       return ''
@@ -140,9 +141,9 @@ export default function CalcBox(props) {
   }
 
   function calc_tstop(tstart: number | string, T0: number | string, ncyc: number | string) {
-    tstart = Anum.calcEqivalentValue(tstart);
-    T0 = Anum.calcEqivalentValue(T0);
-    ncyc = Anum.calcEqivalentValue(ncyc);
+    tstart = calcEqivalentValue(tstart);
+    T0 = calcEqivalentValue(T0);
+    ncyc = calcEqivalentValue(ncyc);
 
     // return (Number(tstart) + Number(T0)*Number(ncyc)).toString()
     return (tstart + T0*ncyc).toString()
@@ -176,32 +177,32 @@ export default function CalcBox(props) {
   function update_values() {
     if (props.f0_readOnly) {
       let f0 = calcF0(ncyc, fs, npts)
-      if (!Anum.containsPrefix(f0)) {
-        let value = Anum.calcEqivalentValue(f0);
+      if (!containsPrefix(f0)) {
+        let value = calcEqivalentValue(f0);
         f0 = value.toPrecision(props.precision)
       }
       setf0(f0)
     }
     else if (props.fs_readOnly) {
       let fs = calcFs(npts, f0, ncyc)
-      if (!Anum.containsPrefix(fs)) {
-        let value = Anum.calcEqivalentValue(fs);
+      if (!containsPrefix(fs)) {
+        let value = calcEqivalentValue(fs);
         fs = value.toPrecision(props.precision)
       }
       setfs(fs)
     }
     else if (props.ncyc_readOnly) {
       let ncyc = calcNcyc(npts, f0, fs)
-      if (!Anum.containsPrefix(ncyc)) {
-        let value = Anum.calcEqivalentValue(ncyc);
+      if (!containsPrefix(ncyc)) {
+        let value = calcEqivalentValue(ncyc);
         ncyc = value.toPrecision(props.precision)
       }
       setncyc(ncyc)
     }
     else if (props.npts_readOnly) {
       let npts = calcNpts(ncyc, fs, f0)
-      if (!Anum.containsPrefix(npts)) {
-        let value = Anum.calcEqivalentValue(npts);
+      if (!containsPrefix(npts)) {
+        let value = calcEqivalentValue(npts);
         npts = value.toPrecision(props.precision)
       }
       setnpts(npts)
@@ -210,9 +211,9 @@ export default function CalcBox(props) {
 
   function updateValue_f0(e) {
     let new_value = e.target.value as string;
-    let value = Anum.calcEqivalentValue(new_value);
+    let value = calcEqivalentValue(new_value);
 
-    // if (!Anum.containsPrefix(new_value)) {
+    // if (!containsPrefix(new_value)) {
     //   new_value = value.toPrecision(props.precision)
     // }
 
@@ -223,7 +224,7 @@ export default function CalcBox(props) {
 
   function updateValue_ncyc(e) {
     let new_value = e.target.value as string;
-    let value = Anum.calcEqivalentValue(new_value);
+    let value = calcEqivalentValue(new_value);
 
     if (value >= 0) {
       setncyc(new_value);
@@ -232,7 +233,7 @@ export default function CalcBox(props) {
 
   function updateValue_npts(e) {
     let new_value = e.target.value as string;
-    let value = Anum.calcEqivalentValue(new_value);
+    let value = calcEqivalentValue(new_value);
 
     if (value >= 0) {
       setnpts(new_value);
@@ -241,7 +242,7 @@ export default function CalcBox(props) {
 
   function updateValue_fs(e) {
     let new_value = e.target.value as string;
-    let value = Anum.calcEqivalentValue(new_value);
+    let value = calcEqivalentValue(new_value);
 
     if (value >= 0) {
       setfs(new_value);
