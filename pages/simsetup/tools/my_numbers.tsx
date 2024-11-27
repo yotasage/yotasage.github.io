@@ -14,8 +14,8 @@ export default class Anum {
             return number;
         }
         
-        let value = Number(number.replace(/[^0-9.]/g,'')); // /\D/g
-        let prefix: string = number.replace(/[0-9]/g, '')
+        let value = Number(number.replace(/[^0-9.Ee+-]/g,'')); // /\D/g
+        let prefix: string = number.replace(/[0-9.e+-]/g, '')
         let prefix_value = prefixes[prefix] as number | undefined;
 
         if (prefix_value === undefined) {
@@ -25,6 +25,20 @@ export default class Anum {
         // console.log(value, prefix, prefix_value)
 
         return value*prefix_value as number
+    }
+
+    static containsPrefix(number: string | number): boolean {
+        if (typeof number === "number") {
+            return false;
+        }
+
+        let prefix: string = number.replace(/[0-9.]/g, '')
+        // console.log(prefix)
+
+        if (prefix != '') {
+            return true
+        }
+        return false;
     }
 }
 

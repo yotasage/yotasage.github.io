@@ -9,12 +9,20 @@ import PrimeBox from './components/primeBox';
 import PowerBox from './components/powerBox';
 
 export default function Home() {
-  
+  const [precision, setprecision] = React.useState(11);
+
+  function updateValue_precision(e) {
+    let new_value = e.target.value;
+
+    if (new_value > 0) {
+      setprecision(new_value);
+    }
+  }
 
   return (
     <div className={styles.container}>
       <Head>
-        <title>Create Next App</title>
+        <title>Simulator setup tool</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
@@ -23,12 +31,20 @@ export default function Home() {
           Simulator setup tool
         </h1>
 
-        <div className={styles.grid}><PrimeBox></PrimeBox><PowerBox></PowerBox></div>
+        <div className={styles.grid}>
+          
+          <div className={styles.card}>
+            <p>Precision</p><br/>
+            <input type="number" readOnly={false} name="precision" value={precision} onChange={updateValue_precision}/><br/>
+          </div>
+
+          <PrimeBox></PrimeBox>
+          <PowerBox></PowerBox></div>
         
-        <CalcBox f0_readOnly={true} fs_readOnly={false} ncyc_readOnly={false} npts_readOnly={false}></CalcBox>
-        <CalcBox f0_readOnly={false} fs_readOnly={true} ncyc_readOnly={false} npts_readOnly={false}></CalcBox>
-        <CalcBox f0_readOnly={false} fs_readOnly={false} ncyc_readOnly={true} npts_readOnly={false}></CalcBox>
-        <CalcBox f0_readOnly={false} fs_readOnly={false} ncyc_readOnly={false} npts_readOnly={true}></CalcBox>
+        <CalcBox f0_readOnly={true} fs_readOnly={false} ncyc_readOnly={false} npts_readOnly={false} precision={precision}></CalcBox>
+        <CalcBox f0_readOnly={false} fs_readOnly={true} ncyc_readOnly={false} npts_readOnly={false} precision={precision}></CalcBox>
+        <CalcBox f0_readOnly={false} fs_readOnly={false} ncyc_readOnly={true} npts_readOnly={false} precision={precision}></CalcBox>
+        <CalcBox f0_readOnly={false} fs_readOnly={false} ncyc_readOnly={false} npts_readOnly={true} precision={precision}></CalcBox>
         
       </main>
 

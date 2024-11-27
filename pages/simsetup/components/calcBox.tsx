@@ -93,6 +93,8 @@ export default function CalcBox(props) {
       return ''
     }
 
+    // console.log(f0)
+
     // return (Number(1)/Number(f0)).toString()
     return (1/f0).toString()
   }
@@ -149,7 +151,7 @@ export default function CalcBox(props) {
   useEffect(() => {
     // run something every time something in the dependency array changes
     update_values()
-  }, [f0, fs, ncyc, npts]); // <-- dependency array
+  }, [f0, fs, ncyc, npts, props.precision]); // <-- dependency array
 
   useEffect(() => {
     setT0(calcT0(f0));
@@ -173,22 +175,46 @@ export default function CalcBox(props) {
 
   function update_values() {
     if (props.f0_readOnly) {
-      setf0(calcF0(ncyc, fs, npts))
+      let f0 = calcF0(ncyc, fs, npts)
+      if (!Anum.containsPrefix(f0)) {
+        let value = Anum.calcEqivalentValue(f0);
+        f0 = value.toPrecision(props.precision)
+      }
+      setf0(f0)
     }
     else if (props.fs_readOnly) {
-      setfs(calcFs(npts, f0, ncyc))
+      let fs = calcFs(npts, f0, ncyc)
+      if (!Anum.containsPrefix(fs)) {
+        let value = Anum.calcEqivalentValue(fs);
+        fs = value.toPrecision(props.precision)
+      }
+      setfs(fs)
     }
     else if (props.ncyc_readOnly) {
-      setncyc(calcNcyc(npts, f0, fs))
+      let ncyc = calcNcyc(npts, f0, fs)
+      if (!Anum.containsPrefix(ncyc)) {
+        let value = Anum.calcEqivalentValue(ncyc);
+        ncyc = value.toPrecision(props.precision)
+      }
+      setncyc(ncyc)
     }
     else if (props.npts_readOnly) {
-      setnpts(calcNpts(ncyc, fs, f0))
+      let npts = calcNpts(ncyc, fs, f0)
+      if (!Anum.containsPrefix(npts)) {
+        let value = Anum.calcEqivalentValue(npts);
+        npts = value.toPrecision(props.precision)
+      }
+      setnpts(npts)
     }
   }
 
   function updateValue_f0(e) {
-    let new_value = e.target.value;
+    let new_value = e.target.value as string;
     let value = Anum.calcEqivalentValue(new_value);
+
+    // if (!Anum.containsPrefix(new_value)) {
+    //   new_value = value.toPrecision(props.precision)
+    // }
 
     if (value >= 0) {
       setf0(new_value);
@@ -196,7 +222,7 @@ export default function CalcBox(props) {
   }
 
   function updateValue_ncyc(e) {
-    let new_value = e.target.value;
+    let new_value = e.target.value as string;
     let value = Anum.calcEqivalentValue(new_value);
 
     if (value >= 0) {
@@ -205,7 +231,7 @@ export default function CalcBox(props) {
   }
 
   function updateValue_npts(e) {
-    let new_value = e.target.value;
+    let new_value = e.target.value as string;
     let value = Anum.calcEqivalentValue(new_value);
 
     if (value >= 0) {
@@ -214,7 +240,7 @@ export default function CalcBox(props) {
   }
 
   function updateValue_fs(e) {
-    let new_value = e.target.value;
+    let new_value = e.target.value as string;
     let value = Anum.calcEqivalentValue(new_value);
 
     if (value >= 0) {
