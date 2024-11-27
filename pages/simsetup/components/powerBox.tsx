@@ -9,7 +9,7 @@ export default function PowerBox() {
   const [isexactpower, setisexactpower] = React.useState(true);
 
   function updateValue_power(e) {
-    let new_value = e.target.value;
+    let new_value = Math.round(e.target.value);
 
     if (new_value > 0) {
       setpower(new_value);

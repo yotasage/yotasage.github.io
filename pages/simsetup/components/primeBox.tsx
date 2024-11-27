@@ -11,8 +11,8 @@ export default function PrimeBox() {
   const [isprime, setisprime] = React.useState(true);
 
   function updateValue_prime(e) {
-    let new_value = e.target.value;
-
+    let new_value = Math.round(e.target.value);
+    
     if (new_value > 0) {
       setisprime(isPrime(new_value));
       setprime(new_value);
