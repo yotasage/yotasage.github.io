@@ -8,6 +8,8 @@ import styles from '/styles/Home.module.css';
 import PrimeBox from './components/primeBox';
 import PowerBox from './components/powerBox';
 
+import HomeIcon from '../../components/icons/home';
+
 export default function Home() {
   const [precision, setprecision] = React.useState(11);
 
@@ -27,8 +29,9 @@ export default function Home() {
       </Head>
 
       <header>
-        <Link href="/" className={[styles.card, styles.w10, styles.p_0_75rem].join(" ")}>
-            <p>&larr; Return to main page</p>
+        <Link href="/" className={[styles.card, styles.p_0_75rem].join(" ")}>
+            {/* <p>&larr; Return to main page</p> */}
+            <HomeIcon></HomeIcon>
         </Link>
       </header>
 
