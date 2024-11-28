@@ -30,7 +30,6 @@ export default function Home() {
 
       <header>
         <Link href="/" className={[styles.card, styles.p_0_75rem].join(" ")}>
-            {/* <p>&larr; Return to main page</p> */}
             <HomeIcon></HomeIcon>
         </Link>
       </header>
