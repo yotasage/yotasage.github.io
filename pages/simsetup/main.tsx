@@ -26,26 +26,65 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
+      <header>
+        <Link href="/" className={[styles.card, styles.w10, styles.p_0_75rem].join(" ")}>
+            <p>&larr; Return to main page</p>
+        </Link>
+      </header>
+
       <main>
         <h1 className={styles.title}>
           Simulator setup tool
         </h1>
 
+        
+
         <div className={styles.grid}>
           
           <div className={styles.card}>
-            <p>Precision</p><br/>
+            <h3>Precision</h3>
             <input type="number" readOnly={false} name="precision" value={precision} onChange={updateValue_precision}/><br/>
           </div>
 
           <PrimeBox></PrimeBox>
-          <PowerBox></PowerBox></div>
+          <PowerBox></PowerBox>
+        </div>
         
         <CalcBox f0_readOnly={true} fs_readOnly={false} ncyc_readOnly={false} npts_readOnly={false} precision={precision}></CalcBox>
         <CalcBox f0_readOnly={false} fs_readOnly={true} ncyc_readOnly={false} npts_readOnly={false} precision={precision}></CalcBox>
         <CalcBox f0_readOnly={false} fs_readOnly={false} ncyc_readOnly={true} npts_readOnly={false} precision={precision}></CalcBox>
         <CalcBox f0_readOnly={false} fs_readOnly={false} ncyc_readOnly={false} npts_readOnly={true} precision={precision}></CalcBox>
         
+        <div className={styles.grid}>
+          
+          <div className={[styles.w100, styles.card].join(" ")}>
+            <div className={[styles.w100, styles.card].join(" ")}>
+              <h1>Description</h1>
+              <h3>Calculation boxes</h3>
+              <p>f0 — The fundamental frequency of your signal.</p>
+              <p>Fs — The sampling frequency.</p>
+              <p>Ncyc — The number of cycles/periods of your signal that you want in your simulation.</p>
+              <p>Npts — The number of data points or samples. Often referred to as Nfft, which is the length of an FFT.</p>
+            </div>
+
+            <div className={[styles.w100, styles.card].join(" ")}>
+              <h3>Prime box</h3>
+              <p>Can quickly calculate the next or previous prime with respect to the current number. It can also quickly find primes that are approximately 2, 10, and 1000 times larger or smaller than the current number. Note that the current number does not have to be a prime.</p>
+
+              <p>If the current number is not a prime, the function of the box will behave as if it were, and simply find the prime that comes before or after this number, or a prime that is about 2, 10, and 1000 times larger or smaller than the current number.</p>
+
+              <p>The prime box comes with an indicator that indicates whether a number is prime or not.</p>
+            </div>
+
+            <div className={[styles.w100, styles.card].join(" ")}>
+              <h3>Power of 2 box</h3>
+              <p>Performs bit-wise left or right shifts. Can shift by 1 or 4 bits at a time.</p>
+
+              <p>The power of 2 box comes with an indicator that indicates whether a number is an exact power of 2 or not.</p>
+            </div>
+          </div>
+        </div>
+
       </main>
 
       <footer>
@@ -66,6 +105,14 @@ export default function Home() {
           display: flex;
           flex-direction: column;
           justify-content: center;
+          align-items: center;
+        }
+        header {
+          width: 100%;
+          height: 100px;
+          border-bottom: 1px solid #eaeaea;
+          display: flex;
+          justify-content: left;
           align-items: center;
         }
         footer {

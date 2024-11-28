@@ -49,17 +49,19 @@ export default function PrimeBox() {
 
   let isprime_text = null
   if (isprime) {
-    isprime_text = <p>Yes✅</p>
+    isprime_text = <>Yes✅</>
   }
   else {
-    isprime_text = <p>No ❌</p>
+    isprime_text = <>No ❌</>
   }
 
   return (
     <div className={styles.grid}>
     <div className={styles.card}>
-      <p>Prime number: </p>
-      {isprime_text}
+      <h3>Prime</h3>
+
+      <p>Prime number: {isprime_text}</p>
+      
       <input type="number" readOnly={false} name="prime" value={prime} onChange={updateValue_prime}/><br/>
       <button onClick={function(){onNextPrime(0, 1000);}}>/1000</button>
       <button onClick={function(){onNextPrime(0, 10);}}>/10</button>

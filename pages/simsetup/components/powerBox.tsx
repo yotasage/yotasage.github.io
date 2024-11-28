@@ -38,19 +38,19 @@ export default function PowerBox() {
 
   let isexactpower_text = null
   if (isexactpower) {
-    isexactpower_text = <p>Yes✅</p>
+    isexactpower_text = <>Yes✅</>
   }
   else {
-    isexactpower_text = <p>No ❌</p>
+    isexactpower_text = <>No ❌</>
   }
 
   return (
     <div className={styles.grid}>
     <div className={styles.card}>
-      <p>Power of 2</p><br></br>
+      <h3>Power of 2</h3>
 
-      <p>Exact power of 2:</p>
-      {isexactpower_text}
+      <p>Exact power of 2: {isexactpower_text}</p>
+      
       <input type="number" readOnly={false} name="power" value={power} onChange={updateValue_power}/><br/>
       <button onClick={function(){onNextPower(0, 4);}}>&lt;&lt;4</button>
       <button onClick={function(){onNextPower(0, 1);}}>&lt;&lt;1</button>

@@ -1,4 +1,6 @@
 This is a starter template for [Learn Next.js](https://nextjs.org/learn).
+### `Link to the website`
+https://yotasage.github.io/
 
 ### `npm docs`
 https://docs.npmjs.com/cli/v9/commands/npm-outdated

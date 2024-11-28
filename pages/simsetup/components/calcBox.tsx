@@ -251,16 +251,16 @@ export default function CalcBox(props) {
 
   let header = null
   if (props.f0_readOnly) {
-    header = <p>Calculating f0</p>
+    header = <h3>Calculating f0</h3>
   }
   else if (props.fs_readOnly) {
-    header = <p>Calculating Fs</p>
+    header = <h3>Calculating Fs</h3>
   }
   else if (props.ncyc_readOnly) {
-    header = <p>Calculating Ncyc</p>
+    header = <h3>Calculating Ncyc</h3>
   }
   else if (props.npts_readOnly) {
-    header = <p>Calculating Npts</p>
+    header = <h3>Calculating Npts</h3>
   }
 
   return (
