@@ -68,7 +68,7 @@ export default function Home() {
 
               
               <p>The following 4 parameteres are related by this equation:</p>
-              <KatexSpan text={'$\\rm F_S=\\frac{N_{fft}}{N_{cyc}}\\cdot f_0$'}/>
+              <KatexSpan text={'\\rm F_S=\\frac{N_{fft}}{N_{cyc}}\\cdot f_0'}/><br/>
 
               <p>f<sub>0</sub> — The fundamental frequency of your signal.</p>
               <p>F<sub>S</sub> — The sampling frequency.</p>
