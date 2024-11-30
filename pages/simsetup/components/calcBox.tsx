@@ -4,8 +4,8 @@ import React, { useEffect } from "react";
 
 import styles from '../styles/Home.module.css';
 
-import containsPrefix from '../tools/my_numbers'
-import calcEqivalentValue from '../tools/my_numbers'
+// import containsPrefix from '../tools/my_numbers'
+import calcEqivalentValue, {containsPrefix} from '../tools/my_numbers'
 
 export default function CalcBox(props) {
   const [f0, setf0] = React.useState('1000');
@@ -233,10 +233,6 @@ export default function CalcBox(props) {
   function updateValue_f0(e) {
     let new_value = e.target.value as string;
     let value = calcEqivalentValue(new_value);
-
-    // if (!containsPrefix(new_value)) {
-    //   new_value = value.toPrecision(props.precision)
-    // }
 
     if (value >= 0) {
       setf0(new_value);
