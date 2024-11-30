@@ -10,6 +10,8 @@ import PowerBox from './components/powerBox';
 
 import HomeIcon from '../../components/icons/home';
 
+import KatexSpan from './components/katex/span';
+
 export default function Home() {
   const [precision, setprecision] = React.useState(11);
 
@@ -50,12 +52,12 @@ export default function Home() {
 
           <PrimeBox></PrimeBox>
           <PowerBox></PowerBox>
+
+          <CalcBox f0_readOnly={true} fs_readOnly={false} ncyc_readOnly={false} npts_readOnly={false} precision={precision}></CalcBox>
+          <CalcBox f0_readOnly={false} fs_readOnly={true} ncyc_readOnly={false} npts_readOnly={false} precision={precision}></CalcBox>
+          <CalcBox f0_readOnly={false} fs_readOnly={false} ncyc_readOnly={true} npts_readOnly={false} precision={precision}></CalcBox>
+          <CalcBox f0_readOnly={false} fs_readOnly={false} ncyc_readOnly={false} npts_readOnly={true} precision={precision}></CalcBox>
         </div>
-        
-        <CalcBox f0_readOnly={true} fs_readOnly={false} ncyc_readOnly={false} npts_readOnly={false} precision={precision}></CalcBox>
-        <CalcBox f0_readOnly={false} fs_readOnly={true} ncyc_readOnly={false} npts_readOnly={false} precision={precision}></CalcBox>
-        <CalcBox f0_readOnly={false} fs_readOnly={false} ncyc_readOnly={true} npts_readOnly={false} precision={precision}></CalcBox>
-        <CalcBox f0_readOnly={false} fs_readOnly={false} ncyc_readOnly={false} npts_readOnly={true} precision={precision}></CalcBox>
         
         <div className={styles.grid}>
           
@@ -63,10 +65,26 @@ export default function Home() {
             <div className={[styles.w100, styles.card].join(" ")}>
               <h1>Description</h1>
               <h3>Calculation boxes</h3>
-              <p>f0 — The fundamental frequency of your signal.</p>
-              <p>Fs — The sampling frequency.</p>
-              <p>Ncyc — The number of cycles/periods of your signal that you want in your simulation.</p>
-              <p>Npts — The number of data points or samples. Often referred to as Nfft, which is the length of an FFT.</p>
+
+              
+              <p>The following 4 parameteres are related by this equation:</p>
+              <KatexSpan text={'$\\rm F_S=\\frac{N_{fft}}{N_{cyc}}\\cdot f_0$'}/>
+
+              <p>f<sub>0</sub> — The fundamental frequency of your signal.</p>
+              <p>F<sub>S</sub> — The sampling frequency.</p>
+              <p>N<sub>cyc</sub> — The number of cycles/periods of f<sub>0</sub>.</p>
+              <p>N<sub>pts</sub> — The number of data points or samples. Also referred to as N<sub>fft</sub>, which is the length of an FFT.</p>
+              
+              <p>T<sub>0</sub> — The period of f<sub>0</sub>.</p>
+              <p>T<sub>S</sub> — The period of F<sub>S</sub>.</p>
+              <p>f<sub>res</sub> — The frequency resolution of for instance an FFT.</p>
+              <p>N<sub>pts0</sub> — The number of data points or samples during one T<sub>0</sub>.</p>
+
+              <p>t<sub>start</sub> — The point in time that sampling starts.</p>
+              <p>t<sub>stop</sub> — The point in time until which samples are taken.</p>
+              <p>f<sub>min</sub> — The lowest frequency that can be considered by an FFT for instance.</p>
+              <p>f<sub>max</sub> — The highest frequency that can be considered by an FFT for instance.</p>
+
             </div>
 
             <div className={[styles.w100, styles.card].join(" ")}>

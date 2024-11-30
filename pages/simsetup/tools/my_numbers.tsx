@@ -27,13 +27,12 @@
         return value*prefix_value as number
     }
 
-    export function containsPrefix(number: string | number): boolean {
+    export function containsPrefix(number: string | number): boolean {       
         if (typeof number === "number") {
             return false;
         }
 
         let prefix: string = number.toString().replace(/[0-9.e+-]/g, '')
-        // console.log(prefix)
 
         if (prefix != '') {
             return true
