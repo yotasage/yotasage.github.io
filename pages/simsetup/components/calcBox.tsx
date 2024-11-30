@@ -18,8 +18,11 @@ export default function CalcBox(props) {
   const [f_res, setf_res] = React.useState(calcfres(fs, npts));
   const [npts0, setnpts0] = React.useState(calcnpts0(npts, ncyc));
 
-  const [tstart, settstart] = React.useState(0);
+  const [tstart, settstart] = React.useState('0');
   const [tstop, settstop] = React.useState(calc_tstop(tstart, T0, ncyc));
+
+  const [f_min, setf_min] = React.useState(calc_f_min(tstart, tstop));
+  const [f_max, setf_max] = React.useState(calc_f_max(fs));
 
   /**
    * f0 = ncyc * fs / npts
@@ -149,6 +152,19 @@ export default function CalcBox(props) {
     return (tstart + T0*ncyc).toString()
   }
 
+  function calc_f_min(tstart: number | string, tstop: number | string) {
+    tstart = calcEqivalentValue(tstart);
+    tstop = calcEqivalentValue(tstop);
+
+    return (1/(tstop - tstart)).toString()
+  }
+
+  function calc_f_max(fs: number | string) {
+    fs = calcEqivalentValue(fs);
+
+    return (fs/2).toString()
+  }
+
   useEffect(() => {
     // run something every time something in the dependency array changes
     update_values()
@@ -160,6 +176,7 @@ export default function CalcBox(props) {
 
   useEffect(() => {
     setTs(calcTs(fs));
+    setf_max(calc_f_max(fs))
   }, [fs]);
 
   useEffect(() => {
@@ -173,6 +190,10 @@ export default function CalcBox(props) {
   useEffect(() => {
     settstop(calc_tstop(tstart, T0, ncyc))
   }, [tstart, T0, ncyc]);
+
+  useEffect(() => {
+    setf_min(calc_f_min(tstart, tstop))
+  }, [tstart, tstop]);
 
   function update_values() {
     if (props.f0_readOnly) {
@@ -249,18 +270,27 @@ export default function CalcBox(props) {
     }
   }
 
+  function updateValue_tstart(e) {
+    let new_value = e.target.value as string;
+    let value = calcEqivalentValue(new_value);
+
+    if (value >= 0) {
+      settstart(new_value);
+    }
+  }
+
   let header = null
   if (props.f0_readOnly) {
-    header = <h3>Calculating f0</h3>
+    header = <h3>Calculating f<sub>0</sub></h3>
   }
   else if (props.fs_readOnly) {
-    header = <h3>Calculating Fs</h3>
+    header = <h3>Calculating F<sub>S</sub></h3>
   }
   else if (props.ncyc_readOnly) {
-    header = <h3>Calculating Ncyc</h3>
+    header = <h3>Calculating N<sub>cyc</sub></h3>
   }
   else if (props.npts_readOnly) {
-    header = <h3>Calculating Npts</h3>
+    header = <h3>Calculating N<sub>pts</sub></h3>
   }
 
   return (
@@ -270,50 +300,58 @@ export default function CalcBox(props) {
         <div className={styles.grid}>
           <div className={styles.card}>
           
-            <label htmlFor="f0">f0</label>
+            <label htmlFor="f0">f<sub>0</sub></label>
             <input type="text" className={styles.calcBox} readOnly={props.f0_readOnly} name="f0" id="f0" value={f0} onChange={updateValue_f0}/>
 
             <br/>
-            <label htmlFor="fs">Fs</label>
+            <label htmlFor="fs">F<sub>S</sub></label>
             <input type="text" className={styles.calcBox} readOnly={props.fs_readOnly} name="fs" id="fs" value={fs} onChange={updateValue_fs}/>
 
             <br/>
-            <label htmlFor="ncyc">Ncyc</label>
+            <label htmlFor="ncyc">N<sub>cyc</sub></label>
             <input type="text" className={styles.calcBox} readOnly={props.ncyc_readOnly} name="ncyc" id="ncyc" value={ncyc} onChange={updateValue_ncyc}/>
 
             <br/>
-            <label htmlFor="npts">Npts</label>
+            <label htmlFor="npts">N<sub>pts</sub></label>
             <input type="text" className={styles.calcBox} readOnly={props.npts_readOnly} name="npts" id="npts" value={npts} onChange={updateValue_npts}/>
 
           </div>
 
           <div className={styles.card}>
             
-            <label htmlFor="T0">T0</label>
+            <label htmlFor="T0">T<sub>0</sub></label>
             <input type="number" className={styles.calcBox} readOnly={true} name="T0" id="T0" value={T0}/>
 
             <br/>
-            <label htmlFor="TS">Ts</label>
+            <label htmlFor="TS">T<sub>S</sub></label>
             <input type="number" className={styles.calcBox} readOnly={true} name="TS" id="TS" value={Ts}/>
 
             <br/>
-            <label htmlFor="f_Res">f_Res</label>
+            <label htmlFor="f_Res">f<sub>res</sub></label>
             <input type="number" className={styles.calcBox} readOnly={true} name="f_Res" id="f_Res" value={f_res}/>
 
             <br/>
-            <label htmlFor="npts0">Npts0</label>
+            <label htmlFor="npts0">N<sub>pts0</sub></label>
             <input type="number" className={styles.calcBox} readOnly={true} name="npts0" id="npts0" value={npts0}/>
 
           </div>
 
           <div className={styles.card}>
             
-            <label htmlFor="t_start">t_start</label>
-            <input type="number" className={styles.calcBox} readOnly={true} name="t_start" id="t_start" value={tstart}/>
+            <label htmlFor="t_start">t<sub>start</sub></label>
+            <input type="text" className={styles.calcBox} readOnly={false} name="t_start" id="t_start" value={tstart} onChange={updateValue_tstart}/>
 
             <br/>
-            <label htmlFor="t_stop">t_stop</label>
+            <label htmlFor="t_stop">t<sub>stop</sub></label>
             <input type="number" className={styles.calcBox} readOnly={true} name="t_stop" id="t_stop" value={tstop}/>
+
+            <br/>
+            <label htmlFor="f_min">f<sub>min</sub></label>
+            <input type="number" className={styles.calcBox} readOnly={true} name="f_min" id="f_min" value={f_min}/>
+
+            <br/>
+            <label htmlFor="f_max">f<sub>max</sub></label>
+            <input type="number" className={styles.calcBox} readOnly={true} name="f_max" id="f_max" value={f_max}/>
 
           </div>
 
