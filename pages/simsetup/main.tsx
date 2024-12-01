@@ -11,11 +11,28 @@ import PowerBox from './components/powerBox';
 import HomeIcon from '../../components/icons/home';
 
 import KatexSpan from './components/katex/span';
+import Bibliography from '../../components/BibJs/referenceList';
+import { BibWebsite } from '../../components/BibJs/bibItem';
 
-import bib from './bib';
+// import bib from './bib';
 
 export default function Home() {
   const [precision, setprecision] = React.useState(11);
+
+  const referenceList = [
+      new BibWebsite(
+          {
+              key: 'AD',
+              institution: 'Analog Devices',
+              title: 'Coherent Sampling vs. Window Sampling',
+              website: 'analog.com',
+              url: 'https://www.analog.com/en/resources/technical-articles/coherent-sampling-vs-window-sampling.html',
+              read: '2024-12-01'
+          }
+      )
+  ]
+
+  let bib = new Bibliography(referenceList);
 
   function updateValue_precision(e) {
     let new_value = e.target.value;
