@@ -68,17 +68,23 @@ export default function Home() {
 
               
               <p>The following 4 parameteres are related by this equation:</p>
-              <KatexSpan text={'\\rm F_S=\\frac{N_{fft}}{N_{cyc}}\\cdot f_0'}/><br/>
+              <KatexSpan style={{fontSize: '1.5rem'}} text={'\\rm F_S=\\frac{N_{pts}}{N_{cyc}}\\cdot f_0'}/><br/>
 
-              <p>f<sub>0</sub> — The fundamental frequency of your signal.</p>
+              <p>f<sub>0</sub> — The fundamental frequency of your signal. Also refered to as f<sub>in</sub>.</p>
               <p>F<sub>S</sub> — The sampling frequency.</p>
-              <p>N<sub>cyc</sub> — The number of cycles/periods of f<sub>0</sub>.</p>
-              <p>N<sub>pts</sub> — The number of data points or samples. Also referred to as N<sub>fft</sub>, which is the length of an FFT.</p>
+              <p>N<sub>cyc</sub> — The number of cycles/periods of f<sub>0</sub>. Also called N<sub>window</sub>.</p>
+              <p>N<sub>pts</sub> — The number of data points or samples. Also referred to as N<sub>fft</sub>, which is the length of an FFT.</p><br/>
               
+
               <p>T<sub>0</sub> — The period of f<sub>0</sub>.</p>
-              <p>T<sub>S</sub> — The period of F<sub>S</sub>.</p>
+              <p>T<sub>S</sub> — The period of F<sub>S</sub>.</p><br/>
+
+              
               <p>f<sub>res</sub> — The frequency resolution of for instance an FFT.</p>
+              <KatexSpan style={{fontSize: '1.5rem'}} text={'\\rm f_{res}=\\frac{F_S}{N_{pts}}'}/><br/>
+
               <p>N<sub>pts0</sub> — The number of data points or samples during one T<sub>0</sub>.</p>
+              <KatexSpan style={{fontSize: '1.5rem'}} text={'\\rm N_{pts0}=\\frac{N_{pts}}{N_{pts}}'}/><br/>
 
               <p>t<sub>start</sub> — The point in time that sampling starts.</p>
               <p>t<sub>stop</sub> — The point in time until which samples are taken.</p>
@@ -101,6 +107,20 @@ export default function Home() {
               <p>Performs bit-wise left or right shifts. Can shift by 1 or 4 bits at a time.</p>
 
               <p>The power of 2 box comes with an indicator that indicates whether a number is an exact power of 2 or not.</p>
+            </div>
+
+            <div className={[styles.w100, styles.card].join(" ")}>
+              <h3>Coherent sampling</h3>
+
+
+              <p><b>RULE 1:</b> N<sub>cyc</sub> is recommended to be a prime number or at least an odd number. N<sub>cyc</sub> should be an integer (No window effect). By making N<sub>cyc</sub> odd, we eliminate many common factors with N<sub>pts</sub>. Common factors between N<sub>cyc</sub> and N<sub>pts</sub> lead to different harmonics of f<sub>0</sub> having the same frequency bin in the FFT after aliasing. </p>
+
+              <p><b>RULE 2:</b> N<sub>pts</sub> should be a power of 2. An FFT requires the number of samples to be a power of 2 because of its inherent periodicity.</p>
+
+              <p><b>RULE 3:</b> f<sub>0</sub> and F<sub>S</sub> should be relatively prime.</p>
+
+              <h3>Sources</h3>
+              <Link style={{color: '#fff'}} target="_blank" href="https://www.analog.com/en/resources/technical-articles/coherent-sampling-vs-window-sampling.html">https://www.analog.com/en/resources/technical-articles/coherent-sampling-vs-window-sampling.html</Link>
             </div>
           </div>
         </div>
