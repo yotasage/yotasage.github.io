@@ -12,6 +12,8 @@ import HomeIcon from '../../components/icons/home';
 
 import KatexSpan from './components/katex/span';
 
+import bib from './bib';
+
 export default function Home() {
   const [precision, setprecision] = React.useState(11);
 
@@ -71,9 +73,9 @@ export default function Home() {
               <KatexSpan style={{fontSize: '1.5rem'}} text={'\\rm F_S=\\frac{N_{pts}}{N_{cyc}}\\cdot f_0'}/><br/>
 
               <p>f<sub>0</sub> — The fundamental frequency of your signal. Also refered to as f<sub>in</sub>.</p>
-              <p>F<sub>S</sub> — The sampling frequency.</p>
+              <p>F<sub>S</sub> — The sampling frequency. Also referred to as f<sub>sample</sub>.</p>
               <p>N<sub>cyc</sub> — The number of cycles/periods of f<sub>0</sub>. Also called N<sub>window</sub>.</p>
-              <p>N<sub>pts</sub> — The number of data points or samples. Also referred to as N<sub>fft</sub>, which is the length of an FFT.</p><br/>
+              <p>N<sub>pts</sub> — The number of data points or samples. Also referred to as N<sub>record</sub> and N<sub>fft</sub>, which is the length of an FFT.</p><br/>
               
 
               <p>T<sub>0</sub> — The period of f<sub>0</sub>.</p>
@@ -112,6 +114,7 @@ export default function Home() {
             <div className={[styles.w100, styles.card].join(" ")}>
               <h3>Coherent sampling</h3>
 
+              <p>Source: {bib.cite('AD')}</p>
 
               <p><b>RULE 1:</b> N<sub>cyc</sub> is recommended to be a prime number or at least an odd number. N<sub>cyc</sub> should be an integer (No window effect). By making N<sub>cyc</sub> odd, we eliminate many common factors with N<sub>pts</sub>. Common factors between N<sub>cyc</sub> and N<sub>pts</sub> lead to different harmonics of f<sub>0</sub> having the same frequency bin in the FFT after aliasing. </p>
 
@@ -119,9 +122,16 @@ export default function Home() {
 
               <p><b>RULE 3:</b> f<sub>0</sub> and F<sub>S</sub> should be relatively prime.</p>
 
-              <h3>Sources</h3>
-              <Link style={{color: '#fff'}} target="_blank" href="https://www.analog.com/en/resources/technical-articles/coherent-sampling-vs-window-sampling.html">https://www.analog.com/en/resources/technical-articles/coherent-sampling-vs-window-sampling.html</Link>
+              <p><b>NOTE 1:</b> Unless window sampling ("windowing") is used to compensate for waveform discontinuance<sup>2</sup>, spectral leakage is inevitable. Window sampling is when a sampled waveform is multiplied by the mathematical expression describing the window.</p>
+
+              <p><b>NOTE 2:</b> ADCs are usually characterized for and tested with sinusoidal input signals. Non-coherent sampling for sinusoidal input signals means that the first and the last sample of the input sinusoid are discontinuous with one another.</p>
+
+              <p><b>NOTE 3:</b> Waveform discontinuance describes an input signal, for which an integer number of its cycles do not fit into a predefined window.</p>
             </div>
+          </div>
+
+          <div className={[styles.w100, styles.card].join(" ")}>
+           {bib.render()}
           </div>
         </div>
 
