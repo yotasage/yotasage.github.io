@@ -103,7 +103,7 @@ export default function Home() {
               <KatexSpan style={{fontSize: '1.5rem'}} text={'\\rm f_{res}=\\frac{F_S}{N_{pts}}'}/><br/>
 
               <p>N<sub>pts0</sub> — The number of data points or samples during one T<sub>0</sub>.</p>
-              <KatexSpan style={{fontSize: '1.5rem'}} text={'\\rm N_{pts0}=\\frac{N_{pts}}{N_{pts}}'}/><br/>
+              <KatexSpan style={{fontSize: '1.5rem'}} text={'\\rm N_{pts0}=\\frac{N_{pts}}{N_{cyc}}'}/><br/>
 
               <p>t<sub>start</sub> — The point in time that sampling starts.</p>
               <p>t<sub>stop</sub> — The point in time until which samples are taken.</p>
