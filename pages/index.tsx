@@ -41,6 +41,11 @@ export default function Home() {
             <p>There is nothing here yet, but maybe something will pop up over the next few months.</p>
           </Link>
 
+          <Link href="/qrcode/main" className={[styles.card, styles.w45].join(" ")}>
+            <h3>QR code generator &rarr;</h3>
+            <p>QR Code Model 1 and 2, Micro QR and rMQR with full control over every parameter. Runs in the browser.</p>
+          </Link>
+
           <Link href="https://github.com/yotasage/yotasage.github.io" className={[styles.card, styles.w45].join(" ")}>
             <h3>The GitHub repo of this site &rarr;</h3>
             <p>Check out the GitHub repo.</p>

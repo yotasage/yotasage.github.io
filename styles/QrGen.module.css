@@ -1,0 +1,380 @@
+.page {
+  min-height: 100vh;
+  padding: 1rem 1rem 4rem;
+  background-color: #2B2B2B;
+  color: white;
+  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans,
+    Helvetica Neue, sans-serif;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.homeLink {
+  display: inline-flex;
+  padding: 0.75rem;
+  border: 1px solid #ffffff;
+  border-radius: 10px;
+  transition: border-color 0.15s ease;
+}
+
+.homeLink:hover,
+.homeLink:focus {
+  border-color: #0070f3;
+}
+
+.title {
+  margin: 0;
+  font-size: 2.4rem;
+  line-height: 1.15;
+}
+
+@media (max-width: 600px) {
+  .title {
+    font-size: 1.8rem;
+  }
+}
+
+.page a:not(.homeLink) {
+  color: #4da3ff;
+}
+
+.lead {
+  margin: 0.75rem 0 1.5rem;
+  color: #c8c8c8;
+  font-size: 1.05rem;
+  line-height: 1.5;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+  max-width: 1400px;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.output {
+  position: sticky;
+  top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .output {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+.card {
+  padding: 1.25rem 1.5rem;
+  border: 1px solid #ffffff;
+  border-radius: 10px;
+  min-width: 0;
+}
+
+.card h2 {
+  margin: 0 0 1rem;
+  font-size: 1.35rem;
+}
+
+.card h3 {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 1.05rem;
+}
+
+.card p {
+  margin: 0.5rem 0;
+  line-height: 1.5;
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem 1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.fieldWide {
+  grid-column: 1 / -1;
+}
+
+.field > span {
+  font-size: 0.85rem;
+  color: #c8c8c8;
+}
+
+.help {
+  font-size: 0.8rem;
+  color: #9a9a9a;
+  line-height: 1.4;
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid #6a6a6a;
+  border-radius: 6px;
+  background: #1f1f1f;
+  color: white;
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.textarea {
+  min-height: 5.5rem;
+  resize: vertical;
+  font-family: Menlo, Monaco, Lucida Console, Liberation Mono, DejaVu Sans Mono, Courier New, monospace;
+  font-size: 0.85rem;
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: none;
+  border-color: #0070f3;
+}
+
+.input:disabled,
+.select:disabled {
+  opacity: 0.55;
+}
+
+.checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.checkbox input {
+  margin-top: 0.15rem;
+}
+
+.color {
+  width: 100%;
+  height: 2.2rem;
+  padding: 0.15rem;
+  border: 1px solid #6a6a6a;
+  border-radius: 6px;
+  background: #1f1f1f;
+}
+
+.button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ffffff;
+  border-radius: 8px;
+  background: transparent;
+  color: white;
+  font: inherit;
+  font-weight: bold;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.button:hover:not(:disabled),
+.button:focus-visible {
+  color: #0070f3;
+  border-color: #0070f3;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.buttonSmall {
+  composes: button;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.buttonRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  padding: 1rem;
+  border-radius: 8px;
+  background-color: #3a3a3a;
+  background-image: linear-gradient(45deg, #444 25%, transparent 25%), linear-gradient(-45deg, #444 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #444 75%), linear-gradient(-45deg, transparent 75%, #444 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+
+.previewItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+
+.previewItemSelectable {
+  cursor: pointer;
+}
+
+.previewItemSelected {
+  border-color: #0070f3;
+}
+
+.canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+.caption {
+  font-size: 0.8rem;
+  color: #c8c8c8;
+}
+
+.error {
+  padding: 0.75rem 1rem;
+  border: 1px solid #ff6b6b;
+  border-radius: 8px;
+  color: #ffb3b3;
+  line-height: 1.45;
+}
+
+.warning {
+  margin: 0.4rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid #f5a623;
+  background: rgba(245, 166, 35, 0.08);
+  color: #f7d9a6;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.infoTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.infoTable th,
+.infoTable td {
+  padding: 0.3rem 0.5rem 0.3rem 0;
+  border-bottom: 1px solid #444;
+  text-align: left;
+  vertical-align: top;
+}
+
+.infoTable th {
+  width: 40%;
+  color: #c8c8c8;
+  font-weight: normal;
+}
+
+.scoreTable th,
+.scoreTable td {
+  width: auto;
+  text-align: center;
+}
+
+.mono {
+  font-family: Menlo, Monaco, Lucida Console, Liberation Mono, DejaVu Sans Mono, Courier New, monospace;
+  font-size: 0.82rem;
+  word-break: break-all;
+}
+
+.meter {
+  height: 6px;
+  margin-top: 0.3rem;
+  border-radius: 3px;
+  background: #444;
+  overflow: hidden;
+}
+
+.meter > div {
+  height: 100%;
+  background: #0070f3;
+}
+
+.chosen {
+  color: #4da3ff;
+  font-weight: bold;
+}
+
+.payload {
+  max-height: 10rem;
+  margin: 0.5rem 0 0;
+  padding: 0.6rem;
+  overflow: auto;
+  border-radius: 6px;
+  background: #1f1f1f;
+  white-space: pre-wrap;
+}
+
+.segmentRow {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.typeList dt {
+  margin-top: 0.9rem;
+  font-weight: bold;
+}
+
+.typeList dd {
+  margin: 0.25rem 0 0;
+  color: #d8d8d8;
+  line-height: 1.5;
+}
+
+.unavailable {
+  color: #9a9a9a;
+}
+
+.fullWidth {
+  max-width: 1400px;
+  margin-top: 1.25rem;
+}
