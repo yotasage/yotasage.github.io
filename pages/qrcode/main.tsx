@@ -74,8 +74,8 @@ function describePayload(data: string | Uint8Array): string {
   return data.replace(/[\x00-\x08\x0b-\x1f\x7f]/g, (c) => `\\x${c.charCodeAt(0).toString(16).padStart(2, '0')}`);
 }
 
-function download(data: BlobPart, type: string, name: string) {
-  const url = URL.createObjectURL(new Blob([data], { type }));
+function download(data: string | Uint8Array, type: string, name: string) {
+  const url = URL.createObjectURL(new Blob([data as BlobPart], { type }));
   const a = document.createElement('a');
   a.href = url;
   a.download = name;

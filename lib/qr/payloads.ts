@@ -118,7 +118,7 @@ function base64(bytes: Uint8Array) {
 export const ENCRYPTED_PREFIX = 'QRENC1:';
 const PBKDF2_ITERATIONS = 250000;
 
-async function deriveKey(password: string, salt: Uint8Array) {
+async function deriveKey(password: string, salt: Uint8Array<ArrayBuffer>) {
   const material = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
   return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' }, material, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
 }
