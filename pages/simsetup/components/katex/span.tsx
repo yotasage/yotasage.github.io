@@ -16,11 +16,11 @@ import katex from 'katex';
 import { useEffect, useRef } from 'react';
 
 export default function KatexSpan({ text, ...delegated }) {
-  const katexTextRef = useRef();
+  const katexTextRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (katexTextRef.current) {
-      katex.render(text, katexTextRef.current as HTMLDivElement, {output: 'mathml'});
+      katex.render(text, katexTextRef.current, {output: 'mathml'});
     }
   }, [text]);
 
