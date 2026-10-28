@@ -1,0 +1,742 @@
+.page {
+  min-height: 100vh;
+  padding: 1rem 1rem 4rem;
+  background-color: #2B2B2B;
+  color: white;
+  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans,
+    Helvetica Neue, sans-serif;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.homeLink {
+  display: inline-flex;
+  padding: 0.75rem;
+  border: 1px solid #ffffff;
+  border-radius: 10px;
+  transition: border-color 0.15s ease;
+}
+
+.homeLink:hover,
+.homeLink:focus {
+  border-color: #0070f3;
+}
+
+.crumb {
+  padding: 0.55rem 0.9rem;
+  border: 1px solid #ffffff;
+  border-radius: 10px;
+  font-weight: bold;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.crumb:hover,
+.crumb:focus {
+  color: #0070f3;
+  border-color: #0070f3;
+}
+
+.title {
+  margin: 0;
+  font-size: 2.4rem;
+  line-height: 1.15;
+}
+
+@media (max-width: 600px) {
+  .title {
+    font-size: 1.8rem;
+  }
+}
+
+.lead {
+  max-width: 900px;
+  margin: 0.75rem 0 1.5rem;
+  color: #c8c8c8;
+  font-size: 1.05rem;
+  line-height: 1.5;
+}
+
+.page a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.page a.textLink {
+  color: #4da3ff;
+  text-decoration: underline;
+}
+
+/* Hub */
+
+.toolGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+  max-width: 1400px;
+  margin-bottom: 2rem;
+}
+
+.toolCategory {
+  color: #9a9a9a;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.toolTile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1.25rem;
+  border: 1px solid #ffffff;
+  border-radius: 10px;
+  transition: color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.toolTile:hover,
+.toolTile:focus {
+  color: #0070f3;
+  border-color: #0070f3;
+  transform: translateY(-2px);
+}
+
+.toolTile h3 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.toolTile p {
+  margin: 0;
+  color: #c8c8c8;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+/* Empty state: one big drop target */
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  max-width: 1400px;
+  padding: 4rem 1rem;
+  border: 2px dashed #6a6a6a;
+  border-radius: 14px;
+  text-align: center;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.hero h2 {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.hero p {
+  margin: 0;
+  max-width: 640px;
+  color: #c8c8c8;
+  line-height: 1.5;
+}
+
+.dropOver {
+  border-color: #0070f3;
+  background-color: rgba(0, 112, 243, 0.08);
+}
+
+.hint {
+  color: #9a9a9a;
+  font-size: 0.9rem;
+}
+
+/* Workspace: files on the left, options on the right */
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 1.25rem;
+  align-items: start;
+  max-width: 1400px;
+}
+
+@media (max-width: 900px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.filesPanel {
+  min-height: 300px;
+  padding: 1rem;
+  border: 2px dashed transparent;
+  border-radius: 14px;
+  background: #242424;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.toolbarSpacer {
+  flex: 1;
+}
+
+.sidebar {
+  position: sticky;
+  top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid #ffffff;
+  border-radius: 10px;
+}
+
+@media (max-width: 900px) {
+  .sidebar {
+    position: static;
+  }
+}
+
+.sidebar h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.sidebar h3 {
+  margin: 0.25rem 0 0;
+  font-size: 1rem;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.optionRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+/* File cards */
+
+.fileGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fileCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid #555;
+  border-radius: 10px;
+  background: #2f2f2f;
+  transition: border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.fileCard[draggable='true'] {
+  cursor: grab;
+}
+
+.fileCard:hover {
+  border-color: #9a9a9a;
+}
+
+.dragging {
+  opacity: 0.4;
+}
+
+.dropBefore {
+  box-shadow: -4px 0 0 0 #0070f3;
+}
+
+.dropAfter {
+  box-shadow: 4px 0 0 0 #0070f3;
+}
+
+.cardError {
+  border-color: #ff6b6b;
+}
+
+.thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 190px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #1f1f1f;
+  container-type: size;
+}
+
+/* A thumbnail turned 90° must fit the box with its width and height swapped. */
+.thumb img.sideways {
+  max-width: 100cqh;
+  max-height: 100cqw;
+}
+
+.thumb img {
+  max-width: 100%;
+  max-height: 100%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  transition: transform 0.2s ease;
+}
+
+.thumbPlaceholder {
+  color: #777;
+  font-size: 0.85rem;
+}
+
+.badge {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.4rem;
+  min-width: 1.6rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: #0070f3;
+  color: white;
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-align: center;
+}
+
+.cardActions {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  display: flex;
+  gap: 0.25rem;
+}
+
+.cardFooter {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: auto;
+}
+
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: 1px solid #6a6a6a;
+  border-radius: 999px;
+  background: rgba(31, 31, 31, 0.9);
+  color: white;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.iconButton:hover:not(:disabled),
+.iconButton:focus-visible {
+  border-color: #0070f3;
+  color: #4da3ff;
+}
+
+.iconButton:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.fileName {
+  overflow: hidden;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileMeta {
+  color: #9a9a9a;
+  font-size: 0.8rem;
+}
+
+.fileError {
+  color: #ffb3b3;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.saved {
+  color: #6fdc9c;
+  font-weight: 600;
+}
+
+.addTile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 260px;
+  border: 2px dashed #555;
+  border-radius: 10px;
+  background: none;
+  color: #c8c8c8;
+  font: inherit;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.addTile:hover,
+.addTile:focus-visible {
+  border-color: #0070f3;
+  color: #4da3ff;
+}
+
+.addTile span:first-child {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+/* Buttons */
+
+.button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ffffff;
+  border-radius: 8px;
+  background: transparent;
+  color: white;
+  font: inherit;
+  font-weight: bold;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.button:hover:not(:disabled),
+.button:focus-visible {
+  color: #0070f3;
+  border-color: #0070f3;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.buttonSmall {
+  composes: button;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.85rem;
+}
+
+.primary {
+  padding: 0.9rem 1.5rem;
+  border: none;
+  border-radius: 10px;
+  background: #0070f3;
+  color: white;
+  font: inherit;
+  font-size: 1.15rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.primary:hover:not(:disabled),
+.primary:focus-visible {
+  background: #1a85ff;
+}
+
+.primary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.heroButton {
+  composes: primary;
+  padding: 1.1rem 2.5rem;
+  font-size: 1.3rem;
+  box-shadow: 0 4px 16px rgba(0, 112, 243, 0.35);
+}
+
+/* Progress and results */
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: #c8c8c8;
+}
+
+.progressTrack {
+  height: 8px;
+  border-radius: 4px;
+  background: #444;
+  overflow: hidden;
+}
+
+.progressTrack > div {
+  height: 100%;
+  background: #0070f3;
+  transition: width 0.2s ease;
+}
+
+.result {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1rem;
+  border: 1px solid #2fae6b;
+  border-radius: 10px;
+  background: rgba(47, 174, 107, 0.08);
+}
+
+.result h3 {
+  margin: 0;
+}
+
+.result p {
+  margin: 0;
+  color: #d8d8d8;
+  line-height: 1.45;
+}
+
+.error {
+  padding: 0.75rem 1rem;
+  border: 1px solid #ff6b6b;
+  border-radius: 8px;
+  color: #ffb3b3;
+  line-height: 1.45;
+}
+
+.note {
+  margin: 0;
+  color: #9a9a9a;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.levelList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.level {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid #555;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.level:hover {
+  border-color: #9a9a9a;
+}
+
+.levelSelected {
+  border-color: #0070f3;
+  background: rgba(0, 112, 243, 0.08);
+}
+
+.level input {
+  margin-top: 0.2rem;
+}
+
+.level strong {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.level small {
+  display: block;
+  margin-top: 0.15rem;
+  color: #9a9a9a;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.checkList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.check {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.check input {
+  margin-top: 0.2rem;
+}
+
+.check strong {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.check small {
+  display: block;
+  margin-top: 0.1rem;
+  color: #9a9a9a;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+/* Inspection report under the file grid */
+
+.report {
+  margin-top: 1.25rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid #555;
+  border-radius: 10px;
+  background: #2b2b2b;
+}
+
+.report h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+
+.reportTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.reportTable th,
+.reportTable td {
+  padding: 0.5rem 0.75rem 0.5rem 0;
+  border-top: 1px solid #444;
+  text-align: left;
+  vertical-align: top;
+}
+
+.reportTable th {
+  width: 26%;
+  font-weight: 600;
+}
+
+.reportTable td:last-child {
+  width: 9rem;
+  padding-right: 0;
+  text-align: right;
+}
+
+.reportTable ul {
+  max-height: 9rem;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+  color: #d8d8d8;
+  overflow-wrap: anywhere;
+}
+
+.reportTable li + li {
+  margin-top: 0.15rem;
+}
+
+@media (max-width: 600px) {
+  .reportTable,
+  .reportTable tbody,
+  .reportTable tr,
+  .reportTable th,
+  .reportTable td {
+    display: block;
+    width: auto;
+  }
+  .reportTable td:last-child {
+    text-align: left;
+  }
+  .reportTable th {
+    padding-bottom: 0.2rem;
+  }
+  .reportTable td {
+    border-top: none;
+    padding-top: 0.2rem;
+  }
+}
+
+.status {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.statusPending {
+  composes: status;
+  background: rgba(0, 112, 243, 0.18);
+  color: #8cc2ff;
+}
+
+.statusKept {
+  composes: status;
+  background: #3a3a3a;
+  color: #b0b0b0;
+}
+
+.statusDone {
+  composes: status;
+  background: rgba(47, 174, 107, 0.18);
+  color: #6fdc9c;
+}
+
+.statusLeft {
+  composes: status;
+  background: rgba(245, 166, 35, 0.18);
+  color: #f7d9a6;
+}
+
+.rangeInput {
+  width: 100%;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid #6a6a6a;
+  border-radius: 6px;
+  background: #1f1f1f;
+  color: white;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.rangeInput:focus {
+  outline: none;
+  border-color: #0070f3;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

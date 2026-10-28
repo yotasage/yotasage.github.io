@@ -3,9 +3,11 @@
   "scripts": {
     "dev": "next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
-    "start": "next start -H 0.0.0.0"
+    "start": "next start -H 0.0.0.0",
+    "postinstall": "node scripts/copy-pdfjs-assets.mjs && node scripts/collect-licenses.mjs"
   },
   "dependencies": {
+    "@cantoo/pdf-lib": "^2.11.1",
     "@jaames/iro": "^5.5.2",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
@@ -14,8 +16,10 @@
     "@types/katex": "^0.16.8",
     "@types/react-dom": "^19.3.0",
     "clsx": "^2.1.1",
+    "fflate": "^0.8.3",
     "katex": "^0.19.1",
     "next": "^16.4.3",
+    "pdfjs-dist": "^6.4.299",
     "peerjs": "^1.5.5",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

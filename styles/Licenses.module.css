@@ -1,0 +1,136 @@
+.page {
+  min-height: 100vh;
+  padding: 1rem 1rem 3rem;
+  background-color: #2B2B2B;
+  color: white;
+  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans,
+    Helvetica Neue, sans-serif;
+}
+
+.page a {
+  color: #4da3ff;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.homeLink {
+  display: inline-flex;
+  padding: 0.75rem;
+  border: 1px solid #ffffff;
+  border-radius: 10px;
+  transition: border-color 0.15s ease;
+}
+
+.homeLink:hover,
+.homeLink:focus {
+  border-color: #0070f3;
+}
+
+.title {
+  margin: 0;
+  font-size: 2.4rem;
+  line-height: 1.15;
+}
+
+.content {
+  max-width: 900px;
+}
+
+.lead {
+  margin: 0.75rem 0;
+  color: #c8c8c8;
+  line-height: 1.55;
+}
+
+.content h2 {
+  margin: 2rem 0 0.75rem;
+  font-size: 1.35rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table th,
+.table td {
+  padding: 0.4rem 0.75rem 0.4rem 0;
+  border-bottom: 1px solid #444;
+  text-align: left;
+}
+
+.table th {
+  color: #c8c8c8;
+  font-weight: 600;
+}
+
+.entry {
+  margin-top: 0.6rem;
+  border: 1px solid #555;
+  border-radius: 8px;
+  scroll-margin-top: 1rem;
+}
+
+.entry summary {
+  padding: 0.6rem 0.9rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.entry summary span {
+  margin-left: 0.5rem;
+  color: #9a9a9a;
+  font-weight: normal;
+}
+
+.entryBody {
+  padding: 0 0.9rem 0.9rem;
+}
+
+.entryBody p {
+  margin: 0 0 0.6rem;
+  font-size: 0.9rem;
+}
+
+.text {
+  max-height: 24rem;
+  margin: 0;
+  padding: 0.75rem;
+  overflow: auto;
+  border-radius: 6px;
+  background: #1f1f1f;
+  color: #d8d8d8;
+  font-family: Menlo, Monaco, Lucida Console, Liberation Mono, DejaVu Sans Mono, Courier New, monospace;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Site-wide footer (components/SiteFooter.tsx) */
+
+.footer {
+  padding: 1rem;
+  border-top: 1px solid #444;
+  background: #2B2B2B;
+  color: #9a9a9a;
+  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans,
+    Helvetica Neue, sans-serif;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.footer a {
+  color: #c8c8c8;
+  text-decoration: underline;
+}
+
+.footer a:hover,
+.footer a:focus {
+  color: #4da3ff;
+}

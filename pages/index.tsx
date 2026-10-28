@@ -46,23 +46,17 @@ export default function Home() {
             <p>QR Code Model 1 and 2, Micro QR and rMQR with full control over every parameter. Runs in the browser.</p>
           </Link>
 
+          <Link href="/pdf/main" className={[styles.card, styles.w45].join(" ")}>
+            <h3>PDF tools &rarr;</h3>
+            <p>Merge, compress and anonymize PDFs and turn images into PDFs. Runs in the browser; files are never uploaded.</p>
+          </Link>
+
           <Link href="https://github.com/yotasage/yotasage.github.io" className={[styles.card, styles.w45].join(" ")}>
             <h3>The GitHub repo of this site &rarr;</h3>
             <p>Check out the GitHub repo.</p>
           </Link>
         </div>
       </main>
-
-      <footer>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <img src="/vercel.svg" alt="Vercel" className={styles.logo} />
-        </a>
-      </footer>
 
       <style jsx>{`
         main {
@@ -72,24 +66,6 @@ export default function Home() {
           flex-direction: column;
           justify-content: center;
           align-items: center;
-        }
-        footer {
-          width: 100%;
-          height: 100px;
-          border-top: 1px solid #eaeaea;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-        }
-        footer img {
-          margin-left: 0.5rem;
-        }
-        footer a {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          text-decoration: none;
-          color: inherit;
         }
         code {
           background: #fafafa;
