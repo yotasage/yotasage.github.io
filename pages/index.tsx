@@ -35,6 +35,11 @@ export default function Home() {
             <h3>PDF tools &rarr;</h3>
             <p>Merge, compress and anonymize PDFs and turn images into PDFs. Runs in the browser; files are never uploaded.</p>
           </Link>
+
+          <Link href="/base64-image/main" className={[styles.card, styles.w45].join(" ")}>
+            <h3>Base64 image converter &rarr;</h3>
+            <p>Image to Base64 or a data URL for HTML, CSS and Markdown, and Base64 back to an image. Runs in the browser.</p>
+          </Link>
         </div>
       </main>
 

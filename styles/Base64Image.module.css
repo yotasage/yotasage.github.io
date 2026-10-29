@@ -1,0 +1,80 @@
+/* The page frame, cards, fields and buttons come from QrGen.module.css; this file has what is special to this tool. */
+
+.panel {
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+/* Two classes, so it wins over the border of the card. */
+.panel.dropOver {
+  border-color: #0070f3;
+  background-color: rgba(0, 112, 243, 0.08);
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 3rem 1rem;
+  border: 2px dashed #6a6a6a;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.image {
+  display: block;
+  max-width: 100%;
+  min-height: 64px;
+  max-height: 360px;
+  object-fit: contain;
+}
+
+.noPreview {
+  color: #c8c8c8;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.info {
+  margin-top: 0.75rem;
+}
+
+/* Inside .panel, so these win over the same rules in QrGen.module.css. */
+.panel .info th {
+  width: 30%;
+}
+
+.breakAll {
+  word-break: break-all;
+}
+
+.panel .text {
+  min-height: 10rem;
+  word-break: break-all;
+}
+
+.spaced {
+  margin-top: 0.75rem;
+}
+
+.saveRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.saveRow > label {
+  flex: 1 1 12rem;
+}
+
+.linkButton {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #4da3ff;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

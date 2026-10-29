@@ -67,13 +67,19 @@ export function FilePickerButton({ accept, multiple = true, onFiles, className, 
 }
 
 // Accepts files dragged in from the desktop. Reordering cards inside the page does not carry files and is ignored.
-export function DropTarget({ onFiles, className, children }: { onFiles: (files: File[]) => void; className: string; children: React.ReactNode }) {
+// Pages outside the PDF tools pass their own overClassName for the highlight while files are dragged over.
+export function DropTarget({ onFiles, className, overClassName = styles.dropOver, children }: {
+  onFiles: (files: File[]) => void;
+  className: string;
+  overClassName?: string;
+  children: React.ReactNode;
+}) {
   const [over, setOver] = React.useState(false);
   const depth = React.useRef(0);
   const hasFiles = (e: React.DragEvent) => Array.from(e.dataTransfer.types).includes('Files');
   return (
     <div
-      className={[className, over ? styles.dropOver : ''].join(' ')}
+      className={[className, over ? overClassName : ''].join(' ')}
       onDragEnter={(e) => {
         if (!hasFiles(e)) return;
         e.preventDefault();
