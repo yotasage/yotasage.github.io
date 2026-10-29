@@ -43,17 +43,36 @@
 }
 
 .lead {
-  margin: 0.75rem 0 1.5rem;
+  margin: 0.75rem 0 1.25rem;
   color: #c8c8c8;
   font-size: 1.05rem;
   line-height: 1.5;
+}
+
+/* Centered, and just wide enough for two calculator boxes side by side. */
+.column {
+  max-width: 76.25rem;
+  margin: 0 auto;
 }
 
 .content {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  max-width: 1400px;
+}
+
+.cardHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.card .cardHeader h2,
+.card .status {
+  margin: 0;
 }
 
 .card {
@@ -84,9 +103,11 @@
   line-height: 1.5;
 }
 
-/* Keeps long lines of text readable on wide screens. */
-.text > * {
-  max-width: 80ch;
+/* Text cards are narrower, so the lines stay readable, and centered under the calculator. */
+.text {
+  align-self: center;
+  width: 100%;
+  max-width: calc(80ch + 3rem + 2px);
 }
 
 .equation {
@@ -180,27 +201,50 @@
 .toolbar {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 0.75rem 1.25rem;
-  margin-bottom: 1rem;
+  align-items: center;
+  gap: 0.5rem 1.25rem;
+}
+
+.inlineField {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #c8c8c8;
+  font-size: 0.85rem;
+}
+
+.inlineField .input,
+.inlineField .select {
+  width: auto;
+  padding-top: 0.3rem;
+  padding-bottom: 0.3rem;
 }
 
 .precisionInput {
-  width: 5.5rem;
+  width: 4.25rem;
 }
 
 .boxGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 1rem;
 }
 
 .box {
+  /* Lets the rows inside switch to one column when the box is narrow (see @container below). */
+  container-type: inline-size;
+  flex: 1 1 31rem;
+  max-width: 36rem;
   min-width: 0;
-  padding: 1rem 1.1rem 1.1rem;
+  padding: 0.85rem 1rem 1rem;
   border: 1px solid #6a6a6a;
   border-radius: 10px;
   background: #262626;
+}
+
+.box .input {
+  padding: 0.3rem 0.5rem;
 }
 
 .boxHeader {
@@ -209,7 +253,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.6rem;
 }
 
 .card .boxHeader h3 {
@@ -223,22 +267,15 @@
 }
 
 .solveFor {
-  margin: 0 0 1rem;
-  padding: 0;
-  border: none;
-}
-
-.solveFor legend {
-  margin-bottom: 0.35rem;
-  padding: 0;
-  font-size: 0.85rem;
-  color: #c8c8c8;
-}
-
-.segments {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.solveFor .fieldLabel {
+  margin-right: 0.35rem;
 }
 
 .segment {
@@ -258,7 +295,7 @@
 .segment span {
   display: inline-block;
   min-width: 3.4rem;
-  padding: 0.3rem 0.7rem;
+  padding: 0.2rem 0.7rem;
   border: 1px solid #6a6a6a;
   border-radius: 6px;
   text-align: center;
@@ -275,18 +312,38 @@
   outline-offset: 2px;
 }
 
-.rows {
+/*
+ * The four parameters use four columns (label, field, then the checks across the last two), and the values
+ * below use two two-column groups. With the same gap everywhere, the columns line up.
+ */
+.mainRows,
+.rows,
+.derived {
   display: grid;
-  grid-template-columns: 4.25rem minmax(0, 1fr);
-  gap: 0.4rem 0.75rem;
+  gap: 0.3rem 0.75rem;
   align-items: center;
 }
 
+.mainRows {
+  grid-template-columns: 4.25rem minmax(0, 1fr) 4.25rem minmax(0, 1fr);
+}
+
+.rows {
+  grid-template-columns: 4.25rem minmax(0, 1fr);
+}
+
+.derived {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+}
+
 .rowLabel {
+  grid-column: 1;
   font-size: 1rem;
 }
 
 .fieldWithUnit {
+  grid-column: 2;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -301,9 +358,10 @@
 }
 
 .value {
+  grid-column: 2;
   display: block;
   min-width: 0;
-  padding: 0.45rem 0.55rem;
+  padding: 0.3rem 0.5rem;
   border: 1px solid transparent;
   border-radius: 6px;
   font-size: 0.95rem;
@@ -317,25 +375,51 @@
   font-weight: bold;
 }
 
-.below {
+.box .fieldError {
   grid-column: 2;
 }
 
 .divider {
-  grid-column: 1 / -1;
   height: 1px;
-  margin: 0.4rem 0;
+  margin: 0.6rem 0;
   background: #444;
 }
 
 .checks {
+  grid-column: 3 / -1;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.15rem 0.9rem;
-  margin: -0.1rem 0 0.2rem;
+  gap: 0.1rem 0.9rem;
+  margin: 0;
   padding: 0;
   list-style: none;
   font-size: 0.85rem;
+}
+
+@container (max-width: 27rem) {
+  .segment span {
+    min-width: 2.75rem;
+    padding: 0.2rem 0.45rem;
+  }
+
+  .mainRows {
+    grid-template-columns: 4.25rem minmax(0, 1fr);
+  }
+
+  .checks {
+    grid-column: 2;
+    margin-bottom: 0.2rem;
+  }
+
+  .derived {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .derived > * + * {
+    margin-top: 0.3rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid #444;
+  }
 }
 
 .good {
@@ -366,7 +450,6 @@
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  margin-top: 0.3rem;
 }
 
 .helperInput .input {

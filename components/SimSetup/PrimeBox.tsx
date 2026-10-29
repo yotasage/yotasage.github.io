@@ -26,15 +26,16 @@ function multiplyStep(m: bigint): Step {
   return { label: `×${m}`, title: `First prime after the number multiplied by ${m}`, allowed: (n) => n * m < LIMIT, run: (n) => nextPrime(n * m) };
 }
 
+// Larger numbers to the left, smaller to the right.
 const STEPS: Step[] = [
-  divideStep(1000n),
-  divideStep(10n),
-  divideStep(2n),
-  { label: 'Prev', title: 'Largest prime below the number', allowed: (n) => n > 2n, run: (n) => prevPrime(n) ?? n },
-  { label: 'Next', title: 'Smallest prime above the number', allowed: (n) => n + 1n < LIMIT, run: nextPrime },
-  multiplyStep(2n),
-  multiplyStep(10n),
   multiplyStep(1000n),
+  multiplyStep(10n),
+  multiplyStep(2n),
+  { label: 'Next', title: 'Smallest prime above the number', allowed: (n) => n + 1n < LIMIT, run: nextPrime },
+  { label: 'Prev', title: 'Largest prime below the number', allowed: (n) => n > 2n, run: (n) => prevPrime(n) ?? n },
+  divideStep(2n),
+  divideStep(10n),
+  divideStep(1000n),
 ];
 
 type Parsed = { ok: true; value: bigint } | { ok: false; error: string };
@@ -56,19 +57,21 @@ export default function PrimeBox() {
 
   let status: React.ReactNode = null;
   if (parsed.ok === false) status = <span className={styles.bad}>{parsed.error}</span>;
-  else if (!prime) status = <span className={styles.bad}><span aria-hidden="true">✗</span> No</span>;
-  else if (parsed.value < EXACT_LIMIT) status = <span className={styles.good}><span aria-hidden="true">✓</span> Yes</span>;
-  else status = <span className={styles.good}><span aria-hidden="true">✓</span> Probably (see How to use)</span>;
+  else if (!prime) status = <span className={styles.bad}><span aria-hidden="true">✗</span> Not prime</span>;
+  else if (parsed.value < EXACT_LIMIT) status = <span className={styles.good}><span aria-hidden="true">✓</span> Prime</span>;
+  else status = <span className={styles.good}><span aria-hidden="true">✓</span> Probably prime</span>;
 
   return (
     <section className={styles.card} aria-labelledby={`${id}-title`}>
-      <h2 id={`${id}-title`}>Prime numbers</h2>
-      <p>Prime number: {status}</p>
+      <div className={styles.cardHeader}>
+        <h2 id={`${id}-title`}>Prime numbers</h2>
+        <p className={styles.status}>{status}</p>
+      </div>
 
-      <label htmlFor={`${id}-number`} className={styles.fieldLabel}>Number</label>
       <div className={styles.helperInput}>
         <input
           id={`${id}-number`}
+          aria-label="Number"
           className={styles.input}
           inputMode="numeric"
           spellCheck={false}

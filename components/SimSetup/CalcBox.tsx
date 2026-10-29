@@ -33,7 +33,7 @@ function checkLabel(check: Check): React.ReactNode {
 function Checks({ checks }: { checks: Check[] }) {
   if (checks.length === 0) return null;
   return (
-    <ul className={[styles.checks, styles.below].join(' ')}>
+    <ul className={styles.checks}>
       {checks.map((check) => {
         const tone = CHECK_TONES[check.kind];
         return (
@@ -82,7 +82,7 @@ export default function CalcBox({ box, title, precision, format, canRemove, onCh
           />
           <span className={styles.unit}>{UNITS[key]}</span>
         </div>
-        {error && <p id={`${id}-${key}-error`} className={[styles.fieldError, styles.below].join(' ')}>{error}</p>}
+        {error && <p id={`${id}-${key}-error`} className={styles.fieldError}>{error}</p>}
       </React.Fragment>
     );
   }
@@ -109,19 +109,18 @@ export default function CalcBox({ box, title, precision, format, canRemove, onCh
         </div>
       </div>
 
-      <fieldset className={styles.solveFor}>
-        <legend>Calculate</legend>
-        <div className={styles.segments}>
-          {PARAMS.map((p) => (
-            <label key={p} className={styles.segment}>
-              <input type="radio" name={`${id}-solve`} checked={box.solveFor === p} onChange={() => onChange(switchSolveFor(box, p))} />
-              <span>{SYMBOLS[p]}</span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      <div className={styles.solveFor} role="radiogroup" aria-labelledby={`${id}-solve`}>
+        <span id={`${id}-solve`} className={styles.fieldLabel}>Calculate</span>
+        {PARAMS.map((p) => (
+          <label key={p} className={styles.segment}>
+            <input type="radio" name={`${id}-solve`} checked={box.solveFor === p} onChange={() => onChange(switchSolveFor(box, p))} />
+            <span>{SYMBOLS[p]}</span>
+          </label>
+        ))}
+      </div>
 
-      <div className={styles.rows}>
+      {/* The checks sit to the right of N_cyc and N_pts, in line with the right-hand column below. */}
+      <div className={styles.mainRows}>
         {PARAMS.map((p) => (
           <React.Fragment key={p}>
             {p === box.solveFor ? outputRow(p, SYMBOLS[p], show(values[p], UNITS[p]), true) : inputRow(p)}
@@ -129,18 +128,23 @@ export default function CalcBox({ box, title, precision, format, canRemove, onCh
             {p === 'npts' && <Checks checks={checkNpts(values.npts)} />}
           </React.Fragment>
         ))}
+      </div>
 
-        <div className={styles.divider} />
-        {outputRow('T0', <>T<sub>0</sub></>, show(result.T0, 's'))}
-        {outputRow('Ts', <>T<sub>S</sub></>, show(result.Ts, 's'))}
-        {outputRow('fres', <>f<sub>res</sub></>, show(result.fres, 'Hz'))}
-        {outputRow('npts0', <>N<sub>pts0</sub></>, show(result.npts0, ''))}
+      <div className={styles.divider} />
 
-        <div className={styles.divider} />
-        {inputRow('tstart')}
-        {outputRow('tstop', <>t<sub>stop</sub></>, show(result.tstop, 's'))}
-        {outputRow('fmin', <>f<sub>min</sub></>, show(result.fmin, 'Hz'))}
-        {outputRow('fmax', <>f<sub>max</sub></>, show(result.fmax, 'Hz'))}
+      <div className={styles.derived}>
+        <div className={styles.rows}>
+          {outputRow('T0', <>T<sub>0</sub></>, show(result.T0, 's'))}
+          {outputRow('Ts', <>T<sub>S</sub></>, show(result.Ts, 's'))}
+          {outputRow('fres', <>f<sub>res</sub></>, show(result.fres, 'Hz'))}
+          {outputRow('npts0', <>N<sub>pts0</sub></>, show(result.npts0, ''))}
+        </div>
+        <div className={styles.rows}>
+          {inputRow('tstart')}
+          {outputRow('tstop', <>t<sub>stop</sub></>, show(result.tstop, 's'))}
+          {outputRow('fmin', <>f<sub>min</sub></>, show(result.fmin, 'Hz'))}
+          {outputRow('fmax', <>f<sub>max</sub></>, show(result.fmax, 'Hz'))}
+        </div>
       </div>
     </section>
   );

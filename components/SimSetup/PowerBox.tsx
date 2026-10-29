@@ -11,13 +11,14 @@ interface Step {
   run: (n: bigint) => bigint;
 }
 
+// Larger numbers to the left, smaller to the right.
 const STEPS: Step[] = [
-  { label: '>>4', title: 'Shift right by 4 bits (divide by 16, rounded down)', allowed: (n) => n >> 4n >= 1n, run: (n) => n >> 4n },
-  { label: '>>1', title: 'Shift right by 1 bit (divide by 2, rounded down)', allowed: (n) => n >> 1n >= 1n, run: (n) => n >> 1n },
-  { label: 'Prev', title: 'Largest power of 2 below the number', allowed: (n) => n > 1n, run: (n) => prevPowerOfTwo(n) ?? n },
-  { label: 'Next', title: 'Smallest power of 2 above the number', allowed: () => true, run: nextPowerOfTwo },
-  { label: '<<1', title: 'Shift left by 1 bit (multiply by 2)', allowed: () => true, run: (n) => n << 1n },
   { label: '<<4', title: 'Shift left by 4 bits (multiply by 16)', allowed: () => true, run: (n) => n << 4n },
+  { label: '<<1', title: 'Shift left by 1 bit (multiply by 2)', allowed: () => true, run: (n) => n << 1n },
+  { label: 'Next', title: 'Smallest power of 2 above the number', allowed: () => true, run: nextPowerOfTwo },
+  { label: 'Prev', title: 'Largest power of 2 below the number', allowed: (n) => n > 1n, run: (n) => prevPowerOfTwo(n) ?? n },
+  { label: '>>1', title: 'Shift right by 1 bit (divide by 2, rounded down)', allowed: (n) => n >> 1n >= 1n, run: (n) => n >> 1n },
+  { label: '>>4', title: 'Shift right by 4 bits (divide by 16, rounded down)', allowed: (n) => n >> 4n >= 1n, run: (n) => n >> 4n },
 ];
 
 type Parsed = { ok: true; value: bigint } | { ok: false; error: string };
@@ -40,22 +41,24 @@ export default function PowerBox() {
 
   let status: React.ReactNode;
   if (parsed.ok === false) status = <span className={styles.bad}>{parsed.error}</span>;
-  else if (exact) status = <span className={styles.good}><span aria-hidden="true">✓</span> Yes</span>;
-  else status = <span className={styles.bad}><span aria-hidden="true">✗</span> No</span>;
+  else if (exact) status = <span className={styles.good}><span aria-hidden="true">✓</span> Exact power of 2</span>;
+  else status = <span className={styles.bad}><span aria-hidden="true">✗</span> Not a power of 2</span>;
 
   let exponent: string | null = null;
   if (parsed.ok) exponent = exact ? `2^{${bitLength(parsed.value) - 1}} =` : `2^{${log2(parsed.value).toFixed(4)}} \\approx`;
 
   return (
     <section className={styles.card} aria-labelledby={`${id}-title`}>
-      <h2 id={`${id}-title`}>Powers of 2</h2>
-      <p>Exact power of 2: {status}</p>
+      <div className={styles.cardHeader}>
+        <h2 id={`${id}-title`}>Powers of 2</h2>
+        <p className={styles.status}>{status}</p>
+      </div>
 
-      <label htmlFor={`${id}-number`} className={styles.fieldLabel}>Number</label>
       <div className={styles.helperInput}>
         {exponent && <KatexSpan className={styles.exponent} text={exponent} />}
         <input
           id={`${id}-number`}
+          aria-label="Number"
           className={styles.input}
           inputMode="numeric"
           spellCheck={false}
