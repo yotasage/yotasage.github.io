@@ -2,13 +2,14 @@ import Head from 'next/head';
 import Link from 'next/link';
 import React from 'react';
 
-import { BibWebsite } from '../../components/BibJs/bibItem';
-import Bibliography from '../../components/BibJs/referenceList';
+import Bibliography from '../../components/Bibliography';
 import HomeIcon from '../../components/icons/home';
 import KatexSpan from '../../components/KatexSpan';
 import CalcBox from '../../components/SimSetup/CalcBox';
 import PowerBox from '../../components/SimSetup/PowerBox';
 import PrimeBox, { MAX_PRIME_DIGITS } from '../../components/SimSetup/PrimeBox';
+import { BibEntry } from '../../lib/bibtex';
+import { loadReferences } from '../../lib/references';
 import { BoxState, defaultBox } from '../../lib/simsetup/calc';
 import { NumberFormat } from '../../lib/simsetup/numbers';
 import styles from '../../styles/SimSetup.module.css';
@@ -22,27 +23,19 @@ function parsePrecision(text: string): number | null {
   return text.trim() !== '' && Number.isInteger(n) && n >= 1 && n <= MAX_PRECISION ? n : null;
 }
 
-export default function SimSetup() {
+// Reads references.bib when the site is built.
+export async function getStaticProps() {
+  return { props: { references: loadReferences() } };
+}
+
+export default function SimSetup({ references }: { references: BibEntry[] }) {
   const nextId = React.useRef(3);
   const [boxes, setBoxes] = React.useState<BoxState[]>(() => [defaultBox(1), defaultBox(2)]);
   const [precisionText, setPrecisionText] = React.useState(String(DEFAULT_PRECISION));
   const [precision, setPrecision] = React.useState(DEFAULT_PRECISION);
   const [format, setFormat] = React.useState<NumberFormat>('plain');
 
-  const referenceList = [
-    new BibWebsite(
-      {
-        key: 'AD',
-        institution: 'Analog Devices',
-        title: 'Coherent Sampling vs. Window Sampling',
-        website: 'analog.com',
-        url: 'https://www.analog.com/en/resources/technical-articles/coherent-sampling-vs-window-sampling.html',
-        read: '2024-12-01'
-      }
-    )
-  ];
-
-  const bib = new Bibliography(referenceList);
+  const bib = new Bibliography(references);
 
   const precisionValid = parsePrecision(precisionText) !== null;
 
@@ -279,8 +272,9 @@ export default function SimSetup() {
             <p><b>NOTE 3:</b> Waveform discontinuance describes an input signal, for which an integer number of its cycles do not fit into a predefined window.</p>
           </section>
 
-          <section className={[styles.card, styles.text, styles.references].join(' ')}>
-            {bib.render()}
+          <section className={[styles.card, styles.text].join(' ')} aria-labelledby="references-title">
+            <h2 id="references-title">References</h2>
+            {bib.list()}
           </section>
         </main>
       </div>

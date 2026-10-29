@@ -1,0 +1,40 @@
+.cite {
+  text-decoration: none;
+}
+
+.cite:hover,
+.cite:focus-visible {
+  text-decoration: underline;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  gap: 0.6rem;
+  margin: 0.35rem 0;
+  padding: 0.15rem 0.25rem;
+  border-radius: 4px;
+  line-height: 1.5;
+}
+
+/* The reference that a citation link jumped to. */
+.item:target {
+  background: rgba(77, 163, 255, 0.12);
+}
+
+.number {
+  flex: none;
+  min-width: 2.25em;
+  text-align: right;
+}
+
+.text {
+  min-width: 0;
+  /* Lets long URLs wrap on phones. */
+  overflow-wrap: anywhere;
+}
