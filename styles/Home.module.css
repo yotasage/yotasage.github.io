@@ -1,113 +1,237 @@
-/* @tailwind base;
-@tailwind components;
-@tailwind utilities; */
-
-.container {
+/* The side padding centers the content in a column at most 1120px wide. */
+.page {
   min-height: 100vh;
-  padding: 0 0.5rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-
+  padding: 3.5rem max(1rem, (100% - 1120px) / 2) 4rem;
   background-color: #2B2B2B;
   color: white;
-}
-
-.title a {
-  color: #0070f3;
-  text-decoration: none;
-}
-
-.title a:hover,
-.title a:focus,
-.title a:active {
-  text-decoration: underline;
-}
-
-.title {
-  margin: 0 0 1rem;
-  line-height: 1.15;
-  font-size: 3.6rem;
-}
-
-.title {
-  text-align: center;
-}
-
-.title,
-.description {
-  text-align: center;
-}
-
-
-.description {
-  line-height: 1.5;
-  font-size: 1.5rem;
-}
-
-.grid {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-
-  max-width: 800px;
-  margin-top: 3rem;
-}
-
-.card {
-  margin: 1rem;
-  padding: 1.5rem;
-  text-align: left;
-  color: inherit;
-  text-decoration: none;
-  border: 1px solid #ffffff;
-  border-radius: 10px;
-  transition: color 0.15s ease, border-color 0.15s ease;
-}
-
-.p_1_5rem {
-  padding: 1.5rem;
-}
-
-.p_0_75rem {
-  padding: 0.75rem;
-}
-
-.w100 {
-  flex-basis: 100%;
-}
-
-.w45 {
-  flex-basis: 45%;
-}
-
-.w10 {
-  flex-basis: 10%;
-}
-
-.card:hover,
-.card:focus,
-.card:active {
-  color: #0070f3;
-  border-color: #0070f3;
-}
-
-.card h3 {
-  margin: 0 0 1rem 0;
-  font-size: 1.5rem;
-}
-
-.card p {
-  margin: 0.75rem 0;
-  font-size: 1.25rem;
-  line-height: 1.5;
+  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans,
+    Helvetica Neue, sans-serif;
 }
 
 @media (max-width: 600px) {
-  .grid {
-    width: 100%;
-    flex-direction: column;
+  .page {
+    padding-top: 2rem;
+  }
+}
+
+/* Intro */
+
+.intro {
+  max-width: 760px;
+  margin-bottom: 2.5rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.75rem;
+  color: #9a9a9a;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(2rem, 1.3rem + 3vw, 3.2rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.lead {
+  margin: 1rem 0 0;
+  color: #c8c8c8;
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.promises {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  color: #dcdcdc;
+  font-size: 0.95rem;
+}
+
+.promises li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Tool cards */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* --accent is set per card to the tool's colour. */
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1.5rem;
+  border: 1px solid #ffffff;
+  border-radius: 10px;
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.15s ease;
+}
+
+.card:hover {
+  border-color: var(--accent);
+  background-color: color-mix(in srgb, var(--accent) 6%, transparent);
+  transform: translateY(-2px);
+}
+
+.iconChip {
+  display: inline-flex;
+  align-self: flex-start;
+  margin-bottom: 0.4rem;
+  padding: 0.6rem;
+  border-radius: 12px;
+  background-color: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.category {
+  color: #9a9a9a;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.card h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.25;
+}
+
+.cardLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.cardLink::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+}
+
+.cardLink:focus-visible {
+  outline: none;
+}
+
+.cardLink:focus-visible::after {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.arrow {
+  display: inline-block;
+  margin-left: 0.4rem;
+  color: var(--accent);
+  transition: transform 0.15s ease;
+}
+
+.card:hover .arrow,
+.cardLink:focus-visible .arrow {
+  transform: translateX(4px);
+}
+
+.card p {
+  margin: 0;
+  color: #c8c8c8;
+  line-height: 1.5;
+}
+
+/* So subscripts do not push the lines apart. */
+.card sub {
+  line-height: 0;
+}
+
+/* The top margin keeps the chips at the bottom of cards that are taller than their content. */
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: auto 0 0;
+  padding: 0.5rem 0 0;
+  list-style: none;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.65rem;
+  border: 1px solid #555555;
+  border-radius: 999px;
+  color: #c8c8c8;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+/* --sub-accent is set per link to the colour of the PDF tool. */
+.subLink {
+  position: relative;
+  z-index: 1;
+  color: #e6e6e6;
+  text-decoration: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.subLink:hover,
+.subLink:focus-visible {
+  border-color: var(--sub-accent);
+  background-color: color-mix(in srgb, var(--sub-accent) 15%, transparent);
+  outline: none;
+}
+
+/* On a phone the icon goes beside the category and title, so the cards are shorter. */
+@media (max-width: 600px) {
+  .card {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 0.9rem;
+    padding: 1.25rem;
+  }
+
+  .iconChip {
+    grid-row: span 2;
+    margin-bottom: 0;
+  }
+
+  .category {
+    align-self: end;
+  }
+
+  .card h2 {
+    align-self: start;
+  }
+
+  .card p,
+  .tags {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .arrow {
+    transition: none;
+  }
+
+  .card:hover,
+  .card:hover .arrow,
+  .cardLink:focus-visible .arrow {
+    transform: none;
   }
 }

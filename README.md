@@ -10,7 +10,7 @@ files given to a tool never leave the device.
 
 ## Tools
 
-Every tool has a button on the main page ([pages/index.tsx](pages/index.tsx)).
+Every tool has a card on the main page ([pages/index.tsx](pages/index.tsx)).
 
 | Tool | Page | What it does |
 | --- | --- | --- |
@@ -44,7 +44,8 @@ files and publishes them to GitHub Pages. The workflow adds the `output: 'export
 ## Adding a tool
 
 1. Add the page as `pages/<tool>/main.tsx`, with a link back to the main page (`components/icons/home.tsx`).
-2. Add a button (card) for it in [pages/index.tsx](pages/index.tsx).
+2. Add a card for it to the `TOOLS` list in [pages/index.tsx](pages/index.tsx), with an icon in
+   [components/Home/ToolIcon.tsx](components/Home/ToolIcon.tsx).
 3. Keep the logic in `lib/<tool>/`, components in `components/<Tool>/` and styles in `styles/<Tool>.module.css`.
    Every file under `pages/` becomes a page on the site, so nothing else goes there.
 4. Only use what works without a server: no API routes, no `getServerSideProps`, and no libraries, fonts or files

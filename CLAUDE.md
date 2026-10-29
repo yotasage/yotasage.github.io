@@ -10,8 +10,8 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   API routes (`pages/api`), `getServerSideProps`, middleware, ISR/`revalidate`, rewrites/redirects/headers in config,
   the default `next/image` loader, dynamic routes without `getStaticPaths`, or features that need a backend service.
   `getStaticProps` is fine (runs at build time).
-- **Every tool is reachable from a button on the main page** ([pages/index.tsx](pages/index.tsx), a `<Link>` with
-  `styles.card` + `styles.w45`). Don't add placeholder cards for tools that don't exist.
+- **Every tool is reachable from a card on the main page** ([pages/index.tsx](pages/index.tsx): an entry in `TOOLS`,
+  with an icon in `components/Home/ToolIcon.tsx`). Don't add placeholder cards for tools that don't exist.
 - **Self-hosted assets only.** No CDN scripts, fonts, workers or wasm. pdf.js files are copied into `public/pdfjs/`
   on install.
 - **Files the user gives a tool never leave the device.** No uploads, no analytics, no third-party requests.
