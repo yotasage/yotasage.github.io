@@ -35,11 +35,6 @@ export default function Home() {
             <h3>PDF tools &rarr;</h3>
             <p>Merge, compress and anonymize PDFs and turn images into PDFs. Runs in the browser; files are never uploaded.</p>
           </Link>
-
-          <Link href="https://github.com/yotasage/yotasage.github.io" className={[styles.card, styles.w45].join(" ")}>
-            <h3>The GitHub repo of this site &rarr;</h3>
-            <p>Check out the GitHub repo.</p>
-          </Link>
         </div>
       </main>
 

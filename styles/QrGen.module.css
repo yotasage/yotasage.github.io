@@ -1,6 +1,7 @@
+/* The side padding centers the content in a column at most 1400px wide. */
 .page {
   min-height: 100vh;
-  padding: 1rem 1rem 4rem;
+  padding: 1rem max(1rem, (100% - 1400px) / 2) 4rem;
   background-color: #2B2B2B;
   color: white;
   font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans,
@@ -54,7 +55,6 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 1.25rem;
   align-items: start;
-  max-width: 1400px;
 }
 
 .controls {
@@ -375,6 +375,5 @@
 }
 
 .fullWidth {
-  max-width: 1400px;
   margin-top: 1.25rem;
 }

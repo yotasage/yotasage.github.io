@@ -46,7 +46,7 @@ deployed to GitHub Pages at https://yotasage.github.io/.
   `styles/<Tool>.module.css`.
 - Each page sets its own `<Head>` (title, `/favicon.ico`), a home link with `components/icons/home.tsx` at the top,
   and `html, body` styles in `<style jsx global>`. The dark background is `#2b2b2b`. `styles/globals.css` is not
-  imported anywhere. [pages/_app.tsx](pages/_app.tsx) adds `SiteFooter` (link to `/licenses`) to every page.
+  imported anywhere. [pages/_app.tsx](pages/_app.tsx) adds `SiteFooter` (links to `/licenses` and the GitHub repo) to every page.
 - Layouts must work at phone width.
 - PDF tools: register each tool in [lib/pdf/tools.ts](lib/pdf/tools.ts) (hub tiles on `/pdf/main`), use the shared
   frame in `components/PdfTools/`, and update the status table in

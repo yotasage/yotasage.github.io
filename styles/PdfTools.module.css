@@ -1,6 +1,7 @@
+/* The side padding centers the content in a column at most 1400px wide. */
 .page {
   min-height: 100vh;
-  padding: 1rem 1rem 4rem;
+  padding: 1rem max(1rem, (100% - 1400px) / 2) 4rem;
   background-color: #2B2B2B;
   color: white;
   font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans,
@@ -75,9 +76,8 @@
 
 .toolGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 1rem;
-  max-width: 1400px;
   margin-bottom: 2rem;
 }
 
@@ -125,7 +125,6 @@
   flex-direction: column;
   align-items: center;
   gap: 1rem;
-  max-width: 1400px;
   padding: 4rem 1rem;
   border: 2px dashed #6a6a6a;
   border-radius: 14px;
@@ -162,7 +161,6 @@
   grid-template-columns: minmax(0, 1fr) 360px;
   gap: 1.25rem;
   align-items: start;
-  max-width: 1400px;
 }
 
 @media (max-width: 900px) {
