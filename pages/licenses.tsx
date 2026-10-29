@@ -36,6 +36,7 @@ function Entries({ entries }: { entries: Entry[] }) {
 export default function Licenses() {
   const packages = data.packages as Entry[];
   const assets = data.assets as Entry[];
+  const viewer = data.viewer as Entry[];
 
   // A link from the table opens the licence it points to.
   React.useEffect(() => {
@@ -102,6 +103,14 @@ export default function Licenses() {
         <h2>Fonts and decoders used by the PDF tools</h2>
         <p className={styles.lead}>Data files from pdf.js that the PDF tools load to display and convert PDFs.</p>
         <Entries entries={assets} />
+
+        <h2>Readers and decoders used by the 3D viewer</h2>
+        <p className={styles.lead}>
+          Files the 3D viewer loads to read CAD and compressed glTF files, and libraries that three.js includes in its
+          file loaders. occt-import-js and Open CASCADE are covered by the GNU Lesser General Public License 2.1: they
+          are served unmodified as separate files, and their source code is linked below.
+        </p>
+        <Entries entries={viewer} />
       </div>
     </div>
   );

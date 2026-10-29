@@ -19,6 +19,7 @@ Every tool has a card on the main page ([pages/index.tsx](pages/index.tsx)).
 | PDF tools | [/pdf/main](https://yotasage.github.io/pdf/main) | Merge, compress, images to PDF and remove metadata. Planned tools are in [docs/pdf-tools-plan.md](docs/pdf-tools-plan.md). |
 | Base64 image converter | [/base64-image/main](https://yotasage.github.io/base64-image/main) | Image to Base64, a data URL or an HTML, CSS or Markdown snippet (optionally converted to PNG, JPEG or WebP first), and Base64 back to an image to view, download or copy. |
 | Text case converter | [/text-case/main](https://yotasage.github.io/text-case/main) | Sentence case, lower case, UPPER CASE, Capitalized Case, Title Case (Chicago or APA), alternating and inverse case, and names for code (camelCase, PascalCase, snake_case, CONSTANT_CASE, kebab-case, Train-Case, dot.case), with character, word and line counts. |
+| 3D viewer | [/3d-viewer/main](https://yotasage.github.io/3d-viewer/main) | Views STEP, IGES and BREP (with Open CASCADE), STL, 3MF, AMF, OBJ, PLY, OFF, VTK, glTF/GLB, FBX, Collada, KMZ, 3DS, USD/USDZ, VRML, XYZ, PCD, G-code and MagicaVoxel files. Several files can be opened together and moved apart to compare them. Section view, distance measuring, size, surface area and volume, a parts tree, and saving as STL, OBJ, PLY, GLB or PNG. |
 
 The [/licenses](https://yotasage.github.io/licenses) page, linked from the footer of every page, lists the licences
 of the packages the site uses.
@@ -28,8 +29,8 @@ of the packages the site uses.
 Needs Node 22 or newer (GitHub builds with Node 22).
 
 ```
-npm install      # also copies the pdf.js files and generates the licence list
-npm run dev      # http://localhost:3000, also reachable from a phone on the same network
+npm install      # also copies the pdf.js and 3D viewer files and generates the licence list
+npm run dev      # http://localhost:3020, also reachable from a phone on the same network
 npm run build    # run before pushing; GitHub runs the same build
 ```
 
@@ -50,7 +51,8 @@ files and publishes them to GitHub Pages. The workflow adds the `output: 'export
    Every file under `pages/` becomes a page on the site, so nothing else goes there.
 4. Only use what works without a server: no API routes, no `getServerSideProps`, and no libraries, fonts or files
    loaded from a CDN. `getStaticProps` is fine, since it runs when the site is built.
-5. Check the licence of any new package (MIT, BSD, Apache-2.0 and ISC are fine; GPL and AGPL need a decision first).
+5. Check the licence of any new package (MIT, BSD, Apache-2.0 and ISC are fine; GPL, LGPL and AGPL need a decision
+   first).
 
 ## Project layout
 
@@ -61,7 +63,7 @@ files and publishes them to GitHub Pages. The workflow adds the `output: 'export
 | `lib/` | Logic without React, one folder per tool. `bibtex.ts` and `references.ts` read [references.bib](references.bib). |
 | `styles/` | CSS modules, one per tool. |
 | `scripts/` | Scripts that run on `npm install`. |
-| `public/` | Files served as they are (favicon, icons). |
+| `public/` | Files served as they are (favicon, icons). `public/pdfjs/` and `public/3d/` are copied from `node_modules` on install. |
 | `docs/` | Notes and plans. |
 
 Sources cited on the site are in [references.bib](references.bib); the comment at the top of the file explains how

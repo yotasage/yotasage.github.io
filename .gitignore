@@ -27,6 +27,9 @@ yarn-error.log*
 # pdf.js assets, copied from node_modules on install
 /public/pdfjs/
 
+# 3D viewer assets (Open CASCADE, Draco, Basis Universal), copied from node_modules on install
+/public/3d/
+
 # Licence list, generated from node_modules on install
 /lib/generated/
 

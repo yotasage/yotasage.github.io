@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 A personal collection of browser tools (simulation setup calculator, QR code generator, PDF tools, Base64 image
-converter, text case converter), so the owner does not have to use other people's sites with ads and bad design. Next.js 16 Pages Router,
+converter, text case converter, 3D viewer), so the owner does not have to use other people's sites with ads and bad design. Next.js 16 Pages Router,
 React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 
 ## Hard constraints
@@ -13,9 +13,11 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 - **Every tool is reachable from a card on the main page** ([pages/index.tsx](pages/index.tsx): an entry in `TOOLS`,
   with an icon in `components/Home/ToolIcon.tsx`). Don't add placeholder cards for tools that don't exist.
 - **Self-hosted assets only.** No CDN scripts, fonts, workers or wasm. pdf.js files are copied into `public/pdfjs/`
-  on install.
+  and the 3D viewer's readers and decoders (Open CASCADE, Draco, Basis Universal) into `public/3d/` on install.
 - **Files the user gives a tool never leave the device.** No uploads, no analytics, no third-party requests.
-- **Check the licence of a new dependency.** MIT/BSD/Apache-2.0/ISC are fine; GPL/AGPL needs the owner's decision.
+- **Check the licence of a new dependency.** MIT/BSD/Apache-2.0/ISC are fine; GPL/LGPL/AGPL needs the owner's decision.
+  The owner approved `occt-import-js` (LGPL-2.1, Open CASCADE) for the 3D viewer, on the condition that it is served
+  unmodified as separate files from `public/3d/occt/` and listed on `/licenses` with a link to its source.
 
 ## Build and deploy
 
@@ -28,16 +30,18 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   up showing README.md instead of the app.
 - CI runs on Ubuntu with Node 22 (`npm ci`); development is on Windows with a newer Node. Import paths must match
   file name case exactly.
-- `postinstall` runs [scripts/copy-pdfjs-assets.mjs](scripts/copy-pdfjs-assets.mjs) (→ `public/pdfjs/`) and
+- `postinstall` runs [scripts/copy-pdfjs-assets.mjs](scripts/copy-pdfjs-assets.mjs) (→ `public/pdfjs/`),
+  [scripts/copy-3d-assets.mjs](scripts/copy-3d-assets.mjs) (→ `public/3d/`) and
   [scripts/collect-licenses.mjs](scripts/collect-licenses.mjs) (→ `lib/generated/third-party-licenses.json`, shown by
-  `/licenses`; the list is found by scanning imports in `pages/`, `components/`, `lib/`). Both outputs are
+  `/licenses`; the list is found by scanning imports in `pages/`, `components/`, `lib/`). All three outputs are
   git-ignored. After adding or removing a dependency, run `npm install` so the licence list follows.
 
 ## Verifying changes
 
 - `npx tsc --noEmit`: type-check, under a second.
 - `npm run build`: full build, also renders every page. Run it before saying a change is done.
-- `npm run dev`: dev server on port 3000 bound to `0.0.0.0` (the owner tests on a phone).
+- `npm run dev`: dev server on port 3020 bound to `0.0.0.0` (the owner tests on a phone). Not 3000: the Live Preview
+  extension of VS Code serves on `127.0.0.1:3000`, which wins over `0.0.0.0:3000` for `localhost`.
 - There are no tests and no lint script. `tsconfig` has `strict: false`.
 - `npm run build` rewrites the import paths in `next-env.d.ts` (`next dev` writes them back). Restore it with
   `git checkout -- next-env.d.ts` rather than committing the change.
@@ -58,6 +62,17 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 - Citations: entries live in [references.bib](references.bib). Load them with `loadReferences()` from
   `lib/references.ts` **only in `getStaticProps`** (it uses `node:fs`), then cite with the `Bibliography` class in
   `components/Bibliography.tsx` (IEEE style, numbered by first citation). An unknown key stops the build.
+- 3D viewer: formats are listed in [lib/viewer3d/formats.ts](lib/viewer3d/formats.ts) and read in
+  [lib/viewer3d/load.ts](lib/viewer3d/load.ts) (STEP/IGES/BREP in a worker, [lib/viewer3d/occt.ts](lib/viewer3d/occt.ts));
+  the scene is [lib/viewer3d/viewer.ts](lib/viewer3d/viewer.ts). Files a model refers to are matched by name among the
+  opened files and never fetched from elsewhere. The page loads three.js only when a file is opened. With several
+  files, each is in a group that the Positions panel can move apart; that offset is for the view only, so statistics
+  (`withoutOffsets` in `lib/viewer3d/stats.ts`) and saved files (`exportCopy` in `lib/viewer3d/export.ts`) leave it out.
+- `tsconfig` uses `"module": "node16"`, so our own files count as CommonJS and the ES-module-only add-ons of three.js
+  (`three/examples/jsm/...`) can only be loaded with `await import(...)`, or imported as types with
+  `import type ... with { 'resolution-mode': 'import' }`. A dynamic import of one of our own files needs
+  `// @ts-expect-error` (TypeScript wants a `.js` extension, which Turbopack does not resolve); see
+  `components/Viewer3D/Viewer3D.tsx`.
 - Math is rendered with `components/KatexSpan.tsx`. `lib/useReplayHighlight.ts` replays the highlight on elements a
   `#link` jumps to.
 - Unused leftovers in package.json: `peerjs`, `socket.io`, `socket.io-client`, `@jaames/iro`, `clsx`,

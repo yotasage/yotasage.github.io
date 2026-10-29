@@ -31,11 +31,11 @@ the build works locally but fails on GitHub, try `nvm use 22` and build again.
 
 ### `npm run dev`
 
-Runs `next dev -H 0.0.0.0 -p 3000`.
+Runs `next dev -H 0.0.0.0 -p 3020`.
 
-Starts the development server at http://localhost:3000. Pages reload when a file is saved. `-H 0.0.0.0` makes the
+Starts the development server at http://localhost:3020. Pages reload when a file is saved. `-H 0.0.0.0` makes the
 server reachable from other devices on the same network, so the site can be tested on a phone at
-`http://<the PC's IP address>:3000` (`ipconfig` shows the IP address; Windows Firewall may ask to allow Node the
+`http://<the PC's IP address>:3020` (`ipconfig` shows the IP address; Windows Firewall may ask to allow Node the
 first time).
 
 In dev mode `getStaticProps` runs on every page load, so changes to [references.bib](../references.bib) show up

@@ -47,7 +47,8 @@ export function NumberInput({ value, onChange, min, max, step }: {
   onChange: (v: number) => void;
   min: number;
   max: number;
-  step?: number;
+  // 'any' accepts decimals of any length without the browser marking them as invalid.
+  step?: number | 'any';
 }) {
   const [text, setText] = React.useState(String(value));
   React.useEffect(() => {

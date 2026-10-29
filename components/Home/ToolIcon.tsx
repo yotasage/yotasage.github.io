@@ -2,7 +2,7 @@ import React from 'react';
 
 // Icons for the tool cards on the main page, in the style of components/PdfTools/ToolIcon.tsx. Filled shapes use
 // currentColor, which the <svg> sets to the tool's colour.
-export type HomeIconName = 'simsetup' | 'qrcode' | 'pdf' | 'base64' | 'textcase';
+export type HomeIconName = 'simsetup' | 'qrcode' | 'pdf' | 'base64' | 'textcase' | 'viewer3d';
 
 const SAMPLES: [number, number][] = [[6, 24], [12, 12], [18, 12], [24, 24], [30, 36], [36, 36], [42, 24]];
 
@@ -56,6 +56,15 @@ const ICONS: Record<HomeIconName, React.ReactNode> = {
       <path d="M3 40 13 10l10 30M6.3 30h13.4" />
       <circle cx={34} cy={33} r={7} />
       <path d="M41 26v14" />
+    </>
+  ),
+  // A cube seen from a corner, with an orbit around it.
+  viewer3d: (
+    <>
+      <path d="M24 9l13 7.5v15L24 39l-13-7.5v-15z" />
+      <path d="M11 16.5L24 24l13-7.5M24 24v15" />
+      <path d="M8.5 37.5C3 34 2.5 29.5 6 26M39.5 10.5C45 14 45.5 18.5 42 22" opacity={0.6} />
+      <path d="M4 25.5l2 .5.5-2M44 22.5l-2-.5-.5 2" opacity={0.6} />
     </>
   ),
 };

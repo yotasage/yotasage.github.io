@@ -116,6 +116,44 @@ const assets = pdfjsDir
   }))
   : [];
 
+// Files the 3D viewer loads at runtime from public/3d (see copy-3d-assets.mjs), and libraries that three.js bundles in
+// the loaders the viewer imports. These are not packages of their own, so the scan above does not find them.
+const occtDir = resolvePackage('occt-import-js', root);
+const occtVersion = occtDir ? JSON.parse(readFileSync(join(occtDir, 'package.json'), 'utf8')).version : null;
+const read = (dir, file) => (dir && existsSync(join(dir, file)) ? readFileSync(join(dir, file), 'utf8').trim() : null);
+// The Apache License 2.0 text, from a package that ships it unchanged.
+const APACHE = read(resolvePackage('pdfjs-dist', root), 'LICENSE');
+const LGPL_NOTE = 'Served unmodified as separate files from /3d/occt/ and loaded only when a STEP, IGES or BREP file is opened, '
+  + 'so it can be replaced with another build. Its complete source code, including the Open CASCADE version it is built '
+  + `from (the occt submodule), is at https://github.com/kovacsv/occt-import-js/tree/${occtVersion}.`;
+const VIEWER_ASSETS = occtDir ? [
+  {
+    name: 'occt-import-js', version: occtVersion, license: 'LGPL-2.1', url: `https://github.com/kovacsv/occt-import-js/tree/${occtVersion}`,
+    text: `${LGPL_NOTE}\n\nCopyright (c) Viktor Kovacs\n\n${read(join(occtDir, 'dist'), 'license.occt-import-js.txt')}`,
+  },
+  {
+    name: 'Open CASCADE Technology (in occt-import-js)', license: 'LGPL-2.1', url: 'https://github.com/Open-Cascade-SAS/OCCT',
+    text: `${LGPL_NOTE}\n\nCopyright (c) Open CASCADE SAS\n\n${read(join(occtDir, 'dist'), 'license.occt.txt')}`,
+  },
+] : [];
+VIEWER_ASSETS.push(
+  {
+    name: 'Draco decoder (from three.js)', license: 'Apache-2.0', url: 'https://github.com/google/draco',
+    text: `Copyright The Draco Authors\n\n${APACHE}`,
+  },
+  {
+    name: 'Basis Universal transcoder (from three.js)', license: 'Apache-2.0', url: 'https://github.com/BinomialLLC/basis_universal',
+    text: `Copyright Binomial LLC\n\n${APACHE}`,
+  },
+  {
+    name: 'Chevrotain (bundled in the VRML loader of three.js)', license: 'Apache-2.0', url: 'https://github.com/Chevrotain/chevrotain',
+    text: `Copyright the Chevrotain authors\n\n${APACHE}`,
+  },
+  { name: 'meshoptimizer decoder (bundled in three.js)', license: 'MIT', url: 'https://github.com/zeux/meshoptimizer', author: 'Arseny Kapoulkine' },
+  { name: 'ktx-parse (bundled in three.js)', license: 'MIT', url: 'https://github.com/donmccurdy/KTX-Parse', author: 'Don McCurdy' },
+  { name: 'zstddec (bundled in three.js)', license: 'MIT', url: 'https://github.com/donmccurdy/zstddec', author: 'Don McCurdy' },
+);
+
 const MIT = `Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
 rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit
@@ -140,7 +178,13 @@ for (const p of list.filter((p) => !p.text)) {
   else console.warn(`collect-licenses: no licence text for ${p.name}@${p.version} (${p.license})`);
 }
 
+const viewer = VIEWER_ASSETS.map(({ author, ...e }) => ({
+  ...e,
+  text: e.text ?? `Copyright (c) ${author}\n\n${MIT}`,
+}));
+if (!APACHE) console.warn('collect-licenses: pdfjs-dist is not installed, so the Apache-2.0 text of the 3D viewer files is missing.');
+
 const out = join(root, 'lib', 'generated');
 mkdirSync(out, { recursive: true });
-writeFileSync(join(out, 'third-party-licenses.json'), JSON.stringify({ packages: list, assets }, null, 1));
-console.log(`Collected the licences of ${list.length} packages and ${assets.length} pdf.js data files.`);
+writeFileSync(join(out, 'third-party-licenses.json'), JSON.stringify({ packages: list, assets, viewer }, null, 1));
+console.log(`Collected the licences of ${list.length} packages, ${assets.length} pdf.js data files and ${viewer.length} 3D viewer files.`);

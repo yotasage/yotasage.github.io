@@ -1,0 +1,518 @@
+/* The page frame, fields and buttons come from QrGen.module.css; this file has what is special to the 3D viewer. */
+
+/* Start screen */
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 3.5rem 1rem;
+  border: 2px dashed #6a6a6a;
+  border-radius: 14px;
+  text-align: center;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.hero h2 {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.hero p {
+  margin: 0;
+  max-width: 640px;
+  color: #c8c8c8;
+  line-height: 1.5;
+}
+
+.dropOver {
+  border-color: #0070f3;
+  background-color: rgba(0, 112, 243, 0.08);
+}
+
+.heroButton {
+  padding: 1.1rem 2.5rem;
+  border: none;
+  border-radius: 10px;
+  background: #0070f3;
+  color: white;
+  font: inherit;
+  font-size: 1.3rem;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 112, 243, 0.35);
+  transition: background-color 0.15s ease;
+}
+
+.heroButton:hover,
+.heroButton:focus-visible {
+  background: #1a82ff;
+}
+
+.hint {
+  max-width: 640px;
+  color: #9a9a9a;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.formatList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.75rem 1.5rem;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0.5rem 0;
+  text-align: left;
+}
+
+.formatList dt {
+  color: #f08c3c;
+  font-size: 0.8rem;
+  font-weight: bold;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.formatList dd {
+  margin: 0.2rem 0 0;
+  color: #e0e0e0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.formatList small {
+  display: block;
+  color: #9a9a9a;
+}
+
+.loadingWorkspace {
+  padding: 4rem 1rem;
+  color: #c8c8c8;
+  text-align: center;
+}
+
+/* Workspace: the view on the left, the panels on the right */
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 1rem;
+  align-items: start;
+  border-radius: 14px;
+  outline: 2px dashed transparent;
+  outline-offset: 4px;
+  transition: outline-color 0.15s ease;
+}
+
+.workspaceDropOver {
+  outline-color: #0070f3;
+}
+
+/* Fits the screen under the page header; it stays in view while the panels scroll. */
+.viewport {
+  position: sticky;
+  top: 1rem;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 12rem);
+  min-height: 420px;
+  overflow: hidden;
+  border: 1px solid #5a5a5a;
+  border-radius: 12px;
+}
+
+.viewportFullscreen {
+  height: 100vh;
+  border: none;
+  border-radius: 0;
+}
+
+@media (max-width: 900px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .viewport {
+    position: relative;
+    top: 0;
+    height: 65vh;
+    min-height: 320px;
+  }
+  .viewportFullscreen {
+    height: 100vh;
+  }
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem;
+  background: rgba(20, 22, 26, 0.85);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.toolbarSpacer {
+  flex: 1;
+}
+
+.toolButton {
+  padding: 0.3rem 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #f0f0f0;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.toolButton:hover:not(:disabled),
+.toolButton:focus-visible {
+  border-color: #4da3ff;
+}
+
+.toolButton[aria-pressed='true'] {
+  border-color: #0070f3;
+  background: rgba(0, 112, 243, 0.35);
+}
+
+.toolButton:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.canvasBox {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.canvasHost {
+  position: absolute;
+  inset: 0;
+}
+
+.gizmo {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  overflow: visible;
+}
+
+.gizmoBack {
+  fill: rgba(0, 0, 0, 0.18);
+}
+
+.gizmoAxis {
+  cursor: pointer;
+  outline: none;
+}
+
+.gizmoAxis:hover circle,
+.gizmoAxis:focus-visible circle {
+  stroke: #ffffff;
+  stroke-width: 2px;
+}
+
+.gizmoLabel {
+  fill: #ffffff;
+  font-size: 11px;
+  font-weight: bold;
+  pointer-events: none;
+}
+
+.measureLabel {
+  position: absolute;
+  transform: translate(-50%, -150%);
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  background: rgba(20, 22, 26, 0.88);
+  color: #ffd23f;
+  font-size: 0.9rem;
+  font-weight: bold;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.viewHint {
+  position: absolute;
+  left: 0.6rem;
+  right: 7rem;
+  bottom: 0.5rem;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.viewportLight .viewHint {
+  color: rgba(0, 0, 0, 0.55);
+  text-shadow: none;
+}
+
+.touchHint {
+  display: none;
+}
+
+@media (pointer: coarse) {
+  .mouseHint {
+    display: none;
+  }
+  .touchHint {
+    display: inline;
+  }
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: rgba(20, 22, 26, 0.55);
+  color: #f0f0f0;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.overlayError {
+  background: rgba(20, 22, 26, 0.85);
+  color: #ffb3b3;
+}
+
+.spinner {
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #4da3ff;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 3s;
+  }
+}
+
+/* Panels */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+.card {
+  padding: 0.9rem 1.1rem 1rem;
+  border: 1px solid #5a5a5a;
+  border-radius: 10px;
+  min-width: 0;
+}
+
+.card h2 {
+  margin: 0 0 0.6rem;
+  font-size: 1.1rem;
+}
+
+.card p {
+  margin: 0.4rem 0;
+}
+
+.fileName {
+  overflow: hidden;
+  font-weight: bold;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  color: #c8c8c8;
+  font-size: 0.88rem;
+}
+
+.note {
+  display: block;
+  margin-top: 0.2rem;
+  color: #9a9a9a;
+  font-size: 0.8rem;
+}
+
+.info {
+  margin: 0.25rem 0 0.5rem;
+}
+
+/* Inside .card, so these win over the same rules in QrGen.module.css. */
+.card .info th {
+  width: 42%;
+}
+
+.strong {
+  font-weight: bold;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.6rem 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.slider {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+  color: #c8c8c8;
+}
+
+.slider input {
+  width: 100%;
+}
+
+/* Positioned, so that the offsetTop of a row is measured from the top of the list. */
+.tree {
+  position: relative;
+  max-height: 340px;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+  border: 1px solid #444;
+  border-radius: 6px;
+  background: #242424;
+  font-size: 0.88rem;
+}
+
+.tree ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.treeRow {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding-right: 0.4rem;
+  min-height: 1.9rem;
+}
+
+.treeRow:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.treeSelected,
+.treeSelected:hover {
+  background: rgba(0, 112, 243, 0.3);
+}
+
+.treeHidden .treeName {
+  color: #8a8a8a;
+}
+
+.treeToggle {
+  flex: none;
+  width: 1.3rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #c8c8c8;
+  font: inherit;
+  cursor: pointer;
+}
+
+.treeName {
+  flex: 1;
+  min-width: 0;
+  padding: 0.25rem 0;
+  overflow: hidden;
+  border: none;
+  background: none;
+  color: #f0f0f0;
+  font: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.treeMore {
+  padding: 0.25rem 0;
+  color: #9a9a9a;
+  font-size: 0.82rem;
+}
+
+.selection {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #444;
+}
+
+.saveGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.saveGrid button {
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+}
+
+.screenshotRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-top: 0.6rem;
+}
+
+/* Offsets of the files */
+
+.offset {
+  margin-bottom: 0.6rem;
+}
+
+.offset .fileName {
+  margin: 0 0 0.3rem;
+  font-size: 0.88rem;
+}
+
+.offsetFields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.offsetField {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  color: #c8c8c8;
+  font-size: 0.85rem;
+}
+
+/* A class and an element, so this wins over the padding of .input in QrGen.module.css. */
+.offsetField input {
+  min-width: 0;
+  padding: 0.3rem 0.4rem;
+}

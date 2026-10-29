@@ -67,6 +67,15 @@ const TOOLS: SiteTool[] = [
     color: '#a585ff',
     tags: ['Sentence case', 'Title Case', 'UPPER CASE', 'camelCase', 'snake_case', 'kebab-case'],
   },
+  {
+    href: '/3d-viewer/main',
+    title: '3D viewer',
+    category: '3D models',
+    description: 'View CAD and mesh files, cut through them, measure them and save them as STL, OBJ, PLY or GLB.',
+    icon: 'viewer3d',
+    color: '#f08c3c',
+    tags: ['STEP · IGES', 'STL · 3MF · OBJ', 'glTF · FBX · USDZ', 'Section view', 'Measure'],
+  },
 ];
 
 const PROMISES = ['Runs in your browser', 'Files never leave your device', 'No ads or tracking', 'No sign-up'];
