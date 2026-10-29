@@ -4,8 +4,8 @@ import React from 'react';
 
 import Bibliography from '../../components/Bibliography';
 import HomeIcon from '../../components/icons/home';
-import KatexSpan from '../../components/KatexSpan';
 import CalcBox from '../../components/SimSetup/CalcBox';
+import ParameterList from '../../components/SimSetup/ParameterList';
 import PowerBox from '../../components/SimSetup/PowerBox';
 import PrimeBox, { MAX_PRIME_DIGITS } from '../../components/SimSetup/PrimeBox';
 import { BibEntry } from '../../lib/bibtex';
@@ -224,34 +224,7 @@ export default function SimSetup({ references }: { references: BibEntry[] }) {
 
           <section className={[styles.card, styles.text].join(' ')} aria-labelledby="parameters-title">
             <h2 id="parameters-title">Parameters</h2>
-
-            <div className={styles.paramGroup}>
-              <p>The following 4 parameteres are related by this equation:</p>
-              <KatexSpan className={styles.equation} displayMode text={'\\rm F_S=\\frac{N_{pts}}{N_{cyc}}\\cdot f_0'} />
-
-              <p>f<sub>0</sub> — The fundamental frequency of your signal. Also refered to as f<sub>in</sub>.</p>
-              <p>F<sub>S</sub> — The sampling frequency. Also referred to as f<sub>sample</sub>.</p>
-              <p>N<sub>cyc</sub> — The number of cycles/periods of f<sub>0</sub>. Also called N<sub>window</sub>.</p>
-              <p>N<sub>pts</sub> — The number of data points or samples. Also referred to as N<sub>record</sub> and N<sub>fft</sub>, which is the length of an FFT.</p>
-            </div>
-
-            <div className={styles.paramGroup}>
-              <p>T<sub>0</sub> — The period of f<sub>0</sub>.</p>
-              <p>T<sub>S</sub> — The period of F<sub>S</sub>.</p>
-            </div>
-
-            <div className={styles.paramGroup}>
-              <p>f<sub>res</sub> — The frequency resolution of for instance an FFT.</p>
-              <KatexSpan className={styles.equation} displayMode text={'\\rm f_{res}=\\frac{F_S}{N_{pts}}'} />
-
-              <p>N<sub>pts0</sub> — The number of data points or samples during one T<sub>0</sub>.</p>
-              <KatexSpan className={styles.equation} displayMode text={'\\rm N_{pts0}=\\frac{N_{pts}}{N_{cyc}}'} />
-
-              <p>t<sub>start</sub> — The point in time that sampling starts.</p>
-              <p>t<sub>stop</sub> — The point in time until which samples are taken.</p>
-              <p>f<sub>min</sub> — The lowest frequency that can be considered by an FFT for instance.</p>
-              <p>f<sub>max</sub> — The highest frequency that can be considered by an FFT for instance.</p>
-            </div>
+            <ParameterList />
           </section>
 
           <section className={[styles.card, styles.text].join(' ')} aria-labelledby="coherent-title">

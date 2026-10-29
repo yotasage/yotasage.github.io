@@ -110,10 +110,13 @@
   max-width: calc(80ch + 3rem + 2px);
 }
 
-.equation {
-  display: block;
-  margin: 0.25rem 0 1rem;
-  font-size: 1.4rem;
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* Fields, buttons */
@@ -488,8 +491,122 @@
 
 /* Text */
 
-.paramGroup {
-  margin-bottom: 1.25rem;
+/* Parameters: the main equation, then a table of symbols grouped like the calculator boxes. */
+
+.keyEquation {
+  margin: 0.9rem 0 1.75rem;
+  padding: 1rem 1.25rem;
+  border-left: 3px solid #0070f3;
+  border-radius: 0 8px 8px 0;
+  background: #1f1f1f;
+  font-size: 1.6rem;
+  text-align: center;
+}
+
+.parameterRow {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr) 9.5rem 2.75rem;
+  grid-template-areas: 'symbol description formula unit';
+  column-gap: 1rem;
+  align-items: baseline;
+  padding: 0.6rem 0.5rem;
+  border-bottom: 1px solid #3a3a3a;
+}
+
+.parameterList .parameterRow:last-child {
+  border-bottom: none;
+}
+
+.parameterList .parameterRow:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.parameterHeader {
+  padding-top: 0;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid #6a6a6a;
+  font-size: 0.72rem;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.parameterHeader > span {
+  color: #9a9a9a;
+}
+
+.card .parameterGroup {
+  margin: 1.4rem 0 0.15rem;
+  padding: 0 0.5rem;
+  color: #4da3ff;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.parameterList {
+  margin: 0;
+}
+
+.parameterList dd {
+  margin: 0;
+}
+
+.parameterSymbol {
+  grid-area: symbol;
+  font-size: 1.2rem;
+}
+
+.parameterDescription {
+  grid-area: description;
+  line-height: 1.45;
+}
+
+.parameterAlias {
+  display: block;
+  margin-top: 0.15rem;
+  color: #9a9a9a;
+  font-size: 0.85rem;
+}
+
+.parameterFormula {
+  grid-area: formula;
+  font-size: 1.05rem;
+}
+
+.parameterEquals {
+  display: none;
+}
+
+.parameterInput {
+  color: #9a9a9a;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.parameterUnit {
+  grid-area: unit;
+  color: #c8c8c8;
+  text-align: right;
+}
+
+/* Phones: symbol, formula and unit on one line, the description below. */
+@media (max-width: 600px) {
+  .parameterHeader {
+    display: none;
+  }
+
+  .parameterRow {
+    grid-template-columns: 3.75rem minmax(0, 1fr) auto;
+    grid-template-areas:
+      'symbol formula unit'
+      'description description description';
+    row-gap: 0.35rem;
+  }
+
+  .parameterEquals {
+    display: inline;
+  }
 }
 
 .usage dt {
