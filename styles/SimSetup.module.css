@@ -535,7 +535,8 @@
   color: #9a9a9a;
 }
 
-.card .parameterGroup {
+/* Small blue headings inside the Parameters and Coherent sampling cards. */
+.card .groupHeading {
   margin: 1.4rem 0 0.15rem;
   padding: 0 0.5rem;
   color: #4da3ff;
@@ -606,6 +607,151 @@
 
   .parameterEquals {
     display: inline;
+  }
+}
+
+/* Coherent sampling: the rules as numbered panels, then the notes as rows. */
+
+.card .source {
+  margin: 0;
+  color: #9a9a9a;
+  font-size: 0.9rem;
+}
+
+.rules {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rule {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  column-gap: 1rem;
+  padding: 1rem 1.1rem 1rem 0.5rem;
+  border: 1px solid #3a3a3a;
+  border-radius: 8px;
+  background: #262626;
+}
+
+.ruleNumber {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #4da3ff;
+  line-height: 1;
+}
+
+.ruleNumber small {
+  font-size: 0.68rem;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ruleNumber span {
+  margin-top: 0.25rem;
+  font-size: 2rem;
+  font-weight: bold;
+}
+
+.card .ruleStatement {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: bold;
+  line-height: 1.45;
+}
+
+.card .ruleExplanation {
+  margin: 0.4rem 0 0;
+  color: #d8d8d8;
+}
+
+.ruleChecks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.9rem;
+  margin-top: 0.7rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid #3a3a3a;
+  font-size: 0.85rem;
+}
+
+.ruleChecksLabel {
+  color: #9a9a9a;
+}
+
+.notes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.note {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  column-gap: 1rem;
+  align-items: baseline;
+  padding: 0.6rem 0.5rem;
+  border-bottom: 1px solid #3a3a3a;
+  border-radius: 4px;
+}
+
+.note:last-child {
+  border-bottom: none;
+}
+
+/*
+ * A rule or note that a link jumped to lights up and fades out over 3 seconds. The inset shadow covers the
+ * element's own background, so the same animation works on the panels and the rows.
+ * useReplayHighlight (lib/useReplayHighlight.ts) replays it when the same link is clicked again.
+ */
+@keyframes targetHighlight {
+  from {
+    box-shadow: inset 0 0 0 100vmax rgba(77, 163, 255, 0.25);
+  }
+  to {
+    box-shadow: inset 0 0 0 100vmax rgba(77, 163, 255, 0);
+  }
+}
+
+.rule:target,
+.note:target {
+  animation: targetHighlight 3s ease-in forwards;
+}
+
+.rule,
+.note {
+  /* Leaves some space above the element when a link scrolls to it. */
+  scroll-margin-top: 1rem;
+}
+
+.noteLabel {
+  color: #9a9a9a;
+  font-size: 0.72rem;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.card .noteText {
+  margin: 0;
+  color: #d8d8d8;
+}
+
+@media (max-width: 600px) {
+  .rule {
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+    column-gap: 0.6rem;
+    padding-right: 0.8rem;
+  }
+
+  .note {
+    grid-template-columns: 1fr;
+    row-gap: 0.25rem;
   }
 }
 

@@ -4,6 +4,32 @@
 
 export type NumberFormat = 'plain' | 'si';
 
+export type DigitGrouping = 'none' | 'space' | 'underscore';
+
+const GROUP_SEPARATORS: Record<DigitGrouping, string> = { none: '', space: ' ', underscore: '_' };
+
+/**
+ * Groups the whole-number part in threes: "2340571.4286" → "2 340 571.4286" or "2_340_571.4286".
+ * Python reads the underscore form as a number.
+ */
+export function groupDigits(number: string, grouping: DigitGrouping): string {
+  const separator = GROUP_SEPARATORS[grouping];
+  if (!separator) return number;
+  return number.replace(/^([+-]?)(\d+)/, (_, sign: string, digits: string) => sign + digits.replace(/\B(?=(\d{3})+$)/g, separator));
+}
+
+// Digit groups as this page writes them, or as in Python: 1 000 000, 1_000_000 (also thin and no-break spaces).
+const DIGIT_GROUP_SEPARATOR = /(?<=\d)[ _   ](?=\d)/g;
+const HEX_DIGIT_GROUP_SEPARATOR = /(?<=[0-9A-Fa-f])[ _   ](?=[0-9A-Fa-f])/g;
+
+/**
+ * Removes digit group separators: "1 000 000" and "1_000_000" → "1000000".
+ * With hex, also between the letters A–F ("0xFF_FF"); without, "1 E 3" stays as it is.
+ */
+export function removeDigitGroups(text: string, hex = false): string {
+  return text.replace(hex ? HEX_DIGIT_GROUP_SEPARATOR : DIGIT_GROUP_SEPARATOR, '');
+}
+
 // Power of ten for each prefix.
 const PREFIX_EXPONENTS: Record<string, number> = {
   Q: 30,   // quetta
@@ -64,13 +90,13 @@ function patternFor(unit: string): RegExp {
 export type Parsed = { ok: true; value: number } | { ok: false; error: string };
 
 /**
- * Reads a number such as "16384", "1e3", "2.5M", "10 m", "100 kHz" or "4.7ns".
+ * Reads a number such as "16384", "16 384", "16_384", "1e3", "2.5M", "10 m", "100 kHz" or "4.7ns".
  * Prefixes are case sensitive (m is milli, M is mega). The unit is optional.
  * @param text what the user typed
  * @param unit the unit that may follow the prefix ('Hz' or 's'), or '' for plain numbers
  */
 export function parseQuantity(text: string, unit = ''): Parsed {
-  const trimmed = text.trim();
+  const trimmed = removeDigitGroups(text.trim());
   if (trimmed === '') return { ok: false, error: 'Enter a value' };
 
   const match = patternFor(unit).exec(trimmed);
@@ -85,8 +111,8 @@ export function parseQuantity(text: string, unit = ''): Parsed {
 }
 
 /** Rounds to `precision` significant digits without trailing zeros, e.g. 1000.0000001 → "1000". */
-export function formatNumber(value: number, precision: number): string {
-  return String(Number(value.toPrecision(precision)));
+export function formatNumber(value: number, precision: number, grouping: DigitGrouping = 'none'): string {
+  return groupDigits(String(Number(value.toPrecision(precision))), grouping);
 }
 
 // Splits a number into a mantissa from 1 to 999.999… and an SI prefix.
@@ -105,13 +131,15 @@ function siParts(value: number, precision: number): { mantissa: string; prefix: 
   return { mantissa: String(rounded), prefix: OUTPUT_PREFIXES[power] };
 }
 
-/** Writes a result for display, e.g. "2340571.4286 Hz" (plain) or "2.3405714286 MHz" (SI). */
-export function formatQuantity(value: number | null, unit: string, precision: number, format: NumberFormat): string {
+/** Writes a result for display, e.g. "2340571.4286 Hz" (plain), "2_340_571.4286 Hz" (grouped) or "2.3405714286 MHz" (SI). */
+export function formatQuantity(
+  value: number | null, unit: string, precision: number, format: NumberFormat, grouping: DigitGrouping = 'none',
+): string {
   if (value === null || !Number.isFinite(value)) return '—';
   if (format === 'si' && unit !== '') {
     const { mantissa, prefix } = siParts(value, precision);
-    return `${mantissa} ${prefix}${unit}`;
+    return `${groupDigits(mantissa, grouping)} ${prefix}${unit}`;
   }
-  const number = formatNumber(value, precision);
+  const number = formatNumber(value, precision, grouping);
   return unit === '' ? number : `${number} ${unit}`;
 }

@@ -97,7 +97,7 @@ export default function ParameterList() {
 
         {GROUPS.map((group) => (
           <section key={group.title} aria-label={group.title}>
-            <h3 className={styles.parameterGroup}>{group.title}</h3>
+            <h3 className={styles.groupHeading}>{group.title}</h3>
             <dl className={styles.parameterList}>
               {group.parameters.map((p) => (
                 <div key={p.symbol} className={styles.parameterRow}>

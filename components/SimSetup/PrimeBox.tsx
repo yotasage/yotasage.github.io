@@ -1,5 +1,6 @@
 import React from 'react';
 
+import { DigitGrouping, groupDigits, removeDigitGroups } from '../../lib/simsetup/numbers';
 import { EXACT_LIMIT, isPrime, nextPrime, prevPrime } from '../../lib/simsetup/primes';
 import styles from '../../styles/SimSetup.module.css';
 
@@ -41,7 +42,7 @@ const STEPS: Step[] = [
 type Parsed = { ok: true; value: bigint } | { ok: false; error: string };
 
 function parseWholeNumber(text: string): Parsed {
-  const trimmed = text.trim();
+  const trimmed = removeDigitGroups(text.trim());
   if (trimmed === '') return { ok: false, error: 'Enter a whole number' };
   if (!/^\d+$/.test(trimmed)) return { ok: false, error: 'Not a whole number' };
   const value = BigInt(trimmed);
@@ -49,7 +50,7 @@ function parseWholeNumber(text: string): Parsed {
   return { ok: true, value };
 }
 
-export default function PrimeBox() {
+export default function PrimeBox({ grouping }: { grouping: DigitGrouping }) {
   const id = React.useId();
   const [text, setText] = React.useState('11');
   const parsed = React.useMemo(() => parseWholeNumber(text), [text]);
@@ -90,7 +91,7 @@ export default function PrimeBox() {
             className={styles.buttonSmall}
             title={step.title}
             disabled={!parsed.ok || !step.allowed(parsed.value)}
-            onClick={() => parsed.ok && setText(String(step.run(parsed.value)))}
+            onClick={() => parsed.ok && setText(groupDigits(String(step.run(parsed.value)), grouping))}
           >
             {step.label}
           </button>

@@ -20,11 +20,21 @@
   padding: 0.15rem 0.25rem;
   border-radius: 4px;
   line-height: 1.5;
+  scroll-margin-top: 1rem;
 }
 
-/* The reference that a citation link jumped to. */
+/* The reference that a citation link jumped to lights up and fades out over 3 seconds. */
+@keyframes targetHighlight {
+  from {
+    box-shadow: inset 0 0 0 100vmax rgba(77, 163, 255, 0.25);
+  }
+  to {
+    box-shadow: inset 0 0 0 100vmax rgba(77, 163, 255, 0);
+  }
+}
+
 .item:target {
-  background: rgba(77, 163, 255, 0.12);
+  animation: targetHighlight 3s ease-in forwards;
 }
 
 .number {

@@ -1,7 +1,8 @@
 // The calculator boxes: F_S = N_pts / N_cyc · f_0 solved for any one of the four parameters,
 // plus the values that follow from them.
 
-import { parseQuantity } from './numbers';
+import { groupDigits, parseQuantity } from './numbers';
+import type { DigitGrouping } from './numbers';
 import { bitLength, isPowerOfTwo } from './powers';
 import { gcd, isPrime } from './primes';
 
@@ -92,13 +93,14 @@ export function calculate(box: BoxState): BoxResult {
 
 /**
  * Makes another parameter the calculated one. The value that was calculated becomes an input with
- * all its digits, since rounding it could turn N_cyc = 7 into 6.9999999999.
+ * all its digits, since rounding it could turn N_cyc = 7 into 6.9999999999. It is written with the
+ * chosen digit grouping, which parseQuantity reads back.
  */
-export function switchSolveFor(box: BoxState, solveFor: Param): BoxState {
+export function switchSolveFor(box: BoxState, solveFor: Param, grouping: DigitGrouping = 'none'): BoxState {
   if (solveFor === box.solveFor) return box;
   const calculated = calculate(box).values[box.solveFor];
   const text = { ...box.text };
-  if (calculated !== undefined) text[box.solveFor] = String(calculated);
+  if (calculated !== undefined) text[box.solveFor] = groupDigits(String(calculated), grouping);
   return { ...box, solveFor, text };
 }
 

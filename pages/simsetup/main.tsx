@@ -5,13 +5,15 @@ import React from 'react';
 import Bibliography from '../../components/Bibliography';
 import HomeIcon from '../../components/icons/home';
 import CalcBox from '../../components/SimSetup/CalcBox';
+import CoherentSampling from '../../components/SimSetup/CoherentSampling';
 import ParameterList from '../../components/SimSetup/ParameterList';
 import PowerBox from '../../components/SimSetup/PowerBox';
 import PrimeBox, { MAX_PRIME_DIGITS } from '../../components/SimSetup/PrimeBox';
 import { BibEntry } from '../../lib/bibtex';
 import { loadReferences } from '../../lib/references';
 import { BoxState, defaultBox } from '../../lib/simsetup/calc';
-import { NumberFormat } from '../../lib/simsetup/numbers';
+import { DigitGrouping, NumberFormat } from '../../lib/simsetup/numbers';
+import useReplayHighlight from '../../lib/useReplayHighlight';
 import styles from '../../styles/SimSetup.module.css';
 
 const DEFAULT_PRECISION = 11;
@@ -34,8 +36,10 @@ export default function SimSetup({ references }: { references: BibEntry[] }) {
   const [precisionText, setPrecisionText] = React.useState(String(DEFAULT_PRECISION));
   const [precision, setPrecision] = React.useState(DEFAULT_PRECISION);
   const [format, setFormat] = React.useState<NumberFormat>('plain');
+  const [grouping, setGrouping] = React.useState<DigitGrouping>('none');
 
   const bib = new Bibliography(references);
+  useReplayHighlight();
 
   const precisionValid = parsePrecision(precisionText) !== null;
 
@@ -122,6 +126,14 @@ export default function SimSetup({ references }: { references: BibEntry[] }) {
                     <option value="si">SI prefixes (2.3405714286 MHz)</option>
                   </select>
                 </label>
+                <label className={styles.inlineField} title="How long numbers are split into groups of three digits">
+                  <span>Grouping</span>
+                  <select className={styles.select} value={grouping} onChange={(e) => setGrouping(e.target.value as DigitGrouping)}>
+                    <option value="none">None (1000000)</option>
+                    <option value="space">Space (1 000 000)</option>
+                    <option value="underscore">Underscore, Python (1_000_000)</option>
+                  </select>
+                </label>
                 <button type="button" className={styles.buttonSmall} onClick={addBox}>Add box</button>
               </div>
             </div>
@@ -137,6 +149,7 @@ export default function SimSetup({ references }: { references: BibEntry[] }) {
                   title={`Box ${i + 1}`}
                   precision={precision}
                   format={format}
+                  grouping={grouping}
                   canRemove={boxes.length > 1}
                   onChange={updateBox}
                   onDuplicate={() => duplicateBox(box.id)}
@@ -147,8 +160,8 @@ export default function SimSetup({ references }: { references: BibEntry[] }) {
           </section>
 
           <div className={styles.helperGrid}>
-            <PrimeBox />
-            <PowerBox />
+            <PrimeBox grouping={grouping} />
+            <PowerBox grouping={grouping} />
           </div>
 
           <section className={[styles.card, styles.text].join(' ')} aria-labelledby="usage-title">
@@ -174,7 +187,8 @@ export default function SimSetup({ references }: { references: BibEntry[] }) {
                 SI prefixes (<code>1k</code>, <code>2.5M</code>, <code>10m</code>, <code>100u</code> or <code>100µ</code>).
                 A space before the prefix is fine, and the unit may follow it (<code>1 kHz</code>, <code>10 ms</code>).
                 Prefixes are case sensitive: <code>m</code> is milli and <code>M</code> is mega. <code>meg</code> also means
-                mega, as in SPICE.
+                mega, as in SPICE. Digit groups are fine too (<code>1 000 000</code> or <code>1_000_000</code>), here and in
+                the prime and power of 2 boxes.
               </dd>
 
               <dt>Results</dt>
@@ -182,7 +196,10 @@ export default function SimSetup({ references }: { references: BibEntry[] }) {
                 <b>Precision</b> is the number of significant digits shown for calculated values, from 1 to {MAX_PRECISION}.
                 It only changes how the results are shown, not how they are calculated. <b>Format</b> shows the results
                 as plain numbers or with SI prefixes. SPICE reads <code>M</code> as milli, so copy plain numbers, or
-                use <code>meg</code>, when you set up a SPICE simulation.
+                use <code>meg</code>, when you set up a SPICE simulation. <b>Grouping</b> splits the whole-number part into
+                groups of three digits: none (<code>2340571.4286</code>, which works everywhere), spaces
+                (<code>2 340 571.4286</code>) or underscores (<code>2_340_571.4286</code>, which Python reads as a number).
+                It is also used for the numbers that the prime and power of 2 buttons write.
               </dd>
 
               <dt>t<sub>start</sub> and t<sub>stop</sub></dt>
@@ -193,8 +210,8 @@ export default function SimSetup({ references }: { references: BibEntry[] }) {
 
               <dt>Checks</dt>
               <dd>
-                Under N<sub>cyc</sub> and N<sub>pts</sub>, each box shows how they match RULE 1 and RULE 2 under Coherent
-                sampling: whether N<sub>cyc</sub> is an integer, a prime or an odd number, and has no common factor with
+                Next to N<sub>cyc</sub> and N<sub>pts</sub> (below them on phones), each box shows how they match{' '}
+                <a href="#rule-1">RULE 1</a> and <a href="#rule-2">RULE 2</a> under Coherent sampling: whether N<sub>cyc</sub> is an integer, a prime or an odd number, and has no common factor with
                 N<sub>pts</sub>, and whether N<sub>pts</sub> is a power of 2. <span className={styles.good}>✓ Green</span> follows
                 the rule, <span className={styles.ok}>• yellow</span> is acceptable (odd, but not prime)
                 and <span className={styles.bad}>✗ red</span> breaks it. A calculated value such as 7.000000000000001 counts
@@ -228,21 +245,7 @@ export default function SimSetup({ references }: { references: BibEntry[] }) {
           </section>
 
           <section className={[styles.card, styles.text].join(' ')} aria-labelledby="coherent-title">
-            <h2 id="coherent-title">Coherent sampling</h2>
-
-            <p>Source: {bib.cite('AD')}</p>
-
-            <p><b>RULE 1:</b> N<sub>cyc</sub> is recommended to be a prime number or at least an odd number. N<sub>cyc</sub> should be an integer (No window effect). By making N<sub>cyc</sub> odd, we eliminate many common factors with N<sub>pts</sub>. Common factors between N<sub>cyc</sub> and N<sub>pts</sub> lead to different harmonics of f<sub>0</sub> having the same frequency bin in the FFT after aliasing. </p>
-
-            <p><b>RULE 2:</b> N<sub>pts</sub> should be a power of 2. An FFT requires the number of samples to be a power of 2 because of its inherent periodicity.</p>
-
-            <p><b>RULE 3:</b> f<sub>0</sub> and F<sub>S</sub> should be relatively prime.</p>
-
-            <p><b>NOTE 1:</b> Unless window sampling ("windowing") is used to compensate for waveform discontinuance<sup>2</sup>, spectral leakage is inevitable. Window sampling is when a sampled waveform is multiplied by the mathematical expression describing the window.</p>
-
-            <p><b>NOTE 2:</b> ADCs are usually characterized for and tested with sinusoidal input signals. Non-coherent sampling for sinusoidal input signals means that the first and the last sample of the input sinusoid are discontinuous with one another.</p>
-
-            <p><b>NOTE 3:</b> Waveform discontinuance describes an input signal, for which an integer number of its cycles do not fit into a predefined window.</p>
+            <CoherentSampling bib={bib} />
           </section>
 
           <section className={[styles.card, styles.text].join(' ')} aria-labelledby="references-title">

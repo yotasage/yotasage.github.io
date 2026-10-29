@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { BoxState, calculate, Check, CHECK_TONES, checkNcyc, checkNpts, InputKey, PARAMS, switchSolveFor, Tone, UNITS } from '../../lib/simsetup/calc';
-import { formatQuantity, NumberFormat } from '../../lib/simsetup/numbers';
+import { DigitGrouping, formatQuantity, NumberFormat } from '../../lib/simsetup/numbers';
 import styles from '../../styles/SimSetup.module.css';
 
 export const SYMBOLS: Record<InputKey, React.ReactNode> = {
@@ -15,6 +15,11 @@ export const SYMBOLS: Record<InputKey, React.ReactNode> = {
 const TONE_CLASSES: Record<Tone, string> = { good: styles.good, ok: styles.ok, bad: styles.bad, info: styles.info };
 
 const TONE_MARKS: Record<Tone, string> = { good: '✓', ok: '•', bad: '✗', info: '–' };
+
+/** A check result as the boxes show it: colored, with ✓, • or ✗ in front. */
+export function CheckText({ tone, children }: { tone: Tone; children: React.ReactNode }) {
+  return <span className={TONE_CLASSES[tone]}><span aria-hidden="true">{TONE_MARKS[tone]}</span> {children}</span>;
+}
 
 function checkLabel(check: Check): React.ReactNode {
   switch (check.kind) {
@@ -34,23 +39,19 @@ function Checks({ checks }: { checks: Check[] }) {
   if (checks.length === 0) return null;
   return (
     <ul className={styles.checks}>
-      {checks.map((check) => {
-        const tone = CHECK_TONES[check.kind];
-        return (
-          <li key={check.kind} className={TONE_CLASSES[tone]}>
-            <span aria-hidden="true">{TONE_MARKS[tone]}</span> {checkLabel(check)}
-          </li>
-        );
-      })}
+      {checks.map((check) => (
+        <li key={check.kind}><CheckText tone={CHECK_TONES[check.kind]}>{checkLabel(check)}</CheckText></li>
+      ))}
     </ul>
   );
 }
 
-export default function CalcBox({ box, title, precision, format, canRemove, onChange, onDuplicate, onRemove }: {
+export default function CalcBox({ box, title, precision, format, grouping, canRemove, onChange, onDuplicate, onRemove }: {
   box: BoxState;
   title: string;
   precision: number;
   format: NumberFormat;
+  grouping: DigitGrouping;
   canRemove: boolean;
   onChange: (box: BoxState) => void;
   onDuplicate: () => void;
@@ -61,7 +62,7 @@ export default function CalcBox({ box, title, precision, format, canRemove, onCh
   const { values, errors } = result;
 
   function show(value: number | null | undefined, unit: string) {
-    return formatQuantity(value ?? null, unit, precision, format);
+    return formatQuantity(value ?? null, unit, precision, format, grouping);
   }
 
   function inputRow(key: InputKey) {
@@ -113,7 +114,7 @@ export default function CalcBox({ box, title, precision, format, canRemove, onCh
         <span id={`${id}-solve`} className={styles.fieldLabel}>Calculate</span>
         {PARAMS.map((p) => (
           <label key={p} className={styles.segment}>
-            <input type="radio" name={`${id}-solve`} checked={box.solveFor === p} onChange={() => onChange(switchSolveFor(box, p))} />
+            <input type="radio" name={`${id}-solve`} checked={box.solveFor === p} onChange={() => onChange(switchSolveFor(box, p, grouping))} />
             <span>{SYMBOLS[p]}</span>
           </label>
         ))}

@@ -1,6 +1,7 @@
 import React from 'react';
 
 import KatexSpan from '../KatexSpan';
+import { DigitGrouping, groupDigits, removeDigitGroups } from '../../lib/simsetup/numbers';
 import { bitLength, isPowerOfTwo, log2, nextPowerOfTwo, prevPowerOfTwo } from '../../lib/simsetup/powers';
 import styles from '../../styles/SimSetup.module.css';
 
@@ -23,9 +24,9 @@ const STEPS: Step[] = [
 
 type Parsed = { ok: true; value: bigint } | { ok: false; error: string };
 
-// Decimal, or hexadecimal (0x), binary (0b) and octal (0o) as BigInt reads them.
+// Decimal, or hexadecimal (0x), binary (0b) and octal (0o) as BigInt reads them, with or without digit groups.
 function parseWholeNumber(text: string): Parsed {
-  const trimmed = text.trim();
+  const trimmed = removeDigitGroups(text.trim(), true);
   if (trimmed === '') return { ok: false, error: 'Enter a whole number' };
   if (!/^(\d+|0[xX][0-9a-fA-F]+|0[bB][01]+|0[oO][0-7]+)$/.test(trimmed)) return { ok: false, error: 'Not a whole number' };
   const value = BigInt(trimmed);
@@ -33,7 +34,7 @@ function parseWholeNumber(text: string): Parsed {
   return { ok: true, value };
 }
 
-export default function PowerBox() {
+export default function PowerBox({ grouping }: { grouping: DigitGrouping }) {
   const id = React.useId();
   const [text, setText] = React.useState('16');
   const parsed = parseWholeNumber(text);
@@ -77,7 +78,7 @@ export default function PowerBox() {
             className={styles.buttonSmall}
             title={step.title}
             disabled={!parsed.ok || !step.allowed(parsed.value)}
-            onClick={() => parsed.ok && setText(String(step.run(parsed.value)))}
+            onClick={() => parsed.ok && setText(groupDigits(String(step.run(parsed.value)), grouping))}
           >
             {step.label}
           </button>
