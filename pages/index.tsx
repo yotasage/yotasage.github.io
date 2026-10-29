@@ -40,6 +40,11 @@ export default function Home() {
             <h3>Base64 image converter &rarr;</h3>
             <p>Image to Base64 or a data URL for HTML, CSS and Markdown, and Base64 back to an image. Runs in the browser.</p>
           </Link>
+
+          <Link href="/text-case/main" className={[styles.card, styles.w45].join(" ")}>
+            <h3>Text case converter &rarr;</h3>
+            <p>Sentence case, lower case, UPPER CASE, Title Case, camelCase, snake_case and more, with word and character counts.</p>
+          </Link>
         </div>
       </main>
 

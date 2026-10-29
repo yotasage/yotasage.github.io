@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 A personal collection of browser tools (simulation setup calculator, QR code generator, PDF tools, Base64 image
-converter), so the owner does not have to use other people's sites with ads and bad design. Next.js 16 Pages Router,
+converter, text case converter), so the owner does not have to use other people's sites with ads and bad design. Next.js 16 Pages Router,
 React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 
 ## Hard constraints

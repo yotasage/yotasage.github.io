@@ -1,0 +1,139 @@
+/* The page frame, cards, fields and buttons come from QrGen.module.css; this file has what is special to this tool. */
+
+/* The case buttons span the page above the two text boxes. On a phone they go between them, in the order of use. */
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas:
+    'case case'
+    'input result';
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.caseCard {
+  grid-area: case;
+}
+
+.inputCard {
+  grid-area: input;
+}
+
+.resultCard {
+  grid-area: result;
+}
+
+@media (max-width: 900px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'input'
+      'case'
+      'result';
+  }
+}
+
+.panel {
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+/* Two classes, so it wins over the border of the card. */
+.panel.dropOver {
+  border-color: #0070f3;
+  background-color: rgba(0, 112, 243, 0.08);
+}
+
+.groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2.5rem;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.groupLabel {
+  font-size: 0.85rem;
+  color: #c8c8c8;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Inside .buttons, so these win over .button in QrGen.module.css, also on hover. */
+.buttons .caseButton {
+  font-weight: normal;
+}
+
+.buttons .caseButton.selected,
+.buttons .caseButton.selected:hover {
+  border-color: #0070f3;
+  background: #0070f3;
+  color: white;
+}
+
+.buttons .caseButton:focus-visible {
+  outline: 2px solid #4da3ff;
+  outline-offset: 2px;
+}
+
+.buttons .code {
+  font-family: Menlo, Monaco, Lucida Console, Liberation Mono, DejaVu Sans Mono, Courier New, monospace;
+  font-size: 0.9rem;
+}
+
+/* Room for two lines, so the text boxes below do not move when another case is chosen. Inside .panel, so it wins over
+   .card p in QrGen.module.css. */
+.panel .description {
+  min-height: 3em;
+  margin: 0.75rem 0 0;
+  color: #c8c8c8;
+  line-height: 1.5;
+}
+
+/* Inside .panel, so these win over .textarea in QrGen.module.css. */
+.panel .text {
+  min-height: 18rem;
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.panel .codeText {
+  font-family: Menlo, Monaco, Lucida Console, Liberation Mono, DejaVu Sans Mono, Courier New, monospace;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 900px) {
+  .panel .text {
+    min-height: 12rem;
+  }
+}
+
+.panel .terms {
+  min-height: 6rem;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+/* Lined up with the label, after the checkbox. */
+.option > small {
+  padding-left: 1.6rem;
+}

@@ -18,6 +18,7 @@ Every tool has a button on the main page ([pages/index.tsx](pages/index.tsx)).
 | QR code generator | [/qrcode/main](https://yotasage.github.io/qrcode/main) | QR Code Model 1 and 2, Micro QR and rMQR with control over every parameter. Exports PNG, JPG, SVG and PDF. |
 | PDF tools | [/pdf/main](https://yotasage.github.io/pdf/main) | Merge, compress, images to PDF and remove metadata. Planned tools are in [docs/pdf-tools-plan.md](docs/pdf-tools-plan.md). |
 | Base64 image converter | [/base64-image/main](https://yotasage.github.io/base64-image/main) | Image to Base64, a data URL or an HTML, CSS or Markdown snippet (optionally converted to PNG, JPEG or WebP first), and Base64 back to an image to view, download or copy. |
+| Text case converter | [/text-case/main](https://yotasage.github.io/text-case/main) | Sentence case, lower case, UPPER CASE, Capitalized Case, Title Case (Chicago or APA), alternating and inverse case, and names for code (camelCase, PascalCase, snake_case, CONSTANT_CASE, kebab-case, Train-Case, dot.case), with character, word and line counts. |
 
 The [/licenses](https://yotasage.github.io/licenses) page, linked from the footer of every page, lists the licences
 of the packages the site uses.
