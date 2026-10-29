@@ -684,6 +684,26 @@
   color: #9a9a9a;
 }
 
+/* "Source: [n]" at the right end of a rule's bottom line and of the Notes heading. */
+.ruleChecks .source {
+  margin-left: auto;
+  font-size: inherit;
+}
+
+.notesHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 1.4rem 0 0.15rem;
+  padding: 0 0.5rem;
+}
+
+.card .notesHeader .groupHeading {
+  margin: 0;
+  padding: 0;
+}
+
 .notes {
   margin: 0;
   padding: 0;

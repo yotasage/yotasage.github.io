@@ -48,3 +48,7 @@
   /* Lets long URLs wrap on phones. */
   overflow-wrap: anywhere;
 }
+
+.nowrap {
+  white-space: nowrap;
+}

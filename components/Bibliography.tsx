@@ -89,13 +89,16 @@ function Reference({ entry }: { entry: BibEntry }) {
   const who = authors ?? text('organization') ?? text('institution');
   const title = text('title');
   const month = f.month && /^\d+$/.test(f.month.trim()) ? MONTH_NAMES[Number(f.month) - 1] : text('month');
-  const date = text('date') ?? join([month, text('year')], ' ');
+  // Kept on one line, so 2026-10-29 does not break at a hyphen.
+  const nowrap = (value: React.ReactNode) => value && <span className={styles.nowrap}>{value}</span>;
+  const date = nowrap(text('date') ?? join([month, text('year')], ' '));
   const pages = f.pages && `pp. ${text('pages')}`;
   const online = f.doi
     ? link(`https://doi.org/${f.doi.trim()}`, `doi: ${f.doi.trim()}`)
     : f.url && link(f.url.trim(), f.url.trim());
-  const accessed = f.urldate && `(accessed ${text('urldate')})`;
-  const ending = join([online, accessed], ' ');
+  const accessed = f.urldate && <>(accessed {nowrap(text('urldate'))})</>;
+  const note = text('note');
+  const ending = join([note && (note.endsWith('.') ? note : `${note}.`), online, accessed], ' ');
 
   // IEEE puts the comma after the title inside the quotes: A. Author, “Title,” Journal, …
   const start = <>{who && `${who}, `}{title && <>“{title},” </>}</>;
@@ -120,7 +123,14 @@ function Reference({ entry }: { entry: BibEntry }) {
       return <>{start}{join([kind, text('school') ?? text('institution'), text('address'), date], ', ')}. {ending}</>;
     }
     case 'techreport':
-      return <>{start}{join([text('institution'), text('address'), f.number && `Tech. Rep. ${text('number')}`, date], ', ')}. {ending}</>;
+    case 'report': {
+      // type replaces "Tech. Rep.", e.g. "Application Note AN9675". The institution is left out here when it is already named first.
+      const report = join([text('type') ?? (f.number ? 'Tech. Rep.' : undefined), text('number')], ' ');
+      return <>{start}{join([authors && text('institution'), text('address'), report, text('version'), date], ', ')}. {ending}</>;
+    }
+    case 'patent':
+      // IEEE: A. Inventor, “Title,” U.S. Patent 5,708,432, date.
+      return <>{start}{join([join([text('type') ?? 'Patent', text('number')], ' '), date], ', ')}. {ending}</>;
     default: {
       // @online, @misc, @manual, …: Organization. “Title.” Where it is published. URL (accessed date)
       const where = join([text('howpublished') ?? (authors ? text('organization') : undefined) ?? text('publisher'), date], ', ');

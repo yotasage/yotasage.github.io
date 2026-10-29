@@ -9,7 +9,11 @@ interface Rule {
   explanation?: React.ReactNode;
   // What the calculator boxes show for this rule, or null when they do not check it.
   checks: React.ReactNode | null;
+  source: string; // key in references.bib
 }
+
+// The notes all come from this source.
+const NOTES_SOURCE = 'AD';
 
 const RULES: Rule[] = [
   {
@@ -31,6 +35,7 @@ const RULES: Rule[] = [
         <CheckText tone="bad">Common factor with N<sub>pts</sub></CheckText>
       </>
     ),
+    source: 'AN9675',
   },
   {
     statement: <>N<sub>pts</sub> should be a power of 2.</>,
@@ -42,10 +47,12 @@ const RULES: Rule[] = [
         <CheckText tone="bad">Not an integer</CheckText>
       </>
     ),
+    source: 'AN9675',
   },
   {
     statement: <>f<sub>0</sub> and F<sub>S</sub> should be relatively prime.</>,
     checks: null,
+    source: 'US5708432',
   },
 ];
 
@@ -68,10 +75,7 @@ const NOTES: React.ReactNode[] = [
 export default function CoherentSampling({ bib }: { bib: Bibliography }) {
   return (
     <>
-      <div className={styles.cardHeader}>
-        <h2 id="coherent-title">Coherent sampling</h2>
-        <p className={styles.source}>Source: {bib.cite('AD')}</p>
-      </div>
+      <h2 id="coherent-title">Coherent sampling</h2>
 
       <ol className={styles.rules}>
         {RULES.map((rule, i) => (
@@ -90,13 +94,17 @@ export default function CoherentSampling({ bib }: { bib: Bibliography }) {
                 {rule.checks
                   ? <><span className={styles.ruleChecksLabel}>In the calculator:</span>{rule.checks}</>
                   : <span className={styles.ruleChecksLabel}>Not checked by the calculator.</span>}
+                <span className={styles.source}>Source: {bib.cite(rule.source)}</span>
               </div>
             </div>
           </li>
         ))}
       </ol>
 
-      <h3 className={styles.groupHeading}>Notes</h3>
+      <div className={styles.notesHeader}>
+        <h3 className={styles.groupHeading}>Notes</h3>
+        <span className={styles.source}>Source: {bib.cite(NOTES_SOURCE)}</span>
+      </div>
       <ol className={styles.notes}>
         {NOTES.map((note, i) => (
           <li key={i} id={`note-${i + 1}`} className={styles.note}>
