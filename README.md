@@ -1,40 +1,65 @@
-This is a starter template for [Learn Next.js](https://nextjs.org/learn).
-### `Link to the website`
-https://yotasage.github.io/
+# yotasage.github.io
 
-### `npm docs`
-https://docs.npmjs.com/cli/v9/commands/npm-outdated
+My own collection of tools, so I don't have to search other people's websites for one that is good enough, without
+ads and bad design.
 
-### `NVM for Windows`
-A node version manager.
-https://github.com/coreybutler/nvm-windows?tab=readme-ov-file
+**Site:** https://yotasage.github.io/
 
-### `npm run dev`
-This runs the command ```next dev```.
+Every tool runs entirely in the browser. There is no server: the site is a static export hosted on GitHub Pages, and
+files given to a tool never leave the device.
 
-Starts the development server.
+## Tools
 
-### `npm update`
-This command will update all the packages listed to the latest version (specified by the tag config), respecting the semver constraints of both your package and its dependencies (if they also require the same package).
+Every tool has a button on the main page ([pages/index.tsx](pages/index.tsx)).
 
-It will also install missing packages.
+| Tool | Page | What it does |
+| --- | --- | --- |
+| Simulation setup | [/simsetup/main](https://yotasage.github.io/simsetup/main) | Calculates sampling parameters for FFTs and simulations (f0, FS, Ncyc, Npts and what follows from them), with checks for coherent sampling. |
+| QR code generator | [/qrcode/main](https://yotasage.github.io/qrcode/main) | QR Code Model 1 and 2, Micro QR and rMQR with control over every parameter. Exports PNG, JPG, SVG and PDF. |
+| PDF tools | [/pdf/main](https://yotasage.github.io/pdf/main) | Merge, compress, images to PDF and remove metadata. Planned tools are in [docs/pdf-tools-plan.md](docs/pdf-tools-plan.md). |
 
-Note that by default npm update will not update the semver values of direct dependencies in your project package.json, if you want to also update values in package.json you can run: ```npm update --save``` (or add the ```save=true``` option to a configuration file to make that the default behavior).
+The [/licenses](https://yotasage.github.io/licenses) page, linked from the footer of every page, lists the licences
+of the packages the site uses.
 
-### `npm outdated`
-This command will check the registry to see if any (or, specific) installed packages are currently outdated.
+## Getting started
 
-### `npm install`
-This command installs a package and any packages that it depends on.
+Needs Node 22 or newer (GitHub builds with Node 22).
 
-### `npm run build`
-This runs the command ```next build```.
+```
+npm install      # also copies the pdf.js files and generates the licence list
+npm run dev      # http://localhost:3000, also reachable from a phone on the same network
+npm run build    # run before pushing; GitHub runs the same build
+```
 
-Running ```next build``` generates an optimized version of your application for production. HTML, CSS, and JavaScript files are created based on your pages. JavaScript is compiled and browser bundles are minified using the Next.js Compiler to help achieve the best performance and support all modern browsers.
+What these commands do, NVM for Windows and keeping packages up to date: [docs/npm-and-node.md](docs/npm-and-node.md).
 
-Next.js produces a standard deployment output used by managed and self-hosted Next.js. This ensures all features are supported across both methods of deployment. In the next major version, we will be transforming this output into our Build Output API specification.
+## Deployment
 
-### `npm run start`
-This runs the command ```next start```.
+Pushing to `main` runs [.github/workflows/nextjs.yml](.github/workflows/nextjs.yml), which builds the site as static
+files and publishes them to GitHub Pages. The workflow adds the `output: 'export'` setting itself; the repo has no
+`next.config` file. If the build fails, nothing is deployed and the previous version stays online.
 
-```next start``` is used to run the app in production mode, but requires ```next build``` to be run first to generate an optimized production build.
+## Adding a tool
+
+1. Add the page as `pages/<tool>/main.tsx`, with a link back to the main page (`components/icons/home.tsx`).
+2. Add a button (card) for it in [pages/index.tsx](pages/index.tsx).
+3. Keep the logic in `lib/<tool>/`, components in `components/<Tool>/` and styles in `styles/<Tool>.module.css`.
+   Every file under `pages/` becomes a page on the site, so nothing else goes there.
+4. Only use what works without a server: no API routes, no `getServerSideProps`, and no libraries, fonts or files
+   loaded from a CDN. `getStaticProps` is fine, since it runs when the site is built.
+5. Check the licence of any new package (MIT, BSD, Apache-2.0 and ISC are fine; GPL and AGPL need a decision first).
+
+## Project layout
+
+| Folder | Contents |
+| --- | --- |
+| `pages/` | One file per page (Next.js Pages Router). `_app.tsx` adds the footer to every page. |
+| `components/` | React components, one folder per tool. |
+| `lib/` | Logic without React, one folder per tool. `bibtex.ts` and `references.ts` read [references.bib](references.bib). |
+| `styles/` | CSS modules, one per tool. |
+| `scripts/` | Scripts that run on `npm install`. |
+| `public/` | Files served as they are (favicon, icons). |
+| `docs/` | Notes and plans. |
+
+Sources cited on the site are in [references.bib](references.bib); the comment at the top of the file explains how
+to cite them from a page.

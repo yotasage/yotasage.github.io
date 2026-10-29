@@ -21,24 +21,9 @@ export default function Home() {
         </p>
 
         <div className={styles.grid}>
-          <Link href="/" className={[styles.card, styles.w45].join(" ")}>
-            <h3>Nothing here yet &rarr;</h3>
-            <p>There is nothing here yet, but maybe something will pop up over the next few months.</p>
-          </Link>
-
-          <Link href="/" className={[styles.card, styles.w45].join(" ")}>
-            <h3>jschem &rarr;</h3>
-            <p>Future Project. Online schematic drawing program.</p>
-          </Link>
-
           <Link href="/simsetup/main" className={[styles.card, styles.w45].join(" ")}>
             <h3>Simulation setup &rarr;</h3>
             <p>A calculator tool for calculating parameters that are useful when doing FFTs and similar.</p>
-          </Link>
-
-          <Link href="/" className={[styles.card, styles.w45].join(" ")}>
-            <h3>Nothing here yet &rarr;</h3>
-            <p>There is nothing here yet, but maybe something will pop up over the next few months.</p>
           </Link>
 
           <Link href="/qrcode/main" className={[styles.card, styles.w45].join(" ")}>

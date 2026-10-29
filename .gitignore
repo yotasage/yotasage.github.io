@@ -29,3 +29,6 @@ yarn-error.log*
 
 # Licence list, generated from node_modules on install
 /lib/generated/
+
+# TypeScript incremental build info (npx tsc --noEmit)
+*.tsbuildinfo
