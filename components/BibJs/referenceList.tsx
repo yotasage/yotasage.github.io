@@ -48,11 +48,15 @@ export default class Bibliography {
 
         if (this.indexing == 'chronological' && bibItem !== undefined && bibItem.index <= 0) {
             bibItem.index = this.index;
-            index = bibItem.index
-            id = bibItem.id;
             this.index++;
 
             this.referenceDictSorted[bibItem.key] = bibItem;
+        }
+
+        // Also when the item has been cited before, or was numbered up front ('incremental').
+        if (bibItem !== undefined && bibItem.index > 0) {
+            index = bibItem.index;
+            id = bibItem.id;
         }
 
         if (this.clickable) {

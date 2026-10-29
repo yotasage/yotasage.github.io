@@ -1,0 +1,421 @@
+.page {
+  min-height: 100vh;
+  padding: 1rem 1rem 4rem;
+  background-color: #2B2B2B;
+  color: white;
+  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans,
+    Helvetica Neue, sans-serif;
+}
+
+.page a:not(.homeLink) {
+  color: #4da3ff;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.homeLink {
+  display: inline-flex;
+  padding: 0.75rem;
+  border: 1px solid #ffffff;
+  border-radius: 10px;
+  transition: border-color 0.15s ease;
+}
+
+.homeLink:hover,
+.homeLink:focus {
+  border-color: #0070f3;
+}
+
+.title {
+  margin: 0;
+  font-size: 2.4rem;
+  line-height: 1.15;
+}
+
+@media (max-width: 600px) {
+  .title {
+    font-size: 1.8rem;
+  }
+}
+
+.lead {
+  margin: 0.75rem 0 1.5rem;
+  color: #c8c8c8;
+  font-size: 1.05rem;
+  line-height: 1.5;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 1400px;
+}
+
+.card {
+  padding: 1.25rem 1.5rem;
+  border: 1px solid #ffffff;
+  border-radius: 10px;
+  min-width: 0;
+}
+
+@media (max-width: 600px) {
+  .card {
+    padding: 1rem;
+  }
+}
+
+.card h2 {
+  margin: 0 0 1rem;
+  font-size: 1.35rem;
+}
+
+.card h3 {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 1.05rem;
+}
+
+.card p {
+  margin: 0.5rem 0;
+  line-height: 1.5;
+}
+
+/* Keeps long lines of text readable on wide screens. */
+.text > * {
+  max-width: 80ch;
+}
+
+.equation {
+  display: block;
+  margin: 0.25rem 0 1rem;
+  font-size: 1.4rem;
+}
+
+/* Fields, buttons */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.field > span,
+.fieldLabel {
+  font-size: 0.85rem;
+  color: #c8c8c8;
+}
+
+.input,
+.select {
+  width: 100%;
+  min-width: 0;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid #6a6a6a;
+  border-radius: 6px;
+  background: #1f1f1f;
+  color: white;
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.input:focus,
+.select:focus {
+  outline: none;
+  border-color: #0070f3;
+}
+
+.input[aria-invalid='true'] {
+  border-color: #ff6b6b;
+}
+
+.button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ffffff;
+  border-radius: 8px;
+  background: transparent;
+  color: white;
+  font: inherit;
+  font-weight: bold;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.button:hover:not(:disabled),
+.button:focus-visible {
+  color: #0070f3;
+  border-color: #0070f3;
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.buttonSmall {
+  composes: button;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.buttonRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+}
+
+.fieldError {
+  margin: 0;
+  color: #ffb3b3;
+  font-size: 0.85rem;
+}
+
+/* Calculator */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.precisionInput {
+  width: 5.5rem;
+}
+
+.boxGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  gap: 1rem;
+}
+
+.box {
+  min-width: 0;
+  padding: 1rem 1.1rem 1.1rem;
+  border: 1px solid #6a6a6a;
+  border-radius: 10px;
+  background: #262626;
+}
+
+.boxHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.card .boxHeader h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.boxActions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.solveFor {
+  margin: 0 0 1rem;
+  padding: 0;
+  border: none;
+}
+
+.solveFor legend {
+  margin-bottom: 0.35rem;
+  padding: 0;
+  font-size: 0.85rem;
+  color: #c8c8c8;
+}
+
+.segments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.segment {
+  position: relative;
+}
+
+.segment input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.segment span {
+  display: inline-block;
+  min-width: 3.4rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid #6a6a6a;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.segment input:checked + span {
+  border-color: #0070f3;
+  background: rgba(0, 112, 243, 0.25);
+  font-weight: bold;
+}
+
+.segment input:focus-visible + span {
+  outline: 2px solid #4da3ff;
+  outline-offset: 2px;
+}
+
+.rows {
+  display: grid;
+  grid-template-columns: 4.25rem minmax(0, 1fr);
+  gap: 0.4rem 0.75rem;
+  align-items: center;
+}
+
+.rowLabel {
+  font-size: 1rem;
+}
+
+.fieldWithUnit {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.unit {
+  flex: none;
+  width: 1.6rem;
+  color: #c8c8c8;
+  font-size: 0.9rem;
+}
+
+.value {
+  display: block;
+  min-width: 0;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.calculated {
+  border-color: #0070f3;
+  background: rgba(0, 112, 243, 0.15);
+  font-weight: bold;
+}
+
+.below {
+  grid-column: 2;
+}
+
+.divider {
+  grid-column: 1 / -1;
+  height: 1px;
+  margin: 0.4rem 0;
+  background: #444;
+}
+
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.9rem;
+  margin: -0.1rem 0 0.2rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+}
+
+.good {
+  color: #7ee2a8;
+}
+
+.ok {
+  color: #f7d9a6;
+}
+
+.bad {
+  color: #ffb3b3;
+}
+
+.info {
+  color: #c8c8c8;
+}
+
+/* Prime and power of 2 boxes */
+
+.helperGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+  gap: 1.25rem;
+}
+
+.helperInput {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.3rem;
+}
+
+.helperInput .input {
+  flex: 1;
+}
+
+.exponent {
+  flex: none;
+  font-size: 1.15rem;
+}
+
+/* Text */
+
+.paramGroup {
+  margin-bottom: 1.25rem;
+}
+
+.usage dt {
+  margin-top: 0.9rem;
+  font-weight: bold;
+}
+
+.usage dd {
+  margin: 0.25rem 0 0;
+  color: #d8d8d8;
+  line-height: 1.5;
+}
+
+.usage code {
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+  background: #1f1f1f;
+  font-family: Menlo, Monaco, Lucida Console, Liberation Mono, DejaVu Sans Mono, Courier New, monospace;
+  font-size: 0.88em;
+}
+
+.references h3 {
+  margin-top: 0;
+  font-size: 1.35rem;
+}
+
+.references td {
+  padding: 0.2rem 0.5rem 0.2rem 0;
+  line-height: 1.5;
+  /* Lets the long URL wrap on phones. */
+  overflow-wrap: anywhere;
+}
+
+.references td:first-child {
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
