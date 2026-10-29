@@ -125,6 +125,15 @@
   text-align: center;
 }
 
+/* The z-index keeps it above the links on the main page's tool cards, which have z-index 1. */
+.fixed {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+}
+
 .footer a {
   color: #c8c8c8;
   text-decoration: underline;

@@ -3,10 +3,10 @@ import React from 'react';
 
 import styles from '../styles/Licenses.module.css';
 
-// Shown under every page by pages/_app.tsx.
-export default function SiteFooter() {
+// Shown under every page by pages/_app.tsx. `fixed` keeps it at the bottom of the screen (the main page).
+export default function SiteFooter({ fixed = false }: { fixed?: boolean }) {
   return (
-    <footer className={styles.footer}>
+    <footer className={fixed ? [styles.footer, styles.fixed].join(' ') : styles.footer}>
       <Link href="/licenses">Licenses</Link>
       <span aria-hidden="true"> · </span>
       {/* A new tab, so the state of the tool on the page is not lost. */}

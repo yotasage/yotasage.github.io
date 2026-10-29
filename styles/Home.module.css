@@ -1,7 +1,8 @@
-/* The side padding centers the content in a column at most 1120px wide. */
+/* The side padding centers the content in a column at most 1120px wide. The bottom padding leaves room for the
+   footer, which is fixed to the bottom of the screen on this page (pages/_app.tsx). */
 .page {
   min-height: 100vh;
-  padding: 3.5rem max(1rem, (100% - 1120px) / 2) 4rem;
+  padding: 3.5rem max(1rem, (100% - 1120px) / 2) 5.5rem;
   background-color: #2B2B2B;
   color: white;
   font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans,

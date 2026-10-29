@@ -23,6 +23,9 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   one with `output: 'export'` and `images.unoptimized`, then `next build` writes `out/`. So a local `npm run build`
   is *not* a static export: something that breaks the export (see constraints above) passes locally and fails only
   in CI. Check new code against the constraints by reading it, not just by building.
+- The Pages source (Settings → Pages → Build and deployment) must be **GitHub Actions**. With "Deploy from a branch",
+  GitHub also runs its own Jekyll build on every push, and whichever deploy finishes last wins, so the site can end
+  up showing README.md instead of the app.
 - CI runs on Ubuntu with Node 22 (`npm ci`); development is on Windows with a newer Node. Import paths must match
   file name case exactly.
 - `postinstall` runs [scripts/copy-pdfjs-assets.mjs](scripts/copy-pdfjs-assets.mjs) (→ `public/pdfjs/`) and
@@ -46,7 +49,8 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   `styles/<Tool>.module.css`.
 - Each page sets its own `<Head>` (title, `/favicon.ico`), a home link with `components/icons/home.tsx` at the top,
   and `html, body` styles in `<style jsx global>`. The dark background is `#2b2b2b`. `styles/globals.css` is not
-  imported anywhere. [pages/_app.tsx](pages/_app.tsx) adds `SiteFooter` (links to `/licenses` and the GitHub repo) to every page.
+  imported anywhere. [pages/_app.tsx](pages/_app.tsx) adds `SiteFooter` (links to `/licenses` and the GitHub repo)
+  to every page; on the main page only it is fixed to the bottom of the screen.
 - Layouts must work at phone width.
 - PDF tools: register each tool in [lib/pdf/tools.ts](lib/pdf/tools.ts) (hub tiles on `/pdf/main`), use the shared
   frame in `components/PdfTools/`, and update the status table in
