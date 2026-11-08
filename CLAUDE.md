@@ -84,6 +84,10 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 - [README.md](README.md): what the site is, tools, getting started, how to add a tool.
 - [docs/npm-and-node.md](docs/npm-and-node.md): npm, NVM for Windows and Next.js commands explained.
 - [docs/pdf-tools-plan.md](docs/pdf-tools-plan.md): PDF tools roadmap, libraries and licence notes.
+- [docs/pcb-viewer-plan.md](docs/pcb-viewer-plan.md): PCB viewer plan: formats, model, test files, steps S1–S9 with
+  their status, and how a step is run and verified.
+- [docs/BACKLOG.md](docs/BACKLOG.md): wanted but not scheduled, for every tool (ids `BL<n>`, never reused). Work left out
+  of a step goes here.
 
 ## Commits
 
