@@ -74,6 +74,8 @@ On the owner's machine. Read them where they are; never copy them into the repo 
 | Altium library | `…\KERALA_GF130\v2\PCB1_1.PcbLib` | One footprint (QFN48_7x7); `altiumts` 0.0.95 rejects it |
 | Altium print | `C:\Users\Jonat\Downloads\Altium_KERALA_GF130_2026-06-27\PCB1_1.pdf` | Altium's own print of the v2 board |
 | KiCad demos | `C:\Program Files\KiCad\10.0\share\kicad\demos\` | Many boards; `jetson-agx-thor-baseboard` is the large one for speed tests |
+| KiCad 4 to 8 boards | `https://gitlab.com/kicad/code/kicad/-/raw/<tag>/demos/<demo>/<demo>.kicad_pcb` | The same demos as saved by the releases 4.0.7, 5.1.12, 6.0.11, 7.0.11 and 8.0.9 (file versions 3, 4, 20171130, 20210722, 20211014, 20221018, 20240108); S3 kept them in its scratch folder |
+| KiCad QA boards | `https://gitlab.com/kicad/code/kicad/-/raw/master/qa/data/pcbnew/` | Pad stacks (`padstacks*.kicad_pcb`, `via_stacks`), `custom_pads`, `test_copper_graphics`, `tracks_arcs_vias`, `api_kitchen_sink` (barcodes, tables, text boxes; a KiCad 11 development version) |
 | EAGLE | none yet | S7 finds two or three public EAGLE boards (e.g. Adafruit or SparkFun on GitHub, ideally with Gerbers) and keeps them in a scratch folder |
 
 `kicad-cli` 10.0.6 (`C:\Program Files\KiCad\10.0\bin\kicad-cli.exe`) makes reference output: `pcb export
@@ -96,21 +98,24 @@ folder, never next to the test files.
 | Excellon, drill layers | `lib/pcb/excellon.ts`, `lib/pcb/drill.ts` | `excellon.ts` reads a file once into a program and plots it with a format; `drill.ts` fits a format to the pads and turns Gerber drill files into holes |
 | Board shape | `lib/pcb/outline.ts` | Loops of the outline layer, else a frame drawn on several layers, else the copper's rectangle |
 | Points | `lib/pcb/points.ts` | Pad and hole centres and line ends per layer in a grid index: measuring snaps to them, drill formats are fitted to them |
-| Design → layers | `lib/pcb/design/` | Shared by all design formats (S3) |
-| Stroke font | `lib/pcb/font/` | Newstroke (S3) |
-| Design formats | `lib/pcb/kicad/`, `lib/pcb/altium/`, `lib/pcb/pads/`, `lib/pcb/eagle/` | Each produces a `Design` |
+| Design → layers | `lib/pcb/design/` | Shared by all design formats (S3): `build.ts` the `Design` into a `Board`, `pads.ts` pad shapes as aperture parts and grown or shrunk for mask and paste, `art.ts` graphics (dashes too) and text as items, `outline.ts` the board shape from outline graphics, `overrides.ts` the user's layer types on a design's board, `open.ts` the entry loaded with `await import` when a design file is opened |
+| Stroke font | `lib/pcb/font/` | Newstroke (S3): `newstroke-glyphs.ts` copied from KiCanvas, `stroke.ts` layout adapted from KiCanvas, `LICENSE.kicanvas.txt` and `LICENSE.newstroke.txt` (read by `scripts/collect-licenses.mjs` for `/licenses`) |
+| Design formats | `lib/pcb/kicad/` (S3: `sexpr.ts` reader, `layers.ts` layer names and wildcards, `board.ts` boards and footprints), `lib/pcb/altium/`, `lib/pcb/pads/`, `lib/pcb/eagle/` | Each produces a `Design` |
 | Drawing | `lib/pcb/render/` | Layer view and realistic view on Canvas 2D: `prepare.ts` paths, `paint.ts` a layer into a canvas and the two ways of compositing (shared with the PNG export), `view.ts` canvas, gestures, clicks and modes, `colors.ts` default and realistic colours |
 | Exports | `lib/pcb/export/` | `png.ts`, `svg.ts` (S2); CSV, PDF, DXF, KiCad later |
 
 Flow: files → recognise → reader → `Board`. Gerber and drill files become layers directly. A design file becomes a
 `Design`, which `lib/pcb/design/` turns into layers. Drawing and the PNG, SVG, PDF and DXF exports use only the layers;
-the CSV exports use `Board.placements`; the KiCad export uses `Board.design`.
+the CSV exports use `Board.placements`; the KiCad export uses `Board.design`. `readFiles` (`load.ts`) chooses one design
+file among those opened and reads it through `design/open.ts`; the board made from it is kept on the `LoadedFile`
+(`designBoard`), and `buildBoard` returns it with the user's layer types on top (`design/overrides.ts`).
 
 ### Model (sketch)
 
 S1 wrote the artwork part (in `lib/pcb/model.ts`, as below; S2 added `outlineFrom`, the `'format'` way of identifying
-a layer, and drill layers with plated and non-plated holes), S3 writes the design part. Names and fields may change.
-Keep this section in step with the code.
+a layer, and drill layers with plated and non-plated holes), S3 wrote the design part (and `Board.design`, the
+`design` link of `BoardObject`, and `attrs` and `fields` of `Placement`). Names and fields may change. Keep this
+section in step with the code.
 
 ```ts
 // Units: millimetres. Y up (KiCad's Y is negated on reading). Angles: degrees, counter-clockwise from +X.
@@ -155,8 +160,14 @@ interface Layer {
   items: ArtItem[]; apertures: Aperture[]; bbox: Box;
 }
 
-interface BoardObject { kind: string; net?: string; component?: string; pin?: string; info?: Record<string, string> }
-interface Placement { ref: string; value?: string; footprint?: string; at: Pt; rot: number; side: 'top' | 'bottom' }
+// Design boards: one object per pad, via, zone ('zone', 'teardrop', 'rule area') and component (its graphics and text
+// too), with `design` pointing at the entry; one per net for tracks, one per net for board graphics, one for board text.
+interface BoardObject { kind: string; net?: string; component?: string; pin?: string; info?: Record<string, string>;
+  design?: { list: 'pads' | 'vias' | 'zones' | 'components' | 'tracks' | 'graphics' | 'texts'; index: number } }
+interface Placement { ref: string; value?: string; footprint?: string; at: Pt; rot: number; side: 'top' | 'bottom';
+  // 'dnp', 'exclude_from_bom', 'exclude_from_pos_files', 'board_only': 'yes'; 'type': 'smd' | 'through_hole'
+  attrs?: Record<string, string>;
+  fields?: Record<string, string> }  // other fields (MPN, LCSC…), for the BOM
 
 interface Board {
   name: string; source: 'gerber' | 'kicad' | 'altium' | 'pads' | 'eagle';
@@ -170,29 +181,57 @@ interface Board {
   warnings: string[];
 }
 
-// Design files (S3). Layers are referred to by Design.layers[].id; nets by index (0 = no net).
+// Design files (S3). Every design reader produces a Design; lib/pcb/design/build.ts makes the layers. Layers are
+// referred to by Design.layers[].id; nets by index (0 = no net); components by index. Positions are on the board (a
+// component's items already placed), mm, Y up, angles counter-clockwise.
 interface Design {
-  layers: { id: string; name: string; kind: LayerKind; side: Side; copper?: number; plane?: boolean }[];
+  format: string;                    // e.g. "KiCad 9 (format 20241229)"
+  layers: { id: string; name: string; kind: LayerKind; side: Side; copper?: number; plane?: boolean;
+    label?: string }[];              // KiCad: id is the canonical name ("In2.Cu"), name the user's ("GND1.Cu")
   nets: string[];
-  outline: Contour[];
+  outline: Contour[];                // empty: the builder falls back to boardShape (the copper's rectangle)
   components: { ref: string; value: string; footprint: string; at: Pt; rot: number; side: 'top' | 'bottom';
-    attrs: Record<string, string> }[];
-  pads: { comp?: number; num: string; net: number; at: Pt; rot: number;
-    shapes: { layers: string[]; shape: PadShape }[];          // per layer or group of layers (Altium pad stacks)
-    hole?: { d: number; slot?: { w: number; h: number }; plated: boolean; offset?: Pt };
-    mask?: { expand?: number; tented?: boolean }; paste?: { expand?: number } }[];
+    attrs: Record<string, string>; fields: Record<string, string>; description?: string }[];
+  pads: { comp?: number; num: string; net: number; at: Pt; rot: number;   // at: the hole; rot: on the board
+    type: 'smd' | 'th' | 'np' | 'connect';
+    // Every layer the pad is drawn on, with its shape there: copper (per layer for pad stacks), the mask and paste
+    // openings already grown or shrunk by the reader (lib/pcb/design/pads.ts growShape), and other layers it names.
+    shapes: { layers: string[]; shape: PadShape }[];
+    hole?: { d: number; slot?: { w: number; h: number }; plated: boolean };   // slot in pad coordinates
+    maskMargin?: number; pasteMargin?: number; info?: Record<string, string> }[];   // info: pin function and type
   tracks: { layer: string; a: Pt; b: Pt; w: number; net: number; arc?: { c: Pt; ccw: boolean } }[];
-  vias: { at: Pt; d: number; drill: number; from: string; to: string; net: number; tented?: boolean }[];
-  zones: { layers: string[]; net: number; outline: Contour[]; fill: Contour[][]; keepout?: boolean }[];
-  graphics: { layer: string; shape: Contour | { line: [Pt, Pt] } | { arc: { c: Pt; r: number; start: number;
-    sweep: number } } | { circle: { c: Pt; r: number } }; w: number; filled: boolean; comp?: number }[];
-  texts: { layer: string; s: string; at: Pt; rot: number; h: number; thick: number; mirror: boolean;
-    just: { h: 'left' | 'center' | 'right'; v: 'top' | 'middle' | 'bottom' }; font?: string; comp?: number }[];
+  vias: { at: Pt; d: number; drill: number; from: string; to: string;
+    layers: string[];                // the copper layers with a ring (unused ones removed)
+    sizes?: Record<string, number>;  // other diameters per layer (via stacks)
+    net: number; type: 'through' | 'blind' | 'buried' | 'micro';
+    mask?: { top: boolean; bottom: boolean; margin: number } }[];   // where the mask is open over it
+  zones: { layers: string[]; net: number; name?: string; outline: Contour[];
+    fill: { layer: string; contours: Contour[] }[];   // as last filled and saved
+    stroke?: number;                 // older KiCad: the fill is also stroked with this width
+    keepout?: boolean; unfilled?: boolean; teardrop?: boolean; comp?: number; priority?: number }[];
+  graphics: { layer: string; shape: { line: [Pt, Pt] } | { arc: { c: Pt; r: number; start: number; sweep: number } }
+    | { circle: { c: Pt; r: number } } | { poly: Contour } | { curve: [Pt, Pt, Pt, Pt] };   // curve: cubic Bézier
+    w: number; filled: boolean; dash?: 'dash' | 'dot' | 'dash_dot' | 'dash_dot_dot'; comp?: number; net?: number }[];
+  texts: { layer: string; s: string;   // variables already replaced; KiCad's markup ^{…} _{…} ~{…} kept
+    at: Pt; rot: number;             // anchor and angle as drawn (keep-upright applied)
+    h: number; w: number; thick: number; mirror: boolean;
+    just: { h: 'left' | 'center' | 'right'; v: 'top' | 'middle' | 'bottom' };
+    italic?: boolean; bold?: boolean; lineSpacing?: number;
+    font?: string;                   // a TrueType face; the stroke font stands in…
+    outline?: Contour[];             // …unless the file stores the glyph outlines (KiCad's render cache), on the board
+    knockout?: boolean; wrap?: number;   // wrap: a text box's column width
+    comp?: number; role?: string }[];    // role: 'reference', 'value', 'user', 'field'
   holes: { at: Pt; d: number; slot?: { w: number; h: number; rot: number }; plated: boolean }[];
+  stackup?: Stackup;
+  dash?: { dash: number; gap: number };  // dash and gap lengths in line widths (KiCad: 12 and 3)
+  warnings: string[];
 }
 type PadShape = { k: 'circle' | 'rect' | 'oval' | 'roundrect' | 'chamfer' | 'trapezoid' | 'octagon' | 'custom';
-  w: number; h: number; r?: number; chamfer?: { size: number; corners: string[] }; delta?: Pt;
-  poly?: Contour[]; offset?: Pt };
+  w: number; h: number; r?: number;   // r: corner radius (roundrect, and the corners of a chamfer that are not cut)
+  chamfer?: { size: number; corners: ('tl' | 'tr' | 'bl' | 'br')[] };
+  delta?: Pt;                         // trapezoid: KiCad's rect_delta (sides h ± delta.x and w ± delta.y)
+  parts?: AperturePart[];             // custom: solid parts, their union is the pad
+  offset?: Pt };                      // shape centre relative to the hole, pad coordinates
 ```
 
 ### Drawing
@@ -258,7 +297,7 @@ As built in S2:
 | `fflate` | ZIP | MIT | Already a dependency |
 | `altiumts` (exact version) | Altium | MIT; dependencies `cfb`, `adler-32`, `crc-32` (Apache-2.0), `transformation-matrix` (MIT) | Added in S5 |
 | `@cantoo/pdf-lib` | PDF export | MIT | Already a dependency |
-| Newstroke font, through KiCanvas's stroke font code | Text of design files | Font: CC0 1.0 amended with an MIT-like licence, some glyphs SIL OFL 1.1; KiCanvas: MIT | Added in S3, both notices on `/licenses` (a manual entry, like `occt-import-js`) |
+| Newstroke font, through KiCanvas's stroke font code | Text of design files | Font: CC0 1.0 (its README: "Released under CC0 licence."), CJK glyphs made with code by Lingdong Huang (MIT) from Source Han Sans (SIL OFL 1.1); KiCanvas: MIT | Added in S3 from KiCanvas commit b031159: `lib/pcb/font/newstroke-glyphs.ts` copied unchanged, the layout in `stroke.ts` adapted (metrics corrected to KiCad 10). The licence texts are in `lib/pcb/font/LICENSE.kicanvas.txt` and `LICENSE.newstroke.txt`; `scripts/collect-licenses.mjs` puts both on `/licenses` ("Font and code used by the PCB viewer"). The glyph file keeps the GPL-2.0-or-later header of KiCad's `newstroke_font.cpp`, which KiCanvas copied with the data; the data is the font its author released under CC0 |
 | Polygon booleans | Only if a step needs them (PDF/DXF flattening, EAGLE pours) | Must be permissive (e.g. a Clipper port under the Boost licence) | The first step that needs it chooses and records it here |
 
 - **`altiumts` is ESM only,** so it is loaded with `await import('altiumts')` (CLAUDE.md, `"module": "node16"`), and
@@ -276,8 +315,8 @@ Status: ✅ done · 🔄 in progress · 📋 planned
 | Step | What | Status | Commit |
 | --- | --- | :-: | --- |
 | S1 | Viewer shell and Gerber | ✅ | 7f75723 |
-| S2 | Drill files, realistic view, measuring, PNG and SVG export | ✅ | |
-| S3 | KiCad boards and footprints, design model, stroke font | 📋 | |
+| S2 | Drill files, realistic view, measuring, PNG and SVG export | ✅ | bf8c4ef |
+| S3 | KiCad boards and footprints, design model, stroke font | ✅ | |
 | S4 | Inspect, highlight, search; BOM and pick-and-place export | 📋 | |
 | S5 | Altium | 📋 | |
 | S6 | PADS ASCII | 📋 | |
@@ -469,6 +508,112 @@ are recognised and listed but drawn in S2.
 **Done when:**
 - the ARTIFICER `.kicad_pcb` matches its own Gerbers (side by side or overlaid) and `kicad-cli pcb export svg`;
 - several KiCad demos open, including the large one, with text in the right place and size.
+
+**Notes from S3:**
+
+- **Reading** (`lib/pcb/kicad/`): `sexpr.ts` reads the file one top-level item at a time, skips lists the viewer
+  never needs (`uuid`, `tstamp`, `model`, `embedded_files`, `image`, `generated`, `teardrops`, `path`), reads numbers
+  only in coordinate lists (`xy`, `start`, `at`, `size`…; atoms elsewhere stay strings, so pad "01" stays "01") and
+  interns short symbols. The large demo (`jetson-agx-thor-baseboard.kicad_pcb`, 88.7 MB, KiCad 9): text decoding
+  66 ms, tokenising 0.42 s, reading into a `Design` 0.66 s and building the layers 0.25 s in Node; in the page about
+  1.7 s from opening to the first picture, with progress in the status line and a pause every 30 ms, so the page
+  keeps answering. About 990,000 items and some 430 MB of JS heap after opening ([BL9](BACKLOG.md)).
+- **Versions** (checked with the demos of KiCad 4.0.7, 5.1.12, 6.0.11, 7.0.11, 8.0.9 from KiCad's repository, the
+  KiCad 9 and 10 demos, ARTIFICER, and KiCad's QA boards): layers are matched by canonical name, through the table's
+  numbers when a table names a copper layer only by the user's name (KiCad 4 and 5: "Composant", "top_layer"; file
+  version 3 uses the numbering of 2013, top 15, bottom 0); KiCad 9's renumbering needs nothing since its tables use
+  canonical names. Nets by number (net table) or by name (KiCad 10). Arcs as centre, start and angle (clockwise on
+  screen) before 20211014, start, mid, end since. `(width)` and `(stroke)`. Polygons always filled before 20201114.
+  `fp_text`, then `property` (KiCad 8); `hide` and `unlocked` as atoms or `(… yes)`. Overbars `~text~` before
+  20210606. Zone fills stroked with `min_thickness` before KiCad 6 (or `filled_areas_thickness yes`). KiCad 4 and 5
+  vias without a drill take it from their net's class (`net_class … add_net`) or the setup. Pads that list silkscreen
+  or fabrication layers (older footprints) are drawn there too, as KiCad plots them. Via tenting from the plot setting
+  `viasonmask` (KiCad 4 to 8), the board's `(tenting front back)` (KiCad 9) or `(tenting (front yes) …)` (KiCad 10),
+  per via overriding only the sides it names. Margins written as 0 mean "not set" before 20240201.
+- **Angles:** pad angles and footprint text angles in the file are the angles on the board (the footprint's rotation
+  included) in every version; footprint text keeps its angle in (−90°, 90°] unless unlocked. Zones in footprints are
+  written relative to the footprint in some KiCad 9 files and on the board in others (both in demos): the reader
+  takes the reading that puts the zone nearer the footprint.
+- **Pads** are drawn as KiCad plots them: a rectangle grown by m becomes a rounded rectangle of radius m, a rounded
+  rectangle keeps r + m, other polygons and custom shapes get round corners (polygon, a rectangle per side and a
+  circle per corner, all solid parts of one aperture); a negative margin takes at most half the pad (the box of the
+  parts for custom pads, whose `size` is only the anchor); paste margin plus ratio × size per axis; an NPTH pad no
+  larger than its round or oval hole has no copper; an oval drill is a slot along the pad's longer axis, turned with
+  it. `remove_unused_layers`: inner rings only where a track ends on the pad, `zone_layer_connections` says so, or
+  (files before 20221018) a same-net zone fill covers the pad; outer rings only with `keep_end_layers`. KiCad 9 pad
+  stacks (`front_inner_back`, `custom`) and via stacks give the copper per layer; in KiCad's own QA board of a 9.0
+  development version, "custom" stacks are plotted without the board's mask margin, which we apply.
+- **Text** is laid out by `lib/pcb/font/stroke.ts` (from KiCanvas) in KiCad's internal units, and was checked against
+  `kicad-cli pcb export gerbers` of test boards to the micrometre: justification, rotation, mirroring, several lines
+  (a final newline adds no line), bold, italic, sizes with w ≠ h, the stroke clamped to a quarter of the glyph,
+  sub- and superscript, overbar, knockout and text boxes (wrapped at spaces). KiCad 10 differs from KiCanvas: glyphs
+  2/21 of the height lower, lines 1.61 heights apart, overbar at 1.23 heights, sub- and superscript at 0.8 of the
+  size and 0.15 or 0.35 of it down or up, spaces as wide as the font's space glyph (16/21), italic advance without the
+  slant, stroke text moved t/1.52 inwards from its justified side and 0.052 t up, the knockout box h/9 around the
+  letters (with half the stroke), text box margins counted from the outer edge of the border. Tab stops still differ
+  (rare). TrueType text uses its render cache (glyph outlines in the file, on the board); kicad-cli on this machine
+  draws such text with another font when the face is missing (RoyalBlue54L's "Ubuntu Sans"), so those differ.
+  Variables: `${REFERENCE}`, `${VALUE}`, `${LAYER}`, `${FOOTPRINT_LIBRARY}`, `${FOOTPRINT_NAME}`, fields,
+  `${NET_NAME(n)}`, `${SHORT_NET_NAME(n)}`, `${PIN_NAME(n)}`, `${PIN_TYPE(n)}`, the title block, board
+  properties, `${FILENAME}`, `${PROJECTNAME}`, `${CURRENT_DATE}`, and KiCad 5's `%R` and `%V`. Text variables of the
+  project file (`.kicad_pro`) are not read and stay as written.
+- **Dashed lines** as KiCad plots them: dash (12 − 1) w, gap (3 + 1) w, dot 0.2 w with round ends, from the plot
+  settings; each side of a rectangle or polygon starts the pattern again; circles run clockwise on screen from 0°.
+- **Builder** (`lib/pcb/design/build.ts`): per layer, knockout text first (its letters are clear items, so they erase
+  only its box), then zones (fill as saved; the outline, 0.1 mm, of a zone never filled, with a warning), graphics,
+  tracks, vias, pads, text. Pads and vias are flashes; apertures are shared per layer by shape. Rule areas go to a
+  layer of their own ("Rule areas", kind `keepout`, hidden at first). Drill layers: plated holes, non-plated holes,
+  and one per span of blind and buried vias, with an X2-like `.FileFunction` (`Plated,1,4,Blind`) so the realistic
+  view's `drillReaches` works. Layers without items are left out, except copper and solder mask (the realistic view
+  needs to know there is a mask). The board shape is `Design.outline` (`outlineFrom: 'design'`), made from the
+  outline graphics by `design/outline.ts` with the joining rules of `outline.ts`; without one, `boardShape`.
+- **Opening** (`load.ts`, `Workspace.tsx`): a design file replaces the board (also from "Add files"); Gerber, drill
+  and job files opened with it or added later are listed as "Not used", and so are other design files. Among several,
+  the board file wins over footprints, then files not in an archive, not in `*-backups`, `.history`, `backup`, `old`
+  or `archive` folders, nearer the top, next to a `.kicad_pro` of the same name. The ARTIFICER project (board, backups
+  as ZIPs, a `.history` copy, its Gerbers and 51 footprints) picks the right board. The board card shows the format,
+  components and nets; the realistic view takes mask, silkscreen and finish from the stackup (names, and `#RRGGBB`
+  colours mapped to the nearest choice).
+- **Verification** (harness in `…\scratchpad\pcb\harness\`): `s3-refs.mjs` makes reference Gerbers and drill files
+  with `kicad-cli`; `s3-compare.mjs` renders two boards (a Gerber set and a design) layer by layer with the same
+  frame in headless Edge and counts differing pixels (diff images: red only in the reference, green only in ours);
+  `s3-cmpall.sh` runs it for every demo; `s3-textboard.mjs` and `s3-textcmp.mjs` compare text boxes to the
+  micrometre; `s3-read.mjs` reads boards in Node and reports counts and timings; `s3-survey.mjs` lists the
+  vocabulary of files. ARTIFICER against its own Gerbers and fresh `kicad-cli` ones: copper (6 layers), mask, paste,
+  outline, silk bottom and fab 0.00 to 0.02 % (edge pixels), drills 0.03 to 0.3 %; silk top differs only by the QR
+  barcode ([BL12](BACKLOG.md)). The 14 other demos and 30 copies of six demos in the KiCad 4 to 8 formats stay within
+  edge pixels (under 1.5 %, mostly round and oval pad edges, which KiCad approximates with polygons), apart from
+  TrueType text (above), RoyalBlue54L's vias with a drill of 0.00001 mm, and the minimum mask web of KiCad 5 boards
+  ([BL15](BACKLOG.md)). Measuring snaps to pad centres; phone layout, pinch and pan work.
+
+**For S4:**
+
+- **Objects of a design board** (`Board.objects`, items carry `obj`): one per pad (`net`, `component`, `pin`, `info`
+  with the pin function and type, `design` → `Board.design.pads[i]` with shapes, hole and margins), one per via
+  (`info`: size, drill, layers, type), one per zone (`zone`, `teardrop`, `rule area`), one per component (shared by
+  its graphics and text; `info`: value, footprint), one per net for tracks (`track`) and for board graphics
+  (`graphic`), and one for all board text. Highlighting a net means the items whose object has that `net`: tracks,
+  arcs, vias, pads, zones and copper graphics on every layer, the drill layers included.
+- **Placements:** `ref`, `value`, `footprint` ("library:name"), `at` (the footprint origin, Y up, as KiCad's position
+  files write it), `rot` (the footprint orientation as in the file; bottom footprints too, unconverted), `side`,
+  `attrs` (`dnp`, `exclude_from_bom`, `exclude_from_pos_files`, `board_only`, `type` smd or through_hole; KiCad 5's
+  `virtual` sets the first three) and `fields` (properties other than Reference and Value, such as MPN, LCSC,
+  Datasheet). Compare the export with ARTIFICER's `assembly/POS.csv` for the sign of bottom rotations.
+- Gerber sets keep their X2 objects as before; `BoardObject.design` is only set for design boards.
+
+**For S5 to S7 (feeding the builder):**
+
+- Produce a `Design` and add the format to `openDesign` (`design/open.ts`), `DESIGN_FORMATS` (`load.ts`) and the
+  status `read` in `detect.ts`; `buildDesignBoard` does the rest.
+- Pads: `shapes` lists every layer with its shape. Make mask and paste openings with `growShape` from Altium's and
+  EAGLE's rules (Altium's tenting means no mask entry); PADS gives shapes per layer directly. Use `PadShape` kinds
+  (`octagon` exists for EAGLE and Altium); custom outlines as `parts` (solid, counter-clockwise).
+- Text uses KiCad's model: anchor, justification, angle, mirror, glyph height and width, stroke width. Convert each
+  format's anchor and size rules to it; set `font` for TrueType text (the stroke font stands in).
+- `outline` from the format's outline lines with `outlineFromGraphics`, or given contours.
+- Negative planes (`DesignLayer.plane`, Altium internal planes and PADS CAM planes) are not drawn yet: the builder
+  needs a dark region of the board shape first on that layer, then the clearances as clear items (S5/S6).
+- Zones: `fill` is what is drawn; EAGLE polygons without a computed pour can give their outline with `unfilled`.
 
 ### S4 – Inspect, highlight, search; BOM and pick-and-place export
 

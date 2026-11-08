@@ -4,9 +4,9 @@
 import { gunzipSync } from 'fflate';
 
 export type FormatId =
-  | 'gerber' | 'gerber-job' | 'excellon' | 'zip'
+  | 'gerber' | 'gerber-job' | 'excellon' | 'zip' | 'kicad-pcb' | 'kicad-footprint'
   // Read in later steps (docs/pcb-viewer-plan.md).
-  | 'kicad-pcb' | 'kicad-footprint' | 'altium-pcb' | 'altium-pcblib' | 'pads-ascii' | 'eagle-brd' | 'pnp-csv'
+  | 'altium-pcb' | 'altium-pcblib' | 'pads-ascii' | 'eagle-brd' | 'pnp-csv'
   // Not read.
   | 'gerber-rs274d' | 'kicad-legacy' | 'pads-binary' | 'pads-library' | 'eagle-binary' | 'eagle-library' | 'allegro'
   | 'odb' | 'ipc2581' | 'ipcd356' | 'gedac' | 'diptrace' | 'easyeda' | 'protel-pcb' | 'archive-other'
@@ -180,10 +180,12 @@ function detectText(name: string, text: string): Detected {
   const head = t.slice(0, 4096);
 
   // KiCad
-  if (/^\(kicad_pcb\b/.test(t)) return later('kicad-pcb', 'KiCad board');
-  if (/^\((footprint|module)\b/.test(t)) return later('kicad-footprint', 'KiCad footprint');
+  if (/^\(kicad_pcb\b/.test(t)) return { id: 'kicad-pcb', name: 'KiCad board', status: 'read' };
+  if (/^\((footprint|module)\b/.test(t)) return { id: 'kicad-footprint', name: 'KiCad footprint', status: 'read' };
   if (/^\(kicad_sch\b/.test(t) || /^EESchema/.test(t)) return ignored('schematic', 'KiCad schematic', 'A schematic, not a board; ignored.');
   if (/^\((fp_lib_table|sym_lib_table|kicad_wks|kicad_symbol_lib)\b/.test(t)) return ignored('project', 'KiCad library table or sheet');
+  if (ext === 'kicad_pro' || ext === 'kicad_prl') return ignored('project', ext === 'kicad_pro' ? 'KiCad project' : 'KiCad project settings');
+  if (ext === 'kicad_dru' || /^\(version \d+\)\s*\(rule\b/.test(t)) return ignored('project', 'KiCad design rules');
   if (/^PCBNEW-BOARD Version/.test(t)) {
     return unsupported('kicad-legacy', 'KiCad board (legacy, before KiCad 4)', 'Open the board in KiCad 4 or later and save it as .kicad_pcb.');
   }

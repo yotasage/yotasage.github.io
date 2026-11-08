@@ -14,6 +14,7 @@ const IDENTIFIED: Record<string, string> = {
   job: 'the Gerber job file',
   name: 'the file name',
   format: 'the file format',
+  design: 'the design file',
   user: 'your choice',
   none: 'nothing: the file does not say',
 };
@@ -108,8 +109,10 @@ function Details({ layer, style, index, total, actions, file }: { layer: Layer; 
         {' '}{count(layer.items.length)} objects{layer.apertures.length ? `, ${count(layer.apertures.length)} apertures` : ''}{layer.negative ? ', negative image' : ''}.
         {negativeFile && ' The file draws where the material is not, so what is shown are the openings.'}
         {software && ` Made by ${software.split(',').join(' ')}.`}
+        {layer.identifiedBy === 'design' && layer.kind === 'mask' && ' What is shown are the openings in the mask.'}
       </p>
-      <p className={styles.detailNote} title={layer.file}>{layer.file}</p>
+      {layer.file && <p className={styles.detailNote} title={layer.file}>{layer.file}</p>}
+      {!layer.file && layer.name !== layer.id && !layer.id.startsWith('design:') && <p className={styles.detailNote}>{`Layer ${layer.id} of the design file`}</p>}
     </div>
   );
 }
@@ -147,7 +150,7 @@ export default function LayerPanel({ layers, styles: layerStyles, actions, files
                 <span className={styles.swatch} style={{ background: style.color }}>
                   <input type="color" value={style.color} aria-label={`Colour of ${title}`} onChange={(e) => actions.color(layer.id, e.target.value)} />
                 </span>
-                <button type="button" className={styles.layerText} onClick={() => actions.toggle(layer.id)} title={`${title}: ${layer.file}`}>
+                <button type="button" className={styles.layerText} onClick={() => actions.toggle(layer.id)} title={`${title}: ${layer.file ?? layer.name}`}>
                   <span className={styles.layerTitle}>{title}</span>
                   <span className={styles.layerFile}>{layer.name}{guessed && <span className={styles.guessBadge}> · format guessed</span>}</span>
                 </button>

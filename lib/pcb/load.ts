@@ -1,15 +1,18 @@
 // Turns the files the user opened into a board: ZIP archives are expanded (also nested ones), every file is
 // recognised by its content (lib/pcb/detect.ts) and handed to its reader, and the layers are identified
-// (lib/pcb/identify.ts). Gerber, drill, job and CSV files form one board; adding files adds to it.
+// (lib/pcb/identify.ts). Gerber, drill, job and CSV files form one board; adding files adds to it. A design file
+// (KiCad board or footprint) is a board of its own: one is chosen among the files and the others are not used.
 import { unzipSync } from 'fflate';
 
-import { detectFormat, Detected, isOdbPath } from './detect';
+import type { DesignFormat, openDesign } from './design/open';
+import { designWithOverrides } from './design/overrides';
+import { detectFormat, Detected, FormatId, isOdbPath } from './detect';
 import { fitFormat, gerberDrillItems } from './drill';
 import { describeFormat, DrillFormat, DrillProgram, formatComplete, formatKey, platedFromName, plotExcellon, PlottedDrill, readExcellon } from './excellon';
 import { GerberJob, parseGerberJob } from './gbrjob';
 import { parseGerber, ParsedGerber } from './gerber/parse';
 import { Identity, identifyLayers, LayerOverride } from './identify';
-import { Board, BoardObject, Layer, Stackup } from './model';
+import { Board, BoardObject, Design, Layer, Stackup } from './model';
 import { boardShape } from './outline';
 
 export interface SourceFile {
@@ -32,8 +35,35 @@ export interface LoadedFile {
   drill?: DrillProgram;
   // The format the drill file was last plotted with, and where it came from (set by buildBoard).
   drillState?: DrillState;
+  // A design file: what was read, and the board made from it (before the user's layer changes).
+  design?: Design;
+  designBoard?: Board;
+  // Why a file of a format that is read was not used (another design file is shown, or the board comes from one).
+  unused?: string;
   // How far the object indices of this file's items are shifted into Board.objects (see buildBoard).
   objectOffset: number;
+}
+
+const DESIGN_FORMATS: FormatId[] = ['kicad-pcb', 'kicad-footprint'];
+
+export function isDesignFile(f: LoadedFile): boolean {
+  return DESIGN_FORMATS.includes(f.detected.id);
+}
+
+// The design file to show among several: a board before a footprint, then the one least likely to be a copy: not in
+// an archive or a backup or history folder, near the top of what was opened, next to its KiCad project file.
+function pickDesign(designs: LoadedFile[], all: LoadedFile[]): LoadedFile {
+  const projects = new Set(all.filter((f) => /\.kicad_pro$/i.test(f.source.name)).map((f) => f.source.path.replace(/\.kicad_pro$/i, '')));
+  const score = (f: LoadedFile) => {
+    const p = f.source.path;
+    let s = f.detected.id === 'kicad-pcb' ? 1000 : 0;
+    s -= 100 * (p.split('/').length - 1);
+    if (/\.zip\//i.test(p)) s -= 500;
+    if (/(^|\/)([^/]*-backups|\.history|backups?|old|archive|bak)\//i.test(p)) s -= 300;
+    if (projects.has(p.replace(/\.kicad_pcb$/i, ''))) s += 50;
+    return s;
+  };
+  return designs.slice().sort((a, b) => score(b) - score(a) || a.source.path.length - b.source.path.length || a.source.path.localeCompare(b.source.path))[0];
 }
 
 export interface DrillState {
@@ -119,9 +149,10 @@ export interface PickedFile {
   path: string;
 }
 
-// Reads the files a user opened: expands archives, recognises every file and reads the Gerber and job files.
-// `known` are paths already open, which are not read again.
-export async function readFiles(files: PickedFile[], known: Set<string>, onStatus: (text: string) => void): Promise<LoadedFile[]> {
+// Reads the files a user opened: expands archives, recognises every file and reads the Gerber and job files, or the
+// one design file chosen among them. `known` are paths already open, which are not read again; `openDesign` is the
+// name of the design file the board already comes from, if any (new layer files are then not used).
+export async function readFiles(files: PickedFile[], known: Set<string>, onStatus: (text: string) => void, openDesignName?: string): Promise<LoadedFile[]> {
   const out: LoadedFile[] = [];
   for (const { file, path } of files) {
     if (isClutter(path)) continue;
@@ -129,14 +160,24 @@ export async function readFiles(files: PickedFile[], known: Set<string>, onStatu
     const bytes = new Uint8Array(await file.arrayBuffer());
     await expand({ path, name: file.name, size: file.size, bytes }, 0, out, onStatus);
   }
+  const fresh = out.filter((f) => !known.has(f.source.path));
+  const designs = fresh.filter((f) => isDesignFile(f) && f.detected.status === 'read' && !f.error);
+  const chosen = designs.length ? pickDesign(designs, fresh) : null;
+  const boardFrom = chosen?.source.name ?? openDesignName;
   const result: LoadedFile[] = [];
-  const toRead = out.filter((f) => f.detected.status === 'read' && !f.error);
+  const toRead = chosen ? [chosen] : fresh.filter((f) => f.detected.status === 'read' && !f.error && !boardFrom);
   let done = 0;
   for (const f of out) {
     if (known.has(f.source.path)) continue;
     known.add(f.source.path);
     result.push(f);
-    if (f.detected.status !== 'read' || f.error) {
+    const unused = f.detected.status === 'read' && !f.error && f !== chosen && boardFrom
+      ? isDesignFile(f)
+        ? `Not used: ${boardFrom} is shown. Open this file on its own to see it.`
+        : `Not used: the board is drawn from ${boardFrom}.`
+      : undefined;
+    if (f.detected.status !== 'read' || f.error || unused) {
+      if (unused) f.unused = unused;
       f.source.bytes = new Uint8Array(0);
       continue;
     }
@@ -145,7 +186,14 @@ export async function readFiles(files: PickedFile[], known: Set<string>, onStatu
     await yieldToBrowser();
     try {
       const text = new TextDecoder('utf-8').decode(f.source.bytes);
-      if (f.detected.id === 'gerber') {
+      if (f === chosen) {
+        // The readers, the builder and the stroke font are loaded only now.
+        // @ts-expect-error TS2835: TypeScript wants an extension that the bundler does not resolve (see CLAUDE.md).
+        const { openDesign: open } = (await import('./design/open')) as { openDesign: typeof openDesign };
+        const r = await open(f.detected.id as DesignFormat, text, f.source.name, onStatus);
+        f.design = r.design;
+        f.designBoard = r.board;
+      } else if (f.detected.id === 'gerber') {
         f.gerber = parseGerber(text);
         f.warnings = f.gerber.warnings;
       } else if (f.detected.id === 'gerber-job') {
@@ -220,6 +268,9 @@ function plotDrill(f: LoadedFile, user: DrillFormat | undefined, fitTo: Layer[])
 // Builds the board from every file read so far. Layer kinds, sides and order are found again each time, with the
 // user's choices from the layer panel on top. `drillFormats` are formats the user chose for Excellon files.
 export function buildBoard(files: LoadedFile[], overrides: Map<string, LayerOverride>, drillFormats: Map<string, DrillFormat> = new Map()): Board | null {
+  // A design file is the whole board.
+  const design = files.find((f) => f.designBoard);
+  if (design) return designWithOverrides(design.designBoard, overrides);
   const gerbers = files.filter((f) => f.gerber);
   const drills = files.filter((f) => f.drill);
   if (!gerbers.length && !drills.length) return null;

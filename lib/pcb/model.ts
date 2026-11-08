@@ -98,13 +98,17 @@ export interface Layer {
 }
 
 // What a click on an item reports (S4). For Gerber X2 these are the object attributes: .N (net), .P (component, pin
-// and pin name), .C (component), and any others in `info`.
+// and pin name), .C (component), and any others in `info`. For a design (lib/pcb/design/build.ts): one object per pad,
+// via, zone ('zone', 'teardrop' or 'rule area') and component (shared by its graphics and text), with `design`
+// pointing at its entry in Board.design; and one per net for tracks ('track'), for board graphics ('graphic') and one
+// for board text ('text').
 export interface BoardObject {
   kind: string;
   net?: string;
   component?: string;
   pin?: string;
   info?: Record<string, string>;
+  design?: { list: 'pads' | 'vias' | 'zones' | 'components' | 'tracks' | 'graphics' | 'texts'; index: number };
 }
 
 export interface Placement {
@@ -114,6 +118,11 @@ export interface Placement {
   at: Pt;
   rot: number;
   side: 'top' | 'bottom';
+  // Assembly attributes of a design ('dnp', 'exclude_from_bom', 'exclude_from_pos_files', 'board_only', 'type': 'smd'
+  // or 'through_hole'), each with the value 'yes' unless said otherwise.
+  attrs?: Record<string, string>;
+  // Other fields of the component (MPN, manufacturer…), for the BOM.
+  fields?: Record<string, string>;
 }
 
 export interface Stackup {
@@ -139,6 +148,208 @@ export interface Board {
   objects: BoardObject[];
   // Components of a design, or from a pick-and-place CSV.
   placements: Placement[];
+  // The design a design file was read into (lib/pcb/design/build.ts made the layers from it).
+  design?: Design;
+  warnings: string[];
+}
+
+// --- Design files (KiCad, Altium, PADS, EAGLE) ---
+//
+// Every design reader produces a Design; lib/pcb/design/build.ts turns it into the layers above. Layers are referred
+// to by DesignLayer.id, nets by index into `nets` (0: no net), components by index into `components`. Positions are on
+// the board (a component's items are already placed), in millimetres with Y up, angles counter-clockwise.
+
+export interface DesignLayer {
+  // Unique in the design. KiCad: the canonical name ("F.Cu", "In2.Cu", "B.SilkS", "User.1").
+  id: string;
+  // The name the design gives it (KiCad's user name, e.g. "GND1.Cu").
+  name: string;
+  kind: LayerKind;
+  side: Side;
+  // Copper order: 1 = top … n = bottom.
+  copper?: number;
+  // A negative plane (Altium internal planes, PADS CAM planes): drawn as the board minus what is on it (S5, S6).
+  plane?: boolean;
+  // More about it, e.g. "Glue", "Margin", or KiCad's canonical name when the user renamed the layer.
+  label?: string;
+}
+
+// A pad's shape in pad coordinates (before the pad's rotation; Y up), centred on `offset` (default: the pad origin,
+// which is where the hole is).
+export interface PadShape {
+  k: 'circle' | 'rect' | 'oval' | 'roundrect' | 'chamfer' | 'trapezoid' | 'octagon' | 'custom';
+  w: number;
+  h: number;
+  // roundrect (and the corners of a chamfer that are not cut): corner radius.
+  r?: number;
+  // chamfer: the cut corners and how far the cut goes along each side.
+  chamfer?: { size: number; corners: ('tl' | 'tr' | 'bl' | 'br')[] };
+  // trapezoid: KiCad's rect_delta: the side at −x is h + delta.x long and the one at +x h − delta.x; the side at −y
+  // is w + delta.y long and the one at +y w − delta.y (lib/pcb/design/pads.ts).
+  delta?: Pt;
+  // custom: the shape as solid parts (each counter-clockwise; their union is the pad), in pad coordinates.
+  parts?: AperturePart[];
+  offset?: Pt;
+}
+
+export interface DesignComponent {
+  ref: string;
+  value: string;
+  // Library and footprint name, e.g. "Resistor_SMD:R_0603_1608Metric".
+  footprint: string;
+  at: Pt;
+  rot: number;
+  side: 'top' | 'bottom';
+  // As Placement.attrs.
+  attrs: Record<string, string>;
+  // The other fields (properties) of the component.
+  fields: Record<string, string>;
+  description?: string;
+}
+
+export interface DesignPad {
+  comp?: number;
+  // Pad number or name ("1", "A3", "" for a mounting hole).
+  num: string;
+  net: number;
+  // The pad origin (and hole centre) and the pad's rotation on the board.
+  at: Pt;
+  rot: number;
+  // What is drawn on which layers: copper (per layer when a pad stack differs), and the mask and paste openings, which
+  // the reader has already grown or shrunk by their margins (lib/pcb/design/pads.ts).
+  shapes: { layers: string[]; shape: PadShape }[];
+  // A round hole of diameter d, or a slot w × h (in pad coordinates, turned with the pad).
+  hole?: { d: number; slot?: { w: number; h: number }; plated: boolean };
+  type: 'smd' | 'th' | 'np' | 'connect';
+  // The margins the openings were made with, for inspection and export.
+  maskMargin?: number;
+  pasteMargin?: number;
+  // Pin function and type, as the schematic gives them.
+  info?: Record<string, string>;
+}
+
+export interface DesignTrack {
+  layer: string;
+  a: Pt;
+  b: Pt;
+  w: number;
+  net: number;
+  // An arc track from a to b around c.
+  arc?: { c: Pt; ccw: boolean };
+}
+
+export interface DesignVia {
+  at: Pt;
+  d: number;
+  drill: number;
+  // The copper layers it spans (first and last), and those its ring is drawn on (all of them unless unused layers
+  // are removed), with other diameters per layer from a pad stack.
+  from: string;
+  to: string;
+  layers: string[];
+  sizes?: Record<string, number>;
+  net: number;
+  type: 'through' | 'blind' | 'buried' | 'micro';
+  // Where the solder mask is open over the via (not tented), and how much wider than the via the opening is on each
+  // side.
+  mask?: { top: boolean; bottom: boolean; margin: number };
+}
+
+export interface DesignZone {
+  layers: string[];
+  net: number;
+  name?: string;
+  // The zone's outline as drawn, outer contours counter-clockwise.
+  outline: Contour[];
+  // The copper as last filled and saved, per layer; each entry is filled with the non-zero rule.
+  fill: { layer: string; contours: Contour[] }[];
+  // Older KiCad files: the filled areas are also stroked with this width.
+  stroke?: number;
+  // A keep-out or rule area: no copper of its own.
+  keepout?: boolean;
+  // Never filled: its outline is drawn instead.
+  unfilled?: boolean;
+  // A teardrop, made as a zone.
+  teardrop?: boolean;
+  comp?: number;
+  priority?: number;
+}
+
+export type DesignShape =
+  | { line: [Pt, Pt] }
+  | { arc: { c: Pt; r: number; start: number; sweep: number } }
+  | { circle: { c: Pt; r: number } }
+  | { poly: Contour }
+  // A cubic Bézier curve: start, two control points, end.
+  | { curve: [Pt, Pt, Pt, Pt] };
+
+export interface DesignGraphic {
+  layer: string;
+  shape: DesignShape;
+  // Stroke width (0: no outline, only the fill).
+  w: number;
+  filled: boolean;
+  dash?: 'dash' | 'dot' | 'dash_dot' | 'dash_dot_dot';
+  comp?: number;
+  net?: number;
+}
+
+export interface DesignText {
+  layer: string;
+  // The text as shown: variables already replaced; KiCad's markup (^{…}, _{…}, ~{…}) is kept.
+  s: string;
+  // The anchor and the angle the text is drawn at (a footprint's text included).
+  at: Pt;
+  rot: number;
+  // Glyph height and width, and stroke width.
+  h: number;
+  w: number;
+  thick: number;
+  mirror: boolean;
+  just: { h: 'left' | 'center' | 'right'; v: 'top' | 'middle' | 'bottom' };
+  italic?: boolean;
+  bold?: boolean;
+  lineSpacing?: number;
+  // A TrueType font the design asks for; the stroke font stands in, unless `outline` has the glyphs.
+  font?: string;
+  // The glyph outlines the file stores for TrueType text (KiCad's render cache), on the board, Y up.
+  outline?: Contour[];
+  // Drawn as a filled box with the letters cut out.
+  knockout?: boolean;
+  // A text box's text: lines longer than this are broken at spaces.
+  wrap?: number;
+  comp?: number;
+  // 'reference', 'value', or 'user' (and other footprint fields).
+  role?: string;
+}
+
+// A hole that is not part of a pad or via (Altium free holes, EAGLE holes).
+export interface DesignHole {
+  at: Pt;
+  d: number;
+  slot?: { w: number; h: number; rot: number };
+  plated: boolean;
+}
+
+export interface Design {
+  // The format and version the file was read as, e.g. "KiCad 9 (20241229)".
+  format: string;
+  layers: DesignLayer[];
+  nets: string[];
+  // The board shape: outer edges counter-clockwise, cutouts clockwise. Empty when the design has none.
+  outline: Contour[];
+  components: DesignComponent[];
+  pads: DesignPad[];
+  tracks: DesignTrack[];
+  vias: DesignVia[];
+  zones: DesignZone[];
+  graphics: DesignGraphic[];
+  texts: DesignText[];
+  holes: DesignHole[];
+  stackup?: Stackup;
+  // Dashed lines: the length of a dash and of a gap, in line widths (KiCad's plot settings; 12 and 3 if not given).
+  dash?: { dash: number; gap: number };
+  // Things the file has that are not shown, and other notes on reading it.
   warnings: string[];
 }
 

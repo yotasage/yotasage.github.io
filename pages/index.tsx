@@ -80,10 +80,10 @@ const TOOLS: SiteTool[] = [
     href: '/pcb-viewer/main',
     title: 'PCB viewer',
     category: 'Electronics',
-    description: 'View the Gerber and drill files of a circuit board layer by layer or as it looks, measure it and save it as PNG or SVG.',
+    description: 'View the Gerber and drill files or the KiCad board of a circuit board layer by layer or as it looks, measure it and save it as PNG or SVG.',
     icon: 'pcb',
     color: '#9ccc3c',
-    tags: ['Gerber RS-274X · X2', 'Excellon drill', 'Realistic view', 'Measure', 'PNG · SVG'],
+    tags: ['Gerber RS-274X · X2', 'Excellon drill', 'KiCad 4 to 10', 'Realistic view', 'Measure', 'PNG · SVG'],
   },
 ];
 

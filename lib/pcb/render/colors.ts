@@ -90,17 +90,54 @@ function colorWords(name: string | undefined): string {
   return (name ?? '').toLowerCase();
 }
 
-// A mask colour from what a job file or a design calls it ("Green", "Matte black", "R0G0B255"…), green if unknown.
+// A colour written as #RRGGBB or #RRGGBBAA (KiCad's own stackup colours) as hue (degrees), saturation and lightness
+// (0 to 1).
+function hexColor(name: string): { h: number; s: number; l: number } | null {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})?$/i.exec(name.trim());
+  if (!m) return null;
+  const [r, g, b] = [m[1], m[2], m[3]].map((x) => parseInt(x, 16) / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+  let h = 0;
+  if (d) {
+    if (max === r) h = 60 * (((g - b) / d) % 6);
+    else if (max === g) h = 60 * ((b - r) / d + 2);
+    else h = 60 * ((r - g) / d + 4);
+  }
+  return { h: (h + 360) % 360, s, l };
+}
+
+// The mask colour nearest to a colour given as #RRGGBB: black, white, or by hue.
+function maskFromHex(c: { h: number; s: number; l: number }): MaskColor {
+  if (c.l < 0.18 || (c.s < 0.15 && c.l < 0.45)) return 'black';
+  if (c.s < 0.15) return 'white';
+  if (c.h < 20 || c.h >= 330) return 'red';
+  if (c.h < 70) return 'yellow';
+  if (c.h < 170) return 'green';
+  if (c.h < 260) return 'blue';
+  return 'purple';
+}
+
+// A mask colour from what a job file or a design calls it ("Green", "Matte black", "Light Blue", "#1A4D2EFF",
+// "R0G0B255"…), green if unknown.
 export function maskFromName(name: string | undefined): MaskColor {
   const n = colorWords(name);
+  const hex = hexColor(n);
+  if (hex) return maskFromHex(hex);
   for (const c of ['green', 'red', 'blue', 'black', 'white', 'yellow', 'purple'] as MaskColor[]) if (n.includes(c)) return c;
   if (/orange/.test(n)) return 'red';
   if (/violet|magenta/.test(n)) return 'purple';
+  if (/gr[ae]y/.test(n)) return /light/.test(n) ? 'white' : 'black';
   return 'green';
 }
 
 export function silkFromName(name: string | undefined): SilkColor {
   const n = colorWords(name);
+  const hex = hexColor(n);
+  if (hex) return hex.l < 0.35 ? 'black' : hex.s > 0.4 && hex.h >= 30 && hex.h < 75 ? 'yellow' : 'white';
   if (n.includes('black')) return 'black';
   if (n.includes('yellow')) return 'yellow';
   return 'white';

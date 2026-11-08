@@ -184,7 +184,20 @@ const viewer = VIEWER_ASSETS.map(({ author, ...e }) => ({
 }));
 if (!APACHE) console.warn('collect-licenses: pdfjs-dist is not installed, so the Apache-2.0 text of the 3D viewer files is missing.');
 
+// Code and data copied into lib/pcb/font for the PCB viewer's text, with their licence texts kept next to them.
+const fontDir = join(root, 'lib', 'pcb', 'font');
+const pcb = [
+  {
+    name: 'KiCanvas (stroke font code, adapted in lib/pcb/font)', license: 'MIT', url: 'https://github.com/theacodes/kicanvas',
+    text: readFileSync(join(fontDir, 'LICENSE.kicanvas.txt'), 'utf8').trim(),
+  },
+  {
+    name: 'Newstroke font (glyph data, through KiCanvas)', license: 'CC0-1.0; CJK glyphs MIT and OFL-1.1', url: 'https://vovanium.ru/sledy/newstroke/en',
+    text: readFileSync(join(fontDir, 'LICENSE.newstroke.txt'), 'utf8').trim(),
+  },
+];
+
 const out = join(root, 'lib', 'generated');
 mkdirSync(out, { recursive: true });
-writeFileSync(join(out, 'third-party-licenses.json'), JSON.stringify({ packages: list, assets, viewer }, null, 1));
-console.log(`Collected the licences of ${list.length} packages, ${assets.length} pdf.js data files and ${viewer.length} 3D viewer files.`);
+writeFileSync(join(out, 'third-party-licenses.json'), JSON.stringify({ packages: list, assets, viewer, pcb }, null, 1));
+console.log(`Collected the licences of ${list.length} packages, ${assets.length} pdf.js data files, ${viewer.length} 3D viewer files and ${pcb.length} PCB viewer files.`);

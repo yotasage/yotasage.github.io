@@ -64,11 +64,13 @@ function BoardInfo({ board, units, shown }: { board: Board; units: Units; shown:
   const box = board.outline?.length ? shapeBox(board.outline) : null;
   const copper = board.layers.filter((l) => l.kind === 'copper').length;
   const s = board.stackup ?? {};
+  const d = board.design;
   return (
     <>
       <p className={styles.boardName} title={board.name}>{board.name}</p>
       <table className={[qrStyles.infoTable, styles.info].join(' ')}>
         <tbody>
+          {d && <tr><th>File</th><td>{d.format}</td></tr>}
           {box && (
             <tr>
               <th>{SIZE_FROM[board.outlineFrom ?? 'outline']}</th>
@@ -80,6 +82,8 @@ function BoardInfo({ board, units, shown }: { board: Board; units: Units; shown:
           {s.mask && <tr><th>Solder mask</th><td>{s.mask}</td></tr>}
           {s.silk && <tr><th>Silkscreen</th><td>{s.silk}</td></tr>}
           {s.finish && <tr><th>Finish</th><td>{s.finish}</td></tr>}
+          {d && <tr><th>Components</th><td>{d.components.length.toLocaleString('en-US')}</td></tr>}
+          {d && d.nets.length > 1 && <tr><th>Nets</th><td>{(d.nets.length - 1).toLocaleString('en-US')}</td></tr>}
           <tr><th>Layers</th><td>{board.layers.length}, {shown} shown</td></tr>
         </tbody>
       </table>
@@ -93,6 +97,7 @@ function BoardInfo({ board, units, shown }: { board: Board; units: Units; shown:
 function RealisticFields({ value, onChange, board }: { value: RealisticStyle; onChange: (v: RealisticStyle) => void; board: Board }) {
   const s = board.stackup ?? {};
   const fromJob = [s.mask && `${s.mask} mask`, s.silk && `${s.silk} silkscreen`, s.finish && `finish ${s.finish}`].filter(Boolean);
+  const source = board.design ? 'The board file' : 'The job file';
   return (
     <>
       <div className={styles.detailFields}>
@@ -107,7 +112,7 @@ function RealisticFields({ value, onChange, board }: { value: RealisticStyle; on
         </Field>
       </div>
       <p className={qrStyles.help}>
-        {fromJob.length ? `The job file says: ${fromJob.join(', ')}.` : 'No job file gives the colours; green mask, white silkscreen and ENIG are assumed.'}
+        {fromJob.length ? `${source} says: ${fromJob.join(', ')}.` : `${board.design ? 'The board file gives no colours' : 'No job file gives the colours'}; green mask, white silkscreen and ENIG are assumed.`}
         {' '}The view uses the copper, solder mask, silkscreen and drill layers of the side in view, whether they are shown in the layer list or not.
       </p>
     </>
@@ -202,25 +207,35 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
   }, []);
 
   // Reads files and adds them to the board, or replaces everything. Loads run one after the other.
-  const open = React.useCallback((picked: PickedFile[], replace: boolean) => {
+  const open = React.useCallback((picked: PickedFile[], replaceAll: boolean) => {
     queue.current = queue.current.then(async () => {
       setStatus({ kind: 'loading', text: 'Reading…' });
+      let replace = replaceAll;
+      const reset = () => {
+        customOrder.current = false;
+        customColors.current = new Set();
+        customRealistic.current = false;
+      };
       try {
         if (replace) {
           known.current = new Set();
-          customOrder.current = false;
-          customColors.current = new Set();
-          customRealistic.current = false;
+          reset();
         }
-        const read = await readFiles(picked, known.current, (text) => setStatus({ kind: 'loading', text }));
+        // Layer files added to a design's board are not used; a design file replaces the board.
+        const openDesign = replace ? undefined : latest.current.files.find((f) => f.designBoard)?.source.name;
+        const read = await readFiles(picked, known.current, (text) => setStatus({ kind: 'loading', text }), openDesign);
+        if (!replace && read.some((f) => f.designBoard)) {
+          replace = true;
+          known.current = new Set(read.map((f) => f.source.path));
+          reset();
+        }
         const all = replace ? read : [...latest.current.files, ...read];
         const nextOverrides = replace ? new Map<string, LayerOverride>() : latest.current.overrides;
         const nextFormats = replace ? new Map<string, DrillFormat>() : latest.current.drillFormats;
-        // A design file (S3 and later) would replace the board here; Gerber, drill, job and CSV files add to it.
         setStatus({ kind: 'loading', text: 'Identifying the layers…' });
         await new Promise((resolve) => setTimeout(resolve, 0));
         const next = buildBoard(all, nextOverrides, nextFormats);
-        const hadLayers = !replace && latest.current.files.some((f) => f.gerber || f.drill);
+        const hadLayers = !replace && latest.current.files.some((f) => f.gerber || f.drill || f.designBoard);
         latest.current.files = all;
         setFiles(all);
         setOverrides(nextOverrides);
@@ -465,7 +480,7 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
           )}
           {status.kind === 'empty' && (
             <div className={[styles.overlay, styles.overlayError].join(' ')} role="alert">
-              <span>No Gerber or drill layers were found among these files. The file list says what each file is.</span>
+              <span>No board, Gerber or drill layers were found among these files. The file list says what each file is.</span>
               {openButtons}
             </div>
           )}
@@ -482,7 +497,11 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
         <Card title="Board">
           {board ? <BoardInfo board={board} units={units} shown={shown} /> : <p className={qrStyles.help}>{status.kind === 'loading' ? 'Reading the files…' : 'No board.'}</p>}
           {openButtons}
-          <p className={qrStyles.help}>Add files adds layers to this board; drop files or folders on the page to do the same.</p>
+          <p className={qrStyles.help}>
+            {board?.design
+              ? 'The board is drawn from its design file. Adding another design file shows that one instead; Gerber and drill files are not added to a design.'
+              : 'Add files adds layers to this board; drop files or folders on the page to do the same. A design file (KiCad) replaces the board.'}
+          </p>
         </Card>
 
         {board && mode === 'realistic' && (

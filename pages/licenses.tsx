@@ -37,6 +37,7 @@ export default function Licenses() {
   const packages = data.packages as Entry[];
   const assets = data.assets as Entry[];
   const viewer = data.viewer as Entry[];
+  const pcb = (data as { pcb?: Entry[] }).pcb ?? [];
 
   // A link from the table opens the licence it points to.
   React.useEffect(() => {
@@ -111,6 +112,13 @@ export default function Licenses() {
           are served unmodified as separate files, and their source code is linked below.
         </p>
         <Entries entries={viewer} />
+
+        <h2>Font and code used by the PCB viewer</h2>
+        <p className={styles.lead}>
+          The PCB viewer draws the text of design files with Newstroke, KiCad&apos;s stroke font, using code adapted from
+          KiCanvas. Both are copied into the site&apos;s source.
+        </p>
+        <Entries entries={pcb} />
       </div>
     </div>
   );
