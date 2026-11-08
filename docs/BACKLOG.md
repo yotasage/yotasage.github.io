@@ -1,11 +1,13 @@
 # Backlog
 
-Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL8**). When a row is
+Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL10**). When a row is
 scheduled it moves into the tool's plan (for the PCB viewer: [pcb-viewer-plan.md](pcb-viewer-plan.md)) and the move is
 noted here; when it is done the row is removed and that is noted here too.
 
 | id | tool | what | why / trigger |
 |---|---|---|---|
+| BL9 | PCB viewer | Store the items of large layers compactly (typed arrays per layer instead of one object per line, arc or flash) | S1, 2026-11-08: the large KiCad demo (`jetson-agx-thor-baseboard`, 64 MB of Gerbers, 1.5 million items) takes about 300 MB of JS heap. Fine on a desktop. Trigger: a large board does not open on a phone |
+| BL8 | PCB viewer | Faster drawing for very large boards: WebGL, or Canvas 2D in a worker with OffscreenCanvas | S1, 2026-11-08: with Canvas 2D a redraw of the large KiCad demo takes 60–150 ms with the default layers and about 250 ms with all 38 layers (desktop GPU); gestures move the last frame, so only the pause after a gesture shows a slow frame. Trigger: large boards feel sluggish, on a phone or in use |
 | BL7 | PCB viewer | Gerber and drill export from design files (KiCad, Altium, PADS, EAGLE), with a warning: masks and paste from Altium's rules would be approximate, copper pours are as last saved, and Altium, PADS and EAGLE text is drawn in a stand-in font | The owner, 2026-11-08: "I do not want this tool to make files that are possible to order, that would only be a bonus." |
 | BL6 | PCB viewer | IPC-D-356 netlist import, for net highlighting on Gerber sets without X2 net attributes. `kicad-cli pcb export ipcd356` makes test files | The owner agreed, 2026-11-08 (listed as "maybe later"). Trigger: a Gerber set without X2 nets where nets are needed |
 | BL5 | PCB viewer | IPC-2581 import (XML with stackup, components and nets; exported by Altium, KiCad 8 and later, Cadence and PADS Professional). Rev B's schema was a free download; the Rev C standard costs about $198 from IPC. `kicad-cli pcb export ipc2581` makes test files | The owner agreed, 2026-11-08 (listed as "maybe later") |

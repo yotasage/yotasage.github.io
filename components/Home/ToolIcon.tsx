@@ -2,7 +2,7 @@ import React from 'react';
 
 // Icons for the tool cards on the main page, in the style of components/PdfTools/ToolIcon.tsx. Filled shapes use
 // currentColor, which the <svg> sets to the tool's colour.
-export type HomeIconName = 'simsetup' | 'qrcode' | 'pdf' | 'base64' | 'textcase' | 'viewer3d';
+export type HomeIconName = 'simsetup' | 'qrcode' | 'pdf' | 'base64' | 'textcase' | 'viewer3d' | 'pcb';
 
 const SAMPLES: [number, number][] = [[6, 24], [12, 12], [18, 12], [24, 24], [30, 36], [36, 36], [42, 24]];
 
@@ -65,6 +65,17 @@ const ICONS: Record<HomeIconName, React.ReactNode> = {
       <path d="M11 16.5L24 24l13-7.5M24 24v15" />
       <path d="M8.5 37.5C3 34 2.5 29.5 6 26M39.5 10.5C45 14 45.5 18.5 42 22" opacity={0.6} />
       <path d="M4 25.5l2 .5.5-2M44 22.5l-2-.5-.5 2" opacity={0.6} />
+    </>
+  ),
+  // A board with a chip, its pins and two traces ending in vias.
+  pcb: (
+    <>
+      <rect x={4} y={4} width={40} height={40} rx={4} />
+      <rect x={17} y={17} width={14} height={14} rx={1.5} />
+      <path d="M21 17v-4M27 17v-4M21 31v4M27 31v4M17 21h-4M17 27h-4M31 21h4M31 27h4" />
+      <path d="M27 13l5-5h4M21 35l-5 5" opacity={0.6} />
+      <circle cx={38} cy={8} r={2} fill="currentColor" stroke="none" />
+      <circle cx={14.5} cy={40.5} r={2} fill="currentColor" stroke="none" />
     </>
   ),
 };

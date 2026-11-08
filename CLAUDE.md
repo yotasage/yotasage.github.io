@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 A personal collection of browser tools (simulation setup calculator, QR code generator, PDF tools, Base64 image
-converter, text case converter, 3D viewer), so the owner does not have to use other people's sites with ads and bad design. Next.js 16 Pages Router,
+converter, text case converter, 3D viewer, PCB viewer), so the owner does not have to use other people's sites with ads and bad design. Next.js 16 Pages Router,
 React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 
 ## Hard constraints
@@ -68,6 +68,13 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   opened files and never fetched from elsewhere. The page loads three.js only when a file is opened. With several
   files, each is in a group that the Positions panel can move apart; that offset is for the view only, so statistics
   (`withoutOffsets` in `lib/viewer3d/stats.ts`) and saved files (`exportCopy` in `lib/viewer3d/export.ts`) leave it out.
+- PCB viewer: built in steps by [docs/pcb-viewer-plan.md](docs/pcb-viewer-plan.md), whose "Model" section must match
+  [lib/pcb/model.ts](lib/pcb/model.ts) (millimetres, Y up). Files are recognised by content in
+  [lib/pcb/detect.ts](lib/pcb/detect.ts), read and made into a `Board` in [lib/pcb/load.ts](lib/pcb/load.ts) (ZIPs
+  expanded with fflate), Gerber in `lib/pcb/gerber/`, layer kinds and order in [lib/pcb/identify.ts](lib/pcb/identify.ts).
+  The layer view is Canvas 2D in `lib/pcb/render/`: paths are built once per layer (`prepare.ts`; never call
+  `closePath()` on a `Path2D`, it is very slow in Chromium), each visible layer is drawn into its own canvas and
+  composited (`view.ts`), and gestures move the last frame until they pause.
 - `tsconfig` uses `"module": "node16"`, so our own files count as CommonJS and the ES-module-only add-ons of three.js
   (`three/examples/jsm/...`) can only be loaded with `await import(...)`, or imported as types with
   `import type ... with { 'resolution-mode': 'import' }`. A dynamic import of one of our own files needs

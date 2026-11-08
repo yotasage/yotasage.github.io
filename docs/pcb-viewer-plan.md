@@ -86,17 +86,18 @@ folder, never next to the test files.
 | Part | Location | Notes |
 | --- | --- | --- |
 | Page | `pages/pcb-viewer/main.tsx` | Head, home link, global styles, as every page (CLAUDE.md) |
-| UI | `components/PcbViewer/` | Viewer shell, canvas view, file list, layer panel, info panel, export dialog |
+| UI | `components/PcbViewer/` | `PcbViewer.tsx` start screen (loads `Workspace.tsx` on first open), `Workspace.tsx` view, toolbar and cards, `LayerPanel.tsx`, `FileList.tsx`, `pick.tsx` (file and folder pickers, drop zone that reads dropped folders) |
 | Styles | `styles/PcbViewer.module.css` | |
 | Model | `lib/pcb/model.ts` | See below |
-| Loading | `lib/pcb/detect.ts`, `lib/pcb/load.ts` | Recognise formats by content, expand ZIPs, hand each file to its reader |
-| Gerber | `lib/pcb/gerber/` | Parser and plotter → `Layer` |
-| Gerber job, layer identification | `lib/pcb/gbrjob.ts`, `lib/pcb/identify.ts` | |
+| Geometry | `lib/pcb/geometry.ts` | Arcs, boxes, contour orientation, affine transforms of items |
+| Loading | `lib/pcb/detect.ts`, `lib/pcb/load.ts` | Recognise formats by content, expand ZIPs, hand each file to its reader, build the `Board` |
+| Gerber | `lib/pcb/gerber/` | `parse.ts` reader and plotter → items and apertures; `macro.ts` aperture macros; `standard.ts`, `shapes.ts` aperture shapes |
+| Gerber job, layer identification | `lib/pcb/gbrjob.ts`, `lib/pcb/identify.ts` | `identify.ts` also has the default layer order and the layer titles |
 | Excellon | `lib/pcb/excellon.ts` | |
 | Design → layers | `lib/pcb/design/` | Shared by all design formats (S3) |
 | Stroke font | `lib/pcb/font/` | Newstroke (S3) |
 | Design formats | `lib/pcb/kicad/`, `lib/pcb/altium/`, `lib/pcb/pads/`, `lib/pcb/eagle/` | Each produces a `Design` |
-| Drawing | `lib/pcb/render/` | Layer view and realistic view on Canvas 2D |
+| Drawing | `lib/pcb/render/` | Layer view and realistic view on Canvas 2D: `prepare.ts` paths, `view.ts` canvas, gestures and compositing, `colors.ts` default colours |
 | Exports | `lib/pcb/export/` | PNG, SVG, CSV, PDF, DXF, KiCad |
 
 Flow: files → recognise → reader → `Board`. Gerber and drill files become layers directly. A design file becomes a
@@ -105,39 +106,47 @@ the CSV exports use `Board.placements`; the KiCad export uses `Board.design`.
 
 ### Model (sketch)
 
-S1 writes the artwork part, S3 the design part. Names and fields may change. Keep this section in step with the code.
+S1 wrote the artwork part (in `lib/pcb/model.ts`, as below), S3 writes the design part. Names and fields may change.
+Keep this section in step with the code.
 
 ```ts
 // Units: millimetres. Y up (KiCad's Y is negated on reading). Angles: degrees, counter-clockwise from +X.
 interface Pt { x: number; y: number }
 interface Box { minX: number; minY: number; maxX: number; maxY: number }
 
-// A closed outline of straight segments and circular arcs, from start back to start.
-interface Contour { start: Pt; segs: { to: Pt; arc?: { c: Pt; ccw: boolean } }[] }
+// A closed outline of straight segments and circular arcs, from start back to start. An arc segment that ends where
+// it starts is a full circle.
+interface ContourSeg { to: Pt; arc?: { c: Pt; ccw: boolean } }
+interface Contour { start: Pt; segs: ContourSeg[] }
+type Mirror = 'none' | 'x' | 'y' | 'xy';
 
 // What a layer looks like, in drawing order. A dark item adds; a clear one erases what is under it on that layer.
 type Art =
   | { k: 'line'; a: Pt; b: Pt; w: number; cap: 'round' | 'square' }
-  | { k: 'arc'; c: Pt; r: number; start: number; sweep: number; w: number }   // sweep > 0: counter-clockwise
-  | { k: 'flash'; at: Pt; ap: number; rot: number; mirror: 'none' | 'x' | 'y' | 'xy'; scale: number }
-  | { k: 'region'; contours: Contour[] }       // outer contours counter-clockwise, holes clockwise
+  | { k: 'arc'; c: Pt; r: number; start: number; sweep: number; w: number }   // sweep > 0: counter-clockwise, ±360 full
+  | { k: 'flash'; at: Pt; ap: number; rot: number; mirror: Mirror; scale: number }   // mirror, then rotate, then scale
+  | { k: 'region'; contours: Contour[] }       // non-zero fill: outer contours counter-clockwise, holes clockwise
   | { k: 'hole'; at: Pt; d: number; to?: Pt; plated: boolean };   // drill hit; `to` makes it a slot
 type ArtItem = Art & { dark: boolean; obj?: number };   // obj: index into Board.objects
 
-// A flash shape; parts in order, a part with dark: false erases earlier parts of the same flash only.
-// Block apertures and step-and-repeat are expanded into items by the Gerber plotter.
-interface Aperture { parts: { dark: boolean; circle?: { c: Pt; r: number }; poly?: Pt[] }[] }
+// A flash shape; parts in order (polygons counter-clockwise), a part with dark: false erases earlier parts of the same
+// flash only. Block apertures and step-and-repeat are expanded into items by the Gerber plotter.
+interface AperturePart { dark: boolean; circle?: { c: Pt; r: number }; poly?: Pt[] }
+interface Aperture { parts: AperturePart[]; name?: string; attrs?: Record<string, string> }   // attrs: X2 %TA
 
 type LayerKind = 'copper' | 'mask' | 'paste' | 'silk' | 'outline' | 'drill' | 'mechanical' | 'fab' | 'courtyard'
   | 'keepout' | 'other';
 type Side = 'top' | 'bottom' | 'inner' | 'none';
+type IdentifiedBy = 'x2' | 'job' | 'name' | 'design' | 'user' | 'none';
 
 interface Layer {
   id: string; name: string; kind: LayerKind; side: Side;
+  label?: string;                    // more about it: "Glue", "ECO1", "L1–L2, blind"
   copper?: number;                   // copper order: 1 = top … n = bottom
-  negative?: boolean;                // drawn negative (Gerber image polarity, negative planes)
+  negative?: boolean;                // starts dark over its bbox, items already toggled (Gerber IPNEG)
   plated?: boolean;                  // drill layers
-  file?: string; attrs?: Record<string, string>;   // source file, X2 file attributes
+  file?: string; attrs?: Record<string, string>;   // source path (inside an archive too), X2 %TF with the dot
+  identifiedBy?: IdentifiedBy;
   items: ArtItem[]; apertures: Aperture[]; bbox: Box;
 }
 
@@ -146,12 +155,12 @@ interface Placement { ref: string; value?: string; footprint?: string; at: Pt; r
 
 interface Board {
   name: string; source: 'gerber' | 'kicad' | 'altium' | 'pads' | 'eagle';
-  layers: Layer[];
-  outline?: Contour[];               // board shape: the edge and its cutouts
-  stackup?: { thickness?: number; mask?: string; silk?: string; finish?: string };
-  objects: BoardObject[];            // what a click on an item reports (S4)
+  layers: Layer[];                   // in the default order, top of the list first (identify.ts)
+  outline?: Contour[];               // board shape: the edge and its cutouts (S2)
+  stackup?: { thickness?: number; mask?: string; silk?: string; finish?: string; copperLayers?: number };
+  objects: BoardObject[];            // what a click on an item reports (S4); Gerber: one per distinct %TO set
   placements: Placement[];           // components of a design, or from a pick-and-place CSV
-  design?: Design;                   // design files only
+  design?: Design;                   // design files only (S3)
   warnings: string[];
 }
 
@@ -195,6 +204,31 @@ type PadShape = { k: 'circle' | 'rect' | 'oval' | 'roundrect' | 'chamfer' | 'tra
 - If Canvas 2D is too slow for the large KiCad demo, add a backlog row (WebGL) instead of switching in the middle of a
   step.
 
+As built in S1 (`lib/pcb/render/`):
+
+- **Paths** are made the first time a layer is drawn, so hidden layers cost nothing, and are cached by the layer's
+  `items` array (the board is rebuilt when files are added or a type changes; the items stay). Every solid shape runs
+  counter-clockwise and every hole clockwise, so one non-zero fill per run is the union. **Never call `closePath()` on
+  a `Path2D`:** in Chromium it takes time proportional to the path, and made the large demo's copper take 1.2 s
+  instead of 3 ms. Fills close their subpaths anyway.
+- **Flashes with clear parts:** standard apertures with a hole (one convex solid part with clear parts inside it) are
+  drawn as outline plus reversed hole in the same fill. Any other aperture with clear parts (macros with exposure off)
+  is "separate": each flash on screen is drawn into a scratch canvas, its clear parts erasing only its own solid parts,
+  and copied onto the layer; flashes a few pixels across skip the holes.
+- **Tiles:** layers with many items are split into a grid of up to 24 × 24 tiles (about 4,000 items each), and only
+  tiles on screen are drawn, so zoomed-in views of large layers stay fast.
+- **Layer canvases** exist only for visible layers, at screen size; each holds one colour (alpha = coverage), so a
+  colour change repaints it in place (`source-in`), and S2 can use them as masks. Lines are at least 0.8 device pixels
+  wide, so thin outlines stay visible when zoomed out.
+- **Gestures:** the last composited frame is moved and scaled; 200 ms after the last change the layers are drawn
+  again, a slice of about 40 ms at a time (a new gesture stops it). The canvas carries `data-draw-ms` and
+  `data-draws` for tests.
+- **Large KiCad demo** (`jetson-agx-thor-baseboard`, 38 Gerber files, 64 MB): reading takes about 0.7 s, opening to
+  the first picture about 1.2 s; a redraw takes 60–150 ms with the default layers and up to about 250 ms with all 38
+  layers (2 fabrication layers of 300,000 lines each), measured in headless Edge with a desktop GPU. The JS heap is
+  about 300 MB.
+- **Negative images** (Gerber IPNEG, deprecated) start dark over the layer's bbox; S2 may clip them to the board.
+
 ### Libraries
 
 | Library | Use | Licence | Status |
@@ -219,7 +253,7 @@ Status: ✅ done · 🔄 in progress · 📋 planned
 
 | Step | What | Status | Commit |
 | --- | --- | :-: | --- |
-| S1 | Viewer shell and Gerber | 📋 | |
+| S1 | Viewer shell and Gerber | ✅ | |
 | S2 | Drill files, realistic view, measuring, PNG and SVG export | 📋 | |
 | S3 | KiCad boards and footprints, design model, stroke font | 📋 | |
 | S4 | Inspect, highlight, search; BOM and pick-and-place export | 📋 | |
@@ -259,6 +293,43 @@ Status: ✅ done · 🔄 in progress · 📋 planned
 identified, and every layer looks right in screenshots. Compare ARTIFICER with `kicad-cli pcb export svg` of its
 `.kicad_pcb`. Gerbers exported from the large KiCad demo stay usable, and the page works at phone width. Drill files
 are recognised and listed but drawn in S2.
+
+**Notes from S1:**
+
+- Checked against Ucamco's test files (gerber-layer-format-test-files.zip, with reference PNGs: polarities, macros
+  with holes over a grid, blocks in four orientations, nested blocks, primitives 20 and 21), its two fabrication
+  examples, and small files for G74 arcs, IPNEG, MI/SF/OF/IR, trailing-zero incremental inch, draws with rectangles,
+  rectangular holes, primitives 2, 22, 6 and 7, step and repeat closed by `SRX1Y1` or the end of file, and
+  coordinates without an operation code. ARTIFICER matches `kicad-cli pcb export svg` layer by layer.
+- Identification: X2 "Other,…" is weak, so a name like `F_Courtyard` or `Margin` wins over it. Without X2 or a job
+  file, inner layers with their own names and `.gbr` extensions (KiCad `--no-protel-ext`) cannot be ordered; they
+  come in name order and the user reorders them. Protel extensions (`.g1`…) and `In2_Cu`, `L2`, `ly2` give the order.
+- The deprecated `AS` is ignored as the specification allows (warning on `AYBX`). Rectangular holes of standard
+  apertures turn with the flash (the old specification said they do not). Arcs drawn with a non-circular aperture are
+  approximated by sweeps along short chords. `IPNEG` is approximate (see Drawing).
+- Format recognition also covers files that are not read: ODB++ (in a ZIP or `.tgz`), IPC-2581, IPC-D-356, KiCad
+  legacy, PADS binary also when renamed (`DC2637A-1.txt`), EAGLE binary, Allegro, gEDA, DipTrace, EasyEDA, Protel
+  ASCII, RS-274-D Gerber without apertures, other archives; schematics, PDFs, Office files (not expanded), reports and
+  other text are listed as ignored. Opening a design file does not replace the board yet (there is no design reader
+  in S1); `Workspace.tsx` marks the place.
+- Gerber files that are drill data (X2 `Plated`/`NonPlated`) become drill layers drawn with their flashes.
+
+**For S2:**
+
+- **Excellon:** `detect.ts` returns `excellon` with status `later`; make it `read`, read it in `readFiles`
+  (`load.ts`), and let `buildBoard` turn it into a `Layer` with `kind: 'drill'`, `plated` from the X2 comments, and
+  `hole` items (`prepare.ts` already draws holes: circles, and slots as round-capped strokes). `LoadedFile` has
+  `gerber?`/`job?`; add a drill result next to them. Gerber drill files could become `hole` items too.
+- **Board shape:** compute `Board.outline` in `buildBoard` from the layer with `kind: 'outline'`; `centerlineBox` in
+  `geometry.ts` gives its size without line widths (the Board card uses it).
+- **Realistic view:** `BoardView` (`view.ts`) keeps one canvas per visible layer with the layer's coverage in alpha;
+  `composite()` is where a second mode would combine them (substrate, copper under mask, mask openings, silk) instead
+  of stacking them with opacity. `drawOrder()` gives the order seen from the top or the bottom.
+- **Measuring:** every pointer press starts a pan now; a measure tool needs a click (press and release without
+  moving) to place points. `boardPoint(x, y)` turns CSS pixels into board millimetres, `onCursor` reports the point
+  under the mouse (or the first touch).
+- **Export:** `getView()` gives the view for "what is on screen"; drawing the whole board at another resolution needs
+  a method that runs `drawLayer` into a canvas of its own with its own view.
 
 ### S2 – Drill files, realistic view, measuring, PNG and SVG
 
@@ -453,15 +524,25 @@ One agent per step, from reading to commit. It:
     packages for this work.
   - Headless Edge can also screenshot a single SVG:
     `msedge --headless=new --screenshot=out.png --window-size=1600,1200 file:///C:/…/x.svg`.
+  - S1's harness (in its scratch folder `…\scratchpad\pcb\harness\`; recreate it with `npm i puppeteer-core esbuild`
+    in an empty folder): `shot.mjs` gives files to `input[type=file]:not([webkitdirectory])`, waits until
+    `[role=status]` and `[aria-label="Drawing"]` are gone, and screenshots `div[class*="viewport"]` with the default
+    layers, each layer alone (`--layers`, clicking None then one checkbox), the bottom view or a zoom (wheel events);
+    `phone.mjs` does 390 × 844 with CDP touch events (pan, pinch); `perf.mjs` times redraws after wheel steps;
+    `parse-test.mjs` and `detect-test.mjs` bundle `lib/pcb` with esbuild and run the parser or the recognition in
+    Node; `svgshot.mjs` renders `kicad-cli` SVGs to PNG.
+  - Ucamco's test files with reference images: `gerber-layer-format-test-files_en.zip` on ucamco.com (Downloads).
 - **Compare** with the references in "Test files": `kicad-cli` output, `PCB1_1.pdf`, Linear's PDFs and Gerbers.
 - **Phone width:** check a 390 × 844 viewport with touch emulation.
 
 ## Format notes
 
 - **Gerber:** Ucamco's "Gerber Layer Format Specification" (free, ucamco.com) is the authority, including its chapter on
-  deprecated commands. Ucamco's job file specification covers `.gbrjob`. KiCad writes X2 object attributes: 1,271
-  `%TO` in the ARTIFICER `F_Cu`. Linear's PADS Gerbers use `%IN`, `%MOIN`, `%FSLAX35Y35` and macros with exposure off
-  (`ANN`, `ODD`, `TER`).
+  deprecated commands (S1 used revision 2026.05: the image parameters apply in the order MI, SF, OF, IR, and MI and SF
+  move coordinates only, not apertures). Ucamco's job file specification covers `.gbrjob`; KiCad writes `SolderPaste`
+  and `SolderMask` there where its Gerbers say `Paste` and `Soldermask`. KiCad writes X2 object attributes: 1,271
+  `%TO` in the ARTIFICER `F_Cu`. Linear's PADS Gerbers use `%IN`, `%MOIN`, `%FSLAX35Y35`, G74 and G75, coordinates
+  without D01 after a D01, and define macros with exposure off (`ANN`, `ODD`, `TER`) without using them.
 - **Excellon:** there is no single standard. Ucamco's XNC specification describes a clean subset. Linear's `DRILL.drl`
   starts with `%` and tool lines like `T1C.006F0S0`, with no `M48` header, inch, coordinates like `X02515Y0168`.
 - **KiCad:** S-expression file formats at dev-docs.kicad.org (board and footprint). Y points down, so it is negated.

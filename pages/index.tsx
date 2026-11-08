@@ -76,6 +76,15 @@ const TOOLS: SiteTool[] = [
     color: '#f08c3c',
     tags: ['STEP · IGES', 'STL · 3MF · OBJ', 'glTF · FBX · USDZ', 'Section view', 'Measure'],
   },
+  {
+    href: '/pcb-viewer/main',
+    title: 'PCB viewer',
+    category: 'Electronics',
+    description: 'View the Gerber files of a circuit board layer by layer, from the files, their folder or a ZIP archive.',
+    icon: 'pcb',
+    color: '#9ccc3c',
+    tags: ['Gerber RS-274X · X2', 'Job file', 'ZIP', 'Layers identified', 'Bottom view'],
+  },
 ];
 
 const PROMISES = ['Runs in your browser', 'Files never leave your device', 'No ads or tracking', 'No sign-up'];
