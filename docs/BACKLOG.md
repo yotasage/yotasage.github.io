@@ -1,11 +1,13 @@
 # Backlog
 
-Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL10**). When a row is
+Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL12**). When a row is
 scheduled it moves into the tool's plan (for the PCB viewer: [pcb-viewer-plan.md](pcb-viewer-plan.md)) and the move is
 noted here; when it is done the row is removed and that is noted here too.
 
 | id | tool | what | why / trigger |
 |---|---|---|---|
+| BL11 | PCB viewer | Fit a drill file that is offset (or mirrored) from its Gerber files: try shifts that move holes onto pads, as some CAM programs write drill files with another origin | S2, 2026-11-08: the format guess (`lib/pcb/drill.ts`) tries units, zeros and digits only. Trigger: a drill set whose holes all land the same distance off the pads |
+| BL10 | PCB viewer | Rare Excellon commands: drilled text (M97, M98), mirrored or swapped patterns (M70, M80, M90), canned circles and slots (G32 to G35, G84, G87) | S2, 2026-11-08: none of the sample files uses them; they are ignored with a note in the file list. Trigger: a file that does |
 | BL9 | PCB viewer | Store the items of large layers compactly (typed arrays per layer instead of one object per line, arc or flash) | S1, 2026-11-08: the large KiCad demo (`jetson-agx-thor-baseboard`, 64 MB of Gerbers, 1.5 million items) takes about 300 MB of JS heap. Fine on a desktop. Trigger: a large board does not open on a phone |
 | BL8 | PCB viewer | Faster drawing for very large boards: WebGL, or Canvas 2D in a worker with OffscreenCanvas | S1, 2026-11-08: with Canvas 2D a redraw of the large KiCad demo takes 60–150 ms with the default layers and about 250 ms with all 38 layers (desktop GPU); gestures move the last frame, so only the pause after a gesture shows a slow frame. Trigger: large boards feel sluggish, on a phone or in use |
 | BL7 | PCB viewer | Gerber and drill export from design files (KiCad, Altium, PADS, EAGLE), with a warning: masks and paste from Altium's rules would be approximate, copper pours are as last saved, and Altium, PADS and EAGLE text is drawn in a stand-in font | The owner, 2026-11-08: "I do not want this tool to make files that are possible to order, that would only be a bonus." |

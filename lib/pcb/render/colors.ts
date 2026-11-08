@@ -47,3 +47,75 @@ export function defaultOpacity(layer: Layer): number {
 export function defaultStyle(layer: Layer): LayerStyle {
   return { visible: defaultVisible(layer), color: defaultColor(layer), opacity: defaultOpacity(layer) };
 }
+
+// --- Realistic view ---
+
+export type MaskColor = 'green' | 'red' | 'blue' | 'black' | 'white' | 'yellow' | 'purple';
+export type SilkColor = 'white' | 'black' | 'yellow';
+export type Finish = 'enig' | 'hasl' | 'copper';
+
+export interface RealisticStyle {
+  mask: MaskColor;
+  silk: SilkColor;
+  finish: Finish;
+}
+
+// Solder mask over bare substrate, and over copper, which shows through lighter as on real boards.
+export const MASK_COLORS: Record<MaskColor, { label: string; substrate: string; copper: string }> = {
+  green: { label: 'Green', substrate: '#0d4a24', copper: '#2a7a3a' },
+  red: { label: 'Red', substrate: '#7c1016', copper: '#b02a26' },
+  blue: { label: 'Blue', substrate: '#10296e', copper: '#24489e' },
+  black: { label: 'Black', substrate: '#121214', copper: '#262629' },
+  white: { label: 'White', substrate: '#d6d6d0', copper: '#edede6' },
+  yellow: { label: 'Yellow', substrate: '#b8950c', copper: '#d8b82a' },
+  purple: { label: 'Purple', substrate: '#3a1460', copper: '#58288a' },
+};
+
+export const SILK_COLORS: Record<SilkColor, { label: string; color: string }> = {
+  white: { label: 'White', color: '#f2f2ee' },
+  black: { label: 'Black', color: '#161616' },
+  yellow: { label: 'Yellow', color: '#f0d23a' },
+};
+
+export const FINISHES: Record<Finish, { label: string; color: string }> = {
+  enig: { label: 'ENIG (gold)', color: '#d6b54e' },
+  hasl: { label: 'HASL (tin)', color: '#c4c7cc' },
+  copper: { label: 'Bare copper', color: '#c47a48' },
+};
+
+// FR-4 where neither mask nor copper covers it.
+export const SUBSTRATE = '#9c9468';
+
+function colorWords(name: string | undefined): string {
+  return (name ?? '').toLowerCase();
+}
+
+// A mask colour from what a job file or a design calls it ("Green", "Matte black", "R0G0B255"…), green if unknown.
+export function maskFromName(name: string | undefined): MaskColor {
+  const n = colorWords(name);
+  for (const c of ['green', 'red', 'blue', 'black', 'white', 'yellow', 'purple'] as MaskColor[]) if (n.includes(c)) return c;
+  if (/orange/.test(n)) return 'red';
+  if (/violet|magenta/.test(n)) return 'purple';
+  return 'green';
+}
+
+export function silkFromName(name: string | undefined): SilkColor {
+  const n = colorWords(name);
+  if (n.includes('black')) return 'black';
+  if (n.includes('yellow')) return 'yellow';
+  return 'white';
+}
+
+// A finish from the job file's name for it (KiCad: "ENIG", "HAL SnPb", "HAL lead-free", "OSP", "None"…). Unknown and
+// "None" give ENIG, as KiCad's 3D view shows them.
+export function finishFromName(name: string | undefined): Finish {
+  const n = colorWords(name);
+  if (/hal|hasl|tin|lead|solder|silver|sn/.test(n)) return 'hasl';
+  if (/osp|bare|copper|entek/.test(n)) return 'copper';
+  return 'enig';
+}
+
+export function realisticColors(s: RealisticStyle): { substrate: string; maskSubstrate: string; maskCopper: string; finish: string; silk: string } {
+  const mask = MASK_COLORS[s.mask];
+  return { substrate: SUBSTRATE, maskSubstrate: mask.substrate, maskCopper: mask.copper, finish: FINISHES[s.finish].color, silk: SILK_COLORS[s.silk].color };
+}

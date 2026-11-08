@@ -30,9 +30,9 @@ export default function PcbViewerPage() {
         <h1 className={styles.title}>PCB viewer</h1>
       </header>
       <p className={styles.lead}>
-        View the Gerber files of a circuit board layer by layer: the layers are recognised by their X2 attributes, the job
-        file or their names, and each can be shown, hidden, recoloured and seen from the bottom. Everything runs in your
-        browser; the files never leave this page.
+        View the Gerber and drill files of a circuit board layer by layer, or as the board looks with its solder mask,
+        finish, silkscreen and holes, from the top or the bottom. Measure between pads and holes, and save the view as PNG
+        or SVG. Everything runs in your browser; the files never leave this page.
       </p>
 
       <PcbViewer />

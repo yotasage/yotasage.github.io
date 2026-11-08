@@ -1,17 +1,24 @@
 import React from 'react';
 
 import { errorMessage } from '../../lib/pdf/files';
-import { centerlineBox } from '../../lib/pcb/geometry';
+import { DrillFormat } from '../../lib/pcb/excellon';
 import { LayerOverride } from '../../lib/pcb/identify';
 import { buildBoard, LoadedFile, PickedFile, readFiles } from '../../lib/pcb/load';
-import { Board, Box, isEmptyBox, Layer, LayerKind, Pt, Side, unionBox } from '../../lib/pcb/model';
-import { defaultColor, defaultStyle } from '../../lib/pcb/render/colors';
-import { BoardView, LayerStyle } from '../../lib/pcb/render/view';
+import { Board, Layer, LayerKind, Pt, Side } from '../../lib/pcb/model';
+import { shapeBox } from '../../lib/pcb/outline';
+import {
+  defaultColor, defaultStyle, Finish, finishFromName, FINISHES, MASK_COLORS, MaskColor, maskFromName, RealisticStyle, realisticColors, SILK_COLORS, SilkColor,
+  silkFromName,
+} from '../../lib/pcb/render/colors';
+import { BoardView, LayerStyle, ViewMode } from '../../lib/pcb/render/view';
 import styles from '../../styles/PcbViewer.module.css';
 import qrStyles from '../../styles/QrGen.module.css';
+import { Field, Select } from '../QrGen/fields';
 import FileList from './FileList';
 import LayerPanel, { LayerActions } from './LayerPanel';
+import { MeasureCard, MeasureOverlay, MeasurePoint, snapPoint } from './Measure';
 import { canPickFolders, DropZone, PickButton } from './pick';
+import SaveCard from './SaveCard';
 
 type Status = { kind: 'loading'; text: string } | { kind: 'ready' } | { kind: 'empty' } | { kind: 'error'; text: string };
 
@@ -37,12 +44,7 @@ const UNIT_NAME: Record<Units, string> = { mm: 'mm', in: 'in' };
 // The board point under the mouse (or the last touch), as precise as one pixel on screen.
 function CursorReadout({ view, units }: { view: BoardView; units: Units }) {
   const [point, setPoint] = React.useState<Pt | null>(null);
-  React.useEffect(() => {
-    view.onCursor = setPoint;
-    return () => {
-      view.onCursor = null;
-    };
-  }, [view]);
+  React.useEffect(() => view.listenCursor((p) => setPoint(p)), [view]);
   if (!point) return null;
   const perPixel = units === 'in' ? view.mmPerPixel / 25.4 : view.mmPerPixel;
   const decimals = Math.min(6, Math.max(1, Math.ceil(-Math.log10(perPixel))));
@@ -50,24 +52,16 @@ function CursorReadout({ view, units }: { view: BoardView; units: Units }) {
   return <div className={styles.coords} aria-live="off">{`X ${f(point.x)}  Y ${f(point.y)} ${UNIT_NAME[units]}`}</div>;
 }
 
-// The size of the board: from the outline layer if there is one, else from the copper.
-function boardSize(board: Board): { box: Box; from: 'outline' | 'copper' | 'layers' } | null {
-  const outline = board.layers.find((l) => l.kind === 'outline' && l.items.length);
-  if (outline) {
-    const box = centerlineBox(outline.items);
-    if (!isEmptyBox(box)) return { box, from: 'outline' };
-  }
-  const pick = board.layers.some((l) => l.kind === 'copper') ? board.layers.filter((l) => l.kind === 'copper') : board.layers;
-  let box: Box | null = null;
-  for (const l of pick) {
-    if (isEmptyBox(l.bbox)) continue;
-    box = box ? unionBox(box, l.bbox) : { ...l.bbox };
-  }
-  return box ? { box, from: pick === board.layers ? 'layers' : 'copper' } : null;
-}
+const SIZE_FROM: Record<NonNullable<Board['outlineFrom']>, string> = {
+  outline: 'Size',
+  design: 'Size',
+  frame: 'Size',
+  copper: 'Size of the copper',
+  extent: 'Size of the layers',
+};
 
 function BoardInfo({ board, units, shown }: { board: Board; units: Units; shown: number }) {
-  const size = boardSize(board);
+  const box = board.outline?.length ? shapeBox(board.outline) : null;
   const copper = board.layers.filter((l) => l.kind === 'copper').length;
   const s = board.stackup ?? {};
   return (
@@ -75,10 +69,10 @@ function BoardInfo({ board, units, shown }: { board: Board; units: Units; shown:
       <p className={styles.boardName} title={board.name}>{board.name}</p>
       <table className={[qrStyles.infoTable, styles.info].join(' ')}>
         <tbody>
-          {size && (
+          {box && (
             <tr>
-              <th>Size{size.from === 'outline' ? '' : size.from === 'copper' ? ' of the copper' : ' of the layers'}</th>
-              <td>{formatLength(size.box.maxX - size.box.minX, units)} × {formatLength(size.box.maxY - size.box.minY, units)} {UNIT_NAME[units]}</td>
+              <th>{SIZE_FROM[board.outlineFrom ?? 'outline']}</th>
+              <td>{formatLength(box.maxX - box.minX, units)} × {formatLength(box.maxY - box.minY, units)} {UNIT_NAME[units]}</td>
             </tr>
           )}
           {copper > 0 && <tr><th>Copper layers</th><td>{s.copperLayers && s.copperLayers !== copper ? `${copper} (the job file says ${s.copperLayers})` : copper}</td></tr>}
@@ -89,8 +83,40 @@ function BoardInfo({ board, units, shown }: { board: Board; units: Units; shown:
           <tr><th>Layers</th><td>{board.layers.length}, {shown} shown</td></tr>
         </tbody>
       </table>
+      {board.outlineFrom === 'copper' && <p className={styles.detailNote}>There is no board outline among the files, so the board is taken to be the rectangle around the copper.</p>}
+      {board.warnings.map((w) => <p key={w} className={qrStyles.warning}>{w}</p>)}
     </>
   );
+}
+
+// The colours of the realistic view, from the job file at first.
+function RealisticFields({ value, onChange, board }: { value: RealisticStyle; onChange: (v: RealisticStyle) => void; board: Board }) {
+  const s = board.stackup ?? {};
+  const fromJob = [s.mask && `${s.mask} mask`, s.silk && `${s.silk} silkscreen`, s.finish && `finish ${s.finish}`].filter(Boolean);
+  return (
+    <>
+      <div className={styles.detailFields}>
+        <Field label="Solder mask">
+          <Select<MaskColor> value={value.mask} onChange={(mask) => onChange({ ...value, mask })} options={Object.entries(MASK_COLORS).map(([k, v]) => [k as MaskColor, v.label])} />
+        </Field>
+        <Field label="Silkscreen">
+          <Select<SilkColor> value={value.silk} onChange={(silk) => onChange({ ...value, silk })} options={Object.entries(SILK_COLORS).map(([k, v]) => [k as SilkColor, v.label])} />
+        </Field>
+        <Field label="Finish">
+          <Select<Finish> value={value.finish} onChange={(finish) => onChange({ ...value, finish })} options={Object.entries(FINISHES).map(([k, v]) => [k as Finish, v.label])} />
+        </Field>
+      </div>
+      <p className={qrStyles.help}>
+        {fromJob.length ? `The job file says: ${fromJob.join(', ')}.` : 'No job file gives the colours; green mask, white silkscreen and ENIG are assumed.'}
+        {' '}The view uses the copper, solder mask, silkscreen and drill layers of the side in view, whether they are shown in the layer list or not.
+      </p>
+    </>
+  );
+}
+
+function styleFromStackup(board: Board | null): RealisticStyle {
+  const s = board?.stackup ?? {};
+  return { mask: maskFromName(s.mask), silk: silkFromName(s.silk), finish: finishFromName(s.finish) };
 }
 
 // The default order with the user's order on top: layers the user moved stay where they are; new layers go after
@@ -114,19 +140,26 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
   const [layerStyles, setLayerStyles] = React.useState<Map<string, LayerStyle>>(() => new Map());
   const [order, setOrder] = React.useState<string[]>([]);
   const [overrides, setOverrides] = React.useState<Map<string, LayerOverride>>(() => new Map());
+  const [drillFormats, setDrillFormats] = React.useState<Map<string, DrillFormat>>(() => new Map());
   const [flipped, setFlipped] = React.useState(false);
+  const [mode, setMode] = React.useState<ViewMode>('layers');
+  const [realistic, setRealistic] = React.useState<RealisticStyle>(() => styleFromStackup(null));
   const [units, setUnits] = React.useState<Units>('mm');
   const [status, setStatus] = React.useState<Status>({ kind: 'loading', text: 'Reading…' });
   const [busy, setBusy] = React.useState(false);
   const [fullscreen, setFullscreen] = React.useState(false);
   const [folders, setFolders] = React.useState(false);
+  const [measuring, setMeasuring] = React.useState(false);
+  const [points, setPoints] = React.useState<MeasurePoint[]>([]);
+  const [hover, setHover] = React.useState<MeasurePoint | null>(null);
 
   // The latest state, for the asynchronous loading and for actions that build on it.
-  const latest = React.useRef({ files, overrides, layerStyles, order });
-  latest.current = { files, overrides, layerStyles, order };
+  const latest = React.useRef({ files, overrides, layerStyles, order, drillFormats, measuring, points });
+  latest.current = { files, overrides, layerStyles, order, drillFormats, measuring, points };
   const known = React.useRef(new Set<string>());
   const customOrder = React.useRef(false);
   const customColors = React.useRef(new Set<string>());
+  const customRealistic = React.useRef(false);
   const fitPending = React.useRef(false);
   const queue = React.useRef<Promise<void>>(Promise.resolve());
   const started = React.useRef(false);
@@ -165,6 +198,7 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
     setBoard(next);
     setLayerStyles(nextStyles);
     setOrder(nextOrder);
+    if (!customRealistic.current) setRealistic(styleFromStackup(next));
   }, []);
 
   // Reads files and adds them to the board, or replaces everything. Loads run one after the other.
@@ -176,20 +210,25 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
           known.current = new Set();
           customOrder.current = false;
           customColors.current = new Set();
+          customRealistic.current = false;
         }
         const read = await readFiles(picked, known.current, (text) => setStatus({ kind: 'loading', text }));
         const all = replace ? read : [...latest.current.files, ...read];
         const nextOverrides = replace ? new Map<string, LayerOverride>() : latest.current.overrides;
+        const nextFormats = replace ? new Map<string, DrillFormat>() : latest.current.drillFormats;
         // A design file (S3 and later) would replace the board here; Gerber, drill, job and CSV files add to it.
         setStatus({ kind: 'loading', text: 'Identifying the layers…' });
         await new Promise((resolve) => setTimeout(resolve, 0));
-        const next = buildBoard(all, nextOverrides);
-        const hadLayers = !replace && latest.current.files.some((f) => f.gerber);
+        const next = buildBoard(all, nextOverrides, nextFormats);
+        const hadLayers = !replace && latest.current.files.some((f) => f.gerber || f.drill);
         latest.current.files = all;
         setFiles(all);
         setOverrides(nextOverrides);
+        setDrillFormats(nextFormats);
         if (replace) {
           setFlipped(false);
+          setMode('layers');
+          setPoints([]);
           latest.current.layerStyles = new Map();
           latest.current.order = [];
         }
@@ -207,9 +246,10 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
     open(initial, true);
   }, [view, open, initial]);
 
-  // The view follows the board, the layer styles and order, and the side.
+  // The view follows the board, the layer styles and order, the side and the mode.
   React.useEffect(() => {
     view?.setLayers(board?.layers ?? []);
+    view?.setShape(board?.outline);
   }, [view, board]);
   React.useEffect(() => {
     view?.setStyles(layerStyles, order);
@@ -218,11 +258,58 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
     view?.setFlipped(flipped);
   }, [view, flipped]);
   React.useEffect(() => {
+    view?.setMode(mode, realisticColors(realistic));
+  }, [view, mode, realistic]);
+  React.useEffect(() => {
     if (view && fitPending.current && board) {
       fitPending.current = false;
       view.fit();
     }
   }, [view, board, layerStyles]);
+
+  // Measuring: a click or tap places a point (snapped), the mouse shows what a click would snap to.
+  React.useEffect(() => {
+    if (!view) return undefined;
+    view.onTap = (p, _css, pointerType) => {
+      if (!latest.current.measuring) return;
+      const m = snapPoint(view, p, pointerType);
+      setPoints((prev) => (prev.length >= 2 ? [m] : [...prev, m]));
+    };
+    let frame = 0;
+    let pending: { p: Pt | null; type: string } | null = null;
+    const stop = view.listenCursor((p, type) => {
+      if (!latest.current.measuring || type !== 'mouse') return;
+      pending = { p, type };
+      if (frame) return;
+      // At most one snap per frame.
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const q = pending;
+        pending = null;
+        setHover(q?.p ? snapPoint(view, q.p, q.type) : null);
+      });
+    });
+    return () => {
+      view.onTap = null;
+      stop();
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [view]);
+  React.useEffect(() => {
+    if (!measuring) setHover(null);
+  }, [measuring]);
+  React.useEffect(() => {
+    const c = canvas.current;
+    if (!c) return undefined;
+    // Escape clears the measurement, and a second one stops measuring.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || !latest.current.measuring) return;
+      if (latest.current.points.length) setPoints([]);
+      else setMeasuring(false);
+    };
+    c.addEventListener('keydown', onKey);
+    return () => c.removeEventListener('keydown', onKey);
+  }, []);
 
   const layersInOrder = React.useMemo(() => {
     const byId = new Map((board?.layers ?? []).map((l) => [l.id, l]));
@@ -260,7 +347,15 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
       const next = new Map(overrides).set(id, { kind, side });
       setOverrides(next);
       latest.current.overrides = next;
-      show(buildBoard(files, next), false);
+      show(buildBoard(files, next, drillFormats), false);
+    },
+    drillFormat: (id, format) => {
+      const next = new Map(drillFormats);
+      if (format) next.set(id, format);
+      else next.delete(id);
+      setDrillFormats(next);
+      latest.current.drillFormats = next;
+      show(buildBoard(files, overrides, next), false);
     },
     only: (id) => {
       setLayerStyles((prev) => {
@@ -294,6 +389,11 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
     else void viewport.current?.requestFullscreen();
   }
 
+  function toggleMeasuring() {
+    setMeasuring((m) => !m);
+    canvas.current?.focus();
+  }
+
   const ready = status.kind === 'ready' && board;
   const shown = layersInOrder.filter((l) => layerStyles.get(l.id)?.visible).length;
   const openButtons = (
@@ -313,6 +413,11 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
             <button type="button" className={styles.toolButton} aria-pressed={!flipped} onClick={() => setFlipped(false)} title="Look at the board from the top">Top</button>
             <button type="button" className={styles.toolButton} aria-pressed={flipped} onClick={() => setFlipped(true)} title="Look at the board from the bottom (mirrored)">Bottom</button>
           </span>
+          <span className={styles.segmented} role="group" aria-label="View">
+            <button type="button" className={styles.toolButton} aria-pressed={mode === 'layers'} onClick={() => setMode('layers')} title="Each layer in its own colour">Layers</button>
+            <button type="button" className={styles.toolButton} aria-pressed={mode === 'realistic'} onClick={() => setMode('realistic')} title="The board as it looks: mask, copper, finish, silkscreen and holes">Realistic</button>
+          </span>
+          <button type="button" className={styles.toolButton} disabled={!ready} aria-pressed={measuring} onClick={toggleMeasuring} title="Measure the distance between two points">Measure</button>
           <button type="button" className={styles.toolButton} disabled={!ready} onClick={() => view?.zoomBy(1 / 1.5)} aria-label="Zoom out">−</button>
           <button type="button" className={styles.toolButton} disabled={!ready} onClick={() => view?.zoomBy(1.5)} aria-label="Zoom in">+</button>
           <span className={styles.toolbarSpacer} />
@@ -327,16 +432,28 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
         <div className={styles.canvasBox}>
           <canvas
             ref={canvas}
-            className={styles.canvas}
+            className={[styles.canvas, measuring ? styles.canvasMeasure : ''].join(' ')}
             tabIndex={0}
             aria-label="Board view. Drag to move, scroll or pinch to zoom; arrow keys move, + and − zoom, F fits the board."
           />
+          {view && ready && (measuring || points.length === 2) && <MeasureOverlay view={view} points={points} hover={measuring ? hover : null} />}
           {view && ready && <CursorReadout view={view} units={units} />}
-          {ready && flipped && <span className={styles.sideBadge}>Seen from the bottom</span>}
+          {ready && (flipped || mode === 'realistic') && (
+            <span className={styles.sideBadge}>{mode === 'realistic' ? `Realistic · ${flipped ? 'bottom' : 'top'}` : 'Seen from the bottom'}</span>
+          )}
           {ready && (
             <p className={styles.viewHint}>
-              <span className={styles.mouseHint}>Drag to move · Scroll to zoom · F to fit</span>
-              <span className={styles.touchHint}>One finger moves · Two fingers zoom</span>
+              {measuring ? (
+                <>
+                  <span className={styles.mouseHint}>Click two points to measure · Drag to move · Esc clears</span>
+                  <span className={styles.touchHint}>Tap two points to measure · Drag to move</span>
+                </>
+              ) : (
+                <>
+                  <span className={styles.mouseHint}>Drag to move · Scroll to zoom · F to fit</span>
+                  <span className={styles.touchHint}>One finger moves · Two fingers zoom</span>
+                </>
+              )}
             </p>
           )}
           {busy && <span className={styles.busy} aria-label="Drawing" />}
@@ -348,7 +465,7 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
           )}
           {status.kind === 'empty' && (
             <div className={[styles.overlay, styles.overlayError].join(' ')} role="alert">
-              <span>No Gerber layers were found among these files. The file list says what each file is.</span>
+              <span>No Gerber or drill layers were found among these files. The file list says what each file is.</span>
               {openButtons}
             </div>
           )}
@@ -368,10 +485,35 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
           <p className={qrStyles.help}>Add files adds layers to this board; drop files or folders on the page to do the same.</p>
         </Card>
 
+        {board && mode === 'realistic' && (
+          <Card title="Realistic view">
+            <RealisticFields
+              value={realistic}
+              board={board}
+              onChange={(v) => {
+                customRealistic.current = true;
+                setRealistic(v);
+              }}
+            />
+          </Card>
+        )}
+
+        {board && (
+          <Card title="Measure">
+            <MeasureCard measuring={measuring} points={points} onToggle={toggleMeasuring} onClear={() => setPoints([])} />
+          </Card>
+        )}
+
         {board && (
           <Card title={`Layers (${board.layers.length})`}>
-            <LayerPanel layers={layersInOrder} styles={layerStyles} actions={actions} />
+            <LayerPanel layers={layersInOrder} styles={layerStyles} actions={actions} files={files} />
             <p className={qrStyles.help}>The top of the list is drawn on top. Seen from the bottom, the layers of the two sides swap places.</p>
+          </Card>
+        )}
+
+        {board && view && (
+          <Card title="Save">
+            <SaveCard view={view} board={board} mode={mode} flipped={flipped} layerStyles={layerStyles} colors={realisticColors(realistic)} />
           </Card>
         )}
 

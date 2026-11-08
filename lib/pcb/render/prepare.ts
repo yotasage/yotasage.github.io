@@ -4,8 +4,8 @@
 // (every solid shape runs counter-clockwise, holes clockwise, so overlapping shapes add up). Large layers are also
 // split into tiles, so that a zoomed-in view only draws the tiles on screen. Paths are in board millimetres relative
 // to the layer's origin, which keeps the numbers small for the 32-bit floats of the canvas.
-import { addItem, addPoint, apertureBox, apertureRadius, DEG, polyArea, segArc } from '../geometry';
-import { Aperture, AperturePart, Box, emptyBox, isEmptyBox, Layer, Pt } from '../model';
+import { addContour, addItem, addPoint, apertureBox, apertureRadius, DEG, polyArea, segArc } from '../geometry';
+import { Aperture, AperturePart, Box, Contour, emptyBox, isEmptyBox, Layer, Pt } from '../model';
 
 export interface StrokeGroup {
   w: number;
@@ -54,7 +54,7 @@ export interface PreparedLayer {
 const ITEMS_PER_TILE = 4000;
 const MAX_GRID = 24;
 
-type ApertureClass = 'empty' | 'solid' | 'holed' | 'separate';
+export type ApertureClass = 'empty' | 'solid' | 'holed' | 'separate';
 
 function partBox(part: AperturePart): Box {
   const box = emptyBox();
@@ -101,7 +101,7 @@ function boxesOverlap(a: Box, b: Box): boolean {
 
 // Solid: no clear parts. Holed: one solid convex shape with clear parts that lie inside it and not on each other, as
 // standard apertures with a hole; these can be drawn with the non-zero rule. Anything else is drawn on its own.
-function classify(ap: Aperture): ApertureClass {
+export function classify(ap: Aperture): ApertureClass {
   if (!ap.parts.length) return 'empty';
   if (ap.parts.every((p) => p.dark)) return 'solid';
   const [first, ...rest] = ap.parts;
@@ -151,6 +151,38 @@ function separateParts(ap: Aperture): { dark: boolean; path: Path2D }[] {
 export function layerOrigin(box: Box): Pt {
   if (isEmptyBox(box)) return { x: 0, y: 0 };
   return { x: Math.round((box.minX + box.maxX) / 2), y: Math.round((box.minY + box.maxY) / 2) };
+}
+
+// The board shape as one path: outer edges counter-clockwise and cutouts clockwise, so a non-zero fill is the board.
+export interface PreparedShape {
+  origin: Pt;
+  path: Path2D;
+  box: Box;
+}
+
+function contourPath(path: Path2D, contour: Contour, ox: number, oy: number) {
+  let from = contour.start;
+  path.moveTo(from.x - ox, from.y - oy);
+  for (const seg of contour.segs) {
+    if (seg.arc) {
+      const { start, sweep } = segArc(from, seg);
+      const r = Math.hypot(from.x - seg.arc.c.x, from.y - seg.arc.c.y);
+      path.arc(seg.arc.c.x - ox, seg.arc.c.y - oy, r, start * DEG, (start + sweep) * DEG, sweep < 0);
+    } else {
+      path.lineTo(seg.to.x - ox, seg.to.y - oy);
+    }
+    from = seg.to;
+  }
+}
+
+export function prepareShape(contours: Contour[]): PreparedShape | null {
+  if (!contours.length) return null;
+  const box = emptyBox();
+  for (const c of contours) addContour(box, c);
+  const origin = layerOrigin(box);
+  const path = new Path2D();
+  for (const c of contours) contourPath(path, c, origin.x, origin.y);
+  return { origin, path, box };
 }
 
 type BuildTile = Tile & { groups: Map<string, StrokeGroup & { endX: number; endY: number }> };
@@ -294,20 +326,7 @@ export function prepareLayer(layer: Layer): PreparedLayer {
         useTile(item.contours[0].start.x, item.contours[0].start.y);
         addItem(tile.box, item, boxes);
         const path = fillPath();
-        for (const contour of item.contours) {
-          let from = contour.start;
-          path.moveTo(from.x - ox, from.y - oy);
-          for (const seg of contour.segs) {
-            if (seg.arc) {
-              const { start, sweep } = segArc(from, seg);
-              const r = Math.hypot(from.x - seg.arc.c.x, from.y - seg.arc.c.y);
-              path.arc(seg.arc.c.x - ox, seg.arc.c.y - oy, r, start * DEG, (start + sweep) * DEG, sweep < 0);
-            } else {
-              path.lineTo(seg.to.x - ox, seg.to.y - oy);
-            }
-            from = seg.to;
-          }
-        }
+        for (const contour of item.contours) contourPath(path, contour, ox, oy);
         break;
       }
       case 'hole': {

@@ -4,10 +4,13 @@
 import { unzipSync } from 'fflate';
 
 import { detectFormat, Detected, isOdbPath } from './detect';
+import { fitFormat, gerberDrillItems } from './drill';
+import { describeFormat, DrillFormat, DrillProgram, formatComplete, formatKey, platedFromName, plotExcellon, PlottedDrill, readExcellon } from './excellon';
 import { GerberJob, parseGerberJob } from './gbrjob';
 import { parseGerber, ParsedGerber } from './gerber/parse';
-import { identifyLayers, LayerOverride } from './identify';
+import { Identity, identifyLayers, LayerOverride } from './identify';
 import { Board, BoardObject, Layer, Stackup } from './model';
+import { boardShape } from './outline';
 
 export interface SourceFile {
   // Where the file came from, e.g. "gerbers/F_Cu.gtl" or "gerbers_v2.zip/F_Cu.gtl".
@@ -25,8 +28,26 @@ export interface LoadedFile {
   warnings: string[];
   gerber?: ParsedGerber;
   job?: GerberJob;
+  // An Excellon drill file, read but not yet plotted: buildBoard plots it with its format.
+  drill?: DrillProgram;
+  // The format the drill file was last plotted with, and where it came from (set by buildBoard).
+  drillState?: DrillState;
   // How far the object indices of this file's items are shifted into Board.objects (see buildBoard).
   objectOffset: number;
+}
+
+export interface DrillState {
+  format: DrillFormat;
+  // The file states it, it was guessed, or the user chose it.
+  from: 'file' | 'guess' | 'user';
+  // With a guess: the share of holes that land on pads, vias or track ends (undefined without copper layers).
+  onPads?: number;
+  holes: number;
+  // Cache: the plot for this format, and the guess for this set of copper layers.
+  plot: PlottedDrill;
+  plotKey: string;
+  guessKey?: string;
+  guess?: { format: DrillFormat; onPads?: number };
 }
 
 // How deep ZIP archives inside ZIP archives are opened.
@@ -129,6 +150,9 @@ export async function readFiles(files: PickedFile[], known: Set<string>, onStatu
         f.warnings = f.gerber.warnings;
       } else if (f.detected.id === 'gerber-job') {
         f.job = parseGerberJob(text);
+      } else if (f.detected.id === 'excellon') {
+        f.drill = readExcellon(text);
+        f.warnings = f.drill.warnings;
       }
     } catch (e) {
       f.error = `The file could not be read: ${errorText(e)}`;
@@ -158,12 +182,49 @@ function mergeStackup(jobs: GerberJob[]): Stackup | undefined {
   return Object.keys(s).length ? s : undefined;
 }
 
+function percent(share: number): string {
+  return `${Math.round(share * 100)}%`;
+}
+
+// Plots an Excellon file with the format the user chose, the file states, or the one that fits the copper best, and
+// remembers the plot and the guess on the file, so that building the board again is quick.
+function plotDrill(f: LoadedFile, user: DrillFormat | undefined, fitTo: Layer[]): DrillState {
+  const p = f.drill;
+  const old = f.drillState;
+  const nameplated = platedFromName(f.source.name);
+  let format: DrillFormat;
+  let from: DrillState['from'];
+  let guessKey = old?.guessKey;
+  let guess = old?.guess;
+  if (user) {
+    format = user;
+    from = 'user';
+  } else if (formatComplete(p)) {
+    format = fitFormat(p, []).format;
+    from = 'file';
+  } else {
+    // Guessed again only when the copper layers change.
+    const key = fitTo.map((l) => l.id).join('\n');
+    if (!guess || guessKey !== key) {
+      guess = fitFormat(p, fitTo);
+      guessKey = key;
+    }
+    format = guess.format;
+    from = 'guess';
+  }
+  const plotKey = `${formatKey(format)}|${nameplated}`;
+  const plot = old?.plotKey === plotKey ? old.plot : plotExcellon(p, format, { plated: nameplated ?? true });
+  return { format, from, onPads: from === 'guess' ? guess?.onPads : undefined, holes: plot.holes, plot, plotKey, guessKey, guess };
+}
+
 // Builds the board from every file read so far. Layer kinds, sides and order are found again each time, with the
-// user's choices from the layer panel on top.
-export function buildBoard(files: LoadedFile[], overrides: Map<string, LayerOverride>): Board | null {
+// user's choices from the layer panel on top. `drillFormats` are formats the user chose for Excellon files.
+export function buildBoard(files: LoadedFile[], overrides: Map<string, LayerOverride>, drillFormats: Map<string, DrillFormat> = new Map()): Board | null {
   const gerbers = files.filter((f) => f.gerber);
-  if (!gerbers.length) return null;
+  const drills = files.filter((f) => f.drill);
+  if (!gerbers.length && !drills.length) return null;
   const jobs = files.filter((f) => f.job).map((f) => f.job);
+  const warnings: string[] = [];
 
   // All object attributes in one list; the items of each file are shifted to their place in it.
   const objects: BoardObject[] = [];
@@ -177,7 +238,7 @@ export function buildBoard(files: LoadedFile[], overrides: Map<string, LayerOver
     for (const o of f.gerber.objects) objects.push(o);
   }
 
-  const layers: Layer[] = gerbers.map((f) => ({
+  const gerberLayers: Layer[] = gerbers.map((f) => ({
     id: f.source.path,
     name: f.source.name,
     kind: 'other',
@@ -189,12 +250,72 @@ export function buildBoard(files: LoadedFile[], overrides: Map<string, LayerOver
     bbox: f.gerber.bbox,
     ...(f.gerber.negative ? { negative: true } : {}),
   }));
-  identifyLayers(layers, jobs, overrides);
+  // The Gerber layers first, so that drill files without a format can be fitted to the copper.
+  identifyLayers(gerberLayers, jobs, overrides);
+  const copper = gerberLayers.filter((l) => l.kind === 'copper');
+  const outer = copper.filter((l) => l.side === 'top' || l.side === 'bottom');
+
+  const fixed = new Map<string, Identity>();
+  const drillLayers: Layer[] = [];
+  for (const f of drills) {
+    const state = plotDrill(f, drillFormats.get(f.source.path), outer.length ? outer : copper);
+    f.drillState = state;
+    f.warnings = state.plot.warnings;
+    const p = f.drill;
+    // Plated, non-plated or both, from the holes (their tools, the file, its name).
+    const kinds = new Set<boolean>();
+    for (const item of state.plot.items) if (item.k === 'hole') kinds.add(item.plated);
+    const mixed = kinds.size > 1;
+    const plated = mixed ? undefined : kinds.size ? [...kinds][0] : p.plated ?? platedFromName(f.source.name) ?? true;
+    const span = /^(?:Plated|NonPlated|MixedPlating),(\d+),(\d+)/i.exec(p.attrs['.FileFunction'] ?? '');
+    fixed.set(f.source.path, {
+      kind: 'drill',
+      side: 'none',
+      plated,
+      mixed,
+      label: span ? `L${span[1]}–L${span[2]}` : undefined,
+      by: p.attrs['.FileFunction'] ? 'x2' : 'format',
+    });
+    drillLayers.push({
+      id: f.source.path,
+      name: f.source.name,
+      kind: 'drill',
+      side: 'none',
+      file: f.source.path,
+      attrs: p.attrs,
+      items: state.plot.items,
+      apertures: [],
+      bbox: state.plot.bbox,
+    });
+    if (state.from === 'guess') {
+      const fit = state.onPads === undefined ? 'there are no copper layers to check it against' : `${percent(state.onPads)} of the holes land on pads`;
+      warnings.push(`${f.source.name} does not say its format, so it was guessed: ${describeFormat(state.format, p)} (${fit}). Its layer settings can change it.`);
+    }
+  }
+
+  const layers = [...gerberLayers, ...drillLayers];
+  identifyLayers(layers, jobs, overrides, fixed);
+  // Gerber drill files hold their holes as flashes and slots as lines; they become holes like Excellon's.
+  const fromGerber = new Set(gerbers.map((f) => f.source.path));
+  for (const l of layers) if (l.kind === 'drill' && fromGerber.has(l.id)) l.items = gerberDrillItems(l, l.plated !== false);
+
+  const shape = boardShape(layers);
+  if (shape) warnings.push(...shape.warnings);
 
   const archive = files.find((f) => f.detected.id === 'zip');
+  const named = gerbers.length ? gerbers : drills;
   const name = jobs.find((j) => j.name)?.name
-    || commonStart(gerbers.map((f) => f.source.name))
+    || commonStart(named.map((f) => f.source.name))
     || (archive ? archive.source.name.replace(/\.zip$/i, '') : '')
-    || gerbers[0].source.name;
-  return { name, source: 'gerber', layers, stackup: mergeStackup(jobs), objects, placements: [], warnings: [] };
+    || named[0].source.name;
+  return {
+    name,
+    source: 'gerber',
+    layers,
+    ...(shape ? { outline: shape.contours, outlineFrom: shape.from } : {}),
+    stackup: mergeStackup(jobs),
+    objects,
+    placements: [],
+    warnings,
+  };
 }

@@ -86,19 +86,21 @@ folder, never next to the test files.
 | Part | Location | Notes |
 | --- | --- | --- |
 | Page | `pages/pcb-viewer/main.tsx` | Head, home link, global styles, as every page (CLAUDE.md) |
-| UI | `components/PcbViewer/` | `PcbViewer.tsx` start screen (loads `Workspace.tsx` on first open), `Workspace.tsx` view, toolbar and cards, `LayerPanel.tsx`, `FileList.tsx`, `pick.tsx` (file and folder pickers, drop zone that reads dropped folders) |
+| UI | `components/PcbViewer/` | `PcbViewer.tsx` start screen (loads `Workspace.tsx` on first open), `Workspace.tsx` view, toolbar and cards, `LayerPanel.tsx` (also the format of drill files), `FileList.tsx`, `pick.tsx` (file and folder pickers, drop zone that reads dropped folders), `Measure.tsx` (overlay and card), `SaveCard.tsx` (PNG and SVG) |
 | Styles | `styles/PcbViewer.module.css` | |
 | Model | `lib/pcb/model.ts` | See below |
 | Geometry | `lib/pcb/geometry.ts` | Arcs, boxes, contour orientation, affine transforms of items |
 | Loading | `lib/pcb/detect.ts`, `lib/pcb/load.ts` | Recognise formats by content, expand ZIPs, hand each file to its reader, build the `Board` |
 | Gerber | `lib/pcb/gerber/` | `parse.ts` reader and plotter → items and apertures; `macro.ts` aperture macros; `standard.ts`, `shapes.ts` aperture shapes |
 | Gerber job, layer identification | `lib/pcb/gbrjob.ts`, `lib/pcb/identify.ts` | `identify.ts` also has the default layer order and the layer titles |
-| Excellon | `lib/pcb/excellon.ts` | |
+| Excellon, drill layers | `lib/pcb/excellon.ts`, `lib/pcb/drill.ts` | `excellon.ts` reads a file once into a program and plots it with a format; `drill.ts` fits a format to the pads and turns Gerber drill files into holes |
+| Board shape | `lib/pcb/outline.ts` | Loops of the outline layer, else a frame drawn on several layers, else the copper's rectangle |
+| Points | `lib/pcb/points.ts` | Pad and hole centres and line ends per layer in a grid index: measuring snaps to them, drill formats are fitted to them |
 | Design → layers | `lib/pcb/design/` | Shared by all design formats (S3) |
 | Stroke font | `lib/pcb/font/` | Newstroke (S3) |
 | Design formats | `lib/pcb/kicad/`, `lib/pcb/altium/`, `lib/pcb/pads/`, `lib/pcb/eagle/` | Each produces a `Design` |
-| Drawing | `lib/pcb/render/` | Layer view and realistic view on Canvas 2D: `prepare.ts` paths, `view.ts` canvas, gestures and compositing, `colors.ts` default colours |
-| Exports | `lib/pcb/export/` | PNG, SVG, CSV, PDF, DXF, KiCad |
+| Drawing | `lib/pcb/render/` | Layer view and realistic view on Canvas 2D: `prepare.ts` paths, `paint.ts` a layer into a canvas and the two ways of compositing (shared with the PNG export), `view.ts` canvas, gestures, clicks and modes, `colors.ts` default and realistic colours |
+| Exports | `lib/pcb/export/` | `png.ts`, `svg.ts` (S2); CSV, PDF, DXF, KiCad later |
 
 Flow: files → recognise → reader → `Board`. Gerber and drill files become layers directly. A design file becomes a
 `Design`, which `lib/pcb/design/` turns into layers. Drawing and the PNG, SVG, PDF and DXF exports use only the layers;
@@ -106,7 +108,8 @@ the CSV exports use `Board.placements`; the KiCad export uses `Board.design`.
 
 ### Model (sketch)
 
-S1 wrote the artwork part (in `lib/pcb/model.ts`, as below), S3 writes the design part. Names and fields may change.
+S1 wrote the artwork part (in `lib/pcb/model.ts`, as below; S2 added `outlineFrom`, the `'format'` way of identifying
+a layer, and drill layers with plated and non-plated holes), S3 writes the design part. Names and fields may change.
 Keep this section in step with the code.
 
 ```ts
@@ -127,6 +130,8 @@ type Art =
   | { k: 'flash'; at: Pt; ap: number; rot: number; mirror: Mirror; scale: number }   // mirror, then rotate, then scale
   | { k: 'region'; contours: Contour[] }       // non-zero fill: outer contours counter-clockwise, holes clockwise
   | { k: 'hole'; at: Pt; d: number; to?: Pt; plated: boolean };   // drill hit; `to` makes it a slot
+// Drill layers hold `hole` items (Excellon and Gerber drill files alike); a routed path of an Excellon file is a slot
+// per straight part and an `arc` item (w = tool diameter) per curved part.
 type ArtItem = Art & { dark: boolean; obj?: number };   // obj: index into Board.objects
 
 // A flash shape; parts in order (polygons counter-clockwise), a part with dark: false erases earlier parts of the same
@@ -137,14 +142,14 @@ interface Aperture { parts: AperturePart[]; name?: string; attrs?: Record<string
 type LayerKind = 'copper' | 'mask' | 'paste' | 'silk' | 'outline' | 'drill' | 'mechanical' | 'fab' | 'courtyard'
   | 'keepout' | 'other';
 type Side = 'top' | 'bottom' | 'inner' | 'none';
-type IdentifiedBy = 'x2' | 'job' | 'name' | 'design' | 'user' | 'none';
+type IdentifiedBy = 'x2' | 'job' | 'name' | 'format' | 'design' | 'user' | 'none';   // format: an Excellon file is a drill layer
 
 interface Layer {
   id: string; name: string; kind: LayerKind; side: Side;
   label?: string;                    // more about it: "Glue", "ECO1", "L1–L2, blind"
   copper?: number;                   // copper order: 1 = top … n = bottom
   negative?: boolean;                // starts dark over its bbox, items already toggled (Gerber IPNEG)
-  plated?: boolean;                  // drill layers
+  plated?: boolean;                  // drill layers: undefined when the file has both (each hole says)
   file?: string; attrs?: Record<string, string>;   // source path (inside an archive too), X2 %TF with the dot
   identifiedBy?: IdentifiedBy;
   items: ArtItem[]; apertures: Aperture[]; bbox: Box;
@@ -156,7 +161,8 @@ interface Placement { ref: string; value?: string; footprint?: string; at: Pt; r
 interface Board {
   name: string; source: 'gerber' | 'kicad' | 'altium' | 'pads' | 'eagle';
   layers: Layer[];                   // in the default order, top of the list first (identify.ts)
-  outline?: Contour[];               // board shape: the edge and its cutouts (S2)
+  outline?: Contour[];               // board shape: edges counter-clockwise, cutouts clockwise (outline.ts)
+  outlineFrom?: 'outline' | 'design' | 'frame' | 'copper' | 'extent';   // frame: one loop drawn on several layers (PADS)
   stackup?: { thickness?: number; mask?: string; silk?: string; finish?: string; copperLayers?: number };
   objects: BoardObject[];            // what a click on an item reports (S4); Gerber: one per distinct %TO set
   placements: Placement[];           // components of a design, or from a pick-and-place CSV
@@ -229,6 +235,22 @@ As built in S1 (`lib/pcb/render/`):
   about 300 MB.
 - **Negative images** (Gerber IPNEG, deprecated) start dark over the layer's bbox; S2 may clip them to the board.
 
+As built in S2:
+
+- **Painting** moved to `paint.ts` (`paintLayer`, `compositeLayers`, `compositeRealistic`), so the view on screen and
+  the PNG export share it. A layer canvas is up to date for a view (`viewKey`) and holds one colour; a new colour is
+  painted over in place, and canvases of layers that are not in the picture are freed after each drawing.
+- **Realistic view** (`compositeRealistic`), from the layer canvases of the side in view (`sideLayers`: copper, mask,
+  silk and drill layers by kind and side, whether shown in the list or not) and the board shape: the shape in mask
+  colour (or bare substrate without a mask layer); mask openings in substrate colour; copper under the mask in the
+  mask's lighter "over copper" colour; exposed copper (copper in the openings) in the finish colour; silkscreen except
+  in openings; holes cut through everything (`destination-out`); the background behind. Every step is `source-atop`
+  the shape, so nothing shows outside the board. Two temporary canvases are needed. Seen from the bottom it is the
+  same with the bottom layers, mirrored. Blind and buried drill layers (X2 span) show only on the side they reach.
+- **Clicks:** a press pans only after moving 4 px (mouse) or 10 px (touch); a release before that is a click
+  (`onTap`), unless a second finger came. The view tells listeners about the cursor and every view change
+  (`listenCursor`, `listenView`), for the coordinates and the measuring overlay.
+
 ### Libraries
 
 | Library | Use | Licence | Status |
@@ -253,8 +275,8 @@ Status: ✅ done · 🔄 in progress · 📋 planned
 
 | Step | What | Status | Commit |
 | --- | --- | :-: | --- |
-| S1 | Viewer shell and Gerber | ✅ | |
-| S2 | Drill files, realistic view, measuring, PNG and SVG export | 📋 | |
+| S1 | Viewer shell and Gerber | ✅ | 7f75723 |
+| S2 | Drill files, realistic view, measuring, PNG and SVG export | ✅ | |
 | S3 | KiCad boards and footprints, design model, stroke font | 📋 | |
 | S4 | Inspect, highlight, search; BOM and pick-and-place export | 📋 | |
 | S5 | Altium | 📋 | |
@@ -358,6 +380,74 @@ are recognised and listed but drawn in S2.
 - the realistic top and bottom look like the real boards (compare ARTIFICER with `kicad-cli pcb render`);
 - measuring works with mouse and touch;
 - PNG and SVG files open correctly.
+
+**Notes from S2:**
+
+- **Excellon** (`excellon.ts`): read once into a program with the numbers as written, then plotted with a
+  `DrillFormat` (units, zeros left out, integer and decimal digits), so a format can be tried, guessed and corrected
+  without reading the file again. KiCad's "suppress leading zeros" is `TZ` and "suppress trailing zeros" `LZ`; its
+  `; FORMAT={2:4/ absolute / inch / …}` comment and Altium's `;FILE_FORMAT=2:5` give the digits; numbers that are all
+  as wide as int + dec need no zeros mode. Plating comes per tool from KiCad's `TA.AperFunction` comments
+  (`MixedPlating` files) and Altium's `;TYPE=PLATED`/`NON_PLATED`, else from the file's X2 function or its name
+  (`NPTH`, `NonPlated`…), else plated; a file with both gets `plated: undefined`. R repeats are spacings from the
+  last hole; routed paths cut only with the tool down (M15), unless the file never uses M15. Checked with every
+  `kicad-cli pcb export drill` variant of ARTIFICER (units, zero formats, minimal header, Gerber format) and ecc83
+  (slots routed and with G85, separate PTH/NPTH), and with small files for Altium and EAGLE headers, R, G85, G02/G03
+  with I/J and A, G91, M25/M01/M02 patterns and G93.
+- **Guessing a format** (`drill.ts`): the candidates the file leaves open (units also from the tool sizes; zeros from
+  how the numbers are written) are each plotted for up to 400 holes and scored by how many land within the radius of
+  a pad, via or track end of the outer copper layers (`points.ts`); the most likely candidate wins ties. Linear's
+  `DRILL.drl` comes out inch, 2.4, trailing zeros left out, with all 569 holes on pads; KiCad's `--excellon-min-header`
+  file (`INCH,TZ` only) gives 2.4 too. A guess is said in the Board card, the layer row and the file list, and the
+  layer's settings correct units, zeros and digits ("Use the file's format" goes back). The guess is redone only when
+  the copper layers change.
+- **Gerber drill files** become holes in `buildBoard`: round flashes are holes and lines with round ends slots;
+  other items stay.
+- **Board shape** (`outline.ts`): lines and arcs of the first outline layer are joined end to end with a tolerance of
+  half the line width (2 µm to 0.1 mm), loops that stay open by up to 0.5 mm are closed with a warning, regions and
+  full circles are loops of their own, and nesting decides the direction (edge, cutout, island in a cutout). Without
+  an outline layer, the same closed loop drawn on at least two layers is the board (Linear's PADS Gerbers all carry
+  the 3.2 × 3.2 inch frame, while their title block lies outside it); else the copper's rectangle. Loops are cached
+  per layer. Text on an outline layer that forms closed loops (an "O") would become a cutout.
+- **Realistic view:** colours in `colors.ts`; the job file's names map to them (`maskFromName`, `silkFromName`,
+  `finishFromName`), finish "None" and unknown give ENIG as KiCad's 3D view shows them. Compared with
+  `kicad-cli pcb render` (orthographic, top and bottom; it always draws the 3D models): the same board, holes and
+  colours, except that KiCad draws mask over copper darker and over substrate olive, where ours is lighter over
+  copper, as real green boards look. The large demo switches between the views by compositing only (its layer
+  canvases are reused).
+- **Measuring** (`Measure.tsx`): snaps within 10 px (mouse) or 22 px (touch) to the nearest pad or hole centre
+  (preferred, distance × 0.6) or line or arc end of the layers in the picture; the mouse shows the snap target. The
+  point index of a layer is built the first time it is needed: on the large demo the first hover took about 30 ms,
+  later ones fit in a frame. Escape clears, a second Escape stops.
+- **Export:** PNG of the screen (device pixels) or of the whole board in 1024-pixel tiles at 10–80 px/mm, up to
+  16,384 pixels a side and 100 Mpx, with progress and Cancel and the resolution in a pHYs chunk. SVG is in mm at 1:1
+  (Y negated, X too from the bottom): one group per shown layer (an Inkscape layer); layers with clear items or a
+  negative image are a coloured rectangle through a luminance mask of their runs; flashes are `<use>` of aperture
+  paths (apertures with odd clear parts carry their own mask); the realistic SVG composes masks for copper, silk,
+  openings, "covered" and the board minus holes. Aperture paths need `stroke="none"`: a `<use>` inherits the run
+  group's stroke, which drew every pad 1 mm too wide. All SVGs passed a strict XML parser (saxes) and were rendered in
+  headless Edge, including Ucamco's polarity and macro test files, which match their reference images. Large demo:
+  the PNG of the default layers (3,770 × 2,151) in 1.2 s, the layer SVG (15 MB) in about 0.1 s; the page never stopped
+  answering for more than 40 ms. "What is on screen" also exists for SVG (the whole board is written, the view box
+  crops it).
+- **Harness** (`…\scratchpad\pcb\harness\`): `drive.mjs` runs a list of actions (buttons, selects, wheel zoom,
+  clicks, CDP taps, drags and pinches, element and page shots, downloads with progress); `drill-test.mjs` builds
+  boards in Node and reports drill formats, holes on pads and the board shape; `loops-test.mjs` lists the loops of
+  every layer; `xmlcheck.mjs` checks SVGs with saxes. Waiting for `[role=alert]` also matches Next.js's route
+  announcer; wait for `ul[aria-label="Layers"]` instead.
+
+**For S3:**
+
+- **Realistic view, measuring and exports use only layers**, chosen by kind and side: give the design builder's
+  layers the right `kind`/`side` (copper top and bottom, `mask` layers that draw the openings as Gerber does, `silk`,
+  `drill` with `hole` items, plated per hole, slots with `to`), and set `Board.outline` from `Design.outline` with
+  `outlineFrom: 'design'` instead of calling `boardShape` (`buildBoard` in `load.ts` does that for Gerber sets).
+- **Snapping** finds flashes, holes and line ends: pads as flashes of apertures (not regions) and tracks as lines let
+  measuring snap to pad centres and track ends.
+- **Stackup colours:** `Board.stackup.mask`, `silk` and `finish` are mapped to the realistic colours by name in
+  `colors.ts`; KiCad's stackup names (and colours given as `#RRGGBB`) can go there.
+- **A reader that knows a layer's kind** passes it to `identifyLayers` through `fixed` (as Excellon files do), and
+  user overrides still win.
 
 ### S3 – KiCad boards and footprints, design model, stroke font
 

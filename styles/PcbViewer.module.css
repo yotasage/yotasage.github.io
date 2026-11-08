@@ -206,6 +206,18 @@
   cursor: default;
 }
 
+/* Phones: the toolbar fits in two rows. */
+@media (max-width: 480px) {
+  .toolbar {
+    gap: 0.25rem;
+    padding: 0.35rem;
+  }
+  .toolButton {
+    min-width: 1.8rem;
+    padding: 0.3rem 0.5rem;
+  }
+}
+
 /* Two buttons joined, such as Top | Bottom. */
 .segmented {
   display: inline-flex;
@@ -244,6 +256,69 @@
 
 .canvas:focus-visible {
   box-shadow: inset 0 0 0 2px #4da3ff;
+}
+
+.canvasMeasure,
+.canvasMeasure:active {
+  cursor: crosshair;
+}
+
+/* Measuring: points, line and distance over the canvas */
+
+.measureSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.measureLine {
+  stroke: #ffd23f;
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.9));
+}
+
+.measurePoint circle,
+.measurePoint path,
+.measureHover circle,
+.measureHover path {
+  fill: none;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.9));
+}
+
+.measurePoint circle,
+.measurePoint path {
+  stroke: #ffd23f;
+}
+
+.measureHover circle,
+.measureHover path {
+  stroke: #4da3ff;
+}
+
+.measureLabel {
+  position: absolute;
+  transform: translate(-50%, -150%);
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  background: rgba(20, 22, 26, 0.88);
+  color: #ffd23f;
+  font-size: 0.85rem;
+  font-weight: bold;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.measureLabelSide {
+  transform: translate(12px, -50%);
+}
+
+.strong {
+  font-weight: bold;
 }
 
 .coords {
@@ -534,6 +609,62 @@
   font-size: 0.78rem;
   line-height: 1.4;
   overflow-wrap: anywhere;
+}
+
+.drillFormat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.drillFormat p {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.guessBadge {
+  color: #f7c873;
+}
+
+/* Save */
+
+.saveFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0.4rem 0;
+}
+
+.saveFields + p {
+  margin-top: 0;
+}
+
+@media (max-width: 480px) {
+  .saveFields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.6rem;
+  color: #c8c8c8;
+  font-size: 0.85rem;
+}
+
+.progressBar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.progressBar > div {
+  height: 100%;
+  background: #4da3ff;
+  transition: width 0.15s linear;
 }
 
 /* Files */

@@ -32,11 +32,12 @@ export default function FileList({ files, layers }: { files: LoadedFile[]; layer
           <li key={f.source.path} className={[styles.fileItem, archive ? styles.fileNested : ''].join(' ')}>
             <div className={styles.fileHead}>
               <span className={styles.fileName} title={f.source.path}>{shown}</span>
-              <span className={[styles.badge, badgeClass].join(' ')}>{f.gerber || f.job ? (f.gerber ? 'Layer' : 'Read') : badge}</span>
+              <span className={[styles.badge, badgeClass].join(' ')}>{f.gerber || f.drill || f.job ? (f.job ? 'Read' : 'Layer') : badge}</span>
             </div>
             <div className={styles.fileMeta}>
               {what}
               {f.detected.id !== 'zip' && ` · ${formatBytes(f.source.size)}`}
+              {f.drillState && ` · ${f.drillState.holes.toLocaleString('en-US')} holes, format ${f.drillState.from === 'guess' ? 'guessed' : f.drillState.from === 'user' ? 'chosen by you' : 'from the file'}`}
               {(f.error || f.detected.message) && <><br />{f.error ?? f.detected.message}</>}
             </div>
             {f.warnings.length > 0 && (

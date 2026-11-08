@@ -4,9 +4,9 @@
 import { gunzipSync } from 'fflate';
 
 export type FormatId =
-  | 'gerber' | 'gerber-job' | 'zip'
+  | 'gerber' | 'gerber-job' | 'excellon' | 'zip'
   // Read in later steps (docs/pcb-viewer-plan.md).
-  | 'excellon' | 'kicad-pcb' | 'kicad-footprint' | 'altium-pcb' | 'altium-pcblib' | 'pads-ascii' | 'eagle-brd' | 'pnp-csv'
+  | 'kicad-pcb' | 'kicad-footprint' | 'altium-pcb' | 'altium-pcblib' | 'pads-ascii' | 'eagle-brd' | 'pnp-csv'
   // Not read.
   | 'gerber-rs274d' | 'kicad-legacy' | 'pads-binary' | 'pads-library' | 'eagle-binary' | 'eagle-library' | 'allegro'
   | 'odb' | 'ipc2581' | 'ipcd356' | 'gedac' | 'diptrace' | 'easyeda' | 'protel-pcb' | 'archive-other'
@@ -240,7 +240,7 @@ function detectText(name: string, text: string): Detected {
   const first = firstLine(t);
   if (/^M48\b/.test(first) || (/^%\s*$/.test(first) && /^T\d+C[\d.]+/m.test(head)) || /^T\d+C[\d.]+/m.test(head)
     || (/^(METRIC|INCH)\b/m.test(head) && /^T\d+/m.test(head)) || (/^;.*\b(drill|excellon)\b/im.test(head) && /^X[-+]?[\d.]+Y[-+]?[\d.]+\s*$/m.test(t))) {
-    return later('excellon', 'Excellon drill');
+    return { id: 'excellon', name: 'Excellon drill', status: 'read' };
   }
 
   // IPC-D-356 netlist

@@ -39,7 +39,8 @@ export type Art =
   | { k: 'flash'; at: Pt; ap: number; rot: number; mirror: Mirror; scale: number }
   // Filled with the non-zero rule: outer contours counter-clockwise, holes clockwise. Overlapping outer contours add up.
   | { k: 'region'; contours: Contour[] }
-  // A drill hit; `to` makes it a slot.
+  // A drill hit; `to` makes it a slot. Drill layers hold holes (Excellon and Gerber drill files alike); a routed path
+  // of an Excellon file is a slot per straight part and an arc item (w: the tool diameter) per curved part.
   | { k: 'hole'; at: Pt; d: number; to?: Pt; plated: boolean };
 
 // obj: index into Board.objects.
@@ -67,8 +68,9 @@ export type LayerKind =
 
 export type Side = 'top' | 'bottom' | 'inner' | 'none';
 
-// How a layer's kind and side were found (lib/pcb/identify.ts), shown in the layer panel.
-export type IdentifiedBy = 'x2' | 'job' | 'name' | 'design' | 'user' | 'none';
+// How a layer's kind and side were found (lib/pcb/identify.ts), shown in the layer panel. 'format': the file format
+// says it (an Excellon file is a drill layer).
+export type IdentifiedBy = 'x2' | 'job' | 'name' | 'format' | 'design' | 'user' | 'none';
 
 export interface Layer {
   id: string;
@@ -83,7 +85,7 @@ export interface Layer {
   // The layer starts dark over its bbox and the items are already in their final polarity (Gerber IPNEG). A negative
   // plane of a design can instead start with a dark region of the board shape.
   negative?: boolean;
-  // Drill layers.
+  // Drill layers: true or false when all holes are plated or not, undefined when the file has both (each hole says).
   plated?: boolean;
   // Source file (its path, inside an archive if it came from one) and Gerber X2 file attributes, with the dot
   // (e.g. '.FileFunction': 'Copper,L1,Top').
@@ -128,8 +130,11 @@ export interface Board {
   name: string;
   source: 'gerber' | 'kicad' | 'altium' | 'pads' | 'eagle';
   layers: Layer[];
-  // Board shape: the edge and its cutouts (S2).
+  // Board shape: the edge and its cutouts, outer edges counter-clockwise and cutouts clockwise (lib/pcb/outline.ts).
   outline?: Contour[];
+  // Where the shape comes from: the outline layer, the design, the same closed outline drawn on several other layers
+  // (as PADS does), or the rectangle around the copper (or around all layers).
+  outlineFrom?: 'outline' | 'design' | 'frame' | 'copper' | 'extent';
   stackup?: Stackup;
   objects: BoardObject[];
   // Components of a design, or from a pick-and-place CSV.

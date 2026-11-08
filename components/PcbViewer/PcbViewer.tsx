@@ -18,7 +18,8 @@ const Workspace = dynamic(
 
 const FORMATS: { title: string; formats: string; note?: string }[] = [
   { title: 'Gerber', formats: 'RS-274X and X2 (.gbr, .gtl, .gbl, .gto, .pho, .art and others)', note: 'Including the old commands of older files.' },
-  { title: 'Gerber job file', formats: '.gbrjob', note: 'Gives each layer its function and order.' },
+  { title: 'Drill', formats: 'Excellon (.drl, .txt, .xln and others) and Gerber drill files', note: 'Slots and routed holes too; a file without a header gets its format from the pads.' },
+  { title: 'Gerber job file', formats: '.gbrjob', note: 'Gives each layer its function and order, and the colours.' },
   { title: 'Archives', formats: 'ZIP, also inside other ZIPs and with folders' },
 ];
 
@@ -34,8 +35,8 @@ export default function PcbViewer() {
       <ToolIcon name="pcb" color="#9ccc3c" size={72} />
       <h2>Open Gerber files</h2>
       <p>
-        Select all the Gerber files of a board, the folder they are in, or a ZIP archive of them. Each layer is shown in its
-        own colour, and can be hidden, recoloured, made transparent or seen from the bottom.
+        Select all the Gerber and drill files of a board, the folder they are in, or a ZIP archive of them. See each layer
+        in its own colour or the board as it looks, from the top or the bottom; measure it, and save it as PNG or SVG.
       </p>
       <div className={styles.heroButtons}>
         <PickButton onFiles={setFiles} className={styles.heroButton}>Select files</PickButton>

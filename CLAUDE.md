@@ -71,10 +71,14 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 - PCB viewer: built in steps by [docs/pcb-viewer-plan.md](docs/pcb-viewer-plan.md), whose "Model" section must match
   [lib/pcb/model.ts](lib/pcb/model.ts) (millimetres, Y up). Files are recognised by content in
   [lib/pcb/detect.ts](lib/pcb/detect.ts), read and made into a `Board` in [lib/pcb/load.ts](lib/pcb/load.ts) (ZIPs
-  expanded with fflate), Gerber in `lib/pcb/gerber/`, layer kinds and order in [lib/pcb/identify.ts](lib/pcb/identify.ts).
-  The layer view is Canvas 2D in `lib/pcb/render/`: paths are built once per layer (`prepare.ts`; never call
-  `closePath()` on a `Path2D`, it is very slow in Chromium), each visible layer is drawn into its own canvas and
-  composited (`view.ts`), and gestures move the last frame until they pause.
+  expanded with fflate), Gerber in `lib/pcb/gerber/`, Excellon in `lib/pcb/excellon.ts` (read once, plotted with a
+  format; files without one are fitted to the pads in `lib/pcb/drill.ts`), the board shape in `lib/pcb/outline.ts`,
+  layer kinds and order in [lib/pcb/identify.ts](lib/pcb/identify.ts).
+  The view is Canvas 2D in `lib/pcb/render/`: paths are built once per layer (`prepare.ts`; never call
+  `closePath()` on a `Path2D`, it is very slow in Chromium), each layer of the picture is drawn into its own canvas
+  (`paint.ts`, shared with the PNG export) and composited by `view.ts`: stacked in the layer view, as the board looks
+  in the realistic view (chosen by layer kind and side only); gestures move the last frame until they pause.
+  Measuring snaps with the grid index of `lib/pcb/points.ts`; exports are in `lib/pcb/export/`.
 - `tsconfig` uses `"module": "node16"`, so our own files count as CommonJS and the ES-module-only add-ons of three.js
   (`three/examples/jsm/...`) can only be loaded with `await import(...)`, or imported as types with
   `import type ... with { 'resolution-mode': 'import' }`. A dynamic import of one of our own files needs

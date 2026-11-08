@@ -12,6 +12,8 @@ export interface Identity {
   // The n-th inner layer, from names like In2_Cu, .G2 or .ly3 (EAGLE counts the top as 1, so its ly3 is inner 2).
   inner?: number;
   plated?: boolean;
+  // A drill file with plated and non-plated holes (each hole says which).
+  mixed?: boolean;
   // More about what the layer is, e.g. "Glue" or "ECO1".
   label?: string;
   by: IdentifiedBy;
@@ -44,6 +46,11 @@ export function fromFileFunction(ff: string | undefined, by: IdentifiedBy): Iden
       const how = /^(blind|buried)$/i.test(f[3] ?? '') ? f[3].toLowerCase() : '';
       const rout = /^(rout|mixed)$/i.test(f[4] ?? '') ? f[4].toLowerCase() : '';
       return { kind: 'drill', side: 'none', plated: type === 'plated', label: [span, how, rout].filter(Boolean).join(', ') || undefined, by };
+    }
+    case 'mixedplating': {
+      // KiCad's Excellon files with both: MixedPlating,1,6.
+      const span = f[1] && f[2] ? `L${f[1]}–L${f[2]}` : '';
+      return { kind: 'drill', side: 'none', mixed: true, label: span || undefined, by };
     }
     case 'profile':
       return { kind: 'outline', side: 'none', by };
@@ -303,16 +310,17 @@ export function identifyLayer(file: string, attrs: Record<string, string> | unde
 }
 
 // Identifies every layer of a Gerber set (in place), numbers the copper layers and sorts the layers from the top of
-// the board down.
-export function identifyLayers(layers: Layer[], jobs: GerberJob[], overrides: Map<string, LayerOverride>): void {
+// the board down. `fixed` holds what a reader already knows about a layer (an Excellon file is a drill layer), which
+// takes the place of the X2, job file and name rules.
+export function identifyLayers(layers: Layer[], jobs: GerberJob[], overrides: Map<string, LayerOverride>, fixed?: Map<string, Identity>): void {
   for (const layer of layers) {
-    const found = identifyLayer(layer.file ?? layer.name, layer.attrs, jobs);
+    const found = fixed?.get(layer.id) ?? identifyLayer(layer.file ?? layer.name, layer.attrs, jobs);
     const override = overrides.get(layer.id);
     const changed = override && (override.kind !== found.kind || override.side !== found.side);
     layer.kind = override?.kind ?? found.kind;
     layer.side = override?.side ?? found.side;
     layer.copper = changed ? undefined : found.copper;
-    layer.plated = layer.kind === 'drill' ? found.plated ?? true : undefined;
+    layer.plated = layer.kind === 'drill' && !(found.mixed && !changed) ? found.plated ?? true : undefined;
     layer.label = changed ? undefined : found.label;
     layer.identifiedBy = changed ? 'user' : found.by;
     innerIndex.set(layer, changed ? undefined : found.inner);
@@ -353,7 +361,7 @@ const NONE_ORDER: Partial<Record<LayerKind, number>> = { mechanical: 0, fab: 1, 
 // layers of neither side. The top of the list is drawn on top in the top view.
 export function layerRank(l: Layer): [number, number] {
   if (l.kind === 'outline') return [0, 0];
-  if (l.kind === 'drill') return [1, l.plated === false ? 1 : 0];
+  if (l.kind === 'drill') return [1, l.plated === false ? 2 : l.plated === true ? 0 : 1];
   if (l.kind === 'copper') {
     if (l.side === 'top') return [2, 7];
     if (l.side === 'bottom') return [4, 0];
@@ -415,7 +423,10 @@ export function layerTitle(l: Layer): string {
     if (l.side === 'bottom') return `Bottom copper${n && ` (${n.trim()})`}`;
     return `Inner copper${n}`;
   }
-  if (l.kind === 'drill') return `${l.plated === false ? 'Non-plated' : 'Plated'} drill${label ? ` (${label})` : ''}`;
+  if (l.kind === 'drill') {
+    const what = l.plated === false ? 'Non-plated drill' : l.plated === true ? 'Plated drill' : 'Drill, plated and non-plated';
+    return `${what}${label ? ` (${label})` : ''}`;
+  }
   if (l.kind === 'outline') return 'Board outline';
   if (l.kind === 'other' || l.kind === 'mechanical') {
     const side = l.side === 'top' ? 'Top ' : l.side === 'bottom' ? 'Bottom ' : '';

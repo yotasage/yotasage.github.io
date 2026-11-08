@@ -1,9 +1,11 @@
-// The layer view of the PCB viewer on a Canvas 2D: every visible layer is drawn into its own canvas (dark items in
-// the layer's colour, clear items with destination-out), and the layer canvases are composited onto the screen with
-// their opacity. While the view is panned or zoomed, the last frame is moved and scaled, and the layers are drawn
-// again when the gesture pauses, a few at a time so the page keeps responding.
-import { ArtItem, Box, isEmptyBox, Layer, Pt, unionBox } from '../model';
-import { PreparedLayer, prepareLayer, Run } from './prepare';
+// The view of the PCB viewer on a Canvas 2D. Every layer that is shown is drawn into its own canvas (paint.ts), and
+// the layer canvases are put together on screen: stacked with their opacity in the layer view, or as the board looks
+// in the realistic view (substrate, mask, copper, finish, silkscreen, holes). While the view is panned or zoomed, the
+// last frame is moved and scaled, and the layers are drawn again when the gesture pauses, a few at a time so the page
+// keeps responding. A press and release without moving is a click (or tap), for measuring.
+import { Box, Contour, isEmptyBox, Layer, Pt, Side, unionBox } from '../model';
+import { compositeLayers, compositeRealistic, Frame, freeSurface, newSurface, paintLayer, RealisticColors, RealisticInputs, recolor, sizeSurface, Surface } from './paint';
+import { PreparedLayer, prepareLayer, PreparedShape, prepareShape } from './prepare';
 
 export interface LayerStyle {
   visible: boolean;
@@ -19,27 +21,57 @@ export interface ViewState {
   cy: number;
 }
 
-interface LayerCanvas {
-  canvas: HTMLCanvasElement;
-  ctx: CanvasRenderingContext2D;
-  // The view and colour it was drawn with; null when it must be drawn again.
-  key: string | null;
+export type ViewMode = 'layers' | 'realistic';
+
+interface LayerCanvas extends Surface {
+  // The view it was drawn with, and its colour; viewKey null when it must be drawn again.
+  viewKey: string | null;
+  color: string | null;
 }
 
-const BACKGROUND = '#16181c';
+// The layers that make up one side in the realistic view.
+export interface SideLayers {
+  copper: Layer[];
+  mask: Layer[];
+  silk: Layer[];
+  holes: Layer[];
+}
+
+export const BACKGROUND = '#16181c';
 // After the last wheel or pointer movement, how long to wait before drawing the layers again.
 const SETTLE_MS = 200;
 // Time spent drawing layers before letting the browser show a frame.
 const SLICE_MS = 40;
-// The thinnest line drawn, in device pixels, so thin outlines stay visible when zoomed out.
-const MIN_LINE_PX = 0.8;
 const MIN_SCALE = 1e-3;
 const MAX_SCALE = 2e5;
+// How far a pointer may move (CSS px) and still click; beyond it, the press pans.
+const CLICK_SLOP_MOUSE = 4;
+const CLICK_SLOP_TOUCH = 10;
 
-function newCanvas(): LayerCanvas {
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  return { canvas, ctx, key: null };
+function newLayerCanvas(): LayerCanvas {
+  return { ...newSurface(), viewKey: null, color: null };
+}
+
+// Whether a drill layer reaches the outside of a side: blind and buried holes (X2 "Plated,1,2,…") only show on the
+// side whose copper layer they start or end at.
+function drillReaches(layer: Layer, side: Side, copperLayers: number): boolean {
+  const m = /^(?:Plated|NonPlated|MixedPlating),(\d+),(\d+)/i.exec(layer.attrs?.['.FileFunction'] ?? '');
+  if (!m) return true;
+  const from = Math.min(Number(m[1]), Number(m[2]));
+  const to = Math.max(Number(m[1]), Number(m[2]));
+  if (side === 'top') return from === 1;
+  return !copperLayers || to >= copperLayers;
+}
+
+// The layers of one side for the realistic view, chosen by kind and side only, so any board gets it.
+export function sideLayers(layers: Layer[], side: 'top' | 'bottom'): SideLayers {
+  const copperLayers = layers.filter((l) => l.kind === 'copper').length;
+  return {
+    copper: layers.filter((l) => l.kind === 'copper' && l.side === side),
+    mask: layers.filter((l) => l.kind === 'mask' && l.side === side),
+    silk: layers.filter((l) => l.kind === 'silk' && l.side === side),
+    holes: layers.filter((l) => l.kind === 'drill' && drillReaches(l, side, copperLayers)),
+  };
 }
 
 export class BoardView {
@@ -48,33 +80,64 @@ export class BoardView {
   private layers: Layer[] = [];
   // Paths of each layer, made the first time the layer is drawn (hidden layers never are). Keyed by the items, which
   // stay the same when the board is built again after adding files or changing a layer's type.
-  private prepared = new WeakMap<ArtItem[], PreparedLayer>();
+  private prepared = new WeakMap<object, PreparedLayer>();
   private styles = new Map<string, LayerStyle>();
   private order: string[] = [];
   private flipped = false;
+  private mode: ViewMode = 'layers';
+  private colors: RealisticColors | null = null;
+  private shape: PreparedShape | null = null;
   private view: ViewState = { scale: 1, cx: 0, cy: 0 };
   private width = 1;
   private height = 1;
   private dpr = 1;
   private layerCanvases = new Map<string, LayerCanvas>();
   // The last composited frame and the view it was drawn with, shown moved and scaled during gestures.
-  private frame = newCanvas();
+  private frame = newLayerCanvas();
   private frameView: ViewState | null = null;
   private frameFlipped = false;
-  private scratch = newCanvas();
+  private scratch = newSurface();
+  private temps: [Surface, Surface] = [newSurface(), newSurface()];
   private renderToken = 0;
+  private rendering = false;
   private settleTimer: number | null = null;
   private rafId: number | null = null;
+  private idleWaiters: (() => void)[] = [];
   private pointers = new Map<number, { x: number; y: number }>();
-  private gesture: { kind: 'pan' | 'pinch'; startView: ViewState; x: number; y: number; dist?: number } | null = null;
+  private gesture: { kind: 'pan' | 'pinch'; startView: ViewState; x: number; y: number; dist?: number; moving?: boolean } | null = null;
+  // A press that may still be a click: where it started, and with what.
+  private press: { id: number; x: number; y: number; type: string } | null = null;
   private resizeObserver: ResizeObserver;
   private disposed = false;
-  // Called with the board point under the mouse, or null when it leaves.
-  onCursor: ((p: Pt | null) => void) | null = null;
+  private cursorListeners = new Set<(p: Pt | null, pointerType: string) => void>();
+  private viewListeners = new Set<() => void>();
   // Called when drawing starts and ends, for a busy indicator.
   onBusy: ((busy: boolean) => void) | null = null;
+  // Called for a click or tap (press and release without moving), with the board point, the CSS point on the canvas
+  // and the pointer type ('mouse', 'touch' or 'pen').
+  onTap: ((p: Pt, css: { x: number; y: number }, pointerType: string) => void) | null = null;
   // Milliseconds the last full drawing took.
   lastDrawMs = 0;
+
+  // Listens to the board point under the mouse (or the first touch), null when it leaves. Returns the way to stop.
+  listenCursor(fn: (p: Pt | null, pointerType: string) => void): () => void {
+    this.cursorListeners.add(fn);
+    return () => this.cursorListeners.delete(fn);
+  }
+
+  // Listens to every change of the view: move, zoom, flip, resize (for overlays drawn over the canvas).
+  listenView(fn: () => void): () => void {
+    this.viewListeners.add(fn);
+    return () => this.viewListeners.delete(fn);
+  }
+
+  private emitCursor(p: Pt | null, pointerType = 'mouse') {
+    for (const fn of this.cursorListeners) fn(p, pointerType);
+  }
+
+  private emitView() {
+    for (const fn of this.viewListeners) fn();
+  }
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -84,7 +147,7 @@ export class BoardView {
     canvas.addEventListener('pointerdown', this.onPointerDown);
     canvas.addEventListener('pointermove', this.onPointerMove);
     canvas.addEventListener('pointerup', this.onPointerUp);
-    canvas.addEventListener('pointercancel', this.onPointerUp);
+    canvas.addEventListener('pointercancel', this.onPointerCancel);
     canvas.addEventListener('pointerleave', this.onPointerLeave);
     canvas.addEventListener('wheel', this.onWheel, { passive: false });
     canvas.addEventListener('keydown', this.onKeyDown);
@@ -97,17 +160,19 @@ export class BoardView {
     this.canvas.removeEventListener('pointerdown', this.onPointerDown);
     this.canvas.removeEventListener('pointermove', this.onPointerMove);
     this.canvas.removeEventListener('pointerup', this.onPointerUp);
-    this.canvas.removeEventListener('pointercancel', this.onPointerUp);
+    this.canvas.removeEventListener('pointercancel', this.onPointerCancel);
     this.canvas.removeEventListener('pointerleave', this.onPointerLeave);
     this.canvas.removeEventListener('wheel', this.onWheel);
     this.canvas.removeEventListener('keydown', this.onKeyDown);
     if (this.settleTimer !== null) clearTimeout(this.settleTimer);
     if (this.rafId !== null) cancelAnimationFrame(this.rafId);
     this.renderToken += 1;
-    for (const lc of this.layerCanvases.values()) lc.canvas.width = lc.canvas.height = 0;
+    for (const lc of this.layerCanvases.values()) freeSurface(lc);
     this.layerCanvases.clear();
-    this.frame.canvas.width = this.frame.canvas.height = 0;
-    this.scratch.canvas.width = this.scratch.canvas.height = 0;
+    freeSurface(this.frame);
+    freeSurface(this.scratch);
+    for (const t of this.temps) freeSurface(t);
+    this.resolveIdle();
   }
 
   // --- Content ---
@@ -117,36 +182,23 @@ export class BoardView {
     const ids = new Set(layers.map((l) => l.id));
     for (const [id, lc] of this.layerCanvases) {
       if (!ids.has(id)) {
-        lc.canvas.width = lc.canvas.height = 0;
+        freeSurface(lc);
         this.layerCanvases.delete(id);
       } else {
-        lc.key = null;
+        lc.viewKey = null;
       }
     }
     this.requestRender(0);
   }
 
+  // The board shape, for the realistic view.
+  setShape(contours: Contour[] | null | undefined) {
+    this.shape = contours?.length ? prepareShape(contours) : null;
+    this.requestRender(0);
+  }
+
   // Visibility, colour and opacity of each layer, and the order of the layers from the top of the list.
   setStyles(styles: Map<string, LayerStyle>, order: string[]) {
-    for (const [id, style] of styles) {
-      const old = this.styles.get(id);
-      const lc = this.layerCanvases.get(id);
-      if (!lc) continue;
-      if (!style.visible) {
-        // Hidden layers give their memory back.
-        lc.canvas.width = lc.canvas.height = 0;
-        this.layerCanvases.delete(id);
-      } else if (old && old.color !== style.color && lc.key) {
-        // A new colour: the layer canvas has one colour, so it is painted over in place.
-        lc.ctx.setTransform(1, 0, 0, 1, 0, 0);
-        lc.ctx.globalCompositeOperation = 'source-in';
-        lc.ctx.globalAlpha = 1;
-        lc.ctx.fillStyle = style.color;
-        lc.ctx.fillRect(0, 0, lc.canvas.width, lc.canvas.height);
-        lc.ctx.globalCompositeOperation = 'source-over';
-        lc.key = this.layerKey(id, style.color);
-      }
-    }
     this.styles = new Map(styles);
     this.order = order.slice();
     this.requestRender(0);
@@ -158,6 +210,18 @@ export class BoardView {
     this.flipped = flipped;
     this.invalidate();
     this.requestRender(0);
+    this.emitView();
+  }
+
+  // The layer view, or the realistic view with its colours.
+  setMode(mode: ViewMode, colors: RealisticColors | null) {
+    this.mode = mode;
+    this.colors = colors;
+    this.requestRender(0);
+  }
+
+  isFlipped(): boolean {
+    return this.flipped;
   }
 
   getView(): ViewState {
@@ -170,7 +234,7 @@ export class BoardView {
     return this.layers.filter((l) => this.styles.get(l.id)?.visible);
   }
 
-  private paths(layer: Layer): PreparedLayer {
+  paths(layer: Layer): PreparedLayer {
     let p = this.prepared.get(layer.items);
     if (!p) {
       p = prepareLayer(layer);
@@ -193,7 +257,29 @@ export class BoardView {
     return drawn.map((l) => (l.side !== 'none' ? sided[k++] : l));
   }
 
-  private contentBox(): Box | null {
+  // The layers of the side in view, for the realistic view.
+  sideLayers(): SideLayers {
+    return sideLayers(this.layers, this.flipped ? 'bottom' : 'top');
+  }
+
+  // The layers in the current picture: shown ones in the layer view; the side's in the realistic view, with the outline.
+  pictureLayers(): Layer[] {
+    if (this.mode === 'layers') return this.drawOrder().filter((l) => this.styles.get(l.id)?.visible);
+    const s = this.sideLayers();
+    return [...s.copper, ...s.mask, ...s.silk, ...s.holes, ...this.layers.filter((l) => l.kind === 'outline')];
+  }
+
+  // The layers drawn into canvases for the current picture, with their colours.
+  private drawnLayers(): { layer: Layer; color: string }[] {
+    const color = (l: Layer) => this.styles.get(l.id)?.color ?? '#ffffff';
+    if (this.mode === 'layers') return this.drawOrder().filter((l) => this.styles.get(l.id)?.visible).map((l) => ({ layer: l, color: color(l) }));
+    const s = this.sideLayers();
+    return [...s.copper, ...s.mask, ...s.silk, ...s.holes].map((l) => ({ layer: l, color: color(l) }));
+  }
+
+  // What the picture covers: the board shape in the realistic view, the shown layers in the layer view.
+  contentBox(): Box | null {
+    if (this.mode === 'realistic' && this.shape) return { ...this.shape.box };
     let box: Box | null = null;
     const layers = this.visibleLayers().length ? this.visibleLayers() : this.layers;
     for (const l of layers) {
@@ -241,9 +327,27 @@ export class BoardView {
     return this.toBoard(x * this.dpr, y * this.dpr);
   }
 
+  // A board point to CSS pixels of the canvas.
+  cssPoint(p: Pt): { x: number; y: number } {
+    const fx = this.flipped ? -1 : 1;
+    return { x: (this.width / 2 + (p.x - this.view.cx) * this.view.scale * fx) / this.dpr, y: (this.height / 2 - (p.y - this.view.cy) * this.view.scale) / this.dpr };
+  }
+
   // Millimetres per CSS pixel.
   get mmPerPixel(): number {
     return this.dpr / this.view.scale;
+  }
+
+  // The part of the board on screen, in board millimetres.
+  screenBox(): Box {
+    const hw = this.width / 2 / this.view.scale;
+    const hh = this.height / 2 / this.view.scale;
+    return { minX: this.view.cx - hw, minY: this.view.cy - hh, maxX: this.view.cx + hw, maxY: this.view.cy + hh };
+  }
+
+  // The frame of the canvas on screen.
+  screenFrame(): Frame {
+    return { scale: this.view.scale, cx: this.view.cx, cy: this.view.cy, flipped: this.flipped, width: this.width, height: this.height };
   }
 
   private setView(view: ViewState, settleMs: number) {
@@ -251,10 +355,11 @@ export class BoardView {
     this.invalidate();
     this.showMoved();
     this.requestRender(settleMs);
+    this.emitView();
   }
 
   private invalidate() {
-    for (const lc of this.layerCanvases.values()) lc.key = null;
+    for (const lc of this.layerCanvases.values()) lc.viewKey = null;
   }
 
   private resize() {
@@ -269,20 +374,20 @@ export class BoardView {
     this.canvas.width = w;
     this.canvas.height = h;
     for (const lc of this.layerCanvases.values()) {
-      lc.canvas.width = w;
-      lc.canvas.height = h;
-      lc.key = null;
+      sizeSurface(lc, w, h);
+      lc.viewKey = null;
     }
     this.frameView = null;
     if (first) this.fit();
     this.requestRender(0);
+    this.emitView();
   }
 
   // --- Drawing ---
 
-  private layerKey(id: string, color: string): string {
+  private viewKey(): string {
     const v = this.view;
-    return `${v.scale}|${v.cx}|${v.cy}|${this.flipped}|${this.width}x${this.height}|${color}|${id}`;
+    return `${v.scale}|${v.cx}|${v.cy}|${this.flipped}|${this.width}x${this.height}`;
   }
 
   // The last frame, moved and scaled to the current view.
@@ -319,25 +424,43 @@ export class BoardView {
     }, delayMs);
   }
 
-  // Draws every visible layer that is not up to date, a slice at a time, then composites them.
+  // Resolves when the picture on screen is up to date.
+  whenDrawn(): Promise<void> {
+    if (this.settleTimer === null && !this.rendering) return Promise.resolve();
+    return new Promise((resolve) => this.idleWaiters.push(resolve));
+  }
+
+  private resolveIdle() {
+    const waiters = this.idleWaiters;
+    this.idleWaiters = [];
+    for (const w of waiters) w();
+  }
+
+  // Draws every layer of the picture that is not up to date, a slice at a time, then puts them together.
   private async render() {
     if (this.disposed) return;
     const token = ++this.renderToken;
+    this.rendering = true;
     const start = performance.now();
     let sliceStart = start;
     let busy = false;
-    for (const layer of this.drawOrder()) {
-      const style = this.styles.get(layer.id);
-      if (!style?.visible) continue;
+    const key = this.viewKey();
+    const frame = this.screenFrame();
+    const jobs = this.drawnLayers();
+    for (const { layer, color } of jobs) {
       let lc = this.layerCanvases.get(layer.id);
       if (!lc) {
-        lc = newCanvas();
-        lc.canvas.width = this.width;
-        lc.canvas.height = this.height;
+        lc = newLayerCanvas();
         this.layerCanvases.set(layer.id, lc);
       }
-      const key = this.layerKey(layer.id, style.color);
-      if (lc.key === key) continue;
+      if (lc.viewKey === key) {
+        // Up to date, perhaps in another colour: painted over in place.
+        if (lc.color !== color) {
+          recolor(lc, color);
+          lc.color = color;
+        }
+        continue;
+      }
       if (performance.now() - sliceStart > SLICE_MS) {
         if (!busy) {
           busy = true;
@@ -346,41 +469,23 @@ export class BoardView {
         await new Promise((resolve) => requestAnimationFrame(resolve));
         if (token !== this.renderToken || this.disposed) {
           this.onBusy?.(false);
+          this.rendering = false;
           return;
         }
         sliceStart = performance.now();
       }
-      this.drawLayer(this.paths(layer), style, lc);
-      lc.key = key;
+      paintLayer(lc, this.paths(layer), color, frame, this.scratch);
+      lc.viewKey = key;
+      lc.color = color;
     }
-    this.composite();
-    this.lastDrawMs = performance.now() - start;
-    // For tests and curious users: how long the last drawing took, and how many there were.
-    this.canvas.dataset.drawMs = String(Math.round(this.lastDrawMs));
-    this.canvas.dataset.draws = String(Number(this.canvas.dataset.draws ?? 0) + 1);
-    if (busy) this.onBusy?.(false);
-  }
-
-  private composite() {
-    const f = this.frame;
-    if (f.canvas.width !== this.width || f.canvas.height !== this.height) {
-      f.canvas.width = this.width;
-      f.canvas.height = this.height;
+    // Layers not in the picture give their memory back.
+    const used = new Set(jobs.map((j) => j.layer.id));
+    for (const [id, lc] of this.layerCanvases) {
+      if (used.has(id)) continue;
+      freeSurface(lc);
+      this.layerCanvases.delete(id);
     }
-    const ctx = f.ctx;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = BACKGROUND;
-    ctx.fillRect(0, 0, this.width, this.height);
-    for (const layer of this.drawOrder()) {
-      const style = this.styles.get(layer.id);
-      const lc = this.layerCanvases.get(layer.id);
-      if (!style?.visible || !lc?.key) continue;
-      ctx.globalAlpha = style.opacity;
-      ctx.drawImage(lc.canvas, 0, 0);
-    }
-    ctx.globalAlpha = 1;
+    this.composite(this.frame, BACKGROUND);
     this.frameView = { ...this.view };
     this.frameFlipped = this.flipped;
     if (this.rafId !== null) {
@@ -390,108 +495,92 @@ export class BoardView {
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.ctx.globalAlpha = 1;
     this.ctx.globalCompositeOperation = 'copy';
-    this.ctx.drawImage(f.canvas, 0, 0);
+    this.ctx.drawImage(this.frame.canvas, 0, 0);
     this.ctx.globalCompositeOperation = 'source-over';
+    this.lastDrawMs = performance.now() - start;
+    // For tests and curious users: how long the last drawing took, and how many there were.
+    this.canvas.dataset.drawMs = String(Math.round(this.lastDrawMs));
+    this.canvas.dataset.draws = String(Number(this.canvas.dataset.draws ?? 0) + 1);
+    if (busy) this.onBusy?.(false);
+    this.rendering = false;
+    if (this.settleTimer === null) this.resolveIdle();
   }
 
-  // The transform from a layer's path coordinates (board mm relative to its origin) to device pixels.
-  private matrix(origin: Pt): [number, number, number, number, number, number] {
-    const s = this.view.scale;
-    const fx = this.flipped ? -1 : 1;
-    const a = s * fx;
-    const d = -s;
-    const e = this.width / 2 + (origin.x - this.view.cx) * a;
-    const f = this.height / 2 + (origin.y - this.view.cy) * d;
-    return [a, 0, 0, d, e, f];
+  // Puts the layer canvases together into `target` (screen size), over the background or transparent.
+  private composite(target: Surface, background: string | null) {
+    sizeSurface(target, this.width, this.height);
+    const canvasOf = (l: Layer) => this.layerCanvases.get(l.id)?.canvas;
+    if (this.mode === 'layers') {
+      const entries = this.drawOrder()
+        .filter((l) => this.styles.get(l.id)?.visible && this.layerCanvases.get(l.id)?.viewKey)
+        .map((l) => ({ canvas: canvasOf(l), opacity: this.styles.get(l.id).opacity }));
+      compositeLayers(target, entries, background);
+      return;
+    }
+    const s = this.sideLayers();
+    const pick = (ls: Layer[]) => ls.map(canvasOf).filter(Boolean);
+    compositeRealistic(target, { copper: pick(s.copper), mask: pick(s.mask), silk: pick(s.silk), holes: pick(s.holes) }, this.colors, this.shape, this.screenFrame(), this.temps, background);
   }
 
-  private drawLayer(pl: PreparedLayer, style: LayerStyle, lc: LayerCanvas) {
-    const ctx = lc.ctx;
-    if (lc.canvas.width !== this.width || lc.canvas.height !== this.height) {
-      lc.canvas.width = this.width;
-      lc.canvas.height = this.height;
-    }
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = 1;
-    ctx.clearRect(0, 0, this.width, this.height);
-    const m = this.matrix(pl.origin);
-    const minLine = MIN_LINE_PX / this.view.scale;
-    ctx.fillStyle = style.color;
-    ctx.strokeStyle = style.color;
-    ctx.lineJoin = 'round';
-    // The part of the board on screen, in the coordinates of the paths, to skip tiles that are not.
-    const halfW = this.width / 2 / this.view.scale;
-    const halfH = this.height / 2 / this.view.scale;
-    const vx = this.view.cx - pl.origin.x;
-    const vy = this.view.cy - pl.origin.y;
-    const pad = minLine;
-    for (const run of pl.runs) {
-      ctx.setTransform(...m);
-      ctx.globalCompositeOperation = run.dark ? 'source-over' : 'destination-out';
-      for (const tile of run.tiles) {
-        const t = tile.box;
-        if (t.maxX < vx - halfW - pad || t.minX > vx + halfW + pad || t.maxY < vy - halfH - pad || t.minY > vy + halfH + pad) continue;
-        if (tile.fill) ctx.fill(tile.fill);
-        for (const g of tile.strokes) {
-          ctx.lineWidth = Math.max(g.w, minLine);
-          ctx.lineCap = g.cap;
-          ctx.stroke(g.path);
-        }
-      }
-      if (run.separate.length) this.drawSeparate(pl, run, m, ctx, style.color);
-    }
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.globalCompositeOperation = 'source-over';
+  // The picture on screen as a new canvas, with or without the background.
+  async snapshot(transparent: boolean): Promise<HTMLCanvasElement> {
+    await this.whenDrawn();
+    const out = newSurface(this.width, this.height);
+    this.composite(out, transparent ? null : BACKGROUND);
+    return out.canvas;
   }
 
-  // Flashes whose apertures have holes that cannot be drawn with the non-zero rule: each is drawn into a scratch
-  // canvas, where its clear parts erase only its own solid parts, and then copied onto the layer.
-  private drawSeparate(pl: PreparedLayer, run: Run, m: [number, number, number, number, number, number], ctx: CanvasRenderingContext2D, color: string) {
-    const s = this.scratch;
-    if (s.canvas.width !== this.width || s.canvas.height !== this.height) {
-      s.canvas.width = this.width;
-      s.canvas.height = this.height;
-    }
-    const sctx = s.ctx;
-    sctx.fillStyle = color;
-    const [a, , , d, e, f] = m;
-    const scale = Math.abs(a);
-    for (const fl of run.separate) {
-      const x = a * fl.e + e;
-      const y = d * fl.f + f;
-      const r = fl.r * scale + 2;
-      if (x + r < 0 || y + r < 0 || x - r > this.width || y - r > this.height) continue;
-      const parts = pl.apertureParts.get(fl.ap);
-      if (!parts) continue;
-      if (r < 3) {
-        // A few pixels across: the holes do not show, so the solid parts are drawn directly.
-        ctx.setTransform(a * fl.a, d * fl.b, a * fl.c, d * fl.d, x, y);
-        for (const p of parts) if (p.dark) ctx.fill(p.path);
-        continue;
-      }
-      const x0 = Math.max(0, Math.floor(x - r));
-      const y0 = Math.max(0, Math.floor(y - r));
-      const x1 = Math.min(this.width, Math.ceil(x + r));
-      const y1 = Math.min(this.height, Math.ceil(y + r));
-      if (x1 <= x0 || y1 <= y0) continue;
-      sctx.setTransform(1, 0, 0, 1, 0, 0);
-      sctx.globalCompositeOperation = 'source-over';
-      sctx.clearRect(x0, y0, x1 - x0, y1 - y0);
-      sctx.setTransform(a * fl.a, d * fl.b, a * fl.c, d * fl.d, x, y);
-      for (const p of parts) {
-        sctx.globalCompositeOperation = p.dark ? 'source-over' : 'destination-out';
-        sctx.fill(p.path);
-      }
+  // Paints the current picture (mode, layers, colours, side) for any frame into `target`, with layer surfaces from
+  // `pool` (grown as needed), for exports. `pause` is awaited between layers; it may throw to stop.
+  async paintFrame(target: Surface, f: Frame, background: string | null, pool: Surface[], pause: () => Promise<void>): Promise<void> {
+    sizeSurface(target, f.width, f.height);
+    const surface = (i: number) => {
+      while (pool.length <= i) pool.push(newSurface());
+      sizeSurface(pool[i], f.width, f.height);
+      return pool[i];
+    };
+    const scratch = surface(0);
+    if (this.mode === 'layers') {
+      const ctx = target.ctx;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.drawImage(s.canvas, x0, y0, x1 - x0, y1 - y0, x0, y0, x1 - x0, y1 - y0);
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.clearRect(0, 0, f.width, f.height);
+      if (background) {
+        ctx.fillStyle = background;
+        ctx.fillRect(0, 0, f.width, f.height);
+      }
+      const layer = surface(1);
+      for (const l of this.drawOrder()) {
+        const style = this.styles.get(l.id);
+        if (!style?.visible) continue;
+        await pause();
+        paintLayer(layer, this.paths(l), style.color, f, scratch);
+        ctx.globalAlpha = style.opacity;
+        ctx.drawImage(layer.canvas, 0, 0);
+        ctx.globalAlpha = 1;
+      }
+      return;
     }
-    ctx.setTransform(...m);
+    const s = this.sideLayers();
+    let next = 3;
+    const draw = async (ls: Layer[]) => {
+      const out: HTMLCanvasElement[] = [];
+      for (const l of ls) {
+        await pause();
+        const sf = surface(next++);
+        paintLayer(sf, this.paths(l), this.styles.get(l.id)?.color ?? '#ffffff', f, scratch);
+        out.push(sf.canvas);
+      }
+      return out;
+    };
+    const input: RealisticInputs = { copper: await draw(s.copper), mask: await draw(s.mask), silk: await draw(s.silk), holes: await draw(s.holes) };
+    compositeRealistic(target, input, this.colors, this.shape, f, [surface(1), surface(2)], background);
   }
 
   // --- Input ---
 
-  private cssPoint(e: PointerEvent | WheelEvent): { x: number; y: number } {
+  private cssOf(e: PointerEvent | WheelEvent): { x: number; y: number } {
     const rect = this.canvas.getBoundingClientRect();
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   }
@@ -511,23 +600,32 @@ export class BoardView {
   private onPointerDown = (e: PointerEvent) => {
     if (e.pointerType === 'mouse' && e.button !== 0 && e.button !== 1) return;
     this.canvas.setPointerCapture(e.pointerId);
-    const p = this.cssPoint(e);
+    const p = this.cssOf(e);
     this.pointers.set(e.pointerId, p);
     // Touch screens have no hover: the point touched first shows its coordinates.
-    if (e.pointerType !== 'mouse' && this.pointers.size === 1) this.onCursor?.(this.boardPoint(p.x, p.y));
+    if (e.pointerType !== 'mouse' && this.pointers.size === 1) this.emitCursor(this.boardPoint(p.x, p.y), e.pointerType);
+    // The first pointer may click; a second one makes it a pinch.
+    this.press = this.pointers.size === 1 && e.button === 0 ? { id: e.pointerId, x: p.x, y: p.y, type: e.pointerType } : null;
     this.startGesture();
     e.preventDefault();
   };
 
   private onPointerMove = (e: PointerEvent) => {
-    const p = this.cssPoint(e);
-    if (e.pointerType === 'mouse') this.onCursor?.(this.boardPoint(p.x, p.y));
+    const p = this.cssOf(e);
+    if (e.pointerType === 'mouse') this.emitCursor(this.boardPoint(p.x, p.y));
     if (!this.pointers.has(e.pointerId)) return;
     this.pointers.set(e.pointerId, p);
     const g = this.gesture;
     if (!g) return;
     const fx = this.flipped ? -1 : 1;
     if (g.kind === 'pan') {
+      if (!g.moving) {
+        // A pan starts only past the click distance, so a click does not move the board.
+        const slop = e.pointerType === 'mouse' ? CLICK_SLOP_MOUSE : CLICK_SLOP_TOUCH;
+        if (Math.hypot(p.x - g.x, p.y - g.y) < slop) return;
+        g.moving = true;
+        this.press = null;
+      }
       const v = g.startView;
       this.setView({ scale: v.scale, cx: v.cx - ((p.x - g.x) * this.dpr) / (v.scale * fx), cy: v.cy + ((p.y - g.y) * this.dpr) / v.scale }, SETTLE_MS);
     } else if (this.pointers.size >= 2) {
@@ -545,25 +643,36 @@ export class BoardView {
 
   private onPointerUp = (e: PointerEvent) => {
     if (!this.pointers.has(e.pointerId)) return;
+    const press = this.press;
     this.pointers.delete(e.pointerId);
     if (this.canvas.hasPointerCapture(e.pointerId)) this.canvas.releasePointerCapture(e.pointerId);
+    if (press && press.id === e.pointerId && !this.pointers.size) {
+      this.press = null;
+      this.onTap?.(this.boardPoint(press.x, press.y), { x: press.x, y: press.y }, press.type);
+    }
     // From a pinch to a pan with the finger that is left, without a jump.
     this.startGesture();
+    if (this.gesture) this.gesture.moving = true;
     if (!this.pointers.size) this.requestRender(0);
   };
 
+  private onPointerCancel = (e: PointerEvent) => {
+    this.press = null;
+    this.onPointerUp(e);
+  };
+
   private onPointerLeave = (e: PointerEvent) => {
-    if (e.pointerType === 'mouse') this.onCursor?.(null);
+    if (e.pointerType === 'mouse') this.emitCursor(null);
   };
 
   private onWheel = (e: WheelEvent) => {
     e.preventDefault();
     const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1;
     const delta = e.deltaY * unit;
-    const at = this.cssPoint(e);
+    const at = this.cssOf(e);
     this.zoomBy(Math.exp(-delta * 0.0015), at);
     // The same point, now with the precision of the new zoom.
-    this.onCursor?.(this.boardPoint(at.x, at.y));
+    this.emitCursor(this.boardPoint(at.x, at.y));
   };
 
   private onKeyDown = (e: KeyboardEvent) => {
