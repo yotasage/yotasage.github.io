@@ -4,9 +4,11 @@
 import { gunzipSync } from 'fflate';
 
 export type FormatId =
-  | 'gerber' | 'gerber-job' | 'excellon' | 'zip' | 'kicad-pcb' | 'kicad-footprint'
+  | 'gerber' | 'gerber-job' | 'excellon' | 'zip' | 'kicad-pcb' | 'kicad-footprint' | 'altium-pcb' | 'altium-pcblib'
   // Read in later steps (docs/pcb-viewer-plan.md).
-  | 'altium-pcb' | 'altium-pcblib' | 'pads-ascii' | 'eagle-brd' | 'pnp-csv'
+  | 'pads-ascii' | 'eagle-brd' | 'pnp-csv'
+  // Not read.
+  | 'altium-pcblib-ascii'
   // Not read.
   | 'gerber-rs274d' | 'kicad-legacy' | 'pads-binary' | 'pads-library' | 'eagle-binary' | 'eagle-library' | 'allegro'
   | 'odb' | 'ipc2581' | 'ipcd356' | 'gedac' | 'diptrace' | 'easyeda' | 'protel-pcb' | 'archive-other'
@@ -96,6 +98,8 @@ function tarNames(tar: Uint8Array): string[] {
   return names;
 }
 
+const ALTIUM_LIBRARY = 'ASCII PCB libraries are not read. Save the library in binary form in Altium, or open a board (.PcbDoc) that uses its footprints.';
+
 const ODB_MESSAGE = 'ODB++ cannot be read: writing software for it needs membership of Siemens\' ODB++ Solutions Alliance. Export Gerber files instead.';
 
 export function isOdbPath(path: string): boolean {
@@ -125,8 +129,8 @@ function detectBinary(name: string, bytes: Uint8Array): Detected {
     return unsupported('archive-other', 'RAR archive', 'Only ZIP archives are opened. Extract this archive first.');
   }
   if (startsWithBytes(bytes, [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])) {
-    if (hasOleName(bytes, 'Board6')) return later('altium-pcb', 'Altium PCB (binary)');
-    if (hasOleName(bytes, 'ComponentParamsTOC') || hasOleName(bytes, 'PadViaLibrary')) return later('altium-pcblib', 'Altium PCB library');
+    if (hasOleName(bytes, 'Board6')) return { id: 'altium-pcb', name: 'Altium PCB (binary)', status: 'read' };
+    if (hasOleName(bytes, 'ComponentParamsTOC') || hasOleName(bytes, 'PadViaLibrary')) return { id: 'altium-pcblib', name: 'Altium PCB library', status: 'read' };
     if (latin1(bytes, 1 << 20).includes('Schematic Capture')) return ignored('schematic', 'Altium schematic', 'A schematic, not a board; ignored.');
     return ignored('binary', 'Compound document (Office or similar)');
   }
@@ -192,8 +196,8 @@ function detectText(name: string, text: string): Detected {
   if (/^PCBNEW-LibModule/.test(t)) return unsupported('kicad-legacy', 'KiCad footprint library (legacy)', 'Open it in KiCad and save the footprints as .kicad_mod.');
 
   // Altium ASCII
-  if (/^\|RECORD=Board\|/.test(t) || (/^\|RECORD=/.test(t) && ext === 'pcbdoc')) return later('altium-pcb', 'Altium PCB (ASCII)');
-  if (/^\|RECORD=/.test(t) && ext === 'pcblib') return later('altium-pcblib', 'Altium PCB library (ASCII)');
+  if (/^\|RECORD=Board\|/.test(t) || (/^\|RECORD=/.test(t) && ext === 'pcbdoc')) return { id: 'altium-pcb', name: 'Altium PCB (ASCII)', status: 'read' };
+  if (/^\|RECORD=/.test(t) && ext === 'pcblib') return unsupported('altium-pcblib-ascii', 'Altium PCB library (ASCII)', ALTIUM_LIBRARY);
   if (/^\|HEADER=Protel for Windows - Schematic/.test(t)) return ignored('schematic', 'Altium schematic', 'A schematic, not a board; ignored.');
   if (/^\[Design\]/.test(t) && /PrjPcb|ProjectVariant|OutputGroup/.test(head)) return ignored('project', 'Altium project');
 

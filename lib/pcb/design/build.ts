@@ -2,8 +2,9 @@
 // view, the realistic view, measuring and the exports work as for Gerber files. Pads and vias are flashes of
 // apertures (measuring snaps to their centres), tracks are lines and arcs, zones are their saved fill, mask and paste
 // openings are the shapes the reader made, and the holes go to drill layers: plated, non-plated, and one per span of
-// blind and buried vias. Board.objects gets an entry per pad, via, zone and component and one per net for tracks;
-// Board.placements gets the components.
+// blind and buried vias. Internal planes (negative) are the board shape in copper with clearances, thermal reliefs and
+// everything else on the layer cut out of it. Board.objects gets an entry per pad, via, zone, plane and component and
+// one per net for tracks; Board.placements gets the components.
 import { addItem, apertureBox, DEG } from '../geometry';
 import { compareLayers } from '../identify';
 import {
@@ -40,10 +41,10 @@ class LayerArt {
     return i;
   }
 
-  flash(at: Pt, shape: PadShape, rot: number, obj: number | undefined) {
+  flash(at: Pt, shape: PadShape, rot: number, obj: number | undefined, dark = true) {
     const ap = this.aperture(shape);
     if (!this.apertures[ap].parts.length) return;
-    this.items.push({ k: 'flash', at, ap, rot, mirror: 'none', scale: 1, dark: true, ...(obj !== undefined ? { obj } : {}) });
+    this.items.push({ k: 'flash', at, ap, rot, mirror: 'none', scale: 1, dark, ...(obj !== undefined ? { obj } : {}) });
   }
 }
 
@@ -63,6 +64,24 @@ function describeShape(s: PadShape): string {
 
 function round(v: number): string {
   return String(Math.round(v * 1e4) / 1e4);
+}
+
+// The air gap of a thermal relief as clear arcs between the spokes. An arc's round ends reach half the gap beyond
+// it, so each stops where the spoke's edge, half the gap away, is.
+function thermalItems(t: NonNullable<Design['planes']>[number]['thermals'][number], obj: number): ArtItem[] {
+  const r = t.d / 2 + t.gap / 2;
+  if (!(r > 0) || !(t.gap > 0)) return [];
+  if (t.spokes <= 0) return [{ k: 'arc', c: t.at, r, start: 0, sweep: 360, w: t.gap, dark: false, obj }];
+  const half = (t.width + t.gap) / 2;
+  if (half >= r) return [];
+  const alpha = Math.asin(half / r) / DEG;
+  const step = 360 / t.spokes;
+  const out: ArtItem[] = [];
+  for (let i = 0; i < t.spokes; i += 1) {
+    const sweep = step - 2 * alpha;
+    if (sweep > 0) out.push({ k: 'arc', c: t.at, r, start: t.angle + i * step + alpha, sweep, w: t.gap, dark: false, obj });
+  }
+  return out;
 }
 
 const SLICE_MS = 30;
@@ -181,6 +200,8 @@ export async function buildDesignBoard(design: Design, o: BuildOptions): Promise
   }
 
   // Drill layers.
+  const maskTop = design.layers.find((l) => l.kind === 'mask' && l.side === 'top')?.id;
+  const maskBottom = design.layers.find((l) => l.kind === 'mask' && l.side === 'bottom')?.id;
   const copperLayers = design.layers.filter((l) => l.kind === 'copper');
   const copperCount = copperLayers.length;
   const copperNumber = (id: string) => byId.get(id)?.copper ?? 0;
@@ -222,8 +243,8 @@ export async function buildDesignBoard(design: Design, o: BuildOptions): Promise
     if (v.mask) {
       const d = v.d + 2 * v.mask.margin;
       if (d > 0) {
-        if (v.mask.top) get('F.Mask')?.flash(v.at, { k: 'circle', w: d, h: d }, 0, obj);
-        if (v.mask.bottom) get('B.Mask')?.flash(v.at, { k: 'circle', w: d, h: d }, 0, obj);
+        if (v.mask.top && maskTop) get(maskTop)?.flash(v.at, { k: 'circle', w: d, h: d }, 0, obj);
+        if (v.mask.bottom && maskBottom) get(maskBottom)?.flash(v.at, { k: 'circle', w: d, h: d }, 0, obj);
       }
     }
     if (v.drill > 0) {
@@ -288,16 +309,21 @@ export async function buildDesignBoard(design: Design, o: BuildOptions): Promise
   }
 
   // The layers: items with knockout text first, the box around them, and only layers that have something on them
-  // (copper and mask layers stay: the realistic view needs to know there is a mask).
+  // (copper and mask layers stay: the realistic view needs to know there is a mask). Planes come after the board
+  // shape is known.
+  const planeLayers = new Set((design.planes ?? []).map((p) => p.layer));
   const layers: Layer[] = [];
-  for (const a of art.values()) {
-    const items = a.knockout.length ? [...a.knockout, ...a.items] : a.items;
-    const keep = items.length || a.layer.kind === 'copper' || a.layer.kind === 'mask';
-    if (!keep) continue;
+  const finish = (a: LayerArt, items: ArtItem[]) => {
     const boxes = a.apertures.map(apertureBox);
     const bbox = emptyBox();
     for (const item of items) addItem(bbox, item, boxes);
     layers.push({ ...a.layer, items, apertures: a.apertures, bbox });
+  };
+  for (const a of art.values()) {
+    if (planeLayers.has(a.layer.id)) continue;
+    const items = a.knockout.length ? [...a.knockout, ...a.items] : a.items;
+    const keep = items.length || a.layer.kind === 'copper' || a.layer.kind === 'mask';
+    if (keep) finish(a, items);
   }
   layers.sort(compareLayers);
 
@@ -313,6 +339,30 @@ export async function buildDesignBoard(design: Design, o: BuildOptions): Promise
       warnings.push(...shape.warnings);
     }
   }
+
+  // Internal planes: the board shape in copper, kept back from its edges; then the clearances, the air gaps of the
+  // thermal reliefs and everything else drawn on the layer, all cut out of it.
+  (design.planes ?? []).forEach((plane, index) => {
+    const a = get(plane.layer);
+    if (!a) return;
+    const obj = objects.push({
+      kind: 'plane', ...(netName(plane.net) ? { net: netName(plane.net) } : {}),
+      info: { layer: a.layer.name }, design: { list: 'planes', index },
+    }) - 1;
+    const own = [...a.knockout, ...a.items];
+    a.items = [];
+    if (outline?.length) {
+      a.items.push({ k: 'region', contours: outline, dark: true, obj });
+      if (plane.pullback > 0) {
+        for (const c of outline) a.items.push(...graphicItems({ layer: '', shape: { poly: c }, w: 2 * plane.pullback, filled: false }, obj, dash).map((i) => ({ ...i, dark: false })));
+      }
+    }
+    for (const c of plane.clearances) if (c.d > 0) a.flash(c.at, { k: 'circle', w: c.d, h: c.d }, 0, obj, false);
+    for (const t of plane.thermals) a.items.push(...thermalItems(t, obj));
+    for (const item of own) a.items.push(item.dark ? { ...item, dark: false } : item);
+    finish(a, a.items);
+  });
+  layers.sort(compareLayers);
 
   const placements: Placement[] = design.components.map((c) => ({
     ref: c.ref, value: c.value, footprint: c.footprint, at: c.at, rot: c.rot, side: c.side,

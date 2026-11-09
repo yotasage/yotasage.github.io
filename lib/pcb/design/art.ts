@@ -154,6 +154,9 @@ export function graphicItems(g: DesignGraphic, obj: number | undefined, dash: Da
   } else if ('poly' in s) {
     if (g.filled) out.push({ k: 'region', contours: [counterClockwise(s.poly)], dark: true, ...(obj !== undefined ? { obj } : {}) });
     if (dashes || w > 0) strokeContour(s.poly, w, obj, out, dashes);
+  } else if ('region' in s) {
+    if (g.filled) out.push({ k: 'region', contours: s.region, dark: true, ...(obj !== undefined ? { obj } : {}) });
+    if (dashes || w > 0) for (const c of s.region) strokeContour(c, w, obj, out, dashes);
   } else if ('curve' in s) {
     const pts = bezier(...s.curve);
     for (let i = 1; i < pts.length; i += 1) {
@@ -182,7 +185,7 @@ function boxContour(minX: number, minY: number, maxX: number, maxY: number, ox: 
 export function textItems(t: DesignText, obj: number | undefined): ArtItem[] {
   const out: ArtItem[] = [];
   const o = obj !== undefined ? { obj } : {};
-  const margin = knockoutMargin(t.h * NM);
+  const margin = t.knockoutMargin !== undefined ? t.knockoutMargin * NM : knockoutMargin(t.h * NM);
   if (t.outline?.length) {
     if (t.knockout) {
       // The box around the outlines in the text's own frame.

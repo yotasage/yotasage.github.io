@@ -644,7 +644,7 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
           <p className={qrStyles.help}>
             {board?.design
               ? 'The board is drawn from its design file. Adding another design file shows that one instead; Gerber and drill files are not added to a design.'
-              : 'Add files adds layers to this board; drop files or folders on the page to do the same. A design file (KiCad) replaces the board.'}
+              : 'Add files adds layers to this board; drop files or folders on the page to do the same. A design file (KiCad, Altium) replaces the board.'}
           </p>
         </Card>
 

@@ -29,7 +29,9 @@ export default function AssemblyCard({ board }: { board: Board }) {
   const bom = React.useMemo(() => bomCsv(board, o), [board, leaveOutDnp]);
   const name = safeFileName(board.name, 'board');
   const options: [PlaceOrigin, string][] = [['file', 'The file’s origin']];
-  if (place) options.push(['place', `The drill/place file origin (${mm(place.x)}, ${mm(place.y)} mm)`]);
+  // KiCad's drill/place file origin, Altium's board origin (Edit → Origin).
+  const placeName = board.source === 'altium' ? 'The board origin' : 'The drill/place file origin';
+  if (place) options.push(['place', `${placeName} (${mm(place.x)}, ${mm(place.y)} mm)`]);
   if (corner) options.push(['board', `The bottom-left corner of the board (${mm(corner.x)}, ${mm(corner.y)} mm)`]);
   return (
     <>

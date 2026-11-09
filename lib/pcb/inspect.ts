@@ -410,6 +410,16 @@ function describeDesign(board: Board, hit: InspectHit, obj: BoardObject, item: A
     rows.push(['Found on', `${ITEM_NAMES[item.k].toLowerCase()} on ${layerList(hit)}`]);
     return { title: `Component ${p?.ref ?? obj.component ?? ''}`.trim(), rows, component: { ref: p?.ref ?? obj.component ?? '', index: d.index } };
   }
+  if (d?.list === 'planes') {
+    const plane = design.planes?.[d.index];
+    netRow();
+    rows.push(['Layer', layerList(hit)], ['Plane', 'The board shape in copper, with clearances and thermal reliefs cut out (negative)']);
+    if (plane) {
+      if (plane.pullback > 0) rows.push(['Kept from the edge', formatLength(plane.pullback, units)]);
+      rows.push(['Clearances', count(plane.clearances.length, 'hole')], ['Thermal reliefs', count(plane.thermals.length, 'hole')]);
+    }
+    return { title: 'Internal plane', rows, net };
+  }
   // Tracks, board graphics and board text: one object per net, so the item says the rest.
   if (obj.kind === 'track') {
     netRow();

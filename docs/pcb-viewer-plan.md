@@ -33,7 +33,7 @@ made for the owner and public for anyone, as is.
 | ZIP archives | Of any of these files | S1 |
 | Excellon drill | Including files without a header (format guessed, user can correct it) | S2 |
 | KiCad `.kicad_pcb` (KiCad 4 to 10), `.kicad_mod` | | S3 |
-| Altium `.PcbDoc` (binary and ASCII) | Through `altiumts`; `.PcbLib` if its decoders allow, else [BL1](BACKLOG.md) | S5 |
+| Altium `.PcbDoc` (binary and ASCII), binary `.PcbLib` | Through `altiumts` (S5); ASCII `.PcbLib` is not read | S5 |
 | PADS ASCII (`.asc`) | PowerPCB V4.0 to current | S6 |
 | EAGLE `.brd` (XML, EAGLE 6 to 9, Fusion exports) | | S7 |
 | Pick-and-place CSV over a Gerber set | KiCad, Altium, JLC, other by column mapping | S8 |
@@ -69,9 +69,9 @@ On the owner's machine. Read them where they are; never copy them into the repo 
 | PADS binary | `…\DC2637A-1_post\DC2637A-1.PCB` | Same design, closed format (`DC2637A-1.txt` is a byte-identical copy) |
 | PADS Gerbers | `…\DC2637A-1_post\DC2637A-1-GBR.ZIP` | From the same design: RS-274X `.pho` (L1–L4, TS/TM/TP, BS/BM/BP, FAB), `.rep` reports, `DRILL.drl` without a header (inch) |
 | PADS prints, BOM | `…\DC2637A-1_post\DC2637A-1-PDF.ZIP`, `DC2637A-1.XLSX` | References |
-| Altium ASCII | `C:\Users\Jonat\Downloads\Altium_KERALA_GF130_2026-06-27\KERALA_GF130\v1\PCB1.pcbdoc` | ASCII PcbDoc: 2,420 tracks, 376 pads, 714 regions, 5 polygons, 129 components |
-| Altium binary | `…\KERALA_GF130\v2\PCB1_1.pcbdoc` | Binary PcbDoc: 2,580 tracks, 398 pads, 731 regions, 135 components, 35 rules; text in stroke font and Arial, Arial embedded; no 3D bodies |
-| Altium library | `…\KERALA_GF130\v2\PCB1_1.PcbLib` | One footprint (QFN48_7x7); `altiumts` 0.0.95 rejects it |
+| Altium ASCII | `C:\Users\Jonat\Downloads\Altium_KERALA_GF130_2026-06-27\KERALA_GF130\v1\PCB1.pcbdoc` | ASCII PcbDoc written by EasyEDA (`gge` ids, the board record in 11 parts on one line, no rules, no text boxes): 2,420 tracks, 376 pads, 714 regions, 5 polygons (not poured), 129 components; an earlier revision of v2. `kicad-cli pcb import` cannot read it |
+| Altium binary | `…\KERALA_GF130\v2\PCB1_1.pcbdoc` | Binary PcbDoc (v1 opened and saved by Altium 20 or later): 2,580 tracks, 398 pads, 731 regions, 135 components, 35 rules; text in stroke font and Arial, Arial embedded; 5 polygons not poured; no planes, fills, rounded or octagonal pads, pad or via stacks, inverted text or 3D bodies |
+| Altium library | `…\KERALA_GF130\v2\PCB1_1.PcbLib` | One footprint (QFN48_7x7, 41 pads); `altiumts` 0.0.95's `parseAltiumFile` rejects it, its primitive decoders read it record by record (S5) |
 | Altium print | `C:\Users\Jonat\Downloads\Altium_KERALA_GF130_2026-06-27\PCB1_1.pdf` | Altium's own print of the v2 board |
 | KiCad demos | `C:\Program Files\KiCad\10.0\share\kicad\demos\` | Many boards; `jetson-agx-thor-baseboard` is the large one for speed tests |
 | KiCad 4 to 8 boards | `https://gitlab.com/kicad/code/kicad/-/raw/<tag>/demos/<demo>/<demo>.kicad_pcb` | The same demos as saved by the releases 4.0.7, 5.1.12, 6.0.11, 7.0.11 and 8.0.9 (file versions 3, 4, 20171130, 20210722, 20211014, 20221018, 20240108); S3 kept them in its scratch folder |
@@ -100,9 +100,9 @@ folder, never next to the test files.
 | Points | `lib/pcb/points.ts` | Pad and hole centres and line ends per layer in a grid index: measuring snaps to them, drill formats are fitted to them |
 | Hits | `lib/pcb/hits.ts` | What lies under a point of a layer (S4): a grid index of the items per layer, built on the first click on the layer, and the distance from a point to each kind of item |
 | Inspecting | `lib/pcb/inspect.ts` | What a click is on across the layers of the picture (one entry per object), its description, the lists of components and nets, and the items of a highlighted net or component on every layer (S4); only from `Board.objects`, `Board.placements` and the layers, with `Board.design` for pad shapes, holes and margins |
-| Design → layers | `lib/pcb/design/` | Shared by all design formats (S3): `build.ts` the `Design` into a `Board`, `pads.ts` pad shapes as aperture parts and grown or shrunk for mask and paste, `art.ts` graphics (dashes too) and text as items, `outline.ts` the board shape from outline graphics, `overrides.ts` the user's layer types on a design's board, `open.ts` the entry loaded with `await import` when a design file is opened |
+| Design → layers | `lib/pcb/design/` | Shared by all design formats (S3): `build.ts` the `Design` into a `Board` (S5: negative planes), `pads.ts` pad shapes as aperture parts and grown or shrunk for mask and paste, `art.ts` graphics (dashes too) and text as items, `outline.ts` the board shape from outline graphics, `overrides.ts` the user's layer types on a design's board, `open.ts` the entry loaded with `await import` when a design file is opened |
 | Stroke font | `lib/pcb/font/` | Newstroke (S3): `newstroke-glyphs.ts` generated from the font author's own CC0 release (see Libraries), `stroke.ts` layout adapted from KiCanvas, `LICENSE.kicanvas.txt` and `LICENSE.newstroke.txt` (read by `scripts/collect-licenses.mjs` for `/licenses`) |
-| Design formats | `lib/pcb/kicad/` (S3: `sexpr.ts` reader, `layers.ts` layer names and wildcards, `board.ts` boards and footprints), `lib/pcb/altium/`, `lib/pcb/pads/`, `lib/pcb/eagle/` | Each produces a `Design` |
+| Design formats | `lib/pcb/kicad/` (S3: `sexpr.ts` reader, `layers.ts` layer names and wildcards, `board.ts` boards and footprints), `lib/pcb/altium/` (S5: `board.ts` boards and libraries through `altiumts`, `records.ts` fields, lengths, text and contours, `layers.ts` layer names and the stack, `rules.ts` rule scopes and the mask, paste and plane rules, `text.ts` text placement), `lib/pcb/pads/`, `lib/pcb/eagle/` | Each produces a `Design` |
 | Drawing | `lib/pcb/render/` | Layer view and realistic view on Canvas 2D: `prepare.ts` paths, `paint.ts` a layer into a canvas and the two ways of compositing (shared with the PNG export), `view.ts` canvas, gestures, clicks and modes, `colors.ts` default and realistic colours |
 | Exports | `lib/pcb/export/` | `png.ts`, `svg.ts` (S2); `csv.ts` BOM and pick-and-place (S4); PDF, DXF, KiCad later |
 
@@ -117,7 +117,8 @@ file among those opened and reads it through `design/open.ts`; the board made fr
 S1 wrote the artwork part (in `lib/pcb/model.ts`, as below; S2 added `outlineFrom`, the `'format'` way of identifying
 a layer, and drill layers with plated and non-plated holes), S3 wrote the design part (and `Board.design`, the
 `design` link of `BoardObject`, and `attrs` and `fields` of `Placement`), S4 added `Aperture.code` and
-`Design.placeOrigin`. Names and fields may change. Keep this section in step with the code.
+`Design.placeOrigin`, S5 added `Design.planes`, graphics with holes (`region`) and `knockoutMargin` of texts. Names and
+fields may change. Keep this section in step with the code.
 
 ```ts
 // Units: millimetres. Y up (KiCad's Y is negated on reading). Angles: degrees, counter-clockwise from +X.
@@ -163,10 +164,11 @@ interface Layer {
   items: ArtItem[]; apertures: Aperture[]; bbox: Box;
 }
 
-// Design boards: one object per pad, via, zone ('zone', 'teardrop', 'rule area') and component (its graphics and text
-// too), with `design` pointing at the entry; one per net for tracks, one per net for board graphics, one for board text.
+// Design boards: one object per pad, via, zone ('zone', 'teardrop', 'rule area'), internal plane ('plane') and
+// component (its graphics and text too), with `design` pointing at the entry; one per net for tracks, one per net for
+// board graphics, one for board text.
 interface BoardObject { kind: string; net?: string; component?: string; pin?: string; info?: Record<string, string>;
-  design?: { list: 'pads' | 'vias' | 'zones' | 'components' | 'tracks' | 'graphics' | 'texts'; index: number } }
+  design?: { list: 'pads' | 'vias' | 'zones' | 'components' | 'tracks' | 'graphics' | 'texts' | 'planes'; index: number } }
 // at, rot and side as KiCad's position files give them (lib/pcb/export/csv.ts writes them so): the footprint origin,
 // Y up; rot counter-clockwise, for a bottom part the angle of the footprint flipped about its own X axis (Y negated)
 // and then turned, as KiCad stores it; X is not negated on the bottom.
@@ -193,8 +195,10 @@ interface Board {
 // component's items already placed), mm, Y up, angles counter-clockwise.
 interface Design {
   format: string;                    // e.g. "KiCad 9 (format 20241229)"
-  layers: { id: string; name: string; kind: LayerKind; side: Side; copper?: number; plane?: boolean;
-    label?: string }[];              // KiCad: id is the canonical name ("In2.Cu"), name the user's ("GND1.Cu")
+  layers: { id: string; name: string; kind: LayerKind; side: Side; copper?: number;
+    plane?: boolean;                 // negative: the board shape in copper with everything on the layer cut out
+    label?: string }[];              // KiCad: id is the canonical name ("In2.Cu"), name the user's ("GND1.Cu");
+                                     // Altium: TOP, MID1, PLANE1, TOPOVERLAY… and the stack's names ("GND (1)")
   nets: string[];
   outline: Contour[];                // empty: the builder falls back to boardShape (the copper's rectangle)
   components: { ref: string; value: string; footprint: string; at: Pt; rot: number; side: 'top' | 'bottom';
@@ -217,7 +221,8 @@ interface Design {
     stroke?: number;                 // older KiCad: the fill is also stroked with this width
     keepout?: boolean; unfilled?: boolean; teardrop?: boolean; comp?: number; priority?: number }[];
   graphics: { layer: string; shape: { line: [Pt, Pt] } | { arc: { c: Pt; r: number; start: number; sweep: number } }
-    | { circle: { c: Pt; r: number } } | { poly: Contour } | { curve: [Pt, Pt, Pt, Pt] };   // curve: cubic Bézier
+    | { circle: { c: Pt; r: number } } | { poly: Contour } | { region: Contour[] }   // region: holes clockwise
+    | { curve: [Pt, Pt, Pt, Pt] };   // curve: cubic Bézier
     w: number; filled: boolean; dash?: 'dash' | 'dot' | 'dash_dot' | 'dash_dot_dot'; comp?: number; net?: number }[];
   texts: { layer: string; s: string;   // variables already replaced; KiCad's markup ^{…} _{…} ~{…} kept
     at: Pt; rot: number;             // anchor and angle as drawn (keep-upright applied)
@@ -226,11 +231,18 @@ interface Design {
     italic?: boolean; bold?: boolean; lineSpacing?: number;
     font?: string;                   // a TrueType face; the stroke font stands in…
     outline?: Contour[];             // …unless the file stores the glyph outlines (KiCad's render cache), on the board
-    knockout?: boolean; wrap?: number;   // wrap: a text box's column width
+    knockout?: boolean; knockoutMargin?: number;   // the box around the letters (default: a ninth of h)
+    wrap?: number;                   // a text box's column width
     comp?: number; role?: string }[];    // role: 'reference', 'value', 'user', 'field'
   holes: { at: Pt; d: number; slot?: { w: number; h: number; rot: number }; plated: boolean }[];
+  // Negative planes (S5): the net, the distance kept from the board edge, round clearances around holes that pass
+  // through without connecting, and thermal reliefs (a ring of width gap from diameter d out, interrupted by `spokes`
+  // copper spokes of width `width`, the first at `angle`). Pads and vias do not list plane layers.
+  planes?: { layer: string; net: number; pullback: number; clearances: { at: Pt; d: number }[];
+    thermals: { at: Pt; d: number; gap: number; spokes: number; width: number; angle: number }[] }[];
   stackup?: Stackup;
-  placeOrigin?: Pt;                  // origin of drill and placement files (KiCad's aux_axis_origin; Altium: board origin)
+  placeOrigin?: Pt;                  // origin of drill and placement files (KiCad's aux_axis_origin; Altium's board
+                                     // origin, ORIGINX/ORIGINY)
   dash?: { dash: number; gap: number };  // dash and gap lengths in line widths (KiCad: 12 and 3)
   warnings: string[];
 }
@@ -314,16 +326,18 @@ As built in S4:
 | Library | Use | Licence | Status |
 | --- | --- | --- | --- |
 | `fflate` | ZIP | MIT | Already a dependency |
-| `altiumts` (exact version) | Altium | MIT; dependencies `cfb`, `adler-32`, `crc-32` (Apache-2.0), `transformation-matrix` (MIT) | Added in S5 |
+| `altiumts` 0.0.95 (exact version) | Altium | MIT; dependencies `cfb` 1.2.2, `adler-32` 1.3.1, `crc-32` 1.2.2 (Apache-2.0), `transformation-matrix` 2.16.1 (MIT), `fflate` (MIT, already a dependency); no install scripts | Added in S5. It declares `typescript ^5` as a peer dependency (only its build needs it), so `package.json` has `"overrides": { "altiumts": { "typescript": "$typescript" } }` for npm to install it with the site's TypeScript 7 (`npm ci` too). Loaded by `await import('altiumts')` in `lib/pcb/altium/board.ts`: a chunk of its own (277 kB minified) that only opening an Altium file loads. `/licenses` lists it and its dependencies (the import scanner finds dynamic imports) |
 | `@cantoo/pdf-lib` | PDF export | MIT | Already a dependency |
 | Newstroke font, and KiCanvas's stroke font code | Text of design files | Font: CC0 1.0 (the README of the author's distribution: "Now released under CC0 licence, to give it right to be used in any project."); KiCanvas: MIT | Added in S3: the layout in `stroke.ts` adapted from KiCanvas commit b031159 (metrics corrected to KiCad 10). `lib/pcb/font/newstroke-glyphs.ts` is generated by a converter of our own (not in the repository; it follows the encoding of the author's `fontconv.awk`) from `symbol.lib`, `font.lib` and `charlist.txt` of the author's `newstroke-font.tgz` (https://vovanium.ru/_media/sledy/newstroke/newstroke-font.tgz, linked from https://vovanium.ru/sledy/newstroke/en; retrieved 2026-11-09, SHA-256 `dba1c334834e21bdbd15395dc610ecc2bf2eb6675ba0c4585597b375b7bd099e`). It replaced KiCanvas's copy of the glyphs, which came from KiCad's `newstroke_font.cpp` with KiCad's GPL-2.0-or-later header (KiCad's `LICENSE.README` does not list Newstroke, and its catch-all is GPL-3.0-or-later) and CJK glyphs under MIT and OFL-1.1. Never take glyphs from KiCad or KiCanvas: KiCanvas's `third_party/newstroke/` is KiCad's extended copy (another `font.lib` and `charlist.txt`, CJK libraries), not the author's release. The licence texts are in `lib/pcb/font/LICENSE.kicanvas.txt` and `LICENSE.newstroke.txt`; `scripts/collect-licenses.mjs` puts both on `/licenses` ("Font and code used by the PCB viewer") |
 | Polygon booleans | Only if a step needs them (PDF/DXF flattening, EAGLE pours) | Must be permissive (e.g. a Clipper port under the Boost licence) | The first step that needs it chooses and records it here |
 
 - **`altiumts` is ESM only,** so it is loaded with `await import('altiumts')` (CLAUDE.md, `"module": "node16"`), and
-  only when an Altium file is opened. Version 0.0.95 reads both sample boards: the ASCII one in 59 ms and the binary one
-  in 172 ms, with counts that match the file's own headers.
-- **`altiumts` limits:** it does not read `PCB1_1.PcbLib`. Its own SVG writer puts a U+0001 character from a text
-  record into its output, so strings from it must be cleaned.
+  only when an Altium file is opened; its types come with `import type … with { 'resolution-mode': 'import' }`.
+  Version 0.0.95 reads both sample boards: the ASCII one in 59 ms and the binary one in 172 ms, with counts that match
+  the file's own headers.
+- **`altiumts` limits** (worked around in `lib/pcb/altium/`, see "Notes from S5"): `parseAltiumFile` does not read
+  `.PcbLib`; binary vias come with their basic fields only; an ASCII board record split into several gives an empty
+  layer stack; binary regions come twice; strings keep control characters (U+0001).
 
 ## Steps
 
@@ -336,8 +350,8 @@ Status: ✅ done · 🔄 in progress · 📋 planned
 | S1 | Viewer shell and Gerber | ✅ | 7f75723 |
 | S2 | Drill files, realistic view, measuring, PNG and SVG export | ✅ | bf8c4ef |
 | S3 | KiCad boards and footprints, design model, stroke font | ✅ | c679764 |
-| S4 | Inspect, highlight, search; BOM and pick-and-place export | ✅ | |
-| S5 | Altium | 📋 | |
+| S4 | Inspect, highlight, search; BOM and pick-and-place export | ✅ | fc5432d |
+| S5 | Altium | ✅ | |
 | S6 | PADS ASCII | 📋 | |
 | S7 | EAGLE | 📋 | |
 | S8 | PDF and DXF export; pick-and-place CSV over Gerbers | 📋 | |
@@ -753,6 +767,107 @@ are recognised and listed but drawn in S2.
 - both sample boards look like Altium's own print `PCB1_1.pdf`, and like KiCad's import
   (`kicad-cli pcb import --format altium`, then `pcb export svg`);
 - components and nets can be inspected, and the BOM and pick-and-place exports work.
+
+**Notes from S5:**
+
+- **Reading** (`lib/pcb/altium/`): altiumts parses the file (binary CFB or ASCII) and the reader works on each record's
+  fields, the same for both forms: lengths in mil (`4249.4417mil`; bare numbers are mil too), angles counter-clockwise
+  and Y up, so only the unit changes; indices of nets, components and polygons (65535, -1 or missing: none); every
+  `Board` record merged into one (EasyEDA's ASCII file splits it into 11). Reading takes 195 ms for v2 (altiumts 170 ms
+  of it) and 110 ms for v1; building 8–20 ms.
+- **Layers** (`layers.ts`): copper order from the V9 stack (or the V8 list), else the legacy chain (`LAYERnNEXT` from
+  the top layer); the designer's names ("GND (1)", "Top Silkscreen Layer"); mechanical layers 1–32 that hold something,
+  labelled with their names; the keep-out layer as a `keepout` layer; a `BOARDSHAPE` outline layer draws the board shape
+  (0.05 mm, as KiCad's import does on Edge.Cuts). Records name layers TOP, MID1, BOTTOM…, binary primitives MID-LAYER2
+  and V7 ids (`LAYER16973830`); all are normalised. Objects on copper layers outside the stack are left out with a note.
+- **Pads:** a shape per layer (top, mid, bottom and the full stack: `MIDXSIZE` for mid layer 1, `LAYERnXSIZE` for 2–30);
+  ROUND with unequal sides is an oval, OCTAGONAL a rectangle with a quarter of the shorter side cut off each corner (as
+  KiCad imports it), the alternative shape ROUNDRECT has a radius of `LAYERnCORNERRADIUS` % × the shorter side / 200;
+  hole offsets (`LAYERnHOLEXOFFSET`, `PADXOFFSETn`) are the copper's offset from the hole; holes round, square (drawn
+  round, with a note) or slots (`SLOTLENGTH` or `HOLEWIDTH`, along the pad's X at slot rotation 0, else along Y); a
+  through-hole pad has copper on every signal layer, never on a plane. Openings are made as Altium makes them: the same
+  shape grown (rectangles keep sharp corners, rounded corners grow by the expansion, octagon cuts by e(2 − √2)), unlike
+  KiCad's rounded growth (`growShape`); solder mask from the pad's manual expansion (`SOLDERMASKEXPANSION_MANUAL` or
+  `CSE`, `CSB`) or the SolderMaskExpansion rule (default 4 mil), none where tented; paste on SMD pads only, manual
+  (EasyEDA's −3937 mil means no paste; its paste openings are regions) or the PasteMaskExpansion rule. PcbDoc files
+  keep no pin names.
+- **Rules** (`rules.ts`): the first enabled rule of a kind (by priority) whose first scope matches. Scopes are parsed:
+  All, IsPad, IsVia, IsSMDPad, InNet, InNetClass (net classes from `Class` records), InComponent, HasFootprint,
+  OnLayer, InPad…, with and, or, not; an unknown word or a comparison (`CompPinCount < 5`) keeps a rule from applying,
+  with a note, so a broader one does.
+- **Vias:** through, blind or buried from their start and end layers. altiumts decodes only the basic fields of binary
+  vias, so the reader takes the stack mode and the diameter per layer (bytes 74 and 75 + 4n) and the hand-set mask
+  expansion (byte 66, bit 1; the value at byte 54) from the record's bytes; tenting from the via's flags or the rule's
+  `ISTENTINGTOP`/`ISTENTINGBOTTOM`.
+- **Tracks, arcs, fills, regions:** copper tracks and arcs are tracks (arcs run counter-clockwise from STARTANGLE to
+  ENDANGLE; equal angles make a full circle), the others graphics of their component. Keep-out tracks and arcs go to the
+  keep-out layer, keep-out and polygon-cutout regions and fills are rule areas, board cutouts (`ISBOARDCUTOUT`: KIND 0 on
+  the keep-out layer in Altium's file, KIND 2 on the multi-layer in EasyEDA's) cut the board shape, dashed-outline
+  regions are dashed, copper regions with holes use the new `region` graphic. A contour's arc vertex runs from the end
+  of the arc the vertex is at: counter-clockwise from SA to EA, or clockwise the other way (as KiCad reads them).
+  Binary files keep their regions twice (Regions6, which altiumts calls `RegionFill`, and ShapeBasedRegions6 with arcs,
+  which it calls `Region`); the shape-based ones are used.
+- **Polygons:** a zone each, with its outline; the copper is what the file saved, the regions, tracks (as contours with
+  round ends) and arcs the polygon owns. A polygon with nothing saved shows its outline with a note (both samples have 5
+  such polygons; KiCad's import has no fill for them either). Checked with a synthetic pour (a region with an arc
+  vertex, a track and an arc) in a copy of v1.
+- **Internal planes** (`Design.planes`, drawn by the builder): the board shape in copper, kept back from every edge by
+  the layer's pullback (default 20 mil: a clear stroke of twice that along each contour), then clearances (the hole +
+  2 × PlaneClearance, default 20 mil) around holes not on the plane's net (`PLANEnNETNAME`), thermal reliefs
+  (PlaneConnect, default Relief: the air gap from the hole + 2 × expansion out, 4 spokes at 45°) around plated holes on
+  it (none for Direct), and everything drawn on the plane layer, all cut out. Split planes (polygons on a plane layer)
+  are drawn as one plane of its net, with a note; their split lines cut it. Neither sample has a plane: checked with v1
+  whose mid layer 1 was turned into a GND plane; clicking the plane says "Internal plane" with its net, pullback and
+  counts, and highlighting GND lights it.
+- **Text** (`text.ts`), measured on Altium's print (`PCB1_1.pdf` rendered with the repo's pdf.js at 8 px/pt; the page
+  transform fitted on the hidden pad labels `PA<ref>0<pin>` to 1.4 pt and refined on 66 via centres to 0.6 px): stroke
+  text has capitals HEIGHT tall, the baseline and the left end of the first letter's stroke at the anchor, and WIDTH as
+  the stroke; Altium 18 and later store each text's box (TEXTBOXWIDTH × TEXTBOXHEIGHT: the strokes plus WIDTH on every
+  side), so the letters are drawn as wide as Altium's; a frame (ISFRAME) puts its lines WIDTH inside its box by
+  JUSTIFICATION (1 left top … 9 right bottom); lines are 1.2 × (HEIGHT + 2 WIDTH) apart; Altium breaks lines at both
+  `\r` and `\n` (EasyEDA writes `\n\r\u0001`: an empty line, and a U+0001 that Altium draws as a blank indenting the
+  line by 2–3 letters, left out here). TrueType text: capitals 0.64 × HEIGHT for Arial-like faces (from the outlines and
+  advances Altium stores for its letters: em = HEIGHT / 1.117), else 0.6, a stroke an eighth of that, the baseline at
+  the anchor, as wide as its box. Mirrored text is flipped about the anchor, inverted text is knockout with
+  MARGINBORDERWIDTH, designators and comments are hidden as the component says (NAMEON, COMMENTON). Against the print,
+  the top silkscreen's texts land in Altium's boxes (72.6 % of the pixels agree, the rest are the letters' shapes);
+  KiCad's import has the same anchors but the stroke font's own widths.
+- **Components:** designator `SOURCEDESIGNATOR`, value the comment text (or a `COMMENT` field), footprint the PATTERN
+  (`library:name` with `SOURCEFOOTPRINTLIBRARY`), side from LAYER, rotation as stored: bottom parts need no 180° (v2's
+  ten bottom 0402 and 0603 parts have pad 1 where KiCad's convention puts it, and kicad-cli's position file of KiCad's
+  import has the same angles). COMPONENTKIND 1, 2, 4 and 5 leave the BOM, 1 and 2 the position file. "Not Fitted" is a
+  variant setting of the project, not in the PcbDoc (a NOTFITTED or DNP field would be taken). PcbDoc files keep no
+  component parameters; the library reference and component library become fields where the record has them.
+- **Libraries:** `parseAltiumFile` rejects `.PcbLib`, but a footprint's Data stream (its name, then records: a type
+  byte and 1, 2 or 6 length-prefixed parts) splits into records that altiumts's board decoders
+  (`parseAltiumBinaryPcbPrimitiveStream`) read one at a time. The footprints are laid side by side, each a component
+  named after it, with the layer stack of `Library/Data`. ASCII libraries are not read (no sample, and altiumts reads
+  none).
+- **Checked** against KiCad's import (`kicad-cli pcb import --format altium` of v2, moved onto ours by
+  `s3-compare.mjs --align`): copper (4 layers), paste, drill, outline and mechanical layers agree but for edge pixels
+  (≤ 0.02 % at 20 px/mm), solder masks within 0.05–0.14 % (the sharp corners), silkscreen 32–34 % (the letter widths,
+  above). Every pad click (511 on v2, 466 on v1) finds the pad with its net, component and pin; v2's 398 pads have the
+  nets of KiCad's import; the pick-and-place file equals kicad-cli's of the import (135 rows in the same order with the
+  same angles, positions within 6.4e-6 mm after the import's shift). KiCad's import puts its drill/place origin at
+  Altium's sheet position (SHEETX, SHEETY), ours is the board origin (ORIGINX, ORIGINY; 0, 0 in v2). The phone layout
+  works; the KiCad checks of S3 and S4 (ARTIFICER against its Gerbers, 1,071 pad clicks) are unchanged.
+- **Harness** (`…\scratchpad\pcb\harness\`): `s5-read.mjs` reads boards and libraries in Node, `s5-hits.mjs` clicks
+  every pad and compares the nets with KiCad's import, `s5-csv.mjs` writes the CSVs and compares the position file
+  (`--shift`), `s5-pdfcmp.mjs` renders a layer in the frame of Altium's print and compares it with the print's grey;
+  `s3-compare.mjs` gained `--align` (b moved onto a's outline box) and `--keys` (layers matched by name).
+  `…\scratchpad\pcb\s5\pdf-render.mjs` renders PDF pages with the repo's pdf.js (legacy build) and `@napi-rs/canvas`,
+  `fit-pdf.mjs` and `fit-vias.mjs` fit a print's transform, and `plane\` holds the synthetic variants of v1.
+
+**For S6:**
+
+- **CAM planes:** give the layer `plane: true` and a `Design.planes` entry (net, pullback, clearances, thermals), with
+  the sizes from the pad stacks' antipad and thermal entries; pads and vias must not list the plane layer, and anything
+  drawn on it is cut out. Non-round antipads or thermals would need the model to grow.
+- **Graphics with holes:** `{ region: Contour[] }`; mask layers are found by kind and side, so any layer ids work.
+- **Text:** `lib/pcb/altium/text.ts` shows how to put the stroke font where another program's font was: lay out our
+  text, measure it and move it onto the program's anchor rule. Linear's PDF prints can be fitted the same way.
+- **KiCad's importer** reads only binary PcbDoc files; try `kicad-cli pcb import --format pads` on the PowerPCB V4.0
+  file early.
 
 ### S6 – PADS ASCII
 

@@ -102,15 +102,16 @@ export interface Layer {
 // What a click on an item reports (lib/pcb/inspect.ts), and what a highlighted net or component is made of. For
 // Gerber X2 these are the object attributes: .N (net), .P (component, pin and pin name), .C (component), and any
 // others in `info` (e.g. '.CVal'). For a design (lib/pcb/design/build.ts): one object per pad, via, zone ('zone',
-// 'teardrop' or 'rule area') and component (shared by its graphics and text), with `design` pointing at its entry in
-// Board.design; and one per net for tracks ('track'), for board graphics ('graphic') and one for board text ('text').
+// 'teardrop' or 'rule area'), internal plane ('plane') and component (shared by its graphics and text), with `design`
+// pointing at its entry in Board.design; and one per net for tracks ('track'), for board graphics ('graphic') and one
+// for board text ('text').
 export interface BoardObject {
   kind: string;
   net?: string;
   component?: string;
   pin?: string;
   info?: Record<string, string>;
-  design?: { list: 'pads' | 'vias' | 'zones' | 'components' | 'tracks' | 'graphics' | 'texts'; index: number };
+  design?: { list: 'pads' | 'vias' | 'zones' | 'components' | 'tracks' | 'graphics' | 'texts' | 'planes'; index: number };
 }
 
 // A component as the BOM and pick-and-place exports (lib/pcb/export/csv.ts) and the component list use it.
@@ -174,7 +175,8 @@ export interface DesignLayer {
   side: Side;
   // Copper order: 1 = top … n = bottom.
   copper?: number;
-  // A negative plane (Altium internal planes, PADS CAM planes): drawn as the board minus what is on it (S5, S6).
+  // A negative plane (Altium internal planes, PADS CAM planes): the board shape in copper, with everything on the layer
+  // and the plane's clearances and thermal reliefs (Design.planes) cut out of it.
   plane?: boolean;
   // More about it, e.g. "Glue", "Margin", or KiCad's canonical name when the user renamed the layer.
   label?: string;
@@ -286,6 +288,8 @@ export type DesignShape =
   | { arc: { c: Pt; r: number; start: number; sweep: number } }
   | { circle: { c: Pt; r: number } }
   | { poly: Contour }
+  // A shape with holes: outer contours counter-clockwise, holes clockwise.
+  | { region: Contour[] }
   // A cubic Bézier curve: start, two control points, end.
   | { curve: [Pt, Pt, Pt, Pt] };
 
@@ -320,13 +324,26 @@ export interface DesignText {
   font?: string;
   // The glyph outlines the file stores for TrueType text (KiCad's render cache), on the board, Y up.
   outline?: Contour[];
-  // Drawn as a filled box with the letters cut out.
+  // Drawn as a filled box with the letters cut out, the box this far around them (default: a ninth of the height).
   knockout?: boolean;
+  knockoutMargin?: number;
   // A text box's text: lines longer than this are broken at spaces.
   wrap?: number;
   comp?: number;
   // 'reference', 'value', or 'user' (and other footprint fields).
   role?: string;
+}
+
+// What a negative plane layer has besides the board shape (Altium internal planes, PADS CAM planes): its net, the
+// distance kept from the board edge, round clearances around holes that pass through without connecting, and thermal
+// reliefs around those that connect: a ring of width `gap` cut around the hole from diameter d outwards, interrupted
+// by `spokes` copper spokes of width `width`, the first at `angle` degrees.
+export interface DesignPlane {
+  layer: string;
+  net: number;
+  pullback: number;
+  clearances: { at: Pt; d: number }[];
+  thermals: { at: Pt; d: number; gap: number; spokes: number; width: number; angle: number }[];
 }
 
 // A hole that is not part of a pad or via (Altium free holes, EAGLE holes).
@@ -352,6 +369,7 @@ export interface Design {
   graphics: DesignGraphic[];
   texts: DesignText[];
   holes: DesignHole[];
+  planes?: DesignPlane[];
   stackup?: Stackup;
   // The origin of the design's own drill and placement files, when the design sets one (KiCad's drill/place file
   // origin, `aux_axis_origin`; Altium's board origin). The pick-and-place export offers it.

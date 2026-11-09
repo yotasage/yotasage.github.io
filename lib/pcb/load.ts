@@ -1,7 +1,8 @@
 // Turns the files the user opened into a board: ZIP archives are expanded (also nested ones), every file is
 // recognised by its content (lib/pcb/detect.ts) and handed to its reader, and the layers are identified
 // (lib/pcb/identify.ts). Gerber, drill, job and CSV files form one board; adding files adds to it. A design file
-// (KiCad board or footprint) is a board of its own: one is chosen among the files and the others are not used.
+// (KiCad board or footprint, Altium board or library) is a board of its own: one is chosen among the files and the
+// others are not used.
 import { unzipSync } from 'fflate';
 
 import type { DesignFormat, openDesign } from './design/open';
@@ -44,22 +45,23 @@ export interface LoadedFile {
   objectOffset: number;
 }
 
-const DESIGN_FORMATS: FormatId[] = ['kicad-pcb', 'kicad-footprint'];
+const DESIGN_FORMATS: FormatId[] = ['kicad-pcb', 'kicad-footprint', 'altium-pcb', 'altium-pcblib'];
 
 export function isDesignFile(f: LoadedFile): boolean {
   return DESIGN_FORMATS.includes(f.detected.id);
 }
 
-// The design file to show among several: a board before a footprint, then the one least likely to be a copy: not in
-// an archive or a backup or history folder, near the top of what was opened, next to its KiCad project file.
+// The design file to show among several: a board before a footprint or library, then the one least likely to be a
+// copy: not in an archive or a backup or history folder (KiCad's *-backups and .history, Altium's History), near the
+// top of what was opened, next to its KiCad project file.
 function pickDesign(designs: LoadedFile[], all: LoadedFile[]): LoadedFile {
   const projects = new Set(all.filter((f) => /\.kicad_pro$/i.test(f.source.name)).map((f) => f.source.path.replace(/\.kicad_pro$/i, '')));
   const score = (f: LoadedFile) => {
     const p = f.source.path;
-    let s = f.detected.id === 'kicad-pcb' ? 1000 : 0;
+    let s = f.detected.id === 'kicad-pcb' || f.detected.id === 'altium-pcb' ? 1000 : 0;
     s -= 100 * (p.split('/').length - 1);
     if (/\.zip\//i.test(p)) s -= 500;
-    if (/(^|\/)([^/]*-backups|\.history|backups?|old|archive|bak)\//i.test(p)) s -= 300;
+    if (/(^|\/)([^/]*-backups|\.history|history|backups?|old|archive|bak)\//i.test(p)) s -= 300;
     if (projects.has(p.replace(/\.kicad_pcb$/i, ''))) s += 50;
     return s;
   };
@@ -185,22 +187,24 @@ export async function readFiles(files: PickedFile[], known: Set<string>, onStatu
     onStatus(`Reading ${f.source.name} (${done} of ${toRead.length})…`);
     await yieldToBrowser();
     try {
-      const text = new TextDecoder('utf-8').decode(f.source.bytes);
       if (f === chosen) {
         // The readers, the builder and the stroke font are loaded only now.
         // @ts-expect-error TS2835: TypeScript wants an extension that the bundler does not resolve (see CLAUDE.md).
         const { openDesign: open } = (await import('./design/open')) as { openDesign: typeof openDesign };
-        const r = await open(f.detected.id as DesignFormat, text, f.source.name, onStatus);
+        const r = await open(f.detected.id as DesignFormat, f.source.bytes, f.source.name, onStatus);
         f.design = r.design;
         f.designBoard = r.board;
-      } else if (f.detected.id === 'gerber') {
-        f.gerber = parseGerber(text);
-        f.warnings = f.gerber.warnings;
-      } else if (f.detected.id === 'gerber-job') {
-        f.job = parseGerberJob(text);
-      } else if (f.detected.id === 'excellon') {
-        f.drill = readExcellon(text);
-        f.warnings = f.drill.warnings;
+      } else {
+        const text = new TextDecoder('utf-8').decode(f.source.bytes);
+        if (f.detected.id === 'gerber') {
+          f.gerber = parseGerber(text);
+          f.warnings = f.gerber.warnings;
+        } else if (f.detected.id === 'gerber-job') {
+          f.job = parseGerberJob(text);
+        } else if (f.detected.id === 'excellon') {
+          f.drill = readExcellon(text);
+          f.warnings = f.drill.warnings;
+        }
       }
     } catch (e) {
       f.error = `The file could not be read: ${errorText(e)}`;
