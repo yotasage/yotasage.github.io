@@ -386,7 +386,7 @@ Status: ✅ done · 🔄 in progress · 📋 planned
 | S6 | PADS ASCII | ✅ | 5238540 |
 | S7 | EAGLE | ✅ | d3a08d4 |
 | S8 | PDF and DXF export; pick-and-place CSV over Gerbers | ✅ | aad7e55 |
-| S9 | KiCad export | ✅ | |
+| S9 | KiCad export | ✅ | bd8f575 |
 
 ### S1 – Viewer shell and Gerber
 
