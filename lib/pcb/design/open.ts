@@ -3,9 +3,10 @@
 import { readAltiumBoard, readAltiumLibrary } from '../altium/board';
 import { readKicadBoard, readKicadFootprint } from '../kicad/board';
 import { Board, Design } from '../model';
+import { readPadsBoard } from '../pads/board';
 import { buildDesignBoard } from './build';
 
-export type DesignFormat = 'kicad-pcb' | 'kicad-footprint' | 'altium-pcb' | 'altium-pcblib';
+export type DesignFormat = 'kicad-pcb' | 'kicad-footprint' | 'altium-pcb' | 'altium-pcblib' | 'pads-ascii';
 
 function pause(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
@@ -16,7 +17,7 @@ function percent(share: number): string {
 }
 
 export async function openDesign(format: DesignFormat, bytes: Uint8Array, fileName: string, onStatus: (text: string) => void): Promise<{ design: Design; board: Board }> {
-  const stem = fileName.replace(/\.(kicad_pcb|kicad_mod|pcbdoc|pcblib)$/i, '');
+  const stem = fileName.replace(/\.(kicad_pcb|kicad_mod|pcbdoc|pcblib|asc)$/i, '');
   onStatus(`Reading ${fileName}…`);
   await pause();
   const progress = (s: number) => onStatus(`Reading ${fileName} (${percent(s)})…`);
@@ -25,13 +26,15 @@ export async function openDesign(format: DesignFormat, bytes: Uint8Array, fileNa
     design = await readAltiumBoard(bytes, { fileName, pause, onProgress: progress });
   } else if (format === 'altium-pcblib') {
     design = await readAltiumLibrary(bytes, { fileName, pause, onProgress: progress });
+  } else if (format === 'pads-ascii') {
+    design = await readPadsBoard(bytes, { fileName, pause, onProgress: progress });
   } else {
     const text = new TextDecoder('utf-8').decode(bytes);
     design = format === 'kicad-pcb' ? await readKicadBoard(text, { fileName, pause, onProgress: progress }) : readKicadFootprint(text, { fileName });
   }
   onStatus(`Drawing the layers of ${fileName}…`);
   await pause();
-  const source: Board['source'] = format.startsWith('altium') ? 'altium' : 'kicad';
+  const source: Board['source'] = format.startsWith('altium') ? 'altium' : format === 'pads-ascii' ? 'pads' : 'kicad';
   const board = await buildDesignBoard(design, { name: stem, source, pause, onProgress: (s) => onStatus(`Drawing the layers of ${fileName} (${percent(s)})…`) });
   return { design, board };
 }

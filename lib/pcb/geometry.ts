@@ -347,3 +347,56 @@ export function addItem(box: Box, item: ArtItem, apertureBoxes: Box[]) {
       break;
   }
 }
+
+// The outline of a track (a stroke with round ends) as a contour, counter-clockwise: copper drawn as tracks that
+// becomes part of a zone's fill (Altium's hatched polygons, PADS plane cut-outs).
+export function trackContour(a: Pt, b: Pt, w: number): Contour | null {
+  const r = w / 2;
+  if (!(r > 0)) return null;
+  const len = Math.hypot(b.x - a.x, b.y - a.y);
+  if (len < 1e-9) {
+    const p = { x: a.x + r, y: a.y };
+    return { start: p, segs: [{ to: { x: a.x - r, y: a.y }, arc: { c: a, ccw: true } }, { to: p, arc: { c: a, ccw: true } }] };
+  }
+  const nx = (-(b.y - a.y) / len) * r;
+  const ny = ((b.x - a.x) / len) * r;
+  const p1 = { x: a.x - nx, y: a.y - ny };
+  const p2 = { x: b.x - nx, y: b.y - ny };
+  const p3 = { x: b.x + nx, y: b.y + ny };
+  const p4 = { x: a.x + nx, y: a.y + ny };
+  return { start: p1, segs: [{ to: p2 }, { to: p3, arc: { c: b, ccw: true } }, { to: p4 }, { to: p1, arc: { c: a, ccw: true } }] };
+}
+
+// The outline of an arc track (centre c, radius rad, from start counter-clockwise over sweep degrees, width w) with
+// round ends, counter-clockwise.
+export function arcTrackContour(c: Pt, rad: number, start: number, sweep: number, w: number): Contour | null {
+  const r = w / 2;
+  if (!(r > 0) || !(rad > 0)) return null;
+  if (Math.abs(sweep) >= 360 - 1e-9) {
+    const outer = rad + r;
+    const inner = rad - r;
+    const p = { x: c.x + outer, y: c.y };
+    if (inner <= 1e-9) return { start: p, segs: [{ to: { x: c.x - outer, y: c.y }, arc: { c, ccw: true } }, { to: p, arc: { c, ccw: true } }] };
+    // A ring as one contour: the outer circle, a cut in, the inner circle the other way, and back out.
+    const q = { x: c.x + inner, y: c.y };
+    return {
+      start: p,
+      segs: [
+        { to: { x: c.x - outer, y: c.y }, arc: { c, ccw: true } }, { to: p, arc: { c, ccw: true } },
+        { to: q }, { to: { x: c.x - inner, y: c.y }, arc: { c, ccw: false } }, { to: q, arc: { c, ccw: false } }, { to: p },
+      ],
+    };
+  }
+  const s = sweep > 0 ? start : start + sweep;
+  const e = s + Math.abs(sweep);
+  const outerS = arcPoint(c, rad + r, s);
+  const outerE = arcPoint(c, rad + r, e);
+  const innerE = arcPoint(c, Math.max(0, rad - r), e);
+  const innerS = arcPoint(c, Math.max(0, rad - r), s);
+  const endC = arcPoint(c, rad, e);
+  const startC = arcPoint(c, rad, s);
+  const segs: ContourSeg[] = [{ to: outerE, arc: { c, ccw: true } }, { to: innerE, arc: { c: endC, ccw: true } }];
+  segs.push(rad - r > 1e-9 ? { to: innerS, arc: { c, ccw: false } } : { to: innerS });
+  segs.push({ to: outerS, arc: { c: startC, ccw: true } });
+  return { start: outerS, segs };
+}

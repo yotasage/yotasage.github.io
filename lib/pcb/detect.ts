@@ -4,9 +4,9 @@
 import { gunzipSync } from 'fflate';
 
 export type FormatId =
-  | 'gerber' | 'gerber-job' | 'excellon' | 'zip' | 'kicad-pcb' | 'kicad-footprint' | 'altium-pcb' | 'altium-pcblib'
+  | 'gerber' | 'gerber-job' | 'excellon' | 'zip' | 'kicad-pcb' | 'kicad-footprint' | 'altium-pcb' | 'altium-pcblib' | 'pads-ascii'
   // Read in later steps (docs/pcb-viewer-plan.md).
-  | 'pads-ascii' | 'eagle-brd' | 'pnp-csv'
+  | 'eagle-brd' | 'pnp-csv'
   // Not read.
   | 'altium-pcblib-ascii'
   // Not read.
@@ -202,8 +202,9 @@ function detectText(name: string, text: string): Detected {
   if (/^\[Design\]/.test(t) && /PrjPcb|ProjectVariant|OutputGroup/.test(head)) return ignored('project', 'Altium project');
 
   // PADS
-  if (/^!PADS-LIBRARY/i.test(t)) return unsupported('pads-library', 'PADS library', 'PADS library files are not read; open a PADS ASCII board (.asc).');
-  if (/^!PADS-/i.test(t)) return later('pads-ascii', 'PADS ASCII board');
+  if (/^[!*]PADS-LIBRARY/i.test(t)) return unsupported('pads-library', 'PADS library', 'PADS library files are not read; open a PADS ASCII board (.asc).');
+  if (/^!PADS-/i.test(t)) return { id: 'pads-ascii', name: 'PADS ASCII board', status: 'read' };
+  if (/^\*PADS-(LOGIC|POWERLOGIC)/i.test(t)) return ignored('schematic', 'PADS Logic schematic', 'A schematic, not a board; ignored.');
   if (/^\*PADS-(PCB|2000|POWERPCB)\*/i.test(t)) return ignored('project', 'PADS netlist');
 
   // XML

@@ -1,8 +1,8 @@
 // Turns the files the user opened into a board: ZIP archives are expanded (also nested ones), every file is
 // recognised by its content (lib/pcb/detect.ts) and handed to its reader, and the layers are identified
 // (lib/pcb/identify.ts). Gerber, drill, job and CSV files form one board; adding files adds to it. A design file
-// (KiCad board or footprint, Altium board or library) is a board of its own: one is chosen among the files and the
-// others are not used.
+// (KiCad board or footprint, Altium board or library, PADS ASCII board) is a board of its own: one is chosen among the
+// files and the others are not used.
 import { unzipSync } from 'fflate';
 
 import type { DesignFormat, openDesign } from './design/open';
@@ -45,7 +45,7 @@ export interface LoadedFile {
   objectOffset: number;
 }
 
-const DESIGN_FORMATS: FormatId[] = ['kicad-pcb', 'kicad-footprint', 'altium-pcb', 'altium-pcblib'];
+const DESIGN_FORMATS: FormatId[] = ['kicad-pcb', 'kicad-footprint', 'altium-pcb', 'altium-pcblib', 'pads-ascii'];
 
 export function isDesignFile(f: LoadedFile): boolean {
   return DESIGN_FORMATS.includes(f.detected.id);
@@ -58,7 +58,7 @@ function pickDesign(designs: LoadedFile[], all: LoadedFile[]): LoadedFile {
   const projects = new Set(all.filter((f) => /\.kicad_pro$/i.test(f.source.name)).map((f) => f.source.path.replace(/\.kicad_pro$/i, '')));
   const score = (f: LoadedFile) => {
     const p = f.source.path;
-    let s = f.detected.id === 'kicad-pcb' || f.detected.id === 'altium-pcb' ? 1000 : 0;
+    let s = f.detected.id === 'kicad-pcb' || f.detected.id === 'altium-pcb' || f.detected.id === 'pads-ascii' ? 1000 : 0;
     s -= 100 * (p.split('/').length - 1);
     if (/\.zip\//i.test(p)) s -= 500;
     if (/(^|\/)([^/]*-backups|\.history|history|backups?|old|archive|bak)\//i.test(p)) s -= 300;

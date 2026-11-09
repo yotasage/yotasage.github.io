@@ -261,6 +261,8 @@ export interface DesignVia {
   // Where the solder mask is open over the via (not tented), and how much wider than the via the opening is on each
   // side.
   mask?: { top: boolean; bottom: boolean; margin: number };
+  // A square pad of side d instead of a round one (PADS via types).
+  square?: boolean;
 }
 
 export interface DesignZone {
@@ -271,8 +273,11 @@ export interface DesignZone {
   outline: Contour[];
   // The copper as last filled and saved, per layer; each entry is filled with the non-zero rule.
   fill: { layer: string; contours: Contour[] }[];
-  // Older KiCad files: the filled areas are also stroked with this width.
+  // The filled areas are also stroked with this width (older KiCad files; PADS pours, whose outlines are the centre
+  // lines of their edges).
   stroke?: number;
+  // Copper of the zone drawn as lines with round ends: PADS's thermal spokes (PADTHERM, VIATHERM).
+  lines?: { layer: string; a: Pt; b: Pt; w: number }[];
   // A keep-out or rule area: no copper of its own.
   keepout?: boolean;
   // Never filled: its outline is drawn instead.
@@ -334,16 +339,27 @@ export interface DesignText {
   role?: string;
 }
 
-// What a negative plane layer has besides the board shape (Altium internal planes, PADS CAM planes): its net, the
-// distance kept from the board edge, round clearances around holes that pass through without connecting, and thermal
-// reliefs around those that connect: a ring of width `gap` cut around the hole from diameter d outwards, interrupted
-// by `spokes` copper spokes of width `width`, the first at `angle` degrees.
+// A plane whose copper the file does not store: the board shape in copper (Altium internal planes, PADS CAM planes)
+// or a plane area (PADS mixed planes whose flood is not saved), with its net, the distance kept from the board edge,
+// round clearances around holes that pass through without connecting, and thermal reliefs around those that connect:
+// a ring of width `gap` cut around the hole from diameter d outwards, interrupted by `spokes` copper spokes of width
+// `width`, the first at `angle` degrees. Several planes can share a layer; later ones lie over earlier ones.
 export interface DesignPlane {
   layer: string;
   net: number;
   pullback: number;
   clearances: { at: Pt; d: number }[];
   thermals: { at: Pt; d: number; gap: number; spokes: number; width: number; angle: number }[];
+  // A plane area instead of the board shape (PADS mixed planes): outer contours counter-clockwise, holes clockwise.
+  area?: Contour[];
+  name?: string;
+  // Other shapes cut out of it, after the clearances: copper cut-outs, other planes over it with the gap between
+  // them, and the copper of other nets on the layer grown by the clearance (a filled shape with a stroke of twice the
+  // clearance), as graphics are drawn.
+  cuts?: { shape: DesignShape; w: number; filled: boolean }[];
+  // What else is drawn on the layer is copper over the plane (PADS mixed planes), instead of being cut out of it
+  // (Altium's split lines, PADS CAM planes).
+  positive?: boolean;
 }
 
 // A hole that is not part of a pad or via (Altium free holes, EAGLE holes).

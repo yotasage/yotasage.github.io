@@ -22,6 +22,7 @@ const FORMATS: { title: string; formats: string; note?: string }[] = [
   { title: 'Gerber job file', formats: '.gbrjob', note: 'Gives each layer its function and order, and the colours.' },
   { title: 'KiCad', formats: 'Boards (.kicad_pcb, KiCad 4 to 10) and footprints (.kicad_mod)', note: 'Drawn as KiCad plots them, zones as last filled; a project folder can be opened as it is.' },
   { title: 'Altium', formats: 'Boards (.PcbDoc, binary and ASCII) and footprint libraries (.PcbLib)', note: 'Pads, polygons as last poured, internal planes; text in a stroke font in the place and size of Altium’s.' },
+  { title: 'PADS', formats: 'PADS ASCII boards (.asc, PowerPCB V4.0 to current PADS Layout)', note: 'Pad stacks, pours as last flooded, planes drawn from their outlines; a binary .pcb has to be exported as ASCII in PADS first.' },
   { title: 'Archives', formats: 'ZIP, also inside other ZIPs and with folders' },
 ];
 
@@ -35,12 +36,12 @@ export default function PcbViewer() {
   return (
     <DropZone onFiles={setFiles} className={styles.hero} overClassName={styles.dropOver}>
       <ToolIcon name="pcb" color="#9ccc3c" size={72} />
-      <h2>Open Gerber files or a KiCad or Altium board</h2>
+      <h2>Open Gerber files or a KiCad, Altium or PADS board</h2>
       <p>
-        Select all the Gerber and drill files of a board, the folder they are in, or a ZIP archive of them, or a KiCad
-        or Altium board file. See each layer in its own colour or the board as it looks, from the top or the bottom;
-        click anything to see what it is, highlight a net or a component, measure, and save the view as PNG or SVG, or
-        a board&apos;s BOM and pick-and-place file.
+        Select all the Gerber and drill files of a board, the folder they are in, or a ZIP archive of them, or a KiCad,
+        Altium or PADS board file. See each layer in its own colour or the board as it looks, from the top or the
+        bottom; click anything to see what it is, highlight a net or a component, measure, and save the view as PNG or
+        SVG, or a board&apos;s BOM and pick-and-place file.
       </p>
       <div className={styles.heroButtons}>
         <PickButton onFiles={setFiles} className={styles.heroButton}>Select files</PickButton>

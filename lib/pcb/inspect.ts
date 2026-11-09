@@ -380,7 +380,7 @@ function describeDesign(board: Board, hit: InspectHit, obj: BoardObject, item: A
   if (d?.list === 'vias') {
     const v = design.vias[d.index];
     netRow();
-    rows.push(['Diameter', formatLength(v.d, units)], ['Drill', formatLength(v.drill, units)]);
+    rows.push([v.square ? 'Square pad' : 'Diameter', formatLength(v.d, units)], ['Drill', formatLength(v.drill, units)]);
     rows.push(['Layers', `${designLayerName(board, v.from)} to ${designLayerName(board, v.to)}`]);
     if (v.mask) {
       const open = [v.mask.top && 'top', v.mask.bottom && 'bottom'].filter(Boolean);
@@ -413,6 +413,12 @@ function describeDesign(board: Board, hit: InspectHit, obj: BoardObject, item: A
   if (d?.list === 'planes') {
     const plane = design.planes?.[d.index];
     netRow();
+    if (plane?.area) {
+      // A plane area whose flood the file does not keep (PADS mixed planes).
+      rows.push(['Layer', layerList(hit)], ['Plane area', 'Its outline in copper, other nets kept clear by the design rules (the file keeps no flood)']);
+      if (plane.name) rows.push(['Name', plane.name]);
+      return { title: 'Plane area', rows, net };
+    }
     rows.push(['Layer', layerList(hit)], ['Plane', 'The board shape in copper, with clearances and thermal reliefs cut out (negative)']);
     if (plane) {
       if (plane.pullback > 0) rows.push(['Kept from the edge', formatLength(plane.pullback, units)]);

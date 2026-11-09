@@ -2,9 +2,10 @@
 // view, the realistic view, measuring and the exports work as for Gerber files. Pads and vias are flashes of
 // apertures (measuring snaps to their centres), tracks are lines and arcs, zones are their saved fill, mask and paste
 // openings are the shapes the reader made, and the holes go to drill layers: plated, non-plated, and one per span of
-// blind and buried vias. Internal planes (negative) are the board shape in copper with clearances, thermal reliefs and
-// everything else on the layer cut out of it. Board.objects gets an entry per pad, via, zone, plane and component and
-// one per net for tracks; Board.placements gets the components.
+// blind and buried vias. Planes whose copper the file does not store are the board shape (negative planes, with
+// clearances, thermal reliefs and everything else on the layer cut out of it) or a plane area (with its cuts, under the
+// layer's own copper) in copper. Board.objects gets an entry per pad, via, zone, plane and component and one per net
+// for tracks; Board.placements gets the components.
 import { addItem, apertureBox, DEG } from '../geometry';
 import { compareLayers } from '../identify';
 import {
@@ -166,6 +167,10 @@ export async function buildDesignBoard(design: Design, o: BuildOptions): Promise
       a.items.push({ k: 'region', contours: f.contours, dark: true, obj });
       if (z.stroke) for (const c of f.contours) a.items.push(...graphicItems({ layer: '', shape: { poly: c }, w: z.stroke, filled: false }, obj, dash));
     }
+    for (const l of z.lines ?? []) {
+      const a = get(l.layer);
+      if (a && l.w > 0) a.items.push({ k: 'line', a: l.a, b: l.b, w: l.w, cap: 'round', dark: true, obj });
+    }
     if (z.unfilled) {
       for (const id of z.layers) {
         const a = get(id);
@@ -235,16 +240,17 @@ export async function buildDesignBoard(design: Design, o: BuildOptions): Promise
       info: { size: round(v.d), drill: round(v.drill), layers: `${v.from}–${v.to}`, type: v.type },
       design: { list: 'vias', index },
     }) - 1;
+    const k = v.square ? 'rect' : 'circle';
     for (const id of v.layers) {
       const a = get(id);
       const d = v.sizes?.[id] ?? v.d;
-      if (a && d > 0) a.flash(v.at, { k: 'circle', w: d, h: d }, 0, obj);
+      if (a && d > 0) a.flash(v.at, { k, w: d, h: d }, 0, obj);
     }
     if (v.mask) {
       const d = v.d + 2 * v.mask.margin;
       if (d > 0) {
-        if (v.mask.top && maskTop) get(maskTop)?.flash(v.at, { k: 'circle', w: d, h: d }, 0, obj);
-        if (v.mask.bottom && maskBottom) get(maskBottom)?.flash(v.at, { k: 'circle', w: d, h: d }, 0, obj);
+        if (v.mask.top && maskTop) get(maskTop)?.flash(v.at, { k, w: d, h: d }, 0, obj);
+        if (v.mask.bottom && maskBottom) get(maskBottom)?.flash(v.at, { k, w: d, h: d }, 0, obj);
       }
     }
     if (v.drill > 0) {
@@ -340,28 +346,43 @@ export async function buildDesignBoard(design: Design, o: BuildOptions): Promise
     }
   }
 
-  // Internal planes: the board shape in copper, kept back from its edges; then the clearances, the air gaps of the
-  // thermal reliefs and everything else drawn on the layer, all cut out of it.
+  // Planes, per layer, in order: each one's area (or the board shape) in copper, kept back from its edges, with its
+  // clearances, the air gaps of its thermal reliefs and its cuts cut out of it; a later plane lies over earlier ones.
+  // Then everything else drawn on the layer: copper over the planes (positive planes), or cut out of them.
+  const clear = (items: ArtItem[]) => items.map((i) => ({ ...i, dark: false }));
+  const byLayer = new Map<string, number[]>();
   (design.planes ?? []).forEach((plane, index) => {
-    const a = get(plane.layer);
-    if (!a) return;
-    const obj = objects.push({
-      kind: 'plane', ...(netName(plane.net) ? { net: netName(plane.net) } : {}),
-      info: { layer: a.layer.name }, design: { list: 'planes', index },
-    }) - 1;
+    const list = byLayer.get(plane.layer);
+    if (list) list.push(index);
+    else byLayer.set(plane.layer, [index]);
+  });
+  for (const [id, list] of byLayer) {
+    const a = get(id);
+    if (!a) continue;
     const own = [...a.knockout, ...a.items];
     a.items = [];
-    if (outline?.length) {
-      a.items.push({ k: 'region', contours: outline, dark: true, obj });
-      if (plane.pullback > 0) {
-        for (const c of outline) a.items.push(...graphicItems({ layer: '', shape: { poly: c }, w: 2 * plane.pullback, filled: false }, obj, dash).map((i) => ({ ...i, dark: false })));
+    let positive = false;
+    for (const index of list) {
+      const plane = design.planes[index];
+      positive ||= Boolean(plane.positive);
+      const obj = objects.push({
+        kind: 'plane', ...(netName(plane.net) ? { net: netName(plane.net) } : {}),
+        info: { layer: a.layer.name, ...(plane.name ? { name: plane.name } : {}) }, design: { list: 'planes', index },
+      }) - 1;
+      const shape = plane.area ?? outline;
+      if (shape?.length) {
+        a.items.push({ k: 'region', contours: shape, dark: true, obj });
+        if (plane.pullback > 0) {
+          for (const c of shape) a.items.push(...clear(graphicItems({ layer: '', shape: { poly: c }, w: 2 * plane.pullback, filled: false }, obj, dash)));
+        }
       }
+      for (const c of plane.clearances) if (c.d > 0) a.flash(c.at, { k: 'circle', w: c.d, h: c.d }, 0, obj, false);
+      for (const t of plane.thermals) a.items.push(...thermalItems(t, obj));
+      for (const c of plane.cuts ?? []) a.items.push(...clear(graphicItems({ layer: '', ...c }, obj, dash)));
     }
-    for (const c of plane.clearances) if (c.d > 0) a.flash(c.at, { k: 'circle', w: c.d, h: c.d }, 0, obj, false);
-    for (const t of plane.thermals) a.items.push(...thermalItems(t, obj));
-    for (const item of own) a.items.push(item.dark ? { ...item, dark: false } : item);
+    for (const item of own) a.items.push(positive || !item.dark ? item : { ...item, dark: false });
     finish(a, a.items);
-  });
+  }
   layers.sort(compareLayers);
 
   const placements: Placement[] = design.components.map((c) => ({

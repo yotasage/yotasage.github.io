@@ -76,12 +76,14 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   layer kinds and order in [lib/pcb/identify.ts](lib/pcb/identify.ts). Design files (KiCad: `lib/pcb/kicad/`, an
   S-expression reader read one top-level item at a time; Altium: `lib/pcb/altium/`, on the records of `altiumts`, which
   `altium/board.ts` loads with `await import('altiumts')` only when an Altium file is opened, so it stays a chunk of its
-  own; `package.json` overrides its `typescript ^5` peer dependency) become a `Design`, which
-  `lib/pcb/design/build.ts` turns into layers for every design format (pads as flashes, openings from `design/pads.ts`,
-  negative planes from `Design.planes`, text with the Newstroke stroke font in `lib/pcb/font/`: layout adapted from
-  KiCanvas, MIT; glyphs generated from the font author's own CC0 release, never from KiCad's GPL
-  `newstroke_font.cpp`; notices in `lib/pcb/font/LICENSE.*.txt`); `design/open.ts` is loaded with `await import`
-  only when a design file is opened. Text metrics are checked against `kicad-cli` plots and, for Altium, its print.
+  own; `package.json` overrides its `typescript ^5` peer dependency; PADS ASCII: `lib/pcb/pads/`, where `ascii.ts` reads
+  the header, units, sections and what each version writes differently, and `planes.ts` makes the plane areas whose
+  flood is not saved and the CAM planes) become a `Design`, which `lib/pcb/design/build.ts` turns into layers for every
+  design format (pads as flashes, openings from `design/pads.ts`, planes from `Design.planes`: negative, or plane areas
+  under the layer's copper; text with the Newstroke stroke font in `lib/pcb/font/`: layout adapted from KiCanvas, MIT;
+  glyphs generated from the font author's own CC0 release, never from KiCad's GPL `newstroke_font.cpp`; notices in
+  `lib/pcb/font/LICENSE.*.txt`); `design/open.ts` is loaded with `await import` only when a design file is opened.
+  Text metrics are checked against `kicad-cli` plots and, for Altium and PADS, their prints and Gerber files.
   The view is Canvas 2D in `lib/pcb/render/`: paths are built once per layer (`prepare.ts`; never call
   `closePath()` on a `Path2D`, it is very slow in Chromium), each layer of the picture is drawn into its own canvas
   (`paint.ts`, shared with the PNG export) and composited by `view.ts`: stacked in the layer view, as the board looks

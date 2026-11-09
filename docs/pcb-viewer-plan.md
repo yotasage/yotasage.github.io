@@ -65,10 +65,12 @@ On the owner's machine. Read them where they are; never copy them into the repo 
 | Same set zipped | `…\2026_ARTIFICER_TC1\manufacturing\uploaded\gerbers_v1.zip`, `gerbers_v2.zip` | Two revisions |
 | Same board in KiCad | `…\2026_ARTIFICER_TC1\2026_ARTIFICER_TC1.kicad_pcb` | The source of the Gerbers above |
 | Its pick-and-place and BOM | `…\2026_ARTIFICER_TC1\manufacturing\assembly\POS.csv`, `BOM.csv` | Made by KiCad from the same board |
-| PADS ASCII | `C:\Users\Jonat\Downloads\DC2637A\DC2637A-1_post\DC2637A-1-LAYOUT-ASC.ASC` | `!PADS-POWERPCB-V4.0-BASIC!`, 4 routing layers, pours (HATOUT) included |
+| PADS ASCII | `C:\Users\Jonat\Downloads\DC2637A\DC2637A-1_post\DC2637A-1-LAYOUT-ASC.ASC` | `!PADS-POWERPCB-V4.0-BASIC!`, 4 routing layers, pours (HATOUT) included; layers 2 and 3 are mixed planes saved as outlines only (PLANEFLAGS OUTLINE), so their copper is not in the file |
 | PADS binary | `…\DC2637A-1_post\DC2637A-1.PCB` | Same design, closed format (`DC2637A-1.txt` is a byte-identical copy) |
 | PADS Gerbers | `…\DC2637A-1_post\DC2637A-1-GBR.ZIP` | From the same design: RS-274X `.pho` (L1–L4, TS/TM/TP, BS/BM/BP, FAB), `.rep` reports, `DRILL.drl` without a header (inch) |
 | PADS prints, BOM | `…\DC2637A-1_post\DC2637A-1-PDF.ZIP`, `DC2637A-1.XLSX` | References |
+| PADS footprint board | `…\DC2637A-1_post\LT3045-1EDD-LIBRARY.ZIP` | `05-08-1725-Rev-A.asc`: a V4.0 board with only the DFN-12 footprint |
+| More PADS ASCII | `https://gitlab.com/kicad/code/kicad/-/raw/master/qa/data/pcbnew/plugins/pads/<folder>/<name>.asc` | KiCad's PADS importer test files, each with its LICENSE (MIT, BSD, CERN-OHL-W, GPL-3.0): V5.0 `MAIS_FC`, V2005 `LCORE_2`, V2007 `Dexter_MotorCtrl`, V9.0 `LCORE_4`, V9.4 `Ems4_Rev2` and `MC2_PLUS_REV1`, V9.5 `TMS1mmX19` (basic) and `MC4_PLUS_CSHAPE` (mils), V10.0 `ClaySight_MK1` and `issue23425/controlCARDDockingStation` (250-layer mode), and small ones (`issue*.asc`, `keepout_test.asc`); several folders also hold the binary `.pcb` of the same board ([BL4](BACKLOG.md)). S6 kept them in its scratch folder. None has a METRIC or INCHES file or a CAM plane |
 | Altium ASCII | `C:\Users\Jonat\Downloads\Altium_KERALA_GF130_2026-06-27\KERALA_GF130\v1\PCB1.pcbdoc` | ASCII PcbDoc written by EasyEDA (`gge` ids, the board record in 11 parts on one line, no rules, no text boxes): 2,420 tracks, 376 pads, 714 regions, 5 polygons (not poured), 129 components; an earlier revision of v2. `kicad-cli pcb import` cannot read it |
 | Altium binary | `…\KERALA_GF130\v2\PCB1_1.pcbdoc` | Binary PcbDoc (v1 opened and saved by Altium 20 or later): 2,580 tracks, 398 pads, 731 regions, 135 components, 35 rules; text in stroke font and Arial, Arial embedded; 5 polygons not poured; no planes, fills, rounded or octagonal pads, pad or via stacks, inverted text or 3D bodies |
 | Altium library | `…\KERALA_GF130\v2\PCB1_1.PcbLib` | One footprint (QFN48_7x7, 41 pads); `altiumts` 0.0.95's `parseAltiumFile` rejects it, its primitive decoders read it record by record (S5) |
@@ -100,9 +102,9 @@ folder, never next to the test files.
 | Points | `lib/pcb/points.ts` | Pad and hole centres and line ends per layer in a grid index: measuring snaps to them, drill formats are fitted to them |
 | Hits | `lib/pcb/hits.ts` | What lies under a point of a layer (S4): a grid index of the items per layer, built on the first click on the layer, and the distance from a point to each kind of item |
 | Inspecting | `lib/pcb/inspect.ts` | What a click is on across the layers of the picture (one entry per object), its description, the lists of components and nets, and the items of a highlighted net or component on every layer (S4); only from `Board.objects`, `Board.placements` and the layers, with `Board.design` for pad shapes, holes and margins |
-| Design → layers | `lib/pcb/design/` | Shared by all design formats (S3): `build.ts` the `Design` into a `Board` (S5: negative planes), `pads.ts` pad shapes as aperture parts and grown or shrunk for mask and paste, `art.ts` graphics (dashes too) and text as items, `outline.ts` the board shape from outline graphics, `overrides.ts` the user's layer types on a design's board, `open.ts` the entry loaded with `await import` when a design file is opened |
+| Design → layers | `lib/pcb/design/` | Shared by all design formats (S3): `build.ts` the `Design` into a `Board` (S5: negative planes; S6: several planes per layer, plane areas with cuts, positive planes, zone lines, square vias), `pads.ts` pad shapes as aperture parts and grown or shrunk for mask and paste, `art.ts` graphics (dashes too) and text as items, `outline.ts` the board shape from outline graphics, `overrides.ts` the user's layer types on a design's board, `open.ts` the entry loaded with `await import` when a design file is opened |
 | Stroke font | `lib/pcb/font/` | Newstroke (S3): `newstroke-glyphs.ts` generated from the font author's own CC0 release (see Libraries), `stroke.ts` layout adapted from KiCanvas, `LICENSE.kicanvas.txt` and `LICENSE.newstroke.txt` (read by `scripts/collect-licenses.mjs` for `/licenses`) |
-| Design formats | `lib/pcb/kicad/` (S3: `sexpr.ts` reader, `layers.ts` layer names and wildcards, `board.ts` boards and footprints), `lib/pcb/altium/` (S5: `board.ts` boards and libraries through `altiumts`, `records.ts` fields, lengths, text and contours, `layers.ts` layer names and the stack, `rules.ts` rule scopes and the mask, paste and plane rules, `text.ts` text placement), `lib/pcb/pads/`, `lib/pcb/eagle/` | Each produces a `Design` |
+| Design formats | `lib/pcb/kicad/` (S3: `sexpr.ts` reader, `layers.ts` layer names and wildcards, `board.ts` boards and footprints), `lib/pcb/altium/` (S5: `board.ts` boards and libraries through `altiumts`, `records.ts` fields, lengths, text and contours, `layers.ts` layer names and the stack, `rules.ts` rule scopes and the mask, paste and plane rules, `text.ts` text placement), `lib/pcb/pads/` (S6: `ascii.ts` header, units, sections, what each version writes differently and the `*MISC*` blocks, `layers.ts` levels, kinds, sides and the pairs a bottom part is mirrored with, `board.ts` the reader, `planes.ts` plane areas without a saved flood and CAM planes, `text.ts` text placement), `lib/pcb/eagle/` | Each produces a `Design` |
 | Drawing | `lib/pcb/render/` | Layer view and realistic view on Canvas 2D: `prepare.ts` paths, `paint.ts` a layer into a canvas and the two ways of compositing (shared with the PNG export), `view.ts` canvas, gestures, clicks and modes, `colors.ts` default and realistic colours |
 | Exports | `lib/pcb/export/` | `png.ts`, `svg.ts` (S2); `csv.ts` BOM and pick-and-place (S4); PDF, DXF, KiCad later |
 
@@ -117,8 +119,9 @@ file among those opened and reads it through `design/open.ts`; the board made fr
 S1 wrote the artwork part (in `lib/pcb/model.ts`, as below; S2 added `outlineFrom`, the `'format'` way of identifying
 a layer, and drill layers with plated and non-plated holes), S3 wrote the design part (and `Board.design`, the
 `design` link of `BoardObject`, and `attrs` and `fields` of `Placement`), S4 added `Aperture.code` and
-`Design.placeOrigin`, S5 added `Design.planes`, graphics with holes (`region`) and `knockoutMargin` of texts. Names and
-fields may change. Keep this section in step with the code.
+`Design.placeOrigin`, S5 added `Design.planes`, graphics with holes (`region`) and `knockoutMargin` of texts, S6 added
+plane areas, cuts and positive planes (several per layer), `lines` of zones and square vias. Names and fields may change.
+Keep this section in step with the code.
 
 ```ts
 // Units: millimetres. Y up (KiCad's Y is negated on reading). Angles: degrees, counter-clockwise from +X.
@@ -194,11 +197,12 @@ interface Board {
 // referred to by Design.layers[].id; nets by index (0 = no net); components by index. Positions are on the board (a
 // component's items already placed), mm, Y up, angles counter-clockwise.
 interface Design {
-  format: string;                    // e.g. "KiCad 9 (format 20241229)"
+  format: string;                    // e.g. "KiCad 9 (format 20241229)", "PADS ASCII (PowerPCB V4.0, basic units)"
   layers: { id: string; name: string; kind: LayerKind; side: Side; copper?: number;
     plane?: boolean;                 // negative: the board shape in copper with everything on the layer cut out
     label?: string }[];              // KiCad: id is the canonical name ("In2.Cu"), name the user's ("GND1.Cu");
-                                     // Altium: TOP, MID1, PLANE1, TOPOVERLAY… and the stack's names ("GND (1)")
+                                     // Altium: TOP, MID1, PLANE1, TOPOVERLAY… and the stack's names ("GND (1)");
+                                     // PADS: L1, L2… by level and the layer data's names ("Silkscreen Top")
   nets: string[];
   outline: Contour[];                // empty: the builder falls back to boardShape (the copper's rectangle)
   components: { ref: string; value: string; footprint: string; at: Pt; rot: number; side: 'top' | 'bottom';
@@ -215,10 +219,12 @@ interface Design {
     layers: string[];                // the copper layers with a ring (unused ones removed)
     sizes?: Record<string, number>;  // other diameters per layer (via stacks)
     net: number; type: 'through' | 'blind' | 'buried' | 'micro';
-    mask?: { top: boolean; bottom: boolean; margin: number } }[];   // where the mask is open over it
+    mask?: { top: boolean; bottom: boolean; margin: number };   // where the mask is open over it
+    square?: boolean }[];            // a square pad of side d (PADS)
   zones: { layers: string[]; net: number; name?: string; outline: Contour[];
     fill: { layer: string; contours: Contour[] }[];   // as last filled and saved
-    stroke?: number;                 // older KiCad: the fill is also stroked with this width
+    stroke?: number;                 // older KiCad, PADS pours: the fill is also stroked with this width
+    lines?: { layer: string; a: Pt; b: Pt; w: number }[];   // copper drawn as lines (PADS thermal spokes)
     keepout?: boolean; unfilled?: boolean; teardrop?: boolean; comp?: number; priority?: number }[];
   graphics: { layer: string; shape: { line: [Pt, Pt] } | { arc: { c: Pt; r: number; start: number; sweep: number } }
     | { circle: { c: Pt; r: number } } | { poly: Contour } | { region: Contour[] }   // region: holes clockwise
@@ -235,11 +241,17 @@ interface Design {
     wrap?: number;                   // a text box's column width
     comp?: number; role?: string }[];    // role: 'reference', 'value', 'user', 'field'
   holes: { at: Pt; d: number; slot?: { w: number; h: number; rot: number }; plated: boolean }[];
-  // Negative planes (S5): the net, the distance kept from the board edge, round clearances around holes that pass
-  // through without connecting, and thermal reliefs (a ring of width gap from diameter d out, interrupted by `spokes`
-  // copper spokes of width `width`, the first at `angle`). Pads and vias do not list plane layers.
+  // Planes whose copper the file does not store (S5, S6): the board shape (Altium internal planes, PADS CAM planes)
+  // or a plane area (PADS mixed planes without a saved flood) in copper, with its net, the distance kept from the
+  // board edge, round clearances around holes that pass through without connecting, thermal reliefs (a ring of width
+  // gap from diameter d out, interrupted by `spokes` copper spokes of width `width`, the first at `angle`) and other
+  // cuts. Several can share a layer; later ones lie over earlier ones. Pads and vias do not list negative plane layers.
   planes?: { layer: string; net: number; pullback: number; clearances: { at: Pt; d: number }[];
-    thermals: { at: Pt; d: number; gap: number; spokes: number; width: number; angle: number }[] }[];
+    thermals: { at: Pt; d: number; gap: number; spokes: number; width: number; angle: number }[];
+    area?: Contour[]; name?: string; // a plane area instead of the board shape
+    cuts?: { shape: DesignShape; w: number; filled: boolean }[];   // cut out too, drawn as graphics: cut-outs, areas
+                                     // over it with the gap, other nets' copper grown by the clearance
+    positive?: boolean }[];          // the layer's other items are copper over it (PADS), not cut out of it (Altium)
   stackup?: Stackup;
   placeOrigin?: Pt;                  // origin of drill and placement files (KiCad's aux_axis_origin; Altium's board
                                      // origin, ORIGINX/ORIGINY)
@@ -351,8 +363,8 @@ Status: ✅ done · 🔄 in progress · 📋 planned
 | S2 | Drill files, realistic view, measuring, PNG and SVG export | ✅ | bf8c4ef |
 | S3 | KiCad boards and footprints, design model, stroke font | ✅ | c679764 |
 | S4 | Inspect, highlight, search; BOM and pick-and-place export | ✅ | fc5432d |
-| S5 | Altium | ✅ | |
-| S6 | PADS ASCII | 📋 | |
+| S5 | Altium | ✅ | 84130dc |
+| S6 | PADS ASCII | ✅ | |
 | S7 | EAGLE | 📋 | |
 | S8 | PDF and DXF export; pick-and-place CSV over Gerbers | 📋 | |
 | S9 | KiCad export | 📋 | |
@@ -890,6 +902,114 @@ are recognised and listed but drawn in S2.
   KiCad's import (`kicad-cli pcb import --format pads`);
 - parts and nets can be inspected.
 
+**Notes from S6:**
+
+- **Reading** (`lib/pcb/pads/`): `ascii.ts` decodes the file in the code page of its header (CP932 as Shift_JIS and so
+  on, else Windows-1252) and splits it into sections; only known section names start one (`*SIGNAL*`, `*GET*` and
+  `*STANDARD*` stay inside theirs), so a text line starting with `*` stays a text. What changed between versions is
+  read from the `*REMARK*` lines, else from the version: a font line after texts and labels (2005), pin numbers on
+  terminals and no units field in part types (2007), a flags field in lines items (2007; the REMARK lines do not show
+  it), corner radii of square and rectangular finger pads (9.0), line styles of pieces (9.4). Versions are compared on
+  one scale (4.0, 5.0, 2005, 2007, 9.x as 2009.x, 10.0 as 2010). Units: basic (38,100 to the mil), mils, metric,
+  inches; except in basic files, a decal's own flag (I mils, M mm) gives the units of its numbers. A piece stops at the
+  first line that is not a corner (before the 2007 flags field was known, a text line read as a piece made a count of
+  122,396,250 and 0.7 s of reading). Reading
+  the sample takes about 40 ms and building it 10–30 ms; Ems4_Rev2 (1 MB, 1,291 pads) 80–120 ms and 20–40 ms.
+- **Layers** (`layers.ts`): copper is 1 to MAXIMUMLAYER; the other levels are named and typed by the LAYER DATA of
+  `*MISC*` (PADS's defaults 21–30, plus 100 in 250-layer mode, when a file has none). The mask, paste, silkscreen and
+  assembly layer of each side are those that layer 1 and layer n name, else the layer of that type with PADS's own
+  name or the side's word (Ems4_Rev2 names them only on an inner layer); these pairs mirror a bottom part's items.
+  Plane layers get the label "Mixed plane" or "CAM plane". Level 0 (all layers) gets a layer of its own.
+- **Parts:** a decal is turned by the part's angle and, on the bottom, mirrored left to right after turning, which is
+  the decal with y negated turned by 180° minus the angle. So `Placement.rot` is the angle on the top and 180° minus it
+  on the bottom, as KiCad stores flipped footprints: the pick-and-place file equals `kicad-cli pcb export pos` of
+  KiCad's import (52 rows in the same order, with the same angles; positions after its centring shift of 40.64 mm). The
+  part's own labels replace the decal's; they lie in the part's frame, their angle relative to the part's, mirrored
+  with it. As Linear's CAM documents plot them, decal outlines (2D pieces on level 0 or a copper level) and Ref.Des.
+  and attribute labels go to the silkscreen of the part's side and Part Type labels to its assembly drawing (else a
+  "Part types" layer); items on other levels go to their layer, mirrored for the bottom. Value: the part's Value
+  attribute, else its part type; footprint: the decal (the alternate the part picks); fields: the other attributes of
+  the part and its part type. Pins are named by the part type's alphanumeric pin names where it has them (Ems4's
+  diodes: A and C, as its routes name them), else by the terminal's pin number (2007 and later), else in order; KiCad's
+  import names them by number and loses those nets.
+- **Pads:** a shape per layer from the stack lines (-2 the part's side, 0 the other side, -1 the inner layers, a number
+  that layer, which overrides -1); R and O round, S square, A a ring, OF and RF fingers along their angle with their
+  offset, rounded or chamfered corners from the corner radius; the drill and plating on the side's line; a slot with
+  its angle and offset (the pad's origin moves onto the hole); RT/ST and RA/SA only for CAM planes. A pin's filled
+  copper in its decal (COPCLS with a pin number) joins the pad and its openings (C1–C7 of the sample); a pin's copper
+  on a paste or mask layer replaces the pad's own opening there (the paste windows of the DFN's thermal pad). Mask:
+  the stack's entry for the mask layer, else the copper of each outer side, not grown (TM.pho is identical); paste
+  likewise for SMD pads. A non-plated hole at least as large as its pad keeps its mask opening but has no copper.
+- **Routes:** a segment from each corner of a connection to the next on the corner's layer (0: not routed, 65: the end
+  at a pin), arcs around corners flagged 0x1000 with CW or CCW, vias where a via type is named; the segments and vias
+  that connections share are listed in each and kept once. Teardrops (TEARDROP P or N, width and length in percent) are
+  lined tapers from the pad's full width at its centre to the track's width 0.57 × length × the pad's diameter past
+  its edge (fitted on J1, J2 and E1 of the sample), none on a pad narrower than the track or along a track shorter
+  than the teardrop (E4). Square via pads (Ems4's 455 "VIAS") are `DesignVia.square`.
+- **Pours:** a zone per POUROUT, its HATOUTs the fill and its VOIDOUTs holes, stroked with the pour's line width (the
+  outlines are the centre lines of the copper's edges), PADTHERM and VIATHERM spokes as `DesignZone.lines`
+  (zero-length in the sample: the flood covers the pads). A pour with nothing flooded shows its outline with a note.
+  Filled copper items (COPCLS) are exactly their polygon: PADS strokes their outline inside it.
+- **Plane areas whose flood is not saved** (PLANEFLAGS OUTLINE; the sample's layers 2 and 3), in `planes.ts`: each
+  area, larger ones first (or by priority), is copper exactly to its outline; cut out of it are the later areas of
+  other nets with COPPER_TO_COPPER around them (else COPPER_TO_TRACK: the measured 10 mil), copper cut-outs (COPCUT,
+  CIRCUT) grown by half their line width, keep-outs that forbid plane areas, and the tracks, pads, vias, teardrops and
+  copper of other nets grown by the COPPER_TO_* clearances (the larger of the two nets' rule sets). Pads and vias of
+  the area's net join it directly: Linear's Gerbers have no thermals there. With the 14th flag of PLANEFLAGS (remove
+  unused pads), vias and through-hole pads on inner plane layers that no track there ends on and that do not lie in an
+  area of their own net have no copper there; their clearance stays. Isolated copper is not removed (a note says so).
+  The builder now draws several planes on one layer, plane areas, cuts and positive planes (the layer's tracks and pads
+  over the plane). Against L2.pho and L3.pho 0.06 % and 0.08 % of the pixels differ at 20 px/mm: PADS hatches the
+  flood with 5-mil lines on a 4.5-mil grid, so its horizontal edges move by up to a grid step.
+- **CAM planes** (no sample has one; checked with the sample's layer 2 turned into a CAM plane of GND): the board
+  shape kept OUTLINE_TO_COPPER from the edge, antipads from the RA/SA lines of the stacks (else the pad grown by
+  COPPER_TO_PAD or COPPER_TO_VIA) around holes of other nets, thermal reliefs from the RT/ST lines (else THERLINEWID
+  spokes, diagonal or orthogonal by THERFLAGS) around plated holes of the layer's nets, and what is drawn on the layer
+  cut out. Square antipads and thermals are drawn round.
+- **Text** (`text.ts`), measured on TS.pho: capitals are 21/32 of the height (Romansim is a Hershey font: a 32-unit
+  cell, capitals 21 units) with the width as the stroke; LEFT and RIGHT put the end of the first or last stroke at the
+  anchor, CENTER the middle of the strokes; DOWN puts the baseline there, CENTER 12.5/32 of the height below it, UP
+  (not in the sample) 25/32. The stroke font's glyphs are drawn 0.82 of the capital height wide and its spaces widened
+  to Hershey's 16/21, which makes the 39 upright texts of TS.pho as wide as PADS's within 3 % (the long line with
+  commas 5 %). Mirrored text is flipped about its anchor. TrueType faces (a font face not "<… Stroke Font>") get
+  capitals 0.7 of the height, with a note.
+- **Checked** against Linear's Gerbers (the CAM output the PDF prints come from), inside the board edge at 10 and
+  20 px/mm with `s3-compare.mjs --align --box`: the top solder mask is identical; the outer copper differs only by
+  the 185-mil pads of the four non-plated mounting holes (plotted by PADS, drilled away), "REV 1" in the stroke font
+  and edge pixels; inner planes as above; plated drills identical, the six non-plated holes on a layer of their own.
+  Differences that come from Linear's CAM documents, which the viewer does not read ([BL21](BACKLOG.md)): the bottom
+  mask is 3 mil larger (DOC_PAD_OVERSIZE), the paste leaves out the parts the documents suppress (H5, C2, C26, C32,
+  C34–C40), the silkscreen leaves out the E and MH designators, and every plot carries the board frame and the titles
+  on layers 18 and 20. The silkscreen otherwise differs by the letters' shapes (about 40 % of its pixels). Every pad
+  click finds the pad with its net and pin (171 of 171 on the sample; all on Ems4_Rev2, Dexter_MotorCtrl, MC4 and
+  controlCARD); the nets of the pads equal those of KiCad's import (149 of 149 on the sample, and on Dexter and
+  controlCARD; on Ems4 KiCad's import loses the nets of parts named with digits and of pins with letters). Opening the
+  whole DC2637A folder picks the `.ASC`, lists the Gerbers as not used and the binary `.PCB` with its message. The
+  phone layout works.
+- **Other samples** (KiCad's PADS test files): V5.0, V2005, V2007, V9.0, V9.4, V9.5 (basic and mils) and V10.0 (basic
+  and 250-layer) all read. Against KiCad's imports, the differences are where KiCad leaves things out (pins' copper,
+  the voids of floods, pours it does not fill, plane areas) or puts layers by a fixed table instead of the file's layer
+  data (MC4's texts on its "Silkscreen Bottom", level 25, end up on KiCad's F.Mask). `kicad-cli pcb import --format
+  pads` reads the PowerPCB V4.0 sample, but leaves its plane areas unfilled.
+- **Harness** (`…\scratchpad\pcb\harness\`): `s6-read.mjs` reads boards in Node, `s6-hits.mjs` clicks every pad and
+  compares the nets with KiCad's import, `s6-csv.mjs` writes the CSVs and compares the position file, `s6-textfit.mjs`
+  measures the texts of a layer against a Gerber file, `s6-diffspots.mjs` lists the clusters of differing pixels of a
+  diff image, and `s6-near.mjs`, `s6-planes.mjs`, `s6-texts.mjs`, `s6-gbrbox.mjs` and `s6-gbrlines.mjs` look at items.
+  `…\scratchpad\pcb\s6\samples\` holds KiCad's PADS test files, `s6\kicad\` their imports, `s6\cam\` the sample with
+  a CAM plane, `s6\spec\` the specification as text.
+
+**For S7:**
+
+- `Design.planes` now draws several planes per layer, plane areas with cuts, and positive planes (the layer's own
+  items over them). EAGLE polygons without a computed pour can be drawn the same way: the polygon's outline as a plane
+  area, other nets' copper grown by the isolation as cuts (orphan removal and thermals left out), without polygon
+  booleans.
+- Fitting the stroke font to another program's text: `lib/pcb/pads/text.ts` (anchor rules and a width ratio measured
+  on Gerber files with `s6-textfit.mjs`) and `lib/pcb/altium/text.ts`.
+- A footprint's filled copper that belongs to a pin can join the pad as a custom shape (`localParts` in
+  `lib/pcb/pads/board.ts`), so clicks, highlights and openings include it.
+- KiCad's importers are a second opinion only: they leave things out and map layers by fixed tables.
+
 ### S7 – EAGLE
 
 - **EAGLE XML `.brd`** (EAGLE 6 to 9, Fusion exports):
@@ -1007,9 +1127,13 @@ One agent per step, from reading to commit. It:
   - internal planes are negative;
   - polygon pours are stored as regions and tracks owned by the polygon.
 - **PADS ASCII:**
-  - Mentor's "PADS ASCII Format Specification" (PADS 9.4: `Ppcb_ASCII.pdf` at freecalypso.org) and KiCad's
-    import-format notes on PADS;
-  - the DC2637A file is in the PowerPCB V4.0 format, older than Altium's importer accepts (5.2 and later).
+  - Mentor's "PADS Layout ASCII Format Specification" (PADS 9.4: `Ppcb_ASCII.pdf` at www.freecalypso.org; the bare
+    host name did not resolve in S6) and KiCad's import-format notes on PADS;
+  - the DC2637A file is in the PowerPCB V4.0 format, older than Altium's importer accepts (5.2 and later);
+  - the files differ from the specification in places: via thermals (RT, ST) give the outer size before the spoke
+    angle, decal thermals the angle first; lines items have no flags field before PADS 2007; a stack can have fewer
+    than three lines; arcs of lines and decals are a start corner with start angle, sweep and the box of the circle,
+    arcs of pours a centre line with start angle and sweep between two corners (tenths of a degree in both).
 - **EAGLE:** XML described by `eagle.dtd`. Polygons store only outlines.
 - **Pick-and-place CSV columns:**
   - KiCad: `Ref, Val, Package, PosX, PosY, Rot, Side`;

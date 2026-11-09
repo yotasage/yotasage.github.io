@@ -8,7 +8,7 @@
 // are stored on the board (the component's place included).
 import type { AltiumRecord } from 'altiumts' with { 'resolution-mode': 'import' };
 
-import { counterClockwise, DEG, reverseContour } from '../geometry';
+import { arcTrackContour, counterClockwise, DEG, reverseContour, trackContour } from '../geometry';
 import { growShape } from '../design/pads';
 import {
   Contour, Design, DesignComponent, DesignGraphic, DesignPad, DesignPlane, DesignShape, DesignText, DesignVia, DesignZone, PadShape, Pt,
@@ -16,8 +16,7 @@ import {
 } from '../model';
 import { AltiumLayers, BOARD_SHAPE, canonical, isCopper } from './layers';
 import {
-  arcTrackContour, bool, cleanText, codes, contourOf, fieldMap, has, holeContours, index, lengthOf, MIL, mm, mmOf, num, point, Rec,
-  rectContour, str, trackContour,
+  bool, cleanText, codes, contourOf, fieldMap, has, holeContours, index, lengthOf, MIL, mm, mmOf, num, point, Rec, rectContour, str,
 } from './records';
 import { AltiumRules, ScopeObject } from './rules';
 import { placeAltiumText } from './text';
