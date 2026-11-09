@@ -134,7 +134,8 @@ function textStyle(effects: SExpr[] | undefined): TextStyle {
   const face = str(child(font, 'face')?.[1]);
   return {
     h, w, thick, bold, italic, just,
-    lineSpacing: num(child(font, 'line_spacing')?.[1], 1),
+    // KiCad keeps (line_spacing …) but its plots of board text ignore it (kicad-cli 10, text and text boxes alike).
+    lineSpacing: 1,
     face: face && face !== 'KiCad Font' ? face : undefined,
     mirror: hasAtom(justify, 'mirror'),
     hidden: flag(effects, 'hide'),
@@ -831,13 +832,15 @@ class KicadReader {
     }
     this.addCopperShapes(pad, drawnCopper, shapeOn);
 
-    // Mask and paste, from the copper shape of their side.
+    // Mask and paste, from the copper shape of their side. A pad without copper (an aperture pad, such as a paste
+    // window) is its own shape there: KiCad applies no margin to it.
     const tent = this.tentingOf(e);
     const front = shapeOn.get('F.Cu') ?? base;
     const back = shapeOn.get('B.Cu') ?? base;
+    const aperture = !copper.length;
     if (all.has('F.Mask') || all.has('B.Mask')) {
       const local = this.margin(child(e, 'solder_mask_margin'));
-      const m = local ?? fp.maskMargin ?? this.maskMargin;
+      const m = aperture ? 0 : local ?? fp.maskMargin ?? this.maskMargin;
       pad.maskMargin = m;
       const openings: { layer: string; shape: PadShape }[] = [];
       // A negative margin takes at most half the pad away.
@@ -858,8 +861,8 @@ class KicadReader {
     if (all.has('F.Paste') || all.has('B.Paste')) {
       const localMargin = this.margin(child(e, 'solder_paste_margin'));
       const localRatio = this.margin(child(e, 'solder_paste_margin_ratio') ?? child(e, 'solder_paste_ratio'));
-      const margin = localMargin ?? fp.pasteMargin ?? this.pasteMargin;
-      const ratio = localRatio ?? fp.pasteRatio ?? this.pasteRatio;
+      const margin = aperture ? 0 : localMargin ?? fp.pasteMargin ?? this.pasteMargin;
+      const ratio = aperture ? 0 : localRatio ?? fp.pasteRatio ?? this.pasteRatio;
       pad.pasteMargin = margin;
       const openings: { layer: string; shape: PadShape }[] = [];
       for (const [layer, s] of [['F.Paste', front], ['B.Paste', back]] as [string, PadShape][]) {
@@ -867,7 +870,7 @@ class KicadReader {
         const e = shapeExtent(s);
         const mx = Math.max(margin + s.w * ratio, -e.w / 2);
         const my = Math.max(margin + s.h * ratio, -e.h / 2);
-        const grown = growShape(s, mx, my);
+        const grown = Math.abs(mx - my) > 1e-9 ? resized(s, mx, my) : growShape(s, mx, my);
         if (grown) openings.push({ layer, shape: grown });
       }
       this.addShapes(pad, openings);
@@ -1366,6 +1369,28 @@ function kicadRelease(version: number): string {
     }
   }
   return exact ? `KiCad ${major} (format ${version})` : `KiCad ${major + 1} development version (format ${version})`;
+}
+
+// A paste opening whose margin differs between the axes (a ratio of a pad that is not square): KiCad makes the pad that
+// much larger or smaller and keeps the ratios of its rounded and chamfered corners (kicad-cli 10), where an even margin
+// grows or shrinks the outline (growShape).
+function resized(s: PadShape, mx: number, my: number): PadShape | null {
+  const w = s.w + 2 * mx;
+  const h = s.h + 2 * my;
+  if (!(w > 1e-9 && h > 1e-9)) return null;
+  const scale = Math.min(w, h) / Math.min(s.w, s.h);
+  switch (s.k) {
+    case 'rect':
+    case 'oval':
+    case 'trapezoid':
+      return { ...s, w, h };
+    case 'roundrect':
+      return { ...s, w, h, r: (s.r ?? 0) * scale };
+    case 'chamfer':
+      return { ...s, w, h, r: (s.r ?? 0) * scale, chamfer: { ...s.chamfer, size: (s.chamfer?.size ?? 0) * scale } };
+    default:
+      return growShape(s, mx, my);
+  }
 }
 
 // A board point in a pad's own coordinates (Y up).

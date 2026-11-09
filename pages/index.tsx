@@ -80,10 +80,10 @@ const TOOLS: SiteTool[] = [
     href: '/pcb-viewer/main',
     title: 'PCB viewer',
     category: 'Electronics',
-    description: 'View the Gerber and drill files or the KiCad, Altium, PADS or EAGLE board of a circuit board layer by layer or as it looks, mark the parts of a pick-and-place file on it, find its nets and components, measure it, and save it as PNG, SVG, PDF at 1:1 or DXF, or as a BOM and pick-and-place file.',
+    description: 'View the Gerber and drill files or the KiCad, Altium, PADS or EAGLE board of a circuit board layer by layer or as it looks, mark the parts of a pick-and-place file on it, find its nets and components, measure it, save it as PNG, SVG, PDF at 1:1 or DXF, or as a BOM and pick-and-place file, and turn an Altium, PADS or EAGLE board into a KiCad board.',
     icon: 'pcb',
     color: '#9ccc3c',
-    tags: ['Gerber RS-274X · X2', 'Excellon drill', 'KiCad 4 to 10', 'Altium PcbDoc', 'PADS ASCII', 'EAGLE · Fusion 360', 'Pick-and-place', 'Realistic view', 'Nets and components', 'Measure', 'PNG · SVG · PDF · DXF · CSV'],
+    tags: ['Gerber RS-274X · X2', 'Excellon drill', 'KiCad 4 to 10', 'Altium PcbDoc', 'PADS ASCII', 'EAGLE · Fusion 360', 'Pick-and-place', 'Realistic view', 'Nets and components', 'Measure', 'PNG · SVG · PDF · DXF · CSV', 'To KiCad'],
   },
 ];
 

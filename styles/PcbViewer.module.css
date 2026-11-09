@@ -864,6 +864,32 @@
   overflow-wrap: anywhere;
 }
 
+/* The warning before a conversion (KiCad export): what to check, as a list. */
+.kicadWarning {
+  margin: 0.4rem 0 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid #f5a623;
+  background: rgba(245, 166, 35, 0.08);
+  color: #f7d9a6;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.kicadWarning p {
+  margin: 0;
+}
+
+.kicadWarning ul {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+}
+
+.kicadWarning li + li {
+  margin-top: 0.25rem;
+}
+
 .drillFormat {
   display: flex;
   flex-direction: column;

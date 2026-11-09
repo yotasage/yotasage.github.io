@@ -299,6 +299,18 @@ export function strokeText(t: TextSpec): StrokedText {
   return { strokes: out.strokes, box, origin: { x: t.x, y: t.y } };
 }
 
+// The lines of a text as strokeText splits it, and how far below the text's anchor (internal units, Y down, in the
+// text's own frame) each line's own anchor lies when the line is drawn alone, top-aligned, at the same place. KiCad's
+// plots ignore line spacing (kicad-cli 10), so the KiCad export writes a text with another spacing line by line.
+export function textLines(text: string, sizeY: number, lineSpacing: number, vAlign: TextSpec['vAlign']): { line: string; dy: number }[] {
+  const lines = text.split('\n');
+  if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
+  const interline = sizeY * lineSpacing * INTERLINE_PITCH_RATIO;
+  const height = sizeY * 1.17 + (lines.length - 1) * interline;
+  const shift = vAlign === 'center' ? -height / 2 : vAlign === 'bottom' ? -height : 0;
+  return lines.map((line, n) => ({ line, dy: shift + n * interline }));
+}
+
 // KiCad's RotatePoint: Y down, counter-clockwise on screen, exact for multiples of 90°.
 export function rotate(x: number, y: number, ox: number, oy: number, angle: number): { x: number; y: number } {
   let dx = x - ox;

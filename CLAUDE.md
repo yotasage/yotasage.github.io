@@ -99,7 +99,11 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   millimetres; layers with clear items are first flattened with polygon booleans in `export/flatten.ts` (`clipper2-ts`,
   BSL-1.0, also loaded by `await import`). Pick-and-place files over Gerber sets are read by `lib/pcb/pnp.ts` (formats
   recognised by content, column mapping, fitting units and origin to the pads) and drawn as a marker layer per side by
-  `lib/pcb/markers.ts`, which `load.ts` loads with the stroke font only when such a file is opened.
+  `lib/pcb/markers.ts`, which `load.ts` loads with the stroke font only when such a file is opened. The KiCad export
+  (`export/kicad.ts`, loaded by `await import` when the save card saves a KiCad board) writes an Altium, PADS or EAGLE
+  `Board.design` as a `.kicad_pcb` in KiCad 9's format (version 20241229); the warning the card shows before saving
+  comes from `export/kicadnotes.ts`. Check a change to it with `kicad-cli` (`pcb export gerbers|svg`, `pcb drc` must
+  read the file) and by comparing kicad-cli's Gerbers with the viewer's own layers, as the plan's notes from S9 describe.
 - `tsconfig` uses `"module": "node16"`, so our own files count as CommonJS and the ES-module-only add-ons of three.js
   (`three/examples/jsm/...`) can only be loaded with `await import(...)`, or imported as types with
   `import type ... with { 'resolution-mode': 'import' }`. A dynamic import of one of our own files needs

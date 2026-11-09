@@ -43,7 +43,8 @@ export default function PcbViewer() {
         Select all the Gerber and drill files of a board, the folder they are in, or a ZIP archive of them, or a KiCad,
         Altium, PADS or EAGLE board file. See each layer in its own colour or the board as it looks, from the top or the
         bottom; click anything to see what it is, highlight a net or a component, measure, and save the view as PNG or
-        SVG, the layers as a PDF at 1:1 or as DXF, or a board&apos;s BOM and pick-and-place file.
+        SVG, the layers as a PDF at 1:1 or as DXF, a board&apos;s BOM and pick-and-place file, or an Altium, PADS or
+        EAGLE board as a KiCad board.
       </p>
       <div className={styles.heroButtons}>
         <PickButton onFiles={setFiles} className={styles.heroButton}>Select files</PickButton>

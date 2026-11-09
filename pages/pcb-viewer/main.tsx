@@ -34,8 +34,9 @@ export default function PcbViewerPage() {
         as the board looks with its solder mask, finish, silkscreen and holes, from the top or the bottom, with the parts
         of a pick-and-place file marked on Gerber files. Click a pad, track or part to see its net and component,
         highlight a net or a component on every layer, measure between pads and holes, and save the view as PNG or SVG,
-        the layers as a PDF at 1:1, the outline and holes or the layers as DXF, or a board&apos;s BOM and pick-and-place
-        file. Everything runs in your browser; the files never leave this page.
+        the layers as a PDF at 1:1, the outline and holes or the layers as DXF, a board&apos;s BOM and pick-and-place
+        file, or an Altium, PADS or EAGLE board as a KiCad board. Everything runs in your browser; the files never leave
+        this page.
       </p>
 
       <PcbViewer />

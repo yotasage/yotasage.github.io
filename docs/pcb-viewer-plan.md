@@ -94,7 +94,7 @@ folder, never next to the test files.
 | Part | Location | Notes |
 | --- | --- | --- |
 | Page | `pages/pcb-viewer/main.tsx` | Head, home link, global styles, as every page (CLAUDE.md) |
-| UI | `components/PcbViewer/` | `PcbViewer.tsx` start screen (loads `Workspace.tsx` on first open), `Workspace.tsx` view, toolbar and cards, `LayerPanel.tsx` (also the format of drill files), `FileList.tsx`, `pick.tsx` (file and folder pickers, drop zone that reads dropped folders), `Measure.tsx` (overlay and card), `SaveCard.tsx` (PNG and SVG; S8: PDF and DXF, as a choice of format), `Inspect.tsx` (S4: the panel over the view that says what a click is on, and the searchable lists of components and nets), `AssemblyCard.tsx` (S4: BOM and pick-and-place), `PlacementCard.tsx` (S8: the pick-and-place files over a Gerber set, with their columns, units, sides and offset) |
+| UI | `components/PcbViewer/` | `PcbViewer.tsx` start screen (loads `Workspace.tsx` on first open), `Workspace.tsx` view, toolbar and cards, `LayerPanel.tsx` (also the format of drill files), `FileList.tsx`, `pick.tsx` (file and folder pickers, drop zone that reads dropped folders), `Measure.tsx` (overlay and card), `SaveCard.tsx` (PNG and SVG; S8: PDF and DXF, as a choice of format; S9: KiCad, for Altium, PADS and EAGLE boards, with the warning before saving), `Inspect.tsx` (S4: the panel over the view that says what a click is on, and the searchable lists of components and nets), `AssemblyCard.tsx` (S4: BOM and pick-and-place), `PlacementCard.tsx` (S8: the pick-and-place files over a Gerber set, with their columns, units, sides and offset) |
 | Styles | `styles/PcbViewer.module.css` | |
 | Model | `lib/pcb/model.ts` | See below |
 | Geometry | `lib/pcb/geometry.ts` | Arcs, boxes, contour orientation, affine transforms of items |
@@ -111,12 +111,13 @@ folder, never next to the test files.
 | Design formats | `lib/pcb/kicad/` (S3: `sexpr.ts` reader, `layers.ts` layer names and wildcards, `board.ts` boards and footprints), `lib/pcb/altium/` (S5: `board.ts` boards and libraries through `altiumts`, `records.ts` fields, lengths, text and contours, `layers.ts` layer names and the stack, `rules.ts` rule scopes and the mask, paste and plane rules, `text.ts` text placement), `lib/pcb/pads/` (S6: `ascii.ts` header, units, sections, what each version writes differently and the `*MISC*` blocks, `layers.ts` levels, kinds, sides and the pairs a bottom part is mirrored with, `board.ts` the reader, `planes.ts` plane areas without a saved flood and CAM planes, `text.ts` text placement), `lib/pcb/eagle/` (S7: `xml.ts` a small XML reader, `layers.ts` layer numbers, kinds and the pairs a mirrored element swaps, `rules.ts` the design rules (restring, masks, roundness, shapes, elongation), `board.ts` boards and libraries, `pours.ts` polygons as plane areas with cuts, `text.ts` text placement) | Each produces a `Design` |
 | Drawing | `lib/pcb/render/` | Layer view and realistic view on Canvas 2D: `prepare.ts` paths, `paint.ts` a layer into a canvas and the two ways of compositing (shared with the PNG export), `view.ts` canvas, gestures, clicks and modes, `colors.ts` default and realistic colours |
 | Pick-and-place over Gerbers | `lib/pcb/pnp.ts`, `lib/pcb/markers.ts` | S8: `pnp.ts` recognises pick-and-place files by content, reads them into a table, turns rows into `Placement`s with a column mapping and fits units, origin and negated bottom X to the pads; `markers.ts` (loaded with the stroke font, with the first pick-and-place file) draws a marker layer per side |
-| Exports | `lib/pcb/export/` | `png.ts`, `svg.ts` (S2); `csv.ts` BOM and pick-and-place (S4); `pdf.ts` PDF at 1:1, `dxf.ts` DXF, `flatten.ts` a layer as polygons with polygon booleans (clear items applied) for both (S8); KiCad later |
+| Exports | `lib/pcb/export/` | `png.ts`, `svg.ts` (S2); `csv.ts` BOM and pick-and-place (S4); `pdf.ts` PDF at 1:1, `dxf.ts` DXF, `flatten.ts` a layer as polygons with polygon booleans (clear items applied) for both (S8); `kicad.ts` a design as a KiCad board, loaded with `await import` when one is saved, and `kicadnotes.ts` whether a board can be saved so and what the warning says about it (S9) |
 
 Flow: files → recognise → reader → `Board`. Gerber and drill files become layers directly; a pick-and-place file opened
 with them gives `Board.placements` and a marker layer per side (S8). A design file becomes a
 `Design`, which `lib/pcb/design/` turns into layers. Drawing and the PNG, SVG, PDF and DXF exports use only the layers;
-the CSV exports use `Board.placements`; the KiCad export uses `Board.design`. `readFiles` (`load.ts`) chooses one design
+the CSV exports use `Board.placements`; the KiCad export uses `Board.design`, and the board's plane layers for the copper of
+planes the file does not store. `readFiles` (`load.ts`) chooses one design
 file among those opened and reads it through `design/open.ts`; the board made from it is kept on the `LoadedFile`
 (`designBoard`), and `buildBoard` returns it with the user's layer types on top (`design/overrides.ts`).
 
@@ -127,8 +128,9 @@ a layer, and drill layers with plated and non-plated holes), S3 wrote the design
 `design` link of `BoardObject`, and `attrs` and `fields` of `Placement`), S4 added `Aperture.code` and
 `Design.placeOrigin`, S5 added `Design.planes`, graphics with holes (`region`) and `knockoutMargin` of texts, S6 added
 plane areas, cuts and positive planes (several per layer), `lines` of zones and square vias, S7 added `stroke` and `info`
-of planes, S8 added `Layer.markers` and `BoardObject.placement` (pick-and-place files over Gerber sets). Names and fields
-may change. Keep this section in step with the code.
+of planes, S8 added `Layer.markers` and `BoardObject.placement` (pick-and-place files over Gerber sets), S9 wrote down
+what `DesignZone.priority` and `DesignText.lineSpacing` mean (no new fields). Names and fields may change. Keep this
+section in step with the code.
 
 ```ts
 // Units: millimetres. Y up (KiCad's Y is negated on reading). Angles: degrees, counter-clockwise from +X.
@@ -237,7 +239,8 @@ interface Design {
     fill: { layer: string; contours: Contour[] }[];   // as last filled and saved
     stroke?: number;                 // older KiCad, PADS pours: the fill is also stroked with this width
     lines?: { layer: string; a: Pt; b: Pt; w: number }[];   // copper drawn as lines (PADS thermal spokes)
-    keepout?: boolean; unfilled?: boolean; teardrop?: boolean; comp?: number; priority?: number }[];
+    keepout?: boolean; unfilled?: boolean; teardrop?: boolean; comp?: number;
+    priority?: number }[];           // the file's own: KiCad fills higher first, Altium's pour order and PADS lower first
   graphics: { layer: string; shape: { line: [Pt, Pt] } | { arc: { c: Pt; r: number; start: number; sweep: number } }
     | { circle: { c: Pt; r: number } } | { poly: Contour } | { region: Contour[] }   // region: holes clockwise
     | { curve: [Pt, Pt, Pt, Pt] };   // curve: cubic Bézier
@@ -246,7 +249,8 @@ interface Design {
     at: Pt; rot: number;             // anchor and angle as drawn (keep-upright applied)
     h: number; w: number; thick: number; mirror: boolean;
     just: { h: 'left' | 'center' | 'right'; v: 'top' | 'middle' | 'bottom' };
-    italic?: boolean; bold?: boolean; lineSpacing?: number;
+    italic?: boolean; bold?: boolean;
+    lineSpacing?: number;            // × KiCad's pitch (Altium, EAGLE); KiCad's plots ignore their own line_spacing
     font?: string;                   // a TrueType face; the stroke font stands in…
     outline?: Contour[];             // …unless the file stores the glyph outlines (KiCad's render cache), on the board
     knockout?: boolean; knockoutMargin?: number;   // the box around the letters (default: a ninth of h)
@@ -381,8 +385,8 @@ Status: ✅ done · 🔄 in progress · 📋 planned
 | S5 | Altium | ✅ | 84130dc |
 | S6 | PADS ASCII | ✅ | 5238540 |
 | S7 | EAGLE | ✅ | d3a08d4 |
-| S8 | PDF and DXF export; pick-and-place CSV over Gerbers | ✅ | |
-| S9 | KiCad export | 📋 | |
+| S8 | PDF and DXF export; pick-and-place CSV over Gerbers | ✅ | aad7e55 |
+| S9 | KiCad export | ✅ | |
 
 ### S1 – Viewer shell and Gerber
 
@@ -1286,6 +1290,128 @@ are recognised and listed but drawn in S2.
 - the exports of the Altium (v1, v2), PADS and EAGLE samples open in KiCad 10: `kicad-cli pcb export svg` reads them
   without errors, and the SVG looks like our view;
 - `kicad-cli pcb drc` runs on them (violations are expected, failures are not).
+
+**Notes from S9:**
+
+- **Format** (`lib/pcb/export/kicad.ts`): KiCad 9's (version 20241229), the oldest that holds pad stacks with a shape
+  per copper layer (Altium's), written in KiCad 9's syntax: pad and via stacks as `(padstack (mode front_inner_back)
+  (layer "Inner" …) (layer "B.Cu" …))` or `(mode custom)` with every copper layer; per-via tenting as atoms; a chamfered
+  pad is a `roundrect` with `chamfer_ratio` and `chamfer` corners (kicad-cli rejects `chamfered_rect`). Strings are
+  quoted with `\"`, `\\`, `\n`, `\r` and `\t` (KiCad rejects a raw newline in a string; other control characters are
+  dropped) and saved as UTF-8; numbers to the nanometre without exponents; points four to a line (KiCad reads by lines);
+  random UUIDs from `crypto.getRandomValues`. The page offers it for Altium, PADS and EAGLE boards only (not KiCad
+  boards, Gerber sets or libraries) and loads the writer (a chunk of 38 kB) when a file is saved.
+- **Placement:** a board from another program is moved by whole millimetres onto the smallest of A4 to A0 that holds it
+  with 20 mm around (larger: a user size), with the drill/place and grid origins at the design's origin (Altium: its
+  board origin); KiCad boards keep their coordinates. Footprint items are relative to the footprint and turned back by
+  its angle (exact for quarter turns); a bottom footprint's items are already mirrored in the design, as KiCad stores
+  them; pad and text angles are the angles on the board, and a footprint text between 90° and 270° gets `(unlocked
+  yes)`, else KiCad would turn it upright.
+- **Layers:** copper by number (F.Cu, In1.Cu…, B.Cu; the design's names as user names; internal and CAM planes as
+  `power`, PADS mixed planes as `mixed`; beyond 32 the inner layers share In30.Cu); the mask, paste, silkscreen,
+  fabrication and courtyard layers of each side merged by kind (EAGLE's tPlace and tNames on F.SilkS, tDocu and tValues
+  on F.Fab); glue on Adhes; every other layer with something on it on User.1 to User.45 with its name (made unique,
+  never a canonical name; beyond: Dwgs.User). Edge.Cuts gets the design's board shape (lines, arcs, circles, each as
+  wide as the outline graphic it lies on, else the most common width or 0.05 mm); outline-layer graphics that lie on it
+  (within 0.05 mm) are left out, the others go to a user layer named after their layer (EAGLE's dimension lines of
+  LibreVNA's SMA connectors).
+- **Footprints:** one per component, with its pads, graphics and texts; Reference and Value are the first one-line texts
+  that show them, else hidden properties; the other fields are hidden properties; attributes from the component (or smd
+  or through-hole from its pads); footprint names as library identifiers (illegal characters replaced). Pads and holes
+  without a component get a footprint each (`REF**`, board only, out of the BOM and position files); EAGLE's holes are
+  NPTH pads without a mask opening (EAGLE's openings are graphics on the stop layers).
+- **Pads:** circle, rect, oval, roundrect, chamfered rectangles and octagons (chamfer ratio 1 − √½ on all corners),
+  trapezoids (`rect_delta` as read) and custom shapes (a 0.01 mm round anchor and filled primitives); offsets with the
+  drill (SMD pads too), oval drills, NPTH; a pad stack when copper layers differ (`front_inner_back` when the inner ones
+  agree). A through-hole pad or via with copper on some of its layers (Altium and PADS planes, removed unused pads) gets
+  `remove_unused_layers` with `keep_end_layers` and `zone_layer_connections` naming the layers it keeps, which kicad-cli
+  flashes exactly. Mask and paste openings are margins where the opening is the copper grown alike (same centre and
+  shape: grown with KiCad's rounded corners, or with sharp ones as Altium, PADS and EAGLE grow them); paste also as
+  margin + ratio when the growth differs between the axes; otherwise the opening is an aperture pad (SMD, no number or
+  net, only on the mask or paste layer; KiCad applies no margin to a pad without copper). KiCad sources keep their paste
+  windows as such.
+- **Vias:** `blind` (buried too) and `micro` from the type and span; other sizes per layer as a custom stack listing
+  every copper layer; square vias (PADS) are round. KiCad has one mask margin for vias (the board's
+  `pad_to_mask_clearance`, the most common via margin; pads get their own). KiCad 9's per-via `(tenting front)` names
+  the sides a via tents, and kicad-cli 10 takes the others from the board (tested; `(tenting (front no) (back no))` is
+  KiCad 10's form), so the board tents a side only where every via is tented, and each via names the sides it tents.
+- **Zones:** a KiCad zone has one outline (its other polygons are holes), so a zone per outer contour with its holes,
+  the fill shared out by containment. Fills are written as KiCad stores them, fractured: each hole is joined to the
+  outline by a cut from its leftmost point to the nearest edge on its left, the holes taken from the left; KiCad's own
+  fills (single contours) as they are, others (holes, PADS strokes and thermal spokes) flattened first. Outlines as
+  points (chords within 2.5 µm). Priorities: KiCad's as read, Altium's pour order and PADS's priority turned around
+  (`DesignZone.priority` is the file's own number); PADS teardrops as KiCad teardrop zones; never-poured pours unfilled.
+  Rule areas: PADS's restrictions from the zone's name, cut-outs (PADS copper cut-outs, EAGLE and Altium polygon
+  cutouts: Altium's rule areas are now named "Keep-out" or "Polygon cutout") keep out pours only, others tracks, vias,
+  pads and pours; on their copper layers, else (Altium's keep-out layer) on all.
+- **Planes** (the decision S9 had to make): each plane whose copper the file does not store (Altium internal planes,
+  PADS CAM planes and plane areas, EAGLE polygons) is a zone on its layer, outlined by its area or the board shape, and
+  filled with the copper the viewer draws: the plane's own items with every clear item drawn after them on its layer
+  that reaches it (later planes' cuts, what is cut out of a negative plane), flattened per plane with `flatten.ts` and
+  fractured. Writing the outline only would show no copper in KiCad until the zones are refilled, and a refill uses
+  KiCad's rules (thermal reliefs, island removal) and gives other copper; so the fill is written and the warning says
+  that a refill (B) replaces it. The union of a layer's plane fills equals the layer as drawn (LibreVNA's top copper:
+  8,004.3032 mm² both ways, difference 0). Settings for a refill come from the plane: clearance from EAGLE's isolate,
+  else the median of its cuts' half widths or of its clearances around holes; thermal gap and spoke width from its
+  reliefs (a solid connection without); minimum width EAGLE's polygon width; priority by order on the layer. What is
+  drawn on a negative plane is not written as copper (it is cut into the fill).
+- **Graphics and text:** regions with holes are fractured polygons; nets on board copper graphics; an unfilled
+  zero-width line of Altium, PADS or EAGLE is a 1 µm line (KiCad plots width 0 with a 0.1 mm pen; tested), KiCad's own
+  zeros stay. Text keeps the stroke font with KiCad's model (anchor, angle, glyph size, stroke, justification, mirror,
+  knockout); TrueType texts of Altium and Fusion stay in the stroke font, in the place and size drawn here (KiCad boards
+  keep their faces and render caches). KiCad keeps `line_spacing` in the file, but its plots ignore it for board texts
+  and text boxes (kicad-cli 10, tested), so a text with another spacing (Altium, EAGLE) is written line by line where
+  the viewer draws each line (`textLines` in `font/stroke.ts`). KiCad draws a stroke at most a quarter of the smaller
+  glyph size, so thicker strokes (most of PADS's labels) come out thinner; the warning counts them.
+- **KiCad reader, fixed** where kicad-cli disagreed: `line_spacing` is ignored as KiCad's plots ignore it; a pad without
+  copper (a paste window) keeps its own size (StickHub's footprint margin of −0.025 mm had shrunk them); a paste margin
+  that differs between the axes (a ratio on a pad that is not square) resizes the pad and keeps the ratios of its
+  rounded and chamfered corners. StickHub's paste now equals kicad-cli's; the views of ARTIFICER and four demos are
+  unchanged.
+- **Flattening** (`flatten.ts`): batches of 500 items joined in pairs, with pauses between, instead of unions of 2,500:
+  Clipper2 is much faster so (the 2,338 cuts of LibreVNA's first pour: 876 ms in one union, 90 ms in pairs). Saving
+  LibreVNA as a KiCad board in the page takes 1.3 s (2.5 s before), and the page never stops answering for more than 38
+  ms (627 ms before); the PDF and DXF exports give the same polygons.
+- **Checked** with kicad-cli 10.0.6 on 13 exports: both Altium samples and the plane variant of v1, the PADS sample and
+  its CAM-plane variant, Dexter_MotorCtrl, Ems4_Rev2, MC4_PLUS_CSHAPE and controlCARDDockingStation, and the EAGLE
+  boards mutantC, LibreVNA, RAMBo and Open Task Light: `pcb export svg`, `gerbers` and `drill` and `pcb drc` read every
+  one without errors (DRC reports 146 to 2,164 violations, as expected without the design rules). kicad-cli's Gerbers
+  against our view of the source (`s9-compare.mjs` at 20 px/mm, layers with clear items flattened on both sides,
+  outlines of never-poured pours left out), share of differing pixels: copper ≤ 0.12 % on every board (edge pixels),
+  apart from Ems4's 116 square vias written round (0.2 to 1 % of its inner layers) and two pads of DC2637A smaller than
+  their non-plated holes (PADS plots them, KiCad does not); the Altium internal plane and the PADS CAM plane 0.00 %;
+  solder masks 0.00 to 0.38 % and paste ≤ 0.14 %, RAMBo 0.91 % and 0.97 % (KiCad rounds the corners of grown rectangles
+  and keeps less of a rounded pad's radius when shrinking it); silkscreen ≤ 0.33 %, except texts with strokes over a
+  quarter of their size (Dexter's bottom silkscreen 8 %, DC2637A's assembly drawing 3.9 %); drills ≤ 0.18 %; outlines
+  equal (Edge.Cuts 0.05 mm wide where EAGLE's dimension wires are hairlines). Our own reader on the exports gives the
+  same. In the page: the warning, the download (the same file as in Node but for its UUIDs) and the phone layout (390 ×
+  844, no sideways scrolling) work.
+- **Round trip:** ARTIFICER, eight KiCad demos (ecc83-pp, video, pic_programmer, kit-dev-coldfire-xilinx_5213,
+  RoyalBlue54L-Feather, StickHub, complex_hierarchy, tinytapeout-demo) and four of KiCad's QA boards (padstacks_complex,
+  custom_pads, tracks_arcs_vias, test_copper_graphics), read with our KiCad reader and written again: kicad-cli's Gerber
+  and drill files of each original and of its rewrite are the same on every layer (0.00 % of the pixels; courtyards up
+  to 0.25 % and RoyalBlue54L's paste 0.03 %, edge pixels; custom_pads' outline a row of pixels on a pixel boundary, 0.00
+  % at 19.37 px/mm), apart from ARTIFICER's QR barcode, which the model leaves out ([BL12](BACKLOG.md)). The round trip
+  found the KiCad reader's fixes above and that Edge.Cuts needs the widths of its own lines. Not kept: KiCad's layer
+  types (`power` copper layers come back as `signal`), since the model has none. KiCad's QA board `via_stacks` is a
+  KiCad 11 file that kicad-cli 10 cannot read.
+- **Harness** (`…\scratchpad\pcb\harness\`): `s9-write.mjs` reads designs in Node and writes them (and prints the shift
+  for the comparison); `s9-kicad.sh` runs kicad-cli's SVG, Gerber, drill and DRC on exports; `s9-compare.mjs` is S7's
+  comparison with layers matched by copper number, kind and side or name, and `--shift`, `--userkeys` (kicad-cli's
+  user-layer Gerbers by name), `--skip-unfilled` and `--flatten`; `s9-cmpall.sh` compares every sample, `s9-summary.awk`
+  condenses the output; `s9-roundtrip.sh` plots an original KiCad board and its rewrite with kicad-cli and compares
+  them; `s9-lines.mjs` measures the lines of multi-line texts in a Gerber file; `s9-planes.mjs`, `s9-prof.mjs`,
+  `s9-batch.mjs` and `s9-gaps.mjs` look at plane fills, flattening times and the longest stretches without a pause;
+  `s9-pxcrop.mjs` crops images. `…\scratchpad\pcb\s9\syn\` holds the small test boards (line spacing, text boxes, zero
+  widths, via tenting, paste margins).
+
+**After S9:** the plan's steps are done. What is left for the PCB viewer is in [BACKLOG.md](BACKLOG.md): from S9 the
+KiCad export's design rules, net classes and libraries ([BL27](BACKLOG.md)) and its approximations ([BL28](BACKLOG.md));
+formats not read ([BL1](BACKLOG.md) own Altium reader, [BL4](BACKLOG.md) PADS binary, [BL5](BACKLOG.md) IPC-2581,
+[BL6](BACKLOG.md) IPC-D-356); what earlier steps drew approximately or left out ([BL10](BACKLOG.md) to
+[BL24](BACKLOG.md)); more exports and pick-and-place work ([BL7](BACKLOG.md), [BL25](BACKLOG.md), [BL26](BACKLOG.md));
+large boards ([BL8](BACKLOG.md), [BL9](BACKLOG.md)), the 3D view ([BL2](BACKLOG.md)) and revision comparison
+([BL3](BACKLOG.md)).
 
 ## Running a step
 

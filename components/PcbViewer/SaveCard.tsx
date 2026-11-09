@@ -3,6 +3,8 @@ import React from 'react';
 import { download, errorMessage, safeFileName } from '../../lib/pdf/files';
 import { exportDxf } from '../../lib/pcb/export/dxf';
 import { hasClearItems } from '../../lib/pcb/export/flatten';
+import type { exportKicad } from '../../lib/pcb/export/kicad';
+import { kicadExportable, kicadNotes } from '../../lib/pcb/export/kicadnotes';
 import { exportPdf, pageLayout, paperLabel, PdfColors, PdfMirror, PdfPaper } from '../../lib/pcb/export/pdf';
 import { boardImageBox, Cancelled, exportPng, imageSize } from '../../lib/pcb/export/png';
 import { exportSvg } from '../../lib/pcb/export/svg';
@@ -15,7 +17,7 @@ import styles from '../../styles/PcbViewer.module.css';
 import qrStyles from '../../styles/QrGen.module.css';
 import { Checkbox, Field, Select } from '../QrGen/fields';
 
-type Format = 'png' | 'svg' | 'pdf' | 'dxf';
+type Format = 'png' | 'svg' | 'pdf' | 'dxf' | 'kicad';
 type What = 'screen' | 'board';
 
 const FORMATS: [Format, string, string][] = [
@@ -23,6 +25,7 @@ const FORMATS: [Format, string, string][] = [
   ['svg', 'SVG', 'Vectors at 1:1'],
   ['pdf', 'PDF', 'Vectors at 1:1, for printing'],
   ['dxf', 'DXF', 'For CAD programs'],
+  ['kicad', 'KiCad', 'The design as a KiCad board'],
 ];
 
 const RESOLUTIONS: [string, string][] = [
@@ -57,8 +60,8 @@ function clearKinds(board: Board, layers: Layer[]): string {
 }
 
 // Saves the board: the picture on screen or the whole board as PNG, the shown layers or the realistic view as SVG,
-// the shown layers as a PDF at 1:1 (one page or one per layer), or a DXF of the board outline and holes or of the
-// shown layers.
+// the shown layers as a PDF at 1:1 (one page or one per layer), a DXF of the board outline and holes or of the
+// shown layers, or an Altium, PADS or EAGLE design as a KiCad board, with a warning first.
 export default function SaveCard({ view, board, mode, flipped, layerStyles, colors, highlighted }: {
   view: BoardView;
   board: Board;
@@ -70,7 +73,11 @@ export default function SaveCard({ view, board, mode, flipped, layerStyles, colo
   // What is highlighted ("net GND", "R12"), if anything: the images show it as on screen.
   highlighted?: string;
 }) {
-  const [format, setFormat] = React.useState<Format>('png');
+  const [chosenFormat, setFormat] = React.useState<Format>('png');
+  const toKicad = kicadExportable(board);
+  // KiCad only for a design from another program; another board falls back to PNG.
+  const format: Format = chosenFormat === 'kicad' && !toKicad ? 'png' : chosenFormat;
+  const notes = React.useMemo(() => (toKicad ? kicadNotes(board) : []), [board, toKicad]);
   const [what, setWhat] = React.useState<What>('board');
   const [resolution, setResolution] = React.useState('20');
   const [transparent, setTransparent] = React.useState(false);
@@ -173,6 +180,13 @@ export default function SaveCard({ view, board, mode, flipped, layerStyles, colo
     return exportDxf({ kind: 'layers', layers, origin, signal, onProgress });
   }, `${safeFileName(`${name}-${dxfKind === 'outline' ? 'outline' : 'layers'}`, 'board')}.dxf`);
 
+  const saveKicad = () => run('KiCad board', async (signal, onProgress) => {
+    // The writer (with the stroke font and the polygon booleans) is loaded only now.
+    // @ts-expect-error TS2835: TypeScript wants an extension that the bundler does not resolve (see CLAUDE.md).
+    const kicad = (await import('../../lib/pcb/export/kicad')) as { exportKicad: typeof exportKicad };
+    return kicad.exportKicad(board, { signal, onProgress });
+  }, `${safeFileName(board.name, 'board')}.kicad_pcb`);
+
   const originOptions: [DxfOrigin, string][] = [['file', 'The file’s origin']];
   if (placeOrigin) originOptions.push(['place', `${board.source === 'altium' ? 'The board origin' : 'The drill/place file origin'} (${mm(placeOrigin.x)}, ${mm(placeOrigin.y)} mm)`]);
   if (corner) originOptions.push(['board', `The bottom-left corner of the board (${mm(corner.minX)}, ${mm(corner.minY)} mm)`]);
@@ -185,7 +199,7 @@ export default function SaveCard({ view, board, mode, flipped, layerStyles, colo
   return (
     <>
       <div className={styles.segmented} role="group" aria-label="Format">
-        {FORMATS.map(([f, label, title]) => (
+        {FORMATS.filter(([f]) => f !== 'kicad' || toKicad).map(([f, label, title]) => (
           <button key={f} type="button" className={styles.toolButton} aria-pressed={format === f} onClick={() => setFormat(f)} title={title}>{label}</button>
         ))}
       </div>
@@ -291,6 +305,25 @@ export default function SaveCard({ view, board, mode, flipped, layerStyles, colo
           </p>
           <div className={qrStyles.buttonRow}>
             <button type="button" className={qrStyles.buttonSmall} disabled={Boolean(busy) || (dxfKind === 'layers' ? !shown.length : !board.outline?.length && !holes)} onClick={saveDxf}>Save DXF</button>
+            {busy && <button type="button" className={qrStyles.buttonSmall} onClick={() => abort.current?.abort()}>Cancel</button>}
+          </div>
+        </>
+      )}
+
+      {format === 'kicad' && (
+        <>
+          <p className={qrStyles.help}>
+            The design as a KiCad board (.kicad_pcb in KiCad 9’s format, which KiCad 9 and 10 open), to work on in KiCad: the layers with their names,
+            nets, footprints with their pads, graphics and texts, tracks, vias, zones and the board outline.
+          </p>
+          <div className={styles.kicadWarning} role="note">
+            <p><strong>The conversion may be incomplete or wrong.</strong> Check the board in KiCad (its layers, footprints and a DRC) before you use it.</p>
+            <ul>
+              {notes.map((n) => <li key={n}>{n}</li>)}
+            </ul>
+          </div>
+          <div className={qrStyles.buttonRow}>
+            <button type="button" className={qrStyles.buttonSmall} disabled={Boolean(busy)} onClick={saveKicad}>Save KiCad board</button>
             {busy && <button type="button" className={qrStyles.buttonSmall} onClick={() => abort.current?.abort()}>Cancel</button>}
           </div>
         </>

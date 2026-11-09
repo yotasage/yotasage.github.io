@@ -291,6 +291,8 @@ export interface DesignZone {
   // A teardrop, made as a zone.
   teardrop?: boolean;
   comp?: number;
+  // The file's own number: KiCad fills higher priorities first; Altium's pour order and PADS's priority count the other
+  // way (the KiCad export turns them around).
   priority?: number;
 }
 
@@ -330,6 +332,8 @@ export interface DesignText {
   just: { h: 'left' | 'center' | 'right'; v: 'top' | 'middle' | 'bottom' };
   italic?: boolean;
   bold?: boolean;
+  // Lines this many times KiCad's pitch apart (Altium and EAGLE texts; KiCad's own plots ignore its line_spacing, so
+  // the KiCad reader leaves it out and the KiCad export writes such a text line by line).
   lineSpacing?: number;
   // A TrueType font the design asks for; the stroke font stands in, unless `outline` has the glyphs.
   font?: string;

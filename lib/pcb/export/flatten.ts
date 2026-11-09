@@ -31,8 +31,9 @@ export interface FlattenOptions {
 // Integer units per millimetre for the booleans: 0.1 µm, which keeps the products of coordinates of boards up to a
 // metre within the exact range of doubles.
 const SCALE = 1e4;
-// Items turned into polygons and joined before the next pause.
-const BATCH = 2500;
+// Items turned into polygons and joined before the next pause. Clipper2 joins many overlapping polygons much faster in
+// small batches joined in pairs than in one union (LibreVNA's 2,338 cuts of a pour: 876 ms in one, 90 ms so).
+const BATCH = 500;
 
 let clipper: Clipper2 | null = null;
 
@@ -235,6 +236,20 @@ function polygonsOf(tree: PolyPath64): Polygon[] {
   return out;
 }
 
+// Unions joined in pairs, level by level, pausing between them.
+async function joinAll(parts: Paths64[], C: Clipper2, o: FlattenOptions): Promise<Paths64> {
+  let level = parts;
+  while (level.length > 1) {
+    const next: Paths64[] = [];
+    for (let i = 0; i < level.length; i += 2) {
+      next.push(i + 1 < level.length ? C.Clipper.union([...level[i], ...level[i + 1]], C.FillRule.NonZero) : level[i]);
+      if (o.pause) await o.pause();
+    }
+    level = next;
+  }
+  return level[0] ?? [];
+}
+
 // The layer as polygons: each run of items of one polarity is joined, then added to what is there (dark) or cut out
 // of it (clear).
 export async function flattenLayer(layer: Layer, o: FlattenOptions): Promise<Polygon[]> {
@@ -268,7 +283,7 @@ export async function flattenLayer(layer: Layer, o: FlattenOptions): Promise<Pol
       o.onItems?.(stop - k);
       if (o.pause) await o.pause();
     }
-    const run = parts.length === 1 ? parts[0] : C.Clipper.union(parts.flat(), NonZero);
+    const run = await joinAll(parts, C, o);
     if (dark) acc = acc.length ? C.Clipper.union(acc, run, NonZero) : run;
     else acc = C.Clipper.difference(acc, run, NonZero);
     if (o.pause) await o.pause();

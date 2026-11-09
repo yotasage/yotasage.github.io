@@ -458,16 +458,17 @@ class AltiumReader {
     if (!layer) return;
     const contour = counterClockwise(rectContour(point(r, 'X1', 'Y1'), point(r, 'X2', 'Y2'), num(r, 'ROTATION')));
     if (bool(r, 'KEEPOUT')) {
-      this.keepoutZone(r, layer, [contour]);
+      this.keepoutZone(r, layer, [contour], 'Keep-out');
       return;
     }
     for (const id of this.targets(layer)) this.graphic(id, { poly: contour }, 0, true, r);
   }
 
-  private keepoutZone(r: Rec, layer: string, outline: Contour[]) {
+  // A rule area: a keep-out (no copper of other objects there) or a polygon cutout (no pour there).
+  private keepoutZone(r: Rec, layer: string, outline: Contour[], name: 'Keep-out' | 'Polygon cutout') {
     const part = this.partOf(r);
     const layers = layer === 'MULTILAYER' ? [...this.layers.copper] : [layer === 'KEEPOUT' ? 'KEEPOUT' : layer];
-    this.design.zones.push({ layers, net: 0, outline, fill: [], keepout: true, ...(part ? { comp: part.index } : {}) });
+    this.design.zones.push({ layers, net: 0, name, outline, fill: [], keepout: true, ...(part ? { comp: part.index } : {}) });
   }
 
   // A region: copper (a pour's fill when it belongs to a polygon), a board cutout, a polygon cutout or keep-out (rule
@@ -493,7 +494,7 @@ class AltiumReader {
     }
     // Polygon cutouts and keep-out regions are rule areas.
     if (kind === 1 || bool(r, 'KEEPOUT') || r.f.get('REGIONKIND') === 'POLYGON_CUTOUT') {
-      this.keepoutZone(r, layer, [contours[0]]);
+      this.keepoutZone(r, layer, [contours[0]], kind === 1 || r.f.get('REGIONKIND') === 'POLYGON_CUTOUT' ? 'Polygon cutout' : 'Keep-out');
       return;
     }
     if (kind === 2) {
