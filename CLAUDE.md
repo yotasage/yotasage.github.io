@@ -68,7 +68,7 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   opened files and never fetched from elsewhere. The page loads three.js only when a file is opened. With several
   files, each is in a group that the Positions panel can move apart; that offset is for the view only, so statistics
   (`withoutOffsets` in `lib/viewer3d/stats.ts`) and saved files (`exportCopy` in `lib/viewer3d/export.ts`) leave it out.
-- PCB viewer: built in steps by [docs/pcb-viewer-plan.md](docs/pcb-viewer-plan.md), whose "Model" section must match
+- PCB viewer: built in steps by [docs/pcb-viewer/plan.md](docs/pcb-viewer/plan.md), whose [model.md](docs/pcb-viewer/model.md) must match
   [lib/pcb/model.ts](lib/pcb/model.ts) (millimetres, Y up). Files are recognised by content in
   [lib/pcb/detect.ts](lib/pcb/detect.ts), read and made into a `Board` in [lib/pcb/load.ts](lib/pcb/load.ts) (ZIPs
   expanded with fflate), Gerber in `lib/pcb/gerber/`, Excellon in `lib/pcb/excellon.ts` (read once, plotted with a
@@ -115,13 +115,34 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   `@testing-library/*`, `@types/jest`, and Tailwind/PostCSS/autoprefixer (no PostCSS config, so Tailwind is not
   active). Don't take them as a sign that a server or Tailwind is in use.
 
+## Working with Claude
+
+- **Lasting knowledge goes in this repo** (CLAUDE.md or `docs/`), not only in Claude's local memory, so it follows the
+  repo to other machines: the owner's preferences, lessons learnt, where test files are.
+- **Large work in steps by agents** follows [docs/agent-workflow.md](docs/agent-workflow.md): steps sized so one agent
+  stays under about 200k tokens of context, heavy steps split into research, code and check, briefs that name the
+  files to read and a verification bar, and a watchdog that resumes agents stopped by usage limits or lost connections.
+- **No file over 40 kB is read whole.** Docs are split into parts with an index before they reach 40 kB (as
+  `docs/pcb-viewer/`). For a large code file, list its outline first (`grep -n` for top-level declarations or methods),
+  then read only the range needed (`offset`/`limit`). Large code files now: `lib/pcb/export/kicad.ts`,
+  `lib/pcb/pads/board.ts`, `lib/pcb/kicad/board.ts`, `lib/pcb/altium/board.ts` (splitting them is BL29). Never read
+  `package-lock.json` or the generated glyph data `lib/pcb/font/newstroke-glyphs.ts`.
+- **Test files** are on the owner's machines; read them where they are and never copy them into the repo. PCB samples
+  are listed in [docs/pcb-viewer/test-files.md](docs/pcb-viewer/test-files.md). Real 3D models for the
+  3D viewer (JLC/EasyEDA component models, STEP and WRL) are in
+  `E:\OneDrive - NTNU\ULDAC\PCB\models\jlc-export\libraries\JLC\3dmodels`. Paths under OneDrive may exist on other
+  machines; paths under `Downloads` or `Program Files` may not.
+
 ## Docs
 
 - [README.md](README.md): what the site is, tools, getting started, how to add a tool.
 - [docs/npm-and-node.md](docs/npm-and-node.md): npm, NVM for Windows and Next.js commands explained.
 - [docs/pdf-tools-plan.md](docs/pdf-tools-plan.md): PDF tools roadmap, libraries and licence notes.
-- [docs/pcb-viewer-plan.md](docs/pcb-viewer-plan.md): PCB viewer plan: formats, model, test files, steps S1–S9 with
-  their status, and how a step is run and verified.
+- [docs/pcb-viewer/](docs/pcb-viewer/plan.md): PCB viewer plan, in parts: `plan.md` (index: goal, formats, step
+  status, how a step is run and verified), `test-files.md`, `architecture.md`, `model.md`, and `s1.md`–`s9.md` (each
+  step's scope and the notes it left for later steps).
+- [docs/agent-workflow.md](docs/agent-workflow.md): how to run large work with Claude agents cheaply and safely, with
+  the measured cost of the PCB viewer build.
 - [docs/BACKLOG.md](docs/BACKLOG.md): wanted but not scheduled, for every tool (ids `BL<n>`, never reused). Work left out
   of a step goes here.
 

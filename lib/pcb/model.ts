@@ -1,5 +1,5 @@
 // The board model of the PCB viewer: what every reader produces and what the drawing and the exports use. The plan
-// (docs/pcb-viewer-plan.md, "Model") describes it; keep the two in step.
+// (docs/pcb-viewer/model.md) describes it; keep the two in step.
 //
 // Units: millimetres. Y up (KiCad's Y is negated on reading). Angles: degrees, counter-clockwise from +X.
 
