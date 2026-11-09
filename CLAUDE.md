@@ -76,7 +76,8 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   layer kinds and order in [lib/pcb/identify.ts](lib/pcb/identify.ts). Design files (KiCad: `lib/pcb/kicad/`, an
   S-expression reader read one top-level item at a time) become a `Design`, which `lib/pcb/design/build.ts` turns into
   layers for every design format (pads as flashes, openings from `design/pads.ts`, text with the Newstroke stroke font
-  in `lib/pcb/font/`, adapted from KiCanvas, MIT, notices in `lib/pcb/font/LICENSE.*.txt`); `design/open.ts` is
+  in `lib/pcb/font/`: layout adapted from KiCanvas, MIT; glyphs generated from the font author's own CC0 release,
+  never from KiCad's GPL `newstroke_font.cpp`; notices in `lib/pcb/font/LICENSE.*.txt`); `design/open.ts` is
   loaded with `await import` only when a design file is opened. Text metrics are checked against `kicad-cli` plots.
   The view is Canvas 2D in `lib/pcb/render/`: paths are built once per layer (`prepare.ts`; never call
   `closePath()` on a `Path2D`, it is very slow in Chromium), each layer of the picture is drawn into its own canvas

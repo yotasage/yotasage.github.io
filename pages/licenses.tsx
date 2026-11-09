@@ -116,7 +116,8 @@ export default function Licenses() {
         <h2>Font and code used by the PCB viewer</h2>
         <p className={styles.lead}>
           The PCB viewer draws the text of design files with Newstroke, KiCad&apos;s stroke font, using code adapted from
-          KiCanvas. Both are copied into the site&apos;s source.
+          KiCanvas. The glyphs are generated from the font author&apos;s own release, which he put under CC0. Both are
+          part of the site&apos;s source.
         </p>
         <Entries entries={pcb} />
       </div>

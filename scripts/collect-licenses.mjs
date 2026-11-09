@@ -184,7 +184,8 @@ const viewer = VIEWER_ASSETS.map(({ author, ...e }) => ({
 }));
 if (!APACHE) console.warn('collect-licenses: pdfjs-dist is not installed, so the Apache-2.0 text of the 3D viewer files is missing.');
 
-// Code and data copied into lib/pcb/font for the PCB viewer's text, with their licence texts kept next to them.
+// Code adapted into lib/pcb/font for the PCB viewer's text, and the font data generated there, with their licence
+// texts kept next to them.
 const fontDir = join(root, 'lib', 'pcb', 'font');
 const pcb = [
   {
@@ -192,7 +193,7 @@ const pcb = [
     text: readFileSync(join(fontDir, 'LICENSE.kicanvas.txt'), 'utf8').trim(),
   },
   {
-    name: 'Newstroke font (glyph data, through KiCanvas)', license: 'CC0-1.0; CJK glyphs MIT and OFL-1.1', url: 'https://vovanium.ru/sledy/newstroke/en',
+    name: "Newstroke font (glyph data, from the author's source distribution)", license: 'CC0-1.0', url: 'https://vovanium.ru/sledy/newstroke/en',
     text: readFileSync(join(fontDir, 'LICENSE.newstroke.txt'), 'utf8').trim(),
   },
 ];

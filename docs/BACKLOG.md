@@ -1,11 +1,12 @@
 # Backlog
 
-Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL17**). When a row is
+Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL18**). When a row is
 scheduled it moves into the tool's plan (for the PCB viewer: [pcb-viewer-plan.md](pcb-viewer-plan.md)) and the move is
 noted here; when it is done the row is removed and that is noted here too.
 
 | id | tool | what | why / trigger |
 |---|---|---|---|
+| BL17 | PCB viewer | CJK text in the stroke font (CJK punctuation, kana, ideographs), as KiCad draws it: single-line glyphs made from Adobe's Source Han Sans (SIL Open Font License 1.1) with Lingdong Huang's chinese-hershey-font (MIT, https://github.com/LingDong-/chinese-hershey-font), the way KiCad made its CJK glyphs in 2019; kept in a file of their own that is loaded only when a text needs it, with the OFL and MIT notices on `/licenses`. KiCad's own CJK glyphs cannot be taken (KiCad's font file is GPL) | Font fix after S3, 2026-11-09: the glyphs now come from the Newstroke author's CC0 release, which has no CJK, so CJK characters (like every character after U+2BFF) are drawn as "?". Trigger: a board whose CJK text matters |
 | BL16 | PCB viewer | TrueType text of design files without stored outlines: use the fonts KiCad 9 embeds in the board (`embedded_files`) or fonts the user opens, instead of the stroke font as a stand-in | S3, 2026-11-09: KiCad text with a `face` and no render cache is drawn in the stroke font, with a note. Trigger: a board whose TrueType text matters and has no render cache |
 | BL15 | PCB viewer | Solder mask minimum web width (`solder_mask_min_width` of KiCad 5 boards): KiCad joins openings closer than this, which needs polygon booleans | S3, 2026-11-09: the KiCad 5 copies of the demos (`interf_u`, `video`) differ from kicad-cli's mask by 2 to 5 %; KiCad 6 and later boards use 0. Trigger: a board with the setting, or polygon booleans chosen for another step |
 | BL14 | PCB viewer | KiCad tables (KiCad 8 and later) and images (reference images and bitmaps on layers) | S3, 2026-11-09: left out with a note in the board card (KiCad's QA board `api_kitchen_sink` has both; the demos have neither). Trigger: a board that uses them |
