@@ -335,17 +335,265 @@
   white-space: pre;
 }
 
-.sideBadge {
+/* The side and mode, and what is highlighted, at the top right of the view. */
+.badges {
   position: absolute;
   top: 0.5rem;
   right: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+  max-width: 48%;
+  pointer-events: none;
+}
+
+.sideBadge {
   padding: 0.15rem 0.5rem;
   border-radius: 6px;
   background: rgba(0, 112, 243, 0.55);
   color: white;
   font-size: 0.78rem;
   font-weight: bold;
-  pointer-events: none;
+  white-space: nowrap;
+}
+
+.highlightBadge {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 100%;
+  padding: 0.1rem 0.15rem 0.1rem 0.5rem;
+  border-radius: 6px;
+  background: rgba(140, 104, 0, 0.85);
+  color: #fff6d6;
+  font-size: 0.78rem;
+  font-weight: bold;
+  pointer-events: auto;
+}
+
+.highlightName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.highlightBadge button {
+  flex: none;
+  width: 1.4rem;
+  height: 1.4rem;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.25);
+  color: inherit;
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.highlightBadge button:hover,
+.highlightBadge button:focus-visible {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* What a click is on, over the board. */
+.inspect {
+  position: absolute;
+  left: 0.5rem;
+  bottom: 0.5rem;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: min(380px, calc(100% - 1rem));
+  max-height: 60%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  background: rgba(20, 22, 26, 0.94);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  color: #f0f0f0;
+  font-size: 0.82rem;
+}
+
+.inspectHead {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.45rem 0.35rem 0.7rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.inspectTitle {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 0.92rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspectStep {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.25rem;
+  color: #c8c8c8;
+  font-variant-numeric: tabular-nums;
+}
+
+.inspectButton {
+  flex: none;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #f0f0f0;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.inspectButton:hover,
+.inspectButton:focus-visible {
+  border-color: #4da3ff;
+}
+
+.inspectBody {
+  min-height: 0;
+  padding: 0.15rem 0.7rem 0.3rem;
+  overflow: auto;
+}
+
+.inspectTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.inspectTable th,
+.inspectTable td {
+  padding: 0.22rem 0.4rem 0.22rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  text-align: left;
+  vertical-align: top;
+}
+
+.inspectTable th {
+  width: 34%;
+  color: #a8a8a8;
+  font-weight: normal;
+  overflow-wrap: anywhere;
+}
+
+.inspectTable td {
+  overflow-wrap: anywhere;
+}
+
+.inspectActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.45rem 0.7rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.inspectActions .toolButton {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspectHint {
+  margin: 0;
+  padding: 0 0.7rem 0.45rem;
+  color: #9a9a9a;
+  font-size: 0.72rem;
+}
+
+/* Phones: the panel keeps the middle of the board free to tap; its rows scroll. */
+@media (max-width: 480px) {
+  .inspect {
+    left: 0.35rem;
+    bottom: 0.35rem;
+    width: calc(100% - 0.7rem);
+    max-height: 42%;
+  }
+  .inspectHint {
+    display: none;
+  }
+}
+
+/* Components and nets */
+
+.search {
+  margin: 0.6rem 0 0.5rem;
+}
+
+.partList {
+  max-height: 300px;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+  border: 1px solid #444;
+  border-radius: 6px;
+  background: #242424;
+}
+
+.partList li + li {
+  border-top: 1px solid #383838;
+}
+
+.partItem {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: none;
+  background: none;
+  color: #f0f0f0;
+  font: inherit;
+  font-size: 0.88rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.partItem:hover,
+.partItem:focus-visible {
+  outline: none;
+  background: rgba(77, 163, 255, 0.12);
+}
+
+.partItemOn,
+.partItemOn:hover {
+  background: rgba(0, 112, 243, 0.32);
+}
+
+.partName {
+  flex: none;
+  max-width: 60%;
+  overflow: hidden;
+  font-weight: bold;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.partMeta {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: #a8a8a8;
+  font-size: 0.78rem;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .busy {

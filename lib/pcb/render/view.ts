@@ -2,9 +2,14 @@
 // the layer canvases are put together on screen: stacked with their opacity in the layer view, or as the board looks
 // in the realistic view (substrate, mask, copper, finish, silkscreen, holes). While the view is panned or zoomed, the
 // last frame is moved and scaled, and the layers are drawn again when the gesture pauses, a few at a time so the page
-// keeps responding. A press and release without moving is a click (or tap), for measuring.
+// keeps responding. A press and release without moving is a click (or tap), for inspecting and measuring.
+// A highlight (a net or a component) dims the picture and draws its items over it, each in its layer's colour (in the
+// realistic view: copper lit up, silkscreen in its colour); the selection (what a click is on) is drawn over that.
 import { Box, Contour, isEmptyBox, Layer, Pt, Side, unionBox } from '../model';
-import { compositeLayers, compositeRealistic, Frame, freeSurface, newSurface, paintLayer, RealisticColors, RealisticInputs, recolor, sizeSurface, Surface } from './paint';
+import {
+  compositeHighlight, compositeLayers, compositeOutline, compositeRealistic, Frame, freeSurface, newSurface, paintLayer, RealisticColors, RealisticInputs, recolor,
+  sizeSurface, Surface,
+} from './paint';
 import { PreparedLayer, prepareLayer, PreparedShape, prepareShape } from './prepare';
 
 export interface LayerStyle {
@@ -47,6 +52,21 @@ const MAX_SCALE = 2e5;
 // How far a pointer may move (CSS px) and still click; beyond it, the press pans.
 const CLICK_SLOP_MOUSE = 4;
 const CLICK_SLOP_TOUCH = 10;
+// With a highlight: the share of its opacity each layer keeps in the layer view, and how much the realistic view is
+// darkened.
+const DIM_LAYERS = 0.22;
+const DIM_REALISTIC = 0.62;
+// Highlighted copper in the realistic view, and the selection.
+export const HIGHLIGHT_COPPER = '#ffd54a';
+const SELECTION = '#ffffff';
+const SELECTION_FILL = 0.22;
+
+// A layer canvas to draw: its key in the canvas cache, the layer (or the highlighted part of it) and the colour.
+interface Job {
+  id: string;
+  layer: Layer;
+  color: string;
+}
 
 function newLayerCanvas(): LayerCanvas {
   return { ...newSurface(), viewKey: null, color: null };
@@ -87,6 +107,12 @@ export class BoardView {
   private mode: ViewMode = 'layers';
   private colors: RealisticColors | null = null;
   private shape: PreparedShape | null = null;
+  // The highlighted items and the selection, per layer id; the generation is part of their canvas keys, so a new
+  // highlight is drawn again.
+  private highlight: Map<string, Layer> | null = null;
+  private selection: Map<string, Layer> | null = null;
+  private highlightGen = 0;
+  private selectionGen = 0;
   private view: ViewState = { scale: 1, cx: 0, cy: 0 };
   private width = 1;
   private height = 1;
@@ -220,6 +246,22 @@ export class BoardView {
     this.requestRender(0);
   }
 
+  // A highlighted net or component: per layer id, a layer with only its items (lib/pcb/inspect.ts highlightLayers).
+  setHighlight(layers: Map<string, Layer> | null) {
+    if (layers === this.highlight) return;
+    this.highlight = layers?.size ? layers : null;
+    this.highlightGen += 1;
+    this.requestRender(0);
+  }
+
+  // What a click is on: per layer id, a layer with only those items.
+  setSelection(layers: Map<string, Layer> | null) {
+    if (layers === this.selection) return;
+    this.selection = layers?.size ? layers : null;
+    this.selectionGen += 1;
+    this.requestRender(0);
+  }
+
   isFlipped(): boolean {
     return this.flipped;
   }
@@ -269,12 +311,62 @@ export class BoardView {
     return [...s.copper, ...s.mask, ...s.silk, ...s.holes, ...this.layers.filter((l) => l.kind === 'outline')];
   }
 
+  // The layers of the picture from the top down, for finding what a click is on: the shown layers in the layer view
+  // (solder mask and paste openings after the others, as the copper under them says more: its net and pin); holes,
+  // silkscreen, copper, mask openings and the outline of the side in view in the realistic view.
+  inspectLayers(): Layer[] {
+    if (this.mode === 'layers') {
+      const shown = this.drawOrder().filter((l) => this.styles.get(l.id)?.visible).reverse();
+      const opening = (l: Layer) => l.kind === 'mask' || l.kind === 'paste';
+      return [...shown.filter((l) => !opening(l)), ...shown.filter(opening)];
+    }
+    const s = this.sideLayers();
+    return [...s.holes, ...s.silk, ...s.copper, ...s.mask, ...this.layers.filter((l) => l.kind === 'outline')];
+  }
+
   // The layers drawn into canvases for the current picture, with their colours.
   private drawnLayers(): { layer: Layer; color: string }[] {
     const color = (l: Layer) => this.styles.get(l.id)?.color ?? '#ffffff';
     if (this.mode === 'layers') return this.drawOrder().filter((l) => this.styles.get(l.id)?.visible).map((l) => ({ layer: l, color: color(l) }));
     const s = this.sideLayers();
     return [...s.copper, ...s.mask, ...s.silk, ...s.holes].map((l) => ({ layer: l, color: color(l) }));
+  }
+
+  private highlightId(layer: Layer): string {
+    return `hl${this.highlightGen}\u0001${layer.id}`;
+  }
+
+  private selectionId(layer: Layer): string {
+    return `sel${this.selectionGen}\u0001${layer.id}`;
+  }
+
+  // The colour of a layer's highlighted items: its own in the layer view; in the realistic view lit copper and the
+  // silkscreen colour (mask openings and holes are not drawn highlighted; holes cut through the highlight).
+  private highlightColor(layer: Layer, color: string): string | null {
+    if (this.mode === 'layers') return color;
+    if (layer.kind === 'copper') return HIGHLIGHT_COPPER;
+    if (layer.kind === 'silk') return this.colors?.silk ?? '#ffffff';
+    return null;
+  }
+
+  // Everything drawn for the current picture: the layers, then the highlighted and selected parts of them.
+  private jobs(): Job[] {
+    const base = this.drawnLayers();
+    const out: Job[] = base.map(({ layer, color }) => ({ id: layer.id, layer, color }));
+    if (this.highlight) {
+      for (const { layer, color } of base) {
+        const sub = this.highlight.get(layer.id);
+        const c = sub && this.highlightColor(layer, color);
+        if (c) out.push({ id: this.highlightId(layer), layer: sub, color: c });
+      }
+    }
+    if (this.selection) {
+      for (const { layer } of base) {
+        const sub = this.selection.get(layer.id);
+        if (sub) out.push({ id: this.selectionId(layer), layer: sub, color: SELECTION });
+      }
+    }
+    return out;
   }
 
   // What the picture covers: the board shape in the realistic view, the shown layers in the layer view.
@@ -446,12 +538,12 @@ export class BoardView {
     let busy = false;
     const key = this.viewKey();
     const frame = this.screenFrame();
-    const jobs = this.drawnLayers();
-    for (const { layer, color } of jobs) {
-      let lc = this.layerCanvases.get(layer.id);
+    const jobs = this.jobs();
+    for (const { id, layer, color } of jobs) {
+      let lc = this.layerCanvases.get(id);
       if (!lc) {
         lc = newLayerCanvas();
-        this.layerCanvases.set(layer.id, lc);
+        this.layerCanvases.set(id, lc);
       }
       if (lc.viewKey === key) {
         // Up to date, perhaps in another colour: painted over in place.
@@ -479,7 +571,7 @@ export class BoardView {
       lc.color = color;
     }
     // Layers not in the picture give their memory back.
-    const used = new Set(jobs.map((j) => j.layer.id));
+    const used = new Set(jobs.map((j) => j.id));
     for (const [id, lc] of this.layerCanvases) {
       if (used.has(id)) continue;
       freeSurface(lc);
@@ -506,27 +598,57 @@ export class BoardView {
     if (this.settleTimer === null) this.resolveIdle();
   }
 
-  // Puts the layer canvases together into `target` (screen size), over the background or transparent.
-  private composite(target: Surface, background: string | null) {
+  // Puts the layer canvases together into `target` (screen size), over the background or transparent, with the
+  // highlight, and the selection unless it is left out (for saving).
+  private composite(target: Surface, background: string | null, selection = true) {
     sizeSurface(target, this.width, this.height);
-    const canvasOf = (l: Layer) => this.layerCanvases.get(l.id)?.canvas;
+    const ready = (id: string) => {
+      const lc = this.layerCanvases.get(id);
+      return lc?.viewKey ? lc.canvas : undefined;
+    };
+    const ctx = target.ctx;
     if (this.mode === 'layers') {
-      const entries = this.drawOrder()
-        .filter((l) => this.styles.get(l.id)?.visible && this.layerCanvases.get(l.id)?.viewKey)
-        .map((l) => ({ canvas: canvasOf(l), opacity: this.styles.get(l.id).opacity }));
+      const order = this.drawOrder().filter((l) => this.styles.get(l.id)?.visible);
+      const dim = this.highlight ? DIM_LAYERS : 1;
+      const entries = order.filter((l) => ready(l.id)).map((l) => ({ canvas: ready(l.id), opacity: this.styles.get(l.id).opacity * dim }));
       compositeLayers(target, entries, background);
+      if (this.highlight) {
+        for (const l of order) {
+          const c = this.highlight.has(l.id) ? ready(this.highlightId(l)) : undefined;
+          if (!c) continue;
+          ctx.globalAlpha = this.styles.get(l.id).opacity;
+          ctx.drawImage(c, 0, 0);
+        }
+        ctx.globalAlpha = 1;
+      }
+      if (selection) this.drawSelection(target, order, ready);
       return;
     }
     const s = this.sideLayers();
+    const canvasOf = (l: Layer) => this.layerCanvases.get(l.id)?.canvas;
     const pick = (ls: Layer[]) => ls.map(canvasOf).filter(Boolean);
-    compositeRealistic(target, { copper: pick(s.copper), mask: pick(s.mask), silk: pick(s.silk), holes: pick(s.holes) }, this.colors, this.shape, this.screenFrame(), this.temps, background);
+    const holes = pick(s.holes);
+    compositeRealistic(target, { copper: pick(s.copper), mask: pick(s.mask), silk: pick(s.silk), holes }, this.colors, this.shape, this.screenFrame(), this.temps, background,
+      this.highlight ? DIM_REALISTIC : 0);
+    if (this.highlight) {
+      const lit = [...s.copper, ...s.silk].map((l) => (this.highlight.has(l.id) ? ready(this.highlightId(l)) : undefined)).filter(Boolean);
+      compositeHighlight(target, lit, holes, this.temps[0]);
+    }
+    if (selection) this.drawSelection(target, [...s.copper, ...s.mask, ...s.silk, ...s.holes], ready);
   }
 
-  // The picture on screen as a new canvas, with or without the background.
+  // The selection as an outline over a faint fill.
+  private drawSelection(target: Surface, layers: Layer[], ready: (id: string) => HTMLCanvasElement | undefined) {
+    if (!this.selection) return;
+    const sources = layers.map((l) => (this.selection.has(l.id) ? ready(this.selectionId(l)) : undefined)).filter(Boolean);
+    compositeOutline(target, sources, SELECTION, 2 * this.dpr, SELECTION_FILL, this.temps);
+  }
+
+  // The picture on screen as a new canvas, with or without the background (and without the selection).
   async snapshot(transparent: boolean): Promise<HTMLCanvasElement> {
     await this.whenDrawn();
     const out = newSurface(this.width, this.height);
-    this.composite(out, transparent ? null : BACKGROUND);
+    this.composite(out, transparent ? null : BACKGROUND, false);
     return out.canvas;
   }
 
@@ -551,11 +673,22 @@ export class BoardView {
         ctx.fillRect(0, 0, f.width, f.height);
       }
       const layer = surface(1);
-      for (const l of this.drawOrder()) {
+      const shown = this.drawOrder().filter((l) => this.styles.get(l.id)?.visible);
+      const dim = this.highlight ? DIM_LAYERS : 1;
+      for (const l of shown) {
         const style = this.styles.get(l.id);
-        if (!style?.visible) continue;
         await pause();
         paintLayer(layer, this.paths(l), style.color, f, scratch);
+        ctx.globalAlpha = style.opacity * dim;
+        ctx.drawImage(layer.canvas, 0, 0);
+        ctx.globalAlpha = 1;
+      }
+      for (const l of this.highlight ? shown : []) {
+        const sub = this.highlight.get(l.id);
+        if (!sub) continue;
+        const style = this.styles.get(l.id);
+        await pause();
+        paintLayer(layer, this.paths(sub), style.color, f, scratch);
         ctx.globalAlpha = style.opacity;
         ctx.drawImage(layer.canvas, 0, 0);
         ctx.globalAlpha = 1;
@@ -564,18 +697,46 @@ export class BoardView {
     }
     const s = this.sideLayers();
     let next = 3;
-    const draw = async (ls: Layer[]) => {
+    const draw = async (ls: Layer[], color: (l: Layer) => string = (l) => this.styles.get(l.id)?.color ?? '#ffffff') => {
       const out: HTMLCanvasElement[] = [];
       for (const l of ls) {
         await pause();
         const sf = surface(next++);
-        paintLayer(sf, this.paths(l), this.styles.get(l.id)?.color ?? '#ffffff', f, scratch);
+        paintLayer(sf, this.paths(l), color(l), f, scratch);
         out.push(sf.canvas);
       }
       return out;
     };
     const input: RealisticInputs = { copper: await draw(s.copper), mask: await draw(s.mask), silk: await draw(s.silk), holes: await draw(s.holes) };
-    compositeRealistic(target, input, this.colors, this.shape, f, [surface(1), surface(2)], background);
+    compositeRealistic(target, input, this.colors, this.shape, f, [surface(1), surface(2)], background, this.highlight ? DIM_REALISTIC : 0);
+    if (this.highlight) {
+      const lit = [...s.copper, ...s.silk].filter((l) => this.highlight.has(l.id));
+      const subs = lit.map((l) => this.highlight.get(l.id));
+      const colors = new Map(lit.map((l, i) => [subs[i], this.highlightColor(l, '')]));
+      compositeHighlight(target, await draw(subs, (l) => colors.get(l) ?? HIGHLIGHT_COPPER), input.holes, surface(1));
+    }
+  }
+
+  // The layer view for the SVG export, in drawing order: the shown layers (dimmed under a highlight), then the
+  // highlighted parts of them.
+  exportLayers(): { layer: Layer; color: string; opacity: number; highlighted?: boolean }[] {
+    const shown = this.drawOrder().filter((l) => this.styles.get(l.id)?.visible);
+    const dim = this.highlight ? DIM_LAYERS : 1;
+    const out: { layer: Layer; color: string; opacity: number; highlighted?: boolean }[] = shown.map((l) => ({ layer: l, color: this.styles.get(l.id).color, opacity: this.styles.get(l.id).opacity * dim }));
+    for (const l of this.highlight ? shown : []) {
+      const sub = this.highlight.get(l.id);
+      if (sub) out.push({ layer: sub, color: this.styles.get(l.id).color, opacity: this.styles.get(l.id).opacity, highlighted: true });
+    }
+    return out;
+  }
+
+  // The realistic view's highlight for the SVG export: how much the board is darkened, and the highlighted copper
+  // and silkscreen of the side in view with their colours.
+  exportHighlight(): { dim: number; layers: { layer: Layer; color: string }[] } | null {
+    if (!this.highlight) return null;
+    const s = this.sideLayers();
+    const layers = [...s.copper, ...s.silk].filter((l) => this.highlight.has(l.id)).map((l) => ({ layer: this.highlight.get(l.id), color: this.highlightColor(l, '') ?? HIGHLIGHT_COPPER }));
+    return { dim: DIM_REALISTIC, layers };
   }
 
   // --- Input ---

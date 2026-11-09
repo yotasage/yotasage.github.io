@@ -83,7 +83,10 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   `closePath()` on a `Path2D`, it is very slow in Chromium), each layer of the picture is drawn into its own canvas
   (`paint.ts`, shared with the PNG export) and composited by `view.ts`: stacked in the layer view, as the board looks
   in the realistic view (chosen by layer kind and side only); gestures move the last frame until they pause.
-  Measuring snaps with the grid index of `lib/pcb/points.ts`; exports are in `lib/pcb/export/`.
+  Measuring snaps with the grid index of `lib/pcb/points.ts`; exports are in `lib/pcb/export/`. A click is looked up
+  with the per-layer item index of `lib/pcb/hits.ts` and described by `lib/pcb/inspect.ts`, which also makes the
+  component and net lists and the highlights only from `Board.objects`, `Board.placements` and the layers (so every
+  format gets them); the BOM and pick-and-place CSVs (`export/csv.ts`) follow KiCad's position files.
 - `tsconfig` uses `"module": "node16"`, so our own files count as CommonJS and the ES-module-only add-ons of three.js
   (`three/examples/jsm/...`) can only be loaded with `await import(...)`, or imported as types with
   `import type ... with { 'resolution-mode': 'import' }`. A dynamic import of one of our own files needs

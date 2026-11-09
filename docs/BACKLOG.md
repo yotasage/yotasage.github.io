@@ -1,11 +1,12 @@
 # Backlog
 
-Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL18**). When a row is
+Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL19**). When a row is
 scheduled it moves into the tool's plan (for the PCB viewer: [pcb-viewer-plan.md](pcb-viewer-plan.md)) and the move is
 noted here; when it is done the row is removed and that is noted here too.
 
 | id | tool | what | why / trigger |
 |---|---|---|---|
+| BL18 | PCB viewer | Options for the BOM and pick-and-place CSVs: inches, X negated for bottom parts (KiCad's `--bottom-negate-x`), only SMD or no through-hole parts, the column names of KiCad, Altium or JLC, the columns and the fields a BOM line is grouped by, ranges of designators (C1-C4) | S4, 2026-11-09: the files follow the owner's own ARTIFICER files (KiCad's values, JLC's and Altium's names: Mid X, Comment), in mm, with every field as a column and lines split by part-number fields. Trigger: a manufacturer or tool that needs another form |
 | BL17 | PCB viewer | CJK text in the stroke font (CJK punctuation, kana, ideographs), as KiCad draws it: single-line glyphs made from Adobe's Source Han Sans (SIL Open Font License 1.1) with Lingdong Huang's chinese-hershey-font (MIT, https://github.com/LingDong-/chinese-hershey-font), the way KiCad made its CJK glyphs in 2019; kept in a file of their own that is loaded only when a text needs it, with the OFL and MIT notices on `/licenses`. KiCad's own CJK glyphs cannot be taken (KiCad's font file is GPL) | Font fix after S3, 2026-11-09: the glyphs now come from the Newstroke author's CC0 release, which has no CJK, so CJK characters (like every character after U+2BFF) are drawn as "?". Trigger: a board whose CJK text matters |
 | BL16 | PCB viewer | TrueType text of design files without stored outlines: use the fonts KiCad 9 embeds in the board (`embedded_files`) or fonts the user opens, instead of the stroke font as a stand-in | S3, 2026-11-09: KiCad text with a `face` and no render cache is drawn in the stroke font, with a note. Trigger: a board whose TrueType text matters and has no render cache |
 | BL15 | PCB viewer | Solder mask minimum web width (`solder_mask_min_width` of KiCad 5 boards): KiCad joins openings closer than this, which needs polygon booleans | S3, 2026-11-09: the KiCad 5 copies of the demos (`interf_u`, `video`) differ from kicad-cli's mask by 2 to 5 %; KiCad 6 and later boards use 0. Trigger: a board with the setting, or polygon booleans chosen for another step |

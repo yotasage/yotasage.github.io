@@ -1086,6 +1086,10 @@ class KicadReader {
     const microDrill = num(child(e, 'uvia_drill')?.[1], NaN);
     if (Number.isFinite(viaDrill)) this.viaDrill.drill = viaDrill;
     if (Number.isFinite(microDrill)) this.viaDrill.micro = microDrill;
+    // The drill/place file origin (written only when it is not the file's origin).
+    const aux = child(e, 'aux_axis_origin');
+    const [ax, ay] = [num(aux?.[1], 0), num(aux?.[2], 0)];
+    if (ax || ay) this.design.placeOrigin = { x: ax, y: -ay };
     this.maskMargin = num(child(e, 'pad_to_mask_clearance')?.[1], 0);
     this.pasteMargin = num(child(e, 'pad_to_paste_clearance')?.[1], 0);
     this.pasteRatio = num(child(e, 'pad_to_paste_clearance_ratio')?.[1], 0);

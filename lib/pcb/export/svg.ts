@@ -40,6 +40,8 @@ export interface SvgLayer {
   layer: Layer;
   color: string;
   opacity: number;
+  // The highlighted part of a layer (drawn after all the layers, which are dimmed).
+  highlighted?: boolean;
 }
 
 export interface SvgOptions {
@@ -51,8 +53,9 @@ export interface SvgOptions {
   background: string | null;
   // The layer view: shown layers in drawing order (the first is at the bottom).
   layers?: SvgLayer[];
-  // The realistic view of one side.
-  realistic?: { side: SideLayers; colors: RealisticColors; outline: Contour[] };
+  // The realistic view of one side, perhaps darkened (dim, 0 to 1) under a highlight: highlighted copper and
+  // silkscreen in their colours, with the holes cut through.
+  realistic?: { side: SideLayers; colors: RealisticColors; outline: Contour[]; dim?: number; highlight?: { layer: Layer; color: string }[] };
   onProgress?: (done: number) => void;
   signal?: AbortSignal;
 }
@@ -298,7 +301,9 @@ export async function exportSvg(o: SvgOptions): Promise<Blob> {
   const c = new Coords(o.flipped);
   const margin = 0;
   const area = c.box({ minX: o.box.minX - margin, minY: o.box.minY - margin, maxX: o.box.maxX + margin, maxY: o.box.maxY + margin });
-  const layers = o.layers?.map((l) => l.layer) ?? (o.realistic ? [...o.realistic.side.copper, ...o.realistic.side.mask, ...o.realistic.side.silk, ...o.realistic.side.holes] : []);
+  const lit = o.realistic?.highlight ?? [];
+  const layers = o.layers?.map((l) => l.layer)
+    ?? (o.realistic ? [...o.realistic.side.copper, ...o.realistic.side.mask, ...o.realistic.side.silk, ...o.realistic.side.holes, ...lit.map((h) => h.layer)] : []);
   const total = layers.reduce((sum, l) => sum + l.items.length, 0);
   const w = new Writer(total, o);
   w.w('<?xml version="1.0" encoding="UTF-8"?>\n');
@@ -312,10 +317,10 @@ export async function exportSvg(o: SvgOptions): Promise<Blob> {
   const prefixOf = (l: Layer) => `l${layers.indexOf(l)}`;
 
   if (o.layers) {
-    for (const { layer, color: raw, opacity } of o.layers) {
+    for (const { layer, color: raw, opacity, highlighted } of o.layers) {
       const color = safeColor(raw);
       const prefix = prefixOf(layer);
-      const label = xmlText(`${layerTitle(layer)} (${layer.name})`);
+      const label = xmlText(`${layerTitle(layer)} (${layer.name})${highlighted ? ', highlighted' : ''}`);
       w.w(`<g id="${prefix}" inkscape:groupmode="layer" inkscape:label="${label}" opacity="${n(opacity)}">`);
       if (hasClear(layer)) {
         const b = layer.negative ? c.box(layer.bbox) : area;
@@ -365,6 +370,20 @@ export async function exportSvg(o: SvgOptions): Promise<Blob> {
       w.w(rect(colors.silk, 'silk'));
     }
     w.w('</g>\n');
+    if (o.realistic.dim) w.w(`<path id="dimmed" fill="#000" fill-opacity="${n(o.realistic.dim)}" d="${shapeD}" mask="url(#board)"/>\n`);
+    if (lit.length) {
+      w.w('<g id="highlight" inkscape:groupmode="layer" inkscape:label="Highlight" mask="url(#board)">');
+      for (const { layer, color: raw } of lit) {
+        const color = safeColor(raw);
+        if (hasClear(layer)) {
+          await coverageMask(w, c, layer, `${prefixOf(layer)}m`, prefixOf(layer), area);
+          w.w(rect(color, `${prefixOf(layer)}m`));
+        } else {
+          await writeItems(w, c, layer, prefixOf(layer), color, color);
+        }
+      }
+      w.w('</g>\n');
+    }
   }
   w.w('</svg>\n');
   w.flush();

@@ -213,9 +213,10 @@ function tint(s: Surface, color: string) {
 // The realistic view: the board shape in substrate (or mask) colour; mask openings show the substrate; copper under
 // the mask in the mask's copper colour; exposed copper in the finish colour; silkscreen where there is mask (it is
 // not printed in openings); holes cut through everything. Everything is clipped to the board shape (source-atop), and
-// the background, if any, goes behind. Two temporary surfaces the size of the frame are needed.
+// the background, if any, goes behind. Two temporary surfaces the size of the frame are needed. `dim` darkens the
+// board (0 to 1), so that a highlight drawn over it stands out.
 export function compositeRealistic(target: Surface, input: RealisticInputs, colors: RealisticColors, shape: PreparedShape | null, f: Frame,
-  temps: [Surface, Surface], background: string | null) {
+  temps: [Surface, Surface], background: string | null, dim = 0) {
   const ctx = target.ctx;
   sizeSurface(target, f.width, f.height);
   reset(ctx);
@@ -251,6 +252,12 @@ export function compositeRealistic(target: Surface, input: RealisticInputs, colo
     drawAll(ctx, 'source-atop', [t.canvas]);
     // Holes through everything.
     drawAll(ctx, 'destination-out', input.holes);
+    if (dim > 0) {
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.fillStyle = `rgba(0, 0, 0, ${dim})`;
+      ctx.fillRect(0, 0, f.width, f.height);
+      ctx.globalCompositeOperation = 'source-over';
+    }
   }
   if (background) {
     ctx.globalCompositeOperation = 'destination-over';
@@ -258,4 +265,41 @@ export function compositeRealistic(target: Surface, input: RealisticInputs, colo
     ctx.fillRect(0, 0, f.width, f.height);
     ctx.globalCompositeOperation = 'source-over';
   }
+}
+
+// The selection over the picture: an outline around the selected items (their canvases grown by `px` device pixels
+// in eight directions, minus themselves), over a faint fill, so a large zone does not cover the board. Two temporary
+// surfaces are needed.
+export function compositeOutline(target: Surface, sources: HTMLCanvasElement[], color: string, px: number, fill: number, temps: [Surface, Surface]) {
+  if (!sources.length) return;
+  const [shape, ring] = temps;
+  const w = target.canvas.width;
+  const h = target.canvas.height;
+  sizeSurface(shape, w, h);
+  sizeSurface(ring, w, h);
+  union(shape, sources);
+  tint(shape, color);
+  const ctx = ring.ctx;
+  reset(ctx);
+  ctx.clearRect(0, 0, w, h);
+  const d = px * Math.SQRT1_2;
+  for (const [dx, dy] of [[px, 0], [-px, 0], [0, px], [0, -px], [d, d], [d, -d], [-d, d], [-d, -d]]) ctx.drawImage(shape.canvas, dx, dy);
+  drawAll(ctx, 'destination-out', [shape.canvas]);
+  const t = target.ctx;
+  reset(t);
+  t.globalAlpha = fill;
+  t.drawImage(shape.canvas, 0, 0);
+  t.globalAlpha = 1;
+  t.drawImage(ring.canvas, 0, 0);
+}
+
+// A highlight over the realistic view: the highlighted copper and silkscreen (canvases already in their colours),
+// with the holes of the side cut through them. One temporary surface is needed.
+export function compositeHighlight(target: Surface, lit: HTMLCanvasElement[], holes: HTMLCanvasElement[], temp: Surface) {
+  if (!lit.length) return;
+  sizeSurface(temp, target.canvas.width, target.canvas.height);
+  union(temp, lit);
+  drawAll(temp.ctx, 'destination-out', holes);
+  reset(target.ctx);
+  target.ctx.drawImage(temp.canvas, 0, 0);
 }

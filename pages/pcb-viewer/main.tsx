@@ -30,9 +30,11 @@ export default function PcbViewerPage() {
         <h1 className={styles.title}>PCB viewer</h1>
       </header>
       <p className={styles.lead}>
-        View the Gerber and drill files of a circuit board layer by layer, or as the board looks with its solder mask,
-        finish, silkscreen and holes, from the top or the bottom. Measure between pads and holes, and save the view as PNG
-        or SVG. Everything runs in your browser; the files never leave this page.
+        View the Gerber and drill files or the KiCad board of a circuit board layer by layer, or as the board looks with
+        its solder mask, finish, silkscreen and holes, from the top or the bottom. Click a pad, track or part to see its
+        net and component, highlight a net or a component on every layer, measure between pads and holes, and save the
+        view as PNG or SVG, or a KiCad board&apos;s BOM and pick-and-place file. Everything runs in your browser; the files
+        never leave this page.
       </p>
 
       <PcbViewer />

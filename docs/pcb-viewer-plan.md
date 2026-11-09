@@ -88,7 +88,7 @@ folder, never next to the test files.
 | Part | Location | Notes |
 | --- | --- | --- |
 | Page | `pages/pcb-viewer/main.tsx` | Head, home link, global styles, as every page (CLAUDE.md) |
-| UI | `components/PcbViewer/` | `PcbViewer.tsx` start screen (loads `Workspace.tsx` on first open), `Workspace.tsx` view, toolbar and cards, `LayerPanel.tsx` (also the format of drill files), `FileList.tsx`, `pick.tsx` (file and folder pickers, drop zone that reads dropped folders), `Measure.tsx` (overlay and card), `SaveCard.tsx` (PNG and SVG) |
+| UI | `components/PcbViewer/` | `PcbViewer.tsx` start screen (loads `Workspace.tsx` on first open), `Workspace.tsx` view, toolbar and cards, `LayerPanel.tsx` (also the format of drill files), `FileList.tsx`, `pick.tsx` (file and folder pickers, drop zone that reads dropped folders), `Measure.tsx` (overlay and card), `SaveCard.tsx` (PNG and SVG), `Inspect.tsx` (S4: the panel over the view that says what a click is on, and the searchable lists of components and nets), `AssemblyCard.tsx` (S4: BOM and pick-and-place) |
 | Styles | `styles/PcbViewer.module.css` | |
 | Model | `lib/pcb/model.ts` | See below |
 | Geometry | `lib/pcb/geometry.ts` | Arcs, boxes, contour orientation, affine transforms of items |
@@ -98,11 +98,13 @@ folder, never next to the test files.
 | Excellon, drill layers | `lib/pcb/excellon.ts`, `lib/pcb/drill.ts` | `excellon.ts` reads a file once into a program and plots it with a format; `drill.ts` fits a format to the pads and turns Gerber drill files into holes |
 | Board shape | `lib/pcb/outline.ts` | Loops of the outline layer, else a frame drawn on several layers, else the copper's rectangle |
 | Points | `lib/pcb/points.ts` | Pad and hole centres and line ends per layer in a grid index: measuring snaps to them, drill formats are fitted to them |
+| Hits | `lib/pcb/hits.ts` | What lies under a point of a layer (S4): a grid index of the items per layer, built on the first click on the layer, and the distance from a point to each kind of item |
+| Inspecting | `lib/pcb/inspect.ts` | What a click is on across the layers of the picture (one entry per object), its description, the lists of components and nets, and the items of a highlighted net or component on every layer (S4); only from `Board.objects`, `Board.placements` and the layers, with `Board.design` for pad shapes, holes and margins |
 | Design → layers | `lib/pcb/design/` | Shared by all design formats (S3): `build.ts` the `Design` into a `Board`, `pads.ts` pad shapes as aperture parts and grown or shrunk for mask and paste, `art.ts` graphics (dashes too) and text as items, `outline.ts` the board shape from outline graphics, `overrides.ts` the user's layer types on a design's board, `open.ts` the entry loaded with `await import` when a design file is opened |
 | Stroke font | `lib/pcb/font/` | Newstroke (S3): `newstroke-glyphs.ts` generated from the font author's own CC0 release (see Libraries), `stroke.ts` layout adapted from KiCanvas, `LICENSE.kicanvas.txt` and `LICENSE.newstroke.txt` (read by `scripts/collect-licenses.mjs` for `/licenses`) |
 | Design formats | `lib/pcb/kicad/` (S3: `sexpr.ts` reader, `layers.ts` layer names and wildcards, `board.ts` boards and footprints), `lib/pcb/altium/`, `lib/pcb/pads/`, `lib/pcb/eagle/` | Each produces a `Design` |
 | Drawing | `lib/pcb/render/` | Layer view and realistic view on Canvas 2D: `prepare.ts` paths, `paint.ts` a layer into a canvas and the two ways of compositing (shared with the PNG export), `view.ts` canvas, gestures, clicks and modes, `colors.ts` default and realistic colours |
-| Exports | `lib/pcb/export/` | `png.ts`, `svg.ts` (S2); CSV, PDF, DXF, KiCad later |
+| Exports | `lib/pcb/export/` | `png.ts`, `svg.ts` (S2); `csv.ts` BOM and pick-and-place (S4); PDF, DXF, KiCad later |
 
 Flow: files → recognise → reader → `Board`. Gerber and drill files become layers directly. A design file becomes a
 `Design`, which `lib/pcb/design/` turns into layers. Drawing and the PNG, SVG, PDF and DXF exports use only the layers;
@@ -114,8 +116,8 @@ file among those opened and reads it through `design/open.ts`; the board made fr
 
 S1 wrote the artwork part (in `lib/pcb/model.ts`, as below; S2 added `outlineFrom`, the `'format'` way of identifying
 a layer, and drill layers with plated and non-plated holes), S3 wrote the design part (and `Board.design`, the
-`design` link of `BoardObject`, and `attrs` and `fields` of `Placement`). Names and fields may change. Keep this
-section in step with the code.
+`design` link of `BoardObject`, and `attrs` and `fields` of `Placement`), S4 added `Aperture.code` and
+`Design.placeOrigin`. Names and fields may change. Keep this section in step with the code.
 
 ```ts
 // Units: millimetres. Y up (KiCad's Y is negated on reading). Angles: degrees, counter-clockwise from +X.
@@ -142,7 +144,8 @@ type ArtItem = Art & { dark: boolean; obj?: number };   // obj: index into Board
 // A flash shape; parts in order (polygons counter-clockwise), a part with dark: false erases earlier parts of the same
 // flash only. Block apertures and step-and-repeat are expanded into items by the Gerber plotter.
 interface AperturePart { dark: boolean; circle?: { c: Pt; r: number }; poly?: Pt[] }
-interface Aperture { parts: AperturePart[]; name?: string; attrs?: Record<string, string> }   // attrs: X2 %TA
+interface Aperture { parts: AperturePart[]; name?: string; code?: number;   // name as defined ("C,0.5"), Gerber D code
+  attrs?: Record<string, string> }   // attrs: X2 %TA
 
 type LayerKind = 'copper' | 'mask' | 'paste' | 'silk' | 'outline' | 'drill' | 'mechanical' | 'fab' | 'courtyard'
   | 'keepout' | 'other';
@@ -164,6 +167,9 @@ interface Layer {
 // too), with `design` pointing at the entry; one per net for tracks, one per net for board graphics, one for board text.
 interface BoardObject { kind: string; net?: string; component?: string; pin?: string; info?: Record<string, string>;
   design?: { list: 'pads' | 'vias' | 'zones' | 'components' | 'tracks' | 'graphics' | 'texts'; index: number } }
+// at, rot and side as KiCad's position files give them (lib/pcb/export/csv.ts writes them so): the footprint origin,
+// Y up; rot counter-clockwise, for a bottom part the angle of the footprint flipped about its own X axis (Y negated)
+// and then turned, as KiCad stores it; X is not negated on the bottom.
 interface Placement { ref: string; value?: string; footprint?: string; at: Pt; rot: number; side: 'top' | 'bottom';
   // 'dnp', 'exclude_from_bom', 'exclude_from_pos_files', 'board_only': 'yes'; 'type': 'smd' | 'through_hole'
   attrs?: Record<string, string>;
@@ -175,7 +181,8 @@ interface Board {
   outline?: Contour[];               // board shape: edges counter-clockwise, cutouts clockwise (outline.ts)
   outlineFrom?: 'outline' | 'design' | 'frame' | 'copper' | 'extent';   // frame: one loop drawn on several layers (PADS)
   stackup?: { thickness?: number; mask?: string; silk?: string; finish?: string; copperLayers?: number };
-  objects: BoardObject[];            // what a click on an item reports (S4); Gerber: one per distinct %TO set
+  objects: BoardObject[];            // what a click reports and a highlight is made of (S4); Gerber: one per
+                                     // distinct %TO set, \uXXXX escapes decoded
   placements: Placement[];           // components of a design, or from a pick-and-place CSV
   design?: Design;                   // design files only (S3)
   warnings: string[];
@@ -223,6 +230,7 @@ interface Design {
     comp?: number; role?: string }[];    // role: 'reference', 'value', 'user', 'field'
   holes: { at: Pt; d: number; slot?: { w: number; h: number; rot: number }; plated: boolean }[];
   stackup?: Stackup;
+  placeOrigin?: Pt;                  // origin of drill and placement files (KiCad's aux_axis_origin; Altium: board origin)
   dash?: { dash: number; gap: number };  // dash and gap lengths in line widths (KiCad: 12 and 3)
   warnings: string[];
 }
@@ -290,6 +298,17 @@ As built in S2:
   (`onTap`), unless a second finger came. The view tells listeners about the cursor and every view change
   (`listenCursor`, `listenView`), for the coordinates and the measuring overlay.
 
+As built in S4:
+
+- **Highlight and selection** are layer canvases of their own, painted from sub-layers that hold only their items and
+  share the layer's apertures (`setHighlight`, `setSelection`). Their canvas keys carry a generation each, so a new
+  highlight or selection is drawn again and the old canvases are freed. Layer view: the layers at 22 % of their
+  opacity, the highlighted parts at their opacity, then the selection. Realistic view: `compositeRealistic(…, dim)`
+  darkens the board inside its shape before the background goes behind; `compositeHighlight` lays the highlighted
+  copper (lit, `HIGHLIGHT_COPPER`) and silkscreen over it with the holes of the side cut through. The selection is
+  drawn by `compositeOutline`: the selected canvases grown by 2 device pixels in eight directions minus themselves, over
+  a faint fill, so a selected zone does not cover the board. Exports keep the highlight and leave out the selection.
+
 ### Libraries
 
 | Library | Use | Licence | Status |
@@ -317,7 +336,7 @@ Status: ✅ done · 🔄 in progress · 📋 planned
 | S1 | Viewer shell and Gerber | ✅ | 7f75723 |
 | S2 | Drill files, realistic view, measuring, PNG and SVG export | ✅ | bf8c4ef |
 | S3 | KiCad boards and footprints, design model, stroke font | ✅ | c679764 |
-| S4 | Inspect, highlight, search; BOM and pick-and-place export | 📋 | |
+| S4 | Inspect, highlight, search; BOM and pick-and-place export | ✅ | |
 | S5 | Altium | 📋 | |
 | S6 | PADS ASCII | 📋 | |
 | S7 | EAGLE | 📋 | |
@@ -640,6 +659,81 @@ are recognised and listed but drawn in S2.
 - on the ARTIFICER board, clicking pads gives the right net and pin;
 - a highlighted net covers tracks, pads, vias and zones on every layer;
 - the pick-and-place export matches `assembly/POS.csv` (mind origin and sign conventions).
+
+**Notes from S4:**
+
+- **Clicks** (`hits.ts`, `inspect.ts`, `components/PcbViewer/Inspect.tsx`): a click or tap that does not pan (S2's
+  `onTap`) is looked up within 3 px (mouse) or 8 px (touch) on the layers of the picture from the top down
+  (`BoardView.inspectLayers`: the shown layers, with solder mask and paste openings after the others because the
+  copper under them says more; in the realistic view holes, silkscreen, copper, mask, outline). While measuring, clicks
+  measure. Per layer, a grid of the item boxes (about one item per cell; items over more than 64 cells in a list of
+  their own) is built on the first click on the layer. Distances are exact for lines (round and square ends), arcs,
+  flashes (in aperture coordinates; a hole in a pad counts as the pad), regions (non-zero winding, arcs in 3° steps)
+  and holes; a clear item that covers the point hides what is under it on its layer. Within a layer, items on the
+  point come first, pads and holes before lines before regions (a click on a pad finds the pad, not the track end
+  drawn over it or the zone under it), then items near the point by distance. The items of one object are one entry
+  (a pad's copper, openings and hole), except the objects a design shares per net (tracks, board graphics, board
+  text), which are one entry per layer. On a design board, a click within the box of a component's pads that finds
+  none of its items (between the pads of a 0402) also gives the component, after what is on the point on its side's
+  layers and before the inner layers and the other side; it is outlined with all its items in the picture. Clicking
+  the same spot again steps to the next entry (also ‹ ›) while the picture has the same layers; a new mode or side
+  closes the panel. Escape closes the panel, a second one clears the highlight.
+- **Checked:** every one of ARTIFICER's 1,071 pad clicks (pad centres on F.Cu and B.Cu) finds the pad with its net,
+  component and pin as the first entry on the `.kicad_pcb`, and as an entry on its Gerbers (as the first in 871; the
+  other 200 are vias in pads, drawn over the pad); on the large demo 4,853 of 4,853, board and Gerbers (KiCad writes
+  `N/C` as the net of unconnected pads). KiCad's Gerbers write the `*` of `REF**` in X2 values as a `\uXXXX` escape
+  (code 002A); the Gerber reader now decodes such escapes. Linear's Gerbers without X2 give the layer, file, aperture
+  (D code and definition), size, width or position.
+- **Speed** (large demo): indexing all 33 layers of the `.kicad_pcb` takes 114 ms in Node (78 ms for the 37 Gerber
+  layers), a click then about 10 µs. In the page the first click answers in 60–80 ms, later ones in 20–40 ms.
+- **Highlight:** `objectMask` marks the objects of a net, or of a component (a design's by its index, so the four H2 of
+  ARTIFICER stay apart; Gerber sets by the `.C`/`.P` designator); `highlightLayers` takes their items per layer with
+  the clear items after them, and for drill files without objects (Excellon) the holes within 10 µm of a highlighted
+  copper flash. GND of the large demo (19,582 items on 15 layers) is collected in 40 ms; in the page that is one frame
+  of about 125 ms, and redraws take 20–30 ms with the default layers (235 ms with all 38 Gerber layers, as without a
+  highlight). PNG and SVG keep the highlight.
+- **Lists:** components from `Board.placements` (Gerber sets: the `.C`/`.P` designators, values from `.CVal` where a
+  file has them), nets with something on the board (Gerber sets: the `.N` values), with pad counts. Search puts exact,
+  then leading, then contained designator or net matches before matches of values and footprints; 300 entries at most
+  are listed. Picking one highlights it, closes the panel and zooms to its items on the layers in the picture (a
+  component with 0.75 × its size around it; text on hidden fabrication layers can be far off).
+- **Pick-and-place** (`lib/pcb/export/csv.ts`): `Designator,Val,Package,Mid X,Mid Y,Rotation,Side` as ARTIFICER's
+  `POS.csv` (KiCad's CSV with JLC's column names), the bottom side first, then by designator in KiCad's order
+  (`StrNumCmp`: numbers as numbers, other characters by code point), six decimals, angles in (−180°, 180°]. Identical,
+  row by row and in order, to `kicad-cli pcb export pos --format csv --units mm` for ARTIFICER (with `--exclude-dnp`)
+  and five demos, also with `--use-drill-file-origin` for the drill/place origin (`Design.placeOrigin`, read from
+  `aux_axis_origin`). ARTIFICER's own `POS.csv`: its 265 rows are all equal; ours has 8 more, the board-only `REF**`
+  via footprints, which the board got after `POS.csv` was made and kicad-cli 10 writes too. The third origin is the
+  bottom-left corner of the box around the board shape.
+- **BOM:** a line per value, footprint and part-number fields (field names with mpn, part, lcsc, jlc, manufacturer,
+  mfr, mfg, digikey, mouser…), designators joined with commas in KiCad's order, the other fields where the whole line
+  agrees, all text quoted (as `BOM.csv`); the value column is "Comment" as in the owner's file (JLC's and Altium's
+  name). Against ARTIFICER's `BOM.csv` (made from the schematic): 51 of our 56 lines are identical; the rest differ
+  where the board's fields differ from the schematic's (CN1, J2, RN1, Y1), by H2 ×4 (on the board, not in the
+  schematic BOM) and U1 (DNP, left out here), and `BOM.csv` has SH1–SH4, which are not on the board.
+- Both files are UTF-8 with a byte order mark (for Excel), CRLF lines, RFC 4180 quoting. `exclude_from_pos_files` and
+  `exclude_from_bom` parts are always left out, DNP parts unless the box is unticked; board-only parts stay, as in
+  KiCad.
+- **Harness** (`…\scratchpad\pcb\harness\`): `s4-csv.mjs` writes both CSVs in Node and compares the pick-and-place file
+  with reference files; `s4-hits.mjs` clicks every pad of a board and of its Gerbers and times the index and the
+  highlights; `s4-drive.mjs` is `drive.mjs` with a calibration from the coordinate readout (`calib`, by taps on touch
+  screens), clicks and taps at board coordinates (`clickat`, `tapat`), the panel's text (`panel`), list search and
+  picks (`search`, `tab`, `pick`), and timed actions with the longest frame (`timed`, `timedclick`).
+
+**For S5:**
+
+- **Everything of S4 works from the builder's output:** give pads `num`, `net`, `comp` and `info.function` (the pin
+  name, where Altium has one), components `ref`, `value` (Altium's Comment), `footprint` (the pattern, as
+  "library:name" when the library is known), `attrs` (`dnp` for "Not Fitted"; `exclude_from_bom` for the component
+  kinds Standard (No BOM), Mechanical, Graphical and Net Tie (No BOM)) and `fields` (the component parameters, which
+  give the BOM its columns).
+- **Angles of bottom parts:** `Placement.rot` is written as KiCad stores it: a bottom footprint is the library
+  footprint flipped about its own X axis (Y negated), then turned by `rot`. Altium flips bottom components left–right
+  (about the Y axis), which is the same as KiCad's flip turned by 180°, so its angle probably needs 180° added. Check
+  with `kicad-cli pcb import --format altium`, then `pcb export pos`, on the samples, and with an Altium pick-and-place
+  file if one can be found.
+- **`Design.placeOrigin`:** Altium's board origin (the user origin of its pick-and-place files), in the coordinates of
+  the design.
 
 ### S5 – Altium
 

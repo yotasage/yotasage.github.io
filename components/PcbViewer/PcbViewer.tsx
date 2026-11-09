@@ -37,8 +37,9 @@ export default function PcbViewer() {
       <h2>Open Gerber files or a KiCad board</h2>
       <p>
         Select all the Gerber and drill files of a board, the folder they are in, or a ZIP archive of them, or a KiCad
-        board file. See each layer in its own colour or the board as it looks, from the top or the bottom; measure it,
-        and save it as PNG or SVG.
+        board file. See each layer in its own colour or the board as it looks, from the top or the bottom; click
+        anything to see what it is, highlight a net or a component, measure, and save the view as PNG or SVG, or a
+        KiCad board&apos;s BOM and pick-and-place file.
       </p>
       <div className={styles.heroButtons}>
         <PickButton onFiles={setFiles} className={styles.heroButton}>Select files</PickButton>

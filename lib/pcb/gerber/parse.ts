@@ -776,7 +776,7 @@ class Plotter {
       ...(part.circle ? { circle: { c: { x: part.circle.c.x * unit, y: part.circle.c.y * unit }, r: part.circle.r * unit } } : {}),
       ...(part.poly ? { poly: ccwPoly(part.poly.map((p) => ({ x: p.x * unit, y: p.y * unit }))) } : {}),
     }));
-    const aperture: Aperture = { parts: scaled, name: m[3] ? `${template},${m[3]}` : template };
+    const aperture: Aperture = { parts: scaled, name: m[3] ? `${template},${m[3]}` : template, code };
     if (Object.keys(this.apertureAttrs).length) aperture.attrs = { ...this.apertureAttrs };
     entry.index = this.apertures.length;
     this.apertures.push(aperture);
@@ -846,7 +846,8 @@ class Plotter {
   private attribute(code: string, body: string) {
     const comma = body.indexOf(',');
     const name = (comma < 0 ? body : body.slice(0, comma)).trim();
-    const value = comma < 0 ? '' : body.slice(comma + 1);
+    // Characters a Gerber file cannot hold (such as * and %) are written as \uXXXX.
+    const value = comma < 0 ? '' : body.slice(comma + 1).replace(/\\u([0-9a-fA-F]{4})/g, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)));
     switch (code) {
       case 'TF':
         this.fileAttrs[name] = value;

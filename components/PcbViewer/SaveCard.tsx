@@ -21,7 +21,7 @@ const RESOLUTIONS: [string, string][] = [
 
 // Saves the picture as PNG (what is on screen, or the whole board at a resolution) or SVG (the whole board as
 // vectors), in the view that is shown: the shown layers, or the realistic view of the side in view.
-export default function SaveCard({ view, board, mode, flipped, layerStyles, colors }: {
+export default function SaveCard({ view, board, mode, flipped, layerStyles, colors, highlighted }: {
   view: BoardView;
   board: Board;
   mode: ViewMode;
@@ -29,6 +29,8 @@ export default function SaveCard({ view, board, mode, flipped, layerStyles, colo
   // Passed so the card follows changes of the picture (sizes, file names).
   layerStyles: Map<string, LayerStyle>;
   colors: RealisticColors;
+  // What is highlighted ("net GND", "R12"), if anything: the images show it as on screen.
+  highlighted?: string;
 }) {
   const [what, setWhat] = React.useState<What>('board');
   const [resolution, setResolution] = React.useState('20');
@@ -80,20 +82,23 @@ export default function SaveCard({ view, board, mode, flipped, layerStyles, colo
     // The whole board, or the part of it on screen.
     const area = what === 'screen' ? view.screenBox() : box;
     if (!area) throw new Error('There is nothing to save.');
-    const title = `${board.name} – ${mode === 'realistic' ? `realistic view, ${side}` : `layers${flipped ? ', seen from the bottom' : ''}`}`;
+    const title = `${board.name} – ${mode === 'realistic' ? `realistic view, ${side}` : `layers${flipped ? ', seen from the bottom' : ''}`}${highlighted ? `, ${highlighted} highlighted` : ''}`;
     const background = transparent ? null : BACKGROUND;
     if (mode === 'realistic') {
-      return exportSvg({ title, flipped, box: area, background, realistic: { side: view.sideLayers(), colors, outline: board.outline ?? [] }, signal, onProgress });
+      const lit = view.exportHighlight();
+      return exportSvg({
+        title, flipped, box: area, background, signal, onProgress,
+        realistic: { side: view.sideLayers(), colors, outline: board.outline ?? [], ...(lit ? { dim: lit.dim, highlight: lit.layers } : {}) },
+      });
     }
-    const layers = view.drawOrder().filter((l) => layerStyles.get(l.id)?.visible).map((l) => ({ layer: l, color: layerStyles.get(l.id).color, opacity: layerStyles.get(l.id).opacity }));
-    return exportSvg({ title, flipped, box: area, background, layers, signal, onProgress });
+    return exportSvg({ title, flipped, box: area, background, layers: view.exportLayers(), signal, onProgress });
   }, `${base}${what === 'screen' ? '-screen' : ''}.svg`);
 
   return (
     <>
       <p className={qrStyles.help}>
         {mode === 'realistic' ? `The realistic view of the ${side}` : `The shown layers${flipped ? ', seen from the bottom' : ''}`}, as an image (PNG) or as vectors in
-        millimetres at 1:1 (SVG).
+        millimetres at 1:1 (SVG).{highlighted && ` With ${highlighted} highlighted, as on screen.`}
       </p>
       <div className={styles.saveFields}>
         <Field label="Area">

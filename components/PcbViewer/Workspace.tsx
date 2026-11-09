@@ -3,8 +3,11 @@ import React from 'react';
 import { errorMessage } from '../../lib/pdf/files';
 import { DrillFormat } from '../../lib/pcb/excellon';
 import { LayerOverride } from '../../lib/pcb/identify';
+import {
+  boardCatalog, describeHit, Highlight, highlightLayers, HighlightTarget, InspectHit, inspectAt, objectMask, sameTarget, subLayer,
+} from '../../lib/pcb/inspect';
 import { buildBoard, LoadedFile, PickedFile, readFiles } from '../../lib/pcb/load';
-import { Board, Layer, LayerKind, Pt, Side } from '../../lib/pcb/model';
+import { Board, Box, isEmptyBox, Layer, LayerKind, Pt, Side, unionBox } from '../../lib/pcb/model';
 import { shapeBox } from '../../lib/pcb/outline';
 import {
   defaultColor, defaultStyle, Finish, finishFromName, FINISHES, MASK_COLORS, MaskColor, maskFromName, RealisticStyle, realisticColors, SILK_COLORS, SilkColor,
@@ -14,7 +17,9 @@ import { BoardView, LayerStyle, ViewMode } from '../../lib/pcb/render/view';
 import styles from '../../styles/PcbViewer.module.css';
 import qrStyles from '../../styles/QrGen.module.css';
 import { Field, Select } from '../QrGen/fields';
+import AssemblyCard from './AssemblyCard';
 import FileList from './FileList';
+import { InspectPanel, PartsCard, targetLabel } from './Inspect';
 import LayerPanel, { LayerActions } from './LayerPanel';
 import { MeasureCard, MeasureOverlay, MeasurePoint, snapPoint } from './Measure';
 import { canPickFolders, DropZone, PickButton } from './pick';
@@ -119,6 +124,37 @@ function RealisticFields({ value, onChange, board }: { value: RealisticStyle; on
   );
 }
 
+// What a click found: the items there (one entry per object), which one is shown, where the click was, and on which
+// layers (a click on the same spot steps on only while the picture has the same layers).
+interface Inspection {
+  hits: InspectHit[];
+  index: number;
+  at: Pt;
+  layers: string;
+}
+
+// How near (CSS pixels) a click must be to an item to find it, and to the last click to step to the next item there.
+const HIT_MOUSE = 3;
+const HIT_TOUCH = 8;
+const SAME_SPOT_MOUSE = 4;
+const SAME_SPOT_TOUCH = 14;
+
+// The view around a highlight: its items on the layers in the picture (a component's value text on a hidden
+// fabrication layer may lie far off), with some board around a component, and at least 5 mm across.
+function zoomBox(lit: Highlight, layers: Layer[], kind: HighlightTarget['kind']): Box | null {
+  let box: Box | null = null;
+  for (const l of layers) {
+    const b = lit.layers.get(l.id)?.bbox;
+    if (b && !isEmptyBox(b)) box = box ? unionBox(box, b) : { ...b };
+  }
+  box = box ?? lit.box;
+  if (!box) return null;
+  const w = box.maxX - box.minX;
+  const h = box.maxY - box.minY;
+  const grow = kind === 'component' ? Math.max(w, h, 3) * 0.75 : Math.max(Math.max(w, h) * 0.05, Math.max(0, 5 - Math.max(w, h)) / 2);
+  return { minX: box.minX - grow, minY: box.minY - grow, maxX: box.maxX + grow, maxY: box.maxY + grow };
+}
+
 function styleFromStackup(board: Board | null): RealisticStyle {
   const s = board?.stackup ?? {};
   return { mask: maskFromName(s.mask), silk: silkFromName(s.silk), finish: finishFromName(s.finish) };
@@ -157,10 +193,15 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
   const [measuring, setMeasuring] = React.useState(false);
   const [points, setPoints] = React.useState<MeasurePoint[]>([]);
   const [hover, setHover] = React.useState<MeasurePoint | null>(null);
+  const [inspection, setInspection] = React.useState<Inspection | null>(null);
+  const [highlight, setHighlight] = React.useState<HighlightTarget | null>(null);
+  const [lit, setLit] = React.useState<(Highlight & { target: HighlightTarget }) | null>(null);
 
   // The latest state, for the asynchronous loading and for actions that build on it.
-  const latest = React.useRef({ files, overrides, layerStyles, order, drillFormats, measuring, points });
-  latest.current = { files, overrides, layerStyles, order, drillFormats, measuring, points };
+  const latest = React.useRef({ files, overrides, layerStyles, order, drillFormats, measuring, points, inspection, highlight, board });
+  latest.current = { files, overrides, layerStyles, order, drillFormats, measuring, points, inspection, highlight, board };
+  // Zoom to the highlight once it is ready (after picking it in a list).
+  const zoomPending = React.useRef(false);
   const known = React.useRef(new Set<string>());
   const customOrder = React.useRef(false);
   const customColors = React.useRef(new Set<string>());
@@ -244,6 +285,7 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
           setFlipped(false);
           setMode('layers');
           setPoints([]);
+          setHighlight(null);
           latest.current.layerStyles = new Map();
           latest.current.order = [];
         }
@@ -282,13 +324,27 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
     }
   }, [view, board, layerStyles]);
 
-  // Measuring: a click or tap places a point (snapped), the mouse shows what a click would snap to.
+  // A click or tap: while measuring it places a point (snapped), and the mouse shows what a click would snap to;
+  // otherwise it finds what is there, and clicking the same spot again steps to the next thing there.
   React.useEffect(() => {
     if (!view) return undefined;
     view.onTap = (p, _css, pointerType) => {
-      if (!latest.current.measuring) return;
-      const m = snapPoint(view, p, pointerType);
-      setPoints((prev) => (prev.length >= 2 ? [m] : [...prev, m]));
+      if (latest.current.measuring) {
+        const m = snapPoint(view, p, pointerType);
+        setPoints((prev) => (prev.length >= 2 ? [m] : [...prev, m]));
+        return;
+      }
+      const touch = pointerType !== 'mouse';
+      const prev = latest.current.inspection;
+      const same = (touch ? SAME_SPOT_TOUCH : SAME_SPOT_MOUSE) * view.mmPerPixel;
+      const shown = view.inspectLayers();
+      const key = shown.map((l) => l.id).join('\n');
+      if (prev && prev.hits.length > 1 && prev.layers === key && Math.hypot(p.x - prev.at.x, p.y - prev.at.y) <= same) {
+        setInspection({ ...prev, index: (prev.index + 1) % prev.hits.length });
+        return;
+      }
+      const hits = inspectAt(shown, p, (touch ? HIT_TOUCH : HIT_MOUSE) * view.mmPerPixel, latest.current.board ?? undefined, view.isFlipped() ? 'bottom' : 'top');
+      setInspection(hits.length ? { hits, index: 0, at: p, layers: key } : null);
     };
     let frame = 0;
     let pending: { p: Pt | null; type: string } | null = null;
@@ -312,19 +368,86 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
   }, [view]);
   React.useEffect(() => {
     if (!measuring) setHover(null);
+    else setInspection(null);
   }, [measuring]);
   React.useEffect(() => {
     const c = canvas.current;
     if (!c) return undefined;
-    // Escape clears the measurement, and a second one stops measuring.
+    // Escape clears the measurement, and a second one stops measuring; otherwise it closes what a click found, then
+    // the highlight.
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || !latest.current.measuring) return;
-      if (latest.current.points.length) setPoints([]);
-      else setMeasuring(false);
+      if (e.key !== 'Escape') return;
+      const l = latest.current;
+      if (l.measuring) {
+        if (l.points.length) setPoints([]);
+        else setMeasuring(false);
+      } else if (l.inspection) setInspection(null);
+      else if (l.highlight) setHighlight(null);
     };
     c.addEventListener('keydown', onKey);
     return () => c.removeEventListener('keydown', onKey);
   }, []);
+
+  // What a click found is outlined over the board (a component found between its pads: all its items in the
+  // picture); it is forgotten when the board, the view or the side changes.
+  React.useEffect(() => setInspection(null), [board, mode, flipped]);
+  const selection = React.useMemo(() => {
+    const h = inspection?.hits[inspection.index];
+    if (!h || !board || !view) return null;
+    const m = new Map<string, Layer>();
+    if (h.component !== undefined) {
+      const mask = objectMask(board, { kind: 'component', ref: board.placements[h.component]?.ref ?? '', index: h.component });
+      for (const layer of view.inspectLayers()) {
+        const indices: number[] = [];
+        layer.items.forEach((item, i) => {
+          if (item.obj !== undefined && mask[item.obj]) indices.push(i);
+        });
+        if (indices.length) m.set(layer.id, subLayer(layer, indices));
+      }
+      return m;
+    }
+    for (const { layer, index } of [h, ...h.also]) m.set(layer.id, subLayer(layer, [index]));
+    return m;
+  }, [inspection, board, view]);
+  React.useEffect(() => {
+    view?.setSelection(selection);
+  }, [view, selection]);
+
+  // The highlighted net or component on every layer, made after the click has been answered.
+  React.useEffect(() => {
+    if (!board || !highlight) {
+      setLit(null);
+      return undefined;
+    }
+    const timer = window.setTimeout(() => setLit({ target: highlight, ...highlightLayers(board, objectMask(board, highlight)) }), 0);
+    return () => clearTimeout(timer);
+  }, [board, highlight]);
+  React.useEffect(() => {
+    view?.setHighlight(lit?.layers ?? null);
+    if (view && lit && zoomPending.current && sameTarget(lit.target, latest.current.highlight)) {
+      zoomPending.current = false;
+      const box = zoomBox(lit, view.inspectLayers(), lit.target.kind);
+      if (box) view.fit(box);
+    }
+  }, [view, lit]);
+  const catalog = React.useMemo(() => (board ? boardCatalog(board) : null), [board]);
+  const description = React.useMemo(() => {
+    const h = inspection?.hits[inspection.index];
+    return h && board ? describeHit(board, h, units) : null;
+  }, [inspection, board, units]);
+
+  // A component or net picked in a list: highlighted, and the view goes there.
+  const pickTarget = (t: HighlightTarget) => {
+    setInspection(null);
+    if (lit && view && sameTarget(lit.target, t)) {
+      zoomPending.current = false;
+      const box = zoomBox(lit, view.inspectLayers(), t.kind);
+      if (box) view.fit(box);
+      return;
+    }
+    zoomPending.current = true;
+    setHighlight(t);
+  };
 
   const layersInOrder = React.useMemo(() => {
     const byId = new Map((board?.layers ?? []).map((l) => [l.id, l]));
@@ -449,14 +572,35 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
             ref={canvas}
             className={[styles.canvas, measuring ? styles.canvasMeasure : ''].join(' ')}
             tabIndex={0}
-            aria-label="Board view. Drag to move, scroll or pinch to zoom; arrow keys move, + and − zoom, F fits the board."
+            aria-label="Board view. Click or tap to see what is there; drag to move, scroll or pinch to zoom; arrow keys move, + and − zoom, F fits the board, Escape closes."
           />
           {view && ready && (measuring || points.length === 2) && <MeasureOverlay view={view} points={points} hover={measuring ? hover : null} />}
           {view && ready && <CursorReadout view={view} units={units} />}
-          {ready && (flipped || mode === 'realistic') && (
-            <span className={styles.sideBadge}>{mode === 'realistic' ? `Realistic · ${flipped ? 'bottom' : 'top'}` : 'Seen from the bottom'}</span>
+          {ready && (flipped || mode === 'realistic' || highlight) && (
+            <div className={styles.badges}>
+              {(flipped || mode === 'realistic') && (
+                <span className={styles.sideBadge}>{mode === 'realistic' ? `Realistic · ${flipped ? 'bottom' : 'top'}` : 'Seen from the bottom'}</span>
+              )}
+              {highlight && (
+                <span className={styles.highlightBadge}>
+                  <span className={styles.highlightName} title={targetLabel(highlight)}>{lit && !lit.items ? `${targetLabel(highlight)}: nothing on the layers` : `Highlighted: ${targetLabel(highlight)}`}</span>
+                  <button type="button" onClick={() => setHighlight(null)} aria-label="Clear the highlight">×</button>
+                </span>
+              )}
+            </div>
           )}
-          {ready && (
+          {ready && description && !measuring && (
+            <InspectPanel
+              desc={description}
+              index={inspection.index}
+              count={inspection.hits.length}
+              highlight={highlight}
+              onStep={(by) => setInspection((s) => (s ? { ...s, index: (s.index + by + s.hits.length) % s.hits.length } : s))}
+              onClose={() => setInspection(null)}
+              onHighlight={setHighlight}
+            />
+          )}
+          {ready && !(description && !measuring) && (
             <p className={styles.viewHint}>
               {measuring ? (
                 <>
@@ -465,8 +609,8 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
                 </>
               ) : (
                 <>
-                  <span className={styles.mouseHint}>Drag to move · Scroll to zoom · F to fit</span>
-                  <span className={styles.touchHint}>One finger moves · Two fingers zoom</span>
+                  <span className={styles.mouseHint}>Click to inspect · Drag to move · Scroll to zoom · F to fit</span>
+                  <span className={styles.touchHint}>Tap to inspect · One finger moves · Two fingers zoom</span>
                 </>
               )}
             </p>
@@ -504,6 +648,12 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
           </p>
         </Card>
 
+        {board && catalog && (catalog.parts.length > 0 || catalog.nets.length > 0) && (
+          <Card title="Components and nets">
+            <PartsCard key={board.name} catalog={catalog} highlight={highlight} onPick={pickTarget} onClear={() => setHighlight(null)} fromX2={!board.design} />
+          </Card>
+        )}
+
         {board && mode === 'realistic' && (
           <Card title="Realistic view">
             <RealisticFields
@@ -532,7 +682,13 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
 
         {board && view && (
           <Card title="Save">
-            <SaveCard view={view} board={board} mode={mode} flipped={flipped} layerStyles={layerStyles} colors={realisticColors(realistic)} />
+            <SaveCard view={view} board={board} mode={mode} flipped={flipped} layerStyles={layerStyles} colors={realisticColors(realistic)} highlighted={lit?.items ? targetLabel(lit.target) : undefined} />
+          </Card>
+        )}
+
+        {board?.design && board.placements.length > 0 && (
+          <Card title="BOM and pick-and-place">
+            <AssemblyCard board={board} />
           </Card>
         )}
 

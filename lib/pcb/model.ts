@@ -59,6 +59,8 @@ export interface Aperture {
   parts: AperturePart[];
   // How the file defines it, e.g. "C,0.5" or "RoundRect,0.1X…", for inspection.
   name?: string;
+  // The D code of a Gerber aperture (D10 and up).
+  code?: number;
   // Gerber X2 aperture attributes, e.g. { '.AperFunction': 'SMDPad,CuDef' }.
   attrs?: Record<string, string>;
 }
@@ -97,11 +99,11 @@ export interface Layer {
   bbox: Box;
 }
 
-// What a click on an item reports (S4). For Gerber X2 these are the object attributes: .N (net), .P (component, pin
-// and pin name), .C (component), and any others in `info`. For a design (lib/pcb/design/build.ts): one object per pad,
-// via, zone ('zone', 'teardrop' or 'rule area') and component (shared by its graphics and text), with `design`
-// pointing at its entry in Board.design; and one per net for tracks ('track'), for board graphics ('graphic') and one
-// for board text ('text').
+// What a click on an item reports (lib/pcb/inspect.ts), and what a highlighted net or component is made of. For
+// Gerber X2 these are the object attributes: .N (net), .P (component, pin and pin name), .C (component), and any
+// others in `info` (e.g. '.CVal'). For a design (lib/pcb/design/build.ts): one object per pad, via, zone ('zone',
+// 'teardrop' or 'rule area') and component (shared by its graphics and text), with `design` pointing at its entry in
+// Board.design; and one per net for tracks ('track'), for board graphics ('graphic') and one for board text ('text').
 export interface BoardObject {
   kind: string;
   net?: string;
@@ -111,11 +113,15 @@ export interface BoardObject {
   design?: { list: 'pads' | 'vias' | 'zones' | 'components' | 'tracks' | 'graphics' | 'texts'; index: number };
 }
 
+// A component as the BOM and pick-and-place exports (lib/pcb/export/csv.ts) and the component list use it.
 export interface Placement {
   ref: string;
   value?: string;
+  // "library:name" where the format has libraries (KiCad).
   footprint?: string;
+  // The footprint origin, as the design's own position files give it (KiCad: Y negated, nothing else changed).
   at: Pt;
+  // The footprint's angle as the file gives it, counter-clockwise; bottom footprints are not converted.
   rot: number;
   side: 'top' | 'bottom';
   // Assembly attributes of a design ('dnp', 'exclude_from_bom', 'exclude_from_pos_files', 'board_only', 'type': 'smd'
@@ -347,6 +353,9 @@ export interface Design {
   texts: DesignText[];
   holes: DesignHole[];
   stackup?: Stackup;
+  // The origin of the design's own drill and placement files, when the design sets one (KiCad's drill/place file
+  // origin, `aux_axis_origin`; Altium's board origin). The pick-and-place export offers it.
+  placeOrigin?: Pt;
   // Dashed lines: the length of a dash and of a gap, in line widths (KiCad's plot settings; 12 and 3 if not given).
   dash?: { dash: number; gap: number };
   // Things the file has that are not shown, and other notes on reading it.
