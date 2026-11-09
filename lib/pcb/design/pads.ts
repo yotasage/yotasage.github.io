@@ -99,8 +99,9 @@ function trapezoidOutline(cx: number, cy: number, w: number, h: number, delta: P
 }
 
 function octagonOutline(cx: number, cy: number, w: number, h: number): Pt[] {
-  // The corners cut so that a square becomes a regular octagon.
-  const cut = Math.min(w, h) * (1 - 1 / (1 + Math.SQRT2));
+  // The corners cut so that a square becomes a regular octagon: its sides are d (√2 − 1) long, so each cut reaches
+  // d (1 − 1/√2) along the sides from the corner.
+  const cut = Math.min(w, h) * (1 - Math.SQRT1_2);
   return chamferedOutline(cx, cy, w, h, cut, ['tl', 'tr', 'bl', 'br'], 0);
 }
 

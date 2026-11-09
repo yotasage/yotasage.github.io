@@ -28,7 +28,9 @@ function num(v: unknown): number | undefined {
 
 export function parseGerberJob(text: string): GerberJob {
   const json = obj(JSON.parse(text.replace(/^﻿/, '')));
-  const general = obj(json.GeneralSpecs);
+  // EAGLE and Fusion 360 write "Overall" with "Name": { "ProjectId": … } where the specification has "GeneralSpecs"
+  // with "ProjectId": { "Name": … }.
+  const general = obj(json.GeneralSpecs ?? json.Overall);
   const files = (Array.isArray(json.FilesAttributes) ? json.FilesAttributes : []).map(obj).map((f) => ({
     path: str(f.Path) ?? '',
     function: str(f.FileFunction),
@@ -52,5 +54,5 @@ export function parseGerberJob(text: string): GerberJob {
   if (finish) stackup.finish = finish;
   const layers = num(general.LayerNumber);
   if (layers !== undefined) stackup.copperLayers = layers;
-  return { name: str(obj(general.ProjectId).Name), files, stackup, materials };
+  return { name: str(obj(general.ProjectId).Name) ?? str(obj(general.Name).ProjectId), files, stackup, materials };
 }

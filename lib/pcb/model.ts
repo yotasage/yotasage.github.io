@@ -350,9 +350,14 @@ export interface DesignPlane {
   pullback: number;
   clearances: { at: Pt; d: number }[];
   thermals: { at: Pt; d: number; gap: number; spokes: number; width: number; angle: number }[];
-  // A plane area instead of the board shape (PADS mixed planes): outer contours counter-clockwise, holes clockwise.
+  // A plane area instead of the board shape (PADS mixed planes, EAGLE polygons): outer contours counter-clockwise,
+  // holes clockwise.
   area?: Contour[];
+  // The area's outline is also drawn with this width (EAGLE polygons, whose outline is the centre line of their edge).
+  stroke?: number;
   name?: string;
+  // More about it for inspection (EAGLE: rank, isolation, width).
+  info?: Record<string, string>;
   // Other shapes cut out of it, after the clearances: copper cut-outs, other planes over it with the gap between
   // them, and the copper of other nets on the layer grown by the clearance (a filled shape with a stroke of twice the
   // clearance), as graphics are drawn.

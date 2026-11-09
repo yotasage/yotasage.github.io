@@ -414,10 +414,14 @@ function describeDesign(board: Board, hit: InspectHit, obj: BoardObject, item: A
     const plane = design.planes?.[d.index];
     netRow();
     if (plane?.area) {
-      // A plane area whose flood the file does not keep (PADS mixed planes).
-      rows.push(['Layer', layerList(hit)], ['Plane area', 'Its outline in copper, other nets kept clear by the design rules (the file keeps no flood)']);
+      // A plane area whose flood the file does not keep (PADS mixed planes), or an EAGLE polygon, whose pour EAGLE never
+      // stores.
+      rows.push(['Layer', layerList(hit)]);
+      if (board.source === 'eagle') rows.push(['Polygon', 'Its outline in copper, other nets kept clear by its isolation and the design rules (EAGLE keeps no pour)']);
+      else rows.push(['Plane area', 'Its outline in copper, other nets kept clear by the design rules (the file keeps no flood)']);
       if (plane.name) rows.push(['Name', plane.name]);
-      return { title: 'Plane area', rows, net };
+      for (const [k, v] of Object.entries(plane.info ?? {})) rows.push([k, v]);
+      return { title: board.source === 'eagle' ? 'Polygon' : 'Plane area', rows, net };
     }
     rows.push(['Layer', layerList(hit)], ['Plane', 'The board shape in copper, with clearances and thermal reliefs cut out (negative)']);
     if (plane) {

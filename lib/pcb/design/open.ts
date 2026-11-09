@@ -1,12 +1,13 @@
 // Reads a design file and builds its board. The page loads this module (with the readers, the builder and the stroke
 // font) only when a design file is opened; the Altium reader loads altiumts only when an Altium file is opened.
 import { readAltiumBoard, readAltiumLibrary } from '../altium/board';
+import { readEagleBoard, readEagleLibrary } from '../eagle/board';
 import { readKicadBoard, readKicadFootprint } from '../kicad/board';
 import { Board, Design } from '../model';
 import { readPadsBoard } from '../pads/board';
 import { buildDesignBoard } from './build';
 
-export type DesignFormat = 'kicad-pcb' | 'kicad-footprint' | 'altium-pcb' | 'altium-pcblib' | 'pads-ascii';
+export type DesignFormat = 'kicad-pcb' | 'kicad-footprint' | 'altium-pcb' | 'altium-pcblib' | 'pads-ascii' | 'eagle-brd' | 'eagle-library';
 
 function pause(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
@@ -17,7 +18,7 @@ function percent(share: number): string {
 }
 
 export async function openDesign(format: DesignFormat, bytes: Uint8Array, fileName: string, onStatus: (text: string) => void): Promise<{ design: Design; board: Board }> {
-  const stem = fileName.replace(/\.(kicad_pcb|kicad_mod|pcbdoc|pcblib|asc)$/i, '');
+  const stem = fileName.replace(/\.(kicad_pcb|kicad_mod|pcbdoc|pcblib|asc|brd|lbr)$/i, '');
   onStatus(`Reading ${fileName}…`);
   await pause();
   const progress = (s: number) => onStatus(`Reading ${fileName} (${percent(s)})…`);
@@ -28,13 +29,17 @@ export async function openDesign(format: DesignFormat, bytes: Uint8Array, fileNa
     design = await readAltiumLibrary(bytes, { fileName, pause, onProgress: progress });
   } else if (format === 'pads-ascii') {
     design = await readPadsBoard(bytes, { fileName, pause, onProgress: progress });
+  } else if (format === 'eagle-brd') {
+    design = await readEagleBoard(bytes, { fileName, pause, onProgress: progress });
+  } else if (format === 'eagle-library') {
+    design = await readEagleLibrary(bytes, { fileName, pause, onProgress: progress });
   } else {
     const text = new TextDecoder('utf-8').decode(bytes);
     design = format === 'kicad-pcb' ? await readKicadBoard(text, { fileName, pause, onProgress: progress }) : readKicadFootprint(text, { fileName });
   }
   onStatus(`Drawing the layers of ${fileName}…`);
   await pause();
-  const source: Board['source'] = format.startsWith('altium') ? 'altium' : format === 'pads-ascii' ? 'pads' : 'kicad';
+  const source: Board['source'] = format.startsWith('altium') ? 'altium' : format === 'pads-ascii' ? 'pads' : format.startsWith('eagle') ? 'eagle' : 'kicad';
   const board = await buildDesignBoard(design, { name: stem, source, pause, onProgress: (s) => onStatus(`Drawing the layers of ${fileName} (${percent(s)})…`) });
   return { design, board };
 }

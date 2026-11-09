@@ -9,9 +9,8 @@
 // CAM planes are negative: the board shape in copper, with an antipad (the pad stack's RA or SA entry, else the pad
 // grown by the clearance) around holes of other nets and a thermal relief (RT or ST, else the thermal settings of the
 // *PCB* section) around plated holes of the plane's nets. What else is drawn on a CAM plane is cut out of it.
-import { contourPoints } from '../outline';
-import { padParts } from '../design/pads';
 import { Box, Contour, Design, DesignPlane, DesignShape, PadShape, Pt } from '../model';
+import { boxOf, centre, inside, overlaps, padShapes, Poly, polyArea as area, polysOf, reaches, shapeBox } from '../design/areas';
 import { PadsLayers } from './layers';
 
 export interface PlaneArea {
@@ -62,124 +61,6 @@ export interface PlaneInput {
 // stays), as Linear's Gerber files show.
 function removesUnusedPads(pcb: Map<string, string[]>): boolean {
   return (pcb.get('PLANEFLAGS')?.[13] ?? '').toUpperCase() === 'Y';
-}
-
-// --- Geometry ---
-
-interface Poly {
-  pts: Pt[];
-  box: Box;
-}
-
-function polysOf(contours: Contour[]): Poly[] {
-  return contours.map((c) => {
-    const pts = contourPoints(c, 5);
-    const box = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
-    for (const p of pts) {
-      box.minX = Math.min(box.minX, p.x);
-      box.minY = Math.min(box.minY, p.y);
-      box.maxX = Math.max(box.maxX, p.x);
-      box.maxY = Math.max(box.maxY, p.y);
-    }
-    return { pts, box };
-  });
-}
-
-function boxOf(polys: Poly[]): Box {
-  const b = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
-  for (const p of polys) {
-    b.minX = Math.min(b.minX, p.box.minX);
-    b.minY = Math.min(b.minY, p.box.minY);
-    b.maxX = Math.max(b.maxX, p.box.maxX);
-    b.maxY = Math.max(b.maxY, p.box.maxY);
-  }
-  return b;
-}
-
-function overlaps(a: Box, b: Box, margin = 0): boolean {
-  return a.minX - margin <= b.maxX && b.minX - margin <= a.maxX && a.minY - margin <= b.maxY && b.minY - margin <= a.maxY;
-}
-
-// Inside the area (even-odd over its contours, so holes count as outside).
-function inside(p: Pt, polys: Poly[]): boolean {
-  let n = false;
-  for (const { pts } of polys) {
-    for (let i = 0, j = pts.length - 1; i < pts.length; j = i, i += 1) {
-      const a = pts[i];
-      const b = pts[j];
-      if ((a.y > p.y) !== (b.y > p.y) && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) n = !n;
-    }
-  }
-  return n;
-}
-
-function segDist(p: Pt, a: Pt, b: Pt): number {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const len2 = dx * dx + dy * dy;
-  const t = len2 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2)) : 0;
-  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
-}
-
-function segSegDist(a: Pt, b: Pt, c: Pt, d: Pt): number {
-  const cross = (o: Pt, p: Pt, q: Pt) => (p.x - o.x) * (q.y - o.y) - (p.y - o.y) * (q.x - o.x);
-  const d1 = cross(a, b, c);
-  const d2 = cross(a, b, d);
-  const d3 = cross(c, d, a);
-  const d4 = cross(c, d, b);
-  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return 0;
-  return Math.min(segDist(a, c, d), segDist(b, c, d), segDist(c, a, b), segDist(d, a, b));
-}
-
-// Whether a segment of half-width r (a point when a = b) reaches the area.
-function reaches(a: Pt, b: Pt, r: number, polys: Poly[], box: Box): boolean {
-  const sb = { minX: Math.min(a.x, b.x), minY: Math.min(a.y, b.y), maxX: Math.max(a.x, b.x), maxY: Math.max(a.y, b.y) };
-  if (!overlaps(sb, box, r)) return false;
-  if (inside(a, polys) || inside(b, polys)) return true;
-  for (const { pts, box: pb } of polys) {
-    if (!overlaps(sb, pb, r)) continue;
-    for (let i = 0, j = pts.length - 1; i < pts.length; j = i, i += 1) if (segSegDist(a, b, pts[j], pts[i]) <= r) return true;
-  }
-  return false;
-}
-
-function turn(p: Pt, deg: number): Pt {
-  const a = (deg * Math.PI) / 180;
-  return { x: p.x * Math.cos(a) - p.y * Math.sin(a), y: p.x * Math.sin(a) + p.y * Math.cos(a) };
-}
-
-// A pad shape on the board as filled shapes.
-function padShapes(shape: PadShape, at: Pt, rot: number): DesignShape[] {
-  const place = (p: Pt) => {
-    const q = turn(p, rot);
-    return { x: at.x + q.x, y: at.y + q.y };
-  };
-  return padParts(shape).map((part): DesignShape => {
-    if (part.circle) return { circle: { c: place(part.circle.c), r: part.circle.r } };
-    const pts = part.poly.map(place);
-    return { poly: { start: pts[0], segs: [...pts.slice(1).map((to) => ({ to })), { to: pts[0] }] } };
-  });
-}
-
-function shapeBox(shape: DesignShape): Box {
-  const b = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
-  const add = (p: Pt, r = 0) => {
-    b.minX = Math.min(b.minX, p.x - r);
-    b.minY = Math.min(b.minY, p.y - r);
-    b.maxX = Math.max(b.maxX, p.x + r);
-    b.maxY = Math.max(b.maxY, p.y + r);
-  };
-  if ('circle' in shape) add(shape.circle.c, shape.circle.r);
-  else if ('line' in shape) shape.line.forEach((p) => add(p));
-  else if ('arc' in shape) add(shape.arc.c, shape.arc.r);
-  else if ('poly' in shape) for (const p of contourPoints(shape.poly, 10)) add(p);
-  else if ('region' in shape) for (const c of shape.region) for (const p of contourPoints(c, 10)) add(p);
-  else if ('curve' in shape) shape.curve.forEach((p) => add(p));
-  return b;
-}
-
-function centre(b: Box): Pt {
-  return { x: (b.minX + b.maxX) / 2, y: (b.minY + b.maxY) / 2 };
 }
 
 // --- Mixed planes ---
@@ -314,15 +195,6 @@ function removeUnused(input: PlaneInput, id: string, areas: { net: number; polys
   }
 }
 
-function area(polys: Poly[]): number {
-  let s = 0;
-  for (const { pts } of polys) {
-    let a = 0;
-    for (let i = 0, j = pts.length - 1; i < pts.length; j = i, i += 1) a += pts[j].x * pts[i].y - pts[i].x * pts[j].y;
-    s += Math.abs(a) / 2;
-  }
-  return s;
-}
 
 // --- CAM planes ---
 

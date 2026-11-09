@@ -5,12 +5,13 @@ import { gunzipSync } from 'fflate';
 
 export type FormatId =
   | 'gerber' | 'gerber-job' | 'excellon' | 'zip' | 'kicad-pcb' | 'kicad-footprint' | 'altium-pcb' | 'altium-pcblib' | 'pads-ascii'
+  | 'eagle-brd' | 'eagle-library'
   // Read in later steps (docs/pcb-viewer-plan.md).
-  | 'eagle-brd' | 'pnp-csv'
+  | 'pnp-csv'
   // Not read.
   | 'altium-pcblib-ascii'
   // Not read.
-  | 'gerber-rs274d' | 'kicad-legacy' | 'pads-binary' | 'pads-library' | 'eagle-binary' | 'eagle-library' | 'allegro'
+  | 'gerber-rs274d' | 'kicad-legacy' | 'pads-binary' | 'pads-library' | 'eagle-binary' | 'allegro'
   | 'odb' | 'ipc2581' | 'ipcd356' | 'gedac' | 'diptrace' | 'easyeda' | 'protel-pcb' | 'archive-other'
   // Ignored: not boards.
   | 'schematic' | 'project' | 'bom' | 'pdf' | 'image' | 'model3d' | 'dxf' | 'text' | 'binary' | 'empty';
@@ -211,9 +212,11 @@ function detectText(name: string, text: string): Detected {
   if (/^<\?xml|^<!DOCTYPE|^<eagle\b|^<IPC-2581/i.test(t)) {
     if (/<IPC-2581\b/i.test(head)) return unsupported('ipc2581', 'IPC-2581', 'IPC-2581 files are not supported (yet). Open the Gerber files of the board.');
     if (/<eagle\b/i.test(head)) {
-      if (/<board\b/i.test(t)) return later('eagle-brd', 'EAGLE board');
+      if (/<board\b/i.test(t)) return { id: 'eagle-brd', name: 'EAGLE board', status: 'read' };
       if (/<schematic\b/i.test(t)) return ignored('schematic', 'EAGLE schematic', 'A schematic, not a board; ignored.');
-      if (/<library\b/i.test(t)) return unsupported('eagle-library', 'EAGLE library', 'EAGLE libraries are not read; open an EAGLE board (.brd).');
+      if (/<library\b/i.test(t)) return { id: 'eagle-library', name: 'EAGLE library', status: 'read' };
+      // The drawing's kind comes after its layer table, which can be long: a board is the likeliest.
+      if (!/<\/drawing>/i.test(t)) return { id: 'eagle-brd', name: 'EAGLE board', status: 'read' };
     }
     return ignored('text', 'XML file');
   }
@@ -229,7 +232,8 @@ function detectText(name: string, text: string): Detected {
   if (/^STEP\s*\{/.test(t) || (name.toLowerCase() === 'matrix' && /STEP\s*\{/.test(head))) return unsupported('odb', 'ODB++', ODB_MESSAGE);
 
   // Gerber job file
-  if (/^\{/.test(t) && /"Header"\s*:/.test(head) && /"(FilesAttributes|GeneralSpecs)"\s*:/.test(t)) {
+  // EAGLE and Fusion 360 write "Overall" where the specification has "GeneralSpecs".
+  if (/^\{/.test(t) && /"Header"\s*:/.test(head) && /"(FilesAttributes|GeneralSpecs|Overall)"\s*:/.test(t)) {
     return { id: 'gerber-job', name: 'Gerber job file', status: 'read' };
   }
   if (/^\{/.test(t)) return ignored('project', 'JSON file');

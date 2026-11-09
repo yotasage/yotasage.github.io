@@ -367,11 +367,14 @@ export async function buildDesignBoard(design: Design, o: BuildOptions): Promise
       positive ||= Boolean(plane.positive);
       const obj = objects.push({
         kind: 'plane', ...(netName(plane.net) ? { net: netName(plane.net) } : {}),
-        info: { layer: a.layer.name, ...(plane.name ? { name: plane.name } : {}) }, design: { list: 'planes', index },
+        info: { layer: a.layer.name, ...(plane.name ? { name: plane.name } : {}), ...(plane.info ?? {}) }, design: { list: 'planes', index },
       }) - 1;
       const shape = plane.area ?? outline;
       if (shape?.length) {
         a.items.push({ k: 'region', contours: shape, dark: true, obj });
+        if (plane.area && plane.stroke > 0) {
+          for (const c of shape) a.items.push(...graphicItems({ layer: '', shape: { poly: c }, w: plane.stroke, filled: false }, obj, dash));
+        }
         if (plane.pullback > 0) {
           for (const c of shape) a.items.push(...clear(graphicItems({ layer: '', shape: { poly: c }, w: 2 * plane.pullback, filled: false }, obj, dash)));
         }

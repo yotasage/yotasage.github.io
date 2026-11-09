@@ -35,7 +35,7 @@ made for the owner and public for anyone, as is.
 | KiCad `.kicad_pcb` (KiCad 4 to 10), `.kicad_mod` | | S3 |
 | Altium `.PcbDoc` (binary and ASCII), binary `.PcbLib` | Through `altiumts` (S5); ASCII `.PcbLib` is not read | S5 |
 | PADS ASCII (`.asc`) | PowerPCB V4.0 to current | S6 |
-| EAGLE `.brd` (XML, EAGLE 6 to 9, Fusion exports) | | S7 |
+| EAGLE `.brd` (XML, EAGLE 6 to 9, Fusion 360 exports), `.lbr` | Polygons approximated from their outlines (EAGLE stores no pour); libraries with the packages side by side | S7 |
 | Pick-and-place CSV over a Gerber set | KiCad, Altium, JLC, other by column mapping | S8 |
 
 Not read: PADS binary `.pcb` (closed format; [BL4](BACKLOG.md)); EAGLE binary (before 6.0); Allegro, OrCAD Layout,
@@ -78,7 +78,11 @@ On the owner's machine. Read them where they are; never copy them into the repo 
 | KiCad demos | `C:\Program Files\KiCad\10.0\share\kicad\demos\` | Many boards; `jetson-agx-thor-baseboard` is the large one for speed tests |
 | KiCad 4 to 8 boards | `https://gitlab.com/kicad/code/kicad/-/raw/<tag>/demos/<demo>/<demo>.kicad_pcb` | The same demos as saved by the releases 4.0.7, 5.1.12, 6.0.11, 7.0.11 and 8.0.9 (file versions 3, 4, 20171130, 20210722, 20211014, 20221018, 20240108); S3 kept them in its scratch folder |
 | KiCad QA boards | `https://gitlab.com/kicad/code/kicad/-/raw/master/qa/data/pcbnew/` | Pad stacks (`padstacks*.kicad_pcb`, `via_stacks`), `custom_pads`, `test_copper_graphics`, `tracks_arcs_vias`, `api_kitchen_sink` (barcodes, tables, text boxes; a KiCad 11 development version) |
-| EAGLE | none yet | S7 finds two or three public EAGLE boards (e.g. Adafruit or SparkFun on GitHub, ideally with Gerbers) and keeps them in a scratch folder |
+| EAGLE 9.5.0, 2 layers | `https://gitlab.com/mutantcybernetics/mutantc-v1/-/raw/master/PCB/main_PCB/mutantC.brd` and `main_gerber_files.zip` beside it (GPL-3.0) | mutantC main board: 51 elements (43 on the bottom, smashed attributes), 2 polygons, 4 holes, octagon and long pads; Gerbers from EAGLE's CAM processor (`CAMOutputs/`) |
+| EAGLE 9.3.1, 6 layers | `https://raw.githubusercontent.com/jankae/LibreVNA/13f37c5bf5bc24e1c65d8e11108d4abcfc4cd88d/Hardware/Eagle/VNA.brd` with `Gerber/CAMOutputs/` (GPL-3.0) | LibreVNA: 590 elements (19 on the bottom, angles like R225), 2,853 vias, 134 polygons with ranks 1 to 6 (a GND frame drawn as one polygon with a slit), SMDs with roundness, milled slots, tStop polygons, `VNA.mnt`/`.mnb` (EAGLE's position files); the board is the one the Gerbers of 2022-11-19 were made from |
+| EAGLE 6.4, 4 layers | `https://raw.githubusercontent.com/ultimachine/RAMBo/46b47bc42b/board/RAMBo.brd` (the 1.2e commit) and `board/gerbers/RAMBo1-2e.zip` (RAMBo, RepRap) | 266 elements, 1,075 vias, 39 polygons and 82 cutout polygons on 4 layers, net classes with clearances, stop and cream frames that differ from the defaults (20 % and 10 %, a via stop limit of 25 mil); its Gerbers (RS-274X, inch, no X2) are offset by (62.408, 16.873) mm and name the inner layers `.G2L`, `.G3L` (`s7-compare.mjs --align --keys`) |
+| Fusion 360 export (9.7.0), 2 layers | `https://raw.githubusercontent.com/stevenbennett/Open-Task-Light/main/Open Task Light/Electronics/Control Board/Source/Control Board.brd`, `control-board-gerbers.zip` and `Assembly/PnP_Control Board_*.csv` (MIT) | Open Task Light control board: 25 elements (5 on the bottom), 1 polygon, TrueType ("custom") fonts, Fusion's design rules; Gerbers from Fusion's CAM |
+| EAGLE libraries, binary boards | `https://raw.githubusercontent.com/micropython/pyboard/master/eagle/rcl.lbr` (also `pinhead.lbr`, `pyboard.lbr`); Olimex's `OLINUXINO` repository (`HARDWARE/…/*.brd` are EAGLE 5 binary files) | S7 kept all of these, with `kicad-cli pcb import --format eagle` of the boards, in its scratch folder |
 
 `kicad-cli` 10.0.6 (`C:\Program Files\KiCad\10.0\bin\kicad-cli.exe`) makes reference output: `pcb export
 gerbers|drill|svg|pdf|pos|dxf|ipc2581|ipcd356`, `pcb render` (3D picture), and `pcb import --format altium|pads|eagle`,
@@ -102,9 +106,9 @@ folder, never next to the test files.
 | Points | `lib/pcb/points.ts` | Pad and hole centres and line ends per layer in a grid index: measuring snaps to them, drill formats are fitted to them |
 | Hits | `lib/pcb/hits.ts` | What lies under a point of a layer (S4): a grid index of the items per layer, built on the first click on the layer, and the distance from a point to each kind of item |
 | Inspecting | `lib/pcb/inspect.ts` | What a click is on across the layers of the picture (one entry per object), its description, the lists of components and nets, and the items of a highlighted net or component on every layer (S4); only from `Board.objects`, `Board.placements` and the layers, with `Board.design` for pad shapes, holes and margins |
-| Design → layers | `lib/pcb/design/` | Shared by all design formats (S3): `build.ts` the `Design` into a `Board` (S5: negative planes; S6: several planes per layer, plane areas with cuts, positive planes, zone lines, square vias), `pads.ts` pad shapes as aperture parts and grown or shrunk for mask and paste, `art.ts` graphics (dashes too) and text as items, `outline.ts` the board shape from outline graphics, `overrides.ts` the user's layer types on a design's board, `open.ts` the entry loaded with `await import` when a design file is opened |
+| Design → layers | `lib/pcb/design/` | Shared by all design formats (S3): `build.ts` the `Design` into a `Board` (S5: negative planes; S6: several planes per layer, plane areas with cuts, positive planes, zone lines, square vias; S7: the outline stroke of plane areas), `areas.ts` (S7, moved from PADS's `planes.ts`) areas as point lists, whether a stroke reaches one, distances, pad shapes as filled shapes, `pads.ts` pad shapes as aperture parts and grown or shrunk for mask and paste, `art.ts` graphics (dashes too) and text as items, `outline.ts` the board shape from outline graphics, `overrides.ts` the user's layer types on a design's board, `open.ts` the entry loaded with `await import` when a design file is opened |
 | Stroke font | `lib/pcb/font/` | Newstroke (S3): `newstroke-glyphs.ts` generated from the font author's own CC0 release (see Libraries), `stroke.ts` layout adapted from KiCanvas, `LICENSE.kicanvas.txt` and `LICENSE.newstroke.txt` (read by `scripts/collect-licenses.mjs` for `/licenses`) |
-| Design formats | `lib/pcb/kicad/` (S3: `sexpr.ts` reader, `layers.ts` layer names and wildcards, `board.ts` boards and footprints), `lib/pcb/altium/` (S5: `board.ts` boards and libraries through `altiumts`, `records.ts` fields, lengths, text and contours, `layers.ts` layer names and the stack, `rules.ts` rule scopes and the mask, paste and plane rules, `text.ts` text placement), `lib/pcb/pads/` (S6: `ascii.ts` header, units, sections, what each version writes differently and the `*MISC*` blocks, `layers.ts` levels, kinds, sides and the pairs a bottom part is mirrored with, `board.ts` the reader, `planes.ts` plane areas without a saved flood and CAM planes, `text.ts` text placement), `lib/pcb/eagle/` | Each produces a `Design` |
+| Design formats | `lib/pcb/kicad/` (S3: `sexpr.ts` reader, `layers.ts` layer names and wildcards, `board.ts` boards and footprints), `lib/pcb/altium/` (S5: `board.ts` boards and libraries through `altiumts`, `records.ts` fields, lengths, text and contours, `layers.ts` layer names and the stack, `rules.ts` rule scopes and the mask, paste and plane rules, `text.ts` text placement), `lib/pcb/pads/` (S6: `ascii.ts` header, units, sections, what each version writes differently and the `*MISC*` blocks, `layers.ts` levels, kinds, sides and the pairs a bottom part is mirrored with, `board.ts` the reader, `planes.ts` plane areas without a saved flood and CAM planes, `text.ts` text placement), `lib/pcb/eagle/` (S7: `xml.ts` a small XML reader, `layers.ts` layer numbers, kinds and the pairs a mirrored element swaps, `rules.ts` the design rules (restring, masks, roundness, shapes, elongation), `board.ts` boards and libraries, `pours.ts` polygons as plane areas with cuts, `text.ts` text placement) | Each produces a `Design` |
 | Drawing | `lib/pcb/render/` | Layer view and realistic view on Canvas 2D: `prepare.ts` paths, `paint.ts` a layer into a canvas and the two ways of compositing (shared with the PNG export), `view.ts` canvas, gestures, clicks and modes, `colors.ts` default and realistic colours |
 | Exports | `lib/pcb/export/` | `png.ts`, `svg.ts` (S2); `csv.ts` BOM and pick-and-place (S4); PDF, DXF, KiCad later |
 
@@ -120,8 +124,8 @@ S1 wrote the artwork part (in `lib/pcb/model.ts`, as below; S2 added `outlineFro
 a layer, and drill layers with plated and non-plated holes), S3 wrote the design part (and `Board.design`, the
 `design` link of `BoardObject`, and `attrs` and `fields` of `Placement`), S4 added `Aperture.code` and
 `Design.placeOrigin`, S5 added `Design.planes`, graphics with holes (`region`) and `knockoutMargin` of texts, S6 added
-plane areas, cuts and positive planes (several per layer), `lines` of zones and square vias. Names and fields may change.
-Keep this section in step with the code.
+plane areas, cuts and positive planes (several per layer), `lines` of zones and square vias, S7 added `stroke` and `info`
+of planes. Names and fields may change. Keep this section in step with the code.
 
 ```ts
 // Units: millimetres. Y up (KiCad's Y is negated on reading). Angles: degrees, counter-clockwise from +X.
@@ -202,7 +206,8 @@ interface Design {
     plane?: boolean;                 // negative: the board shape in copper with everything on the layer cut out
     label?: string }[];              // KiCad: id is the canonical name ("In2.Cu"), name the user's ("GND1.Cu");
                                      // Altium: TOP, MID1, PLANE1, TOPOVERLAY… and the stack's names ("GND (1)");
-                                     // PADS: L1, L2… by level and the layer data's names ("Silkscreen Top")
+                                     // PADS: L1, L2… by level and the layer data's names ("Silkscreen Top");
+                                     // EAGLE: the layer number ("1", "16", "21") and the board's name ("tPlace")
   nets: string[];
   outline: Contour[];                // empty: the builder falls back to boardShape (the copper's rectangle)
   components: { ref: string; value: string; footprint: string; at: Pt; rot: number; side: 'top' | 'bottom';
@@ -241,14 +246,17 @@ interface Design {
     wrap?: number;                   // a text box's column width
     comp?: number; role?: string }[];    // role: 'reference', 'value', 'user', 'field'
   holes: { at: Pt; d: number; slot?: { w: number; h: number; rot: number }; plated: boolean }[];
-  // Planes whose copper the file does not store (S5, S6): the board shape (Altium internal planes, PADS CAM planes)
-  // or a plane area (PADS mixed planes without a saved flood) in copper, with its net, the distance kept from the
-  // board edge, round clearances around holes that pass through without connecting, thermal reliefs (a ring of width
-  // gap from diameter d out, interrupted by `spokes` copper spokes of width `width`, the first at `angle`) and other
-  // cuts. Several can share a layer; later ones lie over earlier ones. Pads and vias do not list negative plane layers.
+  // Planes whose copper the file does not store (S5, S6, S7): the board shape (Altium internal planes, PADS CAM
+  // planes) or a plane area (PADS mixed planes without a saved flood, EAGLE polygons) in copper, with its net, the
+  // distance kept from the board edge, round clearances around holes that pass through without connecting, thermal
+  // reliefs (a ring of width gap from diameter d out, interrupted by `spokes` copper spokes of width `width`, the first
+  // at `angle`) and other cuts. Several can share a layer; later ones lie over earlier ones. Pads and vias do not list
+  // negative plane layers.
   planes?: { layer: string; net: number; pullback: number; clearances: { at: Pt; d: number }[];
     thermals: { at: Pt; d: number; gap: number; spokes: number; width: number; angle: number }[];
     area?: Contour[]; name?: string; // a plane area instead of the board shape
+    stroke?: number;                 // the area's outline drawn with this width too (EAGLE: its edge is a wire's centre)
+    info?: Record<string, string>;   // more for inspection (EAGLE: rank, isolate, width)
     cuts?: { shape: DesignShape; w: number; filled: boolean }[];   // cut out too, drawn as graphics: cut-outs, areas
                                      // over it with the gap, other nets' copper grown by the clearance
     positive?: boolean }[];          // the layer's other items are copper over it (PADS), not cut out of it (Altium)
@@ -341,7 +349,7 @@ As built in S4:
 | `altiumts` 0.0.95 (exact version) | Altium | MIT; dependencies `cfb` 1.2.2, `adler-32` 1.3.1, `crc-32` 1.2.2 (Apache-2.0), `transformation-matrix` 2.16.1 (MIT), `fflate` (MIT, already a dependency); no install scripts | Added in S5. It declares `typescript ^5` as a peer dependency (only its build needs it), so `package.json` has `"overrides": { "altiumts": { "typescript": "$typescript" } }` for npm to install it with the site's TypeScript 7 (`npm ci` too). Loaded by `await import('altiumts')` in `lib/pcb/altium/board.ts`: a chunk of its own (277 kB minified) that only opening an Altium file loads. `/licenses` lists it and its dependencies (the import scanner finds dynamic imports) |
 | `@cantoo/pdf-lib` | PDF export | MIT | Already a dependency |
 | Newstroke font, and KiCanvas's stroke font code | Text of design files | Font: CC0 1.0 (the README of the author's distribution: "Now released under CC0 licence, to give it right to be used in any project."); KiCanvas: MIT | Added in S3: the layout in `stroke.ts` adapted from KiCanvas commit b031159 (metrics corrected to KiCad 10). `lib/pcb/font/newstroke-glyphs.ts` is generated by a converter of our own (not in the repository; it follows the encoding of the author's `fontconv.awk`) from `symbol.lib`, `font.lib` and `charlist.txt` of the author's `newstroke-font.tgz` (https://vovanium.ru/_media/sledy/newstroke/newstroke-font.tgz, linked from https://vovanium.ru/sledy/newstroke/en; retrieved 2026-11-09, SHA-256 `dba1c334834e21bdbd15395dc610ecc2bf2eb6675ba0c4585597b375b7bd099e`). It replaced KiCanvas's copy of the glyphs, which came from KiCad's `newstroke_font.cpp` with KiCad's GPL-2.0-or-later header (KiCad's `LICENSE.README` does not list Newstroke, and its catch-all is GPL-3.0-or-later) and CJK glyphs under MIT and OFL-1.1. Never take glyphs from KiCad or KiCanvas: KiCanvas's `third_party/newstroke/` is KiCad's extended copy (another `font.lib` and `charlist.txt`, CJK libraries), not the author's release. The licence texts are in `lib/pcb/font/LICENSE.kicanvas.txt` and `LICENSE.newstroke.txt`; `scripts/collect-licenses.mjs` puts both on `/licenses` ("Font and code used by the PCB viewer") |
-| Polygon booleans | Only if a step needs them (PDF/DXF flattening, EAGLE pours) | Must be permissive (e.g. a Clipper port under the Boost licence) | The first step that needs it chooses and records it here |
+| Polygon booleans | Only if a step needs them (PDF/DXF flattening, exact EAGLE pours) | Must be permissive (e.g. a Clipper port under the Boost licence) | The first step that needs it chooses and records it here. S7 did without: EAGLE's pours are plane areas with cuts, and a cut is clipped to a polygon only as convex pieces (Sutherland–Hodgman, `lib/pcb/eagle/pours.ts`); exact pours are [BL23](BACKLOG.md) |
 
 - **`altiumts` is ESM only,** so it is loaded with `await import('altiumts')` (CLAUDE.md, `"module": "node16"`), and
   only when an Altium file is opened; its types come with `import type … with { 'resolution-mode': 'import' }`.
@@ -364,8 +372,8 @@ Status: ✅ done · 🔄 in progress · 📋 planned
 | S3 | KiCad boards and footprints, design model, stroke font | ✅ | c679764 |
 | S4 | Inspect, highlight, search; BOM and pick-and-place export | ✅ | fc5432d |
 | S5 | Altium | ✅ | 84130dc |
-| S6 | PADS ASCII | ✅ | |
-| S7 | EAGLE | 📋 | |
+| S6 | PADS ASCII | ✅ | 5238540 |
+| S7 | EAGLE | ✅ | |
 | S8 | PDF and DXF export; pick-and-place CSV over Gerbers | 📋 | |
 | S9 | KiCad export | 📋 | |
 
@@ -1030,6 +1038,112 @@ are recognised and listed but drawn in S2.
 **Done when:** two or three public EAGLE boards look like their Gerbers and like KiCad's import
 (`kicad-cli pcb import --format eagle`).
 
+**Notes from S7:**
+
+- **Reading** (`lib/pcb/eagle/`): `xml.ts` reads the XML without a library (elements, attributes, text, entities; the
+  DOCTYPE, comments and processing instructions skipped). EAGLE 6.4, 9.3.1, 9.5.0 and Fusion 360's 9.7.0 read the same;
+  Fusion's own elements (`drillsymbolsettings`, `mfgpreviewcolors`, `groups`, `packageinstances`) are skipped, and its
+  exports are told by the version (EAGLE's last release is 9.6.2) or its design rules' description. Libraries are found
+  by name and URN (a board can hold two libraries of one name). LibreVNA (966 KB) reads in about 150 ms and builds in
+  60 ms; the page shows it 0.9 s after opening. The binary files of EAGLE 5 and older (Olimex's boards) get S1's
+  message. Libraries (`.lbr`) show their packages side by side in rows about as wide as they are tall, each a
+  component named after it, with EAGLE's default rules and no board shape.
+- **Layers** (`layers.ts`): copper in the order of the layer setup (`(1+2*3+14*15+16)` gives 1, 2, 3, 14, 15, 16; the
+  blind-via marks `[2:` and `:15]` are dropped); copper numbers that are not in the setup become other layers. tPlace
+  and tNames are silkscreen (EAGLE's CAM jobs plot both; the samples' silkscreens agree), tValues is fabrication
+  ("Values", not on any sample's silkscreen), tStop and tCream masks and paste, tKeepout courtyard, tRestrict and
+  bRestrict keep-out (they also cut the polygons of the outer copper), Milling mechanical, tDocu fabrication; a user
+  layer named for the silkscreen (RAMBo's `_tsilk`, plotted on its GTO) is silkscreen, other user layers are other
+  layers. Pads, Vias, Unrouted, the origins, Drills, Holes and the schematic layers are not drawn. A mirrored element
+  swaps 1 and 16, the t and b layers, and inner n with 17 − n.
+- **Placement:** a package is turned by the element's angle and then, when mirrored, flipped about the vertical line
+  through the element's origin (x negated after turning). The smashed attributes confirm it: they store absolute
+  places, and mutantC's S111 (MR270 at 93.25, 67.35) has its package text at (0, 3.302) and its NAME at (89.948, 67.35).
+  A package text's own angle τ and mirror add up: turned by angle + τ, or by τ − angle when the text is mirrored, and
+  mirrored when exactly one of the two is. `Placement.rot` is the angle on the top and 180° − angle on the bottom (as
+  KiCad stores a flipped footprint): the pick-and-place files of all four boards equal `kicad-cli pcb export pos` of
+  KiCad's imports (590, 266, 51 and 25 parts; positions within 1.4e-6 mm, the same angles), apart from KiCad's renaming
+  (it numbers references without a number, puts "UNK" before those starting with a digit, and writes "/" in package
+  names as "_"). Fusion's own position files give the centre of the SMDs instead of the origin. Value: the current
+  variant's, else the element's; footprint "library:package"; fields: the element's attributes (MPN, MANUFACTURER,
+  DATASHEET…); DNP from `populate="no"` or the current variant; SMD or through-hole from the pads.
+- **Pads** (`rules.ts`): the restring is a share of the drill clamped to a minimum and a maximum, for the top, inner
+  and bottom layers of pads and the outer and inner layers of vias; the pad's or via's own diameter is used where it is
+  larger on the layers whose `useDiameter` bit is set (1 pads top, 2 pads inner, 4 pads bottom, 8 vias outer, 16 vias
+  inner; every sample has 13, and LibreVNA's inner layers agree that their rings come from the restring alone). Inner
+  rings are round. Shapes: square, round, octagon (the diameter across flats; the builder's octagon was cut twice as
+  far, a diamond, which nothing had used before), long (an oval 1 + psElongationLong % as long), offset (the same with
+  the hole at one end, toward −x); psTop, psBottom and psFirst force a shape (−1 as in the library, 0 square, 1 round,
+  2 octagon; every sample has −1). SMDs: roundness is a share of half the smaller side, the rules' share if larger; the
+  openings keep the share. The stop mask is larger by mvStopFrame × the smaller side, clamped, around SMDs, pads, vias
+  whose drill exceeds mlViaStopLimit (or with `alwaysstop`) and holes (EAGLE opens the mask over its holes); cream is
+  for SMDs only, smaller by mvCreamFrame × the smaller side, clamped (RAMBo's 10 % clamped to 1–4 mil checked). The
+  solder masks equal the Gerbers within 0.00–0.22 % of their pixels, the paste within 0.00–0.35 %.
+- **Text** (`text.ts`), measured with `s7-textfit2.mjs` on the vector-font texts of mutantC and LibreVNA: the outer
+  edges of the capitals span the size, and the strokes are size × ratio % wide (EAGLE's CAM rounds them to whole mils,
+  3.2 to 3); left, right, bottom and top alignment put the outer edges of the letters at the anchor, center the middle
+  (all within 0.006 mm). With the stroke font's glyphs as wide as high, capitals and digits are as wide as EAGLE's
+  within 1–3 %, lowercase text and spaces 3–8 % wider. Unless it has the spin flag, a text at an angle over 90° up to
+  270° (from 90° up to below 270° when vertical text reads down) is turned by 180° with its alignment reversed; mirrored
+  text is judged at the same angle, since it is flipped after turning (MR90 reads normally from the bottom, MR270 is
+  turned). Lines are size × (1 + distance %) apart. `!RESET` and `!RST!/NMI` overlines become KiCad's `~{…}`. EAGLE's
+  CAM draws every text in the vector font; Fusion's TrueType ("custom") texts are drawn in the stroke font with a note.
+- **Polygons** (`pours.ts`): EAGLE stores only their outlines, so each is a plane area (S6's mechanism) with its outline
+  also stroked with its width (`DesignPlane.stroke`: the outline is the centre line of the copper's edge), drawn from
+  rank 6 to rank 1 (a missing rank is 1), each over the ones before. Cut out of it: other signals' wires, vias and pads
+  grown by the larger of its isolate, the wire–wire, wire–via or wire–pad clearance and the net classes' clearance;
+  copper of no signal and text on the layer; more important polygons of other signals with that gap; cutout polygons
+  (`pour="cutout"`, also listed as rule areas); restrict areas; holes and the Dimension layer with mdCopperDimension
+  (everything outside the board edge is one region: a large rectangle with the edge as its hole). Milling does not cut
+  polygons (LibreVNA's inner layers keep their copper in its milled slots). A cut erases the polygons drawn before it
+  too, which is right for what every polygon keeps clear of but not around copper of a signal that has an earlier
+  polygon on the layer (LibreVNA's GND frame of rank 1 cut a 0.55 mm line through its GND polygon of rank 6), so those
+  cuts are clipped to the polygon's copper as convex pieces (Sutherland–Hodgman: strokes, circles, convex pads; a
+  more important polygon's filled outline is clipped to the hull of the area). Thermal reliefs, the removal of islands
+  and of copper narrower than the polygon's width are left out, and a warning says the pours are approximate
+  ([BL23](BACKLOG.md)). Hatched polygons would be drawn solid (no sample has one).
+- **Board shape:** the Dimension layer of the board and its packages, with closed Milling loops as cutouts; open milling
+  lines (slots) are not part of it, and Dimension lines of packages that end on the edge (LibreVNA's SMA connectors)
+  are left out with the outline's note.
+- **Checked** at 20 px/mm with `s7-compare.mjs` (S3's comparison with the layers of one kind and side painted together,
+  as EAGLE plots tPlace and tNames on one silkscreen), percent of the pixels that differ:
+
+  | Board | Copper | Solder mask | Paste | Silkscreen | Drill, outline |
+  | --- | --- | --- | --- | --- | --- |
+  | mutantC (EAGLE 9.5.0) | 4.85, 2.87 | 0.00, 0.00 | –, 0.00 | 22.6, 10.2 | the NPTH holes are a layer of their own |
+  | LibreVNA (9.3.1, 6 layers) | 3.56, 0.49, 0.42, 1.30, 1.10, 0.38 | 0.16, 0.22 | 0.01, 0.00 | 4.9, 60 (labels only) | 0.55 (NPTH) |
+  | RAMBo 1.2e (6.4, 4 layers, aligned) | 6.55, 0.52, 1.34, 3.49 | 0.21, 0.03 | 0.21 | 26.9 | outline 0.00 |
+  | Open Task Light (Fusion 9.7.0) | 0.00, 1.52 | 0.15, 0.00 | 0.35, 0.00 | 45.5, 59.0 (TrueType) | drill 0.15 |
+
+  What the copper keeps is pours: thermal reliefs, islands and slivers that EAGLE removes, and edge pixels. KiCad's
+  import, with its zones refilled (`kicad-cli pcb export gerbers --check-zones`), differs from EAGLE's Gerbers by 8.80
+  and 6.27 % on mutantC and 1.32 to 3.39 % on LibreVNA's layers, and from its masks by 0.41 and 9.68 % (it loses the
+  tStop polygons). The silkscreens differ by the letters' shapes. Every pad click finds the pad with its element, pad
+  and net as the first entry (572, 112, 1,878 and 1,252 clicks); the pads' nets equal KiCad's import (1,841 of 1,841 on
+  LibreVNA, 1,020 of 1,020 on RAMBo, 274 of 294 on mutantC and 45 of 78 on Open Task Light, whose other parts KiCad
+  renamed). Clicking a polygon says "Polygon" with its net, rank,
+  isolate and width. The phone layout works. S6's PADS boards build the same designs and layers as before S7 (14 files).
+- **Harness** (`…\scratchpad\pcb\harness\`): `s7-read.mjs` reads boards and libraries in Node, `s7-compare.mjs`
+  compares layer kinds, `s7-textfit2.mjs` measures texts at any angle against a Gerber file, `s7-hits.mjs` clicks every
+  pad and compares the nets with KiCad's import, `s7-csv.mjs` writes the CSVs and compares the position file,
+  `s7-cutsat.mjs` lists the plane cuts at a point, `s7-crop.mjs` and `s7-shrink.mjs` crop and shrink diff images,
+  `s7-padsregress.mjs` builds PADS boards with the committed code and the working copy, `s7-detect.mjs` recognises
+  files. `…\scratchpad\pcb\s7\samples\` holds the boards and Gerbers, `s7\kicad\` KiCad's imports with their Gerbers
+  and position files, `s7\docs\` EAGLE 7.1's DTD (from openpnp) and EAGLE 4.16's help on the design rules, `s7\tools\`
+  small Python readers of EAGLE Gerbers.
+
+**For S8:**
+
+- **PDF and DXF** see only layers. EAGLE polygons are dark regions with their outline stroked and clear cuts after
+  them (some cuts are regions clipped to the polygon), on positive plane layers; flattening clear polarity for a PDF
+  needs the polygon booleans or the image the plan foresees.
+- **The board shape** of an EAGLE board is the Dimension layer with closed Milling loops as cutouts; DXF can take
+  `Board.outline` and the drill layers as they are.
+- **Pick-and-place files of EAGLE and Fusion** come with two samples: LibreVNA's `VNA.mnt` and `VNA.mnb` (EAGLE's
+  `mountsmd.ulp`: name, x, y, angle, value and package separated by blanks, the bottom's angles as EAGLE stores them)
+  and Open Task Light's `PnP_Control Board_front.csv` and `_back.csv` (Fusion: `Name,X,Y,Angle,Value,Package`, the
+  centre of the SMDs rather than the origin, and parts with no SMD left out). Both have the Gerbers to lay them over.
+
 ### S8 – PDF and DXF export; pick-and-place CSV over Gerbers
 
 - **PDF at exactly 1:1:**
@@ -1134,7 +1248,10 @@ One agent per step, from reading to commit. It:
     angle, decal thermals the angle first; lines items have no flags field before PADS 2007; a stack can have fewer
     than three lines; arcs of lines and decals are a start corner with start angle, sweep and the box of the circle,
     arcs of pours a centre line with start angle and sweep between two corners (tenths of a degree in both).
-- **EAGLE:** XML described by `eagle.dtd`. Polygons store only outlines.
+- **EAGLE:** XML described by `eagle.dtd` (EAGLE 7.1's copy, CC BY-ND 3.0 for programs that read the format, is in
+  openpnp's repository: `src/main/resources/eagle.dtd`; KiCad's import-format notes list the attributes). Polygons
+  store only outlines. EAGLE's help on the design rules and the TEXT command (overlines, spin) describe the rest; Fusion
+  360's help (Fusion ECAD: design rules, CLI reference) has the newer texts. Coordinates are mm with Y up.
 - **Pick-and-place CSV columns:**
   - KiCad: `Ref, Val, Package, PosX, PosY, Rot, Side`;
   - Altium: `Designator, Comment, Layer, Footprint, Center-X(mm), Center-Y(mm), Rotation`, …;
