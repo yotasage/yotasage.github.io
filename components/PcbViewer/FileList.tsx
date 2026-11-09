@@ -41,8 +41,9 @@ export default function FileList({ files, layers }: { files: LoadedFile[]; layer
         const [badge, badgeClass] = BADGES[status];
         const archive = archives.find((a) => f.source.path.startsWith(a));
         const shown = archive ? f.source.path.slice(archive.length) : f.source.path;
-        const what = f.design ? designSummary(f) : layer ? `${f.detected.name}: ${layerTitle(layer)}` : f.job ? 'Gerber job file: layer functions and stackup' : f.detected.name;
-        const label = f.design ? 'Board' : f.gerber || f.drill ? 'Layer' : badge;
+        const parts = f.pnpState ? `${f.detected.name}: ${count(f.pnpState.parts, 'part', 'parts')}` : undefined;
+        const what = f.design ? designSummary(f) : layer ? `${f.detected.name}: ${layerTitle(layer)}` : f.job ? 'Gerber job file: layer functions and stackup' : parts ?? f.detected.name;
+        const label = f.design ? 'Board' : f.gerber || f.drill ? 'Layer' : f.pnp ? 'Parts' : badge;
         return (
           <li key={f.source.path} className={[styles.fileItem, archive ? styles.fileNested : ''].join(' ')}>
             <div className={styles.fileHead}>

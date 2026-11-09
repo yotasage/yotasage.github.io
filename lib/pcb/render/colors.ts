@@ -7,6 +7,8 @@ const INNER = ['#c2c200', '#c200c2', '#00c2c2', '#e0874a', '#7fc87f', '#8c8cff',
 
 export function defaultColor(layer: Layer): string {
   const top = layer.side === 'top';
+  // The markers of a pick-and-place file stand out from the board.
+  if (layer.markers) return top ? '#ffb02e' : '#5ad2ff';
   switch (layer.kind) {
     case 'copper':
       if (top) return '#c83434';
@@ -35,13 +37,14 @@ export function defaultColor(layer: Layer): string {
   }
 }
 
-// Shown at first: what makes up the board. Paste, documentation and other layers start hidden.
+// Shown at first: what makes up the board, and the markers of pick-and-place files. Paste, documentation and other
+// layers start hidden.
 export function defaultVisible(layer: Layer): boolean {
-  return ['copper', 'mask', 'silk', 'outline', 'drill'].includes(layer.kind);
+  return Boolean(layer.markers) || ['copper', 'mask', 'silk', 'outline', 'drill'].includes(layer.kind);
 }
 
 export function defaultOpacity(layer: Layer): number {
-  return layer.kind === 'mask' ? 0.55 : 0.85;
+  return layer.kind === 'mask' ? 0.55 : layer.markers ? 1 : 0.85;
 }
 
 export function defaultStyle(layer: Layer): LayerStyle {

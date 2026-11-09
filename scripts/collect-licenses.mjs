@@ -31,7 +31,8 @@ function packageName(specifier) {
 
 function importedPackages() {
   const names = new Set(ALWAYS);
-  const pattern = /(?:from\s*|import\s*\(\s*|require\s*\(\s*|^\s*import\s+)['"]([^'"./][^'"]*)['"]/gm;
+  // A package name has no blanks or brackets, which keeps text such as label="Seen from" out.
+  const pattern = /(?:from\s*|import\s*\(\s*|require\s*\(\s*|^\s*import\s+)['"]([^'"./\s<>{}()[\]][^'"\s<>{}()[\]]*)['"]/gm;
   for (const file of SOURCE_DIRS.flatMap((d) => sourceFiles(join(root, d)))) {
     for (const [, spec] of readFileSync(file, 'utf8').matchAll(pattern)) {
       const name = packageName(spec);

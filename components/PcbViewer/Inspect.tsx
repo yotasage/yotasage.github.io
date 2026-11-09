@@ -92,13 +92,13 @@ export function targetLabel(t: HighlightTarget): string {
 }
 
 // Components and nets of the board, searchable; picking one highlights it and zooms to it.
-export function PartsCard({ catalog, highlight, onPick, onClear, fromX2 }: {
+export function PartsCard({ catalog, highlight, onPick, onClear, source }: {
   catalog: Catalog;
   highlight: HighlightTarget | null;
   onPick: (t: HighlightTarget) => void;
   onClear: () => void;
-  // The lists come from the X2 attributes of Gerber files.
-  fromX2: boolean;
+  // Where the lists come from, when not from a design file (the X2 attributes of Gerber files, pick-and-place files).
+  source?: string;
 }) {
   const [tab, setTab] = React.useState<'parts' | 'nets'>(catalog.parts.length ? 'parts' : 'nets');
   const [query, setQuery] = React.useState('');
@@ -162,7 +162,7 @@ export function PartsCard({ catalog, highlight, onPick, onClear, fromX2 }: {
         </div>
       )}
       <p className={qrStyles.help}>
-        Pick one to highlight it on every layer and zoom to it.{fromX2 ? ' The lists come from the X2 attributes of the Gerber files.' : ''}
+        Pick one to highlight it on every layer and zoom to it.{source ? ` ${source}` : ''}
       </p>
     </>
   );

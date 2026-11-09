@@ -1,7 +1,8 @@
 // Inspecting a board: what a click is on (the items under it on the layers of the picture, one entry per object), a
 // description of each for the inspect panel, the lists of components and nets, and the items of a highlighted net or
 // component on every layer. It works from Board.objects, Board.placements and the layers alone, so Gerber sets with
-// X2 object attributes and boards of every design format get it; Board.design adds pad shapes, holes and margins.
+// X2 object attributes (and the parts of a pick-and-place file laid over them) and boards of every design format get
+// it; Board.design adds pad shapes, holes and margins.
 import { addItem, apertureBox, DEG } from './geometry';
 import { hitsAt } from './hits';
 import { layerTitle } from './identify';
@@ -468,6 +469,24 @@ function describeGerber(board: Board, hit: InspectHit, obj: BoardObject | undefi
   return { title, rows, net: obj?.net || undefined, component };
 }
 
+// A part of a pick-and-place file, from its marker.
+function describePlacement(board: Board, hit: InspectHit, obj: BoardObject, units: Units): Description {
+  const p = board.placements[obj.placement];
+  const rows: [string, string][] = [];
+  if (p) {
+    if (p.value) rows.push(['Value', p.value]);
+    if (p.footprint) rows.push(['Footprint', p.footprint]);
+    rows.push(['Side', p.side === 'top' ? 'Top' : 'Bottom'], ['Position', formatPoint(p.at, units)]);
+    const f = p.fields ?? {};
+    if (f['Position in the file']) rows.push(['In the file', `${f['Position in the file']}${f['Rotation in the file'] !== undefined ? `, rotation ${f['Rotation in the file']}` : ''}`]);
+    rows.push(['Rotation', `${formatAngle(p.rot)}${p.side === 'bottom' ? ' (as KiCad gives bottom parts)' : ''}`]);
+    if (f.File) rows.push(['File', f.File]);
+  }
+  rows.push(['Layer', layerList(hit)]);
+  const ref = p?.ref ?? obj.component ?? '';
+  return { title: `Component ${ref}`.trim(), rows, component: { ref } };
+}
+
 export function describeHit(board: Board, hit: InspectHit, units: Units): Description {
   if (hit.component !== undefined) {
     const p = board.placements[hit.component];
@@ -479,6 +498,7 @@ export function describeHit(board: Board, hit: InspectHit, units: Units): Descri
   }
   const item = hit.layer.items[hit.index];
   const obj = item.obj !== undefined ? board.objects[item.obj] : undefined;
+  if (obj?.kind === 'placement' && obj.placement !== undefined) return describePlacement(board, hit, obj, units);
   if (!board.design) return describeGerber(board, hit, obj, item, units);
   if (obj) return describeDesign(board, hit, obj, item, units);
   // Holes of a design that belong to no pad or via.
@@ -566,10 +586,15 @@ export function boardCatalog(board: Board): Catalog {
     }));
     return { nets: [...seen.values()].sort((a, b) => compareNames(a.name, b.name)), parts: parts.sort((a, b) => compareNames(a.ref, b.ref) || a.index - b.index) };
   }
-  // Gerber sets: from the X2 object attributes.
+  // Gerber sets: from the X2 object attributes, and the parts of pick-and-place files.
   const netPins = new Map<string, Set<string>>();
   const parts = new Map<string, PartEntry & { pins: Set<string> }>();
+  for (const p of board.placements) {
+    if (parts.has(p.ref)) continue;
+    parts.set(p.ref, { key: p.ref, ref: p.ref, value: p.value, footprint: p.footprint, side: p.side, pads: 0, pins: new Set() });
+  }
   for (const o of board.objects) {
+    if (o.kind === 'placement') continue;
     if (o.net !== undefined && o.net !== '') {
       let pins = netPins.get(o.net);
       if (!pins) {

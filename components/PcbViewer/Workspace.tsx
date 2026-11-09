@@ -9,6 +9,7 @@ import {
 import { buildBoard, LoadedFile, PickedFile, readFiles } from '../../lib/pcb/load';
 import { Board, Box, isEmptyBox, Layer, LayerKind, Pt, Side, unionBox } from '../../lib/pcb/model';
 import { shapeBox } from '../../lib/pcb/outline';
+import { PnpMapping } from '../../lib/pcb/pnp';
 import {
   defaultColor, defaultStyle, Finish, finishFromName, FINISHES, MASK_COLORS, MaskColor, maskFromName, RealisticStyle, realisticColors, SILK_COLORS, SilkColor,
   silkFromName,
@@ -23,6 +24,7 @@ import { InspectPanel, PartsCard, targetLabel } from './Inspect';
 import LayerPanel, { LayerActions } from './LayerPanel';
 import { MeasureCard, MeasureOverlay, MeasurePoint, snapPoint } from './Measure';
 import { canPickFolders, DropZone, PickButton } from './pick';
+import PlacementCard from './PlacementCard';
 import SaveCard from './SaveCard';
 
 type Status = { kind: 'loading'; text: string } | { kind: 'ready' } | { kind: 'empty' } | { kind: 'error'; text: string };
@@ -155,6 +157,15 @@ function zoomBox(lit: Highlight, layers: Layer[], kind: HighlightTarget['kind'])
   return { minX: box.minX - grow, minY: box.minY - grow, maxX: box.maxX + grow, maxY: box.maxY + grow };
 }
 
+// Where the lists of components and nets of a Gerber set come from.
+function listSource(board: Board, files: LoadedFile[]): string | undefined {
+  if (board.design) return undefined;
+  const pnp = files.filter((f) => f.pnpState).map((f) => f.source.name);
+  const x2 = board.objects.some((o) => o.kind !== 'placement' && (o.net !== undefined || o.component));
+  if (!pnp.length) return 'The lists come from the X2 attributes of the Gerber files.';
+  return `The components come from ${pnp.join(' and ')}${x2 ? ', the nets and pads from the X2 attributes of the Gerber files' : ''}.`;
+}
+
 function styleFromStackup(board: Board | null): RealisticStyle {
   const s = board?.stackup ?? {};
   return { mask: maskFromName(s.mask), silk: silkFromName(s.silk), finish: finishFromName(s.finish) };
@@ -182,6 +193,7 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
   const [order, setOrder] = React.useState<string[]>([]);
   const [overrides, setOverrides] = React.useState<Map<string, LayerOverride>>(() => new Map());
   const [drillFormats, setDrillFormats] = React.useState<Map<string, DrillFormat>>(() => new Map());
+  const [pnpMappings, setPnpMappings] = React.useState<Map<string, PnpMapping>>(() => new Map());
   const [flipped, setFlipped] = React.useState(false);
   const [mode, setMode] = React.useState<ViewMode>('layers');
   const [realistic, setRealistic] = React.useState<RealisticStyle>(() => styleFromStackup(null));
@@ -198,8 +210,8 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
   const [lit, setLit] = React.useState<(Highlight & { target: HighlightTarget }) | null>(null);
 
   // The latest state, for the asynchronous loading and for actions that build on it.
-  const latest = React.useRef({ files, overrides, layerStyles, order, drillFormats, measuring, points, inspection, highlight, board });
-  latest.current = { files, overrides, layerStyles, order, drillFormats, measuring, points, inspection, highlight, board };
+  const latest = React.useRef({ files, overrides, layerStyles, order, drillFormats, pnpMappings, measuring, points, inspection, highlight, board });
+  latest.current = { files, overrides, layerStyles, order, drillFormats, pnpMappings, measuring, points, inspection, highlight, board };
   // Zoom to the highlight once it is ready (after picking it in a list).
   const zoomPending = React.useRef(false);
   const known = React.useRef(new Set<string>());
@@ -273,14 +285,16 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
         const all = replace ? read : [...latest.current.files, ...read];
         const nextOverrides = replace ? new Map<string, LayerOverride>() : latest.current.overrides;
         const nextFormats = replace ? new Map<string, DrillFormat>() : latest.current.drillFormats;
+        const nextMappings = replace ? new Map<string, PnpMapping>() : latest.current.pnpMappings;
         setStatus({ kind: 'loading', text: 'Identifying the layers…' });
         await new Promise((resolve) => setTimeout(resolve, 0));
-        const next = buildBoard(all, nextOverrides, nextFormats);
+        const next = buildBoard(all, nextOverrides, nextFormats, nextMappings);
         const hadLayers = !replace && latest.current.files.some((f) => f.gerber || f.drill || f.designBoard);
         latest.current.files = all;
         setFiles(all);
         setOverrides(nextOverrides);
         setDrillFormats(nextFormats);
+        setPnpMappings(nextMappings);
         if (replace) {
           setFlipped(false);
           setMode('layers');
@@ -485,7 +499,7 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
       const next = new Map(overrides).set(id, { kind, side });
       setOverrides(next);
       latest.current.overrides = next;
-      show(buildBoard(files, next, drillFormats), false);
+      show(buildBoard(files, next, drillFormats, pnpMappings), false);
     },
     drillFormat: (id, format) => {
       const next = new Map(drillFormats);
@@ -493,7 +507,7 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
       else next.delete(id);
       setDrillFormats(next);
       latest.current.drillFormats = next;
-      show(buildBoard(files, overrides, next), false);
+      show(buildBoard(files, overrides, next, pnpMappings), false);
     },
     only: (id) => {
       setLayerStyles((prev) => {
@@ -507,6 +521,8 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
         if (which === 'all') return true;
         if (which === 'none') return false;
         if (l.kind === 'outline' || l.kind === 'drill') return true;
+        // The markers of a pick-and-place file go with their side.
+        if (l.markers) return l.side === which;
         if (!['copper', 'mask', 'silk', 'paste'].includes(l.kind)) return false;
         return l.side === which;
       };
@@ -520,6 +536,16 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
       });
       if (which === 'top' || which === 'bottom') setFlipped(which === 'bottom');
     },
+  };
+
+  // Columns, units and offset of a pick-and-place file (null: as read at first).
+  const setPnpMapping = (path: string, mapping: PnpMapping | null) => {
+    const next = new Map(pnpMappings);
+    if (mapping) next.set(path, mapping);
+    else next.delete(path);
+    setPnpMappings(next);
+    latest.current.pnpMappings = next;
+    show(buildBoard(files, overrides, drillFormats, next), false);
   };
 
   function toggleFullscreen() {
@@ -650,7 +676,7 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
 
         {board && catalog && (catalog.parts.length > 0 || catalog.nets.length > 0) && (
           <Card title="Components and nets">
-            <PartsCard key={board.name} catalog={catalog} highlight={highlight} onPick={pickTarget} onClear={() => setHighlight(null)} fromX2={!board.design} />
+            <PartsCard key={board.name} catalog={catalog} highlight={highlight} onPick={pickTarget} onClear={() => setHighlight(null)} source={listSource(board, files)} />
           </Card>
         )}
 
@@ -689,6 +715,12 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
         {board?.design && board.placements.length > 0 && (
           <Card title="BOM and pick-and-place">
             <AssemblyCard board={board} />
+          </Card>
+        )}
+
+        {board && !board.design && files.some((f) => f.pnpState) && (
+          <Card title="Pick-and-place">
+            <PlacementCard files={files} onChange={setPnpMapping} />
           </Card>
         )}
 

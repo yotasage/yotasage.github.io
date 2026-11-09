@@ -3,14 +3,13 @@
 // later version ("not supported yet"), never read (with what to do instead), an archive, or ignored.
 import { gunzipSync } from 'fflate';
 
+import { pnpFormatName } from './pnp';
+
 export type FormatId =
   | 'gerber' | 'gerber-job' | 'excellon' | 'zip' | 'kicad-pcb' | 'kicad-footprint' | 'altium-pcb' | 'altium-pcblib' | 'pads-ascii'
-  | 'eagle-brd' | 'eagle-library'
-  // Read in later steps (docs/pcb-viewer-plan.md).
-  | 'pnp-csv'
+  | 'eagle-brd' | 'eagle-library' | 'pnp-csv'
   // Not read.
   | 'altium-pcblib-ascii'
-  // Not read.
   | 'gerber-rs274d' | 'kicad-legacy' | 'pads-binary' | 'pads-library' | 'eagle-binary' | 'allegro'
   | 'odb' | 'ipc2581' | 'ipcd356' | 'gedac' | 'diptrace' | 'easyeda' | 'protel-pcb' | 'archive-other'
   // Ignored: not boards.
@@ -25,12 +24,6 @@ export interface Detected {
   status: FileStatus;
   // Why it is not read, and what to do if there is a way.
   message?: string;
-}
-
-const LATER = 'Not supported yet.';
-
-function later(id: FormatId, name: string): Detected {
-  return { id, name, status: 'later', message: LATER };
 }
 
 function unsupported(id: FormatId, name: string, message: string): Detected {
@@ -167,14 +160,15 @@ function firstLine(text: string): string {
   return '';
 }
 
-function detectCsv(text: string): Detected | null {
+// Pick-and-place files (KiCad, Altium, JLCPCB, EAGLE's mount files, Fusion 360, other tables with a designator and a
+// position; lib/pcb/pnp.ts), and bills of materials, which are not read.
+function detectCsv(name: string, text: string): Detected | null {
+  const pnp = pnpFormatName(name, text);
+  if (pnp) return { id: 'pnp-csv', name: pnp, status: 'read' };
   const header = text.split(/\r?\n/, 5).find((l) => l.trim()) ?? '';
   if (!/[,;\t]/.test(header)) return null;
   const h = header.toLowerCase();
   const hasRef = /\b(ref|refdes|designator|reference)\b/.test(h);
-  const hasPos = /(posx|pos x|mid ?x|center-x|centre-x|\bx\b|x \(mm\)|x\(mm\))/.test(h);
-  const hasRot = /\b(rot|rotation|angle)\b/.test(h);
-  if (hasRef && hasPos && hasRot) return later('pnp-csv', 'Pick-and-place file');
   if (hasRef && /\b(qty|quantity|value|val|comment|footprint)\b/.test(h)) return ignored('bom', 'Bill of materials', 'A bill of materials; ignored.');
   return null;
 }
@@ -259,7 +253,7 @@ function detectText(name: string, text: string): Detected {
     return unsupported('ipcd356', 'IPC-D-356 netlist', 'IPC-D-356 netlists are not supported (yet).');
   }
 
-  const csv = detectCsv(t);
+  const csv = detectCsv(name, t);
   if (csv) return csv;
   if (/^0\s*\r?\n\s*SECTION\b/.test(t)) return ignored('dxf', 'DXF drawing');
   if (/^ISO-10303-21/.test(t)) return ignored('model3d', '3D model (STEP)', 'A 3D model; the 3D viewer of this site opens it.');
@@ -269,6 +263,10 @@ function detectText(name: string, text: string): Detected {
 
 export function detectFormat(name: string, bytes: Uint8Array): Detected {
   if (!bytes.length) return ignored('empty', 'Empty file', 'The file is empty; ignored.');
+  // Text in UTF-16 with a byte order mark (EasyEDA's pick-and-place files).
+  if ((bytes[0] === 0xff && bytes[1] === 0xfe) || (bytes[0] === 0xfe && bytes[1] === 0xff)) {
+    return detectText(name, new TextDecoder(bytes[0] === 0xff ? 'utf-16le' : 'utf-16be').decode(bytes.subarray(0, 1 << 20)));
+  }
   if (looksBinary(bytes)) return detectBinary(name, bytes);
   return detectText(name, latin1(bytes));
 }

@@ -288,12 +288,12 @@ export class BoardView {
   // The order layers are drawn in: the bottom of the list first, so the top of the list is on top. Seen from the
   // bottom, the layers of a side (top, inner, bottom) are drawn in the opposite order, in the same places among the
   // layers that belong to neither side.
-  drawOrder(): Layer[] {
+  drawOrder(flipped = this.flipped): Layer[] {
     const byId = new Map(this.layers.map((l) => [l.id, l]));
     const listed = this.order.map((id) => byId.get(id)).filter(Boolean);
     for (const l of this.layers) if (!this.order.includes(l.id)) listed.push(l);
     const drawn = listed.reverse();
-    if (!this.flipped) return drawn;
+    if (!flipped) return drawn;
     const sided = drawn.filter((l) => l.side !== 'none').reverse();
     let k = 0;
     return drawn.map((l) => (l.side !== 'none' ? sided[k++] : l));
@@ -717,10 +717,11 @@ export class BoardView {
     }
   }
 
-  // The layer view for the SVG export, in drawing order: the shown layers (dimmed under a highlight), then the
-  // highlighted parts of them.
-  exportLayers(): { layer: Layer; color: string; opacity: number; highlighted?: boolean }[] {
-    const shown = this.drawOrder().filter((l) => this.styles.get(l.id)?.visible);
+  // The layer view for the SVG and PDF exports, in drawing order (as seen from the bottom when `flipped`): the shown
+  // layers (dimmed under a highlight, unless `plain`), then the highlighted parts of them.
+  exportLayers(flipped = this.flipped, plain = false): { layer: Layer; color: string; opacity: number; highlighted?: boolean }[] {
+    const shown = this.drawOrder(flipped).filter((l) => this.styles.get(l.id)?.visible);
+    if (plain) return shown.map((l) => ({ layer: l, color: this.styles.get(l.id).color, opacity: this.styles.get(l.id).opacity }));
     const dim = this.highlight ? DIM_LAYERS : 1;
     const out: { layer: Layer; color: string; opacity: number; highlighted?: boolean }[] = shown.map((l) => ({ layer: l, color: this.styles.get(l.id).color, opacity: this.styles.get(l.id).opacity * dim }));
     for (const l of this.highlight ? shown : []) {

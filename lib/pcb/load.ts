@@ -1,8 +1,9 @@
 // Turns the files the user opened into a board: ZIP archives are expanded (also nested ones), every file is
 // recognised by its content (lib/pcb/detect.ts) and handed to its reader, and the layers are identified
-// (lib/pcb/identify.ts). Gerber, drill, job and CSV files form one board; adding files adds to it. A design file
-// (KiCad board or footprint, Altium board or library, PADS ASCII board, EAGLE board or library) is a board of its own:
-// one is chosen among the files and the others are not used.
+// (lib/pcb/identify.ts). Gerber, drill, job and pick-and-place files form one board; adding files adds to it. A
+// pick-and-place file gives the board its placements and a layer of markers per side (lib/pcb/pnp.ts, markers.ts). A
+// design file (KiCad board or footprint, Altium board or library, PADS ASCII board, EAGLE board or library) is a board
+// of its own: one is chosen among the files and the others are not used.
 import { unzipSync } from 'fflate';
 
 import type { DesignFormat, openDesign } from './design/open';
@@ -12,9 +13,11 @@ import { fitFormat, gerberDrillItems } from './drill';
 import { describeFormat, DrillFormat, DrillProgram, formatComplete, formatKey, platedFromName, plotExcellon, PlottedDrill, readExcellon } from './excellon';
 import { GerberJob, parseGerberJob } from './gbrjob';
 import { parseGerber, ParsedGerber } from './gerber/parse';
-import { Identity, identifyLayers, LayerOverride } from './identify';
-import { Board, BoardObject, Design, Layer, Stackup } from './model';
-import { boardShape } from './outline';
+import { compareLayers, Identity, identifyLayers, LayerOverride } from './identify';
+import type { placementLayers } from './markers';
+import { Board, BoardObject, Design, Layer, Placement, Stackup } from './model';
+import { boardShape, shapeBox } from './outline';
+import { defaultMapping, fitPnp, PnpFit, PnpMapping, pnpPlacements, pnpScore, PnpTable, readPnp } from './pnp';
 
 export interface SourceFile {
   // Where the file came from, e.g. "gerbers/F_Cu.gtl" or "gerbers_v2.zip/F_Cu.gtl".
@@ -39,6 +42,9 @@ export interface LoadedFile {
   // A design file: what was read, and the board made from it (before the user's layer changes).
   design?: Design;
   designBoard?: Board;
+  // A pick-and-place file: its table, and how it was last read (set by buildBoard).
+  pnp?: PnpTable;
+  pnpState?: PnpState;
   // Why a file of a format that is read was not used (another design file is shown, or the board comes from one).
   unused?: string;
   // How far the object indices of this file's items are shifted into Board.objects (see buildBoard).
@@ -80,6 +86,30 @@ export interface DrillState {
   plotKey: string;
   guessKey?: string;
   guess?: { format: DrillFormat; onPads?: number };
+}
+
+export interface PnpState {
+  mapping: PnpMapping;
+  // The file's own reading, a better one found by fitting the parts to the pads, or the user's.
+  from: 'file' | 'guess' | 'user';
+  // Share of the parts near a pad of their side (undefined without copper layers), and what the guess changed.
+  onPads?: number;
+  change?: string;
+  parts: number;
+  skipped: number;
+  // Cache: the guess for this set of copper layers.
+  guessKey?: string;
+  guess?: PnpFit;
+}
+
+// The function that draws the markers of placements, loaded (with the stroke font) with the first pick-and-place file.
+let markerLayers: typeof placementLayers | null = null;
+
+// Text of a file: UTF-8, or UTF-16 with a byte order mark (EasyEDA writes its pick-and-place files so).
+export function decodeText(bytes: Uint8Array): string {
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder('utf-16le').decode(bytes);
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) return new TextDecoder('utf-16be').decode(bytes);
+  return new TextDecoder('utf-8').decode(bytes);
 }
 
 // How deep ZIP archives inside ZIP archives are opened.
@@ -195,7 +225,7 @@ export async function readFiles(files: PickedFile[], known: Set<string>, onStatu
         f.design = r.design;
         f.designBoard = r.board;
       } else {
-        const text = new TextDecoder('utf-8').decode(f.source.bytes);
+        const text = decodeText(f.source.bytes);
         if (f.detected.id === 'gerber') {
           f.gerber = parseGerber(text);
           f.warnings = f.gerber.warnings;
@@ -204,6 +234,14 @@ export async function readFiles(files: PickedFile[], known: Set<string>, onStatu
         } else if (f.detected.id === 'excellon') {
           f.drill = readExcellon(text);
           f.warnings = f.drill.warnings;
+        } else if (f.detected.id === 'pnp-csv') {
+          f.pnp = readPnp(text, f.source.name);
+          if (!f.pnp.rows.length) throw new Error('No parts were found in it.');
+          if (f.pnp.skipped) f.warnings = [`${f.pnp.skipped} line${f.pnp.skipped === 1 ? '' : 's'} could not be read as parts.`];
+          if (!markerLayers) {
+            // @ts-expect-error TS2835: TypeScript wants an extension that the bundler does not resolve (see CLAUDE.md).
+            markerLayers = ((await import('./markers')) as { placementLayers: typeof placementLayers }).placementLayers;
+          }
         }
       }
     } catch (e) {
@@ -269,15 +307,36 @@ function plotDrill(f: LoadedFile, user: DrillFormat | undefined, fitTo: Layer[])
   return { format, from, onPads: from === 'guess' ? guess?.onPads : undefined, holes: plot.holes, plot, plotKey, guessKey, guess };
 }
 
+// Reads a pick-and-place file with the user's mapping, the file's own, or a better one found by fitting the parts to
+// the pads (worked out again only when the copper layers change), and remembers how on the file.
+function readPlacements(f: LoadedFile, user: PnpMapping | undefined, layers: Layer[], outline: Board['outline']): Placement[] {
+  const old = f.pnpState;
+  const key = layers.filter((l) => l.kind === 'copper').map((l) => l.id).join('\n');
+  let guess = old?.guess;
+  let guessKey = old?.guessKey;
+  if (!user && (!guess || guessKey !== key)) {
+    guess = fitPnp(f.pnp, defaultMapping(f.pnp), layers, outline?.length ? shapeBox(outline) : null, f.source.name);
+    guessKey = key;
+  }
+  const mapping = user ?? guess.mapping;
+  const from: PnpState['from'] = user ? 'user' : guess.change ? 'guess' : 'file';
+  const { placements, skipped } = pnpPlacements(f.pnp, mapping, f.source.name);
+  f.pnpState = { mapping, from, onPads: user ? pnpScore(placements, layers) : guess.onPads, change: user ? undefined : guess.change, parts: placements.length, skipped, guessKey, guess };
+  return placements;
+}
+
 // Builds the board from every file read so far. Layer kinds, sides and order are found again each time, with the
-// user's choices from the layer panel on top. `drillFormats` are formats the user chose for Excellon files.
-export function buildBoard(files: LoadedFile[], overrides: Map<string, LayerOverride>, drillFormats: Map<string, DrillFormat> = new Map()): Board | null {
+// user's choices from the layer panel on top. `drillFormats` are formats the user chose for Excellon files,
+// `pnpMappings` the columns, units and offsets chosen for pick-and-place files.
+export function buildBoard(files: LoadedFile[], overrides: Map<string, LayerOverride>, drillFormats: Map<string, DrillFormat> = new Map(),
+  pnpMappings: Map<string, PnpMapping> = new Map()): Board | null {
   // A design file is the whole board.
   const design = files.find((f) => f.designBoard);
   if (design) return designWithOverrides(design.designBoard, overrides);
   const gerbers = files.filter((f) => f.gerber);
   const drills = files.filter((f) => f.drill);
-  if (!gerbers.length && !drills.length) return null;
+  const pnps = files.filter((f) => f.pnp);
+  if (!gerbers.length && !drills.length && !pnps.length) return null;
   const jobs = files.filter((f) => f.job).map((f) => f.job);
   const warnings: string[] = [];
 
@@ -357,8 +416,35 @@ export function buildBoard(files: LoadedFile[], overrides: Map<string, LayerOver
   const shape = boardShape(layers);
   if (shape) warnings.push(...shape.warnings);
 
+  // Pick-and-place files: the placements, and a layer of markers per side.
+  const placements: Placement[] = [];
+  const sides = { top: new Set<string>(), bottom: new Set<string>() };
+  for (const f of pnps) {
+    const list = readPlacements(f, pnpMappings.get(f.source.path), layers, shape?.from === 'outline' || shape?.from === 'frame' ? shape.contours : undefined);
+    for (const p of list) {
+      placements.push(p);
+      sides[p.side].add(f.source.name);
+    }
+    const st = f.pnpState;
+    const pct = (v: number) => `${Math.round(v * 100)}%`;
+    if (st.from === 'guess') {
+      warnings.push(`${f.source.name} is read ${st.change}, which puts ${pct(st.onPads ?? 0)} of its parts on pads (${pct(st.guess?.fileOnPads ?? 0)} as the file gives them). The pick-and-place card can change it.`);
+    } else if (st.onPads !== undefined && st.onPads < 0.5) {
+      warnings.push(`Only ${pct(st.onPads)} of the parts of ${f.source.name} lie on pads: its origin, units or sides may differ from the other files'. The pick-and-place card can correct them.`);
+    }
+  }
+  if (placements.length && markerLayers) {
+    const names = (s: Set<string>) => [...s].join(', ');
+    for (const l of markerLayers(placements, objects, { top: names(sides.top), bottom: names(sides.bottom) })) {
+      const o = overrides.get(l.id);
+      if (o && (o.kind !== l.kind || o.side !== l.side)) Object.assign(l, { kind: o.kind, side: o.side, label: undefined, identifiedBy: 'user' });
+      layers.push(l);
+    }
+    layers.sort(compareLayers);
+  }
+
   const archive = files.find((f) => f.detected.id === 'zip');
-  const named = gerbers.length ? gerbers : drills;
+  const named = gerbers.length ? gerbers : drills.length ? drills : pnps;
   const name = jobs.find((j) => j.name)?.name
     || commonStart(named.map((f) => f.source.name))
     || (archive ? archive.source.name.replace(/\.zip$/i, '') : '')
@@ -370,7 +456,7 @@ export function buildBoard(files: LoadedFile[], overrides: Map<string, LayerOver
     ...(shape ? { outline: shape.contours, outlineFrom: shape.from } : {}),
     stackup: mergeStackup(jobs),
     objects,
-    placements: [],
+    placements,
     warnings,
   };
 }

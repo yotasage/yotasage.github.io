@@ -94,6 +94,8 @@ export interface Layer {
   file?: string;
   attrs?: Record<string, string>;
   identifiedBy?: IdentifiedBy;
+  // Made from a pick-and-place file: a marker and the designator of each part of one side (lib/pcb/markers.ts).
+  markers?: boolean;
   items: ArtItem[];
   apertures: Aperture[];
   bbox: Box;
@@ -104,7 +106,8 @@ export interface Layer {
 // others in `info` (e.g. '.CVal'). For a design (lib/pcb/design/build.ts): one object per pad, via, zone ('zone',
 // 'teardrop' or 'rule area'), internal plane ('plane') and component (shared by its graphics and text), with `design`
 // pointing at its entry in Board.design; and one per net for tracks ('track'), for board graphics ('graphic') and one
-// for board text ('text').
+// for board text ('text'). A pick-and-place file over a Gerber set gives one per part ('placement'), with its index in
+// Board.placements.
 export interface BoardObject {
   kind: string;
   net?: string;
@@ -112,9 +115,11 @@ export interface BoardObject {
   pin?: string;
   info?: Record<string, string>;
   design?: { list: 'pads' | 'vias' | 'zones' | 'components' | 'tracks' | 'graphics' | 'texts' | 'planes'; index: number };
+  placement?: number;
 }
 
-// A component as the BOM and pick-and-place exports (lib/pcb/export/csv.ts) and the component list use it.
+// A component as the BOM and pick-and-place exports (lib/pcb/export/csv.ts) and the component list use it, from a
+// design or from a pick-and-place file read over a Gerber set (lib/pcb/pnp.ts).
 export interface Placement {
   ref: string;
   value?: string;
@@ -122,7 +127,8 @@ export interface Placement {
   footprint?: string;
   // The footprint origin, as the design's own position files give it (KiCad: Y negated, nothing else changed).
   at: Pt;
-  // The footprint's angle as the file gives it, counter-clockwise; bottom footprints are not converted.
+  // The footprint's angle, counter-clockwise; for a bottom part the angle of the footprint flipped about its own X axis
+  // and then turned, as KiCad stores it (EAGLE's and Fusion's angles of bottom parts are converted to it).
   rot: number;
   side: 'top' | 'bottom';
   // Assembly attributes of a design ('dnp', 'exclude_from_bom', 'exclude_from_pos_files', 'board_only', 'type': 'smd'

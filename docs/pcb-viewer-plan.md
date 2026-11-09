@@ -36,7 +36,7 @@ made for the owner and public for anyone, as is.
 | Altium `.PcbDoc` (binary and ASCII), binary `.PcbLib` | Through `altiumts` (S5); ASCII `.PcbLib` is not read | S5 |
 | PADS ASCII (`.asc`) | PowerPCB V4.0 to current | S6 |
 | EAGLE `.brd` (XML, EAGLE 6 to 9, Fusion 360 exports), `.lbr` | Polygons approximated from their outlines (EAGLE stores no pour); libraries with the packages side by side | S7 |
-| Pick-and-place CSV over a Gerber set | KiCad, Altium, JLC, other by column mapping | S8 |
+| Pick-and-place file over a Gerber set | KiCad (CSV and `.pos`), Altium, JLCPCB, EAGLE's mount files (`.mnt`, `.mnb`), Fusion 360, other tables by column mapping; recognised by content, also in UTF-16 | S8 |
 
 Not read: PADS binary `.pcb` (closed format; [BL4](BACKLOG.md)); EAGLE binary (before 6.0); Allegro, OrCAD Layout,
 Xpedition, DipTrace, Proteus, EasyEDA and gEDA design files (they all export Gerber); ODB++ (downloading the
@@ -94,7 +94,7 @@ folder, never next to the test files.
 | Part | Location | Notes |
 | --- | --- | --- |
 | Page | `pages/pcb-viewer/main.tsx` | Head, home link, global styles, as every page (CLAUDE.md) |
-| UI | `components/PcbViewer/` | `PcbViewer.tsx` start screen (loads `Workspace.tsx` on first open), `Workspace.tsx` view, toolbar and cards, `LayerPanel.tsx` (also the format of drill files), `FileList.tsx`, `pick.tsx` (file and folder pickers, drop zone that reads dropped folders), `Measure.tsx` (overlay and card), `SaveCard.tsx` (PNG and SVG), `Inspect.tsx` (S4: the panel over the view that says what a click is on, and the searchable lists of components and nets), `AssemblyCard.tsx` (S4: BOM and pick-and-place) |
+| UI | `components/PcbViewer/` | `PcbViewer.tsx` start screen (loads `Workspace.tsx` on first open), `Workspace.tsx` view, toolbar and cards, `LayerPanel.tsx` (also the format of drill files), `FileList.tsx`, `pick.tsx` (file and folder pickers, drop zone that reads dropped folders), `Measure.tsx` (overlay and card), `SaveCard.tsx` (PNG and SVG; S8: PDF and DXF, as a choice of format), `Inspect.tsx` (S4: the panel over the view that says what a click is on, and the searchable lists of components and nets), `AssemblyCard.tsx` (S4: BOM and pick-and-place), `PlacementCard.tsx` (S8: the pick-and-place files over a Gerber set, with their columns, units, sides and offset) |
 | Styles | `styles/PcbViewer.module.css` | |
 | Model | `lib/pcb/model.ts` | See below |
 | Geometry | `lib/pcb/geometry.ts` | Arcs, boxes, contour orientation, affine transforms of items |
@@ -110,9 +110,11 @@ folder, never next to the test files.
 | Stroke font | `lib/pcb/font/` | Newstroke (S3): `newstroke-glyphs.ts` generated from the font author's own CC0 release (see Libraries), `stroke.ts` layout adapted from KiCanvas, `LICENSE.kicanvas.txt` and `LICENSE.newstroke.txt` (read by `scripts/collect-licenses.mjs` for `/licenses`) |
 | Design formats | `lib/pcb/kicad/` (S3: `sexpr.ts` reader, `layers.ts` layer names and wildcards, `board.ts` boards and footprints), `lib/pcb/altium/` (S5: `board.ts` boards and libraries through `altiumts`, `records.ts` fields, lengths, text and contours, `layers.ts` layer names and the stack, `rules.ts` rule scopes and the mask, paste and plane rules, `text.ts` text placement), `lib/pcb/pads/` (S6: `ascii.ts` header, units, sections, what each version writes differently and the `*MISC*` blocks, `layers.ts` levels, kinds, sides and the pairs a bottom part is mirrored with, `board.ts` the reader, `planes.ts` plane areas without a saved flood and CAM planes, `text.ts` text placement), `lib/pcb/eagle/` (S7: `xml.ts` a small XML reader, `layers.ts` layer numbers, kinds and the pairs a mirrored element swaps, `rules.ts` the design rules (restring, masks, roundness, shapes, elongation), `board.ts` boards and libraries, `pours.ts` polygons as plane areas with cuts, `text.ts` text placement) | Each produces a `Design` |
 | Drawing | `lib/pcb/render/` | Layer view and realistic view on Canvas 2D: `prepare.ts` paths, `paint.ts` a layer into a canvas and the two ways of compositing (shared with the PNG export), `view.ts` canvas, gestures, clicks and modes, `colors.ts` default and realistic colours |
-| Exports | `lib/pcb/export/` | `png.ts`, `svg.ts` (S2); `csv.ts` BOM and pick-and-place (S4); PDF, DXF, KiCad later |
+| Pick-and-place over Gerbers | `lib/pcb/pnp.ts`, `lib/pcb/markers.ts` | S8: `pnp.ts` recognises pick-and-place files by content, reads them into a table, turns rows into `Placement`s with a column mapping and fits units, origin and negated bottom X to the pads; `markers.ts` (loaded with the stroke font, with the first pick-and-place file) draws a marker layer per side |
+| Exports | `lib/pcb/export/` | `png.ts`, `svg.ts` (S2); `csv.ts` BOM and pick-and-place (S4); `pdf.ts` PDF at 1:1, `dxf.ts` DXF, `flatten.ts` a layer as polygons with polygon booleans (clear items applied) for both (S8); KiCad later |
 
-Flow: files → recognise → reader → `Board`. Gerber and drill files become layers directly. A design file becomes a
+Flow: files → recognise → reader → `Board`. Gerber and drill files become layers directly; a pick-and-place file opened
+with them gives `Board.placements` and a marker layer per side (S8). A design file becomes a
 `Design`, which `lib/pcb/design/` turns into layers. Drawing and the PNG, SVG, PDF and DXF exports use only the layers;
 the CSV exports use `Board.placements`; the KiCad export uses `Board.design`. `readFiles` (`load.ts`) chooses one design
 file among those opened and reads it through `design/open.ts`; the board made from it is kept on the `LoadedFile`
@@ -125,7 +127,8 @@ a layer, and drill layers with plated and non-plated holes), S3 wrote the design
 `design` link of `BoardObject`, and `attrs` and `fields` of `Placement`), S4 added `Aperture.code` and
 `Design.placeOrigin`, S5 added `Design.planes`, graphics with holes (`region`) and `knockoutMargin` of texts, S6 added
 plane areas, cuts and positive planes (several per layer), `lines` of zones and square vias, S7 added `stroke` and `info`
-of planes. Names and fields may change. Keep this section in step with the code.
+of planes, S8 added `Layer.markers` and `BoardObject.placement` (pick-and-place files over Gerber sets). Names and fields
+may change. Keep this section in step with the code.
 
 ```ts
 // Units: millimetres. Y up (KiCad's Y is negated on reading). Angles: degrees, counter-clockwise from +X.
@@ -168,17 +171,21 @@ interface Layer {
   plated?: boolean;                  // drill layers: undefined when the file has both (each hole says)
   file?: string; attrs?: Record<string, string>;   // source path (inside an archive too), X2 %TF with the dot
   identifiedBy?: IdentifiedBy;
+  markers?: boolean;                 // made from a pick-and-place file: a marker per part of one side (S8)
   items: ArtItem[]; apertures: Aperture[]; bbox: Box;
 }
 
 // Design boards: one object per pad, via, zone ('zone', 'teardrop', 'rule area'), internal plane ('plane') and
 // component (its graphics and text too), with `design` pointing at the entry; one per net for tracks, one per net for
-// board graphics, one for board text.
+// board graphics, one for board text. A pick-and-place file over a Gerber set: one per part ('placement', S8).
 interface BoardObject { kind: string; net?: string; component?: string; pin?: string; info?: Record<string, string>;
-  design?: { list: 'pads' | 'vias' | 'zones' | 'components' | 'tracks' | 'graphics' | 'texts' | 'planes'; index: number } }
+  design?: { list: 'pads' | 'vias' | 'zones' | 'components' | 'tracks' | 'graphics' | 'texts' | 'planes'; index: number };
+  placement?: number }               // index into Board.placements (pick-and-place markers)
 // at, rot and side as KiCad's position files give them (lib/pcb/export/csv.ts writes them so): the footprint origin,
 // Y up; rot counter-clockwise, for a bottom part the angle of the footprint flipped about its own X axis (Y negated)
-// and then turned, as KiCad stores it; X is not negated on the bottom.
+// and then turned, as KiCad stores it; X is not negated on the bottom. From a pick-and-place file (S8): the position
+// the file gives (EAGLE and Fusion: the centre of the SMDs), with the offset and units of its mapping; EAGLE's and
+// Fusion's bottom angles converted (180° − angle); `fields` hold the file, and its position and rotation as written.
 interface Placement { ref: string; value?: string; footprint?: string; at: Pt; rot: number; side: 'top' | 'bottom';
   // 'dnp', 'exclude_from_bom', 'exclude_from_pos_files', 'board_only': 'yes'; 'type': 'smd' | 'through_hole'
   attrs?: Record<string, string>;
@@ -349,7 +356,7 @@ As built in S4:
 | `altiumts` 0.0.95 (exact version) | Altium | MIT; dependencies `cfb` 1.2.2, `adler-32` 1.3.1, `crc-32` 1.2.2 (Apache-2.0), `transformation-matrix` 2.16.1 (MIT), `fflate` (MIT, already a dependency); no install scripts | Added in S5. It declares `typescript ^5` as a peer dependency (only its build needs it), so `package.json` has `"overrides": { "altiumts": { "typescript": "$typescript" } }` for npm to install it with the site's TypeScript 7 (`npm ci` too). Loaded by `await import('altiumts')` in `lib/pcb/altium/board.ts`: a chunk of its own (277 kB minified) that only opening an Altium file loads. `/licenses` lists it and its dependencies (the import scanner finds dynamic imports) |
 | `@cantoo/pdf-lib` | PDF export | MIT | Already a dependency |
 | Newstroke font, and KiCanvas's stroke font code | Text of design files | Font: CC0 1.0 (the README of the author's distribution: "Now released under CC0 licence, to give it right to be used in any project."); KiCanvas: MIT | Added in S3: the layout in `stroke.ts` adapted from KiCanvas commit b031159 (metrics corrected to KiCad 10). `lib/pcb/font/newstroke-glyphs.ts` is generated by a converter of our own (not in the repository; it follows the encoding of the author's `fontconv.awk`) from `symbol.lib`, `font.lib` and `charlist.txt` of the author's `newstroke-font.tgz` (https://vovanium.ru/_media/sledy/newstroke/newstroke-font.tgz, linked from https://vovanium.ru/sledy/newstroke/en; retrieved 2026-11-09, SHA-256 `dba1c334834e21bdbd15395dc610ecc2bf2eb6675ba0c4585597b375b7bd099e`). It replaced KiCanvas's copy of the glyphs, which came from KiCad's `newstroke_font.cpp` with KiCad's GPL-2.0-or-later header (KiCad's `LICENSE.README` does not list Newstroke, and its catch-all is GPL-3.0-or-later) and CJK glyphs under MIT and OFL-1.1. Never take glyphs from KiCad or KiCanvas: KiCanvas's `third_party/newstroke/` is KiCad's extended copy (another `font.lib` and `charlist.txt`, CJK libraries), not the author's release. The licence texts are in `lib/pcb/font/LICENSE.kicanvas.txt` and `LICENSE.newstroke.txt`; `scripts/collect-licenses.mjs` puts both on `/licenses` ("Font and code used by the PCB viewer") |
-| Polygon booleans | Only if a step needs them (PDF/DXF flattening, exact EAGLE pours) | Must be permissive (e.g. a Clipper port under the Boost licence) | The first step that needs it chooses and records it here. S7 did without: EAGLE's pours are plane areas with cuts, and a cut is clipped to a polygon only as convex pieces (Sutherland–Hodgman, `lib/pcb/eagle/pours.ts`); exact pours are [BL23](BACKLOG.md) |
+| `clipper2-ts` 2.0.1 (exact version) | Polygon booleans: PDF and DXF of layers with clear items (`lib/pcb/export/flatten.ts`) | BSL-1.0 (Boost Software License, with its `LICENSE` file); no dependencies; ESM only | Added in S8. Jeremy Tribby's TypeScript port of Angus Johnson's Clipper2 (C# version), with Clipper2's reference tests. Loaded with `await import('clipper2-ts')` only when an export flattens a layer: a chunk of its own (104 kB minified). npm's `latest` tag points at the prerelease `2.0.1-19`; the stable `2.0.1` (2025-12-21) is pinned. Chosen over `clipper-lib` (Clipper 6, no licence file, JSBN inside) and `clipper2-js` (Angular peer dependencies). S7 had done without: EAGLE's pours are plane areas with cuts, clipped to a polygon only as convex pieces (Sutherland–Hodgman, `lib/pcb/eagle/pours.ts`); exact pours ([BL23](BACKLOG.md)) and the mask web ([BL15](BACKLOG.md)) can use it now |
 
 - **`altiumts` is ESM only,** so it is loaded with `await import('altiumts')` (CLAUDE.md, `"module": "node16"`), and
   only when an Altium file is opened; its types come with `import type … with { 'resolution-mode': 'import' }`.
@@ -373,8 +380,8 @@ Status: ✅ done · 🔄 in progress · 📋 planned
 | S4 | Inspect, highlight, search; BOM and pick-and-place export | ✅ | fc5432d |
 | S5 | Altium | ✅ | 84130dc |
 | S6 | PADS ASCII | ✅ | 5238540 |
-| S7 | EAGLE | ✅ | |
-| S8 | PDF and DXF export; pick-and-place CSV over Gerbers | 📋 | |
+| S7 | EAGLE | ✅ | d3a08d4 |
+| S8 | PDF and DXF export; pick-and-place CSV over Gerbers | ✅ | |
 | S9 | KiCad export | 📋 | |
 
 ### S1 – Viewer shell and Gerber
@@ -1165,6 +1172,104 @@ are recognised and listed but drawn in S2.
 - the DXF reads back with the right size (e.g. with `dxf-parser` in a scratch folder);
 - ARTIFICER's `POS.csv` lands on its pads.
 
+**Notes from S8:**
+
+- **Flattening** (`lib/pcb/export/flatten.ts`, with `clipper2-ts`, see Libraries): PDF and DXF have no clear polarity,
+  so a layer with clear items (Gerber clear polarity and negative images, Altium's and PADS's negative planes, PADS plane
+  areas and EAGLE polygons with their cuts, knockout text) is turned into polygons: every item becomes rings (solids
+  counter-clockwise, holes clockwise; arcs and circles as chords within 2.5 µm, circles at least 8; an aperture's clear
+  parts as reversed holes, or worked out with booleans per aperture when they are not plain holes), each run of one
+  polarity is joined in batches of 2,500 items (non-zero) and added to what is there (union) or cut out of it
+  (difference), in integer units of 0.1 µm; the result comes as a tree, so each outline is written with its own holes
+  (islands in holes are outlines of their own). LibreVNA's six copper layers take 0.2–2.9 s each in Node (26,000 to
+  59,000 vertices); Altium's plane variant of v1 and PADS's CAM plane variant of DC2637A 30–65 ms. Layers without clear
+  items are not flattened.
+- **PDF** (`lib/pcb/export/pdf.ts`): `@cantoo/pdf-lib` (loaded with `await import`) makes the document and sets the
+  text (Helvetica, a standard font, so nothing is embedded or fetched; characters outside WinAnsi become "?"); the
+  drawing is written as content streams, compressed with fflate's streaming `Zlib` while they are written. One page
+  transform (`2.834645669 0 0 2.834645669 tx ty cm`, nine decimals, −2.83… mirrored) puts board millimetres on the page,
+  so every length is exact. Each layer is a form XObject in an optional content group, so PDF viewers can show and hide
+  the layers; a layer that is not opaque is painted through a transparency group with its alpha, so its own items do not
+  darken where they overlap; flashes are a form per aperture placed with `cm`; arcs are Bézier curves of at most a
+  quarter turn; lines are stroked by width and cap with round joins. Pages: the shown layers on one page in drawing
+  order (with a highlight, dimmed as on screen), or one page per shown layer in the list's order; A4, A3 or Letter turned
+  to suit the board, or a page fitted to it (the board with margins, at least 120 mm wide); seen from the top, from the
+  bottom (mirrored), or each layer from its own side (pages of bottom layers mirrored); colours as on screen (the dark
+  background behind the board), on white (light colours darkened to a luminance of 0.55, so silkscreen and drills show)
+  or black; the board outline (0.1 mm) on every page if wanted. The title has the board name, the layer titles with
+  their files (two lines at most), "1:1, mm · seen from …" and the page number; the scale bar is 100, 50, 20 or 10 mm
+  long, with ticks, and says to print at 100 %; a board that does not fit says so on the page and in the card.
+  Read back with pdf.js (its operator list, the transforms followed through the forms): the 100 mm scale bar measures
+  100.000004 mm (pdf.js keeps path coordinates as 32-bit floats), ARTIFICER's outline 95.000000 × 82.650005 mm (its
+  Edge.Cuts: 95 × 82.65) and LibreVNA's 122.000000 × 98.000000 mm (its README: 122 × 98). Rendered with pdf.js:
+  Ucamco's Polarities_and_Apertures looks like its reference image, LibreVNA's flattened pours are right, mirrored for
+  the bottom, and so is the GND plane of the Altium variant (pullback, clearances, thermal reliefs, split line). In the
+  page, LibreVNA's default layers (six copper layers flattened) take 5.4 s (the page stopped answering for at most
+  242 ms; 1.3 MB); ARTIFICER's top layers 0.15 s and the large demo's 15 layers 1 s in Node (3.3 MB).
+- **DXF** (`lib/pcb/export/dxf.ts`): AutoCAD 2004 (AC1018) with the structure AutoCAD expects (all nine tables, the
+  model and paper space blocks and layouts, the root dictionary, handles and owners), `$INSUNITS` 4 (mm),
+  `$MEASUREMENT` 1, `$DWGCODEPAGE` ANSI_1252, extents and an active viewport around the drawing. Layers carry their
+  colour as a true colour (420) and the nearest colour index (62); names are ASCII (dashes as hyphens, other characters
+  as `\U+XXXX`). "Board outline and holes": the board shape as closed polylines with bulges, holes as circles and
+  slots as closed outlines on "Plated holes" and "Non-plated holes" (all holes, from 0.5 mm, or none); "The shown
+  layers": lines as polylines with width (chained where they continue each other; square ends lengthened), arcs as
+  polyline arcs with width (split over a half turn), flashes, dots and regions as closed polylines with bulges, holes as
+  circles; flattened layers as the outlines of what remains. Origin: the file's, the drill/place (KiCad) or board
+  (Altium) origin, or the board's bottom-left corner. Checked with ezdxf 1.4.5 (strict reading and audit: no errors, no
+  fixes; ARTIFICER, LibreVNA from the page), `dxf-parser` and Inkscape's DXF import. Against `kicad-cli pcb export dxf`
+  of ARTIFICER (Edge.Cuts with the drill shapes): the same outline (x 100 to 195, y −142.6 to −59.95: 95 × 82.65 mm),
+  and all 135 of KiCad's circles are in ours within 0.6 µm (the Excellon file's three decimals); ours also has the
+  1,130 via holes, which KiCad leaves out (the option "Holes from 0.5 mm" does too). KiCad writes everything as LINE,
+  CIRCLE and ARC outlines; ours keeps the widths. The large demo's copper layers: 33 MB in 0.4 s.
+- **Pick-and-place over Gerbers** (`lib/pcb/pnp.ts`, `lib/pcb/markers.ts`, `PlacementCard.tsx`): a file is one if one
+  of its first 80 lines is a header with a designator, X and Y (names without case, blanks and units: Designator, Ref,
+  RefDes, Name, Part; Mid X, Center-X(mm), PosX, X, Ref X…) and a rotation or a side, or if its lines are EAGLE's mount
+  lines; UTF-16 files with a byte order mark are decoded. Units come from the header ("(mm)"), the preamble ("Units used:
+  mm", "## Unit = inches"), or the values ("12.5mm", "500mil"), else mm; the side from a column (T, B, Top, Bottom,
+  TopLayer, BottomLayer, Front, Back…) or the file name (`.mnb`, `_back`), else top; semicolon files may use decimal
+  commas. EAGLE's and Fusion's bottom angles become KiCad's (180° − angle), so `Placement.rot` keeps its meaning. A file
+  is read as it says, unless another reading is clearly better: units (when the file does not say), the board's
+  bottom-left corner as the origin and bottom X negated are tried, and scored by the share of parts with a pad centre of
+  their side's outer copper within 2.5 mm, each pad counting once (so a reading in the wrong units, which crowds the
+  parts together, does not score); another reading wins with at least 50 % and 15 points more, and a board warning says
+  so. The card shows each file's format, parts and share on pads, and lets the columns (designator, X, Y, rotation,
+  side, value, footprint), units, bottom angle convention, negated X and an offset be changed, or reset.
+  Markers (`markers.ts`, loaded with the stroke font): a layer per side ("Top pick-and-place", `pnp:top`, kind `fab`,
+  `markers: true`, shown at first in orange or light blue): a ring, a stroke in the direction of the part's X axis and
+  the designator (mirrored on the bottom, so it reads from below), sized by the median distance between neighbouring
+  parts. Each part is a 'placement' object: a click describes it (value, footprint, side, position on the board and in
+  the file, rotation, file); the list of components comes from the placements and the X2 attributes; highlighting a
+  part by its designator also lights its X2 pads (KiCad's Gerbers). The quick sets "Top side" and "Bottom side" show the
+  markers of their side.
+- **Checked:** ARTIFICER's `POS.csv` over its Gerbers: 265 of 265 parts inside the box of their own X2 pads (+0.3 mm),
+  100 % on pads; LibreVNA's `VNA.mnt` and `VNA.mnb` over its Gerbers: 591 of 591 inside the pads of their EAGLE elements
+  (99.5 % and 91.3 %; J2 and J3 are top parts with SMDs on the bottom, so they are in `.mnb`); Open Task Light's Fusion
+  files: 24 of 24. Variants of `POS.csv` (mils without units, from the board's corner, bottom X negated, Altium CSV with
+  preamble, KiCad `.pos` in inches, JLC with units in the values, EasyEDA's UTF-16 file with tabs in mil, semicolons with
+  decimal commas and other column names) were all recognised and put on their pads, three by the fit. The phone layout
+  (390 × 844, touch) has no sideways scrolling; the PDF and DXF fields stack.
+- **Licences:** `scripts/collect-licenses.mjs` took text such as `label="Seen from"` for an import of a package called
+  `">…`; a package name now has no blanks or brackets, which also removed the warnings S4 to S7 had left.
+- **Harness** (`…\scratchpad\pcb\harness\`): `s8-flatten.mjs` flattens the layers with clear items of a board and
+  writes them as SVG; `s8-pdf.mjs` writes a PDF in Node and renders it with pdf.js; `s8-pdfcheck.mjs` measures the scale
+  bar and the largest board path in page coordinates; `s8-dxf.mjs` writes both DXF kinds and reads them back with
+  `dxf-parser`; `s8-dxfcmp.mjs` compares circles and extents with another DXF (`TOL=` in mm); `s8-pnp.mjs` reads Gerbers
+  with pick-and-place files and checks that each part lies on its pads (from X2 or a design file); `s8-pnpvariants.mjs`
+  writes the variants of `POS.csv`; `s8-cropbox.mjs`, `s8-inkbox.mjs` and `s8-half.mjs` crop and shrink screenshots.
+  `…\scratchpad\pcb\s8\dxf\check.py` checks DXF files with ezdxf (in the venv `s8\venv`); `s8\kicad\` holds
+  kicad-cli's DXFs of ARTIFICER.
+
+**For S9:**
+
+- **The KiCad export reads `Board.design`,** not the layers; nothing of S8 is needed, but `lib/pcb/export/flatten.ts`
+  can give the copper of a plane as polygons: KiCad has no negative planes (Altium internal planes, PADS CAM planes)
+  and no stored fill for EAGLE polygons and PADS plane areas without a flood. Either write them as zones with their
+  outline (KiCad fills them again with its own rules) or as zones with a `filled_polygon` from the flattened layer items
+  of that plane (`flattenLayer` on a layer with only the plane's items).
+- **Marker layers** (`Layer.markers`) exist only on Gerber sets; a design board never has them.
+- **Checking an export:** the DXF of the shown layers or the PDF of a converted board, made from our view and from
+  `kicad-cli pcb export dxf|pdf` of the written file, can be compared like S3's layer comparisons.
+
 ### S9 – KiCad export
 
 - **Write `.kicad_pcb` from a design** (Altium, PADS, EAGLE):
@@ -1252,7 +1357,13 @@ One agent per step, from reading to commit. It:
   openpnp's repository: `src/main/resources/eagle.dtd`; KiCad's import-format notes list the attributes). Polygons
   store only outlines. EAGLE's help on the design rules and the TEXT command (overlines, spin) describe the rest; Fusion
   360's help (Fusion ECAD: design rules, CLI reference) has the newer texts. Coordinates are mm with Y up.
-- **Pick-and-place CSV columns:**
+- **Pick-and-place file columns** (S8 reads all of these, `lib/pcb/pnp.ts`):
   - KiCad: `Ref, Val, Package, PosX, PosY, Rot, Side`;
   - Altium: `Designator, Comment, Layer, Footprint, Center-X(mm), Center-Y(mm), Rotation`, …;
-  - JLC: `Designator, Mid X, Mid Y, Layer, Rotation`.
+  - JLC: `Designator, Mid X, Mid Y, Layer, Rotation`, with the units in the values (`12.5mm`);
+  - KiCad's ASCII `.pos`: `## Unit = mm, Angle = deg.`, then `# Ref Val Package PosX PosY Rot Side` as a comment and
+    columns separated by blanks; Altium's files start with a preamble (`Units used: mm`) and older ones have `Mid X`,
+    `Ref X`, `Pad X` and `TB` in mil (`1234mil`, as EasyEDA, which writes UTF-16 with tabs);
+  - EAGLE's `mountsmd.ulp`: no header, `name x y angle value package` separated by blanks, in mm, `.mnt` for the top and
+    `.mnb` for the bottom, the centre of the SMDs, bottom angles of the package before mirroring;
+  - Fusion 360: `Name,X,Y,Angle,Value,Package` in `PnP_<board>_front.csv` and `_back.csv`, like EAGLE's.

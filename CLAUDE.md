@@ -94,7 +94,12 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   Measuring snaps with the grid index of `lib/pcb/points.ts`; exports are in `lib/pcb/export/`. A click is looked up
   with the per-layer item index of `lib/pcb/hits.ts` and described by `lib/pcb/inspect.ts`, which also makes the
   component and net lists and the highlights only from `Board.objects`, `Board.placements` and the layers (so every
-  format gets them); the BOM and pick-and-place CSVs (`export/csv.ts`) follow KiCad's position files.
+  format gets them); the BOM and pick-and-place CSVs (`export/csv.ts`) follow KiCad's position files. PDF
+  (`export/pdf.ts`, with `@cantoo/pdf-lib` loaded by `await import`) and DXF (`export/dxf.ts`) are vectors in board
+  millimetres; layers with clear items are first flattened with polygon booleans in `export/flatten.ts` (`clipper2-ts`,
+  BSL-1.0, also loaded by `await import`). Pick-and-place files over Gerber sets are read by `lib/pcb/pnp.ts` (formats
+  recognised by content, column mapping, fitting units and origin to the pads) and drawn as a marker layer per side by
+  `lib/pcb/markers.ts`, which `load.ts` loads with the stroke font only when such a file is opened.
 - `tsconfig` uses `"module": "node16"`, so our own files count as CommonJS and the ES-module-only add-ons of three.js
   (`three/examples/jsm/...`) can only be loaded with `await import(...)`, or imported as types with
   `import type ... with { 'resolution-mode': 'import' }`. A dynamic import of one of our own files needs

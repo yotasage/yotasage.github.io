@@ -234,6 +234,11 @@
   border-bottom-left-radius: 0;
 }
 
+.segmented .toolButton:not(:first-child):not(:last-child) {
+  margin-left: -1px;
+  border-radius: 0;
+}
+
 .canvasBox {
   position: relative;
   flex: 1;
@@ -872,6 +877,34 @@
 
 .guessBadge {
   color: #f7c873;
+}
+
+/* Pick-and-place files over a Gerber set */
+
+.pnpFile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pnpFile p {
+  margin: 0;
+}
+
+.pnpDetails {
+  font-size: 0.85rem;
+}
+
+.pnpDetails > summary {
+  cursor: pointer;
+  color: #c8c8c8;
+}
+
+.pnpDetails > * + * {
+  margin-top: 0.5rem;
 }
 
 /* Save */
