@@ -35,3 +35,7 @@ yarn-error.log*
 
 # TypeScript incremental build info (npx tsc --noEmit)
 *.tsbuildinfo
+
+
+
+TODO.md
