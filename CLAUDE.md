@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 A personal collection of browser tools (simulation setup calculator, QR code generator, PDF tools, Base64 image
-converter, text case converter, 3D viewer, PCB viewer), so the owner does not have to use other people's sites with ads and bad design. Next.js 16 Pages Router,
+converter, text case converter, 3D viewer, PCB viewer, resistor lookup), so the owner does not have to use other people's sites with ads and bad design. Next.js 16 Pages Router,
 React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 
 ## Hard constraints
@@ -104,6 +104,11 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   `Board.design` as a `.kicad_pcb` in KiCad 9's format (version 20241229); the warning the card shows before saving
   comes from `export/kicadnotes.ts`. Check a change to it with `kicad-cli` (`pcb export gerbers|svg`, `pcb drc` must
   read the file) and by comparing kicad-cli's Gerbers with the viewer's own layers, as the plan's notes from S9 describe.
+- Resistor lookup: built in steps by [docs/resistor/plan.md](docs/resistor/plan.md) (module map, design direction,
+  `notes-S<n>.md`; `facts.md` has the tables). Framework-free logic in `lib/resistor/` (E-series, colour code, SMD
+  markings, `draw.ts` for the self-contained SVG drawings with the stroke font of `glyphs.ts`, `export.ts`), the page in
+  `components/Resistor/` (`ResistorTool.tsx` holds the state and the link, `view.ts` resolves what is drawn), styles and
+  theme variables in `styles/Resistor.module.css`, checks in `scripts/harness/resistor/` (`npm run check`, `npm run ui`).
 - `tsconfig` uses `"module": "node16"`, so our own files count as CommonJS and the ES-module-only add-ons of three.js
   (`three/examples/jsm/...`) can only be loaded with `await import(...)`, or imported as types with
   `import type ... with { 'resolution-mode': 'import' }`. A dynamic import of one of our own files needs
@@ -151,3 +156,6 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 Commit only when asked. Messages are one paragraph of tagged, user-facing changes in past tense or present state:
 `ADDED: …`, `CHANGED: …`, `FIXED: …`, `REMOVED: …`, `UPDATED: …` (several tags per message, each a full sentence
 describing what is visible on the site or in the repo). See `git log` for examples.
+
+Work done in steps is committed after every step without asking again, on a branch named after the tool: the owner
+wants to see the progress in the history and to go back to a single feature without a large jump.

@@ -2,7 +2,7 @@ import React from 'react';
 
 // Icons for the tool cards on the main page, in the style of components/PdfTools/ToolIcon.tsx. Filled shapes use
 // currentColor, which the <svg> sets to the tool's colour.
-export type HomeIconName = 'simsetup' | 'qrcode' | 'pdf' | 'base64' | 'textcase' | 'viewer3d' | 'pcb';
+export type HomeIconName = 'simsetup' | 'qrcode' | 'pdf' | 'base64' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor';
 
 const SAMPLES: [number, number][] = [[6, 24], [12, 12], [18, 12], [24, 24], [30, 36], [36, 36], [42, 24]];
 
@@ -76,6 +76,15 @@ const ICONS: Record<HomeIconName, React.ReactNode> = {
       <path d="M27 13l5-5h4M21 35l-5 5" opacity={0.6} />
       <circle cx={38} cy={8} r={2} fill="currentColor" stroke="none" />
       <circle cx={14.5} cy={40.5} r={2} fill="currentColor" stroke="none" />
+    </>
+  ),
+  // An axial resistor: leads, body and bands, the tolerance band set apart.
+  resistor: (
+    <>
+      <path d="M2 24h8M38 24h8" />
+      <rect x={10} y={15} width={28} height={18} rx={5} />
+      <path d="M17 15v18M22 15v18M27 15v18" opacity={0.6} />
+      <path d="M33 16v16" />
     </>
   ),
 };

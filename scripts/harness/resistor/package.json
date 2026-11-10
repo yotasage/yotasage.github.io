@@ -1,0 +1,17 @@
+{
+  "name": "resistor-harness",
+  "private": true,
+  "description": "Checks of lib/resistor, screenshots and drawing samples of /resistor/main. Not part of the site.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx check.mjs",
+    "shots": "node shots.mjs",
+    "ui": "node ui.mjs",
+    "samples": "tsx samples.mjs",
+    "exports": "node exports.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.50.0",
+    "tsx": "^4.19.0"
+  }
+}

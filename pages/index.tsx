@@ -85,6 +85,15 @@ const TOOLS: SiteTool[] = [
     color: '#9ccc3c',
     tags: ['Gerber RS-274X · X2', 'Excellon drill', 'KiCad 4 to 10', 'Altium PcbDoc', 'PADS ASCII', 'EAGLE · Fusion 360', 'Pick-and-place', 'Realistic view', 'Nets and components', 'Measure', 'PNG · SVG · PDF · DXF · CSV', 'To KiCad'],
   },
+  {
+    href: '/resistor/main',
+    title: 'Resistor lookup',
+    category: 'Electronics',
+    description: 'Type a resistance, an SMD marking or band colours and get the nearest standard values in every E-series with their errors, the colour bands and the SMD markings. Click the bands of the drawing or type a chip marking to decode a part, and save the drawing as SVG, PNG, JPG or WebP.',
+    icon: 'resistor',
+    color: '#5aa2f0',
+    tags: ['E3 to E192', '4k7 · 4,7 kΩ · 472', 'Colour code', 'SMD codes · EIA-96', 'Clickable drawings', 'SVG · PNG · JPG · WebP', 'Reference tables', 'Every result is a link'],
+  },
 ];
 
 const PROMISES = ['Runs in your browser', 'Files never leave your device', 'No ads or tracking', 'No sign-up'];
