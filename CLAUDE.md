@@ -106,7 +106,8 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   read the file) and by comparing kicad-cli's Gerbers with the viewer's own layers, as the plan's notes from S9 describe.
 - Resistor lookup: built in steps by [docs/resistor/plan.md](docs/resistor/plan.md) (module map, design direction,
   `notes-S<n>.md`; `facts.md` has the tables). Framework-free logic in `lib/resistor/` (E-series, colour code, SMD
-  markings, `draw.ts` for the self-contained SVG drawings with the stroke font of `glyphs.ts`, `export.ts`), the page in
+  markings, `draw.ts` for the self-contained SVG drawings with the stroke font of `glyphs.ts`, `tikz.ts` for the same shapes as
+  TikZ, `export.ts`), the page in
   `components/Resistor/` (`ResistorTool.tsx` holds the state and the link, `view.ts` resolves what is drawn), styles and
   theme variables in `styles/Resistor.module.css`, checks in `scripts/harness/resistor/` (`npm run check`, `npm run ui`).
 - `tsconfig` uses `"module": "node16"`, so our own files count as CommonJS and the ES-module-only add-ons of three.js

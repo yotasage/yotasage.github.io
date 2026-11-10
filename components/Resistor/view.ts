@@ -2,8 +2,9 @@
 // resolved against the current value, the choices of colour for each band, and the reading from the other end.
 
 import {
-  AXIAL_BODIES, AxialBody, BODY_COATS, BandCode, BandError, BodyCoat, CHIP_SIZES, COLOURS, ChipSize, Colour, Reading, bodyCoat, decodeBands,
-  decodeMarking, encodeBands, encodeMarkings, flipMarking, formatOhms, formatTolerance, multiplierText, neighbours, toleranceColour,
+  AXIAL_BODIES, AxialBody, BODY_COATS, BandCode, BandError, BodyCoat, CHIP_SIZES, COLOURS, ChipSize, Colour, ReadAs, Reading, bandDoubt, bodyCoat,
+  colour, decodeBands, decodeMarking, encodeBands, encodeMarkings, flipMarking, formatOhms, formatTolerance, multiplierText, neighbours, otherEndLabel,
+  readInput, toleranceColour,
 } from '../../lib/resistor';
 
 export type PartType = 'axial' | 'chip';
@@ -64,6 +65,8 @@ export interface Change {
   tolerance?: number;
   view?: Partial<View>;
   text?: string;
+  // With a text: what it is meant as, where it could be a value and a marking.
+  readAs?: ReadAs;
 }
 
 export interface Fix extends Change {
@@ -219,6 +222,11 @@ export interface OtherEnd {
   text: string;
   ohms?: number;
   change?: Change;
+  // Why the reading as it is, and the one from the other end, is unusual for a resistor, if it is.
+  givenDoubt?: string;
+  doubt?: string;
+  // Set when only one of the two directions is plausible.
+  likely?: 'more likely' | 'unlikely';
 }
 
 // The bands read from the other end. A code read backwards is only offered when it is a code as it would be written.
@@ -230,13 +238,52 @@ export function otherEnd(r: Resolved): OtherEnd | null {
   if (read.ok === false) return { ok: false, text: read.error };
   const again = n === 3 ? encodeBands(read.ohms, 3) : encodeBands(read.ohms, n as BandCount, read.tolerance, read.tcr);
   if (!sameCode(again, turned)) return { ok: false, text: 'A code does not start with a black band that could be left out.' };
+  const givenDoubt = r.code.ok ? bandDoubt(r.code.ohms, r.code.tolerance, r.colours) : undefined;
+  const doubt = bandDoubt(read.ohms, read.tolerance, turned);
   return {
     ok: true,
     text: `${formatOhms(read.ohms)}${n >= 4 ? ` ${formatTolerance(read.tolerance)}` : ''}`,
     ohms: read.ohms,
     change: { ohms: read.ohms, tolerance: n === 3 ? 20 : read.tolerance, view: { type: 'axial', bands: n as BandCount, tcr: read.tcr ?? null } },
+    givenDoubt,
+    doubt,
+    likely: otherEndLabel(givenDoubt, doubt),
   };
 }
+
+// The digits and the multiplier of the code, with the third digit set, added (on a part with two digits, which
+// then has five bands) or, with `digit` null, taken away (four bands). The value keeps its size: 4.7 kΩ with a
+// third digit 5 is 4.75 kΩ, and 4.75 kΩ without its third digit is 4.7 kΩ.
+export function thirdDigit(r: Resolved, digit: number | null): Change | { error: string } {
+  if (r.code.ok === false) return { error: r.code.error };
+  const digits = r.code.bands.filter((b) => b.role === 'digit').map((b) => colour(b.colour).digit);
+  const multiplier = r.code.bands.find((b) => b.role === 'multiplier');
+  if (digits.length < 2 || !multiplier) return { error: 'A link has no digits to change.' };
+  const exp = colour(multiplier.colour).exp + (digits.length === 3 ? 1 : 0);
+  const tolerance = toleranceHasColour(r.tolerance) && r.colours.length > 3 ? r.tolerance : digit === null ? 5 : 1;
+  const ohms = digit === null ? Number(`${digits[0]}${digits[1]}e${exp}`) : Number(`${digits[0]}${digits[1]}${digit}e${exp - 1}`);
+  const count: BandCount = digit === null ? 4 : r.colours.length === 6 ? 6 : 5;
+  const code = encodeBands(ohms, count, tolerance, count === 6 ? r.tcr : undefined);
+  if (code.ok === false) return { error: code.error };
+  return { ohms, tolerance: tolerance === r.tolerance ? undefined : tolerance, view: { type: 'axial', bands: count, tcr: count === 6 ? r.tcr ?? null : null } };
+}
+
+// What a click on an example of a marking does: the code goes into the field, read as a marking, and the drawing
+// shows a chip marked in the system of the example, of a size that carries a marking.
+export function markingExample(code: string, r: Resolved): Change {
+  const first = readInput(code, 'marking').readings[0];
+  const eia = first?.kind === 'eia96';
+  const length = code.replace(/[A-Za-z]$/, (letter) => (first?.tolerance !== undefined ? '' : letter)).length;
+  let mark: MarkSystem = eia ? 'eia96' : length >= 4 ? 'four' : 'three';
+  if (first) {
+    const m = encodeMarkings(first.ohms);
+    if (!m[mark]) mark = (['three', 'four', 'eia96'] as MarkSystem[]).find((s) => m[s]) ?? mark;
+  }
+  return { text: code, readAs: 'marking', tolerance: eia ? 1 : undefined, view: { type: 'chip', mark, ...markedSize(r) } };
+}
+
+// A size that carries a marking, when the chosen one carries none.
+export const markedSize = (r: Resolved): Partial<View> => (r.unmarked ? { size: DEFAULT_VIEW.size } : {});
 
 // A marking turned upside down, when that is a marking too.
 export function upsideDown(r: Resolved): { code: string; ohms: number; change: Change } | null {

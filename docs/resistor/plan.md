@@ -68,6 +68,7 @@ tries it before S3 to S5 are briefed in detail.
 | --- | --- | --- |
 | S1 | Foundation and lookup: core library (E-series, reading and writing values, colour code, SMD markings, package table) with a test harness; the page shell and its design system (themes, nav, layout); the smart input with its readings; the lookup (the value below, above and nearest in E3 to E192 and E24∪E96 with signed error, bands and markings for each); URL state; the card and icon on the main page | done 2026-11-10, notes in [notes-S1.md](notes-S1.md) |
 | S2 | Drawings and decoder: SVG drawings of a chip resistor (every size, with its marking) and an axial through-hole resistor (body sizes, 3 to 6 bands), in a realistic and a flat style with a switch; click a band or edit the marking to change the value; both reading directions; export as SVG, PNG, JPG and WebP at a chosen size and background, and copy to the clipboard; the reference tables (colour code, SMD codes with EIA-96, chip and axial sizes) | done 2026-11-10, notes in [notes-S2.md](notes-S2.md) |
+| S2b | The owner's feedback on S1 and S2: a value is read as a value first with a "Read as: Value / Marking" choice in the link, the reading from the other end is labelled more likely or unlikely, the colour table has a column per band, marking examples draw a marked chip, Caption: None gives the bare drawing, and the flat drawing is saved or copied as TikZ | done 2026-11-10, notes in [notes-S2b.md](notes-S2b.md) |
 | S3 | Combinations: every network of 1 to 4 resistors (default 2; series, parallel and mixed) from the chosen series or the user's own value lists (pasted or edited, presets, kept in the browser, shareable by link), searched in a worker; ranked by error, then number of parts; each with its formula, a small circuit drawing, combined tolerance (worst case and RSS) and the share of power in each resistor | not started |
 | S4 | Design mode: single resistance from a voltage and a current, voltage divider (optional load, limit on current), regulator feedback and op-amp gain ratio, current-sense shunt; each with a target, an allowed deviation, tolerance, TCR and temperatures (default −40, 25, 85, 125 °C), worst case and RSS at each temperature, series and parallel suggestions that stay inside the deviation, and power against rating with derating | not started |
 | S5 | Theory and references: short explanations beside the results and a full reference section (E-series, technologies with TCR and noise, power and derating, pulse load, voltage coefficient, reading codes), cited from `references.bib` with the `Bibliography` class as `/simsetup/main` does, after a research pass that checks facts.md against primary sources; README, CLAUDE.md and the final card | not started |
@@ -87,22 +88,23 @@ Kept current by each step (one line per file: what it does, main exports).
 | `lib/resistor/format.ts` | Writing: `formatOhms`, `ohmsParts`, `formatRkm`, `formatError`, `formatTolerance` |
 | `lib/resistor/colours.ts` | Colour code: `COLOURS`, `encodeBands`, `decodeBands`, `coloursFromText` |
 | `lib/resistor/smd.ts` | Chip markings: `encodeMarkings`, `decodeMarking`, `flipMarking`, tolerance letters |
-| `lib/resistor/read.ts` | `readInput`: a typed text to its readings (value, marking, bands), ranked |
+| `lib/resistor/read.ts` | `readInput(text, readAs)`: a typed text to its readings (value, marking, bands), the value or the marking first; `bandDoubt`, `otherEndLabel`: whether colours read from one end are plausible |
 | `lib/resistor/packages.ts` | `CHIP_SIZES` (with typical termination lengths), `AXIAL_BODIES`, `deratedPower` |
 | `lib/resistor/glyphs.ts` | The stroke font of the drawings: `strokeText`, `textWidth` |
-| `lib/resistor/draw.ts` | Self-contained SVG in millimetres: `drawAxial`, `drawChip` (realistic and flat, scale bar, caption), `BODY_COATS` |
+| `lib/resistor/draw.ts` | Self-contained SVG in millimetres: `drawAxial`, `drawChip` (realistic and flat; scale bar and caption, or the part alone), `BODY_COATS`; the shapes in `axialGeometry`, `chipGeometry` |
+| `lib/resistor/tikz.ts` | The flat drawings as TikZ: `tikzAxial`, `tikzChip` (a `tikzpicture` with its colours, and a `standalone` document), `texText` |
 | `lib/resistor/export.ts` | Saving a drawing in the browser: `exportSvg`, `rasterise`, `exportBlob`, `saveBlob`, `copyImage`, `drawingFileName` |
 | `components/Resistor/ResistorTool.tsx` | The page: state, URL, theme and drawing style, top bar with the section nav (`SECTIONS`), layout, `html, body` and footer colours; `change` applies a `Change` |
-| `components/Resistor/view.ts` | What is drawn: `View` (in the link), `resolveView` (band count, code, marking, fixes), `bandOptions`, `otherEnd`, `upsideDown`, `markingChange` |
+| `components/Resistor/view.ts` | What is drawn: `View` (in the link), `resolveView` (band count, code, marking, fixes), `bandOptions`, `thirdDigit`, `otherEnd`, `upsideDown`, `markingChange`, `markingExample` |
 | `components/Resistor/Stage.tsx` | The drawing in the hero with its controls: kind, style, band count, band legend and colour picker, other end, chip size, marking system and marking field |
-| `components/Resistor/DrawingSection.tsx` | The Drawing section: body, colour and chip size, and the export (preview, width, background, caption, formats, copy) |
-| `components/Resistor/Reference.tsx` | The Reference section: colour code, SMD marking rules, EIA-96, chip sizes, axial bodies, all clickable |
-| `components/Resistor/SmartInput.tsx` | The field with its stepper, the examples and the list of readings |
+| `components/Resistor/DrawingSection.tsx` | The Drawing section: body, colour and chip size, and the export (preview, width, background, caption, formats with TikZ, copy) |
+| `components/Resistor/Reference.tsx` | The Reference section: colour code (a column per band), SMD marking rules, EIA-96, chip sizes, axial bodies, all clickable |
+| `components/Resistor/SmartInput.tsx` | The field with its stepper, the "Read as" choice, the examples and the list of readings |
 | `components/Resistor/ValueHero.tsx` | The large value, whether it is standard, tolerance choice, range, copy buttons |
 | `components/Resistor/Lookup.tsx` | The Lookup section: series table with error bars, band strips, markings; the guide shown before anything is typed |
 | `components/Resistor/parts.tsx` | `Ohms`, `ValueButton`, `CopyButton`, `Segmented` and the icons |
 | `styles/Resistor.module.css` | The tool's styles and theme variables |
-| `scripts/harness/resistor/` | Harness with its own `package.json`: `check.mjs` (library and drawings), `ui.mjs` (page behaviour), `shots.mjs` (screenshots), `samples.mjs` (contact sheet of drawings), `exports.mjs` (files saved by the page) |
+| `scripts/harness/resistor/` | Harness with its own `package.json`: `check.mjs` (library and drawings), `ui.mjs` (page behaviour), `shots.mjs` (screenshots), `samples.mjs` (contact sheet of drawings), `exports.mjs` (files saved by the page), `tikz.mjs` (two `.tex` samples) |
 
 ## Running a step
 
@@ -117,4 +119,4 @@ Kept current by each step (one line per file: what it does, main exports).
   the code was read against the static-export constraints, the page was looked at in both themes at both widths, and
   the step's `notes-S<n>.md`, this file's status and module map, the main page card and the README are updated.
 - **Commits:** one commit per step, on the branch `resistor-lookup`, made by the step's agent when its checks pass
-  (message as CLAUDE.md's "Commits" says, files named explicitly, no push). S1 and S2 share one commit.
+  (message as CLAUDE.md's "Commits" says, files named explicitly, no push). S1 and S2 share one commit; S2b has its own.

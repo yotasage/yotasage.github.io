@@ -2,8 +2,10 @@
 // Prints the failures and one summary line; the exit code is 1 when a check fails.
 
 import * as imported from '../../../lib/resistor/index.ts';
+import * as importedView from '../../../components/Resistor/view.ts';
 
 const lib = imported.default ?? imported;
+const viewLib = importedView.default ?? importedView;
 const {
   SERIES, series, seriesValues, neighbours, errorPct, inSeries, seriesContaining, step, usualSeries,
   formatOhms, formatRkm, formatError,
@@ -34,11 +36,11 @@ function eq(actual, expected, what) {
 
 // The readings of a text as numbers.
 const values = (text) => readInput(text).readings.map((r) => r.ohms);
-const first = (text) => readInput(text).readings[0];
+const first = (text, readAs) => readInput(text, readAs).readings[0];
 
-function reads(text, ohms, tolerance) {
-  const r = first(text);
-  ok(r && close(r.ohms, ohms), `"${text}" reads as ${ohms} Ω first: got ${r ? r.ohms : 'nothing'}`);
+function reads(text, ohms, tolerance, readAs) {
+  const r = first(text, readAs);
+  ok(r && close(r.ohms, ohms), `"${text}" reads as ${ohms} Ω first${readAs ? ` (read as ${readAs})` : ''}: got ${r ? r.ohms : 'nothing'}`);
   if (tolerance !== undefined) ok(r && r.tolerance === tolerance, `"${text}" has tolerance ${tolerance} %: got ${r?.tolerance}`);
   ok(r && typeof r.how === 'string' && r.how.length > 5 && r.id, `"${text}" explains how it was read`);
 }
@@ -143,15 +145,15 @@ for (const [text, ohms, tol] of [
   ['472', 4700], ['101', 100], ['4992', 49900], ['4R7', 4.7], ['0R22', 0.22], ['R005', 0.005], ['68R0', 68],
   ['103J', 10000, 5], ['1001F', 1000, 1], ['5L0', 0.005], ['01C', 10000], ['68X', 49.9], ['96F', 97.6e6], ['01Z', 0.1],
   ['01Y', 1], ['01R', 1], ['01S', 10], ['01A', 100], ['01B', 1000], ['01H', 1000], ['01D', 1e5], ['01E', 1e6], ['01c', 10000],
-  ['000', 0], ['0000', 0], ['00', 0], ['1M50', 1.5e6], ['4r7', 4.7],
-]) reads(text, ohms, tol);
-// Plain numbers that are common values stay numbers, with the marking as the other reading.
+  ['000', 0], ['0000', 0], ['00', 0], ['1M50', 0.0015], ['4r7', 4.7],
+]) reads(text, ohms, tol, 'marking');
+// Plain numbers stay numbers, with the marking as the other reading.
 reads('220', 220); hasReading('220', 22);
 reads('100', 100); hasReading('100', 10);
 reads('7500', 7500); hasReading('7500', 750);
 hasReading('101', 101);
 eq(values('101').length, 2, '101 has two readings');
-hasReading('1M50', 0.0015);
+reads('1M50', 1.5e6); hasReading('1M50', 0.0015); hasReading('1M50', 1.5e6);
 hasReading('47R', 3.01);
 hasReading('601', 600); hasReading('601', 10e9);
 hasReading('109', 600);
@@ -161,7 +163,7 @@ eq(flipMarking('06'), '90', '06 upside down');
 eq(flipMarking('101'), null, '101 is the same upside down');
 eq(flipMarking('472'), null, '472 has no upside-down reading');
 reads('472k', 472000);
-reads('472K', 4700, 10);
+reads('472K', 472000); reads('472K', 4700, 10, 'marking');
 ok(readInput('_103').readings.length >= 3 && readInput('_103').readings.every((r) => r.note), 'an underline gives several readings and a note');
 ok(decodeMarking('472')[0].form === 'digits3' && decodeMarking('01C')[0].form === 'eia96', 'forms are named');
 for (const [ohms, three, four, eia] of [
@@ -191,13 +193,13 @@ for (const [text, ohms, tol, tcr] of [
   if (tcr) eq(first(text).tcr, tcr, `"${text}" has a temperature coefficient`);
   ok(first(text).bands?.length > 0, `"${text}" lists its bands`);
 }
-// Both directions valid: both are shown, and the one on a standard value comes first.
+// Both directions valid: both are shown, and the one that was typed comes first.
 let both = readInput('brown black red brown');
 ok(both.readings.length === 2 && both.readings[0].ohms === 1000 && both.readings[1].ohms === 12, 'both directions are offered');
 both = readInput('brown brown black black brown');
 ok(both.readings[0].ohms === 110 && both.readings.some((r) => r.ohms === 1000), 'a five-band code reads both ways');
 both = readInput('red green black black brown');
-ok(both.readings[0].ohms === 1e7 && both.readings[0].standard && both.readings[1].ohms === 250 && !both.readings[1].standard, 'the direction on a standard value is first');
+ok(both.readings[0].ohms === 250 && !both.readings[0].standard && both.readings[1].ohms === 1e7 && both.readings[1].standard, 'the direction that was typed is first, also when the other is a standard value');
 hasReading('yellow violet red gold brown', 4700);
 ok(first('brown black red grey').note.includes('0.05'), 'a grey tolerance band mentions the older reading');
 eq(names(encodeBands(4700, 4, 5)), 'yellow violet red gold', '4.7 kΩ 5 % in four bands');
@@ -315,6 +317,202 @@ ok(textWidth('472', 6) === 3 * 4 + 2 * 1.5 && textWidth('', 6) === 0, 'the width
 ok(/^<svg width="640" height="\d+" xmlns/.test(exportSvg(drawChip(CHIP_SIZES[3], '472', { style: 'flat' }), 640)), 'an exported SVG has its size in pixels');
 eq(drawingFileName(4700, 'axial-5-band', 'svg'), 'resistor-4k7-axial-5-band.svg', 'file name of an axial drawing');
 eq(drawingFileName(0.005, 'chip-2512', 'png'), 'resistor-R005-chip-2512.png', 'file name of a chip drawing');
+
+// ---------------------------------------------------------------------------------------------------------------
+section('Read as value or marking');
+{
+  // The value is always the first reading; the marking is offered below.
+  for (const [text, value, marking] of [['472', 472, 4700], ['101', 101, 100], ['4992', 4992, 49900], ['220', 220, 22], ['01E', 1, 1e6], ['047', 47, 4e7]]) {
+    reads(text, value);
+    ok(first(text).kind === 'value', `"${text}" is a value first`);
+    hasReading(text, marking);
+    reads(text, marking, undefined, 'marking');
+    ok(first(text, 'marking').kind !== 'value', `"${text}" read as a marking is a marking first`);
+    ok(readInput(text, 'marking').readings.some((r) => close(r.ohms, value)), `"${text}" read as a marking still offers the value`);
+    ok(readInput(text).readings.map((r) => r.id).sort().join() === readInput(text, 'marking').readings.map((r) => r.id).sort().join(), `"${text}" has the same readings either way, so a link that names one still holds`);
+  }
+  // A text that can only be one thing is read as that, whatever the choice.
+  for (const text of ['4k7', '4,7 kΩ', '10m', '01C', '68X', 'yellow violet red gold', '4k7 1%', '472 Ω', '472 5%', '4.7', '1e3']) {
+    const [a, b] = [first(text), first(text, 'marking')];
+    ok(a && b && a.id === b.id && a.ohms === b.ohms, `"${text}" reads the same with either choice`);
+  }
+  ok(first('R005', 'marking').ohms === 0.005 && first('R005').ohms === 0.005, 'R005 is 5 mΩ with either choice');
+  // What is no marking falls back to a value.
+  reads('4k7', 4700, undefined, 'marking');
+  reads('12', 12, undefined, 'marking');
+  reads('472 5%', 472, 5, 'marking');
+  // Upside down comes last with either choice.
+  for (const mode of ['value', 'marking']) {
+    const list = readInput('601', mode).readings;
+    ok(list.length === 3 && list[2].id.startsWith('flip'), `601 read as ${mode}: the reading upside down is last`);
+  }
+  eq(first('601').ohms, 601, '601 is 601 Ω first');
+  eq(first('601', 'marking').ohms, 600, '601 as a marking is 600 Ω first');
+}
+
+section('Readings from the other end');
+{
+  const { bandDoubt, otherEndLabel } = lib;
+  // 49.9 kΩ 1 %: from the other end 129 GΩ at 0.02 %.
+  let r = readInput('yellow white white red brown').readings;
+  ok(r[0].ohms === 49900 && !r[0].doubt && !r[0].likely, 'a plausible code as typed is first and carries no label');
+  ok(r[1].ohms === 129e9 && r[1].likely === 'unlikely' && /1 GΩ/.test(r[1].doubt), 'its other end is marked unlikely, with the reason');
+  ok(r[1].standard && r[1].doubt, 'an unlikely reading on an E192 value carries its caveat');
+  // The same part typed from the other end: taken as typed, with the other end marked more likely.
+  r = readInput('brown red white white yellow').readings;
+  ok(r[0].ohms === 129e9 && r[0].id === 'bands' && /1 GΩ/.test(r[0].doubt) && !r[0].likely, 'an implausible code is still read as typed first, with why it is unusual');
+  ok(r[1].ohms === 49900 && r[1].likely === 'more likely' && !r[1].doubt, 'its other end is marked more likely');
+  // Both plausible, both not: no label.
+  r = readInput('brown black red brown').readings;
+  ok(r.length === 2 && r.every((x) => !x.likely && !x.doubt), 'two plausible directions carry no label');
+  r = readInput('red green black black brown').readings;
+  ok(r[0].ohms === 250 && /no E-series/.test(r[0].doubt) && r[1].likely === 'more likely', 'a value in no series is unusual when the other end is a standard value');
+  r = readInput('red green blue black brown').readings;
+  ok(r.length === 2 && r.every((x) => x.doubt && !x.likely), 'two unusual directions carry no label, only their reasons');
+  r = readInput('white white white gold').readings;
+  ok(r.length === 1 && /1 GΩ/.test(r[0].doubt), 'a single reading above 1 GΩ says so');
+  // The rules.
+  const any = ['brown', 'red', 'white', 'black', 'brown'];
+  ok(/E192/.test(bandDoubt(129, 1, any)) && bandDoubt(129, 0.5, any) === undefined && bandDoubt(129, 0.1, any) === undefined, 'a value only in E192 does not fit 1 %');
+  ok(/E96/.test(bandDoubt(49900, 5, any)) && bandDoubt(49900, 1, any) === undefined, 'a value only in E96 does not fit 5 %');
+  ok(/E48/.test(bandDoubt(1050, 5, any)) && bandDoubt(1050, 2, any) === undefined, 'an E48 value fits 2 %, not 5 %');
+  ok(bandDoubt(4700, 20, any) === undefined && bandDoubt(4700, 5, any) === undefined && bandDoubt(4700, 0.1, any) === undefined, 'E24 values fit every usual tolerance');
+  ok(/1 GΩ/.test(bandDoubt(2e9, 5, any)) && bandDoubt(1e9, 5, any) === undefined, 'above 1 GΩ is unusual, 1 GΩ is not');
+  ok(/1 mΩ/.test(bandDoubt(0.0005, 5, any)) && bandDoubt(0.001, 5, any) === undefined, 'below 1 mΩ is unusual, 1 mΩ is not');
+  ok(/black/.test(bandDoubt(47, 5, ['black', 'yellow', 'violet', 'black', 'gold'])), 'a first band that is black is unusual');
+  ok(/rare/.test(bandDoubt(1000, 0.02, any)), 'a tolerance of 0.02 % is rare');
+  ok(otherEndLabel('a', undefined) === 'more likely' && otherEndLabel(undefined, 'b') === 'unlikely' && otherEndLabel('a', 'b') === undefined && otherEndLabel(undefined, undefined) === undefined, 'the label of the other end');
+}
+
+section('Bare drawings');
+{
+  const { drawAxial, drawChip } = lib;
+  const fourBands = ['yellow', 'violet', 'red', 'gold'];
+  const height = (svg) => Number(svg.match(/viewBox="0 0 [\d.]+ ([\d.]+)"/)[1]);
+  const barred = (svg) => svg.includes('opacity="0.8"');
+  for (const style of ['realistic', 'flat']) {
+    for (const body of AXIAL_BODIES) {
+      const full = drawAxial(fourBands, body, 'beige', { style, caption: ['4.7 kΩ'] });
+      const bare = drawAxial(fourBands, body, 'beige', { style, scale: false });
+      ok(barred(full.svg) && !barred(bare.svg), `${style} axial ${body.rating}: no scale bar and no scale number without a caption`);
+      ok(bare.height < drawAxial(fourBands, body, 'beige', { style }).height && bare.height >= body.diameter * 1.8 - 1e-9 && bare.height <= body.diameter * 2, `${style} axial ${body.rating}: the bare picture ends under the part`);
+      ok(bare.width === full.width, `${style} axial ${body.rating}: the bare picture is as wide`);
+    }
+    for (const size of CHIP_SIZES) {
+      const full = drawChip(size, '472', { style, caption: ['4.7 kΩ'] });
+      const bare = drawChip(size, '472', { style, scale: false });
+      ok(barred(full.svg) && !barred(bare.svg), `${style} chip ${size.imperial}: no scale bar without a caption`);
+      ok(bare.height < drawChip(size, '472', { style }).height && bare.height > size.width && bare.height < size.width * 1.7, `${style} chip ${size.imperial}: the bare picture ends under the part`);
+      ok(Math.abs(height(bare.svg) - bare.height) < 1e-3, `${style} chip ${size.imperial}: the viewBox is the bare height`);
+    }
+  }
+  const strokes = (svg) => (svg.match(/<path/g) ?? []).length;
+  const flat = (o) => drawChip(CHIP_SIZES[3], null, { style: 'flat', ...o }).svg;
+  eq(strokes(flat({ scale: false })), 0, 'a bare flat chip without marking has no text and no bar');
+  ok(strokes(flat({})) > 0 && strokes(flat({ scale: false, caption: ['A'] })) > 0, 'the scale bar and a caption are drawn when asked for');
+}
+
+section('TikZ');
+{
+  const { tikzAxial, tikzChip, texText, axialGeometry, chipGeometry, drawAxial, drawChip } = lib;
+  const balanced = (text) => {
+    let depth = 0;
+    for (const line of text.split('\n')) {
+      const code = line.replace(/\\[%{}]/g, '').replace(/%.*$/, '');
+      for (const ch of code) { if (ch === '{') depth++; if (ch === '}') depth--; if (depth < 0) return false; }
+    }
+    return depth === 0;
+  };
+  const common = (t, what) => {
+    ok(t.document.startsWith('% Compiles') && /\\documentclass\[tikz, border=\dmm\]\{standalone\}\n\\begin\{document\}/.test(t.document) && t.document.trimEnd().endsWith('\\end{document}'), `${what}: a standalone document`);
+    ok(t.document.includes(t.picture.trimEnd()) && /\\begin\{tikzpicture\}\[\n  x=[\d.]+mm, y=-[\d.]+mm,/.test(t.picture) && t.picture.trimEnd().endsWith('\\end{tikzpicture}'), `${what}: the picture is a tikzpicture in millimetres, and the document holds it`);
+    ok(balanced(t.document) && /^[\x09\x0a\x20-\x7e]*$/.test(t.document), `${what}: braces are balanced and the file is plain ASCII`);
+    ok(!/\\usepackage|\\usetikzlibrary/.test(t.document.replace(/%.*$/gm, '')), `${what}: nothing but TikZ is needed`);
+    const used = [...t.picture.matchAll(/(?:fill|draw|text)=([a-z]+)|\\(?:fill|draw)\[([a-z]+)[\],]/g)].map((m) => m[1] ?? m[2]);
+    const defined = [...t.picture.matchAll(/\\definecolor\{([a-z]+)\}\{HTML\}\{[0-9A-F]{6}\}/g)].map((m) => m[1]);
+    ok(used.length > 2 && used.every((name) => defined.includes(name)) && defined.every((name) => used.includes(name)), `${what}: every colour is defined by name, and every definition is used: ${used.filter((u) => !defined.includes(u))} / ${defined.filter((d) => !used.includes(d))}`);
+    ok(t.width <= 80 && t.width > 30 && t.enlarged >= 1, `${what}: between 30 and 80 mm wide on paper`);
+  };
+  const caption = ['4.7 kΩ ±5 %', 'yellow · violet · red · gold', '1/4 W axial, 6.5 × 2.5 mm'];
+  for (const body of AXIAL_BODIES) {
+    for (const count of [1, 3, 4, 5, 6]) {
+      const code = count === 1 ? { bands: [{ colour: 'black', meaning: '0 Ω link' }] } : encodeBands(4700, count, count === 3 ? 20 : 1, count === 6 ? 50 : undefined);
+      const colours = code.bands.map((b) => b.colour);
+      const t = tikzAxial(colours, body, 'blue', { caption, bandNotes: code.bands.map((b) => b.meaning) });
+      const what = `TikZ axial ${body.rating}, ${count} bands`;
+      common(t, what);
+      eq((t.picture.match(/% \d(st|nd|rd|th) band: /g) ?? []).length, count, `${what}: a commented line for each band`);
+      ok(colours.every((name) => t.picture.includes(`\\definecolor{band${name}}`)), `${what}: band colours have readable names`);
+      const g = axialGeometry(count, body);
+      ok(t.picture.includes(`(${Number(g.bands[0].x.toFixed(3))}, `) && t.picture.includes(`(${Number(g.x0.toFixed(3))}, ${Number(g.cy.toFixed(3))})`), `${what}: the coordinates are those of the flat drawing`);
+      ok(/Scale bar/.test(t.picture) && /% Caption/.test(t.picture) && t.picture.includes('yellow \\ensuremath{\\cdot} violet'), `${what}: scale bar and caption as text nodes`);
+    }
+  }
+  for (const size of CHIP_SIZES) {
+    const marked = tikzChip(size, '4701', { caption: ['4.7 kΩ ±1 %', 'marking 4701'] });
+    const what = `TikZ chip ${size.imperial}`;
+    common(marked, what);
+    ok(/\\node\[text=chipmarking, [^\]]*\\fontsize\{[\d.]+pt\}\{[\d.]+pt\}\\selectfont[^\]]*\] at \([\d.]+, [\d.]+\) \{4701\};/.test(marked.picture), `${what}: the marking is a text node`);
+    const g = chipGeometry(size);
+    ok(marked.picture.includes(`(${Number(g.x0.toFixed(3))}, ${Number(g.y0.toFixed(3))}) rectangle (${Number((g.x0 + size.length).toFixed(3))}, ${Number((g.y0 + size.width).toFixed(3))})`), `${what}: the body has the true size`);
+    const plain = tikzChip(size, null, { scale: false });
+    common(plain, `${what} without marking`);
+    ok(!plain.picture.includes('chipmarking') && !/\\node/.test(plain.picture) && !/Scale bar|Caption/.test(plain.picture), `${what}: bare, there is no text, scale bar or caption`);
+  }
+  const bare = tikzAxial(['yellow', 'violet', 'red', 'gold'], AXIAL_BODIES[1], 'beige', { scale: false });
+  ok(!/\\node|Scale bar|Caption/.test(bare.picture), 'TikZ axial without caption is the part alone');
+  const dark = tikzChip(CHIP_SIZES[4], '472', { background: '#1a1b19', caption: ['4.7 kΩ'] });
+  common(dark, 'TikZ on a dark background');
+  ok(dark.picture.includes('\\begin{pgfonlayer}{background}') && dark.picture.includes('\\definecolor{resistorink}{HTML}{E9E7E0}') && dark.picture.includes('\\definecolor{resistorbackground}{HTML}{1A1B19}'), 'a background is filled behind the picture, with light lines on a dark one');
+  ok(!bare.picture.includes('pgfonlayer') && bare.picture.includes('{resistorink}{HTML}{2B2A27}'), 'without a background there is none, and the lines are dark');
+  eq(texText('4.7 kΩ ±5 %'), '4.7\\,k\\ensuremath{\\Omega} \\ensuremath{\\pm}5\\,\\%', 'a value as LaTeX');
+  eq(texText('0805 (2012 metric), 2 × 1.25 mm'), '0805 (2012 metric), 2 \\ensuremath{\\times} 1.25\\,mm', 'a size as LaTeX');
+  eq(texText('a_b & 50% {x} #1 $ ~ ^ \\'), 'a\\_b \\& 50\\% \\{x\\} \\#1 \\$ \\textasciitilde  \\textasciicircum  \\textbackslash ', 'special characters are escaped');
+  eq(drawingFileName(4700, 'axial-4-band', 'tex'), 'resistor-4k7-axial-4-band.tex', 'file name of a TikZ file');
+  // The geometry that TikZ shares gives the drawings their size.
+  const flat = drawAxial(['yellow', 'violet', 'red', 'gold'], AXIAL_BODIES[1], 'beige', { style: 'flat' });
+  eq(flat.width, axialGeometry(4, AXIAL_BODIES[1]).width, 'the SVG and the TikZ drawing share their geometry (axial)');
+  eq(drawChip(CHIP_SIZES[4], '472', { style: 'flat' }).width, chipGeometry(CHIP_SIZES[4]).width, 'the SVG and the TikZ drawing share their geometry (chip)');
+}
+
+section('Clicks in the tables');
+{
+  const { DEFAULT_VIEW, resolveView, thirdDigit, markingExample, otherEnd } = viewLib;
+  const part = (text, view = {}, tolerance) => {
+    const reading = readInput(text).readings[0];
+    return resolveView({ ...DEFAULT_VIEW, ...view }, reading, text, tolerance ?? reading.tolerance ?? 5);
+  };
+  // A third digit on a part with two digits: five bands, the value keeps its size.
+  let c = thirdDigit(part('4k7'), 5);
+  ok(c.ohms === 4750 && c.view.bands === 5 && c.view.type === 'axial' && c.tolerance === undefined, 'a third digit 5 makes 4.7 kΩ a five-band 4.75 kΩ');
+  c = thirdDigit(part('4k7'), 0);
+  ok(c.ohms === 4700 && c.view.bands === 5, 'a third digit 0 keeps the value');
+  c = thirdDigit(part('yellow violet red'), 5);
+  ok(c.ohms === 4750 && c.view.bands === 5 && c.tolerance === 1, 'on a three-band part it also sets a tolerance that has a colour');
+  // Taking it away: four bands with two digits.
+  c = thirdDigit(part('4k75', { bands: 5 }, 1), null);
+  ok(c.ohms === 4700 && c.view.bands === 4 && c.view.tcr === null && c.tolerance === undefined, 'without its third digit 4.75 kΩ is a four-band 4.7 kΩ');
+  c = thirdDigit(part('4k7', { bands: 6, tcr: 25 }, 1), null);
+  ok(c.ohms === 4700 && c.view.bands === 4 && c.view.tcr === null, 'a six-band part without its third digit has four bands');
+  c = thirdDigit(part('4k7', { bands: 6, tcr: 25 }, 1), 5);
+  ok(c.ohms === 4750 && c.view.bands === 6 && c.view.tcr === 25, 'another third digit on a six-band part keeps the six bands');
+  ok('error' in thirdDigit(part('0'), 5) && 'error' in thirdDigit(part('0.047', {}, 5), 5), 'a link, or a multiplier that would be below pink, gives the reason instead');
+  // Examples of markings: read as a marking, drawn on a chip in the system of the example, of a size that is marked.
+  for (const [code, mark] of [['472', 'three'], ['101', 'three'], ['4R7', 'three'], ['103J', 'three'], ['4992', 'four'], ['1001', 'four'], ['0R22', 'four'], ['1001F', 'four'], ['01C', 'eia96'], ['68X', 'eia96']]) {
+    c = markingExample(code, part('4k7'));
+    ok(c.text === code && c.readAs === 'marking' && c.view.type === 'chip' && c.view.mark === mark && c.view.size === undefined, `the example ${code} is drawn on a chip marked with ${mark}`);
+  }
+  eq(markingExample('01C', part('4k7')).tolerance, 1, 'an EIA-96 example sets 1 %');
+  for (const size of ['01005', '0201', '0402']) eq(markingExample('472', part('4k7', { size })).view.size, '0805', `from ${size}, which is not marked, an example goes to 0805`);
+  eq(markingExample('472', part('4k7', { size: '1206' })).view.size, undefined, 'a size that is marked is kept');
+  // The note by the drawing.
+  let o = otherEnd(part('yellow white white red brown'));
+  ok(o.ok && o.likely === 'unlikely' && /1 GΩ/.test(o.doubt) && !o.givenDoubt, 'the other end of 49.9 kΩ 1 % is unlikely');
+  o = otherEnd(part('brown red white white yellow'));
+  ok(o.ok && o.likely === 'more likely' && /1 GΩ/.test(o.givenDoubt) && o.ohms === 49900, 'the other end of 129 GΩ is more likely');
+  o = otherEnd(part('brown black red brown'));
+  ok(o.ok && !o.likely && !o.doubt && !o.givenDoubt, 'two plausible directions: no label by the drawing');
+}
 
 // ---------------------------------------------------------------------------------------------------------------
 const total = [...groups.values()].reduce((a, b) => a + b, 0);

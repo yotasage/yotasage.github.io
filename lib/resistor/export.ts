@@ -78,8 +78,8 @@ export async function copyImage(drawing: Drawing, width: number): Promise<void> 
   await navigator.clipboard.write([new ClipboardItem({ 'image/png': rasterise(drawing, width, 'png') })]);
 }
 
-// resistor-4k7-axial-5-band.svg, resistor-4k7-chip-0603.png
-export function drawingFileName(ohms: number, part: string, format: ImageFormat): string {
+// resistor-4k7-axial-5-band.svg, resistor-4k7-chip-0603.png, resistor-4k7-chip-0603.tex
+export function drawingFileName(ohms: number, part: string, format: ImageFormat | 'tex'): string {
   const value = formatRkm(ohms).replace(/[^0-9A-Za-zµ]/g, '') || '0R';
   return `resistor-${value}-${part}.${format}`;
 }

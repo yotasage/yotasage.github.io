@@ -21,6 +21,7 @@ function roleName(role: BandRole, index: number): string {
   return 'Temperature coefficient';
 }
 
+
 const standing = (ohms: number) => (seriesContaining(ohms).length ? 'a standard value' : 'not a standard value');
 
 // The drawing with the controls that change it: the hero of the page. A band is clicked to choose its colour, the
@@ -174,9 +175,12 @@ export default function Stage({ resolved: r, drawStyle, onStyle, onChange }: Pro
           {r.code.ok && bands.length >= 3 && shown === null && (
             <p className={styles.stageNote}>
               {r.example ? 'An example, 4.7 kΩ. ' : ''}Click a band to choose its colour.{' '}
-              {other?.ok
-                ? <>Both directions are codes: <b>{formatOhms(r.ohms)}</b> ({standing(r.ohms)}) and, from the other end, <b>{other.text}</b> ({standing(other.ohms)}).</>
-                : other ? <>Reads one way only. From the other end: {other.text}</> : null}
+              {!other ? null
+                : !other.ok ? <>Reads one way only. From the other end: {other.text}</>
+                  : other.likely === 'more likely' ? <>As it is, this reads <b>{formatOhms(r.ohms)}</b>, which is unusual ({other.givenDoubt}). From the other end it reads <b>{other.text}</b>, which is more likely.</>
+                    : other.likely === 'unlikely' ? <>Both directions are codes: <b>{formatOhms(r.ohms)}</b> and, from the other end, <b>{other.text}</b>, which is unlikely ({other.doubt}).</>
+                      : other.doubt ? <>Both directions are codes, and both are unusual: <b>{formatOhms(r.ohms)}</b> ({other.givenDoubt}) and, from the other end, <b>{other.text}</b> ({other.doubt}).</>
+                        : <>Both directions are codes of standard values: <b>{formatOhms(r.ohms)}</b> and, from the other end, <b>{other.text}</b>.</>}
             </p>
           )}
         </>

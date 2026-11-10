@@ -34,6 +34,8 @@ export interface DrawOptions {
   background?: string | null;
   // Lines under the drawing: the value first, then what else is to be said.
   caption?: string[];
+  // False leaves out the scale bar: without a caption either, the picture is the part alone.
+  scale?: boolean;
   // A prefix for the ids of gradients and filters, so two drawings on one page do not share them.
   id?: string;
   // Adds an invisible area over each band, marked data-band, for clicking.
@@ -66,17 +68,24 @@ const stops = (list: [number, string, number?][]) => list
   .join('');
 
 // The parts every drawing has around the part itself: background, scale bar and caption.
-function frame(o: DrawOptions, width: number, partBottom: number, left: number, defs: string, content: string, bands: Drawing['bands']): Drawing {
+// The scale bar is the longest of these that is at most 0.3 of the width of the picture.
+export const scaleLength = (width: number) => [0.1, 0.2, 0.5, 1, 2, 5, 10, 20].filter((v) => v <= width * 0.3).pop() ?? 0.1;
+
+// `bareBottom` is where the picture ends when it has neither scale bar nor caption.
+function frame(o: DrawOptions, width: number, partBottom: number, bareBottom: number, left: number, defs: string, content: string, bands: Drawing['bands']): Drawing {
   const ink = o.ink ?? INK;
   // Text and the scale bar are sized by the picture, not by the part, so they read alike for every size.
   const u = Math.max(width, partBottom * 2.6) / 100;
   let extra = '';
 
-  const length = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20].filter((v) => v <= width * 0.3).pop() ?? 0.1;
-  const barY = partBottom + 2.6 * u;
-  extra += `<path d="M${f(left)} ${f(barY - 1.1 * u)}V${f(barY + 1.1 * u)}M${f(left)} ${f(barY)}H${f(left + length)}M${f(left + length)} ${f(barY - 1.1 * u)}V${f(barY + 1.1 * u)}" fill="none" stroke="${ink}" stroke-width="${f(0.34 * u)}" stroke-linecap="round" opacity="0.8"/>`;
-  extra += strokeText(`${length} mm`, { x: left + length + 1.8 * u, y: barY + 1.05 * u, height: 2.1 * u, colour: ink, weight: 0.75, opacity: 0.8 });
-  let y = barY + 3.2 * u;
+  let y = partBottom + 0.6 * u;
+  if (o.scale !== false) {
+    const length = scaleLength(width);
+    const barY = partBottom + 2.6 * u;
+    extra += `<path d="M${f(left)} ${f(barY - 1.1 * u)}V${f(barY + 1.1 * u)}M${f(left)} ${f(barY)}H${f(left + length)}M${f(left + length)} ${f(barY - 1.1 * u)}V${f(barY + 1.1 * u)}" fill="none" stroke="${ink}" stroke-width="${f(0.34 * u)}" stroke-linecap="round" opacity="0.8"/>`;
+    extra += strokeText(`${length} mm`, { x: left + length + 1.8 * u, y: barY + 1.05 * u, height: 2.1 * u, colour: ink, weight: 0.75, opacity: 0.8 });
+    y = barY + 3.2 * u;
+  }
 
   if (o.caption?.length) {
     y += 2 * u;
@@ -90,7 +99,7 @@ function frame(o: DrawOptions, width: number, partBottom: number, left: number, 
     y += 0.6 * u;
   }
 
-  const height = y + 1.2 * u;
+  const height = o.scale === false && !o.caption?.length ? bareBottom : y + 1.2 * u;
   const back = o.background ? `<rect width="${f(width)}" height="${f(height)}" fill="${o.background}"/>` : '';
   const label = o.label ? ` role="img" aria-label="${o.label.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')}"` : '';
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${f(width)} ${f(height)}"${label}>${back}${defs ? `<defs>${defs}</defs>` : ''}${content}${extra}</svg>`;
@@ -102,13 +111,35 @@ const METAL: Partial<Record<Colour, [number, string][]>> = {
   silver: [[0, '#979ba3'], [0.2, '#ffffff'], [0.36, '#cdd1d7'], [0.7, '#a9adb5'], [1, '#83878f']],
 };
 
-// An axial resistor seen from the side, with the bands in reading order from the left. The wider gap is before the
-// tolerance band (the fourth of four, the fifth of five and six).
-export function drawAxial(colours: Colour[], body: AxialBody, coatId: string, o: DrawOptions): Drawing {
-  const id = o.id ?? 'rz';
-  const realistic = o.style !== 'flat';
-  const ink = o.ink ?? INK;
-  const coat = bodyCoat(coatId).hex;
+// A line to a point (2 numbers) or a cubic curve with its two control points (6 numbers).
+export type Segment = number[];
+
+export interface AxialGeometry {
+  width: number;
+  // The body: from x0 to x1 around the axis at cy, radius r over the end caps; e is the length of a rounded end.
+  x0: number;
+  x1: number;
+  cy: number;
+  r: number;
+  e: number;
+  // The leads: where the left one starts, how long they are outside the body, and their diameter.
+  padX: number;
+  lead: number;
+  d: number;
+  // The width of the outlines of the flat style.
+  sw: number;
+  // The outline of the body: it starts at (x0, cy), runs over the top to (x1, cy) and back along the bottom.
+  outline: Segment[];
+  // The bands in reading order: where each starts, their width and the distance between two of a group.
+  bands: { x: number; width: number }[];
+  centres: number[];
+  bandWidth: number;
+  pitch: number;
+}
+
+// The shape of an axial resistor with `n` bands, in millimetres, shared by the SVG and the TikZ drawing. The wider
+// gap is before the tolerance band (the fourth of four, the fifth of five and six).
+export function axialGeometry(n: number, body: AxialBody): AxialGeometry {
   const L = body.length;
   const D = body.diameter;
   const r = D / 2;
@@ -127,20 +158,21 @@ export function drawAxial(colours: Colour[], body: AxialBody, coatId: string, o:
   const e = r * 0.5;
   const s = c * 0.45;
   const [a, b, a2, b2] = [x0 + c - s / 2, x0 + c + s / 2, x1 - c + s / 2, x1 - c - s / 2];
-  const y = (k: number, sign: number) => f(cy + sign * k);
-  const half = (sign: number, from: 'left' | 'right') => (from === 'left'
-    ? `C${f(x0)} ${y(r * 0.62, sign)} ${f(x0 + e * 0.3)} ${y(r, sign)} ${f(x0 + e)} ${y(r, sign)}L${f(a)} ${y(r, sign)}`
-      + `C${f(x0 + c)} ${y(r, sign)} ${f(x0 + c)} ${y(rw, sign)} ${f(b)} ${y(rw, sign)}L${f(b2)} ${y(rw, sign)}`
-      + `C${f(x1 - c)} ${y(rw, sign)} ${f(x1 - c)} ${y(r, sign)} ${f(a2)} ${y(r, sign)}L${f(x1 - e)} ${y(r, sign)}`
-      + `C${f(x1 - e * 0.3)} ${y(r, sign)} ${f(x1)} ${y(r * 0.62, sign)} ${f(x1)} ${f(cy)}`
-    : `C${f(x1)} ${y(r * 0.62, sign)} ${f(x1 - e * 0.3)} ${y(r, sign)} ${f(x1 - e)} ${y(r, sign)}L${f(a2)} ${y(r, sign)}`
-      + `C${f(x1 - c)} ${y(r, sign)} ${f(x1 - c)} ${y(rw, sign)} ${f(b2)} ${y(rw, sign)}L${f(b)} ${y(rw, sign)}`
-      + `C${f(x0 + c)} ${y(rw, sign)} ${f(x0 + c)} ${y(r, sign)} ${f(a)} ${y(r, sign)}L${f(x0 + e)} ${y(r, sign)}`
-      + `C${f(x0 + e * 0.3)} ${y(r, sign)} ${f(x0)} ${y(r * 0.62, sign)} ${f(x0)} ${f(cy)}`);
-  const outline = `M${f(x0)} ${f(cy)}${half(-1, 'left')}${half(1, 'right')}Z`;
+  // One half from the left end to the right end, above (sign -1) or below (sign 1) the axis.
+  const half = (sign: number): Segment[] => {
+    const y = (k: number) => cy + sign * k;
+    return [
+      [x0, y(r * 0.62), x0 + e * 0.3, y(r), x0 + e, y(r)], [a, y(r)],
+      [x0 + c, y(r), x0 + c, y(rw), b, y(rw)], [b2, y(rw)],
+      [x1 - c, y(rw), x1 - c, y(r), a2, y(r)], [x1 - e, y(r)],
+      [x1 - e * 0.3, y(r), x1, y(r * 0.62), x1, cy],
+    ];
+  };
+  // The way back is the same half mirrored: the body is symmetric about its middle.
+  const mirror = (segments: Segment[]) => segments.map((seg) => seg.map((v, i) => (i % 2 ? v : x0 + x1 - v)));
+  const outline = [...half(-1), ...mirror(half(1))];
 
   // Bands: the digits and the multiplier from the left cap, the tolerance (and the coefficient) at the right cap.
-  const n = colours.length;
   const xl = x0 + c * 0.58;
   const xr = x1 - c * 0.58;
   let centres: number[];
@@ -155,9 +187,22 @@ export function drawAxial(colours: Colour[], body: AxialBody, coatId: string, o:
     const rightCount = n - leftCount;
     pitch = (xr - xl) / (leftCount - 1 + 1.75 + Math.max(0, rightCount - 1));
     bandWidth = Math.min(0.56 * pitch, 0.095 * L);
-    centres = colours.map((_, i) => (i < leftCount ? xl + i * pitch : xr - (n - 1 - i) * pitch));
+    centres = Array.from({ length: n }, (_, i) => (i < leftCount ? xl + i * pitch : xr - (n - 1 - i) * pitch));
   }
   const bands = centres.map((x) => ({ x: x - bandWidth / 2, width: bandWidth }));
+  return { width, x0, x1, cy, r, e, padX, lead, d, sw, outline, bands, centres, bandWidth, pitch };
+}
+
+// An axial resistor seen from the side, with the bands in reading order from the left.
+export function drawAxial(colours: Colour[], body: AxialBody, coatId: string, o: DrawOptions): Drawing {
+  const id = o.id ?? 'rz';
+  const realistic = o.style !== 'flat';
+  const ink = o.ink ?? INK;
+  const coat = bodyCoat(coatId).hex;
+  const L = body.length;
+  const D = body.diameter;
+  const { width, x0, x1, cy, r, e, padX, lead, d, sw, bands, centres, bandWidth, pitch, outline: segments } = axialGeometry(colours.length, body);
+  const outline = `M${f(x0)} ${f(cy)}${segments.map((seg) => `${seg.length === 2 ? 'L' : 'C'}${seg.map(f).join(' ')}`).join('')}Z`;
 
   let defs = `<clipPath id="${id}b"><path d="${outline}"/></clipPath>`;
   let content = '';
@@ -212,7 +257,35 @@ export function drawAxial(colours: Colour[], body: AxialBody, coatId: string, o:
     content += centres.map((x, i) => `<rect data-band="${i}" x="${f(x - reach)}" y="${f(cy - r)}" width="${f(2 * reach)}" height="${f(D)}" fill="#000" fill-opacity="0"/>`).join('');
   }
 
-  return frame(o, width, cy + r + D * (realistic ? 0.42 : 0.16), padX, defs, content, bands);
+  return frame(o, width, cy + r + D * (realistic ? 0.42 : 0.16), cy + r + D * (realistic ? 0.58 : 0.4), padX, defs, content, bands);
+}
+
+export interface ChipGeometry {
+  width: number;
+  // The top left corner of the part.
+  x0: number;
+  y0: number;
+  // The width of the outlines of the flat style.
+  sw: number;
+  // The dark overcoat: it leaves a margin of bare ceramic along the long edges and reaches a little under the
+  // terminations.
+  margin: number;
+  coatX: number;
+  coatW: number;
+}
+
+export function chipGeometry(size: ChipSize): ChipGeometry {
+  const L = size.length;
+  const H = size.width;
+  const t = size.termination;
+  const pad = Math.max(L * 0.14, H * 0.22);
+  return { width: L + 2 * pad, x0: pad, y0: pad * 0.85, sw: H * 0.03, margin: H * 0.055, coatX: pad + t * 0.8, coatW: L - 1.6 * t };
+}
+
+// The height of the capitals of a marking, so that it fits on the overcoat.
+export function markingHeight(size: ChipSize, marking: string): number {
+  const { coatW } = chipGeometry(size);
+  return Math.min(size.width * 0.4, ((coatW - size.termination * 0.4) * 0.8) / textWidth(marking, 1));
 }
 
 // A chip resistor seen from above: the ceramic body, its dark overcoat with the marking, and a termination at each
@@ -224,19 +297,11 @@ export function drawChip(size: ChipSize, marking: string | null, o: DrawOptions)
   const L = size.length;
   const H = size.width;
   const t = size.termination;
-  const pad = Math.max(L * 0.14, H * 0.22);
-  const width = L + 2 * pad;
-  const x0 = pad;
-  const y0 = pad * 0.85;
-  const sw = H * 0.03;
-  // A margin of bare ceramic along the long edges; the overcoat reaches a little under the terminations.
-  const margin = H * 0.055;
-  const coatX = x0 + t * 0.8;
-  const coatW = L - 1.6 * t;
+  const { width, x0, y0, sw, margin, coatX, coatW } = chipGeometry(size);
 
   let text = '';
   if (marking) {
-    const height = Math.min(H * 0.4, ((coatW - t * 0.4) * 0.8) / textWidth(marking, 1));
+    const height = markingHeight(size, marking);
     text = strokeText(marking, { x: x0 + L / 2, y: y0 + H / 2 + height / 2, height, colour: realistic ? '#ecece6' : '#f6f6f1', anchor: 'middle', weight: 1.02, opacity: realistic ? 0.94 : 1 });
   }
 
@@ -268,5 +333,5 @@ export function drawChip(size: ChipSize, marking: string | null, o: DrawOptions)
       + `<rect x="${f(x0)}" y="${f(y0)}" width="${f(L)}" height="${f(H)}" rx="${f(H * 0.03)}" fill="none" stroke="${ink}" stroke-width="${f(sw)}" stroke-linejoin="round"/>`;
   }
 
-  return frame(o, width, y0 + H + H * (realistic ? 0.26 : 0.12), x0, defs, content, []);
+  return frame(o, width, y0 + H + H * (realistic ? 0.26 : 0.12), y0 + H + Math.max(y0, realistic ? H * 0.26 : 0), x0, defs, content, []);
 }

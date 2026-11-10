@@ -1,25 +1,32 @@
 import React from 'react';
 
-import { ReadResult, Reading, formatTolerance } from '../../lib/resistor';
+import { ReadAs, ReadResult, Reading, formatTolerance } from '../../lib/resistor';
 import styles from '../../styles/Resistor.module.css';
-import { CloseIcon, DownIcon, InfoIcon, Ohms, UpIcon } from './parts';
+import { CloseIcon, DownIcon, InfoIcon, Ohms, Segmented, UpIcon } from './parts';
 
-// Shown under the field; each is typed in when clicked.
-export const EXAMPLES = ['4k7', '4,7 kΩ', '472', '01C', '101', 'yel vio red gold'];
+// Shown under the field; each is typed in when clicked. One that is there to show a marking says so, and sets the
+// choice beside the field.
+export const EXAMPLES: { text: string; as?: ReadAs }[] = [
+  { text: '4k7' }, { text: '4,7 kΩ' }, { text: '472', as: 'marking' }, { text: '01C' }, { text: '101' }, { text: 'yel vio red gold' },
+];
 
 interface Props {
   text: string;
   result: ReadResult;
   reading: Reading | undefined;
   inputRef: React.RefObject<HTMLInputElement | null>;
+  // What a text that is a number and a marking is first of all.
+  readAs: ReadAs;
+  onReadAs: (readAs: ReadAs) => void;
   onText: (text: string) => void;
+  onExample: (text: string, as?: ReadAs) => void;
   onPick: (id: string) => void;
   onStep: (dir: 1 | -1) => void;
   stepLabel: string;
 }
 
 // The one field of the tool, with the ways its text can be read.
-export default function SmartInput({ text, result, reading, inputRef, onText, onPick, onStep, stepLabel }: Props) {
+export default function SmartInput({ text, result, reading, inputRef, readAs, onReadAs, onText, onExample, onPick, onStep, stepLabel }: Props) {
   const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.altKey || event.ctrlKey || event.metaKey) return;
     if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
@@ -32,10 +39,18 @@ export default function SmartInput({ text, result, reading, inputRef, onText, on
   };
 
   const { readings, message } = result;
+  // Colours read from the other end: which of the two directions is the unusual one, and why.
+  const caveat = (r: Reading) => (r.doubt ? ` ${r.likely === 'unlikely' ? 'Unlikely' : 'Unusual'}: ${r.doubt}.` : '');
 
   return (
     <div>
-      <label className={[styles.label, styles.inputLabel].join(' ')} htmlFor="resistor-input">Value, marking or band colours</label>
+      <div className={styles.inputHead}>
+        <label className={styles.label} htmlFor="resistor-input">Value, marking or band colours</label>
+        <div className={styles.readAs} title="What a text such as 472 is first of all: 472 Ω, or the marking of 4.7 kΩ. A text that can only be one of the two is read as that.">
+          <span className={styles.readAsLabel} id="resistor-read-as">Read as</span>
+          <Segmented<ReadAs> label="Read digits as" value={readAs} options={[{ value: 'value', label: 'Value', title: '472 is 472 Ω; the marking is offered below' }, { value: 'marking', label: 'Marking', title: '472 is the marking of 4.7 kΩ; what is no marking is still read as a value' }]} onChange={onReadAs} />
+        </div>
+      </div>
       <div className={styles.field}>
         <input
           id="resistor-input"
@@ -67,7 +82,9 @@ export default function SmartInput({ text, result, reading, inputRef, onText, on
       <div className={styles.examples}>
         <span>Try</span>
         {EXAMPLES.map((example) => (
-          <button key={example} type="button" className={styles.chip} onClick={() => { onText(example); inputRef.current?.focus(); }}>{example}</button>
+          <button key={example.text} type="button" className={styles.chip} onClick={() => { onExample(example.text, example.as); inputRef.current?.focus(); }} title={example.as === 'marking' ? `Read ${example.text} as a marking` : undefined}>
+            {example.text}{example.as === 'marking' && <span className={styles.chipAs}> as a marking</span>}
+          </button>
         ))}
       </div>
 
@@ -78,7 +95,7 @@ export default function SmartInput({ text, result, reading, inputRef, onText, on
         {readings.length === 1 && (
           <div className={[styles.reading, styles.readingOnly].join(' ')}>
             <span className={styles.readingHow}>
-              <b>{readings[0].label}</b> · {readings[0].how}
+              <b>{readings[0].label}</b> · {readings[0].how}{readings[0].doubt ? `. Unusual: ${readings[0].doubt}.` : ''}
             </span>
           </div>
         )}
@@ -90,13 +107,14 @@ export default function SmartInput({ text, result, reading, inputRef, onText, on
                 <span className={styles.radio} />
                 <span className={styles.readingKind}>
                   {r.label}
-                  {r.standard && readings.some((other) => !other.standard) && <span className={styles.tag}>standard value</span>}
+                  {r.likely && <span className={styles.tag} data-doubt={r.likely === 'unlikely' || undefined}>{r.likely}</span>}
+                  {r.standard && !r.doubt && readings.some((other) => !other.standard) && <span className={styles.tag}>standard value</span>}
                 </span>
                 <span className={styles.readingValue}>
                   <Ohms ohms={r.ohms} />
                   {r.tolerance !== undefined && <span className={[styles.num, styles.unit].join(' ')}> {formatTolerance(r.tolerance)}</span>}
                 </span>
-                <span className={styles.readingHow}>{r.how}</span>
+                <span className={styles.readingHow}>{r.how}{r.doubt ? '.' : ''}{r.doubt && <span className={styles.readingDoubt}>{caveat(r)}</span>}</span>
               </button>
             ))}
           </div>

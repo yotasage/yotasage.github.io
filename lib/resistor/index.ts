@@ -8,3 +8,4 @@ export * from './packages';
 export * from './glyphs';
 export * from './draw';
 export * from './export';
+export * from './tikz';

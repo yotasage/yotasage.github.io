@@ -2,11 +2,14 @@
 // several ways gives several readings, the likeliest first.
 
 import { Band, Colour, FAILURE_RATE, coloursFromText, decodeBands } from './colours';
-import { commonness, same } from './eseries';
-import { formatOhms, pow10Text } from './format';
+import { commonness, decompose, inSeries, same } from './eseries';
+import { formatOhms, formatTolerance, pow10Text } from './format';
 import { decodeMarking, flipMarking, MarkingReading } from './smd';
 
 export type ReadingKind = 'value' | 'smd' | 'eia96' | 'bands';
+
+// What a text that is both a number and a marking (472, 101) is first of all: the choice beside the field.
+export type ReadAs = 'value' | 'marking';
 
 export interface Reading {
   // Stable for a given text, so a link can name the reading that was picked.
@@ -27,6 +30,10 @@ export interface Reading {
   standard: boolean;
   // For colours: the bands in the order they were read.
   bands?: Band[];
+  // For colours: why the reading is unusual for a resistor ("above 1 GΩ"), if it is.
+  doubt?: string;
+  // For colours read from the other end, when only one of the two directions is plausible.
+  likely?: 'more likely' | 'unlikely';
 }
 
 export interface ReadResult {
@@ -45,6 +52,8 @@ interface Draft extends Omit<Reading, 'id' | 'standard'> {
   late?: number;
   // The place in the list, in place of how common the value is.
   rank?: number;
+  // Sorted before the rank: what the choice beside the field puts first.
+  group?: number;
 }
 
 const NUMBER = '(\\d+\\.?\\d*|\\.\\d+)';
@@ -145,6 +154,34 @@ function markingReadings(t: string): Draft[] {
   return out;
 }
 
+// Why a value read from colour bands is unusual for a resistor, or undefined when nothing speaks against it:
+// outside what is made, a first band that would be left out, a value that is in no series, a tolerance that the
+// value's series is not made in, or a tolerance that is rare.
+export function bandDoubt(ohms: number, tolerance: number | undefined, colours: Colour[]): string | undefined {
+  if (colours.length >= 3 && colours[0] === 'black') return 'a code does not start with a black band';
+  if (!(ohms > 0)) return undefined;
+  if (ohms > 1e9) return 'above 1 GΩ';
+  if (ohms < 1e-3) return 'below 1 mΩ';
+  const digits = String(decompose(ohms, 3).mantissa).replace(/0+$/, '');
+  const common = commonness(ohms);
+  if (common === 3) return `${digits} is in no E-series`;
+  if (tolerance !== undefined) {
+    if (common === 2 && tolerance >= 1) return `${digits} is only in E192, which is made at ±0.5 % and tighter, not at ${formatTolerance(tolerance)}`;
+    if (common === 1 && tolerance > (inSeries(ohms, 'E48') ? 2 : 1)) {
+      return `${digits} is an ${inSeries(ohms, 'E48') ? 'E48 value, made at ±2 %' : 'E96 value, made at ±1 %'} and tighter, not at ${formatTolerance(tolerance)}`;
+    }
+    if (tolerance <= 0.05) return `${formatTolerance(tolerance)} is rare`;
+  }
+  return undefined;
+}
+
+// The label of the reading from the other end: only when one of the two directions is plausible and the other not.
+export function otherEndLabel(givenDoubt: string | undefined, otherDoubt: string | undefined): 'more likely' | 'unlikely' | undefined {
+  if (givenDoubt && !otherDoubt) return 'more likely';
+  if (!givenDoubt && otherDoubt) return 'unlikely';
+  return undefined;
+}
+
 const bandList = (bands: Band[]) => bands.map((b) => `${b.colour} ${b.meaning}`).join(', ');
 
 function bandReadings(colours: Colour[]): ReadResult {
@@ -155,7 +192,9 @@ function bandReadings(colours: Colour[]): ReadResult {
       id: 'bands', kind: 'bands', label: 'Colour bands', ohms: forward.ohms, tolerance: colours.length === 1 ? undefined : forward.tolerance,
       tcr: forward.tcr, bands: forward.bands, note: forward.note,
       how: colours.length === 1 ? 'A single black band is a 0 Ω link' : `${colours.length} bands: ${bandList(forward.bands)}`,
-      rank: forward.ohms === 0 || commonness(forward.ohms) < 3 ? 0 : 1,
+      doubt: colours.length === 1 ? undefined : bandDoubt(forward.ohms, forward.tolerance, colours),
+      // What was typed, in the direction it was typed, is always the first reading.
+      rank: 0,
     });
   }
   const reversed = [...colours].reverse();
@@ -165,9 +204,10 @@ function bandReadings(colours: Colour[]): ReadResult {
       drafts.push({
         id: 'bands-rev', kind: 'bands', label: 'From the other end', ohms: back.ohms, tolerance: back.tolerance, tcr: back.tcr,
         bands: back.bands, note: back.note, how: `${colours.length} bands: ${bandList(back.bands)}`,
-        // After the forward reading, unless only this one lands on a standard value.
-        rank: (commonness(back.ohms) < 3 ? 0 : 1) + 0.5,
+        doubt: bandDoubt(back.ohms, back.tolerance, reversed),
+        rank: 0.5,
       });
+      if (forward.ok) drafts[1].likely = otherEndLabel(drafts[0].doubt, drafts[1].doubt);
     }
   }
   // Four bands and a fifth for the failure rate, on military parts.
@@ -181,6 +221,7 @@ function bandReadings(colours: Colour[]): ReadResult {
       bands: [...four.bands, { colour: order[4], role: 'failure', meaning: `${FAILURE_RATE[order[4]]} %/1000 h` }],
       how: `Four bands (${bandList(four.bands)}) and ${order[4]} as a failure rate of ${FAILURE_RATE[order[4]]} % per 1000 h`,
       note: 'The failure-rate band of military parts is from secondary sources and not checked against the standard.',
+      doubt: bandDoubt(four.ohms, four.tolerance, order),
       rank: commonness(four.ohms) < 3 ? 0.7 : 5,
     });
   }
@@ -192,23 +233,24 @@ function bandReadings(colours: Colour[]): ReadResult {
 function finish(drafts: Draft[]): Reading[] {
   const ranked = drafts
     .filter((d) => Number.isFinite(d.ohms) && d.ohms >= 0 && (d.ohms === 0 || (d.ohms >= MIN_OHMS && d.ohms <= MAX_OHMS)))
-    .map((d, i) => ({ d, i, rank: d.rank ?? (d.late ?? 0) * 10 + (d.ohms === 0 ? 0 : commonness(d.ohms)) }))
-    .sort((a, b) => a.rank - b.rank || a.i - b.i);
+    .map((d, i) => ({ d, i, group: d.group ?? 0, rank: d.rank ?? (d.late ?? 0) * 10 + (d.ohms === 0 ? 0 : commonness(d.ohms)) }))
+    .sort((a, b) => a.group - b.group || a.rank - b.rank || a.i - b.i);
   const out: Reading[] = [];
   for (const { d } of ranked) {
     if (out.some((r) => same(r.ohms, d.ohms) && r.tolerance === d.tolerance && r.tcr === d.tcr)) continue;
     let id = d.id;
     for (let n = 2; out.some((r) => r.id === id); n++) id = `${d.id}${n}`;
-    const { late, rank, ...rest } = d;
+    const { late, rank, group, ...rest } = d;
     out.push({ ...rest, id, standard: d.ohms > 0 && commonness(d.ohms) < 3 });
   }
   return out;
 }
 
-const EXAMPLES = 'Try a value (4k7, 4.7 kΩ), a marking (472, 01C) or band colours (yellow violet red gold).';
+const EXAMPLES = 'Try a value (4k7, 4.7 kΩ), a marking (01C, 4R7) or band colours (yellow violet red gold).';
 
-// Everything a typed text can mean.
-export function readInput(text: string): ReadResult {
+// Everything a typed text can mean. A text that is a value and a marking (472, 101) is a value first, or a marking
+// first when `readAs` says so; a marking turned upside down comes last either way.
+export function readInput(text: string, readAs: ReadAs = 'value'): ReadResult {
   let t = text.normalize('NFKC').trim()
     .replace(/[ΩΩ]/g, 'Ω').replace(/[µμ]/g, 'u').replace(/[−–]/g, '-');
   if (!t) return { readings: [] };
@@ -256,6 +298,7 @@ export function readInput(text: string): ReadResult {
   }
   if (marking && !t.includes(',') && !t.includes('.')) drafts.push(...markingReadings(t));
   if (tolerance !== undefined) for (const d of drafts) d.tolerance = tolerance;
+  for (const d of drafts) d.group = d.late === 1 ? 2 : (d.kind === 'value') === (readAs === 'value') ? 0 : 1;
 
   const readings = finish(drafts);
   if (readings.length) return { readings };

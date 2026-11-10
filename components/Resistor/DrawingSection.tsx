@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 
 import {
   AXIAL_BODIES, BODY_COATS, CHIP_SIZES, DrawStyle, IMAGE_FORMATS, ImageFormat, MAX_EXPORT_WIDTH, copyImage, drawAxial, drawChip,
-  drawingFileName, exportBlob, exportHeight, exportSvg, formatOhms, formatTolerance, saveBlob,
+  drawingFileName, exportBlob, exportHeight, exportSvg, formatOhms, formatRkm, formatTolerance, saveBlob, tikzAxial, tikzChip,
 } from '../../lib/resistor';
 import styles from '../../styles/Resistor.module.css';
 import { CopyIcon, SaveIcon, Segmented } from './parts';
@@ -51,14 +51,14 @@ export default function DrawingSection({ resolved: r, drawStyle, onStyle, onChan
   }, [axial, r.ohms, r.tolerance, r.colours.join(), r.body, r.marking, r.unmarked, r.chip]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const drawing = useMemo(() => {
-    const options = { style: drawStyle, ink: fill && isDark(fill) ? INK_ON_DARK : INK_ON_LIGHT, background: fill, caption: caption ? lines : undefined, id: 'out' };
+    const options = { style: drawStyle, ink: fill && isDark(fill) ? INK_ON_DARK : INK_ON_LIGHT, background: fill, caption: caption ? lines : undefined, scale: caption, id: 'out' };
     return axial ? drawAxial(r.colours, r.body, r.coat.id, options) : drawChip(r.chip, r.unmarked ? null : r.marking ?? null, options);
   }, [axial, r.colours.join(), r.body, r.coat.id, r.chip, r.unmarked, r.marking, drawStyle, fill, caption, lines]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const height = exportHeight(drawing, pixels);
   // What was said about the last file no longer holds once the drawing changes.
   useEffect(() => { setStatus(null); }, [drawing, pixels]);
-  const name = (format: ImageFormat) => drawingFileName(r.ohms, r.partName, format);
+  const name = (format: ImageFormat | 'tex') => drawingFileName(r.ohms, r.partName, format);
 
   const save = async (format: ImageFormat) => {
     try {
@@ -75,6 +75,33 @@ export default function DrawingSection({ resolved: r, drawStyle, onStyle, onChan
       setStatus({ text: `Copied as a PNG of ${pixels} × ${height} px.` });
     } catch (error) {
       setStatus({ text: (error as Error).message || 'The picture could not be copied.', failed: true });
+    }
+  };
+
+  // TikZ is made from the flat drawing, whatever the style of the picture, with the caption and background chosen.
+  const tikz = () => {
+    const options = { caption: caption ? lines : undefined, scale: caption, background: fill, title: `Resistor ${formatRkm(r.ohms)}, ${lines.slice(1).join(', ')}` };
+    return axial
+      ? tikzAxial(r.colours, r.body, r.coat.id, { ...options, bandNotes: r.code.ok ? r.code.bands.map((b) => b.meaning) : undefined })
+      : tikzChip(r.chip, r.unmarked ? null : r.marking ?? null, options);
+  };
+
+  const saveTikz = () => {
+    try {
+      const made = tikz();
+      saveBlob(new Blob([made.document], { type: 'application/x-tex;charset=utf-8' }), name('tex'));
+      setStatus({ text: `Saved ${name('tex')}: it compiles as it is and draws the ${drawStyle === 'flat' ? '' : 'flat '}part ${Math.round(made.width)} mm wide.` });
+    } catch (error) {
+      setStatus({ text: (error as Error).message, failed: true });
+    }
+  };
+
+  const copyTikz = async () => {
+    try {
+      await navigator.clipboard.writeText(tikz().picture);
+      setStatus({ text: `Copied the tikzpicture with its colours, to paste into a document that loads TikZ.` });
+    } catch {
+      setStatus({ text: 'The TikZ could not be copied.', failed: true });
     }
   };
 
@@ -179,7 +206,7 @@ export default function DrawingSection({ resolved: r, drawStyle, onStyle, onChan
             </div>
             <div className={styles.optionRow}>
               <span className={styles.label}>Caption</span>
-              <Segmented<number> label="Caption" value={caption ? 1 : 0} options={[{ value: 1, label: 'Value, code and size' }, { value: 0, label: 'None' }]} onChange={(value) => setCaption(value === 1)} />
+              <Segmented<number> label="Caption" value={caption ? 1 : 0} options={[{ value: 1, label: 'Value, code and size' }, { value: 0, label: 'None', title: 'The part alone: no caption and no scale bar' }]} onChange={(value) => setCaption(value === 1)} />
             </div>
             <div className={styles.optionRow}>
               <span className={styles.label}>Save as</span>
@@ -189,6 +216,9 @@ export default function DrawingSection({ resolved: r, drawStyle, onStyle, onChan
                     <SaveIcon /><span>{format.label}</span>
                   </button>
                 ))}
+                <button type="button" className={styles.copy} onClick={saveTikz} title={`Save ${name('tex')}, for LaTeX`}>
+                  <SaveIcon /><span>TikZ</span>
+                </button>
               </div>
             </div>
             <div className={styles.optionRow}>
@@ -196,14 +226,16 @@ export default function DrawingSection({ resolved: r, drawStyle, onStyle, onChan
               <div className={styles.inline}>
                 <button type="button" className={styles.copy} onClick={copyPicture} title="Copy the picture as a PNG"><CopyIcon /><span>Image</span></button>
                 <button type="button" className={styles.copy} onClick={copySvg} title="Copy the SVG as text"><CopyIcon /><span>SVG</span></button>
+                <button type="button" className={styles.copy} onClick={copyTikz} title="Copy the tikzpicture, for LaTeX"><CopyIcon /><span>TikZ</span></button>
               </div>
             </div>
+            {drawStyle !== 'flat' && <p className={styles.exportHint}>TikZ, for LaTeX, is always the flat drawing.</p>}
             <p className={styles.exportStatus} role="status" data-failed={status?.failed ? true : undefined}>
               {status?.text ?? (
                 <>
                   <span className={styles.num}>{name('png').replace(/\.png$/, '')}</span>, <span className={styles.num}>{pixels} × {height} px</span>
                   {pixels !== Math.round(width || 0) * scale ? ` (between 16 and ${MAX_EXPORT_WIDTH} px wide)` : ''}.
-                  {!fill && ' Without a background the lines and the caption are dark, for light pages; JPG is saved on white.'}
+                  {!fill && ` Without a background the lines${caption ? ' and the caption' : ''} are dark, for light pages; JPG is saved on white.`}
                 </>
               )}
             </p>

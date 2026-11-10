@@ -1,7 +1,7 @@
 import React from 'react';
 
 import {
-  BandCode, BandError, SERIES, SeriesId, colour, encodeBands, encodeMarkings, errorPct, formatError, formatOhms, formatPct,
+  BandCode, BandError, ReadAs, SERIES, SeriesId, colour, encodeBands, encodeMarkings, errorPct, formatError, formatOhms, formatPct,
   formatTolerance, neighbours, series, toleranceLetter, usualSeries,
 } from '../../lib/resistor';
 import styles from '../../styles/Resistor.module.css';
@@ -18,7 +18,7 @@ interface Props {
   seriesChosen: boolean;
   onSeries: (id: SeriesId) => void;
   onValue: (ohms: number) => void;
-  onExample: (text: string) => void;
+  onExample: (text: string, as?: ReadAs) => void;
 }
 
 const SCALES = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100];
@@ -131,18 +131,19 @@ function Marking({ title, code, how, why, withLetter }: { title: string; code?: 
   );
 }
 
-function Guide({ onExample }: { onExample: (text: string) => void }) {
-  const rows: [string[], string][] = [
-    [['4k7', '4.7k', '4,7 kΩ', '4700', '1M5', '10m'], 'A value in any notation: with a decimal point or comma, a multiplier (m, k, M or Meg, G), or the letter in place of the point.'],
-    [['472', '4992', '4R7', '103J', '01C', 'R005'], 'The marking of a chip resistor: three or four digits, R as the decimal point, a tolerance letter, EIA-96 or milliohms.'],
+function Guide({ onExample }: { onExample: (text: string, as?: ReadAs) => void }) {
+  // The third entry is what the examples of the row are read as, where a text could be both.
+  const rows: [string[], string, ReadAs?][] = [
+    [['4k7', '4.7k', '4,7 kΩ', '4700', '1M5', '10m'], 'A value in any notation: with a decimal point or comma, a multiplier (m, k, M or Meg, G), or the letter in place of the point.', 'value'],
+    [['472', '4992', '4R7', '103J', '01C', 'R005'], 'The marking of a chip resistor: three or four digits, R as the decimal point, a tolerance letter, EIA-96 or milliohms. Digits alone are a value first: these examples set “Read as” to Marking, beside the field.', 'marking'],
     [['yellow violet red gold', 'brn blk blk red brn'], 'The colours of 3 to 6 bands, as names or abbreviations, from either end.'],
-    [['4k7 1%', '101', '601'], 'A tolerance after the value. A text that reads several ways, also upside down, shows every reading.'],
+    [['4k7 1%', '101', '601'], 'A tolerance after the value. A text that reads several ways (101 is 101 Ω, and 100 Ω as a marking), also upside down, shows every reading: pick one.'],
   ];
   return (
     <dl className={styles.guide}>
-      {rows.map(([examples, what]) => (
+      {rows.map(([examples, what, as]) => (
         <React.Fragment key={what}>
-          <dt>{examples.map((example) => <button key={example} type="button" className={styles.chip} onClick={() => onExample(example)}>{example}</button>)}</dt>
+          <dt>{examples.map((example) => <button key={example} type="button" className={styles.chip} onClick={() => onExample(example, as)}>{example}</button>)}</dt>
           <dd>{what}</dd>
         </React.Fragment>
       ))}

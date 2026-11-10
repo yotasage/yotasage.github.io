@@ -8,6 +8,7 @@
     "shots": "node shots.mjs",
     "ui": "node ui.mjs",
     "samples": "tsx samples.mjs",
+    "tikz": "tsx tikz.mjs",
     "exports": "node exports.mjs"
   },
   "devDependencies": {

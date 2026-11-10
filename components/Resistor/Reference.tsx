@@ -4,13 +4,11 @@ import {
   AXIAL_BODIES, CHIP_SIZES, COLOURS, ColourInfo, decompose, formatOhms, formatTolerance, neighbours, pow10Text, series,
 } from '../../lib/resistor';
 import styles from '../../styles/Resistor.module.css';
-import { Change, Resolved, bandOptions, toleranceHasColour } from './view';
+import { Change, Resolved, bandOptions, markedSize, markingExample, thirdDigit, toleranceHasColour } from './view';
 
 interface Props {
   resolved: Resolved;
   onChange: (change: Change) => void;
-  // Puts a text into the field, as if typed.
-  onText: (text: string) => void;
 }
 
 // Digits first, as the code is learnt; then the colours that are only multipliers or tolerances.
@@ -37,36 +35,66 @@ function Swatch({ info }: { info: ColourInfo }) {
 
 // The Reference section: the tables behind the tool. The entries of the current value are marked, and a click on a
 // colour, a code or a size uses it.
-export default function Reference({ resolved: r, onChange, onText }: Props) {
+export default function Reference({ resolved: r, onChange }: Props) {
   const live = !r.example;
   const bands = r.code.ok ? r.code.bands : [];
   const coded = bands.length >= 3;
   const at = (role: string) => bands.findIndex((b) => b.role === role);
-  const marks = (name: string, role: string) => live && coded && bands.some((b) => b.colour === name && b.role === role);
-  // Which digits a colour is: "1st", "2nd 3rd".
-  const digitPlaces = (name: string) => bands.map((b, i) => (b.role === 'digit' && b.colour === name ? ['1st', '2nd', '3rd'][i] : null)).filter(Boolean).join(' ');
+  const digitCount = coded ? bands.filter((b) => b.role === 'digit').length : 0;
+  const PLACES = ['first', 'second', 'third'];
 
-  // A click on a cell of the colour table: the colour takes that place in the code.
-  const pick = (info: ColourInfo, role: 'digit' | 'multiplier' | 'tolerance' | 'tcr') => {
+  // A cell of the colour table: whether it is the band of the current part, what a click does, or why it does nothing.
+  interface Cell { on: boolean; title: string; change?: Change; off?: string }
+
+  // A digit column: the colour takes that place in the code. The third digit is added to a part with two digits
+  // (which then has five bands) and taken away again by a click on the cell that is marked.
+  const digitCell = (info: ColourInfo, place: number): Cell => {
+    const title = `Use ${info.name} as the ${PLACES[place]} digit`;
+    if (!coded) return { on: false, title, off: r.code.ok === false ? r.code.error : 'A link has one black band and no digits.' };
+    if (place < digitCount) {
+      const option = bandOptions(r, place).find((o) => o.colour === info.name);
+      if (place === 2 && option?.current) {
+        const without = thirdDigit(r, null);
+        return 'error' in without ? { on: true, title, off: without.error } : { on: true, title: 'Take the third digit away: a part with four bands', change: without };
+      }
+      return { on: !!option?.current, title, change: option?.change, off: option?.disabled ?? (option ? undefined : 'Not a digit here.') };
+    }
+    const added = thirdDigit(r, info.digit);
+    return 'error' in added ? { on: false, title, off: added.error } : { on: false, title: `Add ${info.digit} as a third digit: a part with five bands`, change: added };
+  };
+
+  const bandCell = (info: ColourInfo, role: 'multiplier' | 'tolerance' | 'tcr'): Cell => {
+    const on = coded && bands.some((b) => b.colour === info.name && b.role === role);
     if (role === 'tolerance') {
-      onChange({ tolerance: info.tolerance, view: { type: 'axial', bands: info.name === 'none' ? 3 : bands.length >= 4 ? bands.length as 4 | 5 | 6 : 4 } });
-      return;
+      const count = info.name === 'none' ? 3 : bands.length >= 4 ? bands.length as 4 | 5 | 6 : 4;
+      return { on: on || (info.name === 'none' && bands.length === 3), title: `Use ${formatTolerance(info.tolerance)}`, change: { tolerance: info.tolerance, view: { type: 'axial', bands: count } } };
     }
     if (role === 'tcr') {
-      onChange({ tolerance: toleranceHasColour(r.tolerance) ? undefined : 1, view: { type: 'axial', bands: 6, tcr: info.tcr } });
-      return;
+      if (on) return { on, title: 'Take the temperature coefficient away: a part with five bands', change: { view: { type: 'axial', bands: 5, tcr: null } } };
+      return { on, title: `Use ${info.tcr} ppm/K, on a part with six bands`, change: { tolerance: toleranceHasColour(r.tolerance) ? undefined : 1, view: { type: 'axial', bands: 6, tcr: info.tcr } } };
     }
-    if (!coded) return;
-    const option = bandOptions(r, role === 'digit' ? 0 : at('multiplier')).find((o) => o.colour === info.name);
-    if (option?.change) onChange(option.change);
+    const title = `Use ${info.name} as the multiplier`;
+    if (!coded) return { on: false, title, off: r.code.ok === false ? r.code.error : 'A link has one black band and no multiplier.' };
+    const option = bandOptions(r, at('multiplier')).find((o) => o.colour === info.name);
+    return { on, title, change: option?.change, off: option?.disabled };
   };
+
+  const cell = (c: Cell, content: React.ReactNode) => (
+    <td data-on={(live && c.on) || undefined}>
+      <button type="button" className={styles.refCell} aria-disabled={c.off ? true : undefined} aria-pressed={live && c.on} title={c.off ?? c.title} onClick={() => { if (!c.off && c.change) onChange(c.change); }}>
+        {content}
+      </button>
+    </td>
+  );
+  const empty = <td><span className={styles.refNone}>–</span></td>;
 
   const e96 = series('E96').mantissas;
   const parts = r.ohms > 0 ? decompose(r.ohms, 3) : null;
   const exp = parts && parts.exp >= -3 && parts.exp <= 5 ? parts.exp : 1;
   const mantissa = parts?.exact && e96.includes(parts.mantissa) ? parts.mantissa : null;
   const nearest = mantissa ?? (r.ohms > 0 ? decompose(neighbours(r.ohms, 'E96').nearest, 3).mantissa : 100);
-  const useE96 = (m: number, e: number) => onChange({ ohms: Number(`${m}e${e}`), tolerance: 1, view: { type: 'chip', mark: 'eia96' } });
+  // As a click on an example of a marking: a chip marked in this system, of a size that carries a marking.
+  const useE96 = (m: number, e: number) => onChange({ ohms: Number(`${m}e${e}`), tolerance: 1, view: { type: 'chip', mark: 'eia96', ...markedSize(r) } });
 
   return (
     <>
@@ -76,14 +104,16 @@ export default function Reference({ resolved: r, onChange, onText }: Props) {
           <span className={styles.blockMeta}>IEC 60062:2016</span>
         </div>
         <div className={styles.scroll}>
-          <table className={styles.ref}>
+          <table className={[styles.ref, styles.refBands].join(' ')}>
             <thead>
               <tr>
                 <th scope="col">Colour</th>
-                <th scope="col">Digit</th>
+                <th scope="col">1st<br />digit</th>
+                <th scope="col">2nd<br />digit</th>
+                <th scope="col">3rd<br />digit</th>
                 <th scope="col">Multiplier</th>
                 <th scope="col">Tolerance</th>
-                <th scope="col">TCR, ppm/K</th>
+                <th scope="col">TCR<br />ppm/K</th>
               </tr>
             </thead>
             <tbody>
@@ -92,34 +122,28 @@ export default function Reference({ resolved: r, onChange, onText }: Props) {
                   <th scope="row">
                     <span className={styles.refColour}><Swatch info={info} /><span className={styles.refName}>{info.name === 'none' ? 'No band' : info.name[0].toUpperCase() + info.name.slice(1)}</span><span className={styles.refCode}>{info.code}</span></span>
                   </th>
-                  <td data-on={marks(info.name, 'digit') || undefined}>
-                    {info.digit !== undefined
-                      ? <button type="button" className={styles.refCell} onClick={() => pick(info, 'digit')} title={`Use ${info.name} as the first digit`}><span className={styles.num}>{info.digit}</span>{live && digitPlaces(info.name) && <span className={styles.refPlace}>{digitPlaces(info.name)}</span>}</button>
-                      : <span className={styles.refNone}>–</span>}
-                  </td>
-                  <td data-on={marks(info.name, 'multiplier') || undefined}>
-                    {info.exp !== undefined
-                      ? <button type="button" className={styles.refCell} onClick={() => pick(info, 'multiplier')} title={`Use ${info.name} as the multiplier`}><span className={styles.num}>× {pow10Text(info.exp)}</span></button>
-                      : <span className={styles.refNone}>–</span>}
-                  </td>
-                  <td data-on={marks(info.name, 'tolerance') || (live && info.name === 'none' && bands.length === 3) || undefined}>
-                    {info.tolerance !== undefined
-                      ? <button type="button" className={styles.refCell} onClick={() => pick(info, 'tolerance')} title={`Use ${formatTolerance(info.tolerance)}`}><span className={styles.num}>{formatTolerance(info.tolerance)}</span><span className={styles.refLetter}>{info.toleranceLetter}</span></button>
-                      : <span className={styles.refNone}>–</span>}
-                  </td>
-                  <td data-on={marks(info.name, 'tcr') || undefined}>
-                    {info.tcr !== undefined
-                      ? <button type="button" className={styles.refCell} onClick={() => pick(info, 'tcr')} title={`Use ${info.tcr} ppm/K, on a part with six bands`}><span className={styles.num}>{info.tcr}</span><span className={styles.refLetter}>{info.tcrLetter}</span></button>
-                      : <span className={styles.refNone}>–</span>}
-                  </td>
+                  {[0, 1, 2].map((place) => (info.digit !== undefined
+                    ? <React.Fragment key={place}>{cell(digitCell(info, place), <span className={styles.num}>{info.digit}</span>)}</React.Fragment>
+                    : <React.Fragment key={place}>{empty}</React.Fragment>))}
+                  {info.exp !== undefined ? cell(bandCell(info, 'multiplier'), <span className={styles.num}>× {pow10Text(info.exp)}</span>) : empty}
+                  {info.tolerance !== undefined
+                    ? cell(bandCell(info, 'tolerance'), <><span className={styles.num}>{formatTolerance(info.tolerance)}</span><span className={styles.refLetter}>{info.toleranceLetter}</span></>)
+                    : empty}
+                  {info.tcr !== undefined
+                    ? cell(bandCell(info, 'tcr'), <><span className={styles.num}>{info.tcr}</span><span className={styles.refLetter}>{info.tcrLetter}</span></>)
+                    : empty}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        <p className={styles.caption}>
+          Each column is a band: a click sets it, and draws the axial part. A third digit makes a part with five bands and a TCR one with six;
+          a click on the marked third digit or TCR takes that band away again.
+        </p>
         <ul className={styles.notes}>
           <li><b>3 bands:</b> two digits and a multiplier, ±20 %. <b>4 bands:</b> plus the tolerance. <b>5 bands:</b> three digits. <b>6 bands:</b> plus the temperature coefficient (TCR).</li>
-          <li>The tolerance band is set apart by a wider gap, and gold, silver or pink is never the first band. When a part reads both ways, the reading that gives a standard value is the likely one.</li>
+          <li>The tolerance band is set apart by a wider gap, and gold, silver or pink is never the first band. When a part reads both ways, a reading is unlikely when its value is outside 1 mΩ to 1 GΩ or in no E-series, or when its tolerance does not fit its series: a value found only in E192 is not made at ±1 %.</li>
           <li>A single black band is a <button type="button" className={styles.inlineButton} onClick={() => onChange({ ohms: 0, view: { type: 'axial' } })}>0 Ω link</button> (jumper).</li>
           <li><b>Grey</b> as a tolerance is ±0.01 % in the standard; older EIA tables, still shown by some distributors, read it as ±0.05 % (A).</li>
           <li>The <b>orange</b> and <b>yellow</b> tolerances and the <b>pink</b> multiplier date from the 2016 edition and are missing from many tables. High-voltage parts use yellow for ±5 % and grey for ±10 %, to avoid metallic paint.</li>
@@ -130,14 +154,14 @@ export default function Reference({ resolved: r, onChange, onText }: Props) {
       <div className={styles.block}>
         <div className={styles.blockHead}>
           <h3>SMD markings</h3>
-          <span className={styles.blockMeta}>click an example to try it</span>
+          <span className={styles.blockMeta}>click an example to read it and draw it on a chip</span>
         </div>
         <dl className={styles.rules}>
           {MARKING_RULES.map((rule, i) => (
             <React.Fragment key={i}>
               <dt>
                 {rule.examples.map(([code, value]) => (
-                  <button key={code} type="button" className={styles.ruleExample} onClick={() => onText(code)} title={`Try ${code}`}>
+                  <button key={code} type="button" className={styles.ruleExample} onClick={() => onChange(markingExample(code, r))} title={`Try ${code}: read as a marking and drawn on a chip`}>
                     <span className={styles.chip}>{code}</span><span className={styles.ruleValue}>{value}</span>
                   </button>
                 ))}

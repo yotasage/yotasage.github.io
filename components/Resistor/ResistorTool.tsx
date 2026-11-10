@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
-import { DrawStyle, MAX_OHMS, MIN_OHMS, SERIES, SeriesId, formatOhms, readInput, series, step, usualSeries } from '../../lib/resistor';
+import { DrawStyle, MAX_OHMS, MIN_OHMS, ReadAs, SERIES, SeriesId, formatOhms, readInput, series, step, usualSeries } from '../../lib/resistor';
 import styles from '../../styles/Resistor.module.css';
 import HomeIcon from '../icons/home';
 import DrawingSection from './DrawingSection';
@@ -52,7 +52,10 @@ export default function ResistorTool() {
   const [section, setSection] = useState(SECTIONS[0].id);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const result = useMemo(() => readInput(text), [text]);
+  // What a text that is a number and a marking (472) is first of all; part of the link.
+  const [readAs, setReadAs] = useState<ReadAs>('value');
+
+  const result = useMemo(() => readInput(text, readAs), [text, readAs]);
   const reading = result.readings.find((r) => r.id === pick) ?? result.readings[0];
   const ohms = reading?.ohms;
   const stepSeries = seriesChoice ?? usualSeries(tolerance);
@@ -65,9 +68,11 @@ export default function ResistorTool() {
     if (q) setText(q);
     if (params.get('as')) setPick(params.get('as'));
     const tol = Number(params.get('tol'));
+    const mode: ReadAs = params.get('read') === 'marking' ? 'marking' : 'value';
+    setReadAs(mode);
     if (params.has('tol') && tol > 0 && tol <= 50) setTolerance(tol);
     else if (q) {
-      const first = readInput(q).readings;
+      const first = readInput(q, mode).readings;
       const picked = first.find((r) => r.id === params.get('as')) ?? first[0];
       if (picked?.tolerance !== undefined) setTolerance(picked.tolerance);
     }
@@ -92,13 +97,14 @@ export default function ResistorTool() {
     if (pick && reading && reading.id === pick && result.readings[0].id !== pick) params.set('as', pick);
     if (tolerance !== (reading?.tolerance ?? DEFAULT_TOLERANCE)) params.set('tol', String(tolerance));
     if (seriesChoice) params.set('e', seriesParam(seriesChoice));
+    if (readAs === 'marking') params.set('read', 'marking');
     viewToParams(view, params);
     const search = params.toString();
     const url = `${window.location.pathname}${search ? `?${search}` : ''}${window.location.hash}`;
     if (url !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
       window.history.replaceState(window.history.state, '', url);
     }
-  }, [loaded, text, pick, tolerance, seriesChoice, reading, result, view]);
+  }, [loaded, text, pick, tolerance, seriesChoice, reading, result, view, readAs]);
 
   // The nav shows the section at the top of the window.
   useEffect(() => {
@@ -114,13 +120,21 @@ export default function ResistorTool() {
   }, []);
 
   // A code that carries a tolerance sets it; a value typed without one leaves the choice as it is.
-  const applyText = useCallback((next: string, pickId: string | null = null) => {
+  const applyText = useCallback((next: string, pickId: string | null = null, mode: ReadAs = readAs) => {
     setText(next);
     setPick(pickId);
-    const readings = readInput(next).readings;
+    setReadAs(mode);
+    const readings = readInput(next, mode).readings;
     const picked = readings.find((r) => r.id === pickId) ?? readings[0];
     if (picked?.tolerance !== undefined) setTolerance(picked.tolerance);
-  }, []);
+  }, [readAs]);
+
+  // An example that shows a value or a marking sets the choice beside the field, when the text would read
+  // differently without it (472 does, 01C does not).
+  const tryExample = useCallback((example: string, wanted?: ReadAs) => {
+    const matters = wanted && readInput(example, wanted).readings[0]?.id !== readInput(example, readAs).readings[0]?.id;
+    applyText(example, null, matters ? wanted : readAs);
+  }, [applyText, readAs]);
 
   const takeValue = useCallback((value: number) => {
     setText(formatOhms(value));
@@ -129,11 +143,11 @@ export default function ResistorTool() {
 
   // A change made in the drawing or in a table: a value, a tolerance, what the drawing shows, or a text for the field.
   const change = useCallback((c: Change) => {
-    if (c.text !== undefined) applyText(c.text);
+    if (c.text !== undefined) tryExample(c.text, c.readAs);
     if (c.ohms !== undefined) takeValue(c.ohms);
     if (c.tolerance !== undefined) setTolerance(c.tolerance);
     if (c.view) setView((v) => ({ ...v, ...c.view }));
-  }, [applyText, takeValue]);
+  }, [tryExample, takeValue]);
 
   const chooseStyle = useCallback((next: DrawStyle) => {
     setDrawStyle(next);
@@ -237,7 +251,10 @@ export default function ResistorTool() {
             result={result}
             reading={reading}
             inputRef={inputRef}
+            readAs={readAs}
+            onReadAs={(mode) => applyText(text, null, mode)}
             onText={(next) => applyText(next)}
+            onExample={tryExample}
             onPick={(id) => applyText(text, id)}
             onStep={onStep}
             stepLabel={series(stepSeries).label}
@@ -257,7 +274,7 @@ export default function ResistorTool() {
               seriesChosen={seriesChoice !== null}
               onSeries={(id) => setSeriesChoice(seriesChoice === id ? null : id)}
               onValue={takeValue}
-              onExample={(example) => { applyText(example); window.scrollTo({ top: 0 }); }}
+              onExample={(example, wanted) => { tryExample(example, wanted); window.scrollTo({ top: 0 }); }}
             />
           </section>
 
@@ -268,7 +285,7 @@ export default function ResistorTool() {
 
           <section id="reference" className={styles.section} aria-labelledby="reference-title">
             <h2 className={[styles.label, styles.sectionHead].join(' ')} id="reference-title">Reference</h2>
-            <Reference resolved={resolved} onChange={change} onText={(next) => applyText(next)} />
+            <Reference resolved={resolved} onChange={change} />
           </section>
         </div>
       </main>
