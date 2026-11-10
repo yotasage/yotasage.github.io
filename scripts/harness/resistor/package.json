@@ -9,7 +9,8 @@
     "ui": "node ui.mjs",
     "samples": "tsx samples.mjs",
     "tikz": "tsx tikz.mjs",
-    "exports": "node exports.mjs"
+    "exports": "node exports.mjs",
+    "timing": "tsx timing.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.50.0",

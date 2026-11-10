@@ -9,3 +9,8 @@ export * from './glyphs';
 export * from './draw';
 export * from './export';
 export * from './tikz';
+export * from './network';
+export * from './analyse';
+export * from './values';
+export * from './combine';
+export * from './combineClient';

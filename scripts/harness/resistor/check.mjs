@@ -3,6 +3,7 @@
 
 import * as imported from '../../../lib/resistor/index.ts';
 import * as importedView from '../../../components/Resistor/view.ts';
+import { combineChecks } from './combine.mjs';
 
 const lib = imported.default ?? imported;
 const viewLib = importedView.default ?? importedView;
@@ -513,6 +514,9 @@ section('Clicks in the tables');
   o = otherEnd(part('brown black red brown'));
   ok(o.ok && !o.likely && !o.doubt && !o.givenDoubt, 'two plausible directions: no label by the drawing');
 }
+
+// The networks and the combination search (combine.mjs).
+await combineChecks(lib, { section, ok, eq });
 
 // ---------------------------------------------------------------------------------------------------------------
 const total = [...groups.values()].reduce((a, b) => a + b, 0);
