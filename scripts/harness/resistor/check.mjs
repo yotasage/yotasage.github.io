@@ -4,6 +4,7 @@
 import * as imported from '../../../lib/resistor/index.ts';
 import * as importedView from '../../../components/Resistor/view.ts';
 import { combineChecks } from './combine.mjs';
+import { designChecks } from './design.mjs';
 
 const lib = imported.default ?? imported;
 const viewLib = importedView.default ?? importedView;
@@ -517,6 +518,9 @@ section('Clicks in the tables');
 
 // The networks and the combination search (combine.mjs).
 await combineChecks(lib, { section, ok, eq });
+
+// The design mode's engine: circuits, worst case and RSS over temperature, suggestions (design.mjs).
+await designChecks(lib, { section, ok, eq });
 
 // ---------------------------------------------------------------------------------------------------------------
 const total = [...groups.values()].reduce((a, b) => a + b, 0);
