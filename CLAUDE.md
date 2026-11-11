@@ -107,9 +107,11 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 - Resistor lookup: built in steps by [docs/resistor/plan.md](docs/resistor/plan.md) (module map, design direction,
   `notes-S<n>.md`; `facts.md` has the tables). Framework-free logic in `lib/resistor/` (E-series, colour code, SMD
   markings, `draw.ts` for the self-contained SVG drawings with the stroke font of `glyphs.ts`, `tikz.ts` for the same shapes as
-  TikZ, `export.ts`), the page in
-  `components/Resistor/` (`ResistorTool.tsx` holds the state and the link, `view.ts` resolves what is drawn), styles and
-  theme variables in `styles/Resistor.module.css`, checks in `scripts/harness/resistor/` (`npm run check`, `npm run ui`).
+  TikZ, `export.ts`; the combination search `combine.ts` in a worker through `combineClient.ts`, networks in `network.ts` and
+  `analyse.ts`, pasted value lists in `values.ts`, their form in the link and in `localStorage` in `lists.ts`), the page in
+  `components/Resistor/` (`ResistorTool.tsx` holds the state and the link, `view.ts` resolves what is drawn; `Combinations.tsx` with
+  `combo.ts` for its link state and `ValueLists.tsx` for the visitor's lists), styles and theme variables in
+  `styles/Resistor.module.css` (the Combinations section in `styles/ResistorCombos.module.css`), checks in `scripts/harness/resistor/` (`npm run check`, `npm run ui`).
 - `tsconfig` uses `"module": "node16"`, so our own files count as CommonJS and the ES-module-only add-ons of three.js
   (`three/examples/jsm/...`) can only be loaded with `await import(...)`, or imported as types with
   `import type ... with { 'resolution-mode': 'import' }`. A dynamic import of one of our own files needs

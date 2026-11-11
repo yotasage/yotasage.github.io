@@ -1,10 +1,12 @@
 // Drives /resistor/main in the installed Edge (or Chrome) and checks what a visitor does: typing, picking a reading,
 // stepping, clicking a value, the tolerance, the link and the theme. The dev server must be running (port 3020).
-//   node ui.mjs [base URL]        (npm run ui)
+//   tsx ui.mjs [base URL]        (npm run ui; tsx because ui-combos.mjs imports the library)
 
 import { readFileSync } from 'node:fs';
 
 import { chromium } from 'playwright-core';
+
+import { combinationChecks } from './ui-combos.mjs';
 
 const base = process.argv[2] ?? 'http://localhost:3020';
 let browser;
@@ -357,6 +359,10 @@ await third.close();
 }
 
 ok(errors.length === 0, `no errors in the console: ${errors.join(' | ')}`);
+await context.close();
+
+// The Combinations section, compared with the engine (ui-combos.mjs).
+await combinationChecks({ browser, base, ok });
 await browser.close();
 for (const failure of failures) console.log(`FAIL ${failure}`);
 console.log(`resistor page: ${passed} of ${passed + failures.length} checks passed`);

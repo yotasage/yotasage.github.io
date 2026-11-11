@@ -6,7 +6,7 @@
   "scripts": {
     "check": "tsx check.mjs",
     "shots": "node shots.mjs",
-    "ui": "node ui.mjs",
+    "ui": "tsx ui.mjs",
     "samples": "tsx samples.mjs",
     "tikz": "tsx tikz.mjs",
     "exports": "node exports.mjs",

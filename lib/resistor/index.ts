@@ -12,5 +12,6 @@ export * from './tikz';
 export * from './network';
 export * from './analyse';
 export * from './values';
+export * from './lists';
 export * from './combine';
 export * from './combineClient';

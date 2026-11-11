@@ -20,8 +20,9 @@ Library only, nothing on the page yet. Exported by `lib/resistor/index.ts`, exce
 ## Value lists (`values.ts`)
 
 - `seriesList(id, min = 1, max = 1e7)`; `cleanValues(values)` (positive, sorted, each once).
-- `parseValueList(text)` → `{ values, rejected, duplicates }`. Commas, semicolons, spaces and lines separate, so
-  `4,7k` is two entries (say so by the field) and `4.7 kΩ` is one. 472 is 472 Ω; markings and colours are rejected.
+- `parseValueList(text)` → `{ values, rejected, duplicates, entries }`. Commas, semicolons, spaces and lines separate;
+  S3b added the decimal comma (`4,7k 10k`, see [notes-S3b.md](notes-S3b.md)). `4.7 kΩ` is one entry. 472 is 472 Ω;
+  markings and colours are rejected.
 
 ## Search (`combine.ts`)
 

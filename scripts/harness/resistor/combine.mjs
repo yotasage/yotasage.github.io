@@ -205,6 +205,37 @@ export async function combineChecks(lib, { section, ok, eq }) {
     eq(JSON.stringify(parsed.values), '[0.01,0.1,472,1500,2200000,3300000]', 'digits are values, not markings; units may stand apart');
     eq(JSON.stringify(parsed.rejected), '["01C","yellow","-5"]', 'markings, colours and negative numbers are reported');
     eq(JSON.stringify(cleanValues([3, 1, 0.1 + 0.2, 0.3, -1, 0, NaN, Infinity, 1])), '[0.3,1,3]', 'cleanValues sorts, drops and merges');
+
+    // The decimal comma in a pasted list, and what the entries say.
+    const { listToLink, listFromLink, listsFromStorage, listsToStorage, LIST_PRESETS, presetText, withoutEntry, listReach, parseQuantity, formatQuantity, formatCount, sameValues } = lib;
+    const readAs = (text) => JSON.stringify(parseValueList(text).values);
+    eq(readAs('4,7k 10k 22k'), '[4700,10000,22000]', 'a decimal comma in a list separated by spaces');
+    eq(readAs('10k,22k,47k'), '[10000,22000,47000]', 'commas after letters separate');
+    eq(readAs('10,22,47'), '[10,22,47]', 'three numbers with commas are three values');
+    eq(readAs('4,7k, 10k, 22k'), '[4700,10000,22000]', 'a comma with a space separates, one without is a decimal comma');
+    eq(readAs('4,7k'), '[4700]', '4,7k alone is 4.7 kΩ');
+    eq(readAs('4,7 kΩ; 1,5 MΩ'), '[4700,1500000]', 'a decimal comma with a unit apart');
+    eq(readAs('10,22'), '[10,22]', '10,22 alone is two values, as 10.22 Ω is no standard value');
+    eq(readAs('100,1k,10k'), '[100,1000,10000]', 'a list of decades separated by commas');
+    eq(readAs('4,7k,10k,22k'), '[4700,10000,22000]', '4,7k before commas that separate: 4 Ω is no standard value');
+    eq(readAs('1,5\n2,2\n3,3'), '[1.5,2.2,3.3]', 'decimal commas in a list of lines');
+    eq(readAs('2,2'), '[2.2]', '2,2 alone is 2.2 Ω');
+    const entries = parseValueList('4,7k 10k foo 10k').entries;
+    eq(entries.map((e) => `${e.text}=${e.ohms}${e.duplicate ? '!' : ''}`).join(' '), '4,7k=4700 10k=10000 foo=null 10k=10000!', 'the entries of a list as they were written and read');
+    eq(withoutEntry('4,7k 10k foo 10k', entries[2].start, entries[2].end), '4,7k 10k 10k', 'an entry is taken out of the text');
+    eq(withoutEntry('10k,22k,47k', 4, 7), '10k 47k', 'an entry between commas is taken out');
+    // A list in a link and in the browser.
+    const kit = cleanValues(seriesList('E96', 0.1, 1e7).concat([0.001, 0.0047, 12345.678, 1e9]));
+    ok(sameValues(listFromLink(listToLink(kit.slice(0, 300))), kit.slice(0, 300)) && sameValues(listFromLink(listToLink(kit.slice(-300))), kit.slice(-300)), 'a list comes back from its form in a link');
+    eq(listToLink([0.47, 10, 4700, 1e6, 1.5e6]), 'R47_10R_4k7_1M_1M5', 'the form of a list in a link');
+    eq(JSON.stringify(listsFromStorage(listsToStorage([{ id: 'a', name: 'Kit', text: '10k 22k' }]))), '[{"id":"a","name":"Kit","text":"10k 22k"}]', 'lists come back from storage');
+    ok(listsFromStorage('{broken').length === 0 && listsFromStorage(null).length === 0 && listsFromStorage('{"lists":[{"id":1}]}').length === 0, 'storage that cannot be read gives no lists');
+    eq(LIST_PRESETS.map((p) => parseValueList(presetText(p)).values.length).join(' '), '31 61 121 481', 'the presets are the series from 10 Ω to 1 MΩ');
+    ok(sameValues(parseValueList(presetText(LIST_PRESETS[2])).values, seriesList('E24', 10, 1e6)) && presetText(LIST_PRESETS[1]).split('\n').length === 6, 'a preset reads back as its series, a decade on a line');
+    eq(JSON.stringify(listReach([10, 100, 1000], 2, 'mixed', true)), '{"low":5,"high":2000}', 'what two parts of a list can reach');
+    eq(JSON.stringify(listReach([10, 100, 1000], 3, 'series', false)), '{"low":10,"high":1110}', 'the reach in series with each value once');
+    eq([parseQuantity('12'), parseQuantity('3,3 V'), parseQuantity('20m'), parseQuantity('20 mA'), parseQuantity('1.5k'), parseQuantity('x'), parseQuantity('0')].join(' '), '12 3.3 0.02 0.02 1500  ', 'a voltage or a current as typed');
+    eq([formatQuantity(0.2043, 'W'), formatQuantity(0.0191, 'A'), formatQuantity(12, 'V'), formatQuantity(0.9999, 'W'), formatCount(169), formatCount(1.8e9)].join(', '), '204 mW, 19.1 mA, 12 V, 1 W, 169, 1.8 billion', 'quantities and counts as text');
   }
 
   // -------------------------------------------------------------------------------------------------------------
