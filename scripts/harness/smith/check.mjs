@@ -6,6 +6,7 @@ import * as importedQuantity from '../../../lib/quantity.ts';
 import * as importedComplex from '../../../lib/smith/complex.ts';
 import * as importedConvert from '../../../lib/smith/convert.ts';
 import { runNetworkChecks } from './check-network.mjs';
+import { runGeometryChecks } from './check-geometry.mjs';
 
 const quantity = importedQuantity.default ?? importedQuantity;
 const cx = importedComplex.default ?? importedComplex;
@@ -374,6 +375,10 @@ section('quantity: writing');
 // ---------------------------------------------------------------------------------------------------------------
 // Parts and network (M1.2): check-network.mjs, with the same counters.
 runNetworkChecks({ section, ok, near, printed, random });
+
+// ---------------------------------------------------------------------------------------------------------------
+// Geometry (M1.3): check-geometry.mjs, with the same counters.
+runGeometryChecks({ section, ok, random });
 
 // ---------------------------------------------------------------------------------------------------------------
 const total =[...groups.values()].reduce((a, b) => a + b, 0);

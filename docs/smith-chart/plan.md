@@ -98,7 +98,7 @@ the owner confirms which of their extras are built. The step that finishes updat
 | M | Name | Size | Result | Status |
 |---|---|---|---|---|
 | M0 | Research and set-up | M | Plan reviewed (M0.1), verified facts and sources, spike decisions | M0.1 done 2026-11-11, notes in [notes-M0.1.md](notes-M0.1.md); M0.2 done 2026-11-11, notes in [notes-M0.2.md](notes-M0.2.md); M0.3 done 2026-11-11, notes in [notes-M0.3.md](notes-M0.3.md) |
-| M1 | Engine | L | `lib/smith/` with a harness; no UI | M1.1 done 2026-11-11, notes in [notes-M1.1.md](notes-M1.1.md); M1.2 done 2026-11-11 (parts and network; 10 parts at 2,000 frequencies in 0.54 ms), notes in [notes-M1.2.md](notes-M1.2.md) |
+| M1 | Engine | L | `lib/smith/` with a harness; no UI | M1.1 done 2026-11-11, notes in [notes-M1.1.md](notes-M1.1.md); M1.2 done 2026-11-11 (parts and network; 10 parts at 2,000 frequencies in 0.54 ms), notes in [notes-M1.2.md](notes-M1.2.md); M1.3 done 2026-11-11 (geometry: arcs, loci, projection; a drag frame of 10 parts in 1.6 µs), notes in [notes-M1.3.md](notes-M1.3.md) |
 | M2 | Chart | L | Labelled, zoomable Z/Y/ZY chart on its own route, touch included | not started |
 | M3 | Circuit editor, both ways, and first theory | L | **First usable tool**: card on the main page, Theory section with the first topics | not started |
 | M4 | Find the missing value | M | Geometric solver and suggestions for one or two unknowns | not started |
@@ -126,13 +126,13 @@ Suggested; a step that renames or adds a file updates this table with one line p
 | `lib/smith/convert.ts` | `gammaFromZ`, `zFromGamma`, `gammaFromY`, `yFromGamma`, `invert`, the same in ohms and siemens (`gammaFromImpedance`, `impedanceFromGamma`, `gammaFromAdmittance`, `admittanceFromGamma`), batch `gammaFromZN`, `zFromGammaN`; `gammaMag`, `gammaAngle`, `vswr`, `magFromVswr`, `returnLoss`, `magFromReturnLoss`, `mismatchLoss`, `reflectedPower`, `deliveredPower`, `qFromZ`, `qFromGamma`; never NaN, ∞ is (Infinity, 0) |
 | `lib/smith/parts.ts` | Part kinds `SERIES_R` … `QUARTER`, `Part`, `packParts`; `ADDS`, `REACH_LO`, `REACH_HI`, `noEffect`; `added`, `valueFor` (value ↔ normalised r, x, g, b, turns); `turnsFromMetres`, `metresFromTurns`; `sincosTurns`; `partMatrix` (normalised ABCD, bounded scaling), `lumped` |
 | `lib/smith/network.ts` | (V, I) nodes from the load: `loadNode`, `applyPart`, `evaluate`, `nodeGamma`, `inputGamma`, `sweep` (allocation-free), `nodeMetrics`, `allMetrics` (`M_GR` … `M_YI`), `Circuit`, `evaluateCircuit`; the degenerate rule |
-| `lib/smith/geometry.ts` | Möbius maps, part loci as circles, arcs, projection of a point onto a locus |
+| `lib/smith/geometry.ts` | Möbius maps (`partMobius`, `mobApply`, `mobCompose`, `mobInvert`), generalised circles (`circleThrough`, `circleImage`, `circleCentre`, `projectOnCircle`), part loci (`partLocus`, `nodeLocus`, `locusPoint`, `locusValue`, `project`), arcs (`partArcs`, `ARC_*`, `arcFlags`), `trackLength`, `samplePolyline` |
 | `lib/smith/equations.ts` | Equation text → trees, TeX printer, evaluator, the registry |
 | `lib/smith/goal.ts`, `solve.ts`, `suggest.ts` | Goals, the geometric solver and its fallback, suggestions |
 | `lib/smith/state.ts` | The circuit in the link |
 | `components/Smith/` | `SmithTool`, `Chart`, `Grid`, `Strip`, `PartCard`, `Readout`, `Theory`, `SolvePanel`, `MathPanel`, … |
 | `pages/smith-chart/main.tsx` | The route: `<Head>`, `getStaticProps` loads `references.bib`, renders `SmithTool` |
-| `scripts/harness/smith/` | `check.mjs` (engine; from M1.1: complex, special points, facts-cases C1–C11, round trips, NaN fuzz, quantity; from M1.2 with `check-network.mjs`: C12–C28, the impedance-arithmetic second computation, 0/∞ fuzz, directions, lines, sweep timing), `ui*.mjs` (page), `shots*.mjs` (screenshots), `timing.mjs` (budgets) |
+| `scripts/harness/smith/` | `check.mjs` (engine; from M1.1: complex, special points, facts-cases C1–C11, round trips, NaN fuzz, quantity; from M1.2 with `check-network.mjs`: C12–C28, the impedance-arithmetic second computation, 0/∞ fuzz, directions, lines, sweep timing; from M1.3 with `check-geometry.mjs`: maps, circles, arcs, directions, values, projection, fuzz, sampler, drag-frame timing), `ui*.mjs` (page), `shots*.mjs` (screenshots), `timing.mjs` (budgets) |
 
 ## Running a step
 
