@@ -5,6 +5,7 @@
 import * as importedQuantity from '../../../lib/quantity.ts';
 import * as importedComplex from '../../../lib/smith/complex.ts';
 import * as importedConvert from '../../../lib/smith/convert.ts';
+import { runNetworkChecks } from './check-network.mjs';
 
 const quantity = importedQuantity.default ?? importedQuantity;
 const cx = importedComplex.default ?? importedComplex;
@@ -371,7 +372,11 @@ section('quantity: writing');
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-const total = [...groups.values()].reduce((a, b) => a + b, 0);
+// Parts and network (M1.2): check-network.mjs, with the same counters.
+runNetworkChecks({ section, ok, near, printed, random });
+
+// ---------------------------------------------------------------------------------------------------------------
+const total =[...groups.values()].reduce((a, b) => a + b, 0);
 for (const f of failures.slice(0, 200)) console.log(`FAIL ${f}`);
 if (failures.length > 200) console.log(`… and ${failures.length - 200} more failures`);
 console.log([...groups].map(([name, count]) => `${name} ${count}`).join(' · '));

@@ -52,7 +52,7 @@ counter-clockwise. A line turns clockwise (above). engine.md §1 is right as wri
 | 9 | x circle: centre (1, 1/x), radius 1/\|x\|; x = 0 is the real axis | derived §3 item 9 |
 | 10 | g circle: centre (−g/(1+g), 0), radius 1/(1+g) | derived §3 item 10 |
 | 11 | b circle: centre (−1, −1/b), radius 1/\|b\|; b = 0 is the real axis | derived §3 item 11 |
-| 12 | Line circle about its own Zc: \|Γ_Zc\| constant, centre 0 in the Zc chart. In a chart of reference Z01 a line of Zc = Z02 draws a circle with, for B = (Z01 − Z02)/(Z01 + Z02) and Γ_L in the Z02 chart, centre C = (B − 1/B)/(1 − \|BΓ_L\|²) + 1/B and radius \|(B² − 1)Γ_L/(1 − \|BΓ_L\|²)\| (real B, so the centre is on the real axis) | [S3] §3.5 eq:11, eq:14, eq:15 (check of the centre: case 12 in facts-cases.md) |
+| 12 | Line circle about its own Zc: \|Γ_Zc\| constant, centre 0 in the Zc chart. In a chart of reference Z01 a line of Zc = Z02 draws a circle with, for B = (Z02 − Z01)/(Z02 + Z01) (corrected in M1.2: the line's impedance first, so B = −0.2 in case 12) and Γ_L in the Z02 chart, centre C = (B − 1/B)/(1 − \|BΓ_L\|²) + 1/B and radius \|(B² − 1)Γ_L/(1 − \|BΓ_L\|²)\| (real B, so the centre is on the real axis) | [S3] §3.5 eq:11, eq:14, eq:15 (check of the centre: case 12 in facts-cases.md) |
 | 13 | VSWR = (1 + \|Γ\|)/(1 − \|Γ\|), \|Γ\| = (VSWR − 1)/(VSWR + 1); Z_max = Z0·VSWR, Z_min = Z0/VSWR | [E] §3.14 (boxed); [S2] §2.3 eq:23, eq:24, eq:31 |
 | 14 | Return loss RL = 10 log10(P_inc/P_ref) = −20 log10\|Γ\| dB, positive for a passive load | [S3] §2.8 eq:1, eq:2 |
 | 15 | Power: P_ref = \|Γ\|²·P_inc, P_load = (1 − \|Γ\|²)·P_inc | [E] §3.20 (boxed); [S2] §2.3 Example 4 |
