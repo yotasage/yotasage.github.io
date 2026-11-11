@@ -90,7 +90,7 @@ export function runGridChecks({ section, ok, random }) {
       const turn = (t) => { const ax = S[0] - cx, ay = S[1] - cy, c = Math.cos(t), s = Math.sin(t); return [cx + ax * c - ay * s, cy + ax * s + ay * c]; };
       const e1 = turn(sw), m1 = turn(sw / 2);
       ok(Math.hypot(e1[0] - E[0], e1[1] - E[1]) <= 1e-9 && Math.hypot(m1[0] - A[o + MX], m1[1] - A[o + MY]) <= 1e-9, `${what}: sweep of ${f} ${v} turns S into E`);
-      ok(g.flags[a] === ((Math.abs(sw) > Math.PI ? 2 : 0) | (sw > 0 ? 1 : 0)), `${what}: flags of ${f} ${v}`);
+      ok(g.flags[a] === ((Math.abs(sw) > Math.PI ? 2 : 0) | (sw < 0 ? 1 : 0)), `${what}: flags of ${f} ${v}`);
       // the point at the middle value lies on the arc (within the sweep from S)
       const sg = f >= FAM_G ? -1 : 1, mid = 0.5 * (g.ends[2 * a] + g.ends[2 * a + 1]);
       const P = f === FAM_R || f === FAM_G ? gam(v, mid) : gam(mid, v);

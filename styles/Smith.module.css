@@ -1,0 +1,230 @@
+/* Smith chart. Every colour is a variable on .root; the themes are the two blocks below (after Resistor.module.css).
+   M2.3 makes the design pass; the grid colours here are a first quiet set: Z lines in ink, Y lines in the accent. */
+
+.root {
+  --bg: #f6f4ee;
+  --field: #fffefb;
+  --raise: #ece9e0;
+  --ink: #1d1c19;
+  --ink-2: #55524b;
+  --ink-3: #736f67;
+  --rule: #e3dfd5;
+  --rule-strong: #cbc6ba;
+  --accent: #0b6a5f;
+  --accent-soft: rgba(11, 106, 95, 0.1);
+
+  --grid-axis: #6e6a61;
+  --grid-z-major: rgba(29, 28, 25, 0.42);
+  --grid-z-minor: rgba(29, 28, 25, 0.15);
+  --grid-y-major: rgba(11, 106, 95, 0.55);
+  --grid-y-minor: rgba(11, 106, 95, 0.2);
+  --grid-scale: #8d887d;
+  --grid-y-ink: #0b6a5f;
+
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-num: ui-monospace, 'Cascadia Mono', 'Cascadia Code', 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+  --quick: 120ms;
+
+  color-scheme: light;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (prefers-color-scheme: dark) {
+  .root:not([data-theme='light']) {
+    --bg: #2b2b2b;
+    --field: #313131;
+    --raise: #383836;
+    --ink: #edebe5;
+    --ink-2: #b7b4ab;
+    --ink-3: #8f8c83;
+    --rule: #3a3a38;
+    --rule-strong: #4d4d4a;
+    --accent: #72d1c0;
+    --accent-soft: rgba(114, 209, 192, 0.13);
+    --grid-axis: #a19e95;
+    --grid-z-major: rgba(237, 235, 229, 0.42);
+    --grid-z-minor: rgba(237, 235, 229, 0.14);
+    --grid-y-major: rgba(114, 209, 192, 0.55);
+    --grid-y-minor: rgba(114, 209, 192, 0.19);
+    --grid-scale: #8f8c83;
+    --grid-y-ink: #72d1c0;
+    color-scheme: dark;
+  }
+}
+
+.root[data-theme='dark'] {
+  --bg: #2b2b2b;
+  --field: #313131;
+  --raise: #383836;
+  --ink: #edebe5;
+  --ink-2: #b7b4ab;
+  --ink-3: #8f8c83;
+  --rule: #3a3a38;
+  --rule-strong: #4d4d4a;
+  --accent: #72d1c0;
+  --accent-soft: rgba(114, 209, 192, 0.13);
+  --grid-axis: #a19e95;
+  --grid-z-major: rgba(237, 235, 229, 0.42);
+  --grid-z-minor: rgba(237, 235, 229, 0.14);
+  --grid-y-major: rgba(114, 209, 192, 0.55);
+  --grid-y-minor: rgba(114, 209, 192, 0.19);
+  --grid-scale: #8f8c83;
+  --grid-y-ink: #72d1c0;
+  color-scheme: dark;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.home {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-left: -7px;
+  border-radius: 6px;
+  color: var(--ink-2);
+  transition: color var(--quick), background var(--quick);
+}
+
+.home:hover {
+  color: var(--ink);
+  background: var(--raise);
+}
+
+.title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 22px;
+  padding: 12px 16px;
+  font-size: 14px;
+}
+
+.modes {
+  display: inline-flex;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--rule-strong);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.modes label {
+  position: relative;
+  padding: 4px 13px;
+  cursor: pointer;
+  color: var(--ink-2);
+}
+
+.modes label + label {
+  border-left: 1px solid var(--rule-strong);
+}
+
+.modes input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.modes label:has(input:checked) {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.modes label:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-2);
+}
+
+.field input[type='range'] {
+  width: 150px;
+  accent-color: var(--accent);
+}
+
+.field select {
+  font: inherit;
+  color: var(--ink);
+  background: var(--field);
+  border: 1px solid var(--rule-strong);
+  border-radius: 6px;
+  padding: 3px 6px;
+  max-width: 190px;
+}
+
+.num {
+  min-width: 6ch;
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.chart {
+  position: relative;
+  height: clamp(300px, min(80vh, 100vw + 120px), 920px);
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  overflow: hidden;
+}
+
+.grid {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  will-change: transform;
+}
+
+.grid path {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+}
+
+.grid [data-part='axis'] { stroke: var(--grid-axis); stroke-width: 1.25px; }
+.grid [data-part='z-major'] { stroke: var(--grid-z-major); stroke-width: 1px; }
+.grid [data-part='z-minor'] { stroke: var(--grid-z-minor); stroke-width: 1px; }
+.grid [data-part='y-major'] { stroke: var(--grid-y-major); stroke-width: 1px; }
+.grid [data-part='y-minor'] { stroke: var(--grid-y-minor); stroke-width: 1px; }
+.grid [data-part='scale'] { stroke: var(--grid-scale); stroke-width: 1px; }
+
+.grid text {
+  font-family: var(--font-num);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-anchor: middle;
+  dominant-baseline: central;
+  fill: var(--ink-2);
+}
+
+.grid text[data-kind='y'] { fill: var(--grid-y-ink); }
+.grid text[data-kind='scale'] { fill: var(--ink-3); }

@@ -4,7 +4,8 @@
   "description": "Checks of lib/smith and lib/quantity for the Smith chart tool. Not part of the site.",
   "type": "module",
   "scripts": {
-    "check": "tsx check.mjs"
+    "check": "tsx check.mjs",
+    "ui": "tsx ui-grid.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.50.0",

@@ -31,8 +31,8 @@ has centre B(1 − ρ²)/(1 − B²ρ²) and radius ρ(1 − B²)/(1 − B²ρ²
 S (`ARC_SX/SY`) = node k, E = node k + 1 (copied from network.ts, so the path is continuous), centre C, radius R,
 `ARC_SWEEP` the turn from S to E (> 0 anticlockwise in the model, |sweep| < 2π), `ARC_TURNS` full circles first
 (lines and λ/4 longer than λ/2 at f), M the point halfway along the sweep. Drawing: per full turn two half-circle `A`
-commands, then `A R R 0 large sweep E` with `arcFlags` (bit 1 large-arc = |sweep| > π, bit 0 sweep-flag = sweep > 0,
-which already accounts for the y flip). R = ∞ (series R or shunt R on the real axis, Zt of 0 or ∞): a straight
+commands, then `A R R 0 large sweep E` with `arcFlags` (bit 1 large-arc = |sweep| > π, bit 0 sweep-flag = sweep < 0,
+which already accounts for the y flip; M2.1b corrected it from sweep > 0, which drew the other side of the chord). R = ∞ (series R or shunt R on the real axis, Zt of 0 or ∞): a straight
 segment; R = 0: a point. M2 should also draw a segment when R in pixels is huge. A stub's arc is its b from 0 the
 short way (b = ±∞ is drawn as +∞, clockwise); λ/4 is its line of Zt from length 0.
 

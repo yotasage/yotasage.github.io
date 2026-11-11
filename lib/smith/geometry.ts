@@ -495,11 +495,12 @@ export const ARC_STRIDE = 11;
 
 /**
  * SVG flags of an arc after the flip to SVG's downward y: bit 1 large-arc (|sweep| > π), bit 0 sweep-flag (1 when the
- * model sweep is anticlockwise, which is clockwise on screen). Full turns are drawn before as pairs of half circles.
+ * model sweep is clockwise: the flip keeps how the arc looks, and a clockwise turn on screen is SVG's positive angle
+ * direction, sweep-flag 1). Full turns are drawn before as pairs of half circles.
  */
 export function arcFlags(arcs: Vec, a: number): number {
   const s = arcs[a + ARC_SWEEP];
-  return (Math.abs(s) > Math.PI ? 2 : 0) | (s > 0 ? 1 : 0);
+  return (Math.abs(s) > Math.PI ? 2 : 0) | (s < 0 ? 1 : 0);
 }
 
 function lineArc(arcs: Vec, a: number, kind: number, value: number, zc: number, sr: number, si: number, z0: number, f: number, f0: number): void {

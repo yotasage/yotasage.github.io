@@ -251,10 +251,10 @@ export function runGeometryChecks({ section, ok, random }) {
       ok(tried > 900 && agree === tried, `${KIND_NAMES[kind]}: the arc turns the way the part moves the point (${agree} of ${tried})`);
       ok(fixed === tried, `${KIND_NAMES[kind]}: the direction of engine.md §1 (${fixed} of ${tried})`);
     }
-    // SVG flags after the flip: an anticlockwise model sweep is clockwise on screen (sweep-flag 1).
+    // SVG flags after the flip: an anticlockwise model sweep stays anticlockwise on screen (sweep-flag 0).
     const fa = new Float64Array(ARC_STRIDE);
     fa[ARC_SWEEP] = 0.5; const f1 = arcFlags(fa, 0); fa[ARC_SWEEP] = -4; const f2 = arcFlags(fa, 0);
-    ok(f1 === 1 && f2 === 2, `arcFlags: small anticlockwise ${f1}, large clockwise ${f2}`);
+    ok(f1 === 0 && f2 === 3, `arcFlags: small anticlockwise ${f1}, large clockwise ${f2}`);
   }
 
   // ---------------------------------------------------------------------------------------------------------------
