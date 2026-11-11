@@ -58,6 +58,8 @@ parts at 2,000 frequencies recorded.
   geometry, label placement) and its SVG: Z, Y and ZY modes on one Γ plane (D13), labelled circles at the usual values,
   **density that adapts to the zoom**, perimeter scales (wavelengths towards the generator and the load, angle of Γ),
   light and dark, strokes that do not thicken with zoom, any aspect ratio.
+  Split in two: **M2.1a** the framework-free `lib/smith/grid.ts` and its harness (geometry, density, labels, scales;
+  done 2026-11-12), **M2.1b** the grid's SVG layer and a bare route to look at it.
 - **M2.2 Interaction.** Pointer Events: wheel and pinch zoom about the pointer, drag to pan, fit and reset, keyboard
   (arrows pan, plus and minus zoom); the touch decisions of M0.3(d) and D14 (how the page scrolls past the chart, tap
   for the readout); the cursor readout of z, y, Γ, VSWR and return loss from the engine, in ohms; the frame loop of

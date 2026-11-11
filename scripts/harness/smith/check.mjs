@@ -8,6 +8,7 @@ import * as importedConvert from '../../../lib/smith/convert.ts';
 import { runNetworkChecks } from './check-network.mjs';
 import { runGeometryChecks } from './check-geometry.mjs';
 import { runEquationChecks } from './check-equations.mjs';
+import { runGridChecks } from './check-grid.mjs';
 
 const quantity = importedQuantity.default ?? importedQuantity;
 const cx = importedComplex.default ?? importedComplex;
@@ -384,6 +385,10 @@ runGeometryChecks({ section, ok, random });
 // ---------------------------------------------------------------------------------------------------------------
 // Equations (M1.4): check-equations.mjs, with the same counters.
 runEquationChecks({ section, ok, random });
+
+// ---------------------------------------------------------------------------------------------------------------
+// Grid (M2.1a): check-grid.mjs, with the same counters.
+runGridChecks({ section, ok, random });
 
 // ---------------------------------------------------------------------------------------------------------------
 const total =[...groups.values()].reduce((a, b) => a + b, 0);
