@@ -1,0 +1,13 @@
+{
+  "name": "smith-harness",
+  "private": true,
+  "description": "Checks of lib/smith and lib/quantity for the Smith chart tool. Not part of the site.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx check.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.50.0",
+    "tsx": "^4.19.0"
+  }
+}

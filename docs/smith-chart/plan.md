@@ -98,7 +98,7 @@ the owner confirms which of their extras are built. The step that finishes updat
 | M | Name | Size | Result | Status |
 |---|---|---|---|---|
 | M0 | Research and set-up | M | Plan reviewed (M0.1), verified facts and sources, spike decisions | M0.1 done 2026-11-11, notes in [notes-M0.1.md](notes-M0.1.md); M0.2 done 2026-11-11, notes in [notes-M0.2.md](notes-M0.2.md); M0.3 done 2026-11-11, notes in [notes-M0.3.md](notes-M0.3.md) |
-| M1 | Engine | L | `lib/smith/` with a harness; no UI | not started |
+| M1 | Engine | L | `lib/smith/` with a harness; no UI | M1.1 done 2026-11-11, notes in [notes-M1.1.md](notes-M1.1.md) |
 | M2 | Chart | L | Labelled, zoomable Z/Y/ZY chart on its own route, touch included | not started |
 | M3 | Circuit editor, both ways, and first theory | L | **First usable tool**: card on the main page, Theory section with the first topics | not started |
 | M4 | Find the missing value | M | Geometric solver and suggestions for one or two unknowns | not started |
@@ -121,9 +121,9 @@ Suggested; a step that renames or adds a file updates this table with one line p
 
 | File | What |
 | --- | --- |
-| `lib/quantity.ts` | Shared number reading and writing (moved from `lib/resistor/lists.ts`, which re-exports it): SI prefixes, units, rounding with carry |
-| `lib/smith/complex.ts` | Complex arithmetic on plain numbers and typed arrays |
-| `lib/smith/convert.ts` | z, y, Γ conversions; metrics: VSWR, return loss, mismatch loss, Q |
+| `lib/quantity.ts` | Shared number reading and writing (moved from `lib/resistor/lists.ts`, which re-exports it): `readAmount(text, unit?, infinite?)`, `formatAmount(value, unit, digits)`, `SI_PREFIXES`; prefixes f to T, units Ω S H F Hz m W V A dB, `3e-9`, `4n7`, rounding with carry |
+| `lib/smith/complex.ts` | Complex arithmetic on (re, im) pairs into `out[o]`, no allocation: `cadd`, `csub`, `cmul`, `cdiv` (Smith's method), `cinv`, `cscale`, `cexpj`, `crotate`, `csqrt`, `cabs`, `carg`, interleaved `cmulN`, `cdivN`, `cabsN`; type `Vec` |
+| `lib/smith/convert.ts` | `gammaFromZ`, `zFromGamma`, `gammaFromY`, `yFromGamma`, `invert`, the same in ohms and siemens (`gammaFromImpedance`, `impedanceFromGamma`, `gammaFromAdmittance`, `admittanceFromGamma`), batch `gammaFromZN`, `zFromGammaN`; `gammaMag`, `gammaAngle`, `vswr`, `magFromVswr`, `returnLoss`, `magFromReturnLoss`, `mismatchLoss`, `reflectedPower`, `deliveredPower`, `qFromZ`, `qFromGamma`; never NaN, ∞ is (Infinity, 0) |
 | `lib/smith/parts.ts` | Part kinds, their ABCD matrices at a frequency, "no effect" values, reachable ranges |
 | `lib/smith/network.ts` | Ladder evaluation with (V, I) nodes and the degenerate rule |
 | `lib/smith/geometry.ts` | Möbius maps, part loci as circles, arcs, projection of a point onto a locus |
@@ -132,7 +132,7 @@ Suggested; a step that renames or adds a file updates this table with one line p
 | `lib/smith/state.ts` | The circuit in the link |
 | `components/Smith/` | `SmithTool`, `Chart`, `Grid`, `Strip`, `PartCard`, `Readout`, `Theory`, `SolvePanel`, `MathPanel`, … |
 | `pages/smith-chart/main.tsx` | The route: `<Head>`, `getStaticProps` loads `references.bib`, renders `SmithTool` |
-| `scripts/harness/smith/` | `check.mjs` (engine), `ui*.mjs` (page), `shots*.mjs` (screenshots), `timing.mjs` (budgets) |
+| `scripts/harness/smith/` | `check.mjs` (engine; from M1.1: complex, special points, facts-cases C1–C11, round trips, NaN fuzz, quantity), `ui*.mjs` (page), `shots*.mjs` (screenshots), `timing.mjs` (budgets) |
 
 ## Running a step
 
