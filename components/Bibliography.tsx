@@ -92,7 +92,7 @@ function Reference({ entry }: { entry: BibEntry }) {
   // Kept on one line, so 2026-10-29 does not break at a hyphen.
   const nowrap = (value: React.ReactNode) => value && <span className={styles.nowrap}>{value}</span>;
   const date = nowrap(text('date') ?? join([month, text('year')], ' '));
-  const pages = f.pages && `pp. ${text('pages')}`;
+  const pages = f.pages && `${/^\s*\d+\s*$/.test(f.pages) ? 'p.' : 'pp.'} ${text('pages')}`;
   const online = f.doi
     ? link(`https://doi.org/${f.doi.trim()}`, `doi: ${f.doi.trim()}`)
     : f.url && link(f.url.trim(), f.url.trim());
