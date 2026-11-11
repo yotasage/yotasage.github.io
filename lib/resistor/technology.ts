@@ -33,7 +33,7 @@ export const TECHNOLOGIES: Technology[] = [
   { id: 'thick-film', label: 'Thick film', tolerancePct: 1, tcrPpm: 100, tolerances: [1, 5], tcrs: [100, 200], note: 'Most chip resistors; ±200 ppm/K below 10 Ω' },
   { id: 'thin-film', label: 'Thin film', tolerancePct: 0.1, tcrPpm: 25, tolerances: [0.1, 2], tcrs: [5, 50], note: 'Precision chip resistors' },
   { id: 'metal-film', label: 'Metal film', tolerancePct: 1, tcrPpm: 50, tolerances: [0.1, 2], tcrs: [50, 100], note: 'Leaded resistors and MELF' },
-  { id: 'carbon-film', label: 'Carbon film', tolerancePct: 5, tcrPpm: 500, tolerances: [2, 10], tcrs: [200, 1000], note: 'Cheap leaded resistors' },
+  { id: 'carbon-film', label: 'Carbon film', tolerancePct: 5, tcrPpm: 500, tolerances: [2, 10], tcrs: [200, 1500], note: 'Cheap leaded resistors; the coefficient is negative' },
   { id: 'metal-oxide', label: 'Metal oxide', tolerancePct: 5, tcrPpm: 300, tolerances: [1, 5], tcrs: [75, 300], note: 'Leaded power resistors' },
   { id: 'foil', label: 'Metal foil', tolerancePct: 0.01, tcrPpm: 2, tolerances: [0.005, 0.1], tcrs: [0.2, 5], note: 'The most stable resistors' },
   { id: 'wirewound', label: 'Wirewound', tolerancePct: 0.1, tcrPpm: 20, tolerances: [0.005, 5], tcrs: [1, 20], note: 'Precision and power; inductive' },

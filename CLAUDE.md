@@ -114,8 +114,11 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   `components/Resistor/` (`ResistorTool.tsx` holds the state and the link, `view.ts` resolves what is drawn; `Combinations.tsx` with
   `combo.ts` for its link state and `ValueLists.tsx` for the visitor's lists; `DesignSection.tsx` with `design.ts` for its link
   state, the reading of its fields and its sentences, `DesignDetails.tsx` for an opened suggestion with the range chart and
-  `Schematic.tsx`), styles and theme variables in
-  `styles/Resistor.module.css` (the Combinations section in `styles/ResistorCombos.module.css`, the Design section in `styles/ResistorDesign.module.css`), checks in `scripts/harness/resistor/` (`npm run check`, `npm run ui`).
+  `Schematic.tsx`; `Theory.tsx` with `TheoryFigures.tsx` for the theory; the page cites from `references.bib`, loaded in
+  `getStaticProps` of `pages/resistor/main.tsx` into one `Bibliography` that `ResistorTool.tsx` hands to the sections, and
+  `docs/resistor/sources.md` says what each source may be cited for), styles and theme variables in
+  `styles/Resistor.module.css` (the Combinations section in `styles/ResistorCombos.module.css`, the Design section in
+  `styles/ResistorDesign.module.css`, the theory in `styles/ResistorTheory.module.css`), checks in `scripts/harness/resistor/` (`npm run check`, `npm run ui`).
 - `tsconfig` uses `"module": "node16"`, so our own files count as CommonJS and the ES-module-only add-ons of three.js
   (`three/examples/jsm/...`) can only be loaded with `await import(...)`, or imported as types with
   `import type ... with { 'resolution-mode': 'import' }`. A dynamic import of one of our own files needs

@@ -12,10 +12,14 @@ export function toleranceLetter(pct: number): string | undefined {
   return Object.keys(TOLERANCE_LETTERS).find((letter) => same(TOLERANCE_LETTERS[letter], pct));
 }
 
-// EIA-96 multiplier letters as powers of ten. The first letter of each power is the one written.
+// EIA-96 multiplier letters as powers of ten. The first letter of each power is the one written. S and R are as in
+// TT Electronics' TN004 (S with Y, R with X); other tables pair them the other way (docs/resistor/sources.md).
 const EIA96_LETTERS: [string, number][] = [
-  ['Z', -3], ['Y', -2], ['R', -2], ['X', -1], ['S', -1], ['A', 0], ['B', 1], ['H', 1], ['C', 2], ['D', 3], ['E', 4], ['F', 5],
+  ['Z', -3], ['Y', -2], ['S', -2], ['X', -1], ['R', -1], ['A', 0], ['B', 1], ['H', 1], ['C', 2], ['D', 3], ['E', 4], ['F', 5],
 ];
+// The two letters that makers do not agree on: the power of ten of the other reading.
+export const EIA96_DISPUTED: Record<string, number> = { S: -1, R: -2 };
+export const EIA96_DISPUTE_NOTE = 'Makers do not agree on the EIA-96 letters R and S: one of them is × 0.01 and the other × 0.1. Check the datasheet, or measure the part.';
 
 export type MarkingForm = 'link' | 'digits3' | 'digits4' | 'r' | 'milli' | 'eia96';
 
@@ -26,6 +30,8 @@ export interface MarkingReading {
   tolerance?: number;
   // One line on how the marking was read.
   how: string;
+  // The second reading of an EIA-96 code with R or S, the letters that makers pair differently.
+  alternative?: boolean;
 }
 
 function digitsReading(digits: string): MarkingReading {
@@ -66,10 +72,10 @@ export function decodeMarking(marking: string): MarkingReading[] {
     out.push({ form: 'r', ohms: Number(`${m[1] || '0'}.${m[2] || '0'}`), how: 'R marks the decimal point of a value in ohms' });
   }
 
-  // Milliohms: L is IEC's letter for milli (5L0); shunt makers also use M (1M50).
+  // Milliohms: Vishay marks them with L as the decimal point (5L0, 10L0); shunt makers also use M (1M50).
   m = code.match(/^(\d*)L(\d*)$/);
   if (m && code.length >= 2 && code.length <= 5) {
-    out.push({ form: 'milli', ohms: shift10(Number(`${m[1] || '0'}.${m[2] || '0'}`), -3), how: 'L marks the decimal point of a value in milliohms' });
+    out.push({ form: 'milli', ohms: shift10(Number(`${m[1] || '0'}.${m[2] || '0'}`), -3), how: 'L marks the decimal point of a value in milliohms, as Vishay marks low values' });
   }
   m = code.match(/^(\d*)M(\d+)$/);
   if (m && code.length >= 3 && code.length <= 5) {
@@ -85,11 +91,20 @@ export function decodeMarking(marking: string): MarkingReading[] {
   if (m && Number(m[1]) >= 1 && Number(m[1]) <= 96) {
     const mantissa = series('E96').mantissas[Number(m[1]) - 1];
     const exp = EIA96_LETTERS.find(([letter]) => letter === m[2])[1];
+    const other = EIA96_DISPUTED[m[2]];
     out.push({
       form: 'eia96',
       ohms: Number(`${mantissa}e${exp}`),
-      how: `EIA-96: ${m[1]} is the E96 value ${mantissa}, ${m[2]} is × ${pow10Text(exp)}${m[2] === 'F' ? ' (here F is a multiplier, not the tolerance letter)' : ''}`,
+      how: `EIA-96: ${m[1]} is the E96 value ${mantissa}, ${m[2]} is × ${pow10Text(exp)}${m[2] === 'F' ? ' (here F is a multiplier, not the tolerance letter)' : ''}${other !== undefined ? ' in the usual reading' : ''}`,
     });
+    if (other !== undefined) {
+      out.push({
+        form: 'eia96',
+        ohms: Number(`${mantissa}e${other}`),
+        how: `EIA-96 as other makers use ${m[2]}: ${m[1]} is the E96 value ${mantissa}, ${m[2]} is × ${pow10Text(other)}`,
+        alternative: true,
+      });
+    }
   }
   return out;
 }
@@ -173,7 +188,7 @@ export function encodeMarkings(ohms: number): Markings {
 
   if (ohms < 1) {
     const milli = pointCode(shift10(ohms, 3), 2, 'L') ?? pointCode(shift10(ohms, 3), 3, 'L');
-    if (milli) { out.milli = milli; out.how.milli = 'L is the decimal point of a value in milliohms'; }
+    if (milli) { out.milli = milli; out.how.milli = 'L is the decimal point of a value in milliohms (Vishay)'; }
   }
   return out;
 }

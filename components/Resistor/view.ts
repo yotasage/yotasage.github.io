@@ -38,7 +38,8 @@ export function viewFromParams(params: URLSearchParams): View {
   if (part === 'axial' || part === 'chip') view.type = part;
   const bands = Number(params.get('bands'));
   if (bands >= 3 && bands <= 6 && Number.isInteger(bands)) view.bands = bands as BandCount;
-  const body = AXIAL_BODIES.findIndex((b) => String(b.power) === params.get('body'));
+  // 0.125 is the smallest body in links made before its rating was corrected to 1/6 W.
+  const body = params.get('body') === '0.125' ? 0 : AXIAL_BODIES.findIndex((b) => String(b.power) === params.get('body'));
   if (body >= 0) view.body = body;
   if (BODY_COATS.some((c) => c.id === params.get('coat'))) view.coat = params.get('coat');
   if (CHIP_SIZES.some((c) => c.imperial === params.get('size'))) view.size = params.get('size');

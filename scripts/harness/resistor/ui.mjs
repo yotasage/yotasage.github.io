@@ -8,6 +8,7 @@ import { chromium } from 'playwright-core';
 
 import { combinationChecks } from './ui-combos.mjs';
 import { designChecks } from './ui-design.mjs';
+import { theoryChecks } from './ui-theory.mjs';
 
 const base = process.argv[2] ?? 'http://localhost:3020';
 let browser;
@@ -366,6 +367,8 @@ await context.close();
 await combinationChecks({ browser, base, ok });
 // The Design section, compared with the engine (ui-design.mjs).
 await designChecks({ browser, base, ok });
+// The Theory and References sections, the citations and the EIA-96 letters R and S (ui-theory.mjs).
+await theoryChecks({ browser, base, ok });
 await browser.close();
 for (const failure of failures) console.log(`FAIL ${failure}`);
 console.log(`resistor page: ${passed} of ${passed + failures.length} checks passed`);

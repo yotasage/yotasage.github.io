@@ -154,7 +154,7 @@ export default function DrawingSection({ resolved: r, drawStyle, onStyle, onChan
                 ))}
               </div>
             </div>
-            <p className={styles.caption}>Body sizes are typical. The size does not fix the rating: modern metal film in the 1/4 W body is often rated higher.</p>
+            <p className={styles.caption}>The bodies are those of a carbon film series; sizes differ a little by maker. The size does not fix the rating: a metal film part in the 1/4 W body is rated 0.6 W. The sources are with the table in <a href="#reference" className={styles.textLink}>Reference</a>.</p>
           </>
         ) : (
           <>

@@ -6,6 +6,7 @@ import {
   sameValues, series, seriesList, startSuggest, stopSuggestWorker, suggestPlace, technology, usualSeries,
 } from '../../lib/resistor';
 import styles from '../../styles/Resistor.module.css';
+import Bibliography from '../Bibliography';
 import combos from '../../styles/ResistorCombos.module.css';
 import css from '../../styles/ResistorDesign.module.css';
 import Circuit from './Circuit';
@@ -13,7 +14,7 @@ import { RangeField } from './Combinations';
 import DesignDetails from './DesignDetails';
 import Schematic from './Schematic';
 import {
-  Design as DesignState, FAMILIES, Field, MAX_TEMPERATURES, PAIR_LEG_LIMIT, TEMPERATURE_LIMITS, VARIANTS, answerText, candidateText,
+  Design as DesignState, FAMILIES, Field, MAX_TEMPERATURES, PAIR_LEG_LIMIT, TEMPERATURE_LIMITS, VARIANTS, answerText, candidateText, unbroken,
   cleanTemperatures, designFields, errorText, designOptions, designRange, fieldText, isTwoLegs, legsText, outputText, parseDesign, spanText, specText,
   technologyFor, temperatureText, temperaturesText,
 } from './design';
@@ -26,6 +27,7 @@ interface Props {
   lists: { list: StoredList; parsed: ParsedList }[];
   // Makes a resistance the tool's current value.
   onValue: (ohms: number) => void;
+  bib: Bibliography;
 }
 
 // What the results on the page were found for; they stay, dimmed, while newer ones are on the way.
@@ -69,7 +71,7 @@ function Quantity({ field, text, error, onText, wide }: { field: Field; text: st
 }
 
 // The Design section: which resistors give a circuit its target, and whether it holds over tolerance and temperature.
-export default function DesignSection({ design, onDesign, lists, onValue }: Props) {
+export default function DesignSection({ design, onDesign, lists, onValue, bib }: Props) {
   const [shown, setShown] = useState<Shown | null>(null);
   const [busy, setBusy] = useState(false);
   const [place, setPlace] = useState<'worker' | 'page' | null>(null);
@@ -419,7 +421,7 @@ export default function DesignSection({ design, onDesign, lists, onValue }: Prop
           {answer && (
             <div className={css.answer} data-kind={answer.kind} data-testid="design-answer">
               {answer.kind === 'pass' ? <CheckIcon size={18} /> : <InfoIcon />}
-              <p>{answer.text}</p>
+              <p>{unbroken(answer.text)}</p>
               {answer.apply && (
                 <button type="button" className={combos.button} data-primary onClick={applySpec} data-testid="design-apply">
                   Use {specText(answer.apply)} parts{technologyFor(answer.apply, design.tech) !== design.tech ? ` (${technology(technologyFor(answer.apply, design.tech)).label.toLowerCase()})` : ''}
@@ -498,11 +500,11 @@ export default function DesignSection({ design, onDesign, lists, onValue }: Prop
               </p>
               <p className={styles.caption}>
                 <b>Worst case</b>: every resistor at the edge of its tolerance and of its TCR at once, each in the direction that moves the output furthest; nothing lies beyond it, and it alone decides inside or outside.{' '}
-                <b>RSS</b>, the root of the sum of the squares of each effect alone: the spread to expect when the parts deviate independently.
+                <b>RSS</b>, the root of the sum of the squares of each effect alone: the spread to expect when the parts deviate independently and normally {bib.cite('TISNVA112')}.
               </p>
               <p className={styles.caption}>
                 <b>Parts track</b> assumes that all resistors drift alike (same kind and lot, same temperature), which cancels in a divider and a gain; “apart by” is what is left between them.
-                The voltages and currents of the circuit are taken as exact. Power ratings are typical for a chip size and differ by maker.
+                The voltages and currents of the circuit are taken as exact. Power ratings are typical for a chip size and differ by maker {bib.cite('YageoRC')} {bib.cite('VishayCRCW')}.
               </p>
             </>
           )}

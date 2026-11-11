@@ -146,7 +146,7 @@ section('SMD markings');
 for (const [text, ohms, tol] of [
   ['472', 4700], ['101', 100], ['4992', 49900], ['4R7', 4.7], ['0R22', 0.22], ['R005', 0.005], ['68R0', 68],
   ['103J', 10000, 5], ['1001F', 1000, 1], ['5L0', 0.005], ['01C', 10000], ['68X', 49.9], ['96F', 97.6e6], ['01Z', 0.1],
-  ['01Y', 1], ['01R', 1], ['01S', 10], ['01A', 100], ['01B', 1000], ['01H', 1000], ['01D', 1e5], ['01E', 1e6], ['01c', 10000],
+  ['01Y', 1], ['01R', 1], ['01S', 1], ['01A', 100], ['01B', 1000], ['01H', 1000], ['01D', 1e5], ['01E', 1e6], ['01c', 10000],
   ['000', 0], ['0000', 0], ['00', 0], ['1M50', 0.0015], ['4r7', 4.7],
 ]) reads(text, ohms, tol, 'marking');
 // Plain numbers stay numbers, with the marking as the other reading.
@@ -157,6 +157,21 @@ hasReading('101', 101);
 eq(values('101').length, 2, '101 has two readings');
 reads('1M50', 1.5e6); hasReading('1M50', 0.0015); hasReading('1M50', 1.5e6);
 hasReading('47R', 3.01);
+// EIA-96 letters R and S: makers pair them differently, so both readings are given, TT Electronics' first.
+{
+  const s = decodeMarking('68S').filter((r) => r.form === 'eia96');
+  const r = decodeMarking('68R').filter((x) => x.form === 'eia96');
+  ok(s.length === 2 && close(s[0].ohms, 4.99) && !s[0].alternative && close(s[1].ohms, 49.9) && s[1].alternative === true, '68S is 4.99 Ω first (S with Y), 49.9 Ω as the other reading');
+  ok(r.length === 2 && close(r[0].ohms, 49.9) && !r[0].alternative && close(r[1].ohms, 4.99) && r[1].alternative === true, '68R is 49.9 Ω first (R with X), 4.99 Ω as the other reading');
+  eq(decodeMarking('68X').filter((x) => x.form === 'eia96').length, 1, '68X has one EIA-96 reading');
+  const typed = readInput('68S', 'marking').readings.filter((x) => x.kind === 'eia96');
+  ok(typed.length === 2 && close(typed[0].ohms, 4.99) && typed[1].label.includes('other reading') && typed.every((x) => /R and S/.test(x.note ?? '')) && typed[0].id !== typed[1].id,
+    'typed 68S: the usual reading first, the other one named, both with the note on R and S');
+  ok(readInput('68X', 'marking').readings.filter((x) => x.kind === 'eia96').every((x) => !/R and S/.test(x.note ?? '')), '68X carries no such note');
+  eq(encodeMarkings(0.499).eia96, '68Z', 'a value is never written with R or S: × 0.001 is Z');
+  eq(encodeMarkings(4.99).eia96, '68Y', '× 0.01 is written Y');
+  ok(/Vishay/.test(decodeMarking('5L0')[0].how) && !/IEC/.test(decodeMarking('5L0')[0].how), 'the milliohm L is attributed to the maker, not to IEC');
+}
 hasReading('601', 600); hasReading('601', 10e9);
 hasReading('109', 600);
 hasReading('X89', 49.9);
@@ -262,6 +277,10 @@ ok(readInput('0.1u').readings.length === 0 && readInput('0.1u').message.includes
 eq(CHIP_SIZES.length, 10, 'ten chip sizes');
 ok(CHIP_SIZES.find((c) => c.imperial === '0402').metric === '1005' && CHIP_SIZES.find((c) => c.metric === '0402').imperial === '01005', 'imperial 0402 and metric 0402 are different parts');
 eq(AXIAL_BODIES.length, 4, 'four axial bodies');
+eq(AXIAL_BODIES.map((b) => `${b.rating} ${b.length}x${b.diameter} ${b.leadDiameter}`).join(' | '), '1/6 W 3.4x1.9 0.45 | 1/4 W 6.3x2.4 0.55 | 1/2 W 9x3.3 0.55 | 1 W 11.5x4.5 0.8', 'the axial bodies are those of the datasheet');
+eq(CHIP_SIZES.map((c) => `${c.imperial}:${c.voltage ?? '-'}`).join(' '), '01005:- 0201:25 0402:50 0603:75 0805:150 1206:200 1210:200 1812:- 2010:200 2512:200', 'the limiting voltages of the chip sizes');
+ok(CHIP_SIZES.filter((c) => c.unverified).map((c) => c.imperial).join() === '1812' && CHIP_SIZES.find((c) => c.imperial === '2010').voltageNote === 'Vishay 400 V' && CHIP_SIZES.find((c) => c.imperial === '2512').voltageNote === 'Vishay 500 V',
+  'the 1812 row is marked as unverified, and the higher voltages of the other maker are named');
 eq(deratedPower(0.1, 70), 0.1, 'full power at 70 °C');
 eq(deratedPower(0.1, 112.5), 0.05, 'half power midway to 155 °C');
 eq(deratedPower(0.1, 200), 0, 'no power past the maximum temperature');

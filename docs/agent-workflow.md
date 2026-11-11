@@ -47,6 +47,13 @@ cost about 45% less, before counting savings from fewer checks.
 - **Keep the plan short.** It is the contract: ground rules, the shared model, the scope of each step, the status.
   Notes a step leaves for later steps go in a file of their own (for example `docs/<tool>/notes-S3.md`), read only by
   the steps that need them.
+- **One agent at a time.** Do not run two agents side by side, not even a research agent beside a code agent: the
+  owner often has other sessions open, and parallel agents use up the 5-hour limit too fast (2026-11-11, resistor
+  lookup). Pause the second one and resume it with `SendMessage` when the first is done.
+- **Split a step into engine and page** when it has both: an agent that writes framework-free code checked by tests
+  alone (no dev server, no screenshots) stays smaller than one that also builds and looks at the page. In the
+  resistor lookup the page steps still reached 215–285k tokens against briefs asking for 150–180k, so give a page
+  step less than seems to fit.
 - **Keep a module map:** one line per file with what it does and its main exports, in the plan or CLAUDE.md, so an
   agent finds its way without reading the code.
 

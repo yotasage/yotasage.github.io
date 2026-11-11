@@ -7,6 +7,7 @@ import {
   startSearch, stopSearchWorker, usualSeries,
 } from '../../lib/resistor';
 import styles from '../../styles/Resistor.module.css';
+import Bibliography from '../Bibliography';
 import css from '../../styles/ResistorCombos.module.css';
 import Circuit from './Circuit';
 import ValueLists from './ValueLists';
@@ -22,6 +23,7 @@ interface Props {
   onCombo: (patch: Partial<Combo>) => void;
   // Told the lists as they are read, so that the Design section can offer them too.
   onLists?: (lists: { list: StoredList; parsed: ParsedList }[]) => void;
+  bib: Bibliography;
 }
 
 // How many results the search keeps, how many are shown at first and how many "Show more" adds.
@@ -149,7 +151,7 @@ function Details({ c, tolerance, load, loadText }: { c: Combination; tolerance: 
 }
 
 // The Combinations section: which real resistors, connected how, give the current value.
-export default function Combinations({ ohms, tolerance, combo, onCombo, onLists }: Props) {
+export default function Combinations({ ohms, tolerance, combo, onCombo, onLists, bib }: Props) {
   const [lists, setLists] = useState<StoredList[]>([]);
   // True once the lists were read from the browser; nothing is searched before.
   const [ready, setReady] = useState(false);
@@ -473,7 +475,7 @@ export default function Combinations({ ohms, tolerance, combo, onCombo, onLists 
           </p>
           <p className={styles.caption}>
             <b>Worst case</b>: every resistor at the edge of its {formatTolerance(tolerance)} in the same direction; with equal parts that is always the part tolerance.{' '}
-            <b>RSS</b>, the root of the sum of the squares: the spread to expect when the parts deviate independently, smaller the more evenly the parts share the value.
+            <b>RSS</b>, the root of the sum of the squares: the spread to expect when the parts deviate independently {bib.cite('TISNVA112')}, smaller the more evenly the parts share the value.
           </p>
         </div>
       )}

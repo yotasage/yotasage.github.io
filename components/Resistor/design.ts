@@ -247,6 +247,11 @@ export interface Answer {
 }
 
 // The sentence at the top of the results. `source` names the values ("E96, 1 Ω to 10 MΩ").
+// A sentence in which numbers stay with their units and brackets when it wraps: "2.5 V", "(0 %)", "125 °C".
+export function unbroken(text: string): string {
+  return text.replace(/(\d) (?=(?:%|°C|ppm\/K|[pnµmkMG]?[ΩVAW])(?![A-Za-z]))/g, '$1\u00A0').replace(/(±[\d.]+) (?=%)/g, '$1\u00A0');
+}
+
 export function answerText(id: CircuitId, result: Suggestions, options: SuggestOptions, source: string): Answer {
   const allowed = `±${formatPct(options.allowedPct)}`;
   const over = temperaturesText(options.temperatures);

@@ -4,7 +4,7 @@
 import { Band, Colour, FAILURE_RATE, coloursFromText, decodeBands } from './colours';
 import { commonness, decompose, inSeries, same } from './eseries';
 import { formatOhms, formatTolerance, pow10Text } from './format';
-import { decodeMarking, flipMarking, MarkingReading } from './smd';
+import { decodeMarking, EIA96_DISPUTE_NOTE, flipMarking, MarkingReading } from './smd';
 
 export type ReadingKind = 'value' | 'smd' | 'eia96' | 'bands';
 
@@ -109,13 +109,13 @@ function valueReadings(t: string): Draft[] {
 function markingDraft(r: MarkingReading, code: string): Draft {
   const eia = r.form === 'eia96';
   return {
-    id: r.form + (r.tolerance !== undefined ? '-tol' : ''),
+    id: r.form + (r.alternative ? '-alt' : '') + (r.tolerance !== undefined ? '-tol' : ''),
     kind: eia ? 'eia96' : 'smd',
-    label: eia ? 'EIA-96' : r.form === 'link' ? 'Link' : 'SMD marking',
+    label: eia ? (r.alternative ? 'EIA-96, other reading' : 'EIA-96') : r.form === 'link' ? 'Link' : 'SMD marking',
     ohms: r.ohms,
     tolerance: r.tolerance,
     how: r.how[0].toUpperCase() + r.how.slice(1),
-    note: eia ? 'EIA-96 is used on 1 % parts.' : undefined,
+    note: eia ? (/[RS]$/i.test(code) ? EIA96_DISPUTE_NOTE : 'EIA-96 is used on 1 % parts.') : undefined,
     // Markings of 100 MΩ and more are rare: a number typed as it is comes first.
     rank: r.ohms > 1e8 ? commonness(r.ohms) + 2.5 : undefined,
   };

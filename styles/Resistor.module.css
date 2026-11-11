@@ -2307,3 +2307,25 @@
     font-size: 10.5px;
   }
 }
+
+/* Citations ([3], components/Bibliography.tsx) and links inside notes, in the tool's colours. */
+.root a[href^='#ref-'] {
+  color: var(--accent);
+  font-family: var(--font-num);
+  font-size: 0.86em;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.root .textLink {
+  color: var(--accent);
+  text-underline-offset: 2px;
+}
+
+.refAlso {
+  color: var(--ink-3);
+  font-size: 12px;
+  white-space: nowrap;
+}

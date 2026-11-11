@@ -50,6 +50,7 @@ export async function designChecks(lib, { section, ok, eq }) {
       && entry.tcrPpm >= entry.tcrs[0] && entry.tcrPpm <= entry.tcrs[1], `the preset of ${id} lies in its ranges`);
   }
   eq(technology('thick-film').tolerancePct, 1, 'thick film starts at 1 %');
+  eq(technology('carbon-film').tcrs.join(' to '), '200 to 1500', 'carbon film is made with 200 to 1500 ppm/K');
   eq(technology('thick-film').tcrPpm, 100, 'thick film starts at 100 ppm/K');
   eq(technology('thin-film').tcrPpm, 25, 'thin film starts at 25 ppm/K');
   ok(TECHNOLOGIES.length >= 6 && new Set(TECHNOLOGIES.map((entry) => entry.id)).size === TECHNOLOGIES.length, 'the presets have different ids');

@@ -5,6 +5,7 @@ import {
   formatTolerance, neighbours, series, toleranceLetter, usualSeries,
 } from '../../lib/resistor';
 import styles from '../../styles/Resistor.module.css';
+import Bibliography from '../Bibliography';
 import { Ohms, ValueButton } from './parts';
 
 interface Props {
@@ -19,6 +20,8 @@ interface Props {
   onSeries: (id: SeriesId) => void;
   onValue: (ohms: number) => void;
   onExample: (text: string, as?: ReadAs) => void;
+  // The page's list of sources, to cite from.
+  bib: Bibliography;
 }
 
 const SCALES = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100];
@@ -153,7 +156,7 @@ function Guide({ onExample }: { onExample: (text: string, as?: ReadAs) => void }
 
 // The Lookup section: standard values, colour bands and markings of the current value.
 export default function Lookup(props: Props) {
-  const { ohms, tcr, tolerance, stepSeries, seriesChosen, onExample } = props;
+  const { ohms, tcr, tolerance, stepSeries, seriesChosen, onExample, bib } = props;
 
   if (ohms === undefined) {
     return (
@@ -181,9 +184,13 @@ export default function Lookup(props: Props) {
           </div>
           <SeriesTable {...props} />
           <p className={styles.caption}>
-            An error says how far the standard value is from <span className={styles.num}>{formatOhms(ohms)}</span>. Click a value to use it.{' '}
+            An error is (standard value − <span className={styles.num}>{formatOhms(ohms)}</span>) / <span className={styles.num}>{formatOhms(ohms)}</span>: positive when the standard value is the larger one. Click a value to use it.{' '}
             <span className={styles.keys}><span className={styles.key}>↑</span> <span className={styles.key}>↓</span></span> in the field step through <b>{stepName}</b>
             {seriesChosen ? '' : `, the series usual for ${formatTolerance(tolerance)}`}; click a series to step through that one.
+          </p>
+          <p className={styles.caption}>
+            A series is usual for a tolerance when its steps are about twice that tolerance, so that the ranges of neighbouring values just meet {bib.cite('VishayBasics')}: more
+            in <a href="#theory-series" className={styles.textLink}>Theory</a>.
           </p>
         </div>
       )}
@@ -191,7 +198,7 @@ export default function Lookup(props: Props) {
       <div className={styles.block}>
         <div className={styles.blockHead}>
           <h3>Colour bands</h3>
-          <span className={styles.blockMeta}>IEC 60062, at {formatTolerance(tolerance)}</span>
+          <span className={styles.blockMeta}>IEC 60062 {bib.cite('IEC60062')}, at {formatTolerance(tolerance)}</span>
         </div>
         {ohms === 0 ? (
           <div className={styles.codes}><Strip title="Link" code={encodeBands(0, 4)} /></div>
@@ -216,7 +223,8 @@ export default function Lookup(props: Props) {
           {markings.milli && <Marking title="Milliohms" code={markings.milli} how={markings.how.milli} />}
         </div>
         <p className={styles.caption}>
-          Sizes 01005 and 0201 carry no marking, most 0402 parts none either, and some 0603 parts.
+          The last digit of a code is the number of zeros that follow the others. Sizes 01005 to 0402 usually carry no marking; 0603 carries three characters at 5 % and
+          EIA-96 at 1 %, larger sizes four characters at 1 % {bib.cite('YageoRC')}.
           EIA-96 is used on 1 % parts{ohms > 0 && markings.eia96 && tolerance !== 1 ? `, so not at ${formatTolerance(tolerance)}` : ''}.
         </p>
       </div>

@@ -1,12 +1,13 @@
 # Resistor lookup – facts
 
-What the tool must get right, from the research of 2026-11-10. "Unverified" means no primary source was read yet;
-S5's research pass checks those and adds the sources to `references.bib`. Resistances are in ohms throughout the code.
+What the tool must get right, from the research of 2026-11-10. "Unverified" means no source was read yet; the research
+pass of 2026-11-11 checked most of them (keys in [sources.md](sources.md), which lists what is still unverified). Resistances are in ohms throughout the code.
 
 ## E-series (IEC 60063)
 
 - E24 is a fixed table: 1.0 1.1 1.2 1.3 1.5 1.6 1.8 2.0 2.2 2.4 2.7 3.0 3.3 3.6 3.9 4.3 4.7 5.1 5.6 6.2 6.8 7.5 8.2 9.1.
-  Eight values differ from round(10^(n/24)) for historical reasons (2.7 to 4.7, and 8.2).
+  Eight values differ from round(10^(n/24)) for historical reasons (2.7 to 4.7, and 8.2). (Verified against WikiE, which
+  cites IEC 60063:2015; the standard's text was not read.)
 - E12, E6 and E3 are every 2nd, 4th and 8th value of E24.
 - E48, E96 and E192 are round(10^(n/m)) to three significant figures, with one exception: E192's n = 185 is 9.20, not
   9.19. E96 is every 2nd value of E192, E48 every 4th.
@@ -40,10 +41,11 @@ S5's research pass checks those and adds the sources to `references.bib`. Resist
 - **Sources disagree:** older EIA usage has grey as ±0.05 % (A) (DigiKey and others still show it); orange and yellow
   tolerances and pink date from the 2016 edition and are missing from many tables; high-voltage parts use yellow and
   grey for 5 % and 10 % to avoid metallic paint. Show the IEC value and mention the older reading.
-- Other tolerance letters: E 0.005 %, H 3 %, N 30 %. The table above is from Wikipedia's account of IEC 60062:2016
-  (unverified against the standard).
+- Other tolerance letters: E 0.005 %, H 3 %, N 30 % (unverified; TTTN004 also lists A 0.05 %). The table above matches
+  WikiColor (Wikipedia's account of IEC 60062:2016; the standard was not read), and its TCR colours match VishayMarking
+  (brown 100, red 50, yellow 25, orange 15, blue 10, violet 5).
 - Military failure-rate band (fifth band on four-band parts, % per 1000 h): brown 1, red 0.1, orange 0.01, yellow
-  0.001 (unverified, from rfcafe.com).
+  0.001 (verified against NEETS; the matching letters M, P, R, S are in VishayHDN).
 
 ## SMD markings
 
@@ -52,14 +54,17 @@ S5's research pass checks those and adds the sources to `references.bib`. Resist
 - `R` is the decimal point and there is then no exponent (`4R7`, `0R22`, `R005`, `68R0`).
 - Links: `0`, `00`, `000`, `0000`.
 - A tolerance letter may follow (`103J`, `1001F`).
-- Milliohms: IEC's letter for milli is `L` (`5L0` = 5 mΩ); shunt makers also use `M` or `m` as a milliohm decimal
-  point (`1M50` = 1.5 mΩ), which collides with mega: show both readings (unverified, datasheet snippets).
+- Milliohms: Vishay marks 0.01 to 0.091 Ω as `10L0` to `91L0` and uses `R` from 0.1 Ω (`R10`) (VishayMarking); whether IEC
+  60062 itself uses `L` is unverified. Shunt makers also use `M` or `m` as a milliohm decimal point (`1M50` = 1.5 mΩ),
+  which collides with mega: show both readings (unverified, search excerpts of Venkel and TT Welwyn datasheets).
 - An underline means different things by maker (an E24 value at 1 %, an orientation mark for `06` against `90`, or a
   milliohm value): show the readings, do not pick one.
 - EIA-96: a two-digit code 01 to 96 for the E96 values in order (01 = 100, 68 = 499, 96 = 976), then a multiplier
-  letter: Z 0.001, Y or R 0.01, X or S 0.1, A 1, B or H 10, C 100, D 1 k, E 10 k, F 100 k. The multiplier F collides
-  with the tolerance letter F.
-- Sizes 01005 and 0201 are unmarked, most 0402 too, and some 0603.
+  letter: Z 0.001, Y 0.01, X 0.1, A 1, B or H 10, C 100, D 1 k, E 10 k, F 100 k. TTTN004 pairs S with Y (0.01) and R with
+  X (0.1); other tables pair R with Y and S with X, so R and S are ambiguous: show both readings. TTTN004 has no Z or F
+  (unverified). The multiplier F collides with the tolerance letter F. Code 01 = 100, 96 = 976 and 07B = 1.15 kΩ verified.
+- Sizes 01005 and 0201 are unmarked, and Yageo marks nothing on 0402 either; 0603 is marked (3 digits at 5 %, EIA-96 at
+  1 %) and 0805 and up use 4 digits at 1 % (YageoRC). TT says "where space allows".
 - A marking read upside down can be another valid code (`06` and `90`, `601` and `109`): offer it.
 
 ## Reading typed values
@@ -73,46 +78,54 @@ Write values as `4.7 kΩ` and in RKM form `4k7`.
 | Imperial | Metric | L × W mm | Typical power at 70 °C, W | Limiting voltage, V |
 | --- | --- | --- | --- | --- |
 | 01005 | 0402 | 0.4 × 0.2 | 0.031 | – |
-| 0201 | 0603 | 0.6 × 0.3 | 0.05 | – |
+| 0201 | 0603 | 0.6 × 0.3 | 0.05 | 25 to 30 |
 | 0402 | 1005 | 1.0 × 0.5 | 0.063 | 50 |
 | 0603 | 1608 | 1.6 × 0.8 | 0.1 | 75 |
 | 0805 | 2012 | 2.0 × 1.25 | 0.125 | 150 |
-| 1206 | 3216 | 3.2 × 1.6 | 0.25 | – |
-| 1210 | 3225 | 3.2 × 2.5 | 0.5 | – |
+| 1206 | 3216 | 3.2 × 1.6 | 0.25 | 200 |
+| 1210 | 3225 | 3.2 × 2.5 | 0.5 | 200 |
 | 1812 | 4532 | 4.5 × 3.2 | 0.75 | – |
-| 2010 | 5025 | 5.0 × 2.5 | 0.75 | – |
-| 2512 | 6332 | 6.3 × 3.2 | 1 | 200 |
+| 2010 | 5025 | 5.0 × 2.5 | 0.75 | 200 (Vishay 400) |
+| 2512 | 6332 | 6.3 × 3.2 | 1 | 200 (Vishay 500) |
 
 - Imperial 0402 and metric 0402 are different parts, as are 0603 and 0603: always show both names.
 - Power ratings vary by maker and series (0603 at 0.1 or 0.125 W, 0805 at 0.125 or 0.25 W, 2512 up to 2 W): call them
-  typical. Voltages marked – were not found (unverified rows: 1206 to 2010).
+  typical. Checked against VishayCRCW (0402 to 2512, standard rating), VishayCRCW0201 and YageoRC (0075 to 2512; Yageo 1206 is
+  3.1 mm long, 1210 3.1 × 2.6, 2512 6.35 × 3.1). Voltages are Yageo's maximum working voltage; Vishay's 2010 and 2512 are
+  higher. The 1812 row is unverified: makers list 1218 (3.2 × 4.6, 1 W) instead. Terminations are about 0.25 to 0.6 mm wide.
+  Zero-ohm links (Vishay): 20 mΩ, 1.5 A (0402), 2 A (0603), 2.5 A (0805), 3.5 A (1206), 5 A (1210), 6 to 7 A (2010, 2512).
 
-## Axial bodies (unverified, from search snippets)
+## Axial bodies (verified against YageoCFR and VishayMRS)
 
 | Rating | Body L × ⌀ mm | Lead ⌀ mm |
 | --- | --- | --- |
-| 1/8 W | 3.0 × 1.8 | 0.45 |
-| 1/4 W | 6.5 × 2.5 | 0.6 |
-| 1/2 W | 8.5 × 3.2 | 0.6 |
-| 1 W | 11 × 5 | 0.8 |
+| 1/6 W (Yageo CFR-12; 1/8 W is not a CFR rating) | 3.4 × 1.9 | 0.45 |
+| 1/4 W | 6.3 × 2.4 (Vishay MRS25 max 6.5 × 2.5) | 0.55 (MRS25 0.6) |
+| 1/2 W | 9.0 × 3.3 | 0.55 |
+| 1 W | 11.5 × 4.5 | 0.8 |
 
-Body size does not fix the rating: modern metal film in the 1/4 W body is rated higher.
+Body size does not fix the rating: Vishay MRS25 metal film (0207 body, 6.5 × 2.5 max) is rated 0.6 W and MRS16 (0204,
+3.6 × 1.6) 0.4 W.
 
 ## Technologies
 
 | Technology | Tolerance | TCR ppm/K |
 | --- | --- | --- |
-| Thick film (most chip resistors) | 1–5 % | ±100 to ±200 (±200 below 10 Ω) |
+| Thick film (most chip resistors) | 1–5 % | ±100 to ±200 (±200 below 10 Ω); Vishay's general table ±50 to ±200 |
 | Thin film, metal film | 0.1–2 % | ±5 to ±50 (leaded metal film 50 to 100) |
 | Metal foil | 0.005–0.1 % | about ±0.2 to ±5 |
-| Carbon film | 2–10 % | ±200 to ±1000 |
+| Carbon film | 2–10 % | −200 to −1500 (negative; VishayBasics) |
 | Metal oxide | 1–5 % | ±75 to ±300 |
 | Wirewound | down to 0.005 % | ±1 to ±20 |
 
 - Derating: full rated power up to 70 °C, then linear to zero at the maximum temperature (155 °C for 0402 to 2512,
-  125 °C for 0201 and smaller): P(T) = P70·(Tmax − T)/(Tmax − 70) (the usual datasheet curve; unverified).
-- Noise index: 0 dB is 1 µV/V per decade; carbon composition about 0 dB, thin film below −35 dB, foil about −40 dB.
-- Voltage coefficient: −10 to −100 ppm/V for thick film and carbon, about 0.1 ppm/V for thin film and foil.
+  125 °C for 0075 to 0201 at Yageo; Vishay gives 0201 155 °C): P(T) = P70·(Tmax − T)/(Tmax − 70) (the linear curve of
+  YageoRC Fig. 10; VishayBasics Fig. 9 shows the same shape). The table above is VishayBasics' typical figures; the
+  rows for metal oxide, foil and the wirewound extremes are unverified.
+- Noise index: 0 dB is 1 µV/V per decade; carbon composition about 0 dB, thin film below −35 dB, foil about −40 dB
+  (unverified; VishayBasics only says IEC 60195 defines a current-noise index; Johnson1928 and Nyquist1928 for thermal noise).
+- Voltage coefficient: −10 to −100 ppm/V for thick film and carbon (unverified), below 1 ppm/V for thin film (VishayTNPV;
+  the 0.1 ppm/V for thin film and foil is unverified).
 
 ## Tolerance and temperature
 

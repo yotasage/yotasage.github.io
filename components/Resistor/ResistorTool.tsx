@@ -2,7 +2,10 @@ import Link from 'next/link';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { DrawStyle, MAX_OHMS, MIN_OHMS, ParsedList, ReadAs, SERIES, SeriesId, StoredList, formatOhms, readInput, series, step, usualSeries } from '../../lib/resistor';
+import { BibEntry } from '../../lib/bibtex';
 import styles from '../../styles/Resistor.module.css';
+import theory from '../../styles/ResistorTheory.module.css';
+import Bibliography from '../Bibliography';
 import HomeIcon from '../icons/home';
 import Combinations from './Combinations';
 import DesignSection from './DesignSection';
@@ -11,6 +14,7 @@ import Lookup from './Lookup';
 import Reference from './Reference';
 import SmartInput from './SmartInput';
 import Stage from './Stage';
+import Theory from './Theory';
 import ValueHero from './ValueHero';
 import { Combo, DEFAULT_COMBO, comboFromParams, comboToParams } from './combo';
 import { DEFAULT_DESIGN, Design as DesignState, designFromParams, designToParams } from './design';
@@ -24,7 +28,16 @@ const SECTIONS: { id: string; label: string }[] = [
   { id: 'combinations', label: 'Combinations' },
   { id: 'design', label: 'Design' },
   { id: 'reference', label: 'Reference' },
+  { id: 'theory', label: 'Theory' },
+  { id: 'references', label: 'References' },
 ];
+
+// The sources cited above the Reference tables, in notes that come and go with the results of a search: by section,
+// in the order of the page. They are given their numbers before the page is drawn, so that a note that appears a
+// moment later (the searches run in workers) does not get a number out of order.
+const CITED_BY_LOOKUP_VALUES = ['VishayBasics'];
+const CITED_BY_LOOKUP = ['IEC60062', 'YageoRC'];
+const CITED_BY_SEARCHES = ['TISNVA112', 'YageoRC', 'VishayCRCW'];
 
 // What lies outside the tool's own element in the two themes, the page background and the site footer:
 // --bg, --rule, --ink-3, --ink-2 and --ink in styles/Resistor.module.css.
@@ -44,7 +57,9 @@ const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLa
 // E24+E96 is e24e96 in a link.
 const seriesParam = (id: SeriesId) => id.toLowerCase().replace('+', '');
 
-export default function ResistorTool() {
+export default function ResistorTool({ references }: { references: BibEntry[] }) {
+  // One list of sources for the whole page, numbered by first citation (components/Bibliography.tsx).
+
   const [text, setText] = useState('');
   const [pick, setPick] = useState<string | null>(null);
   const [tolerance, setTolerance] = useState(DEFAULT_TOLERANCE);
@@ -71,6 +86,16 @@ export default function ResistorTool() {
   const result = useMemo(() => readInput(text, readAs), [text, readAs]);
   const reading = result.readings.find((r) => r.id === pick) ?? result.readings[0];
   const ohms = reading?.ohms;
+  // One list of sources for the whole page, numbered by first citation (components/Bibliography.tsx). The Lookup
+  // cites only when there is a value, so the numbers are given again when the first value is typed.
+  const hasValue = ohms !== undefined;
+  const hasOhms = ohms > 0;
+  const bib = useMemo(() => {
+    const made = new Bibliography(references);
+    const first = [...(hasOhms ? CITED_BY_LOOKUP_VALUES : []), ...(hasValue ? CITED_BY_LOOKUP : []), ...CITED_BY_SEARCHES];
+    for (const key of first) made.number(key);
+    return made;
+  }, [references, hasValue, hasOhms]);
   const stepSeries = seriesChoice ?? usualSeries(tolerance);
   const resolved = useMemo(() => resolveView(view, reading, text, tolerance), [view, reading, text, tolerance]);
 
@@ -292,6 +317,7 @@ export default function ResistorTool() {
               onSeries={(id) => setSeriesChoice(seriesChoice === id ? null : id)}
               onValue={takeValue}
               onExample={(example, wanted) => { tryExample(example, wanted); window.scrollTo({ top: 0 }); }}
+              bib={bib}
             />
           </section>
 
@@ -302,17 +328,31 @@ export default function ResistorTool() {
 
           <section id="combinations" className={styles.section} aria-labelledby="combinations-title">
             <h2 className={[styles.label, styles.sectionHead].join(' ')} id="combinations-title">Combinations</h2>
-            <Combinations ohms={ohms} tolerance={tolerance} combo={combo} onCombo={changeCombo} onLists={setValueLists} />
+            <Combinations ohms={ohms} tolerance={tolerance} combo={combo} onCombo={changeCombo} onLists={setValueLists} bib={bib} />
           </section>
 
           <section id="design" className={styles.section} aria-labelledby="design-title">
             <h2 className={[styles.label, styles.sectionHead].join(' ')} id="design-title">Design</h2>
-            <DesignSection design={design} onDesign={changeDesign} lists={valueLists} onValue={takeValue} />
+            <DesignSection design={design} onDesign={changeDesign} lists={valueLists} onValue={takeValue} bib={bib} />
           </section>
 
           <section id="reference" className={styles.section} aria-labelledby="reference-title">
             <h2 className={[styles.label, styles.sectionHead].join(' ')} id="reference-title">Reference</h2>
-            <Reference resolved={resolved} onChange={change} />
+            <Reference resolved={resolved} onChange={change} bib={bib} />
+          </section>
+
+          <section id="theory" className={styles.section} aria-labelledby="theory-title">
+            <h2 className={[styles.label, styles.sectionHead].join(' ')} id="theory-title">Theory</h2>
+            <Theory bib={bib} resolved={resolved} onChange={change} />
+          </section>
+
+          {/* After the last citation: the list is numbered while the page above it is drawn. */}
+          <section id="references" className={styles.section} aria-labelledby="references-title">
+            <h2 className={[styles.label, styles.sectionHead].join(' ')} id="references-title">References</h2>
+            <div className={theory.refs} data-testid="references">
+              <p className={theory.lead}>The sources of the tables and of the theory on this page, in the order they are first cited.</p>
+              {bib.list()}
+            </div>
           </section>
         </div>
       </main>

@@ -4,28 +4,31 @@ import {
   AXIAL_BODIES, CHIP_SIZES, COLOURS, ColourInfo, decompose, formatOhms, formatTolerance, neighbours, pow10Text, series,
 } from '../../lib/resistor';
 import styles from '../../styles/Resistor.module.css';
+import Bibliography from '../Bibliography';
 import { Change, Resolved, bandOptions, markedSize, markingExample, thirdDigit, toleranceHasColour } from './view';
 
 interface Props {
   resolved: Resolved;
   onChange: (change: Change) => void;
+  bib: Bibliography;
 }
 
 // Digits first, as the code is learnt; then the colours that are only multipliers or tolerances.
 const ORDER = ['black', 'brown', 'red', 'orange', 'yellow', 'green', 'blue', 'violet', 'grey', 'white', 'gold', 'silver', 'pink', 'none'];
 const TABLE_COLOURS = ORDER.map((name) => COLOURS.find((c) => c.name === name));
 
-// EIA-96 multiplier letters (docs/resistor/facts.md); the first of two letters is the usual one.
-const EIA96_LETTERS: [string, number][] = [['Z', -3], ['Y or R', -2], ['X or S', -1], ['A', 0], ['B or H', 1], ['C', 2], ['D', 3], ['E', 4], ['F', 5]];
+// EIA-96 multiplier letters (docs/resistor/facts.md); the first of two letters is the usual one. S and R as in TT
+// Electronics' table; other tables pair them the other way round, which the caption says.
+const EIA96_LETTERS: [string, number][] = [['Z', -3], ['Y or S', -2], ['X or R', -1], ['A', 0], ['B or H', 1], ['C', 2], ['D', 3], ['E', 4], ['F', 5]];
 
-const MARKING_RULES: { what: React.ReactNode; examples: [string, string][] }[] = [
-  { what: 'Three digits: two digits, then the number of zeros that follow.', examples: [['472', '4.7 kΩ'], ['220', '22 Ω'], ['101', '100 Ω'], ['100', '10 Ω']] },
+const MARKING_RULES: { what: React.ReactNode; examples: [string, string][]; cite?: string }[] = [
+  { what: 'Three digits: two digits, then the number of zeros that follow.', cite: 'TTTN004', examples: [['472', '4.7 kΩ'], ['220', '22 Ω'], ['101', '100 Ω'], ['100', '10 Ω']] },
   { what: 'Four digits: three digits, then the number of zeros.', examples: [['4992', '49.9 kΩ'], ['7500', '750 Ω'], ['1001', '1 kΩ']] },
-  { what: 'R is the decimal point, and then there is no number of zeros.', examples: [['4R7', '4.7 Ω'], ['0R22', '0.22 Ω'], ['R005', '5 mΩ'], ['68R0', '68 Ω']] },
+  { what: 'R is the decimal point, and then there is no number of zeros.', cite: 'TTTN004', examples: [['4R7', '4.7 Ω'], ['0R22', '0.22 Ω'], ['R005', '5 mΩ'], ['68R0', '68 Ω']] },
   { what: 'A link (jumper) is marked with zeros only.', examples: [['0', '0 Ω'], ['000', '0 Ω'], ['0000', '0 Ω']] },
   { what: 'A tolerance letter may follow: F ±1 %, G ±2 %, J ±5 %, K ±10 %, M ±20 %.', examples: [['103J', '10 kΩ ±5 %'], ['1001F', '1 kΩ ±1 %']] },
-  { what: 'Milliohms: L is the decimal point of a value in milliohms. Some makers of shunts use M or m instead, which also means mega: both readings are shown.', examples: [['5L0', '5 mΩ'], ['1M50', '1.5 mΩ or 1.5 MΩ']] },
-  { what: 'EIA-96, on 1 % parts: two digits number the E96 value (table below), and a letter is the multiplier.', examples: [['01C', '10 kΩ'], ['68X', '49.9 Ω'], ['47B', '3.01 kΩ']] },
+  { what: 'Milliohms: some makers of shunts use M or m as the decimal point, which also means mega, so both readings are shown. Vishay marks values under 0.1 Ω with L as the decimal point of a value in milliohms.', cite: 'VishayMarking', examples: [['5L0', '5 mΩ'], ['1M50', '1.5 mΩ or 1.5 MΩ']] },
+  { what: 'EIA-96, on 1 % parts: two digits number the E96 value (table below), and a letter is the multiplier.', cite: 'TTTN004', examples: [['01C', '10 kΩ'], ['68X', '49.9 Ω'], ['47B', '3.01 kΩ']] },
   { what: 'A marking can be another marking upside down. An underline means different things by maker: a 1 % part, which way is up, or a value in milliohms.', examples: [['601', '600 Ω, or 109'], ['109', '1 Ω, or 601']] },
 ];
 
@@ -35,7 +38,7 @@ function Swatch({ info }: { info: ColourInfo }) {
 
 // The Reference section: the tables behind the tool. The entries of the current value are marked, and a click on a
 // colour, a code or a size uses it.
-export default function Reference({ resolved: r, onChange }: Props) {
+export default function Reference({ resolved: r, onChange, bib }: Props) {
   const live = !r.example;
   const bands = r.code.ok ? r.code.bands : [];
   const coded = bands.length >= 3;
@@ -101,7 +104,7 @@ export default function Reference({ resolved: r, onChange }: Props) {
       <div className={styles.block}>
         <div className={styles.blockHead}>
           <h3>Colour code</h3>
-          <span className={styles.blockMeta}>IEC 60062:2016</span>
+          <span className={styles.blockMeta}>IEC 60062:2016 {bib.cite('IEC60062')} {bib.cite('WikiColor')}</span>
         </div>
         <div className={styles.scroll}>
           <table className={[styles.ref, styles.refBands].join(' ')}>
@@ -142,11 +145,11 @@ export default function Reference({ resolved: r, onChange }: Props) {
           a click on the marked third digit or TCR takes that band away again.
         </p>
         <ul className={styles.notes}>
-          <li><b>3 bands:</b> two digits and a multiplier, ±20 %. <b>4 bands:</b> plus the tolerance. <b>5 bands:</b> three digits. <b>6 bands:</b> plus the temperature coefficient (TCR).</li>
+          <li><b>3 bands:</b> two digits and a multiplier, ±20 %. <b>4 bands:</b> plus the tolerance. <b>5 bands:</b> three digits. <b>6 bands:</b> plus the temperature coefficient (TCR) {bib.cite('VishayMarking')}.</li>
           <li>The tolerance band is set apart by a wider gap, and gold, silver or pink is never the first band. When a part reads both ways, a reading is unlikely when its value is outside 1 mΩ to 1 GΩ or in no E-series, or when its tolerance does not fit its series: a value found only in E192 is not made at ±1 %.</li>
           <li>A single black band is a <button type="button" className={styles.inlineButton} onClick={() => onChange({ ohms: 0, view: { type: 'axial' } })}>0 Ω link</button> (jumper).</li>
-          <li><b>Grey</b> as a tolerance is ±0.01 % in the standard; older EIA tables, still shown by some distributors, read it as ±0.05 % (A).</li>
-          <li>The <b>orange</b> and <b>yellow</b> tolerances and the <b>pink</b> multiplier date from the 2016 edition and are missing from many tables. High-voltage parts use yellow for ±5 % and grey for ±10 %, to avoid metallic paint.</li>
+          <li><b>Grey</b> as a tolerance is ±0.01 % in the standard; older EIA tables, still shown by some distributors, read it as ±0.05 % (A) {bib.cite('WikiColor')}.</li>
+          <li>The <b>orange</b> and <b>yellow</b> tolerances and the <b>pink</b> multiplier date from the 2016 edition and are missing from many tables. High-voltage parts use yellow for ±5 % and grey for ±10 %, to avoid metallic paint {bib.cite('WikiColor')}.</li>
           <li>The letters are those of the standard for tolerance and temperature coefficient, as printed on parts and in part numbers.</li>
         </ul>
       </div>
@@ -166,11 +169,11 @@ export default function Reference({ resolved: r, onChange }: Props) {
                   </button>
                 ))}
               </dt>
-              <dd>{rule.what}</dd>
+              <dd>{rule.what}{rule.cite && <> {bib.cite(rule.cite)}</>}</dd>
             </React.Fragment>
           ))}
         </dl>
-        <p className={styles.caption}>Sizes 01005 and 0201 carry no marking, most 0402 parts none either, and some 0603 parts.</p>
+        <p className={styles.caption}>Sizes 01005 to 0402 usually carry no marking; 0603 carries three characters at 5 % and EIA-96 at 1 %, larger sizes four characters at 1 % {bib.cite('YageoRC')}.</p>
       </div>
 
       <div className={styles.block}>
@@ -198,6 +201,10 @@ export default function Reference({ resolved: r, onChange }: Props) {
           The value is the three digits times the multiplier of the letter: <span className={styles.num}>01C</span> is 100 × 100 = 10 kΩ.
           The multiplier F collides with the tolerance letter F, and R and E with the letters used for ohms, so such a code can read two ways.
         </p>
+        <p className={styles.caption} data-testid="eia96-note">
+          <b>R and S:</b> makers do not agree on which of the two is × 0.01 and which × 0.1. The table follows TT Electronics, with S beside Y and R beside X {bib.cite('TTTN004')};
+          other tables pair them the other way round, so a code with R or S is read both ways, this one first. Z and F are not in that table.
+        </p>
       </div>
 
       <div className={styles.block}>
@@ -220,11 +227,11 @@ export default function Reference({ resolved: r, onChange }: Props) {
             <tbody>
               {CHIP_SIZES.map((size) => (
                 <tr key={size.imperial} data-on={(r.type === 'chip' && size === r.chip) || undefined} className={styles.refRow} onClick={() => onChange({ view: { type: 'chip', size: size.imperial } })}>
-                  <th scope="row"><button type="button" className={[styles.num, styles.refRowButton].join(' ')} title={`Draw a ${size.imperial} chip`}>{size.imperial}</button></th>
+                  <th scope="row"><button type="button" className={[styles.num, styles.refRowButton].join(' ')} title={`Draw a ${size.imperial} chip`}>{size.imperial}{size.unverified ? ' *' : ''}</button></th>
                   <td><span className={styles.num}>{size.metric}</span></td>
                   <td><span className={styles.num}>{size.length} × {size.width}</span></td>
                   <td><span className={styles.num}>{size.power} W</span></td>
-                  <td>{size.voltage ? <span className={styles.num}>{size.voltage} V</span> : <span className={styles.refNone}>–</span>}</td>
+                  <td>{size.voltage ? <><span className={styles.num}>{size.voltage} V</span>{size.voltageNote && <span className={styles.refAlso}> ({size.voltageNote})</span>}</> : <span className={styles.refNone}>–</span>}</td>
                   <td>{{ no: 'no', rarely: 'rarely', some: 'mostly', yes: 'yes' }[size.marked]}</td>
                 </tr>
               ))}
@@ -233,14 +240,19 @@ export default function Reference({ resolved: r, onChange }: Props) {
         </div>
         <p className={styles.caption}>
           Imperial 0402 and metric 0402 are different parts, as are 0603 and 0603. Ratings vary: 0603 parts are rated 0.1 or 0.125 W, 0805 parts 0.125 or 0.25 W,
-          and 2512 parts up to 2 W. A voltage shown as – was not found.
+          and 2512 parts up to 2 W. A voltage shown as – was not found. Sizes, powers and voltages are those of general-purpose thick film
+          chips {bib.cite('YageoRC')} {bib.cite('VishayCRCW')} {bib.cite('VishayCRCW0201')}; the voltage is Yageo’s, with Vishay’s where it differs.
+        </p>
+        <p className={styles.caption}>
+          The power holds up to 70 °C around the part. Above that it falls in a straight line to nothing at 155 °C, or at 125 °C for the two smallest sizes {bib.cite('YageoRC')}:
+          the curve is in <a href="#theory-power" className={styles.textLink}>Theory</a>. * The 1812 row is not verified: no datasheet was found, and makers list 1218 (3.2 × 4.6 mm, 1 W) instead.
         </p>
       </div>
 
       <div className={styles.block}>
         <div className={styles.blockHead}>
           <h3>Axial bodies</h3>
-          <span className={styles.blockMeta}>typical sizes</span>
+          <span className={styles.blockMeta}>a carbon film series {bib.cite('YageoCFR')}</span>
         </div>
         <div className={styles.scroll}>
           <table className={[styles.ref, styles.refSizes].join(' ')}>
@@ -264,7 +276,7 @@ export default function Reference({ resolved: r, onChange }: Props) {
             </tbody>
           </table>
         </div>
-        <p className={styles.caption}>The body size does not fix the rating: modern metal film in the 1/4 W body is often rated higher. Sizes differ a little by maker.</p>
+        <p className={styles.caption}>The body size does not fix the rating: a metal film part in the 1/4 W body (6.5 × 2.5 mm at most) is rated 0.6 W {bib.cite('VishayMRS')}. Sizes differ a little by maker.</p>
       </div>
     </>
   );
