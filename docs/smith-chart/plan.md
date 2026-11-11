@@ -97,7 +97,7 @@ the owner confirms which of their extras are built. The step that finishes updat
 
 | M | Name | Size | Result | Status |
 |---|---|---|---|---|
-| M0 | Research and set-up | M | Plan reviewed (M0.1), verified facts and sources, spike decisions | M0.1 done 2026-11-11, notes in [notes-M0.1.md](notes-M0.1.md); M0.2 done 2026-11-11, notes in [notes-M0.2.md](notes-M0.2.md) |
+| M0 | Research and set-up | M | Plan reviewed (M0.1), verified facts and sources, spike decisions | M0.1 done 2026-11-11, notes in [notes-M0.1.md](notes-M0.1.md); M0.2 done 2026-11-11, notes in [notes-M0.2.md](notes-M0.2.md); M0.3 done 2026-11-11, notes in [notes-M0.3.md](notes-M0.3.md) |
 | M1 | Engine | L | `lib/smith/` with a harness; no UI | not started |
 | M2 | Chart | L | Labelled, zoomable Z/Y/ZY chart on its own route, touch included | not started |
 | M3 | Circuit editor, both ways, and first theory | L | **First usable tool**: card on the main page, Theory section with the first topics | not started |

@@ -13,8 +13,13 @@ complex numbers.
 - **Entry:** id, title, the text, the variables (TeX symbol, meaning, unit, the chart object whose colour it takes),
   the assumptions ("lossless line", "e^{jωt}"), the source keys in `references.bib`, the derivation steps (each an
   equation in the same text form plus one sentence saying why), and the engine function it must equal.
-- **Printer:** brackets from operator precedence, `\frac` for division, `\cdot` only where a product would be
-  ambiguous; complex values written the engineering way (`25 + j25`, `25 − j25`, `j0.5`, in brackets when multiplied
+- **Grammar (M0.3 c):** numbers, names (`Gamma_r`, `Z_in`, Greek by name, `j` the imaginary unit), `+ - * / ^`, unary
+  minus binding like a product (`-2*x/y` is `-(2x/y)`), calls (`abs`, `sqrt`, `exp`, `conj`, `log10`, `tan`, …),
+  `=` chains; division left-associative, so `Z_0*(A/B)` is written to get `Z_0\frac{A}{B}` and `j*(2*x/y)` for
+  `j\frac{2x}{y}`. A bracket the text writes around a sum or difference is kept (derivation steps show grouping).
+- **Printer:** brackets from operator precedence, `\frac` for division, `\cdot` only before a number (`j` before a
+  number is juxtaposed: `j2`), a negation right of `+`/`−` or as a later factor bracketed, `\left(\right)` only around
+  a fraction, multi-letter names upright (`\mathrm{VSWR}`, `Z_{\mathrm{in}}`); complex values written the engineering way (`25 + j25`, `25 − j25`, `j0.5`, in brackets when multiplied
   or raised; polar `0.447∠116.6°` where the entry asks for it); units after the number with a thin space; numbers
   formatted by `lib/quantity.ts` with the digits setting.
 - **The engine does not use the trees.** The engine is hand-written (engine.md §9); the trees give the symbolic line,
@@ -22,7 +27,8 @@ complex numbers.
   random points against the engine (to 1e-12 relative) and renders every entry with `throwOnError`. No equation is on
   screen that the harness cannot evaluate.
 - **Fallback** if M1.4 finds the printer's output poor: hand-written TeX per entry with a golden test against the
-  evaluator.
+  evaluator. The M0.3 prototype (24 entries, the owner's notes included) printed well with the rules above, rendered
+  under `strict: 'error'`, and parsed and printed in 0.004 ms per entry, so the fallback is not expected.
 
 ## 2. KaTeX facts (measured in M0.1)
 
@@ -35,8 +41,9 @@ KaTeX 0.19.1 with `output: 'mathml'`, as `components/KatexSpan.tsx` uses it:
 - **Hooks for highlighting:** each variable is wrapped in `\textcolor` with a unique sentinel colour, and one pass over
   the MathML string replaces those attributes with classes (`class="v-gamma"`), whose real colours come from the
   page's CSS variables in both themes. No separate spans per term.
-- `katex.renderToString` takes about 0.04 ms per equation (Node, warm), so re-rendering every frame is affordable;
-  what M0.3 measures is the browser's MathML layout and DOM replacement per frame.
+- `katex.renderToString` takes about 0.04 ms per equation (Node, warm). In Edge 157 (M0.3 a) replacing ten equations'
+  MathML per frame costs 2.3 ms at 1× but 14 ms of work and 21 ms of main thread at 4× (a quarter of frames dropped),
+  mostly DOM, style and MathML layout; so the panel renders in a 3 ms time slice per frame (engine.md §9).
 - `KatexSpan` renders in a `useMemo`: at build time for the static HTML and again in the browser, so KaTeX is already
   in the client bundle of a page that uses it.
 

@@ -126,9 +126,21 @@ The owner does not read code; performance is never traded for readability.
   layer (arcs, handles, trace, readout) is written directly to the SVG (`setAttribute`) from refs; React re-renders
   panels only. Zoom and pan change one transform; strokes use `vector-effect: non-scaling-stroke`; labels are laid out
   again only when the zoom level changes the grid density.
-- **Budgets (targets, confirmed or revised by the M0.3 spike, then measured by `timing.mjs` and recorded in the
-  notes):** dragging with 10 parts and a 2,000-point sweep trace: at most 4 ms of script per frame on the owner's
-  laptop and a frame within 16 ms with the CPU throttled 4× (the stand-in for a phone). The equation panel may update
-  at a lower rate than the chart. The solver: under 1 ms for the closed forms; the fallback search under 50 ms, else a
+- **Two SVG layers (M0.3 b):** the grid (circles, labels) in its own `<svg>` with `will-change: transform`, the moving
+  layer in a second `<svg>` stacked on it; a zoom sets the same transform on both. In one `<svg>`, every drag frame
+  re-rasters the grid and 8.7 % of frames dropped at 4× (0 with two layers). Arcs are `A` commands, the trace one `d`.
+- **Equation panel in a time slice (M0.3 a):** after the chart's update in the same frame, the visible equations are
+  re-rendered round-robin until 3 ms of work are spent, the rest in the next frames; on pointer up all get their final
+  values. Ten MathML equations cost 2.3 ms at 1× but 14 ms of work (21 ms main thread) at 4×.
+- **Touch (M0.3 d, D14):** the chart's `<svg>` has `touch-action: pan-y` and a non-passive `touchstart` listener that
+  calls `preventDefault()` only when the touch starts on a handle's hit area (at least 44 px; `touch-action` on SVG
+  children is ignored). One finger on a handle drags it, one finger vertically elsewhere scrolls the page, two fingers
+  pinch-zoom and pan the chart, a tap or a sideways drag goes to the chart.
+- **Budgets (confirmed by M0.3 in Edge 157, measured again by `timing.mjs` and recorded in the notes):** dragging with
+  10 parts and a 2,000-point sweep trace: at most 4 ms of script per frame on the owner's laptop and a frame within
+  16 ms with the CPU throttled 4× (the stand-in for a phone), with no dropped frames (rAF interval p95 ≤ 17 ms, headed
+  Edge). Split of the 4× frame: chart ≤ 6 ms main thread (spike: 3.7 ms), equation slice 3 ms of work (≈ 6 ms main
+  thread), the rest for React and the browser. At 1× the spike's chart frame was 0.8 ms and all ten equations 3.6 ms
+  main thread. The solver: under 1 ms for the closed forms; the fallback search under 50 ms, else a
   worker (pattern: `lib/resistor/combine.worker.ts`). The page's script size is compared with the resistor page's and
   not exceeded without a reason noted.
