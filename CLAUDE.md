@@ -132,6 +132,8 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 
 ## Working with Claude
 
+- **The owner does not review code or diffs.** Write the code the best way possible and never trade performance for
+  readability; quality comes from harness checks against independent computations and measured budgets.
 - **Lasting knowledge goes in this repo** (CLAUDE.md or `docs/`), not only in Claude's local memory, so it follows the
   repo to other machines: the owner's preferences, lessons learnt, where test files are.
 - **Large work in steps by agents** follows [docs/agent-workflow.md](docs/agent-workflow.md): steps sized so one agent
@@ -156,6 +158,9 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 - [docs/pcb-viewer/](docs/pcb-viewer/plan.md): PCB viewer plan, in parts: `plan.md` (index: goal, formats, step
   status, how a step is run and verified), `test-files.md`, `architecture.md`, `model.md`, and `s1.md`–`s9.md` (each
   step's scope and the notes it left for later steps).
+- [docs/smith-chart/](docs/smith-chart/plan.md): Smith chart plan (built in steps on the branch `smith-chart`), in
+  parts: `plan.md` (index: goal, decisions, milestones and status, module map, how a step is run), `engine.md`,
+  `solver.md`, `learning.md`, `milestones.md`, and the `notes-<step>.md` each step leaves.
 - [docs/agent-workflow.md](docs/agent-workflow.md): how to run large work with Claude agents cheaply and safely, with
   the measured cost of the PCB viewer build.
 - [docs/BACKLOG.md](docs/BACKLOG.md): wanted but not scheduled, for every tool (ids `BL<n>`, never reused). Work left out

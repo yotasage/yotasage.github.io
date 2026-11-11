@@ -1,0 +1,175 @@
+# Smith chart – plan
+
+A Smith chart tool at `/smith-chart/main`, running entirely in the browser like the rest of the site, **for learning
+and teaching impedance and admittance, matching and transmission lines**, and handy enough to use at the desk.
+
+The owner's goal (2026-11-11): correct, fast, useful, professional, "10/10 for something running client side in the
+browser". The owner designs PCBs and **does not read code or diffs**: a step is judged by how the page behaves and
+looks, and by the harness. Code is written the best way possible, and **performance is never traded for
+readability**. Quality comes from engineering discipline: verified facts, checks against independent computations,
+measured budgets.
+
+Drafted 2026-11-11 (with Sonnet 5.5), reviewed and reworked the same day (step M0.1, see
+[notes-M0.1.md](notes-M0.1.md)). Where this plan and [CLAUDE.md](../../CLAUDE.md) or
+[agent-workflow.md](../agent-workflow.md) disagree, those two win.
+
+## Files of this plan
+
+Read only the files and sections a brief names. Every file stays under 40 kB; split before.
+
+| File | What |
+| --- | --- |
+| [plan.md](plan.md) | This index: goal, decisions, ground rules, milestones and status, module map, how a step is run, quality bar, risks |
+| [engine.md](engine.md) | The model: conventions, parts, the geometry (every v1 locus is a circle), evaluation, drawing, dragging, numbers, goal, performance architecture and budgets |
+| [solver.md](solver.md) | Find the missing value: counting, the circle-intersection method, the fallback search, what comes back, suggestions |
+| [learning.md](learning.md) | Equations as data, the equation panel, derivations, the Theory section (from M3), the owner's notes, teaching content |
+| [milestones.md](milestones.md) | Every milestone's steps and "done when"; M6–M9 in outline until owner checkpoint 2 |
+| `facts.md`, `sources.md` | Written by M0.2: conventions, every equation with its source, worked numeric cases; what each source supports |
+| `notes-<step>.md` | What a step left for later steps (under 6 kB each) |
+
+## Goal
+
+What the finished tool lets a person do:
+
+1. **See.** Build a circuit (load, then series and shunt parts, lines, stubs) and watch its path on the chart.
+2. **Draw.** Drag on the chart and the circuit follows: the value of the part changes.
+3. **Understand.** Theory within reach from the first usable version (a Theory section after the resistor tool's
+   pattern, a short line beside every control and readout that links to its topic). Every number and every move has
+   its equation one click away, with the live numbers put in, the derivation behind it and a source.
+4. **Find.** Mark one or two values as unknown and say what the circuit should achieve: the tool finds every solution,
+   marks the realisable ones, shows them on the chart as the two circles whose crossings they are, and explains them.
+5. **Sweep, report, export.** See how the match behaves over a band, get the figures (return loss, VSWR, bandwidth),
+   and take the chart and data away as SVG, PNG, CSV, Touchstone or a link.
+
+## Decisions
+
+Settled with the owner on 2026-11-11. Changing one needs the owner.
+
+| # | Decision | Why |
+|---|---|---|
+| D1 | **Written from scratch.** Nothing of the 2021 prototype is kept as code; its parts list and ideas are in [notes-M0.1.md](notes-M0.1.md). | In the prototype the chart is the model (a point is an SVG circle's position), with no frequency, Z0 or values. |
+| D2 | **Model first.** A circuit (load, ordered parts, f0, Z0) is the one source of truth; the chart is a view and an editor of it. | Typing a value and dragging are then one mapping run two ways and cannot disagree. |
+| D3 | **Every v1 locus is a circle**, and a part's arc runs from **"no effect"** to its value (added reactance or susceptance from 0, a line's length from 0), drawn as an exact SVG arc. Polylines only for sweep traces and, later, lossy parts. | Every ideal part maps Γ by a Möbius transformation (engine.md §3). Exact at every zoom, nothing to recompute while zooming, small SVG. Sweeping the component value from 0 is wrong: a series C of 0 F is an open. |
+| D4 | Nodes are **(V, I) pairs**, with an explicit rule for parts of value 0 or ∞. | Open and short are ordinary numbers; the two (0, 0) cases are defined, not NaN (engine.md §4). |
+| D5 | **Equations are data**, written as short text, parsed into expression trees when the module loads, printed to TeX by one printer and evaluated by one evaluator. They are for display; the engine is separate hand-written code, and the harness proves each equation equals the engine. | What the learner reads is what is computed, without an interpreter in the drag loop. Text is about a quarter of the output of hand-built trees. |
+| D6 | **Teaching is core.** The Theory section comes with the first usable tool (M3) and grows with every feature; the equation panel is M5. | The main purpose is learning and teaching; a user must be able to catch up at any time. |
+| D7 | **The solver for one or two unknowns is core (M4)** and **geometric**: two unknowns with a point target are the intersection of two circles. A numerical search only for unknowns whose locus is not a circle. | Exact, complete by construction, microseconds, and the picture is the textbook construction. |
+| D8 | **Ideal parts in v1**, every part a function of frequency, so finite Q and parasitics can come later (BL42). | Correct and small without painting the design into a corner. |
+| D9 | **Ladder networks only in v1** (series and shunt parts, lines and stubs between load and source). Branches: BL43. | That is what a Smith chart path represents. |
+| D10 | The chart is **SVG**. Its moving layer (arcs, handles, trace, readout) is updated **outside React**, at most once per animation frame; React renders the panels. | Crisp at any zoom, SVG export without a second renderer; React reconciliation per pointer move would eat the budget. |
+| D11 | **No new dependency in v1.** Maths with KaTeX through `components/KatexSpan.tsx`; the number reader and writer of `lib/resistor/lists.ts` moved to a shared module and extended. | Static, self-hosted site; one number parser on the site, not three. |
+| D12 | **Not supported:** a complex reference impedance, time domain, branching networks (v1), accounts or any server feature. | Out of scope. |
+| D13 | **The chart never rotates.** Y mode draws admittance circles on the same Γ plane, so a point never moves when the mode changes. | Textbooks differ (some rotate the chart by 180° for admittances); one plane avoids that confusion. |
+| D14 | **Touch from the start.** Everything done by hover (cursor readout, linking, solution preview, plot linking) has a tap equivalent, decided in M2 and kept in every later step. | The owner tests on a phone; touch added at the end means rewriting the interaction code. |
+| D15 | **Names:** route, docs, branch `smith-chart` (`/smith-chart/main`, `docs/smith-chart/`); code `smith` (`lib/smith/`, `components/Smith/`, `styles/Smith*.module.css`, `scripts/harness/smith/`). Home card category "Electronics". | The site's route folders are kebab-case (`pcb-viewer`, `3d-viewer`). |
+| D16 | **Default start state:** Z0 = 50 Ω, load 25 + j25 Ω, f0 = 100 MHz, a basic two-part circuit. | The owner's "start with a basic two-component circuit and add as needed". |
+
+## Ground rules
+
+- **The site's hard constraints apply** (CLAUDE.md): no server, self-hosted assets, nothing leaves the device, licence
+  check for any new dependency (v1 adds none).
+- **The whole circuit is in the link** (query string replaced without reloading, the resistor tool's pattern), so every
+  state is a link. Preferences (theme, digits, chart mode) in `localStorage`, read after mount.
+- **Results update while typing and dragging**; there is no submit button. Input that cannot be read says why.
+- **Keyboard and touch** for every main task; layouts work at 320 px width; nothing exists only on hover.
+- **Numbers are honest**: never truncated, signed, units shown, normalised values labelled. When no exact answer
+  exists the tool says so and why.
+- **Assumptions are stated** on the page: ideal parts, lossless lines, real Z0.
+- **The card on the main page and the README list only what works**; the card arrives with M3.
+- **Nothing reaches `main` before M3.4** adds the card (CLAUDE.md: every tool has a card, no placeholder cards).
+
+## Design direction
+
+The resistor lookup is the model for page structure, tone and the theme system (`components/Resistor/`,
+`styles/Resistor.module.css`): light and dark themes following the system with a switch, all colours as CSS variables
+on the tool's root, system UI type with tabular monospace numerals, calm sections separated by space and fine rules, a
+slim section nav, short functional motion (none with reduced motion). The chart is the hero: a quiet grid, each part's
+arc in its own colour (the same colour in the schematic strip and the equations), the goal clearly marked. M2.3 makes
+the design pass and records the tokens in its notes.
+
+## Milestones
+
+One agent per step, one at a time, each started and checked by the main session (agent-workflow.md). M0–M5 are planned
+in detail in [milestones.md](milestones.md). **M6–M9 are an outline**: they are detailed after owner checkpoint 2, and
+the owner confirms which of their extras are built. The step that finishes updates the status column.
+
+| M | Name | Size | Result | Status |
+|---|---|---|---|---|
+| M0 | Research and set-up | M | Plan reviewed (M0.1), verified facts and sources, spike decisions | M0.1 done 2026-11-11, notes in [notes-M0.1.md](notes-M0.1.md) |
+| M1 | Engine | L | `lib/smith/` with a harness; no UI | not started |
+| M2 | Chart | L | Labelled, zoomable Z/Y/ZY chart on its own route, touch included | not started |
+| M3 | Circuit editor, both ways, and first theory | L | **First usable tool**: card on the main page, Theory section with the first topics | not started |
+| M4 | Find the missing value | M | Geometric solver and suggestions for one or two unknowns | not started |
+| M5 | Equation layer | L | Equations shown everywhere with live numbers, derivations, "explain this move" | not started |
+| M6 | Teaching content | M | Worked examples; challenges and lesson links if confirmed | outline |
+| M7 | Sweep and report | L | Γ(f) trace, markers, return-loss plot, band figures, report | outline |
+| M8 | Export and share | M | SVG, PNG, CSV, Touchstone, project file, link | outline |
+| M9 | Polish and release gate | M | Accessibility, performance, browsers, docs, final review | outline |
+
+**Owner checkpoints:** 1 after M3 (first usable tool), 2 after M4 (the solver; M6–M9 are then detailed and confirmed),
+3 after M9 (the release gate). **Stopping points** if time runs short: after M3 (a usable tool with theory) and after
+M4 (the tool does what the owner asked for). Never in the middle of a milestone.
+
+The owner's "Resolution" wish is covered in three places: grid density that adapts to the zoom (M2), number of shown
+digits and sweep points (M5, M7), export scale (M8).
+
+## Module map
+
+Suggested; a step that renames or adds a file updates this table with one line per file and its main exports.
+
+| File | What |
+| --- | --- |
+| `lib/quantity.ts` | Shared number reading and writing (moved from `lib/resistor/lists.ts`, which re-exports it): SI prefixes, units, rounding with carry |
+| `lib/smith/complex.ts` | Complex arithmetic on plain numbers and typed arrays |
+| `lib/smith/convert.ts` | z, y, Γ conversions; metrics: VSWR, return loss, mismatch loss, Q |
+| `lib/smith/parts.ts` | Part kinds, their ABCD matrices at a frequency, "no effect" values, reachable ranges |
+| `lib/smith/network.ts` | Ladder evaluation with (V, I) nodes and the degenerate rule |
+| `lib/smith/geometry.ts` | Möbius maps, part loci as circles, arcs, projection of a point onto a locus |
+| `lib/smith/equations.ts` | Equation text → trees, TeX printer, evaluator, the registry |
+| `lib/smith/goal.ts`, `solve.ts`, `suggest.ts` | Goals, the geometric solver and its fallback, suggestions |
+| `lib/smith/state.ts` | The circuit in the link |
+| `components/Smith/` | `SmithTool`, `Chart`, `Grid`, `Strip`, `PartCard`, `Readout`, `Theory`, `SolvePanel`, `MathPanel`, … |
+| `pages/smith-chart/main.tsx` | The route: `<Head>`, `getStaticProps` loads `references.bib`, renders `SmithTool` |
+| `scripts/harness/smith/` | `check.mjs` (engine), `ui*.mjs` (page), `shots*.mjs` (screenshots), `timing.mjs` (budgets) |
+
+## Running a step
+
+- Follow [agent-workflow.md](../agent-workflow.md): the brief names the files to read and the verification bar; stay
+  under about 200k tokens of context; write a new file whole; chain shell commands. Heavy steps are split into research,
+  code and check. Engine steps check by harness only (no dev server, no screenshots).
+- **Harness:** `scripts/harness/smith/` with its own `package.json` (`playwright-core`, `tsx`) and ignored
+  `node_modules`, after `scripts/harness/resistor/`. `npm run check` runs the engine checks and prints a short summary.
+  Screenshots from the installed Edge or Chrome (`channel: 'msedge'`), 390 px and 1440 px wide, both themes,
+  downscaled to about 1,000 px, written to the session's scratch folder, never to the repo. Firefox and WebKit (the
+  stand-in for Safari on Windows) need `npx playwright install firefox webkit` in the harness folder; only the steps
+  that compare browsers (M5, M9) do that.
+- **Done means:** the harness passes, `npx tsc --noEmit` and `npm run build` pass (then `git checkout --
+  next-env.d.ts`), the code was read against the static-export constraints, page steps were looked at in both themes at
+  both widths, and the step's `notes-<step>.md`, this file's status and module map (and from M3 the card and README)
+  are updated. Anything left out goes to `docs/BACKLOG.md` with the next free id.
+- **Commits:** one per step on the branch `smith-chart`, made by the step's agent when its checks pass (message as
+  CLAUDE.md's "Commits" says, files named explicitly, no push).
+
+## Quality bar ("10/10", made checkable)
+
+| Area | What it means here | How it is checked |
+|---|---|---|
+| Correctness | Every number from the engine; every equation shown is checked against it; no NaN, ∞ or truncation shown | `check.mjs`: textbook cases from facts.md, a second independent computation, round trips, fuzz, equations against the engine |
+| Performance | Smooth dragging and zooming with a realistic circuit, on the laptop and on a phone | Budgets in engine.md §9, measured by `timing.mjs`, also with the CPU throttled 4× |
+| Usability | Nothing needs explaining that the page does not explain; no dead ends; undo everywhere; plain messages; sensible start | Owner checkpoints; scripted use of every task |
+| Teaching | Any number can be followed to its equation, derivation, theory topic and source | M3.5, M5 and M6 "done when" lists |
+| Looks | Consistent, calm, a chart legible at every zoom, both themes designed | Screenshots at three sizes in both themes (M2, M9) |
+| Access | Main tasks by keyboard alone and by touch; names, roles, contrast, reduced motion | M3, M9.1 |
+| Honesty | Assumptions stated; says when no exact answer exists and why | Text reviewed in M3.5, M6, M9 |
+
+## Risks
+
+- **Sign conventions**, the classic failure of Smith chart tools: fixed once in engine.md §1 and facts.md, checked by
+  direction-of-travel facts in the harness.
+- **MathML layout cost per frame** while dragging (KaTeX itself is about 0.04 ms per equation): measured in M0.3; the
+  fallback is updating the panel at a lower rate.
+- **MathML across browsers:** spacing and fonts differ; checked in M5 and M9.1.
+- **Teaching content takes real writing and checking:** no claim without a source or a derivation; the research pass
+  (M0.2) is not hurried.
+- **Size:** M0–M5 are about 20 agent steps, more than any earlier tool (resistor 7, PCB viewer 9). Steps that grow past
+  the context budget are split before they start, not during.
