@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
 import {
-  CHIP_SIZES, Combination, LISTS_KEY, SERIES, SearchResult, SeriesId, StoredList, cancelSearch, formatCount, formatError, formatOhms,
+  CHIP_SIZES, Combination, LISTS_KEY, ParsedList, SERIES, SearchResult, SeriesId, StoredList, cancelSearch, formatCount, formatError, formatOhms,
   formatQuantity, formatRange, formatRkm, formatTolerance, listReach, listsFromStorage, listsToStorage, networkFormula, networkLeaves,
   networkLoad, networkShares, networkTolerance, parseQuantity, parseValueList, readValue, sameValues, saveBlob, searchPlace, series, seriesList,
   startSearch, stopSearchWorker, usualSeries,
@@ -20,6 +20,8 @@ interface Props {
   tolerance: number;
   combo: Combo;
   onCombo: (patch: Partial<Combo>) => void;
+  // Told the lists as they are read, so that the Design section can offer them too.
+  onLists?: (lists: { list: StoredList; parsed: ParsedList }[]) => void;
 }
 
 // How many results the search keeps, how many are shown at first and how many "Show more" adds.
@@ -71,7 +73,7 @@ function ErrorCells({ c, scale }: { c: Combination; scale: number }) {
 }
 
 // A resistance typed as the end of the range; it is taken as soon as it reads and fits.
-function RangeField({ label, ohms, onCommit }: { label: string; ohms: number; onCommit: (ohms: number) => boolean }) {
+export function RangeField({ label, ohms, onCommit }: { label: string; ohms: number; onCommit: (ohms: number) => boolean }) {
   const [text, setText] = useState(formatOhms(ohms));
   const [bad, setBad] = useState(false);
   useEffect(() => {
@@ -128,7 +130,7 @@ function Details({ c, tolerance, load, loadText }: { c: Combination; tolerance: 
                 <span role="cell" className={styles.num}>{part && <b>{formatQuantity(part.amps, 'A')}</b>}{' '}<i>{pct3(share.current * 100)}</i></span>
                 <span role="cell" className={styles.num}>{part && <b>{formatQuantity(part.watts, 'W')}</b>}{' '}<i>{pct3(share.power * 100)}</i></span>
                 {part && (
-                  <span role="cell" className={styles.num} data-over={chip ? undefined : 'true'}>
+                  <span role="cell" className={[styles.num, css.sharesChip].join(' ')} data-over={chip ? undefined : 'true'}>
                     {chip ? <><b>{chip.imperial}</b>{' '}<i>{formatQuantity(chip.power, 'W')}</i></> : <b>above 2512 (1 W)</b>}
                   </span>
                 )}
@@ -147,7 +149,7 @@ function Details({ c, tolerance, load, loadText }: { c: Combination; tolerance: 
 }
 
 // The Combinations section: which real resistors, connected how, give the current value.
-export default function Combinations({ ohms, tolerance, combo, onCombo }: Props) {
+export default function Combinations({ ohms, tolerance, combo, onCombo, onLists }: Props) {
   const [lists, setLists] = useState<StoredList[]>([]);
   // True once the lists were read from the browser; nothing is searched before.
   const [ready, setReady] = useState(false);
@@ -179,6 +181,9 @@ export default function Combinations({ ohms, tolerance, combo, onCombo }: Props)
   };
 
   const read = useMemo(() => lists.map((list) => ({ list, parsed: parseValueList(list.text) })), [lists]);
+  useEffect(() => {
+    if (ready) onLists?.(read);
+  }, [ready, read, onLists]);
   const stored = combo.listId ? read.find((item) => item.list.id === combo.listId) : undefined;
   const shared = combo.list && !combo.listId ? combo.list : null;
   const usingList = combo.listId !== null || combo.list !== null;

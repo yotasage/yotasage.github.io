@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { chromium } from 'playwright-core';
 
 import { combinationChecks } from './ui-combos.mjs';
+import { designChecks } from './ui-design.mjs';
 
 const base = process.argv[2] ?? 'http://localhost:3020';
 let browser;
@@ -363,6 +364,8 @@ await context.close();
 
 // The Combinations section, compared with the engine (ui-combos.mjs).
 await combinationChecks({ browser, base, ok });
+// The Design section, compared with the engine (ui-design.mjs).
+await designChecks({ browser, base, ok });
 await browser.close();
 for (const failure of failures) console.log(`FAIL ${failure}`);
 console.log(`resistor page: ${passed} of ${passed + failures.length} checks passed`);

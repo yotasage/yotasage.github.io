@@ -1,12 +1,13 @@
 # Backlog
 
-Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL35**). When a row is
+Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL36**). When a row is
 scheduled it moves into the tool's plan (for the PCB viewer: [pcb-viewer/plan.md](pcb-viewer/plan.md); for the resistor
 lookup: [resistor/plan.md](resistor/plan.md)) and the move is noted here; when it is done the row is removed and that is
 noted here too.
 
 | id | tool | what | why / trigger |
 |---|---|---|---|
+| BL35 | Resistor lookup | Design mode: a tolerance on the circuit's own quantities (supply, reference voltage, measured current), which the engine already takes (`Circuit.tolerances`) and the page does not ask for; the opened suggestion kept in the link; the schematic with the chosen values saved as SVG or TikZ | 2026-11-11: left out of S4b, which lists the inputs the page has. Without it the page says that the circuit's voltages and currents are taken as exact. Trigger: the owner has tried the design mode and wants the reference tolerance of a regulator counted |
 | BL34 | Resistor lookup | Works offline and can be installed: a self-hosted service worker and a web app manifest, so the tool opens without a network and can be added to a phone's home screen | 2026-11-10: offered when the tool was planned; the owner put it in the backlog. It would be the first service worker on the site, so its caching must not hold back updates of the other tools. Trigger: the owner wants the tool at a bench without a network |
 | BL33 | Resistor lookup | A printable cheat sheet: an A4 print layout of the colour code table, the SMD code tables, the EIA-96 values and the chip sizes, saved as PDF from the browser, and the same sheet downloadable as a `.tex` file for those who want to edit it before use | 2026-11-10: the owner asked for the `.tex` download; the owner's own LaTeX draft (`E:\OneDrive\Notes\Cheat sheets\resistors`) is a draft only and its style is not to be copied. Trigger: after the tool's reference tables exist (S2) |
 | BL32 | Resistor lookup | An E-series ruler: a logarithmic ruler with every series as a row of ticks, on which the value is dragged and each series' neighbours are seen; and a table of all values of each series | 2026-11-10: offered when the tool was planned; the owner put it in the backlog. Trigger: the owner wants it |

@@ -108,10 +108,14 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   `notes-S<n>.md`; `facts.md` has the tables). Framework-free logic in `lib/resistor/` (E-series, colour code, SMD
   markings, `draw.ts` for the self-contained SVG drawings with the stroke font of `glyphs.ts`, `tikz.ts` for the same shapes as
   TikZ, `export.ts`; the combination search `combine.ts` in a worker through `combineClient.ts`, networks in `network.ts` and
-  `analyse.ts`, pasted value lists in `values.ts`, their form in the link and in `localStorage` in `lists.ts`), the page in
+  `analyse.ts`, pasted value lists in `values.ts`, their form in the link and in `localStorage` in `lists.ts`; the design mode: parts in
+  `technology.ts`, circuits in `circuits.ts`, worst case and RSS over temperature in `design.ts`, suggestions in `suggest.ts`,
+  asked for in a second instance of the same worker through `designClient.ts`), the page in
   `components/Resistor/` (`ResistorTool.tsx` holds the state and the link, `view.ts` resolves what is drawn; `Combinations.tsx` with
-  `combo.ts` for its link state and `ValueLists.tsx` for the visitor's lists), styles and theme variables in
-  `styles/Resistor.module.css` (the Combinations section in `styles/ResistorCombos.module.css`), checks in `scripts/harness/resistor/` (`npm run check`, `npm run ui`).
+  `combo.ts` for its link state and `ValueLists.tsx` for the visitor's lists; `DesignSection.tsx` with `design.ts` for its link
+  state, the reading of its fields and its sentences, `DesignDetails.tsx` for an opened suggestion with the range chart and
+  `Schematic.tsx`), styles and theme variables in
+  `styles/Resistor.module.css` (the Combinations section in `styles/ResistorCombos.module.css`, the Design section in `styles/ResistorDesign.module.css`), checks in `scripts/harness/resistor/` (`npm run check`, `npm run ui`).
 - `tsconfig` uses `"module": "node16"`, so our own files count as CommonJS and the ES-module-only add-ons of three.js
   (`three/examples/jsm/...`) can only be loaded with `await import(...)`, or imported as types with
   `import type ... with { 'resolution-mode': 'import' }`. A dynamic import of one of our own files needs

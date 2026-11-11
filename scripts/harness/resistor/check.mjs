@@ -522,6 +522,35 @@ await combineChecks(lib, { section, ok, eq });
 // The design mode's engine: circuits, worst case and RSS over temperature, suggestions (design.mjs).
 await designChecks(lib, { section, ok, eq });
 
+// The numbers typed in the Design section (lists.ts) and the reading of its link (components/Resistor/design.ts).
+section('amounts');
+{
+  const { readAmount, formatAmount } = lib;
+  const cases = [['10m', 0.01], ['10 mA', 0.01], ['3,3', 3.3], ['3.3 V', 3.3], ['4k7', 4700], ['3V3', 3.3], ['-10', -10], ['−10', -10], ['50n', 5e-8], ['2 µA', 2e-6], ['100 ppm/K', 100],
+    ['5 %', 5], ['1M', 1e6], ['3.', 3], ['.5', 0.5], ['100k', 1e5], ['0', 0]];
+  for (const [text, value] of cases) ok(Math.abs(readAmount(text) - value) <= Math.abs(value) * 1e-12, `readAmount("${text}") is ${value}: ${readAmount(text)}`);
+  for (const text of ['', 'abc', '1..2', '10 mm', 'k', '--1']) ok(readAmount(text) === null, `readAmount("${text}") is not a number`);
+  eq(formatAmount(3.2961, 'V'), '3.296 V', 'formatAmount: four digits');
+  eq(formatAmount(0.000158, 'A', 3), '158 µA', 'formatAmount: a prefix');
+  eq(formatAmount(-10, ''), '−10', 'formatAmount: a gain with a real minus');
+  eq(formatAmount(0.9999999, 'V'), '1 V', 'formatAmount: rounding up to the next prefix');
+  const stateModule = await import('../../../components/Resistor/design.ts');
+  const state = stateModule.default ?? stateModule;
+  const link = 'dc=fb&dv=1.25&df=50u&dt=5&dp=2&dk=thin-film&dtol=0.5&dtemp=0_25_70&dm=t&dts=5&ds=e24&dr=100R-1M&dg=2&dtr=2k-500k&dcr=-1m&dz=0805';
+  const design = state.designFromParams(new URLSearchParams(link));
+  const back = new URLSearchParams();
+  state.designToParams(design, back);
+  eq(back.toString(), new URLSearchParams(link).toString(), 'a design goes into a link and comes back the same');
+  const parsed = state.parseDesign(design);
+  ok(parsed.problem === null && parsed.circuit.inputs.vref === 1.25 && Math.abs(parsed.circuit.inputs.ifb - 5e-5) < 1e-15 && parsed.target === 5 && parsed.spec.tolerancePct === 0.5 && parsed.spec.tcrPpm === 25
+    && parsed.current.min === undefined && parsed.current.max === 0.001, 'the fields of a design are read as the engine needs them');
+  const empty = new URLSearchParams();
+  state.designToParams(state.DEFAULT_DESIGN, empty);
+  eq(empty.toString(), '', 'the design a page starts with adds nothing to the link');
+  ok(state.parseDesign({ ...state.DEFAULT_DESIGN, texts: { 'single-current.target': '' } }).errors.target === 'needed', 'an empty target is an error of that field');
+  eq(state.technologyFor({ tolerancePct: 0.1, tcrPpm: 25 }, 'thick-film'), 'thin-film', 'the technology that is made with a tolerance and a TCR');
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 const total = [...groups.values()].reduce((a, b) => a + b, 0);
 for (const failure of failures) console.log(`FAIL ${failure}`);

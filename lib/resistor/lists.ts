@@ -144,3 +144,37 @@ export function formatCount(count: number): string {
   const [scale, name] = names.find(([s]) => count >= s) ?? names[names.length - 1];
   return `${Number((count / scale).toPrecision(3))} ${name}`;
 }
+
+const AMOUNT_UNIT = '(?:[VvAaWwΩRr]|[Oo]hms?|%|[x×]|ppm(?:\\s*/\\s*K)?|°\\s*C)?';
+const AMOUNT_PLAIN = new RegExp(`^([+-]?)\\s*(\\d+(?:[.,]\\d*)?|[.,]\\d+)\\s*([pnuµμmkMG]?)\\s*${AMOUNT_UNIT}$`);
+const AMOUNT_LETTER = new RegExp(`^([+-]?)\\s*(\\d+)([pnuµμmkMGRV])(\\d+)\\s*${AMOUNT_UNIT}$`);
+const AMOUNT_SI: Record<string, number> = { ...SI, G: 1e9, R: 1, V: 1 };
+
+// A number as typed in the design mode, with its sign: "10m", "10 mA", "3,3", "4k7", "3V3", "−10", "2.5 V", "5 %",
+// "100 ppm/K"; "3." while it is being typed is 3. The unit is not checked against the field. null when it is not a
+// number.
+export function readAmount(text: string): number | null {
+  const typed = String(text ?? '').trim().replace(/[−–]/g, '-');
+  let match = AMOUNT_PLAIN.exec(typed);
+  let value: number;
+  if (match) value = Number(match[2].replace(',', '.')) * AMOUNT_SI[match[3]];
+  else {
+    match = AMOUNT_LETTER.exec(typed);
+    if (!match) return null;
+    value = Number(`${match[2]}.${match[4]}`) * AMOUNT_SI[match[3]];
+  }
+  if (!Number.isFinite(value)) return null;
+  return match[1] === '-' ? -value : value;
+}
+
+// A voltage, a current or a gain with `digits` significant digits and a real minus sign: "3.296 V", "−10", "158 µA".
+export function formatAmount(value: number, unit: string, digits = 4): string {
+  if (!Number.isFinite(value)) return unit ? `– ${unit}` : '–';
+  const sign = value < 0 ? '−' : '';
+  const abs = Math.abs(value);
+  if (!unit) return `${sign}${Number(abs.toPrecision(digits))}`;
+  if (abs === 0) return `0 ${unit}`;
+  const steps: [number, string][] = [[1e9, 'G'], [1e6, 'M'], [1e3, 'k'], [1, ''], [1e-3, 'm'], [1e-6, 'µ'], [1e-9, 'n'], [1e-12, 'p']];
+  const [scale, prefix] = steps.find(([s]) => abs >= s * (1 - 0.5 * 10 ** -digits)) ?? steps[steps.length - 1];
+  return `${sign}${Number((abs / scale).toPrecision(digits))} ${prefix}${unit}`;
+}

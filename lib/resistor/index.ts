@@ -19,3 +19,4 @@ export * from './technology';
 export * from './circuits';
 export * from './design';
 export * from './suggest';
+export * from './designClient';

@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
-import { DrawStyle, MAX_OHMS, MIN_OHMS, ReadAs, SERIES, SeriesId, formatOhms, readInput, series, step, usualSeries } from '../../lib/resistor';
+import { DrawStyle, MAX_OHMS, MIN_OHMS, ParsedList, ReadAs, SERIES, SeriesId, StoredList, formatOhms, readInput, series, step, usualSeries } from '../../lib/resistor';
 import styles from '../../styles/Resistor.module.css';
 import HomeIcon from '../icons/home';
 import Combinations from './Combinations';
+import DesignSection from './DesignSection';
 import DrawingSection from './DrawingSection';
 import Lookup from './Lookup';
 import Reference from './Reference';
@@ -12,6 +13,7 @@ import SmartInput from './SmartInput';
 import Stage from './Stage';
 import ValueHero from './ValueHero';
 import { Combo, DEFAULT_COMBO, comboFromParams, comboToParams } from './combo';
+import { DEFAULT_DESIGN, Design as DesignState, designFromParams, designToParams } from './design';
 import { MoonIcon, SunIcon } from './parts';
 import { Change, DEFAULT_VIEW, View, resolveView, viewFromParams, viewToParams } from './view';
 
@@ -20,6 +22,7 @@ const SECTIONS: { id: string; label: string }[] = [
   { id: 'lookup', label: 'Lookup' },
   { id: 'drawing', label: 'Drawing' },
   { id: 'combinations', label: 'Combinations' },
+  { id: 'design', label: 'Design' },
   { id: 'reference', label: 'Reference' },
 ];
 
@@ -54,6 +57,10 @@ export default function ResistorTool() {
   // What the Combinations section searches with; part of the link.
   const [combo, setCombo] = useState<Combo>(DEFAULT_COMBO);
   const changeCombo = useCallback((patch: Partial<Combo>) => setCombo((c) => ({ ...c, ...patch })), []);
+  // What the Design section works with; part of the link. The value lists are read by the Combinations section.
+  const [design, setDesign] = useState<DesignState>(DEFAULT_DESIGN);
+  const changeDesign = useCallback((patch: Partial<DesignState>) => setDesign((d) => ({ ...d, ...patch })), []);
+  const [valueLists, setValueLists] = useState<{ list: StoredList; parsed: ParsedList }[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [section, setSection] = useState(SECTIONS[0].id);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -86,6 +93,7 @@ export default function ResistorTool() {
     if (chosen) setSeriesChoice(chosen.id);
     setView(viewFromParams(params));
     setCombo(comboFromParams(params));
+    setDesign(designFromParams(params));
     try {
       const stored = window.localStorage.getItem(THEME_KEY);
       if (stored === 'light' || stored === 'dark') setTheme(stored);
@@ -107,12 +115,13 @@ export default function ResistorTool() {
     if (readAs === 'marking') params.set('read', 'marking');
     viewToParams(view, params);
     comboToParams(combo, params);
+    designToParams(design, params);
     const search = params.toString();
     const url = `${window.location.pathname}${search ? `?${search}` : ''}${window.location.hash}`;
     if (url !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
       window.history.replaceState(window.history.state, '', url);
     }
-  }, [loaded, text, pick, tolerance, seriesChoice, reading, result, view, readAs, combo]);
+  }, [loaded, text, pick, tolerance, seriesChoice, reading, result, view, readAs, combo, design]);
 
   // The nav shows the section at the top of the window.
   useEffect(() => {
@@ -293,7 +302,12 @@ export default function ResistorTool() {
 
           <section id="combinations" className={styles.section} aria-labelledby="combinations-title">
             <h2 className={[styles.label, styles.sectionHead].join(' ')} id="combinations-title">Combinations</h2>
-            <Combinations ohms={ohms} tolerance={tolerance} combo={combo} onCombo={changeCombo} />
+            <Combinations ohms={ohms} tolerance={tolerance} combo={combo} onCombo={changeCombo} onLists={setValueLists} />
+          </section>
+
+          <section id="design" className={styles.section} aria-labelledby="design-title">
+            <h2 className={[styles.label, styles.sectionHead].join(' ')} id="design-title">Design</h2>
+            <DesignSection design={design} onDesign={changeDesign} lists={valueLists} onValue={takeValue} />
           </section>
 
           <section id="reference" className={styles.section} aria-labelledby="reference-title">

@@ -711,6 +711,43 @@
     padding-left: 0;
   }
 
+  /* The table of an opened result fits the width: the figure above its share, the chip size on a line of its own. */
+  .shares,
+  .shares[data-load] {
+    grid-template-columns: auto auto repeat(3, minmax(0, 1fr));
+    column-gap: 8px;
+    min-width: 0;
+    font-size: 12.5px;
+  }
+
+  .sharesHead > :nth-child(6) {
+    display: none;
+  }
+
+  .sharesRow b,
+  .sharesRow i {
+    display: block;
+    min-width: 0;
+  }
+
+  .sharesRow > .sharesChip {
+    grid-column: 1 / -1;
+    margin-top: 2px;
+  }
+
+  .sharesRow > .sharesChip::before {
+    content: 'Chip, typical';
+    margin-right: 10px;
+    font-family: var(--font-ui);
+    color: var(--ink-3);
+  }
+
+  .sharesRow > .sharesChip b,
+  .sharesRow > .sharesChip i {
+    display: inline;
+    margin-left: 6px;
+  }
+
   .listRow {
     grid-template-columns: minmax(0, 1fr) auto;
   }
