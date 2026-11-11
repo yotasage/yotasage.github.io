@@ -24,7 +24,9 @@ Read only the files and sections a brief names. Every file stays under 40 kB; sp
 | [solver.md](solver.md) | Find the missing value: counting, the circle-intersection method, the fallback search, what comes back, suggestions |
 | [learning.md](learning.md) | Equations as data, the equation panel, derivations, the Theory section (from M3), the owner's notes, teaching content |
 | [milestones.md](milestones.md) | Every milestone's steps and "done when"; M6–M9 in outline until owner checkpoint 2 |
-| `facts.md`, `sources.md` | Written by M0.2: conventions, every equation with its source, worked numeric cases; what each source supports |
+| [facts.md](facts.md) | Written by M0.2: the conventions and every equation with its source or derivation, the owner's notes checked, the values real L and C come in |
+| [facts-cases.md](facts-cases.md) | 28 worked numeric cases with the sources' numbers and ours to 10 digits, for M1's harness |
+| [sources.md](sources.md) | What each source is, what was opened, what it may and may not be cited for; the sources not opened |
 | `notes-<step>.md` | What a step left for later steps (under 6 kB each) |
 
 ## Goal
@@ -95,7 +97,7 @@ the owner confirms which of their extras are built. The step that finishes updat
 
 | M | Name | Size | Result | Status |
 |---|---|---|---|---|
-| M0 | Research and set-up | M | Plan reviewed (M0.1), verified facts and sources, spike decisions | M0.1 done 2026-11-11, notes in [notes-M0.1.md](notes-M0.1.md) |
+| M0 | Research and set-up | M | Plan reviewed (M0.1), verified facts and sources, spike decisions | M0.1 done 2026-11-11, notes in [notes-M0.1.md](notes-M0.1.md); M0.2 done 2026-11-11, notes in [notes-M0.2.md](notes-M0.2.md) |
 | M1 | Engine | L | `lib/smith/` with a harness; no UI | not started |
 | M2 | Chart | L | Labelled, zoomable Z/Y/ZY chart on its own route, touch included | not started |
 | M3 | Circuit editor, both ways, and first theory | L | **First usable tool**: card on the main page, Theory section with the first topics | not started |
