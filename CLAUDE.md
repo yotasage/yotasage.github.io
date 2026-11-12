@@ -144,6 +144,10 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 
 - **The owner does not review code or diffs.** Write the code the best way possible and never trade performance for
   readability; quality comes from harness checks against independent computations and measured budgets.
+- **The tools are made for the owner's own use** and are published as they are. A tool may go live before the owner
+  has tried it, with an honest note at the top of its page on what works, what is checked and how, and what is not
+  done yet. Any text about how others use a tool (accuracy, no guarantees) is written in the site's own friendly words:
+  never quote or paraphrase the owner's remarks about it, and keep it kind and brief.
 - **Lasting knowledge goes in this repo** (CLAUDE.md or `docs/`), not only in Claude's local memory, so it follows the
   repo to other machines: the owner's preferences, lessons learnt, where test files are.
 - **Large work in steps by agents** follows [docs/agent-workflow.md](docs/agent-workflow.md): steps sized so one agent
