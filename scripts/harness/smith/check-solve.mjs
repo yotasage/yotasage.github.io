@@ -20,7 +20,7 @@ const N = importedNetwork.default ?? importedNetwork;
 const cv = importedConvert.default ?? importedConvert;
 const G = importedGeometry.default ?? importedGeometry;
 const { solve, ACCEPT } = S;
-const { goalResidual, goalSigned, goalCircle, goalTarget } = GL;
+const { goalResidual, goalSigned, goalCircle, goalTarget, goalPole } = GL;
 const { SERIES_R, SERIES_L, SERIES_C, SHUNT_R, SHUNT_L, SHUNT_C, LINE, STUB_OPEN, STUB_SHORT, QUARTER, PART_KINDS, packParts, valueFor } = P;
 const { evaluate, nodeGamma, loadNode, applyPart, NODE_STRIDE } = N;
 const { gammaFromZ, zFromGamma } = cv;
@@ -434,6 +434,9 @@ export function runSolveChecks({ section, ok, near, printed, random }) {
         }
         const c = 0.5 * (lo + hi);
         if (!(Math.abs(f(c)) < 1e-9)) continue;
+        // Not at the goal's pole (the open for r and x, the short for g and b): no answer there (M4.2).
+        const pole = goalPole(goal);
+        if (pole !== 0) { const ps = parts.slice(); ps[a] = partFor(kind, zc, c, z0, f0); const gm = gammaAt(circuit, ps, g); if (Math.hypot(gm[0] - pole, gm[1]) < 1e-6) continue; }
         found++;
         const hit = res.solutions.some((s) => coordDist(line, coordOfValue(s.values[0]), c) < 1e-6);
         ok(hit, `circle problem ${count}: the scan found a value the solver missed (coord ${c}; kind ${kind}, goal ${JSON.stringify(goal)}; ${JSON.stringify(circuit)}; solver ${res.status} ${res.solutions.map((s) => coordOfValue(s.values[0])).join(', ')})`);

@@ -19,7 +19,7 @@ const P = importedParts.default ?? importedParts;
 const N = importedNetwork.default ?? importedNetwork;
 const cv = importedConvert.default ?? importedConvert;
 const { solve, ACCEPT } = S;
-const { goalResidual, goalSigned, goalMismatch, goalMag } = GL;
+const { goalResidual, goalSigned, goalMismatch, goalMag, goalPole } = GL;
 const { SERIES_R, SERIES_L, SERIES_C, SHUNT_R, SHUNT_L, SHUNT_C, LINE, STUB_OPEN, STUB_SHORT, QUARTER, PART_KINDS, packParts, valueFor, noEffect } = P;
 const { evaluate, nodeGamma, loadNode, applyPart, NODE_STRIDE } = N;
 const { zFromGamma } = cv;
@@ -434,7 +434,8 @@ export function runSolveMoreChecks({ section, ok, near, random }) {
           let ps = parts, ff = f0;
           if (isF) ff = f0 * Math.exp(root); else { ps = parts.map((p) => ({ ...p })); ps[unk.part].zc = z0 * Math.tan(root); }
           const gm = gammaOf(circuit, ps, parts.length, ff);
-          if (goalResidual(goal, gm[0], gm[1], z0) <= 1e-9) {
+          // Nor at the goal's pole (the open for r and x, the short for g and b), where the figure means nothing (M4.2).
+          if (goalResidual(goal, gm[0], gm[1], z0) <= 1e-9 && !(goalPole(goal) !== 0 && Math.hypot(gm[0] - goalPole(goal), gm[1]) < 1e-6)) {
             scanRoots++;
             if (!res.solutions.some((s) => Math.abs(s.values[0].coord - root) <= 1e-6 * Math.max(1, Math.abs(root)))) {
               missed++;

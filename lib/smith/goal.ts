@@ -47,6 +47,20 @@ export const isWithin = (goal: Goal): boolean => !!goal.within && (goal.kind ===
 export const goalValue = (goal: Goal): number => goal.value ?? DEFAULT_VALUE[goal.kind];
 
 /** The node the goal is at, for a ladder of `count` parts. */
+/**
+ * Where every circle of a circle goal's kind meets and its figure means nothing: the open (Γ = 1, z = ∞) for r and x,
+ * the short (Γ = −1, y = ∞) for g and b; 0 when there is none (|Γ| circles, a point, r or g of ∞, x = 0 at the short
+ * and b = 0 at the open are real). An answer there (an open or short made by an unknown) is not one.
+ */
+export function goalPole(goal: Goal): number {
+  const v = goalValue(goal);
+  if (!(Math.abs(v) < Infinity)) return 0;
+  return goal.kind === 'r' || goal.kind === 'x' ? 1 : goal.kind === 'g' || goal.kind === 'b' ? -1 : 0;
+}
+
+/** How close (in Γ) to goalPole an answer is dropped. */
+export const POLE_TOL = 1e-7;
+
 export const goalNode = (goal: Goal, count: number): number => goal.node ?? count;
 
 /** |Γ| of a mag, vswr or rl goal; NaN for the other kinds. */

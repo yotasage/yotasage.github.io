@@ -202,10 +202,15 @@ export function newton2D(F: Fn2, x: number, y: number, steps: number, at: Float6
   let r = F(x, y, F0v);
   if (!(r < Infinity)) { at[0] = x; at[1] = y; return Infinity; }
   for (let it = 0; it < steps && r > 1e-15; it++) {
+    // Central differences: in a thin valley (a line's Zc near ∞ against f0) the two columns are nearly parallel and a
+    // forward difference's error turned the step away from the root (M4.2).
     const hx = 1e-7 * Math.max(1, Math.abs(x)), hy = 1e-7 * Math.max(1, Math.abs(y));
     const rx = F(x + hx, y, Fx), ry = F(x, y + hy, Fy);
     if (!(rx < Infinity && ry < Infinity)) break;
-    const a = (Fx[0] - F0v[0]) / hx, c = (Fx[1] - F0v[1]) / hx, b = (Fy[0] - F0v[0]) / hy, d = (Fy[1] - F0v[1]) / hy;
+    const fx0 = Fx[0], fx1 = Fx[1], fy0 = Fy[0], fy1 = Fy[1];
+    const sx = F(x - hx, y, Fx), sy = F(x, y - hy, Fy);
+    if (!(sx < Infinity && sy < Infinity)) break;
+    const a = (fx0 - Fx[0]) / (2 * hx), c = (fx1 - Fx[1]) / (2 * hx), b = (fy0 - Fy[0]) / (2 * hy), d = (fy1 - Fy[1]) / (2 * hy);
     const det = a * d - b * c;
     if (!(Math.abs(det) > 0)) break;
     let dx = -(d * F0v[0] - b * F0v[1]) / det, dy = -(a * F0v[1] - c * F0v[0]) / det;

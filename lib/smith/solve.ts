@@ -47,7 +47,7 @@ import {
   circleImage, circleResidual, circleIntersect, locusParam, locusValue, mobApply, mobCompose, mobInvert, partLocus, partMobius,
   pointCircle, projectOnCircle, sameCircle,
 } from './geometry';
-import { RIM, goalCircle, goalMismatch, goalNode, goalProblem, goalResidual, goalSigned, goalTarget, isWithin, pointGoal } from './goal';
+import { POLE_TOL, RIM, goalCircle, goalMismatch, goalNode, goalPole, goalProblem, goalResidual, goalSigned, goalTarget, isWithin, pointGoal } from './goal';
 import type { Goal } from './goal';
 import { NODE_STRIDE, applyPart, loadNode, nodeGamma } from './network';
 import type { Circuit } from './network';
@@ -229,6 +229,8 @@ let Z0 = 50, F0 = 1e8, FW = 1e8, LR = 50, LX = 0, GNODE = 0;
 let GOAL: Goal = { kind: 'point' };
 /** The goal as asked (GOAL is its point target when a circle goal is one point): solutions' residuals are against it. */
 let ASKED: Goal = GOAL;
+/** goalPole of the goal asked. */
+let POLE = 0;
 /** Polish only this slot (a family's second unknown), or all (−1). */
 let ONLY = -1;
 
@@ -427,6 +429,8 @@ function consider(ps: readonly number[]): void {
     residual = residualOf(F0v);
   }
   if (!(residual <= ACCEPT)) return;
+  // On a circle goal, Γ at the point all its circles share (an unknown that opens or shorts the node) is no answer.
+  if (POLE !== 0 && Math.hypot(gam[0] - POLE, gam[1]) < POLE_TOL) return;
   if (codes.some((c) => c < 0)) { nonPassive++; return; }
   keep(t, codes, residual);
 }
@@ -520,7 +524,7 @@ const domainOf = (s: Slot): Domain => ({ mode: MODES[s.mode], lo: s.lo, hi: s.hi
 /** The working circuit, goal and slots for these (sorted, checked) unknowns. */
 function setup(circuit: Circuit, unknowns: readonly Unknown[], goal: Goal): void {
   const count = circuit.parts.length;
-  Z0 = circuit.z0; F0 = circuit.f0; FW = F0; LR = circuit.loadR; LX = circuit.loadX; GOAL = goal; ASKED = goal;
+  Z0 = circuit.z0; F0 = circuit.f0; FW = F0; LR = circuit.loadR; LX = circuit.loadX; GOAL = goal; ASKED = goal; POLE = goalPole(goal);
   GNODE = goalNode(goal, count);
   if (packed.length < count * PART_STRIDE) packed = new Float64Array(count * PART_STRIDE);
   packParts(circuit.parts, packed);
@@ -590,7 +594,7 @@ export function unknownsProblem(circuit: Circuit, unknowns: readonly Unknown[], 
  */
 export function solve(circuit: Circuit, unknownsIn: readonly Unknown[], goal: Goal): SolveResult {
   const count = circuit.parts.length;
-  Z0 = circuit.z0; F0 = circuit.f0; FW = F0; LR = circuit.loadR; LX = circuit.loadX; GOAL = goal;
+  Z0 = circuit.z0; F0 = circuit.f0; FW = F0; LR = circuit.loadR; LX = circuit.loadX; GOAL = goal; POLE = goalPole(goal);
   GNODE = goalNode(goal, count);
   slots.length = 0;
   const unknowns = unknownsIn.slice().sort((a, b) => sortKey(a) - sortKey(b));
@@ -840,12 +844,15 @@ function unroll(s: Slot, t: number, out: number[]): void {
   for (; u <= s.hi; u += per) if (u >= s.lo) out.push(u);
 }
 
-/** The value of slot s at coordinate t in a range whose inside is at coordinate `inside`, as the kind `kind`. */
-function valueAt(s: Slot, t: number, kind: number, inside: number): number {
+/**
+ * The value of slot s at coordinate t (an end of a range), as the kind `kind`. ±π/2 is −∞ at the domain's low side
+ * and +∞ at its high side (a short stub's −π/2 is length 0, its π/2 is λ/2; a C's −π/2 is C = 0).
+ */
+function valueAt(s: Slot, t: number, kind: number): number {
   if (s.param === P_F0) return F0 * Math.exp(t);
   if (s.mode === M_LEN) return t;
   let p = paramOf(s, t);
-  if (!(Math.abs(p) < Infinity)) p = paramOf(s, inside) < 0 ? -Infinity : Infinity;
+  if (!(Math.abs(p) < Infinity)) p = t < 0 ? -Infinity : Infinity;
   if (s.param === P_ZC) {
     if (s.kind === LINE) return Z0 * p;
     if (p === 0) return Infinity;
@@ -862,7 +869,7 @@ function makeRange(s: Slot, t0: number, t1: number, branches: number): ValueRang
   const mid = 0.5 * (t0 + t1);
   const code = settle(s, paramOf(s, mid));
   const kind = (s.param === P_F0 ? -1 : s.param === P_ZC ? s.kind : packed[s.part * PART_STRIDE + 0]) as PartKind | -1;
-  const from = valueAt(s, t0, kind, mid), to = valueAt(s, t1, kind, mid);
+  const from = valueAt(s, t0, kind), to = valueAt(s, t1, kind);
   return { t0, t1, kind, from, to, min: Math.min(from, to), max: Math.max(from, to), swapped: code === 1, branches };
 }
 
@@ -1191,8 +1198,9 @@ function atF0(sg: Slot, pg: number): void {
   if (r === 1) { geoPs.push(pg); return; }
   const per = 0.5 / r;
   switch (sg.kind) {
-    case SERIES_L: case SHUNT_C: geoPs.push(pg / r); break;
-    case SERIES_C: case SHUNT_L: geoPs.push(pg * r); break;
+    // An L's x or a C's b grows with f, a C's x or an L's b falls; the sign of pg says which kind it is (a swapped
+    // value is the other kind, scaled as that kind).
+    case SERIES_L: case SERIES_C: case SHUNT_L: case SHUNT_C: geoPs.push(pg >= 0 ? pg / r : pg * r); break;
     case LINE: for (let l = pg - per * Math.floor(pg / per); l < LINE_PERIOD; l += per) geoPs.push(l); break;
     case STUB_OPEN: case STUB_SHORT: {
       const len = valueFor(sg.kind, pg, sg.zc, FW, F0, Z0);
@@ -1221,37 +1229,108 @@ function searchMixed(fi: number, gi: number): void {
   }
 }
 
-/** Two unknowns, a point target, neither on a circle: damped Newton from every local minimum of a grid. */
-function searchGrid(): void {
-  const s0 = slots[0], s1 = slots[1];
-  const n0 = gridOf(s0, 2), n1 = gridOf(s1, 2);
-  if (grid2.length < n0 * n1) grid2 = new Float64Array(n0 * n1);
-  const x = (i: number): number => s0.lo + ((s0.hi - s0.lo) * (i + 0.5)) / n0;
-  const y = (j: number): number => s1.lo + ((s1.hi - s1.lo) * (j + 0.5)) / n1;
-  for (let i = 0; i < n0; i++) {
-    for (let j = 0; j < n1; j++) { const r = f2(x(i), y(j), nt); grid2[i * n1 + j] = r === r ? r : Infinity; }
-  }
-  const ps = [0, 0];
-  for (let i = 0; i < n0; i++) {
-    for (let j = 0; j < n1; j++) {
-      const r = grid2[i * n1 + j];
-      if (r === Infinity) continue;
-      let low = true;
-      for (let di = -1; di <= 1 && low; di++) {
-        for (let dj = -1; dj <= 1 && low; dj++) {
-          if ((di === 0 && dj === 0) || i + di < 0 || i + di >= n0 || j + dj < 0 || j + dj >= n1) continue;
-          const v = grid2[(i + di) * n1 + j + dj];
-          // Ties go to the first cell, so a flat run starts once.
-          low = di < 0 || (di === 0 && dj < 0) ? r < v : r <= v;
-        }
-      }
-      if (!low) continue;
-      const end = newton2D(f2, x(i), y(j), 40, nt);
-      if (!(end <= 1e-10)) continue;
-      ps[0] = paramOf(s0, nt[0]); ps[1] = paramOf(s1, nt[1]);
-      consider(ps);
+/**
+ * Point i of an n-point grid over slot s. A Zc or Zt (half) is sampled closer towards 0 and ∞ (1 − cos spacing, the
+ * end cells about π/(4n)² wide): near Zc → ∞ a line's input moves as fast as 1/(π/2 − t), and a uniform grid missed
+ * answers there (M4.2).
+ */
+function gridAt(s: Slot, i: number, n: number): number {
+  const f = (i + 0.5) / n;
+  return s.lo + (s.hi - s.lo) * (s.half ? 0.5 * (1 - Math.cos(Math.PI * f)) : f);
+}
+
+/** searchGrid: an interval of the grid is halved while Γ moves more than this across it in some row or column. */
+const GRID_JUMP = 0.25;
+const GRID_PASSES = 6;
+const GRID_MAX = 8192 * 8;
+let gridRe = new Float64Array(64 * 64), gridIm = new Float64Array(64 * 64);
+
+/** The midpoints of the intervals of `at` across which Γ jumps by more than GRID_JUMP near the target (along axis 0 or 1 of the grid). */
+function jumps(at: number[], other: number, axis: number, stride: number): number[] {
+  const out: number[] = [];
+  for (let a = 0; a + 1 < at.length; a++) {
+    for (let b = 0; b < other; b++) {
+      const p = axis === 0 ? a * stride + b : b * stride + a, q = axis === 0 ? p + stride : p + 1;
+      const d = Math.hypot(gridRe[q] - gridRe[p], gridIm[q] - gridIm[p]);
+      if (d > GRID_JUMP) { out.push(0.5 * (at[a] + at[a + 1])); break; }
     }
   }
+  return out;
+}
+
+/**
+ * Two unknowns, a point target, neither on a circle: damped Newton from every local minimum of a grid. The grid is
+ * refined (up to GRID_PASSES halvings) wherever Γ jumps across an interval in some row or column: where the circuit
+ * resonates the answers lie in bands far narrower than the first grid (a line's Zc far from Z0 against f0, M4.2).
+ */
+function searchGrid(): void {
+  const s0 = slots[0], s1 = slots[1];
+  let xs: number[] = [], ys: number[] = [];
+  for (let i = 0, m = gridOf(s0, 2); i < m; i++) xs.push(gridAt(s0, i, m));
+  for (let j = 0, m = gridOf(s1, 2); j < m; j++) ys.push(gridAt(s1, j, m));
+  // f0 (always the second unknown) also gets every frequency where a stub before the goal is a multiple of λ/4.
+  for (const u of sharpPoints(s1)) if (u > s1.lo && u < s1.hi) ys.push(u);
+  ys.sort((a, b) => a - b);
+  let n0 = 0, n1 = 0, oldX: number[] = [], oldY: number[] = [];
+  const started = new Set<string>();
+  const ps = [0, 0];
+  // Damped Newton from every local minimum of the grid (once per grid point over the passes).
+  const descend = (): void => {
+    for (let i = 0; i < n0; i++) {
+      for (let j = 0; j < n1; j++) {
+        const r = grid2[i * n1 + j];
+        if (r === Infinity) continue;
+        let low = true;
+        for (let di = -1; di <= 1 && low; di++) {
+          for (let dj = -1; dj <= 1 && low; dj++) {
+            if ((di === 0 && dj === 0) || i + di < 0 || i + di >= n0 || j + dj < 0 || j + dj >= n1) continue;
+            const v = grid2[(i + di) * n1 + j + dj];
+            // Ties go to the first cell, so a flat run starts once.
+            low = di < 0 || (di === 0 && dj < 0) ? r < v : r <= v;
+          }
+        }
+        if (!low) continue;
+        const key = `${xs[i]},${ys[j]}`;
+        if (started.has(key)) continue;
+        started.add(key);
+        const end = newton2D(f2, xs[i], ys[j], 40, nt);
+        if (!(end <= 1e-10)) continue;
+        // Newton may leave a bounded coordinate (f0 outside its search range, M4.2): not an answer of this question.
+        if ((!s0.periodic && !(nt[0] >= s0.lo && nt[0] <= s0.hi)) || (!s1.periodic && !(nt[1] >= s1.lo && nt[1] <= s1.hi))) continue;
+        ps[0] = paramOf(s0, nt[0]); ps[1] = paramOf(s1, nt[1]);
+        consider(ps);
+      }
+    }
+  };
+  for (let pass = 0; ; pass++) {
+    const m0 = xs.length, m1 = ys.length;
+    const re = new Float64Array(m0 * m1), im = new Float64Array(m0 * m1), r2 = new Float64Array(m0 * m1);
+    // Keep what the last pass evaluated (both lists only grow, in order).
+    const ix: number[] = [], iy: number[] = [];
+    for (let i = 0, k = 0; i < m0; i++) { while (k < n0 && oldX[k] < xs[i]) k++; ix.push(k < n0 && oldX[k] === xs[i] ? k : -1); }
+    for (let j = 0, k = 0; j < m1; j++) { while (k < n1 && oldY[k] < ys[j]) k++; iy.push(k < n1 && oldY[k] === ys[j] ? k : -1); }
+    for (let i = 0; i < m0; i++) {
+      for (let j = 0; j < m1; j++) {
+        const o = i * m1 + j;
+        if (ix[i] >= 0 && iy[j] >= 0) {
+          const q = ix[i] * n1 + iy[j];
+          re[o] = gridRe[q]; im[o] = gridIm[q]; r2[o] = grid2[q];
+          continue;
+        }
+        const r = f2(xs[i], ys[j], nt);
+        if (r === r) { re[o] = nt[0]; im[o] = nt[1]; r2[o] = r; } else { re[o] = NaN; im[o] = NaN; r2[o] = Infinity; }
+      }
+    }
+    gridRe = re; gridIm = im; grid2 = r2; n0 = m0; n1 = m1; oldX = xs; oldY = ys;
+    // The first grid's minima, and the refined grid's (a refinement can turn a good start into a slope).
+    if (pass === 0) descend();
+    if (pass === GRID_PASSES) break;
+    const ax = n0 * 2 * n1 <= GRID_MAX ? jumps(xs, n1, 0, n1) : [], ay = n0 * n1 * 2 <= GRID_MAX ? jumps(ys, n0, 1, n1) : [];
+    if (!ax.length && !ay.length) break;
+    xs = xs.concat(ax).sort((a, b) => a - b);
+    ys = ys.concat(ay).sort((a, b) => a - b);
+  }
+  descend();
 }
 
 /**

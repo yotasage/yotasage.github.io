@@ -13,6 +13,7 @@ import { runStateChecks } from './check-state.mjs';
 import { runSolveChecks } from './check-solve.mjs';
 import { runSolveMoreChecks } from './check-solve-b.mjs';
 import { runValueChecks } from './check-values.mjs';
+import { runValidateChecks } from './check-validate.mjs';
 
 const quantity = importedQuantity.default ?? importedQuantity;
 const cx = importedComplex.default ?? importedComplex;
@@ -413,6 +414,10 @@ runSolveMoreChecks({ section, ok, near, random });
 // ---------------------------------------------------------------------------------------------------------------
 // Value lists and standard-value variants (M4.1b, D17): check-values.mjs, with the same counters.
 runValueChecks({ section, ok, near, random });
+
+// ---------------------------------------------------------------------------------------------------------------
+// Independent validation of the solver against brute force (M4.2): check-validate.mjs, with the same counters.
+runValidateChecks({ section, ok, random });
 
 // ---------------------------------------------------------------------------------------------------------------
 const total =[...groups.values()].reduce((a, b) => a + b, 0);
