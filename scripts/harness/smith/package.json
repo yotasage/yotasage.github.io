@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "check": "tsx check.mjs",
-    "ui": "tsx ui-grid.mjs - && tsx ui-chart.mjs && tsx ui-strip.mjs"
+    "ui": "tsx ui-grid.mjs - && tsx ui-chart.mjs && tsx ui-strip.mjs - && tsx ui-path.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.50.0",

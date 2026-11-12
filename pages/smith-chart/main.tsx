@@ -1,11 +1,14 @@
 import Head from 'next/head';
 import Link from 'next/link';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import HomeIcon from '../../components/icons/home';
 import { MoonIcon, SunIcon } from '../../components/Resistor/parts';
 import Chart from '../../components/Smith/Chart';
+import Nodes from '../../components/Smith/Nodes';
 import Strip from '../../components/Smith/Strip';
+import type { ChartView } from '../../components/Smith/chartView';
+import { PathLayer, SEL_NODE, SEL_NONE, SEL_PART } from '../../components/Smith/pathLayer';
 import { MODE_Y, MODE_Z, MODE_ZY } from '../../lib/smith/grid';
 import { Circuit, decodeCircuit, defaultCircuit, encodeCircuit } from '../../lib/smith/state';
 import styles from '../../styles/Smith.module.css';
@@ -15,6 +18,9 @@ import styles from '../../styles/Smith.module.css';
 // beside it on wide screens (below it on phones). From M3.1 the circuit (lib/smith/state.ts) is the page's state: read
 // from the link after mount (the static page has the start circuit), edited by the strip, and written back into the
 // link with history.replaceState on every change. `commit` is the one place a new circuit arrives (M3.3: undo).
+// From M3.2 the chart draws the circuit's path (components/Smith/pathLayer.ts, outside React) and the node table sits
+// under the strip; the page holds the selection (a part, or a node that then takes the highlight) for the strip, the
+// table and the chart, which picks arcs and markers by hover, click and tap.
 
 const MODES = [{ mode: MODE_Z, name: 'Z', title: 'Impedance grid: r and x circles' },
   { mode: MODE_Y, name: 'Y', title: 'Admittance grid: g and b circles' },
@@ -47,6 +53,33 @@ export default function SmithChart() {
     }
   }, [linked, circuit]);
   const commit = (next: Circuit) => setCircuit(next);
+
+  // The path on the chart and the selection shared by the strip, the node table and the chart.
+  const path = useRef<PathLayer | null>(null);
+  const [partSel, setPartSel] = useState(-1);
+  const [nodeSel, setNodeSel] = useState(-1);
+  const n = circuit.parts.length;
+  const part = partSel >= 0 && partSel < n ? partSel : n - 1;
+  const node = nodeSel <= n ? nodeSel : -1;
+  const selectPart = (i: number) => { setPartSel(i); setNodeSel(-1); };
+  const onView = (v: ChartView) => {
+    const layer = new PathLayer(v);
+    layer.onPick = (kind, i) => { if (kind === SEL_PART) selectPart(i); else setNodeSel(i); };
+    (v.box as HTMLElement & { smithPath?: PathLayer }).smithPath = layer;
+    path.current = layer;
+  };
+  useEffect(() => { path.current?.setCircuit(circuit); }, [circuit]);
+  useEffect(() => {
+    path.current?.select(node >= 0 ? SEL_NODE : part >= 0 ? SEL_PART : SEL_NONE, node >= 0 ? node : part);
+  }, [node, part]);
+  const side = (
+    <>
+      <Strip circuit={circuit} onChange={commit} issues={issues} selected={part} onSelect={selectPart}
+        onHover={(i) => path.current?.hover(SEL_PART, i)} />
+      <Nodes circuit={circuit} selected={node} onSelect={(k) => setNodeSel(k === node ? -1 : k)}
+        onHover={(k) => path.current?.hover(SEL_NODE, k)} />
+    </>
+  );
   // null: follow the system. Read after mount, so the static page and the first render agree.
   const [theme, setTheme] = useState<Theme | null>(null);
   useEffect(() => {
@@ -141,7 +174,7 @@ export default function SmithChart() {
       </header>
 
       <main className={styles.layout}>
-        <Chart mode={mode} tools={modes} z0={circuit.z0} side={<Strip circuit={circuit} onChange={commit} issues={issues} />} />
+        <Chart mode={mode} tools={modes} z0={circuit.z0} side={side} onView={onView} />
       </main>
     </div>
   );

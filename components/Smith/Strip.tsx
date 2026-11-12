@@ -10,6 +10,7 @@ import {
   LINE, QUARTER, SERIES_C, SERIES_L, SERIES_R, SHUNT_C, SHUNT_L, SHUNT_R, STUB_OPEN, STUB_SHORT,
 } from '../../lib/smith/parts';
 import styles from '../../styles/Smith.module.css';
+import { partColour } from './pathLayer';
 import { readoutTexts } from './readout';
 
 // The circuit panel (step M3.1): the parameters (Z0, f0, the load R + jX), the schematic strip with the parts drawn
@@ -22,10 +23,15 @@ export interface StripProps {
   onChange: (next: Circuit) => void;
   /** What was wrong with the link the page was opened with (decodeCircuit's issues). */
   issues?: readonly string[];
+  /** The selected part (index from the load), held by the page so the chart's path shows it (M3.2); −1: the last. */
+  selected?: number;
+  onSelect?: (index: number) => void;
+  /** Hover or focus on a tile (−1 when it ends): the chart highlights the part's arc. */
+  onHover?: (index: number) => void;
 }
 
 /** The colour of the part at an index (counted from the load): the eight `--part-n` of notes-M2.3.md in turn. */
-export const partColour = (index: number): string => `var(--part-${(index % 8) + 1})`;
+export { partColour };
 
 const DIGITS = 4;
 
@@ -109,14 +115,16 @@ const UNIT_WORD: Record<string, string> = { Ω: 'ohms', S: 'siemens', H: 'henrie
 const INPUT_SHOWN = [[0, 'z', 'normalised'], [1, 'Z', 'in Ω'], [4, 'Γ', 'polar'], [6, 'VSWR', ''], [7, 'Return loss', '']] as const;
 const INPUT_KEYS = ['z', 'Z', 'y', 'Y', 'gamma', 'gammaRect', 'vswr', 'rl', 'note'];
 
-export default function Strip({ circuit, onChange, issues }: StripProps) {
+export default function Strip({ circuit, onChange, issues, selected: chosen, onSelect, onHover }: StripProps) {
   const c = circuit;
   const n = c.parts.length;
   // Stable keys for the parts across reorders (the circuit itself has no ids).
   const ids = useRef<number[]>([]);
   const nextId = useRef(1);
   if (ids.current.length !== n) ids.current = c.parts.map(() => nextId.current++);
-  const [sel, setSel] = useState(n ? n - 1 : -1);
+  const [own, setOwn] = useState(n ? n - 1 : -1);
+  const sel = chosen ?? own;
+  const setSel = (i: number) => { setOwn(i); onSelect?.(i); };
   const selected = sel >= 0 && sel < n ? sel : n - 1;
   const [addKind, setAddKind] = useState<PartKind>(SERIES_L);
   const [addAt, setAddAt] = useState(-1);
@@ -226,7 +234,8 @@ export default function Strip({ circuit, onChange, issues }: StripProps) {
             <button key={ids.current[i]} type="button" className={styles.tile} data-tile={i} data-kind={KIND_CODES[p.kind]}
               ref={(el) => { tiles.current[i] = el; }} style={{ color: partColour(i) }} aria-pressed={i === selected}
               tabIndex={i === selected ? 0 : -1} aria-label={`Part ${i + 1}: ${KIND_NAMES[p.kind]}, ${value}`}
-              onClick={() => setSel(i)} onKeyDown={tileKey(i)}>
+              onClick={() => setSel(i)} onKeyDown={tileKey(i)}
+              onMouseEnter={() => onHover?.(i)} onMouseLeave={() => onHover?.(-1)} onFocus={() => onHover?.(i)} onBlur={() => onHover?.(-1)}>
               <PartSymbol kind={p.kind} />
               <span className={styles.tileName}>{i + 1} {KIND_SHORT[p.kind]}</span>
               <span className={styles.tileValue}>{value}</span>

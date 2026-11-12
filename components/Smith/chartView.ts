@@ -70,6 +70,10 @@ export class ChartView {
   /** Called when the world frame is set again, before onFrame: world content must be rewritten in the new frame. */
   onReframe: (() => void) | null = null;
   handles: HandleHooks | null = null;
+  /** A mouse or pen hovering at box px (px, py), NaN when it left the box (M3.2: the path's hover highlight). */
+  onHover: ((px: number, py: number) => void) | null = null;
+  /** A tap or click at box px (px, py), after the read point was placed there (M3.2: picking an arc or a node). */
+  onTap: ((px: number, py: number) => void) | null = null;
 
   /** Script time of the frames, for the harness: count, total and last in ms. */
   frames = 0; workMs = 0; lastWorkMs = 0;
@@ -317,6 +321,7 @@ export class ChartView {
       if (e.pointerType !== 'touch' && this.count === 0) {
         this.hover = true;
         this.setRead(this.gammaX(x), this.gammaY(y));
+        this.onHover?.(x, y);
       }
       return;
     }
@@ -358,6 +363,7 @@ export class ChartView {
         this.setView(this.startCx, this.startCy, this.startK);
       } else if (this.tap && e.timeStamp - this.downT <= TAP_MS) {
         this.setRead(this.gammaX(this.px[i]), this.gammaY(this.py[i]));
+        this.onTap?.(this.px[i], this.py[i]);
       }
       this.box.removeAttribute('data-drag');
     }
@@ -368,7 +374,11 @@ export class ChartView {
 
   private readonly pointerUp = (e: PointerEvent): void => this.release(e, false);
   private readonly pointerCancel = (e: PointerEvent): void => this.release(e, true);
-  private readonly pointerLeave = (e: PointerEvent): void => { if (e.pointerType !== 'touch') this.hover = false; };
+  private readonly pointerLeave = (e: PointerEvent): void => {
+    if (e.pointerType === 'touch') return;
+    this.hover = false;
+    this.onHover?.(NaN, NaN);
+  };
 
   private readonly wheel = (e: WheelEvent): void => {
     e.preventDefault();
