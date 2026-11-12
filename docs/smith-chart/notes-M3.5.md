@@ -92,7 +92,8 @@ The short lines (theory.md §8) repeat claims of their topics and are not number
   `content-visibility: hidden`) nor the nav, but the page's DOM: 4,100 nodes, 3,600 of them the theory's (2,500 in
   MathML), against 435 in the tool. `writeLive` now queries the tool's element instead of the document. M3.5c should
   make the timing checks robust and may cut the DOM (e.g. value lines only for open topics, with citations numbered
-  up front).
+  up front). Done in the fix after M3.5b ([notes-M3.5-fix.md](notes-M3.5-fix.md)): the cause was the theory's
+  render on release and the pick's render at the start, not the DOM; the timing checks measure again on a failure.
 - **Assumptions** are stated in the section's lead (ideal parts, lossless lines, real Z0, one frequency f0).
 - **Figures** (`TheoryFigures.tsx`): inline SVG in chart units with the page's tokens (`--grid-*`, `--part-n`,
   `--accent`), so both themes follow; topics 2, 3, 5 draw the visitor's load, 4, 6, 7 the start circuit. Not drawn by

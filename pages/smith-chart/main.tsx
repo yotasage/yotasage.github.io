@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import Link from 'next/link';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 
 import Bibliography from '../../components/Bibliography';
 import HomeIcon from '../../components/icons/home';
@@ -84,6 +84,9 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   }, []);
   const [mode, setMode] = useState(MODE_Z);
   const [circuit, setCircuit] = useState<Circuit>(defaultCircuit);
+  // The theory (3,600 nodes) follows in a deferred, time-sliced render: the commit that ends a drag renders the tool
+  // only, so releasing a handle costs one short frame (a sync render of both took 230 ms at 4× CPU in development).
+  const theoryCircuit = useDeferredValue(circuit);
   // The circuit as last committed (ahead of React's state between a commit and the render) and the history.
   const now = useRef<Circuit>(circuit);
   const hist = useRef<History>({ past: [], future: [], dropped: [], group: '', t: 0 });
@@ -173,7 +176,13 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   const selectPart = (i: number) => { setPartSel(i); setNodeSel(-1); };
   const onView = (v: ChartView) => {
     const layer = new PathLayer(v);
-    layer.onPick = (kind, i) => { if (kind === SEL_PART) selectPart(i); else setNodeSel(i); };
+    // A drag's pick renders in a transition: time-sliced, so the side panel's re-render (≈ 30 ms at 4× CPU in
+    // development) does not drop the drag's first frames; the live frames rewrite the card once it is mounted.
+    layer.onPick = (kind, i, drag) => {
+      if (drag) startTransition(() => selectPart(i));
+      else if (kind === SEL_PART) selectPart(i);
+      else setNodeSel(i);
+    };
     layer.onCommit = commit;
     layer.onDraw = (i) => { setDrawKind(-1); if (i >= 0) selectPart(i); };
     // Scoped to the tool: a query over the whole document would walk the theory's MathML every drag frame.
@@ -196,6 +205,24 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
         onHover={(k) => path.current?.hover(SEL_NODE, k)} />
     </>
   );
+  // The same element while the theory's circuit stays, so the page's renders during a drag (a pick, a selection) skip
+  // the sections and the reference list entirely.
+  const sections = useMemo(() => (
+    <div className={theoryCss.sections}>
+      <section id="theory" className={theoryCss.section} aria-labelledby="theory-title">
+        <h2 className={theoryCss.sectionHead} id="theory-title">Theory</h2>
+        <Theory bib={bib} circuit={theoryCircuit} />
+      </section>
+      {/* After the last citation: the list is numbered while the page above it is drawn. */}
+      <section id="references" className={theoryCss.section} aria-labelledby="references-title">
+        <h2 className={theoryCss.sectionHead} id="references-title">References</h2>
+        <div className={theoryCss.refs} data-references="">
+          <p className={theoryCss.lead}>The sources of the theory on this page, in the order they are first cited.</p>
+          {bib.list()}
+        </div>
+      </section>
+    </div>
+  ), [bib, theoryCircuit]);
   // null: follow the system. Read after mount, so the static page and the first render agree.
   const [theme, setTheme] = useState<Theme | null>(null);
   useEffect(() => {
@@ -312,20 +339,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
         <div id="tool" ref={tool} className={`${styles.layout} ${theoryCss.tool}`}>
           <Chart mode={mode} tools={modes} z0={circuit.z0} side={side} onView={onView} />
         </div>
-        <div className={theoryCss.sections}>
-          <section id="theory" className={theoryCss.section} aria-labelledby="theory-title">
-            <h2 className={theoryCss.sectionHead} id="theory-title">Theory</h2>
-            <Theory bib={bib} circuit={circuit} />
-          </section>
-          {/* After the last citation: the list is numbered while the page above it is drawn. */}
-          <section id="references" className={theoryCss.section} aria-labelledby="references-title">
-            <h2 className={theoryCss.sectionHead} id="references-title">References</h2>
-            <div className={theoryCss.refs} data-references="">
-              <p className={theoryCss.lead}>The sources of the theory on this page, in the order they are first cited.</p>
-              {bib.list()}
-            </div>
-          </section>
-        </div>
+        {sections}
       </main>
     </div>
   );

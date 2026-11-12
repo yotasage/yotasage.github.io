@@ -114,8 +114,9 @@ const el = <K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, 
 
 export class PathLayer {
   readonly view: ChartView;
-  /** Called when the visitor picks an arc or a node on the chart (tap or click), and with SEL_PART when a drag starts. */
-  onPick: ((kind: number, index: number) => void) | null = null;
+  /** Called when the visitor picks an arc or a node on the chart (tap or click), and with SEL_PART and `drag` when a drag
+   *  starts (the page then selects in a transition, so the render never holds up a drag frame). */
+  onPick: ((kind: number, index: number, drag?: boolean) => void) | null = null;
   /** The circuit at the end of a drag that changed it: the page's single commit point (once per drag). */
   onCommit: ((c: Circuit, group?: string) => void) | null = null;
   /** The end of a draw gesture: the new part's index once committed, -1 when it was taken away. */
@@ -278,7 +279,7 @@ export class PathLayer {
         if (!this.moved && Math.abs(px - this.downX) + Math.abs(py - this.downY) > this.slop) {
           this.moved = true;
           // A drawn part is selected once it is committed (React has no such part before).
-          if (!this.drawFrom) this.onPick?.(SEL_PART, i);
+          if (!this.drawFrom) this.onPick?.(SEL_PART, i, true);
         }
         this.dragTo(view.gammaX(px - this.offX), view.gammaY(py - this.offY), alt);
       },

@@ -148,3 +148,6 @@ The owner does not read code; performance is never traded for readability.
   frame of the grid's stretch and ~8 µs per hinted turned label, so turned labels use `geometricPrecision` (3.7–4.3 ms
   a frame, was 5.3–6.3). Grid rebuilds (~32 ms at 4×, 5 per 2 s zoom) each drop a frame; a hidden page
   written in steps cost more than it saved (notes-M3.2.md).
+- **Below the tool (fix after M3.5b):** the theory (3,600 nodes) renders from `useDeferredValue(circuit)` and the
+  sections are one memoised element, so a drag's commit renders the tool only (a sync render of both: 230 ms at 4× in
+  dev); a drag's pick selects in `startTransition`. Off-screen DOM itself cost a drag frame nothing (notes-M3.5-fix.md).
