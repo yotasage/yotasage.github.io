@@ -6,15 +6,27 @@
 // the view changed): the goal mark and a dashed line from the input to it, an arrow on every arc in its direction of
 // travel (load → source) and a numbered marker at every node, all of constant size. Picking (hover, tap, click) is a
 // geometric test against the same data, so no DOM hit testing is involved.
+// Step M3.3a adds a handle at the end of every arc (node k + 1 for part k, a ring of the part's colour under the node
+// marker, a 44 px touch target found geometrically) and dragging it (engine.md §6): the pointer, less where it grabbed
+// the handle, goes to Γ through the view, is projected onto what the part can reach (geometry.ts `project`, lengths
+// tracked over turns from the value before), snapped to a grid circle drawn now or a standard value within SNAP_PX
+// (not with Alt or with snapping switched off), and the value re-evaluates the ladder; the arcs, marks and readout are
+// written in the next frame and the side panel through `onLive`, all outside React. The page's `commit` gets the
+// circuit once, on release (`onCommit`). A press that does not move is a tap (the pick of M3.2), a cancel restores.
 
+import { formatAmount } from '../../lib/quantity';
+import { SeriesId, series, standardValue } from '../../lib/resistor/eseries';
 import { magFromVswr } from '../../lib/smith/convert';
 import {
-  ARC_CX, ARC_CY, ARC_EX, ARC_EY, ARC_MX, ARC_MY, ARC_R, ARC_STRIDE, ARC_SWEEP, ARC_SX, ARC_SY, ARC_TURNS, partArcs,
+  ARC_CX, ARC_CY, ARC_EX, ARC_EY, ARC_MX, ARC_MY, ARC_R, ARC_STRIDE, ARC_SWEEP, ARC_SX, ARC_SY, ARC_TURNS,
+  L_A, L_KIND, L_MODE, LOCUS_FIXED, LOCUS_STRIDE, locusPoint, locusValue, nodeLocus, partArcs, project,
 } from '../../lib/smith/geometry';
+import { FAM_AXIS, FAM_B, FAM_G, FAM_R, FAM_X, MODE_Y } from '../../lib/smith/grid';
 import { NODE_STRIDE, evaluate, nodeGamma } from '../../lib/smith/network';
 import type { Circuit } from '../../lib/smith/network';
-import { PART_STRIDE, packParts } from '../../lib/smith/parts';
-import { ChartView, DIRTY_CONTENT, DIRTY_VIEW } from './chartView';
+import { PART_STRIDE, SHUNT_C, packParts } from '../../lib/smith/parts';
+import { withPart } from '../../lib/smith/state';
+import { ChartView, DIRTY_CONTENT, DIRTY_VIEW, TAP_MS, TAP_SLOP } from './chartView';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const TAU = 2 * Math.PI;
@@ -56,6 +68,25 @@ const PICK_ARC_PX = 10;
 const GOAL_LINE_PX = 16;
 /** The goal's ring is dashed up to this radius in px, solid beyond. */
 const RING_DASH_PX = 600;
+/** A handle's hit radius in px: a 44 px touch target at any zoom. */
+export const HANDLE_PX = 22;
+/** A drag snaps to a grid circle or a standard value whose point on the part's locus is this close in px. */
+export const SNAP_PX = 8;
+/** A mouse press on a handle that moves less than this (L1, px) and ends within TAP_MS is a click (a finger: TAP_SLOP). */
+const MOUSE_SLOP = 3;
+/**
+ * The series a dragged R, L or C snaps to. E24 for all three: the owner's choice of a series for inductors is still
+ * open (milestones.md M3.3), and this constant is the one place to change it.
+ */
+export const SNAP_SERIES: SeriesId = 'E24';
+const SNAP_MANTISSAS = series(SNAP_SERIES).mantissas;
+const SNAP_UNIT = ['Ω', 'H', 'F', 'Ω', 'H', 'F'];
+const FAM_NAME = ['r', 'x', 'g', 'b'];
+/** What a drag snapped to: nothing, a grid circle, a standard value. */
+export const SNAP_NONE = 0;
+export const SNAP_GRID = 1;
+export const SNAP_STANDARD = 2;
+const gridNum = (v: number): string => String(Number(v.toPrecision(6))).replace('-', '−');
 
 // Codes of a pick: part i is i + 1, node k is −(k + 1), nothing 0.
 const codeKind = (code: number): number => (code > 0 ? SEL_PART : code < 0 ? SEL_NODE : SEL_NONE);
@@ -76,8 +107,18 @@ const el = <K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, 
 
 export class PathLayer {
   readonly view: ChartView;
-  /** Called when the visitor picks an arc or a node on the chart (tap or click). */
+  /** Called when the visitor picks an arc or a node on the chart (tap or click), and with SEL_PART when a drag starts. */
   onPick: ((kind: number, index: number) => void) | null = null;
+  /** The circuit at the end of a drag that changed it: the page's single commit point (once per drag). */
+  onCommit: ((c: Circuit) => void) | null = null;
+  /** In frames of a drag (and once on a cancel, half −1): the circuit as dragged, for the side panel's texts (half 0
+   * or 1 in turn: see writeLive). */
+  onLive: ((c: Circuit, part: number, half: number) => void) | null = null;
+  /** Snapping (the page's switch; Alt turns it off for one drag move). */
+  snap = true;
+  /** The part being dragged (−1 none) and what the last move snapped to (harness and M3.3b). */
+  dragPart = -1;
+  snapCode = SNAP_NONE; snapFamily = -1; snapGridValue = NaN; snapX = NaN; snapY = NaN; snapLabel = '';
 
   /** The evaluated circuit at f0: count parts, nodes (network.ts), arcs (geometry.ts), Γ of every node (re, im). */
   count = 0;
@@ -85,6 +126,7 @@ export class PathLayer {
   arcs = new Float64Array(0);
   gamma = new Float64Array(2);
   private parts: Float64Array = new Float64Array(0);
+  private circuit: Circuit | null = null;
 
   /** Script time of the layer's frames, for the harness. */
   frames = 0; ms = 0; lastMs = 0;
@@ -99,6 +141,12 @@ export class PathLayer {
   private arcEls: SVGPathElement[] = [];
   private arrowEls: HTMLSpanElement[] = [];
   private nodeEls: HTMLSpanElement[] = [];
+  private handleEls: HTMLSpanElement[] = [];
+  private hshown = new Uint8Array(0);
+  private readonly snapEl: HTMLSpanElement;
+  private readonly snapText: HTMLSpanElement;
+  private snapShown = false;
+  private hotHandle = -1;
   private d: string[] = [];
   private shown = new Uint8Array(0); // bit 0 node marker shown, bit 1 arrow shown
   private goalShown = 0;
@@ -111,6 +159,22 @@ export class PathLayer {
   private stale = true;
   private marks = true;
   private drawnFrame = -1;
+
+  // The drag: the circuit it started from, the locus of the part (from its start node), the value tracked without
+  // snapping (lines and stubs follow it over turns), the value shown, the grab offset and the press for tap detection.
+  private base: Circuit | null = null;
+  private readonly loc = new Float64Array(LOCUS_STRIDE);
+  private readonly pt = new Float64Array(4);
+  private raw = 0;
+  private value = 0;
+  private live: Circuit | null = null;
+  private offX = 0; private offY = 0;
+  private downX = 0; private downY = 0; private downT = 0; private slop = 0; private moved = false;
+  private best = 0;
+  private bestValue = NaN;
+  private liveDirty = 0; // bit h: half h of the side panel's texts is behind
+  private readDirty = false;
+  private livePhase = 0;
 
   constructor(view: ChartView) {
     this.view = view;
@@ -129,6 +193,10 @@ export class PathLayer {
     this.goalLine = span({ 'data-goal-line': '' });
     this.goalLine.hidden = true;
     this.goal = span({ 'data-goal': '' });
+    this.snapEl = span({ 'data-snap': '' });
+    this.snapEl.hidden = true;
+    this.snapText = span({ 'data-snap-label': '' });
+    this.snapEl.appendChild(this.snapText);
     this.overlay.append(this.goalLine, this.goal);
     view.box.appendChild(this.overlay);
     this.build(0);
@@ -136,6 +204,13 @@ export class PathLayer {
     const before = view.onFrame;
     view.onFrame = (dirty) => { before?.(dirty); this.frame(dirty); };
     view.onHover = (px, py) => {
+      const h = px === px ? this.handleAt(px, py) : -1;
+      if (h !== this.hotHandle) {
+        this.handleEls[this.hotHandle]?.removeAttribute('data-hot');
+        this.handleEls[h]?.setAttribute('data-hot', '');
+        this.hotHandle = h;
+        view.box.toggleAttribute('data-handle-hot', h >= 0);
+      }
       const code = px === px ? this.pickCode(px, py) : 0;
       if (code === this.chartHot) return;
       this.chartHot = code;
@@ -146,12 +221,46 @@ export class PathLayer {
       const code = this.pickCode(px, py);
       if (code) this.onPick?.(codeKind(code), codeIndex(code));
     };
+    view.handles = {
+      hit: (px, py) => this.handleAt(px, py) >= 0,
+      down: (_id, px, py, touch, _alt, time) => {
+        const i = this.handleAt(px, py);
+        if (!this.beginDrag(i)) return;
+        this.offX = px - view.screenX(this.gamma[2 * i + 2]);
+        this.offY = py - view.screenY(this.gamma[2 * i + 3]);
+        this.downX = px; this.downY = py; this.downT = time; this.moved = false;
+        this.slop = touch ? TAP_SLOP : MOUSE_SLOP;
+      },
+      move: (_id, px, py, alt) => {
+        const i = this.dragPart;
+        if (i < 0) return;
+        if (!this.moved && Math.abs(px - this.downX) + Math.abs(py - this.downY) > this.slop) {
+          this.moved = true;
+          this.onPick?.(SEL_PART, i);
+        }
+        this.dragTo(view.gammaX(px - this.offX), view.gammaY(py - this.offY), alt);
+      },
+      up: (_id, px, py, cancelled, time) => {
+        if (this.dragPart < 0) return;
+        const tap = !cancelled && !this.moved && time - this.downT <= TAP_MS;
+        this.endDrag(!cancelled && !tap);
+        if (tap) {
+          view.setRead(view.gammaX(px), view.gammaY(py));
+          const code = this.pickCode(px, py);
+          if (code) this.onPick?.(codeKind(code), codeIndex(code));
+        }
+      },
+    };
   }
 
   // ---------- input from the page ----------
 
   /** Evaluates the circuit at f0 and redraws the path in the next frame. */
   setCircuit(c: Circuit): void {
+    if (c === this.circuit && this.dragPart < 0) return;
+    // A circuit from elsewhere during a drag (the link, a field) ends the drag without a commit.
+    if (this.dragPart >= 0) this.stopDrag();
+    this.circuit = c;
     const n = c.parts.length;
     this.parts = packParts(c.parts, this.parts);
     if (this.nodes.length < (n + 1) * NODE_STRIDE) {
@@ -159,17 +268,214 @@ export class PathLayer {
       this.arcs = new Float64Array(n * ARC_STRIDE);
       this.gamma = new Float64Array(2 * (n + 1));
     }
+    if (n !== this.count || this.nodeEls.length !== n + 1) this.build(n);
+    this.count = n;
+    this.evaluate(c);
+  }
+
+  private evaluate(c: Circuit): void {
+    const n = this.count;
     evaluate(this.nodes, this.parts, n, c.loadR, c.loadX, c.z0, c.f0, c.f0);
     partArcs(this.arcs, this.nodes, this.parts, n, c.z0, c.f0, c.f0);
     for (let k = 0; k <= n; k++) nodeGamma(this.gamma, 2 * k, this.nodes, k * NODE_STRIDE);
-    if (n !== this.count || this.nodeEls.length !== n + 1) this.build(n);
-    this.count = n;
     this.stale = true;
     this.touch();
   }
 
+  // ---------- dragging (engine.md §6) ----------
+
+  /** The handle at box px (px, py): the part whose end node is nearest within HANDLE_PX and in the box, else −1. */
+  handleAt(px: number, py: number): number {
+    const v = this.view, g = this.gamma;
+    if (!(px >= 0 && py >= 0 && px <= v.w && py <= v.h)) return -1;
+    let best = -1, bestD = HANDLE_PX;
+    // From the source end: of handles that coincide (parts of no effect) the one nearer the source is taken.
+    for (let i = this.count - 1; i >= 0; i--) {
+      const d = Math.hypot(v.screenX(g[2 * i + 2]) - px, v.screenY(g[2 * i + 3]) - py);
+      if (d < bestD) { bestD = d; best = i; }
+    }
+    return best;
+  }
+
+  /** Starts a drag of part i's handle (pointer; from M3.3b also the keyboard). False when there is no such part. */
+  beginDrag(i: number): boolean {
+    const c = this.circuit;
+    if (!c || !(i >= 0 && i < this.count) || this.dragPart >= 0) return false;
+    this.dragPart = i;
+    this.base = c;
+    this.raw = this.value = c.parts[i].value;
+    this.live = null;
+    nodeLocus(this.loc, 0, this.nodes, this.parts, i, c.z0, c.f0, c.f0);
+    this.snapCode = SNAP_NONE;
+    this.view.box.setAttribute('data-handle-drag', '');
+    this.handleEls[i]?.setAttribute('data-drag', '');
+    return true;
+  }
+
+  /**
+   * Moves the dragged part's end towards Γ = (gr, gi): projected onto its reach (lengths tracked from the value before),
+   * snapped unless `free` or snapping is off. Returns the part's new value. The DOM follows in the next frame.
+   */
+  dragTo(gr: number, gi: number, free: boolean): number {
+    const i = this.dragPart;
+    if (i < 0) return NaN;
+    const raw = project(this.pt, 0, this.loc, 0, gr, gi, this.raw);
+    this.raw = raw;
+    let value = raw;
+    this.snapCode = SNAP_NONE;
+    if (this.snap && !free) {
+      const s = this.findSnap(this.pt[0], this.pt[1], raw);
+      if (s === s) value = s;
+    }
+    if (value !== this.value) {
+      this.value = value;
+      this.parts[i * PART_STRIDE + 1] = value;
+      const b = this.base!;
+      this.live = withPart(b, i, { ...b.parts[i], value });
+      this.evaluate(b);
+      this.liveDirty = 3;
+      this.readDirty = true;
+    } else this.touch();
+    return value;
+  }
+
+  /** Ends the drag: `commit` hands a changed circuit to onCommit (once); otherwise the circuit before it comes back. */
+  endDrag(commit: boolean): Circuit | null {
+    const i = this.dragPart, b = this.base;
+    if (i < 0 || !b) return null;
+    const changed = this.value !== b.parts[i].value;
+    const next = this.live;
+    this.stopDrag();
+    if (!changed) return null;
+    if (commit && next) {
+      this.circuit = next;
+      this.view.setRead(this.gamma[2 * i + 2], this.gamma[2 * i + 3]);
+      this.onCommit?.(next);
+      return next;
+    }
+    this.parts[i * PART_STRIDE + 1] = b.parts[i].value;
+    this.evaluate(b);
+    this.onLive?.(b, i, -1);
+    this.view.setRead(this.gamma[2 * i + 2], this.gamma[2 * i + 3]);
+    return null;
+  }
+
+  /**
+   * The side panel's two halves (onLive) and the readout (the read point at the dragged end) take turns, one per frame
+   * in the order half 0, readout, half 1, readout: at 4× CPU all the panel's texts in one frame cost 3–5 ms of layout
+   * and paint (measured, notes-M3.3a.md), so a drag frame pays for a share; the readout follows at 30 Hz, each half at 15.
+   */
+  private writeLive(): void {
+    const i = this.dragPart;
+    for (let tries = 0; tries < 4; tries++) {
+      const ph = this.livePhase;
+      this.livePhase = (ph + 1) & 3;
+      if (ph & 1) {
+        if (!this.readDirty) continue;
+        this.view.setRead(this.gamma[2 * i + 2], this.gamma[2 * i + 3]);
+        this.readDirty = false;
+      } else {
+        const bit = ph === 0 ? 1 : 2;
+        if (!(this.liveDirty & bit)) continue;
+        if (this.live) this.onLive?.(this.live, i, ph >> 1);
+        this.liveDirty &= ~bit;
+      }
+      break;
+    }
+    if (this.liveDirty || this.readDirty) this.view.request(DIRTY_CONTENT);
+  }
+
+  private stopDrag(): void {
+    this.handleEls[this.dragPart]?.removeAttribute('data-drag');
+    this.view.box.removeAttribute('data-handle-drag');
+    this.dragPart = -1;
+    this.base = this.live = null;
+    this.snapCode = SNAP_NONE;
+    this.touch();
+  }
+
+  /**
+   * The value to snap to near the locus point (qx, qy) (raw: the value there), or NaN: the nearest within SNAP_PX of
+   * a standard value (R, L, C) or of a crossing of the locus with a grid circle drawn now (r, x, g, b of the density
+   * level, and the real axis), taken only where the part can reach it.
+   */
+  private findSnap(qx: number, qy: number, raw: number): number {
+    const v = this.view, loc = this.loc, kind = loc[L_KIND], p = this.pt;
+    this.best = SNAP_PX / v.k;
+    this.bestValue = NaN;
+    if (kind <= SHUNT_C && raw > 0 && raw < Infinity) {
+      const dec = Math.floor(Math.log10(raw)), x = raw * 10 ** (2 - dec), ms = SNAP_MANTISSAS;
+      let j = 0;
+      while (j < ms.length && ms[j] <= x) j++;
+      for (let s = 0; s < 2; s++) {
+        const c = s === 0
+          ? (j > 0 ? standardValue(ms[j - 1], dec) : standardValue(ms[ms.length - 1], dec - 1))
+          : (j < ms.length ? standardValue(ms[j], dec) : standardValue(ms[0], dec + 1));
+        locusPoint(p, 2, loc, 0, c);
+        const d = Math.hypot(p[2] - qx, p[3] - qy);
+        if (d < this.best) {
+          this.best = d; this.bestValue = c; this.snapX = p[2]; this.snapY = p[3];
+          this.snapCode = SNAP_STANDARD; this.snapFamily = -1; this.snapGridValue = NaN;
+          this.snapLabel = `${formatAmount(c, SNAP_UNIT[kind], 3)} · ${SNAP_SERIES}`;
+        }
+      }
+    }
+    const g = v.grid.grid;
+    if (g && loc[L_MODE] !== LOCUS_FIXED) {
+      const A = loc[L_A], Dr = loc[L_A + 1], Di = loc[L_A + 2], C = loc[L_A + 3], arcs = g.arcs, fam = g.family;
+      for (let e = 0, a = 0; e < g.count; e++, a += ARC_STRIDE) {
+        const f = fam[e];
+        if (f !== FAM_R && f !== FAM_X && f !== FAM_G && f !== FAM_B && f !== FAM_AXIS) continue;
+        const R = arcs[a + ARC_R];
+        if (R === Infinity) {
+          // The real axis from S to E: A·t² − 2·Dr·t + C = 0 at Γ = t.
+          if (!(Math.abs(qy) < this.best)) continue;
+          const lo = Math.min(arcs[a + ARC_SX], arcs[a + ARC_EX]), hi = Math.max(arcs[a + ARC_SX], arcs[a + ARC_EX]);
+          if (A === 0) {
+            if (Dr !== 0) this.tryGrid(C / (2 * Dr), 0, lo, hi, qx, qy, raw, f, g.value[e]);
+            continue;
+          }
+          const disc = Dr * Dr - A * C;
+          if (!(disc >= 0)) continue;
+          const q = Dr + (Dr < 0 ? -1 : 1) * Math.sqrt(disc);
+          this.tryGrid(q / A, 0, lo, hi, qx, qy, raw, f, g.value[e]);
+          if (q !== 0) this.tryGrid(C / q, 0, lo, hi, qx, qy, raw, f, g.value[e]);
+          continue;
+        }
+        const cx = arcs[a + ARC_CX], cy = arcs[a + ARC_CY];
+        if (!(Math.abs(Math.hypot(qx - cx, qy - cy) - R) < this.best)) continue;
+        // Points c + R·e^(jθ) of the grid circle on the locus: ca·cos θ + cb·sin θ = cd.
+        const ca = 2 * R * (A * cx - Dr), cb = 2 * R * (A * cy - Di);
+        const cd = -(A * (cx * cx + cy * cy + R * R) - 2 * (Dr * cx + Di * cy) + C), m = Math.hypot(ca, cb);
+        if (!(m > 0) || !(Math.abs(cd) <= m)) continue;
+        const phi = Math.atan2(cb, ca), dt = Math.acos(cd / m), turns = arcs[a + ARC_TURNS], sweep = arcs[a + ARC_SWEEP];
+        const a0 = Math.atan2(arcs[a + ARC_SY] - cy, arcs[a + ARC_SX] - cx);
+        for (let s = -1; s <= 1; s += 2) {
+          const t = phi + s * dt;
+          if (turns > 0 || within(t - a0, sweep)) this.tryGrid(cx + R * Math.cos(t), cy + R * Math.sin(t), -Infinity, Infinity, qx, qy, raw, f, g.value[e]);
+        }
+      }
+    }
+    return this.bestValue;
+  }
+
+  private tryGrid(x: number, y: number, lo: number, hi: number, qx: number, qy: number, raw: number, fam: number, gv: number): void {
+    if (!(x >= lo && x <= hi)) return;
+    const d = Math.hypot(x - qx, y - qy);
+    if (!(d < this.best)) return;
+    const loc = this.loc, p = this.pt, val = locusValue(loc, 0, x, y, raw);
+    // Only where the part can be: the value's own point must be the crossing (a lumped part's far side is not).
+    locusPoint(p, 2, loc, 0, val);
+    if (!(Math.hypot(p[2] - x, p[3] - y) * this.view.k < 0.5)) return;
+    this.best = d; this.bestValue = val; this.snapX = x; this.snapY = y;
+    this.snapCode = SNAP_GRID; this.snapFamily = fam; this.snapGridValue = gv;
+    this.snapLabel = fam === FAM_AXIS ? (this.view.mode === MODE_Y ? 'b = 0' : 'x = 0') : `${FAM_NAME[fam]} = ${gridNum(gv)}`;
+  }
+
   /** The selection (strip, table or a pick on the chart): SEL_PART or SEL_NODE with its index, or SEL_NONE. */
   select(kind: number, index: number): void {
+    // A drag selects its part: the card React then mounts shows the committed value until written again.
+    if (this.dragPart >= 0) this.liveDirty = 3;
     const code = toCode(kind, index);
     if (code !== this.sel) { this.sel = code; this.touch(); }
   }
@@ -194,8 +500,13 @@ export class PathLayer {
   // ---------- DOM ----------
 
   private build(n: number): void {
-    const arcs: SVGPathElement[] = [], arrows: HTMLSpanElement[] = [], nodes: HTMLSpanElement[] = [];
+    const arcs: SVGPathElement[] = [], arrows: HTMLSpanElement[] = [], nodes: HTMLSpanElement[] = [], handles: HTMLSpanElement[] = [];
     for (let i = 0; i < n; i++) {
+      // The handle of part i (at node i + 1): data-handle for M3.3b's focus and keys.
+      const hd = span({ 'data-handle': String(i) });
+      hd.hidden = true;
+      hd.style.color = partColour(i);
+      handles.push(hd);
       const a = el('path', { 'data-arc': String(i), d: '' });
       a.style.stroke = partColour(i);
       arcs.push(a);
@@ -216,11 +527,16 @@ export class PathLayer {
     this.arcGroup.replaceChildren(...arcs);
     for (const e of this.arrowEls) e.remove();
     for (const e of this.nodeEls) e.remove();
-    // Arrows over the goal, markers over the arrows, the input over the nodes it may cover.
-    this.overlay.append(...arrows, ...nodes);
-    this.arcEls = arcs; this.arrowEls = arrows; this.nodeEls = nodes;
+    for (const e of this.handleEls) e.remove();
+    // Handles over the goal, arrows over them, markers over the arrows (a handle is a ring round its marker), the
+    // input over the nodes it may cover, the snap mark on top.
+    this.overlay.append(...handles, ...arrows, ...nodes, this.snapEl);
+    this.arcEls = arcs; this.arrowEls = arrows; this.nodeEls = nodes; this.handleEls = handles;
+    this.hotHandle = -1;
+    this.view.box.removeAttribute('data-handle-hot');
     this.d = new Array(n).fill('');
     this.shown = new Uint8Array(n + 1);
+    this.hshown = new Uint8Array(n);
     this.drawnHot = this.drawnSel = 0;
   }
 
@@ -238,6 +554,7 @@ export class PathLayer {
     }
     this.writeScreen();
     if (this.marks) { this.writeMarks(); this.marks = false; }
+    if (this.dragPart >= 0) this.writeLive();
     this.lastMs = performance.now() - t0;
     this.ms += this.lastMs;
     this.frames++;
@@ -269,7 +586,18 @@ export class PathLayer {
         this.shown[j] = (this.shown[j] & 2) | on;
         e.hidden = !on;
       }
+      if (j > 0) {
+        const hd = this.handleEls[j - 1];
+        if (on) hd.style.transform = `translate(${x}px,${y}px)`;
+        if (this.hshown[j - 1] !== on) { this.hshown[j - 1] = on; hd.hidden = !on; }
+      }
     }
+    const snapOn = this.dragPart >= 0 && this.snapCode !== SNAP_NONE;
+    if (snapOn) {
+      this.snapEl.style.transform = `translate(${v.screenX(this.snapX)}px,${v.screenY(this.snapY)}px)`;
+      if (this.snapText.textContent !== this.snapLabel) this.snapText.textContent = this.snapLabel;
+    }
+    if (snapOn !== this.snapShown) { this.snapShown = snapOn; this.snapEl.hidden = !snapOn; }
     for (let i = 0, a = 0; i < n; i++, a += ARC_STRIDE) {
       let on = 0;
       if (arrowAt(arrow, arcs, a, v.cx, v.cy, k, 0.5 * w, 0.5 * h)) {

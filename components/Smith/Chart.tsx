@@ -83,8 +83,8 @@ export default function Chart({ mode, z0 = 50, tools, side, onView }: ChartProps
           <svg ref={top} className={styles.top} aria-hidden="true" />
         </div>
         <p className={styles.hint} id="smith-chart-keys">
-          <span className={styles.hintFine}>Wheel or pinch to zoom, drag to pan, hover to read · keys: arrows, + −, 0</span>
-          <span className={styles.hintTouch}>Pinch to zoom, two fingers or a sideways swipe to pan, tap to read</span>
+          <span className={styles.hintFine}>Wheel or pinch to zoom, drag to pan, drag a ring to set its part (Alt: no snapping), hover to read · keys: arrows, + −, 0</span>
+          <span className={styles.hintTouch}>Pinch to zoom, two fingers or a sideways swipe to pan, drag a ring to set its part, tap to read</span>
         </p>
       </section>
       <aside className={styles.side}>

@@ -8,6 +8,7 @@ import Chart from '../../components/Smith/Chart';
 import Nodes from '../../components/Smith/Nodes';
 import Strip from '../../components/Smith/Strip';
 import type { ChartView } from '../../components/Smith/chartView';
+import { writeLive } from '../../components/Smith/live';
 import { PathLayer, SEL_NODE, SEL_NONE, SEL_PART } from '../../components/Smith/pathLayer';
 import { MODE_Y, MODE_Z, MODE_ZY } from '../../lib/smith/grid';
 import { Circuit, decodeCircuit, defaultCircuit, encodeCircuit } from '../../lib/smith/state';
@@ -21,6 +22,9 @@ import styles from '../../styles/Smith.module.css';
 // From M3.2 the chart draws the circuit's path (components/Smith/pathLayer.ts, outside React) and the node table sits
 // under the strip; the page holds the selection (a part, or a node that then takes the highlight) for the strip, the
 // table and the chart, which picks arcs and markers by hover, click and tap.
+// From M3.3a a ring at the end of every arc drags its part's value (pathLayer.ts): the chart and the side panel follow
+// every frame outside React (live.ts) and the circuit arrives through `commit` once, on release. The Snap switch beside
+// the grid switch turns snapping to grid circles and E24 values off (Alt does the same for a mouse drag).
 
 const MODES = [{ mode: MODE_Z, name: 'Z', title: 'Impedance grid: r and x circles' },
   { mode: MODE_Y, name: 'Y', title: 'Admittance grid: g and b circles' },
@@ -52,7 +56,9 @@ export default function SmithChart() {
       window.history.replaceState(window.history.state, '', url);
     }
   }, [linked, circuit]);
+  // The one place a new circuit arrives: fields, add, remove, move, the link and the end of a drag (M3.3b: undo).
   const commit = (next: Circuit) => setCircuit(next);
+  const [snap, setSnap] = useState(true);
 
   // The path on the chart and the selection shared by the strip, the node table and the chart.
   const path = useRef<PathLayer | null>(null);
@@ -65,10 +71,13 @@ export default function SmithChart() {
   const onView = (v: ChartView) => {
     const layer = new PathLayer(v);
     layer.onPick = (kind, i) => { if (kind === SEL_PART) selectPart(i); else setNodeSel(i); };
+    layer.onCommit = commit;
+    layer.onLive = (c, i, half) => writeLive(document, c, i, half);
     (v.box as HTMLElement & { smithPath?: PathLayer }).smithPath = layer;
     path.current = layer;
   };
   useEffect(() => { path.current?.setCircuit(circuit); }, [circuit]);
+  useEffect(() => { if (path.current) path.current.snap = snap; }, [snap]);
   useEffect(() => {
     path.current?.select(node >= 0 ? SEL_NODE : part >= 0 ? SEL_PART : SEL_NONE, node >= 0 ? node : part);
   }, [node, part]);
@@ -102,14 +111,18 @@ export default function SmithChart() {
   const night = theme === 'light' ? LIGHT : DARK;
 
   const modes = (
-    <div className={styles.modes} role="radiogroup" aria-label="Grid">
-      {MODES.map(({ mode: m, name, title }) => (
-        <label key={name} title={title}>
-          <input type="radio" name="smith-mode" value={name} checked={mode === m} onChange={() => setMode(m)} />
-          {name}
-        </label>
-      ))}
-    </div>
+    <>
+      <div className={styles.modes} role="radiogroup" aria-label="Grid">
+        {MODES.map(({ mode: m, name, title }) => (
+          <label key={name} title={title}>
+            <input type="radio" name="smith-mode" value={name} checked={mode === m} onChange={() => setMode(m)} />
+            {name}
+          </label>
+        ))}
+      </div>
+      <button type="button" className={`${styles.button} ${styles.toggle}`} aria-pressed={snap} data-snap-toggle=""
+        onClick={() => setSnap(!snap)} title="Dragging a ring snaps to the grid's circles and to E24 values (Alt: not for this drag)">Snap</button>
+    </>
   );
 
   return (

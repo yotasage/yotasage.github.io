@@ -79,7 +79,9 @@ at five zoom levels; the readout matches the engine at 20 points; frame time wit
   engine.md §8.
 - **M3.3 Direct manipulation.** A handle at the end of each arc (a touch target of at least 44 px); a "draw" tool (arm
   a part kind, drag from the end of the path); projection (engine.md §6); snapping to grid circles and standard
-  values; undo and redo; keyboard use.
+  values; undo and redo; keyboard use. Run in two steps: **M3.3a** handles, dragging, projection and snapping
+  (notes-M3.3a.md); **M3.3b** the draw tool, undo and redo, keyboard use of the handles. The series for snapping
+  inductors is the owner's choice (E24 until then, one constant in `components/Smith/pathLayer.ts`).
 - **M3.4 Card and start.** The card and icon on the main page (`TOOLS` in `pages/index.tsx`, `ToolIcon.tsx`, category
   "Electronics"), page metadata, the start state (D16) and empty state, README. From here the branch may be merged to
   `main` when the owner says so.

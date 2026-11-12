@@ -432,14 +432,14 @@ try {
     const res = await pt.evaluate(() => new Promise((done) => {
       const box = document.querySelector('[data-chart]'), v = box.smithChart, layer = box.smithPath, rect = box.getBoundingClientRect();
       const x = rect.left + rect.width * 0.55, y = rect.top + rect.height * 0.45;
-      const stamps = [], works = [], f0 = v.frames;
+      const stamps = [], works = [], f0 = v.frames, b0 = v.grid.builds;
       let seen = layer.frames, events = 0;
       const start = performance.now();
       const tick = (t) => {
         stamps.push(t);
         if (layer.frames !== seen) { works.push(layer.lastMs); seen = layer.frames; }
         if (t - start < 2000) requestAnimationFrame(tick);
-        else done({ stamps, works, frames: v.frames - f0, events });
+        else done({ stamps, works, frames: v.frames - f0, builds: v.grid.builds - b0, events });
       };
       requestAnimationFrame(tick);
       const send = () => {
@@ -456,7 +456,7 @@ try {
     const iv = res.stamps.slice(1).map((t, i) => t - res.stamps[i]).sort((a, b) => a - b);
     const ws = res.works.slice().sort((a, b) => a - b);
     const q = (xs, f) => xs[Math.min(xs.length - 1, Math.floor(f * xs.length))];
-    return { rate, ticks: res.stamps.length, frames: res.frames, pathFrames: res.works.length, intervalP95: q(iv, 0.95), pathP50: q(ws, 0.5), pathP95: q(ws, 0.95), mainPerFrame: ((t1 - t0) * 1000) / res.stamps.length };
+    return { rate, ticks: res.stamps.length, frames: res.frames, builds: res.builds, pathFrames: res.works.length, intervalP95: q(iv, 0.95), lost: iv.reduce((a, t) => a + Math.max(0, Math.round(t / (1000 / 60)) - 1), 0), pathP50: q(ws, 0.5), pathP95: q(ws, 0.95), mainPerFrame: ((t1 - t0) * 1000) / res.stamps.length };
   }
   // The main thread per frame in dev mode drifts by ±0.5 ms between runs on this machine, so at 4× the path's own
   // share is measured as the difference to the same page with the path hidden, on fresh pages taken in turn.
@@ -478,11 +478,13 @@ try {
     const t = runs[1];
     t.bare = rate === 4 ? median(bare.map((b) => b.mainPerFrame)) : NaN;
     t.bareP95 = rate === 4 ? median(bare.map((b) => b.intervalP95)) : NaN;
+    t.bareLost = rate === 4 ? median(bare.map((b) => b.lost)) : NaN;
     timesOut.push(t);
     ok(t.pathFrames > 0.5 * t.ticks, `CPU ${rate}×: the path was placed in ${t.pathFrames} of ${t.ticks} frames`);
-    // At 4× the frame interval is compared with the same page without the path (the grid alone drops frames when
-    // the machine is busy); at 1× no frame may be dropped.
-    ok(t.intervalP95 <= (rate === 1 ? 17.5 : Math.max(17.5, t.bareP95 + 1)), `CPU ${rate}×: frame interval p95 ${t.intervalP95.toFixed(1)} ms${rate === 4 ? ` (${t.bareP95.toFixed(1)} with the path hidden)` : ''}`);
+    // At 1× no frame may be dropped. At 4× each grid rebuild loses about one frame (BL52), so the frames lost are
+    // counted against the rebuilds (a p95 of the interval lands on 17 or 33 ms by chance).
+    if (rate === 1) ok(t.intervalP95 <= 17.5, `CPU ${rate}×: frame interval p95 ${t.intervalP95.toFixed(1)} ms`);
+    else ok(t.lost <= t.builds + 1, `CPU ${rate}×: ${t.lost} frames lost with ${t.builds} grid rebuilds (${t.bareLost} with the path hidden)`);
     ok(t.pathP95 <= (rate === 1 ? 1 : 4), `CPU ${rate}×: path script p95 ${t.pathP95.toFixed(2)} ms`);
     ok(rate === 1 || t.mainPerFrame - t.bare <= 1.5, `CPU ${rate}×: the path adds ${(t.mainPerFrame - t.bare).toFixed(2)} ms of main thread per frame (${t.mainPerFrame.toFixed(2)} vs ${t.bare.toFixed(2)} hidden)`);
   }
@@ -504,7 +506,7 @@ await browser.close();
 stopServer();
 for (const failure of failures) console.log(`FAIL ${failure}`);
 for (const t of timesOut) {
-  console.log(`zoom 2 s with 10 parts at CPU ${t.rate}× (headless): ${t.ticks} frames, ${t.frames} chart updates, path placed in ${t.pathFrames}; interval p95 ${t.intervalP95.toFixed(1)} ms; `
+  console.log(`zoom 2 s with 10 parts at CPU ${t.rate}× (headless): ${t.ticks} frames, ${t.frames} chart updates, path placed in ${t.pathFrames}; interval p95 ${t.intervalP95.toFixed(1)} ms, ${t.lost} frames lost, ${t.builds} grid rebuilds; `
     + `path script p50 ${t.pathP50.toFixed(3)} / p95 ${t.pathP95.toFixed(3)} ms; main thread ${t.mainPerFrame.toFixed(2)} ms per frame`
     + (t.bare === t.bare ? ` (${t.bare.toFixed(2)} ms and interval p95 ${t.bareP95.toFixed(1)} ms with the path hidden)` : ''));
 }

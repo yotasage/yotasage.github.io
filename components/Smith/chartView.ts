@@ -21,8 +21,8 @@ const WHEEL_RATE_PINCH = 0.01;
 const KEY_ZOOM = Math.SQRT2;
 const KEY_PAN = 0.1;
 /** A tap: one pointer that moved less than this many px and was released within this many ms. */
-const TAP_SLOP = 8;
-const TAP_MS = 600;
+export const TAP_SLOP = 8;
+export const TAP_MS = 600;
 /** The world frame is set again when its scale leaves [1/2, 2] or the view's centre is this many box sizes away. */
 const FRAME_SPAN = 2;
 const FRAME_FAR = 4;
@@ -40,9 +40,10 @@ export const DIRTY_CONTENT = 4;
 export interface HandleHooks {
   /** Whether a pointer or touch at (px, py) on `target` starts on a handle (hit areas of at least 44 px). */
   hit(px: number, py: number, target: EventTarget | null): boolean;
-  down(id: number, px: number, py: number): void;
-  move(id: number, px: number, py: number): void;
-  up(id: number, px: number, py: number, cancelled: boolean): void;
+  /** A drag starts; `touch` for a finger (a larger tap slop), `alt` while Alt is held (M3.3: no snapping). */
+  down(id: number, px: number, py: number, touch: boolean, alt: boolean, time: number): void;
+  move(id: number, px: number, py: number, alt: boolean): void;
+  up(id: number, px: number, py: number, cancelled: boolean, time: number): void;
 }
 
 export class ChartView {
@@ -292,10 +293,12 @@ export class ChartView {
     const x = e.clientX - this.left, y = e.clientY - this.topPx;
     if (this.count === 0 && this.handleId < 0 && this.handles?.hit(x, y, e.target)) {
       this.handleId = e.pointerId;
-      this.box.setPointerCapture(e.pointerId);
-      this.handles.down(e.pointerId, x, y);
+      try { this.box.setPointerCapture(e.pointerId); } catch { /* The pointer is already gone (or synthetic). */ }
+      this.handles.down(e.pointerId, x, y, e.pointerType === 'touch', e.altKey, e.timeStamp);
       return;
     }
+    // While a handle is dragged, other pointers (a second finger) are ignored.
+    if (this.handleId >= 0) return;
     if (this.count >= 2) { this.tap = false; return; }
     const i = this.ids[0] < 0 ? 0 : 1;
     this.ids[i] = e.pointerId;
@@ -314,7 +317,7 @@ export class ChartView {
   private readonly pointerMove = (e: PointerEvent): void => {
     this.refreshRect();
     const x = e.clientX - this.left, y = e.clientY - this.topPx;
-    if (e.pointerId === this.handleId) { this.handles?.move(e.pointerId, x, y); return; }
+    if (e.pointerId === this.handleId) { this.handles?.move(e.pointerId, x, y, e.altKey); return; }
     const i = this.slot(e.pointerId);
     if (i < 0) {
       // Hovering mouse or pen: the readout follows it.
@@ -351,7 +354,7 @@ export class ChartView {
   private release(e: PointerEvent, cancelled: boolean): void {
     if (e.pointerId === this.handleId) {
       this.refreshRect();
-      this.handles?.up(e.pointerId, e.clientX - this.left, e.clientY - this.topPx, cancelled);
+      this.handles?.up(e.pointerId, e.clientX - this.left, e.clientY - this.topPx, cancelled, e.timeStamp);
       this.handleId = -1;
       return;
     }

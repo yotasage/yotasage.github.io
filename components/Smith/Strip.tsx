@@ -238,7 +238,7 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
               onMouseEnter={() => onHover?.(i)} onMouseLeave={() => onHover?.(-1)} onFocus={() => onHover?.(i)} onBlur={() => onHover?.(-1)}>
               <PartSymbol kind={p.kind} />
               <span className={styles.tileName}>{i + 1} {KIND_SHORT[p.kind]}</span>
-              <span className={styles.tileValue}>{value}</span>
+              <span className={styles.tileValue} data-tile-value="">{value}</span>
             </button>
           );
         })}
