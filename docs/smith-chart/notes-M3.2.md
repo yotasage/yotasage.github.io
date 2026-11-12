@@ -62,10 +62,11 @@ thread per frame (start circuit to 10 parts; `ui-path.mjs` bounds it at 1.5). He
 
 ## Fix after M3.2 (BL51)
 
-Traced at 4×: Layerize ran on every stretch frame, 2.45 ms, 2.0 of it the ~250 hinted, turned grid labels.
-`geometricPrecision` on them halves it (glyphs not pixel-snapped; invisible). Main thread a frame 5.3–6.3 →
-3.7–4.3 ms (start circuit), 4.2–5.0 (10 parts); bound back at 6 ms. Left: rotate nodes (0.6 ms) and 5 rebuilds per
-gesture (~35 ms at 4×, one dropped frame each): the 4× interval p95 sits on the 17 / 33 ms edge.
+At 4×, Layerize ran every stretch frame (2.45 ms, 2.0 the ~250 hinted turned labels); `geometricPrecision` on them
+halves it: 5.3–6.3 → 3.7–4.3 ms a frame (10 parts 4.2–5.0). Left: 5 rebuilds a gesture,
+~32 ms each at 4× (script 10, style 6.5, layout 7.5, paint 9), one dropped frame each, so the 4× interval p95 sits
+on 17 / 33 ms. A hidden page filled in 64-label steps and swapped: steps of 18–20 ms (paint 5, Layerize 6 fixed per
+step), 7.7–9.8 ms a frame: dropped. A root scale change relays out all text.
 
 ## For M3.3
 

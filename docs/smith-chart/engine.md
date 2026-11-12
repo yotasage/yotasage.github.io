@@ -146,4 +146,5 @@ The owner does not read code; performance is never traded for readability.
   not exceeded without a reason noted.
 - **Zooming at 4× (BL51, after M3.2):** script is < 0.5 ms a frame; the cost is Chromium's Layerize, run on every
   frame of the grid's stretch and ~8 µs per hinted turned label, so turned labels use `geometricPrecision` (3.7–4.3 ms
-  a frame, was 5.3–6.3). Grid rebuilds (~35 ms at 4×, 5 per 2 s zoom) each drop a frame: the next thing to slice.
+  a frame, was 5.3–6.3). Grid rebuilds (~32 ms at 4×, 5 per 2 s zoom) each drop a frame; a hidden page
+  written in steps cost more than it saved (notes-M3.2.md).
