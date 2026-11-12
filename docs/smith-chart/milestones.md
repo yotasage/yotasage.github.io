@@ -128,6 +128,9 @@ the link; read the topic "Moving on the chart". Is it nicer than the old one? Wh
   the generic grid search for two unknowns takes a median of 17 ms and up to about 100 ms at 1× (notes-M4.2.md), too
   long for a phone even after a pause, so solves (and suggestions) that can be slow run in a Web Worker (no new
   dependency; the resistor tool's `combineClient.ts` is the pattern).
+  Split in two: **M4.4a** `lib/smith/suggest.ts` (single changes, then pairs, ranked), the solver worker and its
+  client with the Solve panel's slow solves moved into it, and BL57; **M4.4b** the suggestions on the page (with
+  preview, variants and Apply, as the solutions have) and their short line.
 
 *Done when:* exact cases have a residual below 1e-9; brute force finds no missed solution on 200 or more random
 problems of each kind; the same input gives the same order; time within budget; a scripted case reaches every message
