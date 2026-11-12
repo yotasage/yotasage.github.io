@@ -7,6 +7,7 @@ import { toDegrees } from '../../lib/smith/convert';
 import styles from '../../styles/Smith.module.css';
 import { GOAL_MAG, GOAL_VSWR, nodeLabel, nodeName } from './pathLayer';
 import { READOUT_DIGITS, complexText } from './readout';
+import { Why } from './Why';
 
 // The table of the path's nodes (step M3.2): for every node from the load to the input its z, Γ, VSWR and return
 // loss at f0 (network.ts's figures in the readout's texts), and the input's distance to the goal. A row is a button:
@@ -55,6 +56,7 @@ export default function Nodes({ circuit, selected, onSelect, onHover }: NodesPro
       <details className={styles.nodesBox} open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
         <summary className={`${styles.panelTitle} ${styles.nodesSummary}`}>
           <span>Nodes</span>
+          <Why k="nodes" />
           <span className={styles.panelNote}>{n + 1} · load → input · at f0</span>
         </summary>
         <ol className={styles.nodeList} aria-label="Nodes from the load to the input">
@@ -79,7 +81,7 @@ export default function Nodes({ circuit, selected, onSelect, onHover }: NodesPro
         <p className={styles.goalText} data-goal-text="" data-inside={mag <= GOAL_MAG ? '' : undefined}>
           <span className={styles.goalMark} aria-hidden="true" />
           Goal: the match (Γ = 0, the centre), close enough within VSWR {num(GOAL_VSWR)} (|Γ| ≤ {num(GOAL_MAG)}, dashed).
-          {' '}The input is <b data-goal-distance="">{num(mag)}</b> from it in |Γ|: <strong>{mag <= GOAL_MAG ? 'inside' : 'outside'}</strong>.
+          {' '}The input is <b data-goal-distance="">{num(mag)}</b> from it in |Γ|: <strong>{mag <= GOAL_MAG ? 'inside' : 'outside'}</strong>.<Why k="goal" />
         </p>
       </details>
     </section>

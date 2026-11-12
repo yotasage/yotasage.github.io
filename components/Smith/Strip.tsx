@@ -12,6 +12,8 @@ import {
 import styles from '../../styles/Smith.module.css';
 import { partColour } from './pathLayer';
 import { readoutTexts } from './readout';
+import { Why, WhyLine } from './Why';
+import { FIELD_WHY } from './whys';
 
 // The circuit panel (step M3.1): the parameters (Z0, f0, the load R + jX), the schematic strip with the parts drawn
 // source left, load right, the card of the selected part with its value in every form of engine.md §2, the controls
@@ -89,17 +91,23 @@ interface FieldProps {
   edit: (text: string) => string;
   name: string;
   revision?: number;
+  /** The key of its short line (whys.ts), shown as an info button after the label. */
+  why?: string;
 }
 
-function Field({ label, hint, shown, edit, name, revision }: FieldProps) {
+function Field({ label, hint, shown, edit, name, revision, why }: FieldProps) {
   const [draft, setDraft] = useState<string | null>(null);
   const [error, setError] = useState('');
   useEffect(() => { setDraft(null); setError(''); }, [revision]);
   const id = `smith-f-${name}`;
   return (
-    <label className={styles.field} data-name={name}>
-      <span className={styles.fieldLabel}>{label}{hint && <span className={styles.readHint}> {hint}</span>}</span>
+    <div className={styles.field} data-name={name}>
+      <span className={styles.fieldHead}>
+        <label className={styles.fieldLabel} htmlFor={id}>{label}{hint && <span className={styles.readHint}> {hint}</span>}</label>
+        {why && <Why k={why} />}
+      </span>
       <input
+        id={id}
         className={styles.input}
         value={draft ?? shown}
         spellCheck={false}
@@ -111,7 +119,7 @@ function Field({ label, hint, shown, edit, name, revision }: FieldProps) {
         onKeyDown={(e) => { if (e.key === 'Escape' && draft !== null) { setDraft(null); setError(''); } }}
       />
       {error && <span className={styles.fieldError} id={`${id}-e`} role="status">{error}</span>}
-    </label>
+    </div>
   );
 }
 
@@ -192,8 +200,8 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
     return out;
   }, [c]);
 
-  const param = (name: string, label: string, unit: string, value: number, problem: (v: number) => string, set: (v: number) => Circuit, infinite = false, hint = '') => (
-    <Field name={name} label={label} hint={hint} revision={revision} shown={formatAmount(value, unit, DIGITS)} edit={(t) => {
+  const param = (name: string, label: string, unit: string, value: number, problem: (v: number) => string, set: (v: number) => Circuit, infinite = false, why = '') => (
+    <Field name={name} label={label} why={why || undefined} revision={revision} shown={formatAmount(value, unit, DIGITS)} edit={(t) => {
       const v = readAmount(t, unit, infinite);
       const why = reason(t, v, UNIT_WORD[unit] ?? unit, v === null ? '' : problem(v));
       if (!why) onChange(set(v), `field:${name}`);
@@ -203,7 +211,7 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
 
   const part = selected >= 0 ? c.parts[selected] : null;
   const partField = (p: Part, i: number, form: Form) => (
-    <Field key={form.id} name={`p${i + 1}-${form.id}`} label={form.label} hint={form.hint} revision={revision} shown={formText(form, formValue(form.id, p, c))}
+    <Field key={form.id} name={`p${i + 1}-${form.id}`} label={form.label} hint={form.hint} why={FIELD_WHY[form.id]} revision={revision} shown={formText(form, formValue(form.id, p, c))}
       edit={(t) => {
         const v = readForm(form, t);
         if (v === null) return reason(t, v, UNIT_WORD[form.unit] ?? '', '');
@@ -227,10 +235,10 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
         </div>
       )}
       <div className={styles.params}>
-        {param('z0', 'Z0', 'Ω', c.z0, z0Problem, (v) => ({ ...c, z0: v }))}
-        {param('f0', 'f0', 'Hz', c.f0, f0Problem, (v) => ({ ...c, f0: v }))}
-        {param('loadR', 'Load R', 'Ω', c.loadR, loadRProblem, (v) => ({ ...c, loadR: v, loadX: v === Infinity ? 0 : c.loadX }), true)}
-        {param('loadX', 'Load X', 'Ω', c.loadX, loadXProblem, (v) => ({ ...c, loadX: v }))}
+        {param('z0', 'Z0', 'Ω', c.z0, z0Problem, (v) => ({ ...c, z0: v }), false, 'z0')}
+        {param('f0', 'f0', 'Hz', c.f0, f0Problem, (v) => ({ ...c, f0: v }), false, 'f0')}
+        {param('loadR', 'Load R', 'Ω', c.loadR, loadRProblem, (v) => ({ ...c, loadR: v, loadX: v === Infinity ? 0 : c.loadX }), true, 'load')}
+        {param('loadX', 'Load X', 'Ω', c.loadX, loadXProblem, (v) => ({ ...c, loadX: v }), false, 'load')}
       </div>
 
       <div className={styles.strip} role="toolbar" aria-label="Parts from the source (left) to the load (right); arrows choose, Alt+arrows move, Delete removes" data-strip="">
@@ -253,6 +261,7 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
           );
         })}
         <span className={styles.stripEnd}>Load</span>
+        <Why k="strip" />
       </div>
 
       {part && (
@@ -263,8 +272,10 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
               <button type="button" className={styles.button} data-move="source" disabled={selected === n - 1} onClick={() => move(selected, selected + 1)} title="Move towards the source (Alt+←)" aria-label="Move towards the source">←</button>
               <button type="button" className={styles.button} data-move="load" disabled={selected === 0} onClick={() => move(selected, selected - 1)} title="Move towards the load (Alt+→)" aria-label="Move towards the load">→</button>
               <button type="button" className={styles.button} data-remove="" onClick={() => remove(selected)} title="Remove (Delete)">Remove</button>
+              <Why k="card" />
             </span>
           </div>
+          <WhyLine k={`kind-${KIND_CODES[part.kind]}`} />
           <div className={styles.forms}>{formsOf(part.kind).map((form) => partField(part, selected, form))}</div>
         </div>
       )}
@@ -283,15 +294,21 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
         <select className={styles.select} data-add-at="" aria-label="Where to add it" value={addAt > n - 1 ? -1 : addAt} onChange={(e) => setAddAt(Number(e.target.value))}>
           {positions.map(({ at, text }) => <option key={at} value={at}>{text}</option>)}
         </select>
-        <button type="button" className={styles.button} data-add="" onClick={add} disabled={n >= MAX_PARTS}>Add</button>
+        <span className={styles.addGroup}>
+          <button type="button" className={styles.button} data-add="" onClick={add} disabled={n >= MAX_PARTS}>Add</button>
+          <Why k="add" />
+        </span>
         {onDraw && (
-          <button type="button" className={`${styles.button} ${styles.toggle}`} data-draw="" aria-pressed={drawKind >= 0}
-            disabled={n >= MAX_PARTS} onClick={() => onDraw(drawKind >= 0 ? -1 : addKind)}
-            title="Draw: drag from the input (In) on the chart to add this kind at the source end; Escape cancels">Draw</button>
+          <span className={styles.addGroup}>
+            <button type="button" className={`${styles.button} ${styles.toggle}`} data-draw="" aria-pressed={drawKind >= 0}
+              disabled={n >= MAX_PARTS} onClick={() => onDraw(drawKind >= 0 ? -1 : addKind)}
+              title="Draw: drag from the input (In) on the chart to add this kind at the source end; Escape cancels">Draw</button>
+            <Why k="draw" />
+          </span>
         )}
       </div>
 
-      <h3 className={styles.subTitle}>Circuit input <span className={styles.panelNote}>at f0</span></h3>
+      <h3 className={styles.subTitle}><span>Circuit input <Why k="input" /></span><span className={styles.panelNote}>at f0</span></h3>
       <dl className={styles.readout}>
         {INPUT_SHOWN.map(([k, label, hint]) => (
           <div key={k} className={styles.readRow}>

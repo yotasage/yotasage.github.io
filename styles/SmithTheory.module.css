@@ -261,7 +261,7 @@
   text-underline-offset: 2px;
 }
 
-.theory .cites { white-space: nowrap; }
+.theory .cites { white-space: normal; }
 .theory .small { color: var(--ink-2); font-size: 13.5px; }
 
 /* --- Formulas: the symbolic line, the line with your numbers, the registry's title ------------------------------ */
@@ -285,6 +285,16 @@
   color: var(--ink-2);
   font-size: 15px;
 }
+
+.theory .eqRows {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: start;
+  align-items: baseline;
+}
+
+.theory .eqRows > .eqLhs { justify-self: end; }
+.theory .eqRows > .eqLive { grid-column: 2; }
 
 .theory .eqTitle {
   color: var(--ink-3);
@@ -500,3 +510,18 @@
   .theory .eq { font-size: 15.5px; padding-left: 10px; }
   .theory .figure, .theory .figureWide { max-width: 100%; }
 }
+
+/* The way back after a "→ theory" link of the tool (M3.5c). */
+.theory .back {
+  display: inline-block;
+  margin: 0 0 10px;
+  padding: 4px 11px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 7px;
+  background: var(--field);
+  color: var(--accent);
+  font: 500 13px var(--font-ui);
+  cursor: pointer;
+}
+.theory .back:hover { background: var(--raise); }
+.theory .nw { white-space: nowrap; }

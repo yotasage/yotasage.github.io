@@ -7,7 +7,7 @@ import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const SCRIPTS = ['ui-grid.mjs', 'ui-chart.mjs', 'ui-strip.mjs', 'ui-path.mjs', 'ui-drag.mjs', 'ui-edit.mjs', 'ui-theory.mjs'];
+const SCRIPTS = ['ui-grid.mjs', 'ui-chart.mjs', 'ui-strip.mjs', 'ui-path.mjs', 'ui-drag.mjs', 'ui-edit.mjs', 'ui-theory.mjs', 'ui-why.mjs'];
 // ui-grid and ui-strip take a screenshot folder as their first argument; '-' means none.
 const args = process.argv.slice(2);
 const failed = [];

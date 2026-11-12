@@ -142,7 +142,10 @@ export class ChartView {
     on('wheel', this.wheel, { passive: false });
     on('touchstart', this.touchStart, { passive: false });
     on('keydown', this.keyDown);
+    // The box can also move without a scroll or resize (the toolbar wraps when the draw tool's button appears), so
+    // the rect is measured again when a pointer enters it and at every press (one read per gesture, never per frame).
     const stale = () => { this.rectStale = true; };
+    on('pointerenter', stale);
     window.addEventListener('scroll', stale, { passive: true, capture: true });
     window.addEventListener('resize', stale, { passive: true });
     this.off.push(() => { window.removeEventListener('scroll', stale, { capture: true }); window.removeEventListener('resize', stale); });
@@ -289,6 +292,7 @@ export class ChartView {
 
   private readonly pointerDown = (e: PointerEvent): void => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (this.count === 0 && this.handleId < 0) this.rectStale = true;
     this.refreshRect();
     const x = e.clientX - this.left, y = e.clientY - this.topPx;
     if (this.count === 0 && this.handleId < 0 && this.handles?.hit(x, y, e.target)) {
@@ -395,6 +399,7 @@ export class ChartView {
 
   private readonly touchStart = (e: TouchEvent): void => {
     if (!this.handles || e.touches.length !== 1) return;
+    this.rectStale = true;
     this.refreshRect();
     const t = e.touches[0];
     if (this.handles.hit(t.clientX - this.left, t.clientY - this.topPx, e.target)) e.preventDefault();

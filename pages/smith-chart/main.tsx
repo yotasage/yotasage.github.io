@@ -9,6 +9,7 @@ import Chart from '../../components/Smith/Chart';
 import Nodes from '../../components/Smith/Nodes';
 import Strip from '../../components/Smith/Strip';
 import Theory from '../../components/Smith/Theory';
+import { Why } from '../../components/Smith/Why';
 import type { ChartView } from '../../components/Smith/chartView';
 import { writeLive } from '../../components/Smith/live';
 import { PathLayer, SEL_NODE, SEL_NONE, SEL_PART } from '../../components/Smith/pathLayer';
@@ -246,21 +247,28 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
 
   const modes = (
     <>
-      <div className={styles.modes} role="radiogroup" aria-label="Grid">
-        {MODES.map(({ mode: m, name, title }) => (
-          <label key={name} title={title}>
-            <input type="radio" name="smith-mode" value={name} checked={mode === m} onChange={() => setMode(m)} />
-            {name}
-          </label>
-        ))}
-      </div>
-      <button type="button" className={`${styles.button} ${styles.toggle}`} aria-pressed={snap} data-snap-toggle=""
-        onClick={() => setSnap(!snap)} title="Dragging a ring snaps to the grid's circles and to E24 values (Alt: not for this drag); arrow keys on a ring step by E24 values or whole degrees">Snap</button>
+      <span className={styles.toolGroup}>
+        <div className={styles.modes} role="radiogroup" aria-label="Grid">
+          {MODES.map(({ mode: m, name, title }) => (
+            <label key={name} title={title}>
+              <input type="radio" name="smith-mode" value={name} checked={mode === m} onChange={() => setMode(m)} />
+              {name}
+            </label>
+          ))}
+        </div>
+        <Why k="grid" />
+      </span>
+      <span className={styles.toolGroup}>
+        <button type="button" className={`${styles.button} ${styles.toggle}`} aria-pressed={snap} data-snap-toggle=""
+          onClick={() => setSnap(!snap)} title="Dragging a ring snaps to the grid's circles and to E24 values (Alt: not for this drag); arrow keys on a ring step by E24 values or whole degrees">Snap</button>
+        <Why k="snap" />
+      </span>
       <span className={styles.history}>
         <button type="button" className={styles.button} data-undo="" disabled={!hist.current.past.length} onClick={() => travel(true)} title="Undo (Ctrl+Z)">Undo</button>
         <button type="button" className={styles.button} data-redo="" disabled={!hist.current.future.length} onClick={() => travel(false)} title="Redo (Ctrl+Shift+Z or Ctrl+Y)">Redo</button>
         <button type="button" className={styles.button} data-start-over="" disabled={sameCircuit(circuit, START)} onClick={startOver}
           title="Back to the start circuit (Z0 = 50 Ω, load 25 + j25 Ω, f0 = 100 MHz, two parts); Undo brings this circuit back">Start over</button>
+        <Why k="history" />
       </span>
       {drawKind >= 0 && (
         <button type="button" className={`${styles.button} ${styles.toggle}`} aria-pressed="true" data-draw-stop="" onClick={stopDraw}

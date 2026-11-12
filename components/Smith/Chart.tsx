@@ -3,6 +3,7 @@ import React, { ReactNode, useEffect, useLayoutEffect, useRef } from 'react';
 import styles from '../../styles/Smith.module.css';
 import { ChartView } from './chartView';
 import { READOUT_FIELDS, writeReadout } from './readout';
+import { Why } from './Why';
 
 export interface ChartProps {
   mode: number;  // MODE_Z, MODE_Y or MODE_ZY
@@ -74,6 +75,7 @@ export default function Chart({ mode, z0 = 50, tools, side, onView }: ChartProps
             <span className={styles.zoom} ref={zoomText} aria-label="Zoom" title="Zoom">1.00×</span>
             <button type="button" className={styles.button} onClick={() => view.current?.fit()} title="Show the whole chart (0 or Home)">Fit</button>
             <button type="button" className={styles.button} onClick={() => view.current?.reset()} title="Whole chart, no read point">Reset</button>
+            <Why k="zoom" />
           </div>
         </div>
         <div ref={box} className={styles.chart} tabIndex={0} role="group" data-chart=""
@@ -82,10 +84,13 @@ export default function Chart({ mode, z0 = 50, tools, side, onView }: ChartProps
           <svg ref={gridSvg} className={styles.grid} aria-hidden="true" />
           <svg ref={top} className={styles.top} aria-hidden="true" />
         </div>
-        <p className={styles.hint} id="smith-chart-keys">
-          <span className={styles.hintFine}>Wheel or pinch to zoom, drag to pan, drag a ring to set its part (Alt: no snapping), hover to read · keys: arrows, + −, 0</span>
-          <span className={styles.hintTouch}>Pinch to zoom, two fingers or a sideways swipe to pan, drag a ring to set its part, tap to read</span>
-        </p>
+        <div className={styles.hintRow}>
+          <p className={styles.hint} id="smith-chart-keys">
+            <span className={styles.hintFine}>Wheel or pinch to zoom, drag to pan, drag a ring to set its part (Alt: no snapping), hover to read · keys: arrows, + −, 0</span>
+            <span className={styles.hintTouch}>Pinch to zoom, two fingers or a sideways swipe to pan, drag a ring to set its part, tap to read</span>
+          </p>
+          <span className={styles.hintWhys}><Why k="ring" label="Rings" /><Why k="rim" label="Rim scales" /></span>
+        </div>
       </section>
       <aside className={styles.side}>
         {side}
@@ -94,7 +99,7 @@ export default function Chart({ mode, z0 = 50, tools, side, onView }: ChartProps
           <dl className={styles.readout}>
             {READOUT_FIELDS.map((f, i) => f !== 'note' && (
               <div key={f} className={styles.readRow}>
-                <dt>{LABELS[f]}{HINTS[f] && <span className={styles.readHint}> {HINTS[f]}</span>}{(f === 'Z' || f === 'Y') && <span className={styles.readHint}> in {f === 'Z' ? 'Ω' : 'S'}</span>}</dt>
+                <dt>{LABELS[f]}{HINTS[f] && <span className={styles.readHint}> {HINTS[f]}</span>}{(f === 'Z' || f === 'Y') && <span className={styles.readHint}> in {f === 'Z' ? 'Ω' : 'S'}</span>}<Why k={`read-${f}`} /></dt>
                 <dd data-field={f} ref={(el) => { values.current[i] = el; }}>–</dd>
               </div>
             ))}

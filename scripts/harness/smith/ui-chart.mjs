@@ -187,7 +187,7 @@ let focused = false;
 await page.mouse.move(5, 5);
 // Tab from the top of the page (from M3.1 the side panel after the chart has many fields, so no wrap-around).
 await page.evaluate(() => { document.querySelector('header a')?.focus(); });
-for (let i = 0; i < 12 && !focused; i++) {
+for (let i = 0; i < 24 && !focused; i++) {
   await page.keyboard.press('Tab');
   focused = await page.evaluate(() => document.activeElement?.hasAttribute('data-chart'));
 }
@@ -220,12 +220,12 @@ await frame(page);
 s = await state(page);
 ok(s.cx === 0.3 && s.cy === 0.2 && Math.abs(s.k / s.kFit - 4) < 1e-12, 'the mode switch keeps the view');
 await page.getByRole('radio', { name: 'Z', exact: true }).check();
-await page.getByRole('button', { name: 'Fit' }).click();
+await page.getByRole('button', { name: 'Fit', exact: true }).click();
 await frame(page);
 s = await state(page);
 ok(s.k === s.kFit && s.cx === 0 && s.cy === 0, 'Fit shows the whole chart');
 await setView(page, 0.3, 0.2, 4);
-await page.getByRole('button', { name: 'Reset' }).click();
+await page.getByRole('button', { name: 'Reset', exact: true }).click();
 await frame(page);
 s = await state(page);
 const tReset = await texts(page);

@@ -201,14 +201,15 @@ async function checkLive(page, c, what) {
 async function checkEquations(page, what) {
   const found = await page.evaluate(() => [...document.querySelectorAll('[data-topic]')].map((t) => ({
     id: t.id,
-    eqs: [...t.querySelectorAll('[data-eq]')].map((e) => ({ id: e.getAttribute('data-eq'), maths: e.querySelectorAll('math').length, live: !!e.querySelector('[data-eq-live]') })),
+    eqs: [...t.querySelectorAll('[data-eq]')].map((e) => ({ id: e.getAttribute('data-eq'), maths: e.querySelectorAll('math').length, live: e.querySelectorAll('[data-eq-live]').length })),
   })));
   const errors = await page.evaluate(() => document.querySelectorAll('[data-theory] .katex-error, [data-theory] merror').length);
   ok(errors === 0, `${what}: no KaTeX error nodes (${errors})`);
   let lines = 0;
   for (const t of found) {
     ok(JSON.stringify(t.eqs.map((e) => e.id)) === JSON.stringify(EQUATIONS[t.id]), () => `${what}: topic ${t.id} shows ${t.eqs.map((e) => e.id).join(', ')}`);
-    for (const e of t.eqs) { ok(e.maths === (e.live ? 2 : 1), `${what}: ${t.id} ${e.id} renders as MathML`); if (e.live) lines++; }
+    // With numbers: the equation and one line per substitution (aligned rows: the symbol, its right side, the lines).
+    for (const e of t.eqs) { ok(e.live ? e.maths === e.live + 1 || e.maths === e.live + 2 : e.maths === 1, `${what}: ${t.id} ${e.id} renders as MathML`); if (e.live) lines++; }
   }
   return lines;
 }
@@ -252,7 +253,7 @@ try {
   for (const [href] of nav) ok(await p0.$(href) !== null, `section ${href} exists`);
 
   // Citations: every link resolves to an entry; numbered by first citation; the list in that order.
-  const cites = await p0.$$eval('[data-theory] a[data-cite]', (els) => els.map((e) => [e.getAttribute('data-cite'), e.getAttribute('href'), e.textContent]));
+  const cites = await p0.$$eval('[data-theory] a[data-cite]', (els) => els.map((e) => [e.getAttribute('data-cite'), e.getAttribute('href'), e.textContent.replace(/ /g, ' ')]));
   const order = [];
   for (const [key, href, text] of cites) {
     ok(href === `#ref-${key}`, `citation of ${key} links to its entry`);
@@ -264,6 +265,14 @@ try {
   ok(JSON.stringify(refs) === JSON.stringify(order.map((k, i) => [`ref-${k}`, `[${i + 1}]`])), () => `the reference list follows the first citations (${refs.map((r) => r[0]).join(', ')})`);
   for (const key of order) ok(await p0.$(`[data-references] #ref-${key}`) !== null, `#ref-${key} resolves`);
   counts.cites = cites.length;
+
+  // Every in-page link of the page (the tool's short lines, the contents, citations, the nav) has its target, and the
+  // short lines' links lead to topics.
+  const anchors = await p0.$$eval('a[href^="#"]', (els) => els.map((e) => [e.getAttribute('href'), !!document.getElementById(decodeURIComponent(e.getAttribute('href').slice(1)))]));
+  ok(anchors.length > 0 && anchors.every(([, found]) => found), () => `every #link resolves (${anchors.filter(([, f]) => !f).map(([h]) => h).join(', ')})`);
+  const whyLinks = await p0.$$eval('a[data-why-link]', (els) => els.map((e) => e.getAttribute('href')));
+  ok(whyLinks.length > 0 && whyLinks.every((h) => TOPICS.includes(h.slice(1))), () => `the short lines link topics (${whyLinks.join(', ')})`);
+  counts.anchors = anchors.length;
 
   // A citation's link jumps to its entry.
   await p0.click('[data-theory] a[data-cite="WikiMobius"]');
@@ -367,6 +376,6 @@ try {
 await browser.close();
 stopServer();
 for (const failure of failures) console.log(`FAIL ${failure}`);
-console.log(`theory: ${counts.live} live numbers, ${counts.lines} equation lines with live numbers and ${counts.cites} citations on the start circuit`);
+console.log(`theory: ${counts.live} live numbers, ${counts.lines} equation lines with live numbers, ${counts.cites} citations and ${counts.anchors} #links on the start circuit`);
 console.log(`theory: ${passed} of ${passed + failed} checks passed`);
 process.exitCode = failed ? 1 : 0;

@@ -156,28 +156,54 @@ const START_G: P = [-0.2, 0.4];      // Γ of the start load z = 0.5 + j0.5
 const R_HALF: P = [1 / 3, 0];        // centre of the r = 0.5 circle (radius 2/3)
 const G_ONE: P = [-0.5, 0];          // centre of the g = 1 circle (radius 0.5)
 
+// The points of the line r = 0.5 that both halves of the plane figure mark: x and where Γ = (z − 1)/(z + 1) puts them.
+const gammaOfHalf = (x: number): P => { const d = 2.25 + x * x; return [(x * x - 0.75) / d, (2 * x) / d]; };
+const PLANE_MARKS = [-1, 0, 1].map((x) => ({ x, g: gammaOfHalf(x), text: x === 0 ? 'x = 0' : x > 0 ? 'x = 1' : 'x = −1' }));
+
 export function PlaneFigure() {
+  // The z plane in the same 2.5 × 2.5 box as the disc beside it, so both draw at one size: r from −0.4, x ±1.25.
   return (
-    <Figure wide caption={<>Left: in the z plane a series reactance moves z = 0.5 + j0.5 along the straight line r = 0.5. Right: the chart shows the same line as the r = 0.5 circle; growing x turns the point clockwise.</>}>
-      <svg viewBox="-0.35 -1.75 2.6 3.5" className={css.disc} role="img" aria-label="The z plane with the line r = 0.5 and the load">
-        <line x1="0" y1="1.55" x2="0" y2="-1.6" className={css.figAxis} />
-        <line x1="-0.1" y1="0" x2="2.1" y2="0" className={css.figAxis} />
-        <Label p={[2.12, 0.12]} anchor="end">r</Label>
-        <Label p={[0.1, 1.6]} anchor="start">x</Label>
-        <Label p={[1, -0.12]}>1</Label>
-        <line x1="1" y1="-0.04" x2="1" y2="0.04" className={css.figAxis} />
-        <line x1="0.5" y1="1.5" x2="0.5" y2="-1.5" className={`${css.figPart1} ${css.figStroke}`} />
+    <Figure wide caption={<>Left: in the z plane a series reactance moves z = 0.5 + j0.5 (L) along the straight line r = 0.5. Right: on the chart that line is the r = 0.5 circle, the same points marked; both ends of the line (x → ±∞) meet at the open, and growing x turns the point clockwise.</>}>
+      <svg viewBox="-0.4 -1.25 2.5 2.5" className={css.disc} role="img" aria-label="The z plane with the line r = 0.5, the load and three marked points">
+        <rect x="-0.4" y="-1.25" width="2.5" height="2.5" className={css.figBack} />
+        <line x1="0" y1="1.2" x2="0" y2="-1.2" className={css.figAxis} />
+        <line x1="-0.3" y1="0" x2="2.05" y2="0" className={css.figAxis} />
+        <line x1="1" y1="-0.04" x2="1" y2="0.04" className={css.figTick} />
+        <line x1="2" y1="-0.04" x2="2" y2="0.04" className={css.figTick} />
+        <line x1="-0.04" y1="-1" x2="0.04" y2="-1" className={css.figTick} />
+        <line x1="-0.04" y1="1" x2="0.04" y2="1" className={css.figTick} />
+        <Label p={[1, -0.13]}>1</Label>
+        <Label p={[2, -0.13]}>2</Label>
+        <Label p={[1.98, 0.12]} anchor="end">r</Label>
+        <Label p={[-0.07, 1]} anchor="end">j1</Label>
+        <Label p={[-0.07, -1]} anchor="end">−j1</Label>
+        <Label p={[-0.07, 1.16]} anchor="end">x</Label>
+        <line x1="0.5" y1="1.12" x2="0.5" y2="-1.12" className={`${css.figPart1} ${css.figStroke}`} />
         <g className={css.figPart1}>
-          <line x1="0.5" y1="-0.5" x2="0.5" y2="-1.05" className={css.figStroke} />
-          <polygon points={head([0.5, 1.12], [0, 1], 0.1)} className={css.figHead} />
+          <polygon points={head([0.5, 1.2], [0, 1], 0.09)} className={css.figHead} />
+          <polygon points={head([0.5, -1.2], [0, -1], 0.09)} className={css.figHead} />
         </g>
-        <Dot p={[0.5, 0.5]} cls={css.figLoad} r={0.05} />
-        <Label p={[0.62, 0.5]} anchor="start" cls={css.figBold}>L</Label>
-        <Label p={[0.6, -1.3]} anchor="start">r = 0.5</Label>
+        {PLANE_MARKS.map(({ x, text }) => (
+          <React.Fragment key={x}>
+            <Dot p={[0.5, x]} cls={css.figPart1} hollow />
+            <Label p={[0.62, x === 0 ? 0.11 : x]} anchor="start">{text}</Label>
+          </React.Fragment>
+        ))}
+        <Dot p={[0.5, 0.5]} cls={css.figLoad} r={0.045} />
+        <Label p={[0.38, 0.5]} anchor="end" cls={css.figBold}>L</Label>
+        <Label p={[0.62, -0.5]} anchor="start">r = 0.5</Label>
       </svg>
-      <Disc label="The chart with the r = 0.5 circle and the load">
+      <Disc label="The chart with the r = 0.5 circle, the load and the same marked points">
         <Ring c={R_HALF} R={2 / 3} cls={`${css.figPart1} ${css.figStroke}`} />
-        <CircleArrow c={R_HALF} p={START_G} s={0.55} ccw={false} cls={css.figPart1} />
+        <CircleArrow c={R_HALF} p={START_G} s={0.5} ccw={false} cls={css.figPart1} />
+        {PLANE_MARKS.map(({ x, g, text }) => (
+          <React.Fragment key={x}>
+            <Dot p={g} cls={css.figPart1} hollow />
+            <Label p={x === 0 ? [g[0] - 0.05, g[1] - 0.12] : [g[0], g[1] + (x > 0 ? 0.13 : -0.13)]} anchor={x === 0 ? 'end' : 'middle'}>{text}</Label>
+          </React.Fragment>
+        ))}
+        <Dot p={[1, 0]} cls={css.figPart1} hollow />
+        <Label p={[1.04, 0.12]} anchor="start">±∞</Label>
         <Dot p={START_G} cls={css.figLoad} r={0.045} />
         <Label p={[-0.33, 0.47]} cls={css.figBold}>L</Label>
       </Disc>

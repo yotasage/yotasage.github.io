@@ -124,7 +124,8 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   circuit and its link in `state.ts`), the page in `components/Smith/` (chart, path layer and drag outside React in
   `chartView.ts`, `pathLayer.ts`, `live.ts`; the circuit panel `Strip.tsx`; the Theory section `Theory.tsx` with `TheoryFigures.tsx`, equations by id from
   `lib/smith/equations.ts`, citations from `references.bib` loaded in `getStaticProps` of the page, styles in
-  `styles/SmithTheory.module.css`), state and undo history in
+  `styles/SmithTheory.module.css`; the short line and "→ theory" link beside every control in `Why.tsx` with the texts
+  in `whys.ts`; every claim's source in `docs/smith-chart/claims.md`), state and undo history in
   `pages/smith-chart/main.tsx`, styles in `styles/Smith.module.css`, checks in `scripts/harness/smith/` (`npm run check`
   for the engine, `npm run ui` drives the page in Edge or Chrome and starts the dev server if none runs).
 - `tsconfig` uses `"module": "node16"`, so our own files count as CommonJS and the ES-module-only add-ons of three.js

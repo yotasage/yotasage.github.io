@@ -181,6 +181,8 @@ async function touchDrag(page, cdp, from, pts) {
 async function arm(page, kind) {
   await page.selectOption('[data-add-kind]', String(kind));
   if ((await page.getAttribute('[data-draw]', 'aria-pressed')) !== 'true') await page.click('[data-draw]');
+  // Reaching Draw low in the side panel may scroll the page, and the input (In) under the sticky bar.
+  await page.evaluate(() => window.scrollTo(0, 0));
   await frame(page);
 }
 
@@ -385,7 +387,7 @@ try {
         }
         const st = await record();
         edits++;
-        ok(st.drag === -1 && !st.armed, () => `sequence ${seq}, ${op}: no drag or draw left over`);
+        ok(st.drag === -1 && !st.armed, () => `sequence ${seq}, ${op}: no drag or draw left over (drag ${st.drag}, armed ${st.armed})`);
         if (st.link !== model.now.link) { model.past.push(model.now); if (model.past.length > 200) model.past.shift(); model.future = []; model.now = st; steps0++; }
         ok(st.undo === model.past.length > 0 && st.redo === model.future.length > 0, () => `sequence ${seq}, ${op}: buttons ${st.undo}/${st.redo}, model ${model.past.length}/${model.future.length}`);
       }
