@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 A personal collection of browser tools (simulation setup calculator, QR code generator, PDF tools, Base64 image
-converter, text case converter, 3D viewer, PCB viewer, resistor lookup), so the owner does not have to use other people's sites with ads and bad design. Next.js 16 Pages Router,
+converter, text case converter, 3D viewer, PCB viewer, resistor lookup, Smith chart), so the owner does not have to use other people's sites with ads and bad design. Next.js 16 Pages Router,
 React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 
 ## Hard constraints
@@ -119,6 +119,12 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   `docs/resistor/sources.md` says what each source may be cited for), styles and theme variables in
   `styles/Resistor.module.css` (the Combinations section in `styles/ResistorCombos.module.css`, the Design section in
   `styles/ResistorDesign.module.css`, the theory in `styles/ResistorTheory.module.css`), checks in `scripts/harness/resistor/` (`npm run check`, `npm run ui`).
+- Smith chart: built in steps by [docs/smith-chart/plan.md](docs/smith-chart/plan.md) (decisions, milestones and status,
+  module map; `notes-<step>.md` per step). Framework-free logic in `lib/smith/` (engine, network, geometry, grid, the
+  circuit and its link in `state.ts`), the page in `components/Smith/` (chart, path layer and drag outside React in
+  `chartView.ts`, `pathLayer.ts`, `live.ts`; the circuit panel `Strip.tsx`), state and undo history in
+  `pages/smith-chart/main.tsx`, styles in `styles/Smith.module.css`, checks in `scripts/harness/smith/` (`npm run check`
+  for the engine, `npm run ui` drives the page in Edge or Chrome and starts the dev server if none runs).
 - `tsconfig` uses `"module": "node16"`, so our own files count as CommonJS and the ES-module-only add-ons of three.js
   (`three/examples/jsm/...`) can only be loaded with `await import(...)`, or imported as types with
   `import type ... with { 'resolution-mode': 'import' }`. A dynamic import of one of our own files needs

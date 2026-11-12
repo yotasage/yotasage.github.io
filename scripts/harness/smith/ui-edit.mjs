@@ -492,6 +492,67 @@ try {
     await ctx.close();
   }
 
+  // ---------- M3.4: the start state, the empty state, Start over, the card on the main page ----------
+  {
+    const start = S.defaultCircuit(), p = await open(desk);
+    const st = await snapshot(p);
+    ok(st.link === `?${S.encodeCircuit(start)}`, () => `a fresh visit writes the start circuit's link: ${st.link}`);
+    ok(S.sameCircuit(st.committed, start) && S.sameCircuit(await linked(p), start), 'a fresh visit shows the start circuit (D16)');
+    const g = engine(start).gamma[start.parts.length];
+    ok(Math.hypot(g[0], g[1]) < 1e-9, () => `the start circuit's input is matched: |Γ| = ${Math.hypot(g[0], g[1])}`);
+    ok(await p.$('[data-empty]') === null && await p.$('[data-start-over]:disabled') !== null && !st.undo,
+      'the start state: no empty note, Start over disabled, nothing to undo');
+    ok(!(await p.textContent('[data-circuit]')).includes('could not be read'), 'a fresh visit has no link issues');
+    for (let i = start.parts.length; i > 0; i--) { await p.click('[data-remove]'); await frame(p); }
+    const empty = await snapshot(p);
+    ok(empty.committed.parts.length === 0 && (await linked(p)).parts.length === 0, 'every part removed');
+    const note = await p.$('[data-empty]');
+    ok(note !== null && await note.isVisible() && /Add/.test(await note.textContent()) && /Draw/.test(await note.textContent()),
+      'with no parts the empty note says how to add one (Add and Draw)');
+    ok(await p.$('[data-card]') === null && await p.$('[data-add]:not(:disabled)') !== null && await p.$('[data-draw]:not(:disabled)') !== null,
+      'with no parts Add and Draw work and no card is shown');
+    await p.click('[data-start-over]');
+    await frame(p);
+    const back = await snapshot(p);
+    ok(back.link === st.link && back.texts.join('|') === st.texts.join('|') && S.sameCircuit(back.committed, start),
+      () => `Start over restores the start circuit: ${back.link}`);
+    ok(await p.$('[data-empty]') === null && await p.$('[data-start-over]:disabled') !== null, 'after Start over: no empty note, the button disabled');
+    await p.click('[data-undo]');
+    await frame(p);
+    ok((await snapshot(p)).link === empty.link && await p.$('[data-empty]') !== null, 'one Undo brings the empty circuit back');
+    await p.keyboard.press('Control+z');
+    await frame(p);
+    ok((await linked(p)).parts.length === 1, 'the next Undo brings the circuit before that back');
+    await p.keyboard.press('Control+y');
+    await p.keyboard.press('Control+y');
+    await frame(p);
+    ok((await snapshot(p)).link === st.link, 'Redo twice: Start over again');
+    ok(p.errors.length === 0, `start and empty state: no errors: ${p.errors.join(' | ')}`);
+    await p.close();
+
+    const home = await desk.newPage();
+    await home.goto(`${base}/`, { waitUntil: 'networkidle' });
+    const card = await home.$('li:has(a[href="/smith-chart/main"])');
+    ok(card !== null && /Smith chart/.test(await card.textContent()) && /Electronics/.test(await card.textContent()), 'the main page has the Smith chart card');
+    const icon = card && await card.$('svg');
+    const box = icon && await icon.boundingBox();
+    ok(box && box.width >= 24 && box.height >= 24 && (await icon.$$('circle')).length === 3 && (await icon.$$('path')).length === 2,
+      () => `the card's icon renders: ${JSON.stringify(box)}`);
+    await home.close();
+    for (const width of [390, 320]) {
+      const ctx = await browser.newContext({ viewport: { width, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+      for (const path of ['/', '/smith-chart/main', `/smith-chart/main?${S.encodeCircuit({ ...start, parts: [] })}`]) {
+        const q = await ctx.newPage();
+        await q.goto(`${base}${path}`, { waitUntil: 'networkidle' });
+        await frame(q);
+        const sw = await q.evaluate(() => ({ s: document.documentElement.scrollWidth, c: document.documentElement.clientWidth }));
+        ok(sw.s <= sw.c, `${width} px, ${path}: no horizontal scroll (${sw.s} > ${sw.c})`);
+        await q.close();
+      }
+      await ctx.close();
+    }
+  }
+
   if (shots) {
     const wide = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: 'light', deviceScaleFactor: 1000 / 1440 });
     const p = await open(wide);
@@ -499,6 +560,11 @@ try {
       mkdirSync(shots, { recursive: true });
       await p.screenshot({ path: join(shots, 'draw-1440-light.png') });
     });
+    const home = await wide.newPage();
+    await home.goto(`${base}/`, { waitUntil: 'networkidle' });
+    await home.evaluate(() => document.querySelector('a[href="/smith-chart/main"]').scrollIntoView({ block: 'center' }));
+    await frame(home);
+    await home.screenshot({ path: join(shots, 'home-1440-light.png') });
     await wide.close();
   }
   await desk.close();

@@ -43,6 +43,9 @@ const GROUP_MS = 1000;
 // `dropped`: the redo steps a group's first commit cleared, back if the group ends where it began (no step at all).
 interface History { past: Circuit[]; future: Circuit[]; dropped: Circuit[]; group: string; t: number }
 
+/** The start circuit (D16), to compare with; Start over commits a fresh copy. */
+const START = defaultCircuit();
+
 const LIGHT = { bg: '#f6f4ee', rule: '#e3dfd5', quiet: '#736f67', link: '#55524b', ink: '#1d1c19' };
 const DARK = { bg: '#2b2b2b', rule: '#3a3a38', quiet: '#8f8c83', link: '#b7b4ab', ink: '#edebe5' };
 
@@ -99,6 +102,15 @@ export default function SmithChart() {
     now.current = c;
     setCircuit(c);
     setRevision((r) => r + 1);
+  };
+  // Back to the start circuit as one step, which Undo takes back.
+  const startOver = () => {
+    if (path.current && path.current.dragPart >= 0) return;
+    commit(defaultCircuit());
+    hist.current.group = '';
+    setRevision((r) => r + 1);
+    setPartSel(-1);
+    setNodeSel(-1);
   };
   const [snap, setSnap] = useState(true);
   const [drawKind, setDrawKind] = useState(-1);
@@ -186,6 +198,8 @@ export default function SmithChart() {
       <span className={styles.history}>
         <button type="button" className={styles.button} data-undo="" disabled={!hist.current.past.length} onClick={() => travel(true)} title="Undo (Ctrl+Z)">Undo</button>
         <button type="button" className={styles.button} data-redo="" disabled={!hist.current.future.length} onClick={() => travel(false)} title="Redo (Ctrl+Shift+Z or Ctrl+Y)">Redo</button>
+        <button type="button" className={styles.button} data-start-over="" disabled={sameCircuit(circuit, START)} onClick={startOver}
+          title="Back to the start circuit (Z0 = 50 Ω, load 25 + j25 Ω, f0 = 100 MHz, two parts); Undo brings this circuit back">Start over</button>
       </span>
       {drawKind >= 0 && (
         <button type="button" className={`${styles.button} ${styles.toggle}`} aria-pressed="true" data-draw-stop="" onClick={stopDraw}
@@ -198,7 +212,7 @@ export default function SmithChart() {
     <div className={styles.root} data-theme={theme ?? undefined}>
       <Head>
         <title>Smith chart</title>
-        <meta name="description" content="A Smith chart with a circuit of series and shunt parts, lines and stubs, impedance, admittance and combined grids and a readout of z, y, Γ, VSWR and return loss." />
+        <meta name="description" content="Build a matching circuit of series and shunt R, L and C, transmission lines, stubs and λ/4 transformers on a zoomable Smith chart with impedance, admittance or combined grids: type or drag the values with snapping, read z, Γ, VSWR and return loss at every node, undo and redo, and keep the circuit in the link." />
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <style jsx global>{`

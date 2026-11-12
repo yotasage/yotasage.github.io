@@ -636,6 +636,16 @@
   gap: 8px 10px;
 }
 
+.emptyNote {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border: 1px dashed var(--rule-strong);
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
 .addRow {
   display: flex;
   flex-wrap: wrap;

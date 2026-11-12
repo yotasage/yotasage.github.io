@@ -269,6 +269,13 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
         </div>
       )}
 
+      {n === 0 && (
+        <p className={styles.emptyNote} data-empty="">
+          No parts: the chart shows the load alone. Choose a kind below and press Add, or press Draw and drag the part
+          out of the input (In) on the chart.
+        </p>
+      )}
+
       <div className={styles.addRow}>
         <select ref={addSelect} className={styles.select} data-add-kind="" aria-label="Kind of part to add" value={addKind} onChange={(e) => { const k = Number(e.target.value) as PartKind; setAddKind(k); if (drawKind >= 0) onDraw?.(k); }}>
           {KIND_ORDER.map((k) => <option key={k} value={k}>{KIND_NAMES[k]}</option>)}

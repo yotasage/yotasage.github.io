@@ -94,6 +94,15 @@ const TOOLS: SiteTool[] = [
     color: '#5aa2f0',
     tags: ['E3 to E192', '4k7 · 4,7 kΩ · 472', 'Colour code', 'SMD codes · EIA-96', 'Clickable drawings', 'SVG · PNG · JPG · WebP', 'Series · parallel combinations', 'Own value lists', 'Design over temperature', 'Worst case · RSS', 'Reference tables', 'Every result is a link'],
   },
+  {
+    href: '/smith-chart/main',
+    title: 'Smith chart',
+    category: 'Electronics',
+    description: 'Build a matching circuit from the load to the source out of series and shunt R, L and C, transmission lines, stubs and λ/4 transformers, and see its path on a Smith chart with an impedance, admittance or combined grid that zooms and pans. Type the values or drag them on the chart, snapping to the grid circles and to E24 values, and read z, Γ, VSWR and return loss at every node. Undo and redo, and the whole circuit is in the link.',
+    icon: 'smith',
+    color: '#e0679a',
+    tags: ['Z · Y · ZY grids', 'Series · shunt R, L, C', 'Lines · stubs · λ/4', 'Drag with snapping', 'Undo · redo', 'Every circuit is a link'],
+  },
 ];
 
 const PROMISES = ['Runs in your browser', 'Files never leave your device', 'No ads or tracking', 'No sign-up'];
