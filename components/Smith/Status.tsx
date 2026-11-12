@@ -1,0 +1,39 @@
+// The status note at the top of the Smith chart page. The tool goes live before its owner has used it (plan.md D19),
+// so the note says plainly what works, how it is checked, what it assumes and what is still coming. Every step that
+// changes what the page does keeps these texts true: this file is the one place they live.
+
+import React from 'react';
+
+import styles from '../../styles/Smith.module.css';
+
+/** The short lines, always shown. */
+export const STATUS_LEAD = 'New and still growing.';
+export const STATUS_NOW =
+  'It draws the Smith chart, lets you build a matching circuit by typing values or dragging on the chart, ' +
+  'finds a missing value with suggestions, and explains the theory below.';
+export const STATUS_CHECKED =
+  'Checked by automated tests against independent computations and textbook cases, but not yet used for real ' +
+  'design work, so a quick check against another source is a good idea for results that matter.';
+/** Behind "More". */
+export const STATUS_ASSUMES = 'It assumes ideal parts, lossless lines, one frequency at a time and a real Z0.';
+export const STATUS_COMING =
+  'Still to come: equations with your own numbers, worked examples and exercises, frequency sweeps and a report, ' +
+  'and export as SVG, LaTeX/TikZ and data files.';
+
+export function Status() {
+  return (
+    <div className={styles.statusWrap}>
+      <aside id="status" className={styles.status} aria-label="Status of this tool">
+        <p className={styles.statusLine}>
+          <strong>{STATUS_LEAD}</strong> {STATUS_NOW}
+        </p>
+        <p className={styles.statusLine}>{STATUS_CHECKED}</p>
+        <details className={styles.statusMore}>
+          <summary>More</summary>
+          <p className={styles.statusLine}>{STATUS_ASSUMES}</p>
+          <p className={styles.statusLine}>{STATUS_COMING}</p>
+        </details>
+      </aside>
+    </div>
+  );
+}

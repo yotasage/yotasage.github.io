@@ -9,6 +9,7 @@ import { MoonIcon, SunIcon } from '../../components/Resistor/parts';
 import Chart from '../../components/Smith/Chart';
 import Nodes from '../../components/Smith/Nodes';
 import SolvePanel from '../../components/Smith/SolvePanel';
+import { Status } from '../../components/Smith/Status';
 import type { Outcome } from '../../components/Smith/SolvePanel';
 import Strip from '../../components/Smith/Strip';
 import Theory from '../../components/Smith/Theory';
@@ -419,6 +420,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
       </header>
 
       <main>
+        <Status />
         <div id="tool" ref={tool} className={`${styles.layout} ${theoryCss.tool}`}>
           <Chart mode={mode} tools={modes} z0={circuit.z0} side={side} onView={onView} />
         </div>

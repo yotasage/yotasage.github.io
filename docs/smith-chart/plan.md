@@ -86,8 +86,8 @@ Settled with the owner on 2026-11-11. Changing one needs the owner.
 - **Assumptions are stated** on the page: ideal parts, lossless lines, real Z0.
 - **The card on the main page and the README list only what works**; the card arrives with M3.
 - **Nothing reaches `main` before M3.4** adds the card (CLAUDE.md: every tool has a card, no placeholder cards).
-- **Released from checkpoint 2 (D19):** the page carries a status note; every later step keeps it true, and its work
-  is merged to `main` when its checks pass, as the main session decides.
+- **Released from checkpoint 2 (D19):** the page carries a status note (its texts in `components/Smith/Status.tsx`); every
+  later step keeps it true, and its work is merged to `main` when its checks pass, as the main session decides.
 
 ## Design direction
 

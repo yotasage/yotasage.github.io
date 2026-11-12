@@ -210,6 +210,47 @@
 .root[data-theme='dark'] .sun { display: block; }
 .root[data-theme='dark'] .moon { display: none; }
 
+/* ---- the status note above the tool (components/Smith/Status.tsx) ---- */
+
+.statusWrap {
+  max-width: var(--page-w);
+  margin: 0 auto;
+  padding: 16px var(--gutter) 0;
+}
+
+.status {
+  padding: 10px 14px;
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.status strong { color: var(--ink); font-weight: 650; }
+
+.statusLine { margin: 0; }
+.statusLine + .statusLine { margin-top: 4px; }
+
+.statusMore { margin-top: 4px; }
+.statusMore > summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 600;
+  border-radius: 4px;
+}
+.statusMore > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.statusMore[open] > summary { margin-bottom: 4px; }
+
+@media (max-width: 599px) {
+  .statusWrap { padding-top: 12px; }
+  .status { padding: 8px 12px; }
+}
+
 /* ---- the workspace: chart (hero) and side panel ---- */
 
 .layout {

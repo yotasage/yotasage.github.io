@@ -549,6 +549,30 @@ try {
         await frame(q);
         const sw = await q.evaluate(() => ({ s: document.documentElement.scrollWidth, c: document.documentElement.clientWidth }));
         ok(sw.s <= sw.c, `${width} px, ${path}: no horizontal scroll (${sw.s} > ${sw.c})`);
+        if (path !== '/') {
+          // The status note (components/Smith/Status.tsx): present, under the bar and above the tool, inside the
+          // screen, its "More" opening the rest without a horizontal scroll.
+          const note = await q.evaluate(() => {
+            const n = document.getElementById('status'), t = document.getElementById('tool');
+            const bar = document.querySelector('header');
+            if (!n || !t || !bar) return null;
+            const r = n.getBoundingClientRect();
+            return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, bar: bar.getBoundingClientRect().bottom,
+              tool: t.getBoundingClientRect().top, text: n.textContent, more: !!n.querySelector('details > summary'),
+              w: document.documentElement.clientWidth };
+          });
+          ok(note && note.top >= note.bar - 0.5 && note.bottom <= note.tool + 0.5, () => `${width} px, ${path}: the status note is under the bar and above the tool: ${JSON.stringify(note)}`);
+          ok(note && note.left >= 0 && note.right <= note.w + 0.5, () => `${width} px, ${path}: the status note fits the screen: ${JSON.stringify(note)}`);
+          ok(note && /not yet used for real design work/.test(note.text) && /another source/.test(note.text) && note.more,
+            () => `${width} px, ${path}: the status note says how the tool is checked and has More: ${note?.text}`);
+          await q.click('#status summary');
+          await frame(q);
+          const more = await q.evaluate(() => ({ open: document.querySelector('#status details').open, text: document.getElementById('status').innerText,
+            s: document.documentElement.scrollWidth, c: document.documentElement.clientWidth }));
+          ok(more.open && /ideal parts, lossless lines, one frequency/.test(more.text) && /real Z0/.test(more.text) && /Still to come/.test(more.text),
+            () => `${width} px, ${path}: More shows the assumptions and what is coming: ${more.text}`);
+          ok(more.s <= more.c, `${width} px, ${path}: no horizontal scroll with More open (${more.s} > ${more.c})`);
+        }
         await q.close();
       }
       await ctx.close();
