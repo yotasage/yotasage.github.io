@@ -87,6 +87,8 @@ at five zoom levels; the readout matches the engine at 20 points; frame time wit
   `main` when the owner says so.
 - **M3.5 Theory, first topics.** The Theory and References sections and the M3.5 topics of learning.md §5, with live
   numbers from the circuit; the short line and "→ theory" link beside every control and readout.
+  Split in two: **M3.5a** writes the content (topics, equation ids, live numbers, figures, citations, short lines and
+  the claims checklist) in theory.md and notes-M3.5.md, no code; **M3.5b** builds the sections, links and harness from it.
 
 *Done when:* typing a value and dragging to it agree to the shown precision; edit → chart → drag back gives the same
 value to 1e-9 relative; undo and redo hold under random sequences; scripted drags on every part kind, by mouse and by

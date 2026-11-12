@@ -50,6 +50,13 @@ whole article. **Cite for:** Γ in terms of (r, x) and (g, b); y = (1 − Γ)/(1
 readings); the bibliographic facts of Smith's papers. **Not for:** anything a textbook above supports (cite the
 textbook first), and not for "clockwise towards the generator" (the article does not say it).
 
+### `WikiMobius`: "Möbius transformation", Wikipedia
+https://en.wikipedia.org/wiki/M%C3%B6bius_transformation, revision 1374014348 of 9 September 2026 (opened in M3.5a,
+2026-11-12; the last part of the article was not read). Licence CC BY-SA 4.0. **Cite for:** that a map
+f(z) = (az + b)/(cz + d) with ad − bc ≠ 0 takes generalised circles (circles and straight lines) to generalised circles
+(lead; "Elementary properties"), and that such maps form a group under composition ("Definition"). **Not for:**
+anything about the Smith chart or circuits.
+
 ### `Touchstone21`: IBIS Open Forum, *Touchstone File Format Specification*, Version 2.1
 Ratified 26 January 2024. https://ibis.org/touchstone_ver2.1/ (landing page; © 1995–2026 IBIS Open Forum, no licence
 terms). Opened: the landing page only; the PDF (36 pages) is password-protected against text extraction and the
@@ -90,7 +97,7 @@ The Smith papers may be named on the page as history ("P. H. Smith published the
 |---|---|
 | Γ, z and y, normalising | Ellingson2018 §3.12; SteerVol3 §3.4; WikiSmith |
 | Reading the chart, Z, Y, ZY | SteerVol3 §3.4; WikiSmith; circle equations: derivation (facts.md §3) |
-| Moving on the chart (series on r, shunt on g, which way) | SteerVol3 §3.4, §6.7 for the signs; the direction is a derivation (facts.md §1) |
+| Moving on the chart (series on r, shunt on g, which way) | SteerVol3 §3.4, §6.7 for the signs; the direction is a derivation (facts.md §1); circles stay circles: WikiMobius |
 | Lines, λ/2 period, other Zc, λ/4, stubs | Ellingson2018 §3.15–3.17, §3.19, §3.23; SteerVol2 §2.3–2.4; SteerVol3 §3.5 |
 | How good is a match: \|Γ\|, VSWR, RL, ML | Ellingson2018 §3.14, §3.20; SteerVol2 §2.3; SteerVol3 §2.8; ML: derivation |
 | Matching with two parts | SteerVol3 §6.4, §6.7; Ellingson2018 §3.22 |
