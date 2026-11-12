@@ -13,6 +13,12 @@
 // (not with Alt or with snapping switched off), and the value re-evaluates the ladder; the arcs, marks and readout are
 // written in the next frame and the side panel through `onLive`, all outside React. The page's `commit` gets the
 // circuit once, on release (`onCommit`). A press that does not move is a tap (the pick of M3.2), a cancel restores.
+// Step M3.3b: the draw tool (`arm(kind)`: a dashed ring at the input; a press there appends state.ts's `startPart` at
+// the source end and drags its end like a handle; release commits it once, a tap, Escape or a cancel takes it away) and
+// the handles' keys: a slider per part (`data-handle-key`) in a still, visually hidden list in the strip's order (source
+// first), so neither the tab order nor assistive technology follows elements that move every frame; the focused one
+// marks its ring (`data-focus`), and its arrow keys step the value (state.ts `stepValue`; one commit per key, grouped
+// per handle by the page's history).
 
 import { formatAmount } from '../../lib/quantity';
 import { SeriesId, series, standardValue } from '../../lib/resistor/eseries';
@@ -24,8 +30,8 @@ import {
 import { FAM_AXIS, FAM_B, FAM_G, FAM_R, FAM_X, MODE_Y } from '../../lib/smith/grid';
 import { NODE_STRIDE, evaluate, nodeGamma } from '../../lib/smith/network';
 import type { Circuit } from '../../lib/smith/network';
-import { PART_STRIDE, SHUNT_C, packParts } from '../../lib/smith/parts';
-import { withPart } from '../../lib/smith/state';
+import { PART_STRIDE, PartKind, SHUNT_C, packParts } from '../../lib/smith/parts';
+import { KIND_NAMES, MAX_PARTS, insertPart, startPart, stepValue, withPart } from '../../lib/smith/state';
 import { ChartView, DIRTY_CONTENT, DIRTY_VIEW, TAP_MS, TAP_SLOP } from './chartView';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -82,6 +88,7 @@ export const SNAP_SERIES: SeriesId = 'E24';
 const SNAP_MANTISSAS = series(SNAP_SERIES).mantissas;
 const SNAP_UNIT = ['Ω', 'H', 'F', 'Ω', 'H', 'F'];
 const FAM_NAME = ['r', 'x', 'g', 'b'];
+const KEY_UNIT = ['Ω', 'H', 'F', 'Ω', 'H', 'F', 'λ', 'λ', 'λ', 'Ω'];
 /** What a drag snapped to: nothing, a grid circle, a standard value. */
 export const SNAP_NONE = 0;
 export const SNAP_GRID = 1;
@@ -110,7 +117,9 @@ export class PathLayer {
   /** Called when the visitor picks an arc or a node on the chart (tap or click), and with SEL_PART when a drag starts. */
   onPick: ((kind: number, index: number) => void) | null = null;
   /** The circuit at the end of a drag that changed it: the page's single commit point (once per drag). */
-  onCommit: ((c: Circuit) => void) | null = null;
+  onCommit: ((c: Circuit, group?: string) => void) | null = null;
+  /** The end of a draw gesture: the new part's index once committed, -1 when it was taken away. */
+  onDraw: ((index: number) => void) | null = null;
   /** In frames of a drag (and once on a cancel, half −1): the circuit as dragged, for the side panel's texts (half 0
    * or 1 in turn: see writeLive). */
   onLive: ((c: Circuit, part: number, half: number) => void) | null = null;
@@ -142,11 +151,20 @@ export class PathLayer {
   private arrowEls: HTMLSpanElement[] = [];
   private nodeEls: HTMLSpanElement[] = [];
   private handleEls: HTMLSpanElement[] = [];
+  private keyEls: HTMLSpanElement[] = [];
+  private readonly keyBox: HTMLDivElement;
+  private focusKey = -1;
   private hshown = new Uint8Array(0);
   private readonly snapEl: HTMLSpanElement;
   private readonly snapText: HTMLSpanElement;
   private snapShown = false;
   private hotHandle = -1;
+  private hotAny = false;
+  /** The armed kind of the draw tool (-1: off), the circuit before a draw in progress and the input's ring. */
+  drawKind = -1;
+  private drawFrom: Circuit | null = null;
+  private readonly drawEl: HTMLSpanElement;
+  private drawShown = false;
   private d: string[] = [];
   private shown = new Uint8Array(0); // bit 0 node marker shown, bit 1 arrow shown
   private goalShown = 0;
@@ -195,22 +213,39 @@ export class PathLayer {
     this.goal = span({ 'data-goal': '' });
     this.snapEl = span({ 'data-snap': '' });
     this.snapEl.hidden = true;
+    this.drawEl = span({ 'data-draw-start': '' });
+    this.drawEl.hidden = true;
     this.snapText = span({ 'data-snap-label': '' });
     this.snapEl.appendChild(this.snapText);
     this.overlay.append(this.goalLine, this.goal);
-    view.box.appendChild(this.overlay);
+    this.keyBox = document.createElement('div');
+    this.keyBox.setAttribute('data-layer', 'handle-keys');
+    this.keyBox.setAttribute('role', 'group');
+    this.keyBox.setAttribute('aria-label', 'Part values, from the source to the load');
+    view.box.append(this.overlay, this.keyBox);
     this.build(0);
+    // Keys on a focused slider stop here (the box's own keys pan); Ctrl/Cmd and Alt chords go on to the page.
+    this.keyBox.addEventListener('keydown', this.keyDown);
+    this.keyBox.addEventListener('focusin', (e) => {
+      const a = (e.target as Element).getAttribute('data-handle-key');
+      if (a === null) return;
+      this.markFocus(Number(a));
+      this.onPick?.(SEL_PART, Number(a));
+    });
+    this.keyBox.addEventListener('focusout', () => this.markFocus(-1));
 
     const before = view.onFrame;
     view.onFrame = (dirty) => { before?.(dirty); this.frame(dirty); };
     view.onHover = (px, py) => {
-      const h = px === px ? this.handleAt(px, py) : -1;
+      const ds = px === px && this.drawAt(px, py);
+      const h = px === px && !ds ? this.handleAt(px, py) : -1;
       if (h !== this.hotHandle) {
         this.handleEls[this.hotHandle]?.removeAttribute('data-hot');
         this.handleEls[h]?.setAttribute('data-hot', '');
         this.hotHandle = h;
-        view.box.toggleAttribute('data-handle-hot', h >= 0);
       }
+      if (ds || h >= 0) { if (!this.hotAny) { this.hotAny = true; view.box.setAttribute('data-handle-hot', ''); } }
+      else if (this.hotAny) { this.hotAny = false; view.box.removeAttribute('data-handle-hot'); }
       const code = px === px ? this.pickCode(px, py) : 0;
       if (code === this.chartHot) return;
       this.chartHot = code;
@@ -222,10 +257,16 @@ export class PathLayer {
       if (code) this.onPick?.(codeKind(code), codeIndex(code));
     };
     view.handles = {
-      hit: (px, py) => this.handleAt(px, py) >= 0,
+      hit: (px, py) => this.drawAt(px, py) || this.handleAt(px, py) >= 0,
       down: (_id, px, py, touch, _alt, time) => {
-        const i = this.handleAt(px, py);
-        if (!this.beginDrag(i)) return;
+        let i: number;
+        if (this.drawAt(px, py)) {
+          if (!this.beginDraw(this.drawKind)) return;
+          i = this.dragPart;
+        } else {
+          i = this.handleAt(px, py);
+          if (!this.beginDrag(i)) return;
+        }
         this.offX = px - view.screenX(this.gamma[2 * i + 2]);
         this.offY = py - view.screenY(this.gamma[2 * i + 3]);
         this.downX = px; this.downY = py; this.downT = time; this.moved = false;
@@ -236,15 +277,17 @@ export class PathLayer {
         if (i < 0) return;
         if (!this.moved && Math.abs(px - this.downX) + Math.abs(py - this.downY) > this.slop) {
           this.moved = true;
-          this.onPick?.(SEL_PART, i);
+          // A drawn part is selected once it is committed (React has no such part before).
+          if (!this.drawFrom) this.onPick?.(SEL_PART, i);
         }
         this.dragTo(view.gammaX(px - this.offX), view.gammaY(py - this.offY), alt);
       },
       up: (_id, px, py, cancelled, time) => {
         if (this.dragPart < 0) return;
-        const tap = !cancelled && !this.moved && time - this.downT <= TAP_MS;
-        this.endDrag(!cancelled && !tap);
-        if (tap) {
+        const tap = !cancelled && !this.moved && time - this.downT <= TAP_MS, drawing = this.drawFrom !== null;
+        // A draw that did not move (a tap or a long press in place) is taken away.
+        this.endDrag(!cancelled && !tap && (this.moved || !drawing));
+        if (tap && !drawing) {
           view.setRead(view.gammaX(px), view.gammaY(py));
           const code = this.pickCode(px, py);
           if (code) this.onPick?.(codeKind(code), codeIndex(code));
@@ -259,7 +302,12 @@ export class PathLayer {
   setCircuit(c: Circuit): void {
     if (c === this.circuit && this.dragPart < 0) return;
     // A circuit from elsewhere during a drag (the link, a field) ends the drag without a commit.
-    if (this.dragPart >= 0) this.stopDrag();
+    if (this.dragPart >= 0) {
+      const drawing = this.drawFrom !== null;
+      this.drawFrom = null;
+      this.stopDrag();
+      if (drawing) this.onDraw?.(-1);
+    }
     this.circuit = c;
     const n = c.parts.length;
     this.parts = packParts(c.parts, this.parts);
@@ -270,8 +318,18 @@ export class PathLayer {
     }
     if (n !== this.count || this.nodeEls.length !== n + 1) this.build(n);
     this.count = n;
+    for (let i = 0; i < n; i++) {
+      const p = c.parts[i], hd = this.keyEls[i];
+      const label = `Part ${i + 1}, ${KIND_NAMES[p.kind]}: arrow keys change the value, Shift in larger steps`;
+      if (hd.getAttribute('aria-label') !== label) hd.setAttribute('aria-label', label);
+      const t = formatAmount(p.value, KEY_UNIT[p.kind], 4);
+      if (hd.getAttribute('aria-valuetext') !== t) hd.setAttribute('aria-valuetext', t);
+    }
     this.evaluate(c);
   }
+
+  /** The committed circuit as the layer has it (the page's, or a key step's before React renders it). */
+  get committed(): Circuit | null { return this.circuit; }
 
   private evaluate(c: Circuit): void {
     const n = this.count;
@@ -339,17 +397,42 @@ export class PathLayer {
     return value;
   }
 
-  /** Ends the drag: `commit` hands a changed circuit to onCommit (once); otherwise the circuit before it comes back. */
+  /**
+   * Ends the drag: `commit` hands a changed circuit to onCommit (once); otherwise the circuit before it comes back. A
+   * draw commits its new part even when its value did not change, or takes it away (onDraw in both cases).
+   */
   endDrag(commit: boolean): Circuit | null {
     const i = this.dragPart, b = this.base;
     if (i < 0 || !b) return null;
+    const from = this.drawFrom;
     const changed = this.value !== b.parts[i].value;
-    const next = this.live;
+    const next = this.live ?? b;
+    this.drawFrom = null;
     this.stopDrag();
-    if (!changed) return null;
+    if (from) {
+      if (commit) {
+        this.circuit = next;
+        this.view.setRead(this.gamma[2 * i + 2], this.gamma[2 * i + 3]);
+        // The panel shows the last frame's texts, which need not be the final value's, and React rewrites only the texts
+        // that differ from its own render before the drag: all of them are written for the committed circuit first.
+        this.onLive?.(next, i, -1);
+        this.onCommit?.(next);
+        this.onDraw?.(i);
+        return next;
+      }
+      this.setCircuit(from);
+      this.onLive?.(from, i, -1);
+      const n = this.count;
+      this.view.setRead(this.gamma[2 * n], this.gamma[2 * n + 1]);
+      this.onDraw?.(-1);
+      return null;
+    }
+    // Back on the value it had: the texts of the frames in between go too.
+    if (!changed) { if (next !== b) this.onLive?.(b, i, -1); return null; }
     if (commit && next) {
       this.circuit = next;
       this.view.setRead(this.gamma[2 * i + 2], this.gamma[2 * i + 3]);
+      this.onLive?.(next, i, -1);
       this.onCommit?.(next);
       return next;
     }
@@ -383,6 +466,82 @@ export class PathLayer {
       break;
     }
     if (this.liveDirty || this.readDirty) this.view.request(DIRTY_CONTENT);
+  }
+
+  // ---------- the draw tool and keys (M3.3b) ----------
+
+  /** Arms the draw tool with a part kind (-1: off). A draw in progress is not touched (Escape: cancelDraw). */
+  arm(kind: number): void {
+    if (kind === this.drawKind) return;
+    this.drawKind = kind;
+    this.view.box.toggleAttribute('data-draw-armed', kind >= 0);
+    this.touch();
+  }
+
+  /** Whether a press at box px (px, py) starts a draw: armed, room for a part, within HANDLE_PX of the input. */
+  drawAt(px: number, py: number): boolean {
+    if (this.drawKind < 0 || this.dragPart >= 0 || this.count >= MAX_PARTS) return false;
+    const v = this.view, n = this.count;
+    if (!(px >= 0 && py >= 0 && px <= v.w && py <= v.h)) return false;
+    return Math.hypot(v.screenX(this.gamma[2 * n]) - px, v.screenY(this.gamma[2 * n + 1]) - py) < HANDLE_PX;
+  }
+
+  /** Appends a part of `kind` (startPart: no effect where possible) at the source end and starts dragging its end. */
+  beginDraw(kind: number): boolean {
+    const c = this.circuit;
+    if (!c || kind < 0 || this.dragPart >= 0 || c.parts.length >= MAX_PARTS) return false;
+    const n = c.parts.length;
+    this.setCircuit(insertPart(c, n, startPart(kind as PartKind, c)));
+    if (!this.beginDrag(n)) { this.setCircuit(c); return false; }
+    this.drawFrom = c;
+    return true;
+  }
+
+  /** Takes a draw in progress away (Escape). True when there was one. */
+  cancelDraw(): boolean {
+    if (!this.drawFrom) return false;
+    this.endDrag(false);
+    return true;
+  }
+
+  get drawing(): boolean { return this.drawFrom !== null; }
+
+  /** One arrow-key step of part i's value (stepValue; E24 when snapping is on), committed with the group `key:i`. */
+  keyStep(i: number, up: boolean, coarse: boolean): void {
+    const c = this.circuit;
+    if (!c || this.dragPart >= 0 || !(i >= 0 && i < this.count)) return;
+    const p = c.parts[i], v = stepValue(p.kind, p.value, up, coarse, this.snap ? SNAP_MANTISSAS : null, c);
+    if (v === p.value) return;
+    const next = withPart(c, i, { ...p, value: v });
+    this.setCircuit(next);
+    this.view.setRead(this.gamma[2 * i + 2], this.gamma[2 * i + 3]);
+    this.onCommit?.(next, `key:${i}`);
+  }
+
+  private readonly keyDown = (e: KeyboardEvent): void => {
+    const a = (e.target as Element).getAttribute?.('data-handle-key');
+    if (a == null || e.altKey || e.ctrlKey || e.metaKey) return;
+    const i = Number(a);
+    switch (e.key) {
+      case 'ArrowUp': case 'ArrowRight': this.keyStep(i, true, e.shiftKey); break;
+      case 'ArrowDown': case 'ArrowLeft': this.keyStep(i, false, e.shiftKey); break;
+      case 'PageUp': this.keyStep(i, true, true); break;
+      case 'PageDown': this.keyStep(i, false, true); break;
+      case 'Enter': case ' ': this.onPick?.(SEL_PART, i); break;
+      // Back to the chart (its keys pan again); the page also hears Escape (the draw tool).
+      case 'Escape': this.view.box.focus(); return;
+      default: return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  /** The ring of the part whose slider has the focus shows it (`data-focus`); −1: none. */
+  private markFocus(i: number): void {
+    if (i === this.focusKey) return;
+    this.handleEls[this.focusKey]?.removeAttribute('data-focus');
+    this.handleEls[i]?.setAttribute('data-focus', '');
+    this.focusKey = i;
   }
 
   private stopDrag(): void {
@@ -501,10 +660,12 @@ export class PathLayer {
 
   private build(n: number): void {
     const arcs: SVGPathElement[] = [], arrows: HTMLSpanElement[] = [], nodes: HTMLSpanElement[] = [], handles: HTMLSpanElement[] = [];
+    const keys: HTMLSpanElement[] = [];
     for (let i = 0; i < n; i++) {
-      // The handle of part i (at node i + 1): data-handle for M3.3b's focus and keys.
+      // The handle of part i (at node i + 1) and its slider for the keys (keyDown).
       const hd = span({ 'data-handle': String(i) });
       hd.hidden = true;
+      keys.push(span({ 'data-handle-key': String(i), role: 'slider', tabindex: '0' }));
       hd.style.color = partColour(i);
       handles.push(hd);
       const a = el('path', { 'data-arc': String(i), d: '' });
@@ -529,10 +690,15 @@ export class PathLayer {
     for (const e of this.nodeEls) e.remove();
     for (const e of this.handleEls) e.remove();
     // Handles over the goal, arrows over them, markers over the arrows (a handle is a ring round its marker), the
-    // input over the nodes it may cover, the snap mark on top.
-    this.overlay.append(...handles, ...arrows, ...nodes, this.snapEl);
-    this.arcEls = arcs; this.arrowEls = arrows; this.nodeEls = nodes; this.handleEls = handles;
+    // input over the nodes it may cover, the draw tool's ring and the snap mark on top. Sliders from the source end
+    // first: their tab order follows the strip.
+    this.overlay.append(...handles, ...arrows, ...nodes, this.drawEl, this.snapEl);
+    this.keyBox.replaceChildren(...keys.reverse());
+    keys.reverse();
+    this.arcEls = arcs; this.arrowEls = arrows; this.nodeEls = nodes; this.handleEls = handles; this.keyEls = keys;
+    this.focusKey = -1;
     this.hotHandle = -1;
+    this.hotAny = false;
     this.view.box.removeAttribute('data-handle-hot');
     this.d = new Array(n).fill('');
     this.shown = new Uint8Array(n + 1);
@@ -612,6 +778,13 @@ export class PathLayer {
         this.arrowEls[i].hidden = !on;
       }
     }
+    let ds = false;
+    if (this.drawKind >= 0 && this.dragPart < 0 && n < MAX_PARTS) {
+      const x = v.screenX(g[2 * n]), y = v.screenY(g[2 * n + 1]);
+      ds = x === x && y === y && inBox(x, y);
+      if (ds) this.drawEl.style.transform = `translate(${x}px,${y}px)`;
+    }
+    if (ds !== this.drawShown) { this.drawShown = ds; this.drawEl.hidden = !ds; }
     const x0 = v.screenX(0), y0 = v.screenY(0);
     this.goal.style.transform = `translate(${x0}px,${y0}px)`;
     const xi = v.screenX(g[2 * n]), yi = v.screenY(g[2 * n + 1]);

@@ -16,11 +16,19 @@ import { readoutTexts } from './readout';
 // The circuit panel (step M3.1): the parameters (Z0, f0, the load R + jX), the schematic strip with the parts drawn
 // source left, load right, the card of the selected part with its value in every form of engine.md §2, the controls
 // to add, remove and reorder parts (buttons and keys), and the readout of the circuit's input at f0. It edits the
-// circuit only through `onChange` (the page's single commit point, where M3.3's undo hooks in).
+// circuit only through `onChange` (the page's single commit point, where M3.3's undo hooks in). From M3.3b a field's
+// edits carry its name as a group (the page's history makes one step of them) and a new `revision` (undo, redo)
+// drops what is typed in the fields; the Draw button beside Add arms the chart's draw tool with the chosen kind.
 
 export interface StripProps {
   circuit: Circuit;
-  onChange: (next: Circuit) => void;
+  /** A new circuit; `group` names a field whose keystrokes are one step of the page's history. */
+  onChange: (next: Circuit, group?: string) => void;
+  /** Bumped by undo and redo: the fields drop their typed text and show the circuit again. */
+  revision?: number;
+  /** The draw tool's armed kind (-1: off) and the request to arm it with a kind (or -1). */
+  drawKind?: number;
+  onDraw?: (kind: number) => void;
   /** What was wrong with the link the page was opened with (decodeCircuit's issues). */
   issues?: readonly string[];
   /** The selected part (index from the load), held by the page so the chart's path shows it (M3.2); −1: the last. */
@@ -80,11 +88,13 @@ interface FieldProps {
   /** Takes a typed text: '' when it was used, else why not. */
   edit: (text: string) => string;
   name: string;
+  revision?: number;
 }
 
-function Field({ label, hint, shown, edit, name }: FieldProps) {
+function Field({ label, hint, shown, edit, name, revision }: FieldProps) {
   const [draft, setDraft] = useState<string | null>(null);
   const [error, setError] = useState('');
+  useEffect(() => { setDraft(null); setError(''); }, [revision]);
   const id = `smith-f-${name}`;
   return (
     <label className={styles.field} data-name={name}>
@@ -115,7 +125,7 @@ const UNIT_WORD: Record<string, string> = { Ω: 'ohms', S: 'siemens', H: 'henrie
 const INPUT_SHOWN = [[0, 'z', 'normalised'], [1, 'Z', 'in Ω'], [4, 'Γ', 'polar'], [6, 'VSWR', ''], [7, 'Return loss', '']] as const;
 const INPUT_KEYS = ['z', 'Z', 'y', 'Y', 'gamma', 'gammaRect', 'vswr', 'rl', 'note'];
 
-export default function Strip({ circuit, onChange, issues, selected: chosen, onSelect, onHover }: StripProps) {
+export default function Strip({ circuit, onChange, issues, selected: chosen, onSelect, onHover, revision, drawKind = -1, onDraw }: StripProps) {
   const c = circuit;
   const n = c.parts.length;
   // Stable keys for the parts across reorders (the circuit itself has no ids).
@@ -183,23 +193,23 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
   }, [c]);
 
   const param = (name: string, label: string, unit: string, value: number, problem: (v: number) => string, set: (v: number) => Circuit, infinite = false, hint = '') => (
-    <Field name={name} label={label} hint={hint} shown={formatAmount(value, unit, DIGITS)} edit={(t) => {
+    <Field name={name} label={label} hint={hint} revision={revision} shown={formatAmount(value, unit, DIGITS)} edit={(t) => {
       const v = readAmount(t, unit, infinite);
       const why = reason(t, v, UNIT_WORD[unit] ?? unit, v === null ? '' : problem(v));
-      if (!why) onChange(set(v));
+      if (!why) onChange(set(v), `field:${name}`);
       return why;
     }} />
   );
 
   const part = selected >= 0 ? c.parts[selected] : null;
   const partField = (p: Part, i: number, form: Form) => (
-    <Field key={form.id} name={`p${i + 1}-${form.id}`} label={form.label} hint={form.hint} shown={formText(form, formValue(form.id, p, c))}
+    <Field key={form.id} name={`p${i + 1}-${form.id}`} label={form.label} hint={form.hint} revision={revision} shown={formText(form, formValue(form.id, p, c))}
       edit={(t) => {
         const v = readForm(form, t);
         if (v === null) return reason(t, v, UNIT_WORD[form.unit] ?? '', '');
         const next = withForm(form.id, p, v, c);
         if (typeof next === 'string') return next;
-        onChange(withPart(c, i, next));
+        onChange(withPart(c, i, next), `field:p${i + 1}-${form.id}`);
         return '';
       }} />
   );
@@ -260,13 +270,18 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
       )}
 
       <div className={styles.addRow}>
-        <select ref={addSelect} className={styles.select} data-add-kind="" aria-label="Kind of part to add" value={addKind} onChange={(e) => setAddKind(Number(e.target.value) as PartKind)}>
+        <select ref={addSelect} className={styles.select} data-add-kind="" aria-label="Kind of part to add" value={addKind} onChange={(e) => { const k = Number(e.target.value) as PartKind; setAddKind(k); if (drawKind >= 0) onDraw?.(k); }}>
           {KIND_ORDER.map((k) => <option key={k} value={k}>{KIND_NAMES[k]}</option>)}
         </select>
         <select className={styles.select} data-add-at="" aria-label="Where to add it" value={addAt > n - 1 ? -1 : addAt} onChange={(e) => setAddAt(Number(e.target.value))}>
           {positions.map(({ at, text }) => <option key={at} value={at}>{text}</option>)}
         </select>
         <button type="button" className={styles.button} data-add="" onClick={add} disabled={n >= MAX_PARTS}>Add</button>
+        {onDraw && (
+          <button type="button" className={`${styles.button} ${styles.toggle}`} data-draw="" aria-pressed={drawKind >= 0}
+            disabled={n >= MAX_PARTS} onClick={() => onDraw(drawKind >= 0 ? -1 : addKind)}
+            title="Draw: drag from the input (In) on the chart to add this kind at the source end; Escape cancels">Draw</button>
+        )}
       </div>
 
       <h3 className={styles.subTitle}>Circuit input <span className={styles.panelNote}>at f0</span></h3>

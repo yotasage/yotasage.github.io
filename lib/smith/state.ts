@@ -113,6 +113,66 @@ export function newPart(kind: PartKind, c: Circuit): Part {
   }
 }
 
+/**
+ * The part the draw tool (M3.3b) appends at the source end before the pointer moves: of no effect where one exists
+ * (R, L 0 in series, ∞ in shunt; C ∞ in series, 0 in shunt; a line or open stub of length 0, a short stub of λ/4), so
+ * the new end starts on the input; a λ/4 transformer has none and starts at Zt = Z0.
+ */
+export function startPart(kind: PartKind, c: Circuit): Part {
+  const p = newPart(kind, c);
+  switch (kind) {
+    case SERIES_R: case SERIES_L: case SHUNT_C: case LINE: case STUB_OPEN: p.value = 0; break;
+    case SERIES_C: case SHUNT_R: case SHUNT_L: p.value = Infinity; break;
+    case STUB_SHORT: p.value = 0.25; break;
+  }
+  return p;
+}
+
+/** A focused handle's arrow keys (M3.3b): line and stub lengths step by 1° (Shift 10°) of electrical length. */
+export const KEY_DIV = 360;
+export const KEY_DIV_COARSE = 36;
+/** Without standard values, R, L, C and Zt step by these factors. */
+export const KEY_FACTOR = 1.01;
+export const KEY_FACTOR_COARSE = 1.1;
+
+/**
+ * The value a focused handle's arrow key gives part `kind` of value v: one step up or down (`coarse` with Shift).
+ * Lengths go to the next multiple of 1° (10°) when `mantissas` is given (snapping on), else ±1° (10°), never below 0.
+ * R, L, C and Zt go to the next standard value of `mantissas` (a decade of them when coarse; values from decimal text,
+ * so 33 pF is 33e-12), else × or ÷ KEY_FACTOR(_COARSE); from 0 or ∞ the first step lands on newPart's value (±1
+ * normalised, Zt = Z0).
+ */
+export function stepValue(kind: PartKind, v: number, up: boolean, coarse: boolean, mantissas: readonly number[] | null, c: Circuit): number {
+  if (kind === LINE || kind === STUB_OPEN || kind === STUB_SHORT) {
+    const div = coarse ? KEY_DIV_COARSE : KEY_DIV;
+    let next: number;
+    if (mantissas) {
+      const q = v * div;
+      next = (up ? Math.floor(q + 1e-9) + 1 : Math.ceil(q - 1e-9) - 1) / div;
+    } else next = up ? v + 1 / div : v - 1 / div;
+    return next > 0 ? next : 0;
+  }
+  if (!(v > 0 && v < Infinity)) return newPart(kind, c).value;
+  if (!mantissas) {
+    const f = coarse ? KEY_FACTOR_COARSE : KEY_FACTOR;
+    return up ? v * f : v / f;
+  }
+  let x = v;
+  for (let s = coarse ? mantissas.length : 1; s > 0; s--) x = nextStandard(x, up, mantissas);
+  return x;
+}
+
+/** The standard value of `mantissas` (three digits, 100 to 999) next above (or below) x. */
+function nextStandard(x: number, up: boolean, ms: readonly number[]): number {
+  const dec = Math.floor(Math.log10(x)), last = ms.length - 1;
+  if (up) {
+    for (let d = dec - 1; d <= dec + 1; d++) for (let j = 0; j <= last; j++) { const s = Number(`${ms[j]}e${d - 2}`); if (s > x) return s; }
+    return Number(`${ms[0]}e${dec}`);
+  }
+  for (let d = dec + 1; d >= dec - 1; d--) for (let j = last; j >= 0; j--) { const s = Number(`${ms[j]}e${d - 2}`); if (s < x) return s; }
+  return Number(`${ms[last]}e${dec - 4}`);
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // Edits (each returns a new circuit; the page's single commit point is where M3.3's undo hooks in)
 

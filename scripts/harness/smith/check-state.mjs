@@ -176,4 +176,27 @@ export function runStateChecks({ section, ok, random }) {
   const moved = movePart(added, 1, 0);
   ok(moved.parts[0].kind === LINE && moved.parts[1].kind === SERIES_C, 'movePart moves towards the load');
   ok(removePart(moved, 0).parts.length === 2 && removePart(moved, 0).parts[0].kind === SERIES_C, 'removePart removes the part');
+
+  // M3.3b: the draw tool's start part and the handles' arrow-key steps, against values written out by hand.
+  section('state: draw and key steps');
+  const gIn = (c) => { const g = [0, 0]; S.circuitInputGamma(g, 0, c); return g; };
+  for (let r = 0; r < 200; r++) {
+    const c = { z0: 50, f0: 1e6 * (1 + 999 * random()), loadR: 200 * random(), loadX: 300 * (random() - 0.5), parts: [newPart(LINE, e)] };
+    const before = gIn(c);
+    for (let k = 0; k < QUARTER; k++) {
+      const after = gIn({ ...c, parts: [...c.parts, S.startPart(k, c)] });
+      ok(Math.hypot(after[0] - before[0], after[1] - before[1]) < 1e-12, `startPart(${k}) leaves the input where it was (${after} vs ${before})`);
+    }
+  }
+  ok(S.startPart(QUARTER, e).value === 50, 'a drawn λ/4 starts at Zt = Z0');
+  const E24 = [100, 110, 120, 130, 150, 160, 180, 200, 220, 240, 270, 300, 330, 360, 390, 430, 470, 510, 560, 620, 680, 750, 820, 910];
+  const step = (k, v, up, coarse = false, ms = E24) => S.stepValue(k, v, up, coarse, ms, e);
+  ok(step(1, 79.57747154594767e-9, true) === 82e-9 && step(1, 79.57747154594767e-9, false) === 75e-9, 'E24 steps from 79.58 nH: 82 nH up, 75 nH down');
+  ok(step(0, 910, true) === 1000 && step(0, 100, false) === 91 && step(2, 33e-12, true) === 36e-12 && step(2, 33e-12, false) === 30e-12, 'E24 steps cross decades and leave standard values exactly');
+  ok(step(0, 47, true, true) === 470 && step(5, 2.2e-12, false, true) === 0.22e-12, 'Shift: a decade of E24 steps');
+  ok(step(2, Infinity, false) === newPart(SERIES_C, e).value && step(0, 0, true) === newPart(0, e).value, 'from 0 or ∞ the first step lands on newPart');
+  ok(step(0, 100, true, false, null) === 100 * S.KEY_FACTOR && step(0, 100, false, true, null) === 100 / S.KEY_FACTOR_COARSE, 'without standard values: factors');
+  ok(step(LINE, 0.125, true) === 46 / 360 && step(LINE, 0.125, false) === 44 / 360 && step(LINE, 0.125, true, true) === 5 / 36 && step(STUB_SHORT, 0.1, false, true) === 3 / 36,
+    'lengths step to the next whole degree (Shift: 10°)');
+  ok(step(STUB_OPEN, 1 / 720, false) === 0 && step(LINE, 0, false, false, null) === 0 && step(LINE, 0.1, true, false, null) === 0.1 + 1 / 360, 'lengths never go below 0; ±1° without snapping');
 }

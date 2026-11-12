@@ -11,7 +11,7 @@ import type { ChartView } from '../../components/Smith/chartView';
 import { writeLive } from '../../components/Smith/live';
 import { PathLayer, SEL_NODE, SEL_NONE, SEL_PART } from '../../components/Smith/pathLayer';
 import { MODE_Y, MODE_Z, MODE_ZY } from '../../lib/smith/grid';
-import { Circuit, decodeCircuit, defaultCircuit, encodeCircuit } from '../../lib/smith/state';
+import { Circuit, KIND_SHORT, decodeCircuit, defaultCircuit, encodeCircuit, sameCircuit } from '../../lib/smith/state';
 import styles from '../../styles/Smith.module.css';
 
 // The Smith chart (milestone M2): the interactive chart in the site's frame, after the resistor tool: a slim bar
@@ -25,6 +25,10 @@ import styles from '../../styles/Smith.module.css';
 // From M3.3a a ring at the end of every arc drags its part's value (pathLayer.ts): the chart and the side panel follow
 // every frame outside React (live.ts) and the circuit arrives through `commit` once, on release. The Snap switch beside
 // the grid switch turns snapping to grid circles and E24 values off (Alt does the same for a mouse drag).
+// From M3.3b `commit` keeps the history for undo and redo (Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, Ctrl+Y and the buttons in the
+// toolbar): every commit is a step, except that the keystrokes of one field (until the focus moves) and the arrow keys
+// of one handle (less than GROUP_MS apart) make one; a drag and a draw commit once, so they are one step. The draw tool
+// is armed by the strip's Draw button and shown in the toolbar until a draw ends or Escape.
 
 const MODES = [{ mode: MODE_Z, name: 'Z', title: 'Impedance grid: r and x circles' },
   { mode: MODE_Y, name: 'Y', title: 'Admittance grid: g and b circles' },
@@ -33,18 +37,28 @@ const MODES = [{ mode: MODE_Z, name: 'Z', title: 'Impedance grid: r and x circle
 type Theme = 'light' | 'dark';
 const THEME_KEY = 'smith.theme';
 // What lies outside the tool's own element in the two themes (page background and the site footer of _app.tsx).
+/** Steps kept for undo, and the longest pause between a handle's arrow keys that still makes one step. */
+const HISTORY = 200;
+const GROUP_MS = 1000;
+// `dropped`: the redo steps a group's first commit cleared, back if the group ends where it began (no step at all).
+interface History { past: Circuit[]; future: Circuit[]; dropped: Circuit[]; group: string; t: number }
+
 const LIGHT = { bg: '#f6f4ee', rule: '#e3dfd5', quiet: '#736f67', link: '#55524b', ink: '#1d1c19' };
 const DARK = { bg: '#2b2b2b', rule: '#3a3a38', quiet: '#8f8c83', link: '#b7b4ab', ink: '#edebe5' };
 
 export default function SmithChart() {
   const [mode, setMode] = useState(MODE_Z);
   const [circuit, setCircuit] = useState<Circuit>(defaultCircuit);
+  // The circuit as last committed (ahead of React's state between a commit and the render) and the history.
+  const now = useRef<Circuit>(circuit);
+  const hist = useRef<History>({ past: [], future: [], dropped: [], group: '', t: 0 });
+  const [revision, setRevision] = useState(0);
   const [issues, setIssues] = useState<string[]>([]);
   const [linked, setLinked] = useState(false);
   // The circuit comes from the link once the page is in the browser (never at build time).
   useEffect(() => {
     const read = decodeCircuit(window.location.search);
-    if (read.linked) setCircuit(read.circuit);
+    if (read.linked) { now.current = read.circuit; setCircuit(read.circuit); }
     setIssues(read.issues);
     setLinked(true);
   }, []);
@@ -56,9 +70,53 @@ export default function SmithChart() {
       window.history.replaceState(window.history.state, '', url);
     }
   }, [linked, circuit]);
-  // The one place a new circuit arrives: fields, add, remove, move, the link and the end of a drag (M3.3b: undo).
-  const commit = (next: Circuit) => setCircuit(next);
+  // The one place a new circuit arrives: fields, add, remove, move, the end of a drag or a draw, a handle's keys.
+  // Only refs and state setters are used, so the closures handed out once (the path layer, listeners) stay right.
+  const commit = (next: Circuit, group = '') => {
+    const h = hist.current, before = now.current;
+    if (next === before || sameCircuit(next, before)) return;
+    const t = performance.now();
+    if (group && group === h.group && (group.startsWith('field:') || t - h.t < GROUP_MS)) {
+      // The same step goes on; back where it began, there is no step at all.
+      if (h.past.length && sameCircuit(h.past[h.past.length - 1], next)) { h.past.pop(); group = ''; h.future = h.dropped; }
+    } else {
+      h.past.push(before);
+      if (h.past.length > HISTORY) h.past.shift();
+      h.dropped = h.future;
+      h.future = [];
+    }
+    h.group = group; h.t = t;
+    now.current = next;
+    setCircuit(next);
+  };
+  const travel = (back: boolean) => {
+    const h = hist.current, from = back ? h.past : h.future, to = back ? h.future : h.past;
+    // Not in the middle of a drag or a draw: their circuit is not committed yet.
+    if (!from.length || (path.current && path.current.dragPart >= 0)) return;
+    to.push(now.current);
+    const c = from.pop()!;
+    h.group = '';
+    now.current = c;
+    setCircuit(c);
+    setRevision((r) => r + 1);
+  };
   const [snap, setSnap] = useState(true);
+  const [drawKind, setDrawKind] = useState(-1);
+  const stopDraw = () => { path.current?.cancelDraw(); setDrawKind(-1); };
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      const k = e.key.toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && (k === 'z' || k === 'y')) {
+        e.preventDefault();
+        travel(!(k === 'y' || e.shiftKey));
+      } else if (e.key === 'Escape') stopDraw();
+    };
+    // A field's step ends when the focus moves.
+    const focus = () => { hist.current.group = ''; };
+    window.addEventListener('keydown', key);
+    document.addEventListener('focusin', focus);
+    return () => { window.removeEventListener('keydown', key); document.removeEventListener('focusin', focus); };
+  }, []);
 
   // The path on the chart and the selection shared by the strip, the node table and the chart.
   const path = useRef<PathLayer | null>(null);
@@ -72,18 +130,21 @@ export default function SmithChart() {
     const layer = new PathLayer(v);
     layer.onPick = (kind, i) => { if (kind === SEL_PART) selectPart(i); else setNodeSel(i); };
     layer.onCommit = commit;
+    layer.onDraw = (i) => { setDrawKind(-1); if (i >= 0) selectPart(i); };
     layer.onLive = (c, i, half) => writeLive(document, c, i, half);
     (v.box as HTMLElement & { smithPath?: PathLayer }).smithPath = layer;
     path.current = layer;
   };
   useEffect(() => { path.current?.setCircuit(circuit); }, [circuit]);
   useEffect(() => { if (path.current) path.current.snap = snap; }, [snap]);
+  useEffect(() => { path.current?.arm(drawKind); }, [drawKind]);
   useEffect(() => {
     path.current?.select(node >= 0 ? SEL_NODE : part >= 0 ? SEL_PART : SEL_NONE, node >= 0 ? node : part);
   }, [node, part]);
   const side = (
     <>
       <Strip circuit={circuit} onChange={commit} issues={issues} selected={part} onSelect={selectPart}
+        revision={revision} drawKind={drawKind} onDraw={setDrawKind}
         onHover={(i) => path.current?.hover(SEL_PART, i)} />
       <Nodes circuit={circuit} selected={node} onSelect={(k) => setNodeSel(k === node ? -1 : k)}
         onHover={(k) => path.current?.hover(SEL_NODE, k)} />
@@ -121,7 +182,15 @@ export default function SmithChart() {
         ))}
       </div>
       <button type="button" className={`${styles.button} ${styles.toggle}`} aria-pressed={snap} data-snap-toggle=""
-        onClick={() => setSnap(!snap)} title="Dragging a ring snaps to the grid's circles and to E24 values (Alt: not for this drag)">Snap</button>
+        onClick={() => setSnap(!snap)} title="Dragging a ring snaps to the grid's circles and to E24 values (Alt: not for this drag); arrow keys on a ring step by E24 values or whole degrees">Snap</button>
+      <span className={styles.history}>
+        <button type="button" className={styles.button} data-undo="" disabled={!hist.current.past.length} onClick={() => travel(true)} title="Undo (Ctrl+Z)">Undo</button>
+        <button type="button" className={styles.button} data-redo="" disabled={!hist.current.future.length} onClick={() => travel(false)} title="Redo (Ctrl+Shift+Z or Ctrl+Y)">Redo</button>
+      </span>
+      {drawKind >= 0 && (
+        <button type="button" className={`${styles.button} ${styles.toggle}`} aria-pressed="true" data-draw-stop="" onClick={stopDraw}
+          title="Drag from the input (In) on the chart to add the part at the source end; this button or Escape stops">Drawing {KIND_SHORT[drawKind]} ×</button>
+      )}
     </>
   );
 

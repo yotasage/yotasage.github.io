@@ -45,7 +45,12 @@ export function writeLive(root: ParentNode, c: Circuit, part: number, half = -1)
     put(goal.querySelector('strong'), mag <= GOAL_MAG ? 'inside' : 'outside');
     goal.toggleAttribute('data-inside', mag <= GOAL_MAG);
   }
-  const p = c.parts[part], forms = formsOf(p.kind);
+  readoutTexts(g[0], g[1], c.z0, texts);
+  for (const [key, i] of INPUT) put(root.querySelector(`[data-input="${key}"]`), texts[i]);
+  // A part being drawn (M3.3b) has no tile or card yet, nor has the circuit before it a part at its index.
+  const p = c.parts[part];
+  if (!p) return;
+  const forms = formsOf(p.kind);
   put(root.querySelector(`[data-tile="${part}"] [data-tile-value]`), formText(forms[0], formValue(forms[0].id, p, c)));
   const card = root.querySelector(`[data-card="${part}"]`);
   if (card) {
@@ -56,6 +61,4 @@ export function writeLive(root: ParentNode, c: Circuit, part: number, half = -1)
       if (input.value !== t) input.value = t;
     }
   }
-  readoutTexts(g[0], g[1], c.z0, texts);
-  for (const [key, i] of INPUT) put(root.querySelector(`[data-input="${key}"]`), texts[i]);
 }
