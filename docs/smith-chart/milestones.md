@@ -122,8 +122,12 @@ the link; read the topic "Moving on the chart". Is it nicer than the old one? Wh
   selector, the solution list with Apply as one undo step, every message of the counting table, the goal and unknowns in
   the link; **M4.3b** on the chart: the two circles and the goal circle, the preview path (hover and tap), the family
   slider, standard-value variants and the value list per kind (D17, replacing `SNAP_SERIES`); **M4.3c** the three M4
-  theory topics (learning.md §5) with their claims, live numbers and short lines.
-- **M4.4 Suggestions** when nothing is marked.
+  theory topics (learning.md §5) with their claims, live numbers and short lines. M4.3c runs as two agents, as M3.5
+  did: the content (theory.md, claims.md, sources; no code), then the page.
+- **M4.4 Suggestions** when nothing is marked. Also moves the slow solves off the main thread: since the BL56 fix
+  the generic grid search for two unknowns takes a median of 17 ms and up to about 100 ms at 1× (notes-M4.2.md), too
+  long for a phone even after a pause, so solves (and suggestions) that can be slow run in a Web Worker (no new
+  dependency; the resistor tool's `combineClient.ts` is the pattern).
 
 *Done when:* exact cases have a residual below 1e-9; brute force finds no missed solution on 200 or more random
 problems of each kind; the same input gives the same order; time within budget; a scripted case reaches every message
