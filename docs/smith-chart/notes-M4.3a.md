@@ -101,3 +101,10 @@ parts" in `check-state.mjs`) and `npm run ui` (`ui-solve.mjs`, new; `ui-why.mjs`
 - Preview on hover/tap of a solution: `applySolution(outcome.circuit, s)` gives its circuit.
 - Standard values: `standardVariants` per solution; the value list choice goes into the link beside `u`/`g`.
 - Hiding family members at a value's limit (notes-M4.2 "Left") is not done; ends are shown as they come.
+
+## Main session's check (2026-11-12)
+
+ui-drag's 4× budget re-measured with no agent running, the same minutes: 56eab63 (before this step) 12.31 ms per frame,
+16380b3 (this step) 12.19 ms. The machine's baseline has drifted from the 9.0–9.5 ms of M3.5 (clock at 4.5 GHz, load
+about 6 %, cause not found); this step adds no measurable cost. The budget is to be proven again on a quiet machine
+before M9; until then ui-drag's 4× check fails on this machine for the old code as well.
