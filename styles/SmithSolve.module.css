@@ -170,3 +170,12 @@
   resize: vertical;
 }
 .own:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
+
+/* M4.4b: suggestions when nothing is marked. */
+.suggest { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--rule); }
+.suggestHead { margin: 0; font-weight: 600; }
+.suggestion[data-meets] { border-left: 3px solid var(--accent); }
+.was { color: var(--ink-3); font-size: 12px; font-weight: 400; }
+.actions { grid-column: 2; grid-row: 1 / span 2; align-self: center; display: grid; gap: 4px; }
+details.variantBox > summary { cursor: pointer; width: max-content; max-width: 100%; }
+details.variantBox[open] > summary { margin-bottom: 2px; }

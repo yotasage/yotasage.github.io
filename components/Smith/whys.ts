@@ -66,6 +66,8 @@ export const WHYS: Readonly<Record<string, Why>> = {
   'solve-family': w('the family slider', 'two-one-or-none', 'Slide the first value; the second follows to keep the goal.'),
   'solve-variant': w('standard-value variants', 'realisable-values', 'The nearest standard values, and how far they move the input.'),
   'solve-lists': w('Standard values', 'realisable-values', 'The values parts come in, per kind; drags and variants use them.'),
+  // M4.4b: the suggestions when nothing is marked.
+  'solve-suggest': w('the suggestions', 'one-value-and-a-point', 'One changed value reaches a point only by chance; two reach it exactly.'),
   'list-R': w('the R list', 'realisable-values', 'E series of IEC 60063; E24 parts usually 5 %, E96 1 %.'),
   'list-L': w('the L list', 'realisable-values', 'Chip inductors come in makers’ own lists (1.9 nH): paste yours.'),
   'list-C': w('the C list', 'realisable-values', 'E series; RF chip capacitors below 10 pF have tolerances in pF.'),

@@ -17,6 +17,7 @@ import type { ChartView } from '../../components/Smith/chartView';
 import { writeLive } from '../../components/Smith/live';
 import { PathLayer, SEL_NODE, SEL_NONE, SEL_PART } from '../../components/Smith/pathLayer';
 import { SolveLayer } from '../../components/Smith/solveLayer';
+import type { CircleShape } from '../../components/Smith/solveLayer';
 import { BibEntry } from '../../lib/bibtex';
 import { loadReferences } from '../../lib/references';
 import { MODE_Y, MODE_Z, MODE_ZY } from '../../lib/smith/grid';
@@ -181,7 +182,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
         startTransition(() => setOutcome(o));
       }
     },
-    preview: (c: Circuit | null) => solveLayer.current?.setPreview(c),
+    preview: (c: Circuit | null, shape?: CircleShape | null, base?: Circuit | null) => solveLayer.current?.setPreview(c, shape, base),
     lists: (next: ValueChoice) => setListsRef.current(next),
   }));
   const setListsRef = useRef(setLists);

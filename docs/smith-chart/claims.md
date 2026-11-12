@@ -176,6 +176,7 @@ Each repeats claims of the topic it links to; the tool's own behaviour is T. Key
 | solve-family | Slide the first value; the second follows to keep the goal. | T 152; D 150 |
 | solve-variant | The nearest standard values, and how far they move the input. | T 182 |
 | solve-lists | The values parts come in, per kind; drags and variants use them. | T 180–182 |
+| solve-suggest | One changed value reaches a point only by chance; two reach it exactly. | D 153, 154; T (suggest.ts: singles give the nearest value, pairs the exact ones; SolvePanel, ui-solve-suggest) |
 | list-R | E series of IEC 60063; E24 parts usually 5 %, E96 1 %. | S 176 |
 | list-L | Chip inductors come in makers’ own lists (1.9 nH): paste yours. | S 179 |
 | list-C | E series; RF chip capacitors below 10 pF have tolerances in pF. | S 176, 178 |

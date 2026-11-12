@@ -454,6 +454,7 @@ At most about 12 words, after the control or under the readout row, followed by 
 | Family slider (`solve-family`) | Slide the first value; the second follows to keep the goal. | `two-one-or-none` |
 | A variant (`solve-variant`) | The nearest standard values, and how far they move the input. | `realisable-values` |
 | Standard values (`solve-lists`) | The values parts come in, per kind; drags and variants use them. | `realisable-values` |
+| A suggestion (`solve-suggest`) | One changed value reaches a point only by chance; two reach it exactly. | `one-value-and-a-point` |
 | Its kind R (`list-R`) | E series of IEC 60063; E24 parts usually 5 %, E96 1 %. | `realisable-values` |
 | Its kind L (`list-L`) | Chip inductors come in makers’ own lists (1.9 nH): paste yours. | `realisable-values` |
 | Its kind C (`list-C`) | E series; RF chip capacitors below 10 pF have tolerances in pF. | `realisable-values` |

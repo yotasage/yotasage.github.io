@@ -98,7 +98,7 @@ const TOOLS: SiteTool[] = [
     href: '/smith-chart/main',
     title: 'Smith chart',
     category: 'Electronics',
-    description: 'Build a matching circuit from the load to the source out of series and shunt R, L and C, transmission lines, stubs and λ/4 transformers, and see its path on a Smith chart with an impedance, admittance or combined grid that zooms and pans. Type the values or drag them on the chart, snapping to the grid circles and to E24 values, and read z, Γ, VSWR and return loss at every node. Undo and redo, and the whole circuit is in the link.',
+    description: 'Build a matching circuit from the load to the source out of series and shunt R, L and C, transmission lines, stubs and λ/4 transformers, and see its path on a Smith chart with an impedance, admittance or combined grid that zooms and pans. Type the values or drag them on the chart, snapping to the grid circles and to standard values, and read z, Γ, VSWR and return loss at every node. Mark one or two values as unknown and it finds them for a match, a point or a VSWR circle, with the construction circles on the chart and the nearest standard values; with nothing marked it suggests which values to change. Undo and redo, and the whole circuit is in the link.',
     icon: 'smith',
     color: '#e0679a',
     tags: ['Z · Y · ZY grids', 'Series · shunt R, L, C', 'Lines · stubs · λ/4', 'Drag with snapping', 'Undo · redo', 'Every circuit is a link'],

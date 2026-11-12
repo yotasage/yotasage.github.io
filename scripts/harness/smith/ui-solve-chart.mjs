@@ -35,7 +35,7 @@ const readRaw = (t) => (t === 'inf' ? Infinity : t === '-inf' ? -Infinity : Numb
 const hasZc = (k) => k === P.LINE || k === P.STUB_OPEN || k === P.STUB_SHORT;
 
 /** SolvePanel's applySolution, independently: parts first, then f0. */
-function applied(c, s) {
+export function applied(c, s) {
   const parts = c.parts.map((p) => ({ ...p }));
   let f = NaN;
   for (const v of s.values) {

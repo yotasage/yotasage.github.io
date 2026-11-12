@@ -5,7 +5,8 @@ import { goalNode, goalProblem, goalValue, isWithin } from '../../lib/smith/goal
 import type { Goal, GoalKind } from '../../lib/smith/goal';
 import { LINE, QUARTER, SERIES_C, SERIES_L, SERIES_R, SHUNT_C, SHUNT_L, SHUNT_R, STUB_OPEN, STUB_SHORT } from '../../lib/smith/parts';
 import { atFrequency, solve } from '../../lib/smith/solve';
-import { cancelSolve, solveOffPage, stopSolveWorkers } from '../../lib/smith/solveClient';
+import { cancelSolve, cancelSuggest, solveOffPage, stopSolveWorkers, suggestOffPage } from '../../lib/smith/solveClient';
+import type { Suggestion, Suggestions } from '../../lib/smith/suggest';
 import type { Solution, SolvedValue, SolveResult, ValueRange } from '../../lib/smith/solve';
 import {
   Ask, askOf, Circuit, cleanAsk, KIND_NAMES, numText, sameUnknown, toggleUnknown, Unknown, unknownName, withGoal, withPart,
@@ -16,6 +17,7 @@ import styles from '../../styles/SmithSolve.module.css';
 import base from '../../styles/Smith.module.css';
 import { nodeName } from './pathLayer';
 import { Field } from './Strip';
+import type { CircleShape } from './solveLayer';
 import { Why } from './Why';
 
 // The Solve panel (step M4.3a; solver.md, notes-M4.1a/b, M4.2): what is unknown (marked on the parts' cards, f0 here),
@@ -50,8 +52,11 @@ export interface SolvePanelProps {
   busy?: () => boolean;
   /** Every new outcome (the chart draws its circles: solveLayer.ts). */
   onResult?: (outcome: Outcome | null) => void;
-  /** A solution's circuit to draw as a preview on the chart, null for none (M4.3b). */
-  onPreview?: (c: Circuit | null) => void;
+  /**
+   * A solution's circuit to draw as a preview on the chart, null for none (M4.3b); for a suggestion also its
+   * construction's circles and the circuit they belong to (M4.4b).
+   */
+  onPreview?: (c: Circuit | null, shape?: CircleShape | null, base?: Circuit | null) => void;
   /** The value lists per kind (D17) and their change (the page keeps them in the link and localStorage). */
   lists: ValueChoice;
   onLists: (next: ValueChoice) => void;
@@ -248,6 +253,8 @@ interface ListCtx {
   lists: ValueChoice;
   apply: (s: Solution) => void;
   makers: Map<string, () => Circuit>;
+  /** Circles to draw with a preview (a suggestion's construction), by the same keys. */
+  shapes?: Map<string, CircleShape>;
 }
 
 /** A solution with the values of a standard-value variant (values.ts standardVariants) in place of its own. */
@@ -260,17 +267,19 @@ function variantMeta(g: Goal, v: Variant, node: string): string {
   return `|Γ| = ${small(v.gamma)} at ${node}; ${v.meets ? (within ? 'keeps the goal' : 'on the goal') : `${within ? 'outside the goal' : 'off the goal'} by ${small(v.residual)}`}`;
 }
 
-/** The standard values next to a solution's (none when every list is "any value"), each with Apply and a preview. */
-function Variants({ x, s, pv }: { x: ListCtx; s: Solution; pv: string }) {
-  const list = useMemo(() => standardVariants(x.c, x.goal, s, x.lists), [x.c, x.goal, s, x.lists]);
+/**
+ * The standard values next to a solution's (none when every list is "any value"), each with Apply and a preview. A
+ * suggestion's are folded (`fold`), so the list of suggestions stays short enough to scan on a phone.
+ */
+function Variants({ x, s, pv, given, shape, fold }: { x: ListCtx; s: Solution; pv: string; given?: Variant[]; shape?: CircleShape; fold?: boolean }) {
+  const list = useMemo(() => given ?? standardVariants(x.c, x.goal, s, x.lists), [given, x.c, x.goal, s, x.lists]);
   if (!list.some((v) => !v.exact)) return null;
-  return (
-    <div className={styles.variantBox}>
-      <span className={styles.variantHead}>With standard values: <Why k="solve-variant" /></span>
+  const items = (
       <ul className={styles.variants} data-variants="">
         {list.map((v, j) => {
           const key = `${pv}:${j}`, sv = withValues(s, v.values);
           x.makers.set(key, () => applySolution(x.c, sv));
+          if (shape) x.shapes?.set(key, shape);
           return (
             <li key={j} className={styles.variant} data-variant={j} data-pv={key} tabIndex={0} data-meets={v.meets ? '' : undefined}
               aria-label={`Standard values ${j + 1}: focus to preview on the chart`}>
@@ -288,6 +297,19 @@ function Variants({ x, s, pv }: { x: ListCtx; s: Solution; pv: string }) {
           );
         })}
       </ul>
+  );
+  if (fold) {
+    return (
+      <details className={styles.variantBox} data-variant-fold="">
+        <summary className={styles.variantHead}>With standard values ({list.length})</summary>
+        {items}
+      </details>
+    );
+  }
+  return (
+    <div className={styles.variantBox}>
+      <span className={styles.variantHead}>With standard values: <Why k="solve-variant" /></span>
+      {items}
     </div>
   );
 }
@@ -320,6 +342,72 @@ function SolutionList({ x, list, best, item = 'solution' }: { x: ListCtx; list: 
       })}
     </ol>
   );
+}
+
+/** A part's value as it is now, beside a suggested one ("now 31.83 pF"). */
+function nowText(c: Circuit, v: SolvedValue): string {
+  const p = c.parts[v.part];
+  if (!p || v.param === 'f0') return '';
+  return v.param === 'zc' ? `now ${amount(-1, 'zc', p.zc ?? c.z0)}` : `now ${amount(p.kind, 'value', p.value)}`;
+}
+
+/** A suggestion's construction as the chart draws it (solveLayer.ts): two unknowns cross like a solved pair. */
+const shapeOf = (g: Suggestion): CircleShape => ({ circleNode: g.circleNode, circles: g.circles, unknowns: g.unknowns, status: g.unknowns.length === 2 ? 'solved' : 'one' });
+
+/**
+ * The suggestions (M4.4b, suggest.ts): one or two values changed, each with what it reaches, Apply (one undo step),
+ * "Solve for" (marks its parts as the unknowns), its standard values and a preview with its circles.
+ */
+function SuggestionList({ x, list, onMark }: { x: ListCtx; list: Suggestion[]; onMark: (g: Suggestion) => void }) {
+  const point = x.goal.kind === 'point';
+  return (
+    <ol className={styles.solutions} data-suggestions="">
+      {list.map((g, k) => {
+        const key = `sug:${k}`, s = g.solution, shape = shapeOf(g);
+        x.makers.set(key, () => applySolution(x.c, s));
+        x.shapes?.set(key, shape);
+        return (
+          <li key={k} className={`${styles.solution} ${styles.suggestion}`} data-suggestion={k} data-meets={g.meets ? '' : undefined}
+            data-residual={numText(s.residual)} data-mismatch={numText(s.mismatch)} data-gamma={numText(s.gamma)} data-pv={key} tabIndex={0}
+            aria-label={`Suggestion ${k + 1}: focus to preview its path on the chart`}>
+            <div className={styles.values}>
+              {s.values.map((v, j) => (
+                <span key={j}><ValueText c={x.c} v={v} /> <span className={styles.was}>({nowText(x.c, v)})</span></span>
+              ))}
+            </div>
+            <div className={styles.meta}>
+              {g.meets
+                ? <span>meets the goal: |Γ| = <b>{small(s.gamma)}</b> at {x.node}</span>
+                : point
+                  ? <span>comes within <b>{small(s.mismatch)}</b> of the target (|Γ| = {small(s.gamma)} at {x.node})</span>
+                  : <span>|Γ| = {small(s.gamma)} at {x.node}; off the goal by {small(s.residual)}</span>}
+              {!s.realisable && !s.atF0Only && <span className={styles.flag}> not of the part’s own kind</span>}
+              {k === 0 && <Why k="solve-suggest" />}
+            </div>
+            <span className={styles.actions}>
+              <button type="button" className={base.button} data-apply-suggestion={k} disabled={x.stale}
+                onClick={() => x.apply(s)} title="Put these values in the circuit (one step; Undo takes it back)">Apply</button>
+              <button type="button" className={`${base.button} ${styles.small}`} data-mark-suggestion={k} disabled={x.stale}
+                onClick={() => onMark(g)} title="Mark these values as unknowns, to see every solution and the circles">Solve for</button>
+            </span>
+            <div className={styles.variantRow}><Variants x={x} s={s} pv={`v${key}`} given={g.variants} shape={shape} fold /></div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/** The suggestions' heading for a status of suggest.ts, in plain words. */
+function suggestHead(o: Suggestions, node: string, some: boolean): string {
+  switch (o.status) {
+    case 'holds': return `The circuit already meets the goal at ${node}: nothing needs to change.`;
+    case 'rejected': return `No suggestions: ${o.reason}.`;
+    case 'none': return `No change of one or two parts meets the goal: ${o.reason}. Add a part, or choose another goal.`;
+    default: return some
+      ? 'Suggestions: change one value, or two, to meet the goal (the smallest changes first).'
+      : 'No change of one or two parts meets the goal exactly; the nearest:';
+  }
 }
 
 /** Positions of the family's slider: the ranges of the first unknown laid end to end. */
@@ -491,7 +579,23 @@ function SolvePanel({ circuit, onChange, revision, busy, onResult, onPreview, li
   // While the worker solves, the last answer for the same unknowns stays (stale: aria-busy, Apply off) rather than
   // "Solving…" for a few ms on every keystroke.
   const outcome = slow ? (late && (late.circuit === shown || sameMarks(late.circuit, shown)) ? late : null) : quick;
+  // Suggestions (M4.4b) when nothing is marked: suggest.ts in the worker, the newest request winning; the last list
+  // stays (stale) while the next is found.
+  const unmarked = askOf(shown).unknowns.length === 0;
+  const [sug, setSug] = useState<{ circuit: Circuit; lists: ValueChoice; o: Suggestions; ms: number } | null>(null);
+  useEffect(() => {
+    if (!unmarked) return undefined;
+    let live = true;
+    suggestOffPage(shown, { lists }).then((r) => {
+      if (live && r) setSug({ circuit: shown, lists, o: r.suggestions, ms: r.ms });
+    }, (error) => { if (live) console.error(error); });
+    return () => { live = false; };
+  }, [shown, lists, unmarked]);
+  useEffect(() => (unmarked ? undefined : cancelSuggest()), [unmarked]);
   const box = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (box.current) (box.current as HTMLElement & { smithSuggest?: unknown }).smithSuggest = sug;
+  }, [sug]);
   useEffect(() => {
     if (box.current) (box.current as HTMLElement & { smithSolve?: Outcome | null }).smithSolve = outcome;
     onResult?.(outcome);
@@ -535,13 +639,17 @@ function SolvePanel({ circuit, onChange, revision, busy, onResult, onPreview, li
   const makers = new Map<string, () => Circuit>();
   const makersRef = useRef(makers);
   makersRef.current = makers;
+  const shapes = new Map<string, CircleShape>();
+  const shapesRef = useRef(shapes);
+  shapesRef.current = shapes;
+  const sugBase = useRef<Circuit | null>(null);
   const pv = useRef({ hover: '', focus: '', shown: null as Circuit | null });
   const sendRef = useRef(onPreview);
   sendRef.current = onPreview;
   const showPreview = useCallback(() => {
     const s = pv.current, key = s.hover || s.focus, make = key ? makersRef.current.get(key) : undefined;
     const c = make ? make() : null;
-    if (c !== s.shown) { s.shown = c; sendRef.current?.(c); }
+    if (c !== s.shown) { s.shown = c; sendRef.current?.(c, (c && shapesRef.current.get(key)) ?? null, sugBase.current); }
   }, []);
   const keyAt = (e: React.SyntheticEvent): string => ((e.target as Element).closest?.('[data-pv]')?.getAttribute('data-pv')) ?? '';
   const onOver = (e: React.MouseEvent) => { const k = keyAt(e); if (k !== pv.current.hover) { pv.current.hover = k; showPreview(); } };
@@ -551,9 +659,37 @@ function SolvePanel({ circuit, onChange, revision, busy, onResult, onPreview, li
     if (!e.currentTarget.contains(e.relatedTarget as Node | null)) { pv.current.focus = ''; showPreview(); }
   };
   // A new outcome replaces the items: the preview goes with them; and with the panel.
-  useEffect(() => { pv.current.hover = ''; pv.current.focus = ''; showPreview(); }, [outcome, lists, showPreview]);
+  useEffect(() => { pv.current.hover = ''; pv.current.focus = ''; showPreview(); }, [outcome, sug, lists, showPreview]);
   useEffect(() => () => sendRef.current?.(null), []);
   const x: ListCtx = { c: oc, goal: askOf(oc).goal, node: r ? nodeText(r.goalNode) : '', stale, lists, apply, makers };
+
+  // The suggestions shown: for the circuit as it is, or (stale) the last ones while the next are found.
+  const unmarkedNow = status === 'nothing' && ask.unknowns.length === 0;
+  const sugShown = unmarkedNow ? sug : null;
+  const sugStale = unmarkedNow && (!sugShown || sugShown.circuit !== circuit || sugShown.lists !== lists);
+  sugBase.current = sugShown?.circuit ?? null;
+  let suggestBox: React.ReactNode = null;
+  if (unmarkedNow) {
+    if (!sugShown) suggestBox = <div className={styles.suggest} data-suggest-status="looking"><p className={styles.hint}>Looking for suggestions…</p></div>;
+    else {
+      const sc = sugShown.circuit, so = sugShown.o, sg = askOf(sc).goal, gn = goalNode(sg, sc.parts.length);
+      const sn = gn === sc.parts.length ? 'the input' : gn === 0 ? 'the load' : `node ${gn}`;
+      const applySug = (s: Solution) => { if (!sugStale) onChange(applySolution(sc, s)); };
+      const mark = (g: Suggestion) => {
+        if (sugStale) return;
+        let next = sc;
+        for (const u of g.unknowns) next = toggleUnknown(next, u).circuit;
+        onChange(next);
+      };
+      const sx: ListCtx = { c: sc, goal: sg, node: sn, stale: sugStale, lists: sugShown.lists, apply: applySug, makers, shapes };
+      suggestBox = (
+        <div className={styles.suggest} data-suggest-status={so.status}>
+          <p className={styles.suggestHead} data-suggest-head="">{suggestHead(so, sn, so.list.some((g) => g.meets))}</p>
+          {so.list.length > 0 && <SuggestionList x={sx} list={so.list} onMark={mark} />}
+        </div>
+      );
+    }
+  }
 
   let body: React.ReactNode = null;
   if (status === 'solving') body = <p className={styles.message}>Solving…</p>;
@@ -561,7 +697,7 @@ function SolvePanel({ circuit, onChange, revision, busy, onResult, onPreview, li
     body = (
       <p className={styles.message}>
         Nothing is marked yet. Select a part in the strip and press its value under “Solve for” on its card (a line or stub
-        also offers Zc), or press f0 above. Mark two values to reach a point, one to reach a circle.
+        also offers Zc), or press f0 above. Mark two values to reach a point, one to reach a circle; or take a suggestion.
       </p>
     );
   } else if (r) {
@@ -655,9 +791,10 @@ function SolvePanel({ circuit, onChange, revision, busy, onResult, onPreview, li
       {ask.unknowns.length > 0 && (
         <p className={styles.count} data-solve-count="">{countText(ask.unknowns.length, goal)} <Why k="solve-count" /></p>
       )}
-      <div className={styles.result} data-solve-status={status} aria-live="polite" aria-busy={stale || undefined}
+      <div className={styles.result} data-solve-status={status} aria-live="polite" aria-busy={stale || sugStale || undefined}
         onMouseOver={onOver} onMouseLeave={onOut} onFocus={onFocusIn} onBlur={onFocusOut}>
         {body}
+        {suggestBox}
         {r && r.circleNode >= 0 && <p className={styles.hint} data-solve-circles="">{circlesText(oc, r)} <Why k="solve-circles" /></p>}
         {r && r.solutions.length + (r.family?.ends.length ?? 0) > 0 && <span className={styles.applyWhy}><Why k="solve-apply" /></span>}
       </div>

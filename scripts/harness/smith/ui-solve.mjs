@@ -5,7 +5,8 @@
 // for that circuit (1e-12 relative); Apply makes the goal hold (input or node |Γ| from network.ts within 1e-9 of the
 // goal) and is one undo step; marking by mouse, by keyboard alone and by tap, a third mark replacing the oldest (and
 // saying so), unmarking, the goal's node, kind, typed figure and "or less" all in the link, read back after a reload,
-// and undone like the circuit's other edits; no horizontal scroll at 320 and 390 px.
+// and undone like the circuit's other edits; no horizontal scroll at 320 and 390 px. M4.3b's chart checks are in
+// ui-solve-chart.mjs, M4.4b's suggestions (nothing marked) in ui-solve-suggest.mjs.
 //   tsx ui-solve.mjs [screenshot folder] [base URL]      (part of npm run ui)
 
 import { spawn, execSync } from 'node:child_process';
@@ -21,6 +22,7 @@ import * as importedParts from '../../../lib/smith/parts.ts';
 import * as importedSolve from '../../../lib/smith/solve.ts';
 import * as importedGoal from '../../../lib/smith/goal.ts';
 import { runChartChecks, chartCounts } from './ui-solve-chart.mjs';
+import { runSuggestChecks, suggestCounts, SUGGEST } from './ui-solve-suggest.mjs';
 
 const S = importedState.default ?? importedState;
 const N = importedNetwork.default ?? importedNetwork;
@@ -382,6 +384,9 @@ try {
   // ---------- M4.3b: the circles, goal, previews, family slider, standard values and value lists (ui-solve-chart.mjs) ----------
   await runChartChecks({ p, browser, ok, load, open, settle, linked, query, offGoal, gammaAt, expected, CASES, frame });
 
+  // ---------- M4.4b: suggestions when nothing is marked (ui-solve-suggest.mjs) ----------
+  await runSuggestChecks({ p, browser, ok, load, open, settle, linked, query, gammaAt, frame });
+
   // ---------- touch at 390 and 320 px ----------
   for (const width of [390, 320]) {
     const phone = await browser.newContext({ viewport: { width, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, colorScheme: 'dark' });
@@ -425,6 +430,16 @@ try {
     await w.screenshot({ path: join(shots, 'solve-1440-light.png') });
     const d = await open(await browser.newContext({ viewport: { width: 1440, height: 1100 }, colorScheme: 'dark', deviceScaleFactor: 1000 / 1440 }), CASES.range);
     await d.screenshot({ path: join(shots, 'solve-1440-dark.png') });
+    // M4.4b: the suggestions, the first previewed with its circles.
+    for (const [width, scheme] of [[1440, 'light'], [1440, 'dark'], [390, 'dark'], [390, 'light']]) {
+      const ctx = await browser.newContext({ viewport: { width, height: width > 1000 ? 1100 : 844 }, colorScheme: scheme, deviceScaleFactor: width > 1000 ? 1000 / 1440 : 1 });
+      const sp = await open(ctx, SUGGEST.start);
+      await sp.locator('[data-solve]').scrollIntoViewIfNeeded();
+      await sp.focus('[data-suggestion="0"]');
+      await frame(sp);
+      await sp.screenshot({ path: join(shots, `suggest-${width}-${scheme}.png`) });
+      await ctx.close();
+    }
     await wide.close();
   }
   await desk.close();
@@ -436,6 +451,7 @@ await browser.close();
 stopServer();
 for (const failure of await Promise.all(failures)) console.log(`FAIL ${failure}`);
 console.log(`messages reached: ${[...seen].sort().join(', ')}; ${counts.solutions} solutions and ${counts.values} values against solve(), Apply on ${counts.applied}`);
+console.log(`suggestions: ${Object.entries(suggestCounts).map(([k, v]) => `${v} ${k}`).join(', ')}`);
 console.log(`on the chart: ${Object.entries(chartCounts).map(([k, v]) => `${v} ${k}`).join(', ')}`);
 console.log(`solving: ${passed} of ${passed + failed} checks passed`);
 process.exitCode = failed ? 1 : 0;

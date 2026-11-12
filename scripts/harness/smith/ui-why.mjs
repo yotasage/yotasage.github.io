@@ -65,8 +65,10 @@ const ALL = S.cleanAsk({ z0: 50, f0: 1e8, loadR: 25, loadX: 25, parts: S.KIND_OR
   { unknowns: [{ part: 0, param: 'value', free: true }, { part: 3, param: 'value' }], goal: { kind: 'point' } });
 // M4.3c: the same with a circle goal, so the family's slider (and its line) shows.
 const FAM = { ...ALL, ask: { ...ALL.ask, goal: { kind: 'vswr', value: 1.5, within: true } } };
-/** theory.md §8's 39 lines, M4.3a's five of the Solve panel and M4.3c's nine (theory-solver.md). */
-const LINES = 53;
+// M4.4b: nothing marked, so the panel shows its suggestions (and their line).
+const SUG = S.cleanAsk(ALL, { unknowns: [], goal: { kind: 'point' } });
+/** theory.md §8's 39 lines, M4.3a's five of the Solve panel, M4.3c's nine (theory-solver.md) and M4.4b's suggestions. */
+const LINES = 54;
 /** The Standard values setting is folded: open it so its lines are on the page. */
 const openLists = (page) => page.evaluate(() => { document.querySelector('[data-lists]').open = true; });
 
@@ -130,6 +132,12 @@ try {
   for (const k of await pf.$$eval('[data-why]', (els) => els.map((e) => e.getAttribute('data-why')))) if (!seen.has(k)) famKeys.add(k);
   for (const k of famKeys) seen.add(k);
   ok(famKeys.has('solve-family'), 'solve-family: beside the family slider');
+  const ps = await open(desk, SUG);
+  await ps.waitForSelector('[data-why="solve-suggest"]', { timeout: 15000 }).catch(() => {});
+  const sugKeys = new Set();
+  for (const k of await ps.$$eval('[data-why]', (els) => els.map((e) => e.getAttribute('data-why')))) if (!seen.has(k)) sugKeys.add(k);
+  for (const k of sugKeys) seen.add(k);
+  ok(sugKeys.has('solve-suggest'), 'solve-suggest: beside the first suggestion');
   for (const k of KEYS) ok(seen.has(k), `${k}: on the page`);
   ok(seen.size === LINES, () => `all ${LINES} lines seen (${seen.size})`);
 
@@ -145,8 +153,9 @@ try {
   }
   done.clear();
   for (const k of famKeys) followAll.push([-1, k]);
+  for (const k of sugKeys) followAll.push([-2, k]);
   for (const [i, k] of followAll) {
-    const p = i < 0 ? pf : page0;
+    const p = i === -1 ? pf : i === -2 ? ps : page0;
     if (i >= 0 && await p.getAttribute(`[data-tile="${i}"]`, 'aria-pressed') !== 'true') { await p.click(`[data-tile="${i}"]`); await frame(p); }
     done.add(k);
     const sel = `button[data-why="${k}"]`;
@@ -176,6 +185,8 @@ try {
   ok(counts.mouse === LINES - KIND_KEYS.length, () => `every info button was followed (${counts.mouse})`);
   ok(pf.errors.length === 0, () => `family page: no errors in the console (${pf.errors.join(' | ')})`);
   await pf.close();
+  ok(ps.errors.length === 0, () => `suggestions page: no errors in the console (${ps.errors.join(' | ')})`);
+  await ps.close();
   // Close by a second press and by a press elsewhere; one bubble at a time.
   await p.evaluate(() => window.scrollTo(0, 0));
   await p.click('button[data-why="snap"]');
