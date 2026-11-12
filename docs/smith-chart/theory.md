@@ -1,7 +1,9 @@
-# Smith chart – theory content (step M3.5a)
+# Smith chart – theory content (steps M3.5a, M4.3c)
 
 The source text of the page's Theory section and of the short lines beside the controls. Step M3.5b turns it into
-`components/Smith/Theory.tsx` and the References section (learning.md §5). Part of [plan.md](plan.md).
+`components/Smith/Theory.tsx` and the References section (learning.md §5). Part of [plan.md](plan.md). M4.3c added the
+solver's topics as §9–§11 in [theory-solver.md](theory-solver.md) (split off for size; §8 keeps its number, which
+whys.ts and claims.md name); on the page they follow topic 7, as topics 8–10.
 
 **How to read this file.**
 - One section per topic of learning.md §5, in that order. **Id** is the page anchor (`#moving-on-the-chart`).
@@ -11,7 +13,7 @@ The source text of the page's Theory section and of the short lines beside the c
   equation behind it is a definition or describes the tool (the checklist says which).
 - **Equations** are ids of `lib/smith/equations.ts` (`EQUATION_BY_ID`), shown in the order listed, with live
   numbers where the topic says so (notes-M1.4.md "For M3.5": `tex(tree)`, `tex(tree, {value})`, `valueTex`).
-  One id is **to add** (`mobius`, topic 4).
+  `mobius` (topic 4) was added in M3.5b; `mismatch-to-target` (topic 10) is **to add** (notes-M4.3c.md).
 - **Live numbers** name what the formulas carry and the engine function that gives it; values in brackets are those
   of the start circuit (D16: Z0 = 50 Ω, f0 = 100 MHz, load 25 + j25 Ω, series C of x = −1, shunt L of b = −1), worked
   by hand here and to be checked against the engine by M3.5b's harness. Node k is node k of
@@ -44,7 +46,7 @@ the chart by a series capacitor and a shunt inductor. ⟨1⟩ Change it, or pres
 
 The usual aim is to bring the input to the centre. There Γ = 0: nothing is reflected and all the power the source
 sends reaches the load [Ellingson2018 §3.20]. ⟨13⟩ The dashed circle around the centre is the tool's "close enough"
-(VSWR 1.5). ⟨14⟩
+(VSWR 1.5); it follows the goal when you choose another in the Solve panel. ⟨14⟩
 
 **Equations:** none (the topic links to the others).
 
@@ -427,7 +429,7 @@ At most about 12 words, after the control or under the readout row, followed by 
 | Fields Zc, Zt | The line's own impedance; not Z0 means a circle off-centre. | `transmission-lines` |
 | Ring (handle) on an arc | Drag to change this part's value along its circle. | `moving-on-the-chart` |
 | Z / Y / ZY | Which grid to read: r and x, g and b, or both. | `reading-the-chart` |
-| Snap | Drags settle on drawn grid circles and each kind’s listed values (E24 unless changed); Alt drags free. | `reading-the-chart` |
+| Snap | Drags settle on grid circles and each kind’s Standard values list; Alt drags free. | `realisable-values` |
 | Undo, Redo, Start over | Step through changes; Start over brings back the worked example. | `how-to-use` |
 | Fit, Reset, zoom | Zoom in near the centre; the grid fills in finer circles. | `reading-the-chart` |
 | Rim scales | Angle of Γ, and wavelengths towards the generator or the load. | `reading-the-chart` |
@@ -441,8 +443,23 @@ At most about 12 words, after the control or under the readout row, followed by 
 | Readout Return loss | Reflected power below incident, in dB; larger is better. | `how-good-is-a-match` |
 | Node table | Each node from the load to the input: z, Γ, VSWR, return loss. | `how-to-use` |
 | Circuit input | What the source sees: the end of the path, In. | `how-good-is-a-match` |
-| Goal mark and text | The centre is the match; dashed circle: VSWR 1.5, \|Γ\| ≤ 0.2. | `how-good-is-a-match` |
+| Goal mark and text | The solver’s goal; by default the centre, within \|Γ\| 0.2 (VSWR 1.5). | `how-good-is-a-match` |
+| Solve for (`solve-mark`) | Leave this value to the solver: it finds what meets the goal. | `two-one-or-none` |
+| L or C (`solve-free`) | An L adds +jx, a C −jx: the answer’s sign picks the kind. | `realisable-values` |
+| Goal selector (`solve-goal`) | Where it must hold, and a point or a circle to reach there. | `two-one-or-none` |
+| Counting line (`solve-count`) | A point needs two free values; a circle needs one. | `one-value-and-a-point` |
+| A solution row (`solve-solution`) | Values that meet the goal, and the \|Γ\| they give at its node. | `two-one-or-none` |
+| Apply (`solve-apply`) | Puts these values in the circuit as one step; Undo takes it back. | `how-to-use` |
+| Circles line (`solve-circles`) | Each unknown moves a node on a circle; answers are where they cross. | `two-one-or-none` |
+| Family slider (`solve-family`) | Slide the first value; the second follows to keep the goal. | `two-one-or-none` |
+| A variant (`solve-variant`) | The nearest standard values, and how far they move the input. | `realisable-values` |
+| Standard values (`solve-lists`) | The values parts come in, per kind; drags and variants use them. | `realisable-values` |
+| Its kind R (`list-R`) | E series of IEC 60063; E24 parts usually 5 %, E96 1 %. | `realisable-values` |
+| Its kind L (`list-L`) | Chip inductors come in makers’ own lists (1.9 nH): paste yours. | `realisable-values` |
+| Its kind C (`list-C`) | E series; RF chip capacitors below 10 pF have tolerances in pF. | `realisable-values` |
+| Its kind "Zt, Zc" (`list-Z`) | Any value by default; a list if your lines come in set impedances. | `realisable-values` |
 
 Facts in the short lines repeat claims of the topics they link to (Series L: claims 48, 56; Line: 61, 84; stubs: 95,
-97; λ/4: 89, 91; Z/Y/ZY: 38; VSWR: 101, 102; return loss: 104, 105; goal: 110); the checklist does not number them
-again.
+97; λ/4: 89, 91; Z/Y/ZY: 38; VSWR: 101, 102; return loss: 104, 105; goal: 110, 14; the solver's lines: claims.md);
+the checklist does not number them again.
+

@@ -12,7 +12,7 @@ without a source says "derived" on the page through its equation, or describes t
 
 **Checks.** `ui-theory.mjs`: every citation on the page resolves to an entry of the reference list, numbered by first
 citation; every #link of the page (contents, citations, nav, short lines) has its target; every live number equals
-the engine's. `ui-why.mjs`: all 39 short lines with their text, and every one's link opens a topic that exists.
+the engine's. `ui-why.mjs`: all short lines with their text (39 in M3.5, 44 after M4.3a, 53 after M4.3c), and every one's link opens a topic that exists.
 
 ## The theory, by topic (theory.md §1–7)
 
@@ -57,6 +57,49 @@ T) · 111 T.
 `q-node` · 128 D `q-node` · 129 T (M7).
 
 **Count:** 129 claims: 50 sourced (S, some with a derived part), 51 derived, 8 definitions, 20 describing the tool.
+
+**Changed in M4.3c:** 14 now adds "it follows the goal when you choose another in the Solve panel": T (solveLayer.ts
+ring from `askOf(c).goal`, ui-solve-chart); the default part stays T (`GOAL_VSWR`).
+
+## The solver's topics (theory-solver.md §9–11, M4.3c)
+
+Start-circuit numbers were worked by hand and checked against `solve` and `standardVariants` on `defaultCircuit()`
+(the example's marks and goal as theory.md says) with `npx tsx` in M4.3c; the page's harness checks them again.
+
+**9 Two, one or none.** 130 D `circle-r`, `circle-g`, 47, 52, 87 · 131 S M "Elementary properties"; D 69 (`mobius`) ·
+132 T (solve.ts, solver.md "Method"; ui-solve-chart) · 133 D 132; the construction S S3 §6.7 (as 115) · 134 D plane
+geometry (subtracting the circles' equations gives their radical line, which meets a circle 0, 1 or 2 times) · 135 D
+134 · 136 T (SolvePanel's result heads; ui-solve) · 137 S S3 §6.4 Example 6.4.2 (facts-cases C24) · 138 D
+`series-adds-z`, 47 · 139 T (solve.ts `sameJob`, notes-M4.1a); D 138 · 140 D `circle-r` (centre r/(r+1), radius
+1/(r+1)) · 141 D `circle-g` (centre −g/(g+1), radius 1/(g+1)), 52 · 142 D 134, `gamma-z`; engine: `circles` at node 1
+= (1/3, 2/3) and (−1/2, 1/2) · 143 D 116–119 · 144 D 123, `shunt-adds-y`, `b-shunt-c` · 145 D (engine residuals
+≤ 2e-16) · 146 D `circle-r`, `circle-g` (r = 1 and g = 1 touch at Γ = 0), `x-series-c` (X = −25 Ω); engine: one
+solution, L = ∞ · 147 D `circle-r`, 134, 121 · 148 S E §3.15 (84); T (solver.md "Counting") · 149 Def (a circle is
+one condition); D 134 · 150 D 149; T (`family`, notes-M4.1b) · 151 D `shunt-adds-y`, `gamma-y`, `vswr` (y = 1 + jB
+gives |Γ| = |B|/√(4 + B²), so |Γ| = 0.2 at B = ±1/√6, b = −1 ± 0.408), `b-shunt-l`; engine `family.at` · 152 T
+(slider, ui-solve-chart); the range from the engine (`ranges[0]`).
+
+**10 One value and a point.** 153 Def (16, 24) · 154 D 130 · 155 T (SolvePanel texts; ui-solve) · 156 Def; D
+`mismatch-to-target` (to add) · 157 D `mismatch-to-target` at Γt = 0 · 158 D 131 (Γ → (Γ − Γt)/(1 − Γt*Γ) is a
+Möbius map), plane geometry (a circle's point nearest a point lies on the line through its centre); T (solveLayer.ts
+draws `circles[4]`) · 159 D `circle-r`, 113 · 160 D `gamma-z` (the derivative in x² has the sign of 4r > 0) · 161 D
+160, `x-series-c`, `vswr`; engine (`best`: 63.66 pF, mismatch 1/3) · 162 T (`suggestSecond`) · 163 Def; D 134 · 164 D
+`x-series-c`, `vswr`; engine (`range` 26.43–39.99 pF; the closed form agrees to 1e-16) · 165 D 142; engine.
+
+**11 Realisable and standard values.** 166 Def (registry assumption: ideal parts) · 167 D `x-series-c`,
+`x-series-l`, `b-shunt-c`, `b-shunt-l` · 168 D 167, `omega`; T (the flag, `swapped`) · 169 T (`Unknown.free`,
+notes-M4.1a) · 170 D 144, `b-shunt-c`; engine (`swapped`) · 171 D 167 at x → 0 or b → 0 with `series-adds-z`,
+`shunt-adds-y` · 172 Def (a negative R gives |Γ| > 1: 1 − |Γ|² < 0 in `power-delivered`); T (solve.ts reason) · 173 D
+`quarter-wave`; T (notes-M4.1b "λ/4 limits") · 174 S E §3.15 (84); D `line-rotation`; T (`period`) · 175 D
+`line-rotation`, `line-theta`, `beta` (θ ∝ f at a fixed length); T (the note's text) · 176 S WikiE (via
+docs/resistor/facts.md; IEC 60063 as WikiE names it, its text not read) · 177 S WikiE (values near round(10^(n/24)));
+D 10^(1/24) = 1.101 · 178 S JohansonHighQ · 179 S WurthWEKI; "no E series has 1.9" D from WikiE's tables (E192 has
+1.89 and 1.91) · 180 T (values.ts `defaultChoice`, M4.3b) · 181 T (ui-drag) · 182 T (`standardVariants`,
+ui-solve-chart) · 183 D facts.md §4 E24 table · 184 D `vswr`, `return-loss`; engine `standardVariants` (33 pF + 82 nH
+worked by hand to 0.0377) · 185 D 184, 110 · 186 T; Def (registry assumptions) · 187 S WurthWEKI.
+
+**Count:** 58 claims (130–187): 10 sourced (some with a derived part), 31 derived, 6 definitions, 11 describing the
+tool. All: 187 claims.
 
 ## Sentences the page added (M3.5b, M3.5c)
 
@@ -108,7 +151,7 @@ Each repeats claims of the topic it links to; the tool's own behaviour is T. Key
 | field-zc | The line's own impedance; not Z0 means a circle off-centre. | S 87, 88 (S3 §3.5) |
 | ring | Drag to change this part's value along its circle. | T (claim 8; ui-drag) |
 | grid | Which grid to read: r and x, g and b, or both. | T 38 |
-| snap | Drags settle on drawn grid circles and each kind’s listed values (E24 unless changed); Alt drags free. | T (ui-drag) |
+| snap | Drags settle on grid circles and each kind’s Standard values list; Alt drags free. | T (ui-drag; 181) |
 | history | Step through changes; Start over brings back the worked example. | T (claims 2, 10; ui-edit) |
 | zoom | Zoom in near the centre; the grid fills in finer circles. | T 45 (grid.ts) |
 | rim | Angle of Γ, and wavelengths towards the generator or the load. | T 42; S 43 |
@@ -122,11 +165,27 @@ Each repeats claims of the topic it links to; the tool's own behaviour is T. Key
 | read-rl | Reflected power below incident, in dB; larger is better. | S 104, 105 |
 | nodes | Each node from the load to the input: z, Γ, VSWR, return loss. | T (claim 12; ui-path) |
 | input | What the source sees: the end of the path, In. | T; D 46, 50 |
-| goal | The centre is the match; dashed circle: VSWR 1.5, \|Γ\| ≤ 0.2. | S 13 (E §3.20); D 110; T 111 |
+| goal | The solver’s goal; by default the centre, within \|Γ\| 0.2 (VSWR 1.5). | D 110; T 14, 111 |
+| solve-mark | Leave this value to the solver: it finds what meets the goal. | T (132) |
+| solve-free | An L adds +jx, a C −jx: the answer’s sign picks the kind. | D 167; T 169 |
+| solve-goal | Where it must hold, and a point or a circle to reach there. | T (goal node and kind) |
+| solve-count | A point needs two free values; a circle needs one. | D 153, 149 |
+| solve-solution | Values that meet the goal, and the \|Γ\| they give at its node. | T (SolvePanel; 136) |
+| solve-apply | Puts these values in the circuit as one step; Undo takes it back. | T (ui-solve) |
+| solve-circles | Each unknown moves a node on a circle; answers are where they cross. | D 130, 133 |
+| solve-family | Slide the first value; the second follows to keep the goal. | T 152; D 150 |
+| solve-variant | The nearest standard values, and how far they move the input. | T 182 |
+| solve-lists | The values parts come in, per kind; drags and variants use them. | T 180–182 |
+| list-R | E series of IEC 60063; E24 parts usually 5 %, E96 1 %. | S 176 |
+| list-L | Chip inductors come in makers’ own lists (1.9 nH): paste yours. | S 179 |
+| list-C | E series; RF chip capacitors below 10 pF have tolerances in pF. | S 176, 178 |
+| list-Z | Any value by default; a list if your lines come in set impedances. | T 180 |
 
 ## Deliberately left out (not sourced)
 
-- Bandwidth and what Q means for it (sources.md: not yet sourced; M7).
+- Bandwidth and what Q means for it (sources.md: not yet sourced; M7). The λ/2 note (175) says only that the extra
+  turning grows with Δf, which is derived; how wide a band is stays for M7.
+- What tolerance does to a match, and lossy parts (186 says the tool computes neither).
 - That VSWR 1.5 is a usual "good enough": the page calls it the tool's default only (claim 111).
 - Physical line length with εeff and c: the page speaks of wavelengths and degrees only.
 - Lossy parts and why they leave the circles (BL42; not read in any source).
