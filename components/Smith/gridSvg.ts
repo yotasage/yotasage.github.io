@@ -76,6 +76,22 @@ export class GridLayer {
     return rebuilt;
   }
 
+  /**
+   * Whether the grid already built can still be shown, stretched, for this view: for the frames of a gesture, which
+   * stretch the layer as a whole and call update when it ends. False when there is no grid, the mode differs, the
+   * scale is more than 2× off the grid's or part of the chart in view lies outside what the grid holds.
+   */
+  holds(cx: number, cy: number, k: number, w: number, h: number, mode: number): boolean {
+    const g = this.grid;
+    if (!g || this.options.mode !== mode || !(w > 0 && h > 0 && k > 0)) return false;
+    const s = k / this.kq;
+    if (s < 0.5 || s > 2) return false;
+    // Only the chart and its scale ring need to be held: the view clipped to their square.
+    const R = 1 + (SCALE_ROOM_PX + 2) / this.kq, hw = w / (2 * k), hh = h / (2 * k), c = g.covers;
+    const x0 = Math.max(cx - hw, -R), x1 = Math.min(cx + hw, R), y0 = Math.max(cy - hh, -R), y1 = Math.min(cy + hh, R);
+    return !(x0 < x1 && y0 < y1 && (x0 < c.x0 || x1 > c.x1 || y0 < c.y0 || y1 > c.y1));
+  }
+
   private draw(g: Grid): void {
     const t0 = performance.now();
     this.grid = g;

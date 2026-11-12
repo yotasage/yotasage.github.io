@@ -4,7 +4,7 @@
 // independent polygon test) overlap at five zoom levels; Z, Y and ZY share one Γ plane (D13); both themes; no
 // horizontal scroll at 320 px; the time to rebuild the layer on a zoom change. Uses the dev server on port 3020 if it
 // runs, else starts one and stops it again.
-//   tsx ui-grid.mjs [screenshot folder] [base URL]      (npm run ui)
+//   tsx ui-grid.mjs [screenshot folder] [base URL]      (npm run ui runs it without screenshots, then ui-chart.mjs)
 
 import { spawn, execSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
@@ -47,12 +47,17 @@ const failures = [];
 let failed = 0;
 const ok = (condition, what) => { if (condition) passed++; else if (failed++ < 60) failures.push(what); };
 
-const ZOOMS = { 1: 0, 2: 1, 8: 3, 16: 4, 64: 6, 256: 8 };
+// The five centres M2.1b's page offered; the view is set through the chart's controller (M2.2 replaced the controls).
+const CENTRES = [[0, 0], [0.5, 0.3], [-0.95, 0], [0.95, 0], [0, 0.97]];
 const frame = (page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 async function setView(page, { zoom, centre, mode }) {
   if (mode) await page.getByRole('radio', { name: mode, exact: true }).check();
-  if (centre !== undefined) await page.getByLabel('Centre', { exact: true }).selectOption(String(centre));
-  if (zoom !== undefined) await page.getByLabel('Zoom', { exact: true }).fill(String(ZOOMS[zoom] ?? Math.log2(zoom)));
+  if (zoom !== undefined || centre !== undefined) {
+    await page.evaluate(([z, c]) => {
+      const v = document.querySelector('[data-chart]').smithChart;
+      v.setView(c ? c[0] : v.cx, c ? c[1] : v.cy, z === null ? v.k : v.kFit * z);
+    }, [zoom ?? null, centre === undefined ? null : CENTRES[centre]]);
+  }
   await frame(page);
 }
 async function open(context) {
@@ -253,8 +258,7 @@ const steps = [];
 for (let z = 0; z <= 10; z += 0.25) steps.push(z);
 for (const z of [...steps, ...steps.slice().reverse()]) {
   const before = await page.evaluate(() => Number(document.querySelector('svg[data-level]').dataset.builds));
-  await page.getByLabel('Zoom', { exact: true }).fill(String(z));
-  await frame(page);
+  await setView(page, { zoom: 2 ** z });
   zoomSteps++;
   const d = await page.evaluate(() => { const s = document.querySelector('svg[data-level]').dataset; return { b: Number(s.builds), build: Number(s.buildMs), dom: Number(s.domMs) }; });
   if (d.b !== before) times.push(d);
