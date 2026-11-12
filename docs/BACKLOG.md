@@ -1,6 +1,6 @@
 # Backlog
 
-Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL49**). When a row is
+Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL51**). When a row is
 scheduled it moves into the tool's plan (for the PCB viewer: [pcb-viewer/plan.md](pcb-viewer/plan.md); for the resistor
 lookup: [resistor/plan.md](resistor/plan.md); for the Smith chart: [smith-chart/plan.md](smith-chart/plan.md)) and the move is noted here; when it is done the row is removed and that is
 noted here too.
@@ -10,6 +10,8 @@ Done and removed: BL48 (Smith chart: grid labels inside the field when zoomed in
 
 | id | tool | what | why / trigger |
 |---|---|---|---|
+| BL50 | Smith chart | A line's and a stub's length also in metres with an εeff per part (engine.md §2: "electrical, or physical with εeff"); M3.1 gives the length in λ and in degrees at f0. `turnsFromMetres` / `metresFromTurns` of `lib/smith/parts.ts` exist; the link would gain an optional fourth number per line (`tl:len:Zc:εeff`) | 2026-11-12, left out of step M3.1 to keep its scope. Trigger: the owner asks for physical lengths, or M7 (sweep) needs a dispersive εeff |
+| BL49 | Smith chart | The grid's remaining staircase edges in shallow fine regions: where a finer step's region is under 4 blocks deep, `lib/smith/grid.ts` keeps the cell rule (whole blocks would empty it), so its edge still steps cell by cell; visible around r 0.6–0.9 at the whole chart. M2.3 cut the measured stairs from 335 to 122 (`check-grid.mjs`, region outlines); the rest needs a rule for shallow regions (e.g. outlines on circles of the next step only along one axis) that keeps lines ≥ minPx apart and the widest gap within the band | 2026-11-12, seen after M2.3 (notes-M2.3.md, region boundaries). Trigger: the chart's polish (M9) or the owner finds it disturbing |
 | BL47 | Smith chart | A printable cheat sheet: one page (A4, readable in black and white) with the key equations (Γ, z and y, the four circles with centre and radius, a line's input impedance, the λ/4 transformer, stubs), VSWR, return loss and mismatch loss with a small conversion table, the direction rules ("series L: clockwise along constant r", …) and the two-part matching recipe; generated from the tool's equation registry so it can never disagree with the tool; with blank Z, Y and ZY charts to print for exercises on paper; printed to PDF by the browser or saved as SVG | 2026-11-11: the owner asked for a cheat sheet while the tool was planned (docs/smith-chart/plan.md). Trigger: the equation layer (M5) exists; the blank charts could come with the SVG export (M8) |
 | BL46 | Smith chart | TikZ / LaTeX export of the chart and the schematic, after the resistor tool's TikZ export | 2026-11-11: in the Smith chart plan; the owner wants the chart in LaTeX documents. Trigger: the SVG export (M8) is done |
 | BL45 | Smith chart | A line part defined by physical length and εeff, with Z0 and εeff handed over from the EM tool by link or file | 2026-11-11: in the Smith chart plan. Trigger: the EM tool (TODO.md, "EM simulation") exists |

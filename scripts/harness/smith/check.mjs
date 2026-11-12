@@ -9,6 +9,7 @@ import { runNetworkChecks } from './check-network.mjs';
 import { runGeometryChecks } from './check-geometry.mjs';
 import { runEquationChecks } from './check-equations.mjs';
 import { runGridChecks } from './check-grid.mjs';
+import { runStateChecks } from './check-state.mjs';
 
 const quantity = importedQuantity.default ?? importedQuantity;
 const cx = importedComplex.default ?? importedComplex;
@@ -393,6 +394,10 @@ runEquationChecks({ section, ok, random });
 // ---------------------------------------------------------------------------------------------------------------
 // Grid (M2.1a): check-grid.mjs, with the same counters.
 runGridChecks({ section, ok, random });
+
+// ---------------------------------------------------------------------------------------------------------------
+// Circuit state and link (M3.1): check-state.mjs, with the same counters.
+runStateChecks({ section, ok, random });
 
 // ---------------------------------------------------------------------------------------------------------------
 const total =[...groups.values()].reduce((a, b) => a + b, 0);

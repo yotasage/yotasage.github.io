@@ -185,6 +185,8 @@ for (const [dx, dy] of [[120, -45], [-200, 80], [7, 3]]) {
 // keyboard: focus by Tab, the ring, arrows, + −, 0
 let focused = false;
 await page.mouse.move(5, 5);
+// Tab from the top of the page (from M3.1 the side panel after the chart has many fields, so no wrap-around).
+await page.evaluate(() => { document.querySelector('header a')?.focus(); });
 for (let i = 0; i < 12 && !focused; i++) {
   await page.keyboard.press('Tab');
   focused = await page.evaluate(() => document.activeElement?.hasAttribute('data-chart'));

@@ -5,12 +5,16 @@ import React, { useEffect, useState } from 'react';
 import HomeIcon from '../../components/icons/home';
 import { MoonIcon, SunIcon } from '../../components/Resistor/parts';
 import Chart from '../../components/Smith/Chart';
+import Strip from '../../components/Smith/Strip';
 import { MODE_Y, MODE_Z, MODE_ZY } from '../../lib/smith/grid';
+import { Circuit, decodeCircuit, defaultCircuit, encodeCircuit } from '../../lib/smith/state';
 import styles from '../../styles/Smith.module.css';
 
 // The Smith chart (milestone M2): the interactive chart in the site's frame, after the resistor tool: a slim bar
 // with the home link, the title and the theme switch, the chart as the hero with its tools above it and the readout
-// beside it on wide screens (below it on phones). The circuit comes with M3.
+// beside it on wide screens (below it on phones). From M3.1 the circuit (lib/smith/state.ts) is the page's state: read
+// from the link after mount (the static page has the start circuit), edited by the strip, and written back into the
+// link with history.replaceState on every change. `commit` is the one place a new circuit arrives (M3.3: undo).
 
 const MODES = [{ mode: MODE_Z, name: 'Z', title: 'Impedance grid: r and x circles' },
   { mode: MODE_Y, name: 'Y', title: 'Admittance grid: g and b circles' },
@@ -24,6 +28,25 @@ const DARK = { bg: '#2b2b2b', rule: '#3a3a38', quiet: '#8f8c83', link: '#b7b4ab'
 
 export default function SmithChart() {
   const [mode, setMode] = useState(MODE_Z);
+  const [circuit, setCircuit] = useState<Circuit>(defaultCircuit);
+  const [issues, setIssues] = useState<string[]>([]);
+  const [linked, setLinked] = useState(false);
+  // The circuit comes from the link once the page is in the browser (never at build time).
+  useEffect(() => {
+    const read = decodeCircuit(window.location.search);
+    if (read.linked) setCircuit(read.circuit);
+    setIssues(read.issues);
+    setLinked(true);
+  }, []);
+  // The circuit goes back into the link, without a new entry in the history.
+  useEffect(() => {
+    if (!linked) return;
+    const url = `${window.location.pathname}?${encodeCircuit(circuit)}${window.location.hash}`;
+    if (url !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
+      window.history.replaceState(window.history.state, '', url);
+    }
+  }, [linked, circuit]);
+  const commit = (next: Circuit) => setCircuit(next);
   // null: follow the system. Read after mount, so the static page and the first render agree.
   const [theme, setTheme] = useState<Theme | null>(null);
   useEffect(() => {
@@ -60,7 +83,7 @@ export default function SmithChart() {
     <div className={styles.root} data-theme={theme ?? undefined}>
       <Head>
         <title>Smith chart</title>
-        <meta name="description" content="A Smith chart to zoom and pan, with impedance, admittance and combined grids and a readout of z, y, Γ, VSWR and return loss." />
+        <meta name="description" content="A Smith chart with a circuit of series and shunt parts, lines and stubs, impedance, admittance and combined grids and a readout of z, y, Γ, VSWR and return loss." />
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <style jsx global>{`
@@ -118,7 +141,7 @@ export default function SmithChart() {
       </header>
 
       <main className={styles.layout}>
-        <Chart mode={mode} tools={modes} />
+        <Chart mode={mode} tools={modes} z0={circuit.z0} side={<Strip circuit={circuit} onChange={commit} issues={issues} />} />
       </main>
     </div>
   );
