@@ -1,16 +1,18 @@
 # Backlog
 
-Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL51**). When a row is
+Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL52**). When a row is
 scheduled it moves into the tool's plan (for the PCB viewer: [pcb-viewer/plan.md](pcb-viewer/plan.md); for the resistor
 lookup: [resistor/plan.md](resistor/plan.md); for the Smith chart: [smith-chart/plan.md](smith-chart/plan.md)) and the move is noted here; when it is done the row is removed and that is
 noted here too.
 
 Done and removed: BL48 (Smith chart: grid labels inside the field when zoomed in), done 2026-11-12 by step M2.3
-(`lib/smith/grid.ts`'s inner labels; notes in [smith-chart/notes-M2.3.md](smith-chart/notes-M2.3.md)).
+(`lib/smith/grid.ts`'s inner labels; notes in [smith-chart/notes-M2.3.md](smith-chart/notes-M2.3.md)). BL51 (Smith chart:
+main thread per frame while zooming at 4× CPU back under 6 ms), done 2026-11-12 after step M3.2 (turned grid labels
+drawn with `text-rendering: geometricPrecision`; notes in [smith-chart/notes-M3.2.md](smith-chart/notes-M3.2.md), "Fix
+after M3.2").
 
 | id | tool | what | why / trigger |
 |---|---|---|---|
-| BL51 | Smith chart | Bring the chart's main thread per frame while zooming at 4× CPU back under engine.md §9's 6 ms with the path drawn: M3.2's path adds 0.3–0.6 ms (start circuit) to 1 ms (10 parts) to the grid's 5.1–5.4 ms in headless Edge, so `ui-chart.mjs` bounds it at 6.5 ms. Candidates: the marks in one box moved by a CSS variable for the scale (one style write per frame instead of one per mark), the world arcs in a layer of their own stretched by CSS during gestures as the grid is | 2026-11-12, measured in step M3.2 (notes-M3.2.md, timings). Trigger: M3.3's drag frames, or a phone that drops frames |
 | BL50 | Smith chart | A line's and a stub's length also in metres with an εeff per part (engine.md §2: "electrical, or physical with εeff"); M3.1 gives the length in λ and in degrees at f0. `turnsFromMetres` / `metresFromTurns` of `lib/smith/parts.ts` exist; the link would gain an optional fourth number per line (`tl:len:Zc:εeff`) | 2026-11-12, left out of step M3.1 to keep its scope. Trigger: the owner asks for physical lengths, or M7 (sweep) needs a dispersive εeff |
 | BL49 | Smith chart | The grid's remaining staircase edges in shallow fine regions: where a finer step's region is under 4 blocks deep, `lib/smith/grid.ts` keeps the cell rule (whole blocks would empty it), so its edge still steps cell by cell; visible around r 0.6–0.9 at the whole chart. M2.3 cut the measured stairs from 335 to 122 (`check-grid.mjs`, region outlines); the rest needs a rule for shallow regions (e.g. outlines on circles of the next step only along one axis) that keeps lines ≥ minPx apart and the widest gap within the band | 2026-11-12, seen after M2.3 (notes-M2.3.md, region boundaries). Trigger: the chart's polish (M9) or the owner finds it disturbing |
 | BL47 | Smith chart | A printable cheat sheet: one page (A4, readable in black and white) with the key equations (Γ, z and y, the four circles with centre and radius, a line's input impedance, the λ/4 transformer, stubs), VSWR, return loss and mismatch loss with a small conversion table, the direction rules ("series L: clockwise along constant r", …) and the two-part matching recipe; generated from the tool's equation registry so it can never disagree with the tool; with blank Z, Y and ZY charts to print for exercises on paper; printed to PDF by the browser or saved as SVG | 2026-11-11: the owner asked for a cheat sheet while the tool was planned (docs/smith-chart/plan.md). Trigger: the equation layer (M5) exists; the blank charts could come with the SVG export (M8) |

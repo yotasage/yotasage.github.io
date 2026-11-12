@@ -496,6 +496,11 @@
   fill: var(--grid-label);
 }
 
+/* Turned labels (all but a few) are drawn unhinted by Skia anyway; geometricPrecision only stops their glyphs being
+   snapped to device pixels, which no eye sees, but it cuts Chromium's layerization of the grid's layer, done on every
+   frame of a gesture's stretch, from 2.0 to 1.0 ms at 4× CPU with ~250 labels (BL51, engine.md §9). */
+.grid text[transform] { text-rendering: geometricPrecision; }
+
 .grid text[data-kind='y'] { fill: var(--grid-y-ink); }
 .grid text[data-kind='scale'] { fill: var(--grid-scale-ink); }
 

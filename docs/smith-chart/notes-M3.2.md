@@ -55,13 +55,17 @@ piece clockwise, ⌊drawn turns⌋ = whole turns, the rest clockwise in the line
 in the readout's texts; goal distance. Selection: tile, row (toggle), click on arc and marker, hover on chart, row and
 tile, Enter / Shift+Tab / Space, strip arrows, CDP tap at 320 and 390 px; no horizontal scroll (table open and closed).
 
-## Timings (headless Edge, 1280 × 900, wheel zoom 2 s, 10 parts)
+## Timings (headless Edge, 1280 × 900, wheel zoom 2 s)
 
-Path script per frame p50 / p95: 0.0 / 0.1 ms at 1×, 0.1–0.3 / 0.4 ms at 4×; no dropped frame at 1×. Main thread per
-frame at 4× (fresh pages, path hidden vs shown): +0.3–0.6 ms with the start circuit, +0.7–1.1 ms with 10 parts, on a
-grid alone of 5.1–5.4 ms (dev server; ±0.5 ms run to run). So `ui-chart.mjs`'s bound is 6.5 ms (was 6; BL51 to win it
-back) and `ui-path.mjs` checks the path's share (≤ 1.5 ms) and dropped frames against the hidden-path page. After
-long harness runs this laptop measures up to 8–9 ms for the same page (heat): rerun a timing failure alone.
+Path script per frame p50 / p95: 0.0 / 0.1 ms at 1×, 0.1–0.3 / 0.4 ms at 4×; at 4× the path adds 0.3–1.1 ms of main
+thread per frame (start circuit to 10 parts; `ui-path.mjs` bounds it at 1.5). Heat after long runs: rerun alone.
+
+## Fix after M3.2 (BL51)
+
+Traced at 4×: Layerize ran on every stretch frame, 2.45 ms, 2.0 of it the ~250 hinted, turned grid labels.
+`geometricPrecision` on them halves it (glyphs not pixel-snapped; invisible). Main thread a frame 5.3–6.3 →
+3.7–4.3 ms (start circuit), 4.2–5.0 (10 parts); bound back at 6 ms. Left: rotate nodes (0.6 ms) and 5 rebuilds per
+gesture (~35 ms at 4×, one dropped frame each): the 4× interval p95 sits on the 17 / 33 ms edge.
 
 ## For M3.3
 
