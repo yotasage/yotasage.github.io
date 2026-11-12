@@ -1,6 +1,6 @@
 # Smith chart – the learning layer
 
-Equations, theory and teaching content (M1.4, M3.5, M5, M6). Part of [plan.md](plan.md); decisions D5 and D6 there.
+Equations, theory and teaching content (M1.4, M3.5, M5, M6, M7.4). Part of [plan.md](plan.md); decisions D5 and D6 there.
 The main purpose of the tool is learning and teaching: a user must be able to catch up at any moment, understand what
 to do and how things work, without leaving the page.
 
@@ -105,14 +105,23 @@ with these slips to fix before anything reaches the screen:
 - The circle forms of g and b are missing: (Γr + g/(1+g))² + Γi² = (1/(1+g))² and (Γr + 1)² + (Γi + 1/b)² = (1/b)².
   The sign of b is written correctly in the notes (b = −2Γi/(Γi² + (Γr+1)²)).
 
-## 7. Teaching content (M6, outline)
+## 7. Teaching content (M6)
 
-Detailed after owner checkpoint 2; the owner confirms which are built.
+All three confirmed by the owner at checkpoint 2 (2026-11-12); steps in milestones.md M6.
 
-- **Worked examples**, 12 to 20, each loaded in one click, with the owner's own numbers (concepts cited, no text copied
-  from books), step-by-step guidance and hints.
-- **Challenges** (to confirm): generated or curated problems ("bring this load to the centre") checked against a
-  tolerance, a hint ladder, "reveal the solution" via the solver; progress kept in the browser.
-- **Lesson links** (to confirm): a link that opens a prepared circuit, can lock chosen parameters and hide the solver or
-  the solution, for a teacher to hand out. Everything is in the link.
-- A printable **cheat sheet** with blank charts is BL47, generated from the same registry.
+- **Worked examples**, 12 to 20, each loaded in one click (one undo step), with the owner's kind of numbers (concepts
+  cited, no text copied from books). Each is data: a circuit link string, then steps of "what to do", the state that
+  counts as done (a value or a node's z within a stated tolerance), one hint and its theory topic. The guide panel
+  checks the visitor's own circuit, so any way of getting there counts. Written and checked in M6.1 (`examples.md`).
+- **Challenges**: a kind (two parts to the centre, a stub, a λ/4 transformer, |Γ| ≤ a goal with E24 values, "read
+  this point") and a seed, both in the link (`ch=<kind>.<seed>`), so a challenge is a link and the same seed is the
+  same problem. The generator offers only problems `solve()` can do with the allowed parts. Reached when the goal's
+  test holds at f0 (default |Γ| ≤ 0.05) using only the allowed kinds. While one runs, the Solve panel and suggestions
+  are hidden. Hint ladder, one step per press: the circle to reach (drawn), the part kind and its direction, the first
+  value to two digits, then "reveal" = the solver's solutions with Apply. Progress (solved per kind, hints used, fewest
+  parts) in `localStorage` only.
+- **Lesson links**: the circuit's link plus a lesson part: locks (load, f0, Z0, each part's kind or value), hidden
+  panels (Solve, suggestions, a challenge's reveal) and the teacher's short plain-text instructions (at most 500
+  characters, shown as text, never as HTML). A "Make a lesson link" panel writes it. A lock is a teaching aid, not
+  security: anyone can edit the link, and the page says so to the teacher.
+- A printable **cheat sheet** is BL47; its blank charts come with M8.1a (the figure export with the circuit off).
