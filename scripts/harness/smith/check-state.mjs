@@ -7,8 +7,10 @@
 
 import * as importedState from '../../../lib/smith/state.ts';
 import * as importedParts from '../../../lib/smith/parts.ts';
+import * as importedValues from '../../../lib/smith/values.ts';
 
 const S = importedState.default ?? importedState;
+const VL = importedValues.default ?? importedValues;
 const P = importedParts.default ?? importedParts;
 const {
   encodeCircuit, decodeCircuit, defaultCircuit, sameCircuit, circuitProblem, numText, readNum, KIND_CODES, MAX_PARTS,
@@ -208,6 +210,43 @@ export function runStateChecks({ section, ok, random }) {
   const saved = rndBox.f;
   rndBox.f = own;
   try { runAskChecks({ section, ok, rnd: own, circuit, pos }); } finally { rndBox.f = saved; }
+  // M4.3b, also on a stream of its own.
+  let seed2 = 4312026;
+  const own2 = () => { seed2 = (seed2 + 0x6d2b79f5) >>> 0; let t = seed2; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  rndBox.f = own2;
+  try { runListsChecks({ section, ok, rnd: own2, circuit }); } finally { rndBox.f = saved; }
+}
+
+// M4.3b: the value lists (vl) beside the circuit in the link, as the page writes them (a '+' as %2B).
+function runListsChecks({ section, ok, rnd, circuit }) {
+  section('state: value lists in the link (M4.3b)');
+  const kinds = VL.VALUE_KINDS, ids = VL.LIST_IDS;
+  const pageLink = (c, choice) => { const t = VL.choiceToText(choice); return `?${encodeCircuit(c)}${t ? `&${S.LISTS_PARAM}=${t.replace(/\+/g, '%2B')}` : ''}`; };
+  let trips = 0, quiet = 0, same = 0;
+  for (let i = 0; i < 2000; i++) {
+    const choice = VL.defaultChoice();
+    for (const k of kinds) {
+      if (rnd() < 0.5) continue;
+      const id = ids[Math.floor(rnd() * ids.length)];
+      if (id !== 'own') { choice[k] = { id }; continue; }
+      const values = Array.from({ length: 1 + Math.floor(rnd() * 12) }, () => (rnd() < 0.1 ? 10 ** (300 * rnd() - 150) : 10 ** (-13 + 20 * rnd())) * (1 + rnd()));
+      choice[k] = { id: 'own', values: values.sort((a, b) => a - b) };
+    }
+    const c = circuit(), d = decodeCircuit(pageLink(c, choice));
+    const back = VL.choiceFromText(d.lists ?? '');
+    // The text holds every value as JavaScript writes it, so equal texts are equal lists to the bit.
+    if (VL.choiceToText(back) === VL.choiceToText(choice) && kinds.every((k) => back[k].id === choice[k].id)) trips++;
+    if (d.issues.length === 0) quiet++;
+    if (sameCircuit(d.circuit, c)) same++;
+  }
+  ok(trips === 2000 && quiet === 2000 && same === 2000, `2,000 random value-list choices through the link: ${trips} read back, ${quiet} without issues, ${same} circuits unchanged`);
+  const only = decodeCircuit('?vl=L12,C6');
+  ok(only.lists === 'L12,C6' && !only.linked && only.issues.length === 0, `a link with only vl is no circuit link and has no issue: ${JSON.stringify(only.issues)}`);
+  ok(decodeCircuit(`?${encodeCircuit(defaultCircuit())}`).lists === null, 'a link without vl has no lists (the page then reads localStorage)');
+  const bad = VL.choiceFromText(decodeCircuit('?vl=Q9,L77,Co,Cx_1').lists);
+  ok(VL.choiceToText(bad) === '', `broken vl tokens keep the defaults: ${VL.choiceToText(bad)}`);
+  const big = decodeCircuit(`?vl=${'Co1e-12_2.2e+21'.replace(/\+/g, '%2B')}`);
+  ok(VL.choiceFromText(big.lists).C.values[1] === 2.2e21, `an exponent's '+' survives the link: ${big.lists}`);
 }
 
 // M4.3a: what the solver is asked (unknowns and goal) in the circuit, the link, the toggles and the edits.

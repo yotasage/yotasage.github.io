@@ -6,12 +6,10 @@
 // halves (each text costs layout and paint: 3–5 ms a frame at 4× CPU for all of them): the part's own texts, the
 // circuit input, the goal and the first half of the changed table rows; then the other rows.
 
-import { formatAmount } from '../../lib/quantity';
 import type { Circuit } from '../../lib/smith/network';
 import { circuitInputGamma, formsOf, formValue } from '../../lib/smith/state';
-import { nodeTexts } from './Nodes';
-import { GOAL_MAG } from './pathLayer';
-import { READOUT_DIGITS, readoutTexts } from './readout';
+import { goalLine, nodeTexts } from './Nodes';
+import { readoutTexts } from './readout';
 import { formText } from './Strip';
 
 const INPUT = [['z', 0], ['Z', 1], ['gamma', 4], ['vswr', 6], ['rl', 7]] as const;
@@ -38,12 +36,13 @@ export function writeLive(root: ParentNode, c: Circuit, part: number, half = -1)
   }
   if (half === 1) return;
   circuitInputGamma(g, 0, c);
-  const mag = Math.hypot(g[0], g[1]);
   const goal = root.querySelector('[data-goal-text]');
   if (goal) {
-    put(goal.querySelector('[data-goal-distance]'), formatAmount(mag, '', READOUT_DIGITS, true));
-    put(goal.querySelector('strong'), mag <= GOAL_MAG ? 'inside' : 'outside');
-    goal.toggleAttribute('data-inside', mag <= GOAL_MAG);
+    // The goal's node and kind are the circuit's (M4.3b); Nodes.tsx writes the same texts.
+    const line = goalLine(c);
+    put(goal.querySelector('[data-goal-distance]'), line.distance);
+    put(goal.querySelector('strong'), line.word);
+    if (goal.hasAttribute('data-inside') !== line.met) goal.toggleAttribute('data-inside', line.met);
   }
   readoutTexts(g[0], g[1], c.z0, texts);
   for (const [key, i] of INPUT) put(root.querySelector(`[data-input="${key}"]`), texts[i]);

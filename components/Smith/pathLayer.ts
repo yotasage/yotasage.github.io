@@ -21,17 +21,20 @@
 // per handle by the page's history).
 
 import { formatAmount } from '../../lib/quantity';
-import { SeriesId, series, standardValue } from '../../lib/resistor/eseries';
-import { magFromVswr } from '../../lib/smith/convert';
+import { SeriesId, series } from '../../lib/resistor/eseries';
+import { goalNode } from '../../lib/smith/goal';
+import { goalMark } from '../../lib/smith/goalView';
 import {
   ARC_CX, ARC_CY, ARC_EX, ARC_EY, ARC_MX, ARC_MY, ARC_R, ARC_STRIDE, ARC_SWEEP, ARC_SX, ARC_SY, ARC_TURNS,
-  L_A, L_KIND, L_MODE, LOCUS_FIXED, LOCUS_STRIDE, locusPoint, locusValue, nodeLocus, partArcs, project,
+  L_A, L_KIND, L_MODE, LOCUS_FIXED, LOCUS_STRIDE, locusPoint, locusValue, nodeLocus, partArcs, project, projectOnCircle,
 } from '../../lib/smith/geometry';
+import { around, defaultChoice, valueKindOf } from '../../lib/smith/values';
+import type { ValueChoice, ValueList } from '../../lib/smith/values';
 import { FAM_AXIS, FAM_B, FAM_G, FAM_R, FAM_X, MODE_Y } from '../../lib/smith/grid';
 import { NODE_STRIDE, evaluate, nodeGamma } from '../../lib/smith/network';
 import type { Circuit } from '../../lib/smith/network';
-import { PART_STRIDE, PartKind, SHUNT_C, packParts } from '../../lib/smith/parts';
-import { KIND_NAMES, MAX_PARTS, insertPart, startPart, stepValue, withPart } from '../../lib/smith/state';
+import { LINE, PART_STRIDE, PartKind, STUB_OPEN, STUB_SHORT, packParts } from '../../lib/smith/parts';
+import { KIND_NAMES, MAX_PARTS, askOf, insertPart, startPart, stepValue, withPart } from '../../lib/smith/state';
 import { ChartView, DIRTY_CONTENT, DIRTY_VIEW, TAP_MS, TAP_SLOP } from './chartView';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -42,9 +45,8 @@ export const SEL_NONE = 0;
 export const SEL_PART = 1;
 export const SEL_NODE = 2;
 
-/** The goal of engine.md §8 until M4 makes it a choice: the match (Γ = 0), close enough within VSWR 1.5. */
-export const GOAL_VSWR = 1.5;
-export const GOAL_MAG = magFromVswr(GOAL_VSWR);
+/** A point target is close enough within VSWR 1.5 of it (engine.md §8); the ring itself is solveLayer.ts's (M4.3b). */
+export { GOAL_MAG, GOAL_VSWR } from '../../lib/smith/goalView';
 
 /** A part's colour, the same for its tile in the strip, its arc and its arrow. */
 export const partColour = (index: number): string => `var(--part-${(index % 8) + 1})`;
@@ -70,10 +72,8 @@ const EDGE_PX = 24;
 /** Pick radius in px around a marker (its own radius is 9) and around an arc. */
 const PICK_NODE_PX = 13;
 const PICK_ARC_PX = 10;
-/** The dashed line from the input to the goal is drawn when they are at least this far apart in px. */
+/** The dashed line from the goal's node to the goal is drawn when they are at least this far apart in px. */
 const GOAL_LINE_PX = 16;
-/** The goal's ring is dashed up to this radius in px, solid beyond. */
-const RING_DASH_PX = 600;
 /** A handle's hit radius in px: a 44 px touch target at any zoom. */
 export const HANDLE_PX = 22;
 /** A drag snaps to a grid circle or a standard value whose point on the part's locus is this close in px. */
@@ -81,12 +81,15 @@ export const SNAP_PX = 8;
 /** A mouse press on a handle that moves less than this (L1, px) and ends within TAP_MS is a click (a finger: TAP_SLOP). */
 const MOUSE_SLOP = 3;
 /**
- * The series a dragged R, L or C snaps to. E24 for all three: the owner's choice of a series for inductors is still
- * open (milestones.md M3.3), and this constant is the one place to change it.
+ * The value list a dragged part snaps to and its keys step through: per kind of value (plan.md D17, values.ts), the
+ * visitor's choice (setLists); the defaults are E24 for R, L and C, any value (no value snapping) for Zt and lengths.
+ * VKIND is values.ts valueKindOf per part kind; SNAP_UNIT the unit of the snap mark's label.
  */
-export const SNAP_SERIES: SeriesId = 'E24';
-const SNAP_MANTISSAS = series(SNAP_SERIES).mantissas;
-const SNAP_UNIT = ['Ω', 'H', 'F', 'Ω', 'H', 'F'];
+const VKIND = Array.from({ length: 10 }, (_, k) => valueKindOf(k));
+const SNAP_UNIT = ['Ω', 'H', 'F', 'Ω', 'H', 'F', 'λ', 'λ', 'λ', 'Ω'];
+const LIST_NAME = (l: ValueList): string => (l.id === 'own' ? 'own list' : l.id);
+/** Any list for stepValue: lengths then step by whole degrees. */
+const LENGTH_STEPS: readonly number[] = [];
 const FAM_NAME = ['r', 'x', 'g', 'b'];
 const KEY_UNIT = ['Ω', 'H', 'F', 'Ω', 'H', 'F', 'λ', 'λ', 'λ', 'Ω'];
 /** What a drag snapped to: nothing, a grid circle, a standard value. */
@@ -126,6 +129,10 @@ export class PathLayer {
   onLive: ((c: Circuit, part: number, half: number) => void) | null = null;
   /** Snapping (the page's switch; Alt turns it off for one drag move). */
   snap = true;
+  /** The value list per kind (D17): dragging snaps to it, the keys step through it (setLists). */
+  lists: ValueChoice = defaultChoice();
+  /** Mantissas of each part kind's list when it is an E-series (the keys' steps), else null. */
+  private keyMantissas: (readonly number[] | null)[] = [];
   /** The part being dragged (−1 none) and what the last move snapped to (harness and M3.3b). */
   dragPart = -1;
   snapCode = SNAP_NONE; snapFamily = -1; snapGridValue = NaN; snapX = NaN; snapY = NaN; snapLabel = '';
@@ -144,8 +151,14 @@ export class PathLayer {
   private readonly worldGroup: SVGGElement;
   private readonly arcGroup: SVGGElement;
   private readonly halo: SVGPathElement;
-  private readonly ring: SVGCircleElement;
   private readonly overlay: HTMLDivElement;
+  /** The goal (M4.3b: the circuit's ask): its node, where its mark goes (goalView.ts goalMark: the point in 0…1, the
+   * goal's circle in 2…5 when it has no mark) and whether it has one. */
+  private goalK = 0;
+  private readonly goalAt = new Float64Array(6);
+  private goalHasMark = true;
+  private goalMarkShown = true;
+  private readonly proj = new Float64Array(2);
   private readonly goal: HTMLSpanElement;
   private readonly goalLine: HTMLSpanElement;
   private arcEls: SVGPathElement[] = [];
@@ -197,11 +210,11 @@ export class PathLayer {
 
   constructor(view: ChartView) {
     this.view = view;
+    this.setLists(this.lists);
     this.worldGroup = el('g', { 'data-layer': 'path' });
-    this.ring = el('circle', { 'data-goal-ring': '' });
     this.halo = el('path', { 'data-halo': '', d: '' });
     this.arcGroup = el('g', { 'data-arcs': '' });
-    this.worldGroup.append(this.ring, this.halo, this.arcGroup);
+    this.worldGroup.append(this.halo, this.arcGroup);
     view.world.appendChild(this.worldGroup);
 
     // Constant-size marks are HTML elements over the chart, each moved by a CSS transform in one strictly contained
@@ -311,6 +324,9 @@ export class PathLayer {
     }
     this.circuit = c;
     const n = c.parts.length;
+    const goal = askOf(c).goal;
+    this.goalK = Math.min(goalNode(goal, n), n);
+    this.goalHasMark = goalMark(this.goalAt, goal, c.z0);
     this.parts = packParts(c.parts, this.parts);
     if (this.nodes.length < (n + 1) * NODE_STRIDE) {
       this.nodes = new Float64Array((n + 1) * NODE_STRIDE);
@@ -507,11 +523,39 @@ export class PathLayer {
 
   get drawing(): boolean { return this.drawFrom !== null; }
 
-  /** One arrow-key step of part i's value (stepValue; E24 when snapping is on), committed with the group `key:i`. */
+  /** The value lists per kind (D17): what a drag snaps to and what the keys step through from now on. */
+  setLists(choice: ValueChoice): void {
+    this.lists = choice;
+    this.keyMantissas = VKIND.map((vk) => {
+      const id = choice[vk]?.id;
+      return id && id !== 'own' && id !== 'any' ? series(id as SeriesId).mantissas : null;
+    });
+  }
+
+  /**
+   * One arrow-key step of part i's value, committed with the group `key:i`: with snapping on, the next value of the
+   * kind's list (stepValue's E-series steps, an own list's next entry, three entries with Shift) and lengths by whole
+   * degrees; otherwise, or for any value, stepValue's plain steps.
+   */
   keyStep(i: number, up: boolean, coarse: boolean): void {
     const c = this.circuit;
     if (!c || this.dragPart >= 0 || !(i >= 0 && i < this.count)) return;
-    const p = c.parts[i], v = stepValue(p.kind, p.value, up, coarse, this.snap ? SNAP_MANTISSAS : null, c);
+    const p = c.parts[i], list = this.lists[VKIND[p.kind]];
+    let v = NaN;
+    if (this.snap && list?.id === 'own' && list.values?.length && p.value > 0 && p.value < Infinity) {
+      const vals = list.values;
+      let j = 0;
+      while (j < vals.length && vals[j] < p.value * (1 - 1e-9)) j++;
+      const at = j < vals.length && vals[j] <= p.value * (1 + 1e-9);
+      const step = coarse ? 3 : 1;
+      const k = up ? (at ? j + step : j + step - 1) : j - step;
+      v = vals[Math.max(0, Math.min(vals.length - 1, k))];
+    }
+    if (!(v === v)) {
+      const lengths = p.kind === LINE || p.kind === STUB_OPEN || p.kind === STUB_SHORT;
+      const ms = !this.snap ? null : lengths ? LENGTH_STEPS : this.keyMantissas[p.kind] ?? null;
+      v = stepValue(p.kind, p.value, up, coarse, ms, c);
+    }
     if (v === p.value) return;
     const next = withPart(c, i, { ...p, value: v });
     this.setCircuit(next);
@@ -563,20 +607,20 @@ export class PathLayer {
     const v = this.view, loc = this.loc, kind = loc[L_KIND], p = this.pt;
     this.best = SNAP_PX / v.k;
     this.bestValue = NaN;
-    if (kind <= SHUNT_C && raw > 0 && raw < Infinity) {
-      const dec = Math.floor(Math.log10(raw)), x = raw * 10 ** (2 - dec), ms = SNAP_MANTISSAS;
-      let j = 0;
-      while (j < ms.length && ms[j] <= x) j++;
-      for (let s = 0; s < 2; s++) {
-        const c = s === 0
-          ? (j > 0 ? standardValue(ms[j - 1], dec) : standardValue(ms[ms.length - 1], dec - 1))
-          : (j < ms.length ? standardValue(ms[j], dec) : standardValue(ms[0], dec + 1));
+    // The list's neighbours of the value (values.ts around: none for any value, NaN beyond an own list's ends).
+    const list = this.lists[VKIND[kind]];
+    const nb = list && list.id !== 'any' ? around(raw, list) : null;
+    if (nb) {
+      for (let s = 0; s < (nb.exact ? 1 : 2); s++) {
+        const c = s === 0 ? nb.below : nb.above;
+        if (!(c > 0 && c < Infinity)) continue;
         locusPoint(p, 2, loc, 0, c);
         const d = Math.hypot(p[2] - qx, p[3] - qy);
         if (d < this.best) {
           this.best = d; this.bestValue = c; this.snapX = p[2]; this.snapY = p[3];
           this.snapCode = SNAP_STANDARD; this.snapFamily = -1; this.snapGridValue = NaN;
-          this.snapLabel = `${formatAmount(c, SNAP_UNIT[kind], 3)} · ${SNAP_SERIES}`;
+          const unit = SNAP_UNIT[kind];
+          this.snapLabel = `${unit === 'λ' ? `${formatAmount(c, '', 3)} λ` : formatAmount(c, unit, 3)} · ${LIST_NAME(list)}`;
         }
       }
     }
@@ -734,11 +778,6 @@ export class PathLayer {
       const d = arcPath(arcs, a, fx, fy, fk);
       if (d !== this.d[i]) { this.d[i] = d; this.arcEls[i].setAttribute('d', d); }
     }
-    this.ring.setAttribute('cx', String(-fx * fk));
-    this.ring.setAttribute('cy', String(fy * fk));
-    this.ring.setAttribute('r', String(GOAL_MAG * fk));
-    // Dashes are generated along the whole stroke, visible or not: a ring larger than the view is drawn solid.
-    this.ring.toggleAttribute('data-solid', GOAL_MAG * fk > RING_DASH_PX);
   }
 
   /** Markers, arrows and the goal in box px: every frame the view or the circuit changed. */
@@ -786,9 +825,18 @@ export class PathLayer {
       if (ds) this.drawEl.style.transform = `translate(${x}px,${y}px)`;
     }
     if (ds !== this.drawShown) { this.drawShown = ds; this.drawEl.hidden = !ds; }
-    const x0 = v.screenX(0), y0 = v.screenY(0);
-    this.goal.style.transform = `translate(${x0}px,${y0}px)`;
-    const xi = v.screenX(g[2 * n]), yi = v.screenY(g[2 * n + 1]);
+    // The goal's mark, and the line to it from the goal's node (to the nearest point of an r, g, x or b circle).
+    const gk = this.goalK, ga = this.goalAt;
+    let x0 = NaN, y0 = NaN;
+    if (this.goalHasMark) {
+      x0 = v.screenX(ga[0]); y0 = v.screenY(ga[1]);
+      this.goal.style.transform = `translate(${x0}px,${y0}px)`;
+    } else {
+      projectOnCircle(this.proj, 0, ga, 2, g[2 * gk], g[2 * gk + 1]);
+      if (Math.hypot(this.proj[0], this.proj[1]) <= 1 + 1e-9) { x0 = v.screenX(this.proj[0]); y0 = v.screenY(this.proj[1]); }
+    }
+    if (this.goalHasMark !== this.goalMarkShown) { this.goalMarkShown = this.goalHasMark; this.goal.hidden = !this.goalHasMark; }
+    const xi = v.screenX(g[2 * gk]), yi = v.screenY(g[2 * gk + 1]);
     let line = xi === xi && yi === yi && Math.hypot(xi - x0, yi - y0) >= GOAL_LINE_PX ? 1 : 0;
     // Only the part inside the box is drawn (a dashed stroke costs per dash, also off screen).
     if (line && clipSegment(seg, xi, yi, x0, y0, -EDGE_PX, -EDGE_PX, w + EDGE_PX, h + EDGE_PX)) {

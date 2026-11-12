@@ -1,11 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
 import { formatAmount } from '../../lib/quantity';
+import { goalMag, goalNode, goalPole, goalValue, isWithin } from '../../lib/smith/goal';
+import { GOAL_MAG, GOAL_VSWR, goalGamma, goalPoint, goalStanding } from '../../lib/smith/goalView';
 import { M_ANGLE, M_MAG, M_RL, M_VSWR, M_ZI, M_ZR, METRIC_STRIDE, evaluateCircuit } from '../../lib/smith/network';
-import type { Circuit } from '../../lib/smith/network';
+import { askOf } from '../../lib/smith/state';
+import type { Circuit } from '../../lib/smith/state';
 import { toDegrees } from '../../lib/smith/convert';
 import styles from '../../styles/Smith.module.css';
-import { GOAL_MAG, GOAL_VSWR, nodeLabel, nodeName } from './pathLayer';
+import { nodeLabel, nodeName } from './pathLayer';
 import { READOUT_DIGITS, complexText } from './readout';
 import { Why } from './Why';
 
@@ -24,6 +27,8 @@ export interface NodesProps {
 }
 
 const num = (v: number, unit = ''): string => formatAmount(v, unit, READOUT_DIGITS, true);
+/** A goal's figure as typed (no trailing zeros). */
+const fig = (v: number, unit = ''): string => formatAmount(v, unit, READOUT_DIGITS);
 
 export interface NodeTexts { z: string; gamma: string; vswr: string; rl: string }
 
@@ -42,11 +47,49 @@ export function nodeTexts(c: Circuit): NodeTexts[] {
   return out;
 }
 
+const gg = new Float64Array(2);
+
+/** How the goal's node stands to the goal (M4.3b: the circuit's goal): the distance's text, the word and whether it holds. */
+export function goalLine(c: Circuit): { distance: string; word: string; met: boolean } {
+  const goal = askOf(c).goal;
+  goalGamma(gg, 0, c, goal);
+  const s = goalStanding(goal, gg[0], gg[1], c.z0);
+  return { distance: num(s.distance), met: s.met, word: s.mode === 'circle' ? (s.met ? 'on it' : 'off it') : s.met ? 'inside' : 'outside' };
+}
+
+const FIG: Record<string, string> = { r: 'r', g: 'g', x: 'x', b: 'b' };
+
+/** The goal in words: what it is (with its node and how the chart draws it), whose distance follows and in what. */
+function goalWords(c: Circuit): { what: string; who: string; how: string } {
+  const goal = askOf(c).goal, n = c.parts.length, k = Math.min(goalNode(goal, n), n);
+  const at = k === n ? '' : ` at ${k === 0 ? 'the load' : `node ${k}`}`;
+  const who = k === n ? 'The input' : k === 0 ? 'The load' : `Node ${k}`;
+  const p = goalPoint(goal);
+  if (p) {
+    const R = p.targetR ?? c.z0, X = p.targetX ?? 0;
+    const centre = R === c.z0 && X === 0;
+    const what = centre ? 'the match (Γ = 0, the centre)' : R === Infinity ? 'the open (Γ = 1)' : `Z = ${complexText(R, X, 'Ω')}`;
+    return {
+      what: `${what}${at}, close enough within VSWR ${num(GOAL_VSWR)} ${centre ? `(|Γ| ≤ ${num(GOAL_MAG)}, dashed)` : 'of it (dashed)'}`,
+      who, how: centre ? 'from it in |Γ|' : 'from it in |Γ| as seen from the target',
+    };
+  }
+  const v = goalValue(goal), m = goalMag(goal), within = isWithin(goal);
+  const rel = within ? (goal.kind === 'rl' ? '≥' : '≤') : '=';
+  const mt = `|Γ| ${within ? '≤' : '='} ${fig(m)}`;
+  const figure = goal.kind === 'mag' ? `|Γ| ${rel} ${fig(v)}` : goal.kind === 'vswr' ? `VSWR ${rel} ${fig(v)} (${mt})`
+    : goal.kind === 'rl' ? `return loss ${rel} ${fig(v, 'dB')} (${mt})` : `${FIG[goal.kind]} = ${fig(v)}`;
+  if (within) return { what: `${figure}${at} (dashed)`, who, how: 'from the centre in |Γ|' };
+  const pole = goalPole(goal);
+  const poleText = pole ? ` Every ${FIG[goal.kind]} circle runs through the ${pole > 0 ? 'open (Γ = 1)' : 'short (Γ = −1)'}, crossed out: a value that makes it is no answer.` : '';
+  return { what: `the circle ${figure}${at} (dashed).${poleText}`, who, how: 'from it in Γ' };
+}
+
 export default function Nodes({ circuit, selected, onSelect, onHover }: NodesProps) {
   const n = circuit.parts.length;
   const rows = useMemo(() => nodeTexts(circuit), [circuit]);
-  const { metrics } = useMemo(() => evaluateCircuit(circuit), [circuit]);
-  const mag = metrics[n * METRIC_STRIDE + M_MAG];
+  const line = useMemo(() => goalLine(circuit), [circuit]);
+  const words = useMemo(() => goalWords(circuit), [circuit]);
   // Open beside the chart, closed on phones (read after mount, so the static page and the first render agree).
   const [open, setOpen] = useState(true);
   useEffect(() => { if (window.matchMedia('(max-width: 599px)').matches) setOpen(false); }, []);
@@ -78,10 +121,10 @@ export default function Nodes({ circuit, selected, onSelect, onHover }: NodesPro
             </li>
           ))}
         </ol>
-        <p className={styles.goalText} data-goal-text="" data-inside={mag <= GOAL_MAG ? '' : undefined}>
+        <p className={styles.goalText} data-goal-text="" data-inside={line.met ? '' : undefined}>
           <span className={styles.goalMark} aria-hidden="true" />
-          Goal: the match (Γ = 0, the centre), close enough within VSWR {num(GOAL_VSWR)} (|Γ| ≤ {num(GOAL_MAG)}, dashed).
-          {' '}The input is <b data-goal-distance="">{num(mag)}</b> from it in |Γ|: <strong>{mag <= GOAL_MAG ? 'inside' : 'outside'}</strong>.<Why k="goal" />
+          Goal: {words.what}{words.what.endsWith('.') ? '' : '.'}
+          {' '}{words.who} is <b data-goal-distance="">{line.distance}</b> {words.how}: <strong>{line.word}</strong>.<Why k="goal" />
         </p>
       </details>
     </section>

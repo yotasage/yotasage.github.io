@@ -114,3 +114,13 @@ agents in `<session id>/subagents/agent-*.jsonl`. Every assistant line has `mess
 `cache_creation_input_tokens`, `cache_read_input_tokens` and `output_tokens` (lines with the same `message.id` are one
 call; count them once). The context of a call is the sum of the three input figures; summing them over the calls and
 listing the largest tool results shows where the usage went.
+
+## Timing a step against the commit before it
+
+The machine's baseline drifts more than a step costs (notes-M4.3a.md, notes-M4.3b.md), so a frame budget is judged by
+an interleaved A/B: the commit before in a `git worktree` inside the repo (`.ab-head`, with a temporary
+`next.config.js` of `module.exports = { turbopack: { root: require('path').resolve(__dirname, '..') } }` so Turbopack
+finds the repo's `node_modules`), its dev server on another port, and the same timing run on both servers in turn.
+Stop that server and delete the copy's `.next` with `cmd /c rmdir /s /q .next` **before** `git worktree remove`:
+Turbopack's `.next/node_modules` holds junctions to the real packages, and a recursive delete follows them (it emptied
+`node_modules/katex` once; `npm install` put it back).

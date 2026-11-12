@@ -39,7 +39,7 @@ export const WHYS: Readonly<Record<string, Why>> = {
   'field-zc': w('the line impedance', 'transmission-lines', 'The line’s own impedance; not Z0 means a circle off-centre.'),
   ring: w('the rings', 'moving-on-the-chart', 'Drag to change this part’s value along its circle.'),
   grid: w('Z, Y and ZY', 'reading-the-chart', 'Which grid to read: r and x, g and b, or both.'),
-  snap: w('Snap', 'reading-the-chart', 'Drags settle on drawn grid circles and E24 values; Alt drags free.'),
+  snap: w('Snap', 'reading-the-chart', 'Drags settle on drawn grid circles and each kind’s listed values (E24 unless changed); Alt drags free.'),
   history: w('Undo, Redo and Start over', 'how-to-use', 'Step through changes; Start over brings back the worked example.'),
   zoom: w('Fit, Reset and zoom', 'reading-the-chart', 'Zoom in near the centre; the grid fills in finer circles.'),
   rim: w('the rim scales', 'reading-the-chart', 'Angle of Γ, and wavelengths towards the generator or the load.'),

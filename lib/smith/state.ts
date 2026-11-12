@@ -472,8 +472,13 @@ export function circuitInputGamma(out: Float64Array | number[], o: number, c: Ci
 //   figure), ":within" for |Γ| ≤ m, VSWR ≤ s, RL ≥ dB, and "@k" for node k (0 the load) when it is not the input
 //   ("g=vswr:1.5:within", "g=pt:25:10@1", "g=x:0").
 
+// vl the value lists of D17 (M4.3b; values.ts choiceToText: "vl=L12,Co1e-12_2.2e-12"), only when not the defaults. Not part
+//   of the circuit (no undo step): decodeCircuit hands its text back as `lists`, the page reads it with choiceFromText.
+
 export const LINK_VERSION = 1;
-const PARAMS = ['v', 'z0', 'f0', 'zl', 'p', 'u', 'g'];
+const PARAMS = ['v', 'z0', 'f0', 'zl', 'p', 'u', 'g', 'vl'];
+/** The link's parameter of the value lists (M4.3b). */
+export const LISTS_PARAM = 'vl';
 const GOAL_CODE = (k: GoalKind): string => (k === 'point' ? 'pt' : k);
 
 /** A double as the shortest digits that read back to it, in engineering form: "100e6", "0.125", "31.83098861837907e-12", "inf". */
@@ -628,6 +633,8 @@ export interface Decoded {
   issues: string[];
   /** Whether the link held any of the circuit's parameters (else it is the start state). */
   linked: boolean;
+  /** The text of the value lists (vl), null when the link has none; not a circuit parameter (`linked` ignores it). */
+  lists: string | null;
 }
 
 const quote = (s: string): string => `“${s.length > 40 ? `${s.slice(0, 40)}…` : s}”`;
@@ -644,7 +651,7 @@ export function decodeCircuit(search: string): Decoded {
   try {
     params = new URLSearchParams(String(search ?? ''));
   } catch {
-    return { circuit: c, issues: ['the link could not be read; the start circuit is shown'], linked: false };
+    return { circuit: c, issues: ['the link could not be read; the start circuit is shown'], linked: false, lists: null };
   }
   let linked = false;
   for (const key of new Set(params.keys())) {
@@ -714,7 +721,7 @@ export function decodeCircuit(search: string): Decoded {
       else c.parts.push(part);
     }
   }
-  return { circuit: readAsk(c, get('u'), get('g'), issues), issues, linked };
+  return { circuit: readAsk(c, get('u'), get('g'), issues), issues, linked, lists: params.get(LISTS_PARAM) };
 }
 
 /** Whether two circuits are the same to the bit, what the solver is asked included (the page's "changed" test). */

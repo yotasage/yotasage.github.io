@@ -108,7 +108,7 @@ Each repeats claims of the topic it links to; the tool's own behaviour is T. Key
 | field-zc | The line's own impedance; not Z0 means a circle off-centre. | S 87, 88 (S3 §3.5) |
 | ring | Drag to change this part's value along its circle. | T (claim 8; ui-drag) |
 | grid | Which grid to read: r and x, g and b, or both. | T 38 |
-| snap | Drags settle on drawn grid circles and E24 values; Alt drags free. | T (ui-drag) |
+| snap | Drags settle on drawn grid circles and each kind’s listed values (E24 unless changed); Alt drags free. | T (ui-drag) |
 | history | Step through changes; Start over brings back the worked example. | T (claims 2, 10; ui-edit) |
 | zoom | Zoom in near the centre; the grid fills in finer circles. | T 45 (grid.ts) |
 | rim | Angle of Γ, and wavelengths towards the generator or the load. | T 42; S 43 |

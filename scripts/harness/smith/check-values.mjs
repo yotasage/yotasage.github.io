@@ -54,6 +54,31 @@ export function runValueChecks({ section, ok, near, random }) {
       ok(candidates(e, { id }).length === 1 && candidates(e * 1.01, { id }).length === 2, `${id}: an exact value is its own candidate, another has two`);
     }
     ok(bad === 0, `E6–E96 neighbours across decades (${n} values, ${bad} bad)`);
+    // M4.3b: around's fast search (four values round the mantissa's place) equals eseries.ts `neighbours` to the bit,
+    // also on standard values, their ±1 ulp and decade edges; and it is cheap enough for every pointer move of a drag.
+    {
+      let diff = 0, m = 0;
+      // A stream of its own: the solver's groups after this one keep their random problems.
+      let seed = 4313026;
+      const own = () => { seed = (seed + 0x6d2b79f5) >>> 0; let t = seed; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+      for (const id of ['E6', 'E12', 'E24', 'E48', 'E96']) {
+        const vals = [];
+        for (let k = 0; k < 3000; k++) vals.push(10 ** (-14 + 22 * own()));
+        for (let d = -13; d <= 7; d++) for (const mt of ES.series(id).mantissas) { const v = Number(`${mt}e${d - 2}`); vals.push(v, v * (1 + 2 ** -52), v * (1 - 2 ** -53), v * (1 + 1e-10), v * (1 - 1e-10)); }
+        for (const v of vals) {
+          const a = around(v, { id }), b = ES.neighbours(v, id);
+          m++;
+          const want = b.exact ? { below: v, above: v, exact: true } : { below: b.below, above: b.above, exact: false };
+          if (!(a && a.exact === want.exact && Object.is(a.below, want.below) && Object.is(a.above, want.above))) { diff++; if (diff < 4) ok(false, `${id}: around ${v}: ${JSON.stringify(a)} vs neighbours ${JSON.stringify(want)}`); }
+        }
+      }
+      ok(diff === 0, `around equals eseries.ts neighbours (${m} values, ${diff} differ)`);
+      const t0 = performance.now();
+      let s = 0;
+      for (let k = 0; k < 20000; k++) s += around(1e-12 * (1 + k * 0.37), { id: 'E96' }).above;
+      const us = ((performance.now() - t0) * 1000) / 20000;
+      ok(us < 5 && s > 0, `around in E96: ${us.toFixed(2)} µs per value (budget 5 µs)`);
+    }
     // An own list: neighbours inside, the ends, exact.
     const own = { id: 'own', values: [1e-9, 2.2e-9, 4.7e-9, 10e-9] };
     const r1 = around(3e-9, own), r2 = around(0.5e-9, own), r3 = around(20e-9, own), r4 = around(4.7e-9, own);

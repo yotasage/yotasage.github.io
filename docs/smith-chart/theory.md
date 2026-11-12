@@ -427,7 +427,7 @@ At most about 12 words, after the control or under the readout row, followed by 
 | Fields Zc, Zt | The line's own impedance; not Z0 means a circle off-centre. | `transmission-lines` |
 | Ring (handle) on an arc | Drag to change this part's value along its circle. | `moving-on-the-chart` |
 | Z / Y / ZY | Which grid to read: r and x, g and b, or both. | `reading-the-chart` |
-| Snap | Drags settle on drawn grid circles and E24 values; Alt drags free. | `reading-the-chart` |
+| Snap | Drags settle on drawn grid circles and each kind’s listed values (E24 unless changed); Alt drags free. | `reading-the-chart` |
 | Undo, Redo, Start over | Step through changes; Start over brings back the worked example. | `how-to-use` |
 | Fit, Reset, zoom | Zoom in near the centre; the grid fills in finer circles. | `reading-the-chart` |
 | Rim scales | Angle of Γ, and wavelengths towards the generator or the load. | `reading-the-chart` |

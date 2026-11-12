@@ -20,6 +20,7 @@ import * as importedNetwork from '../../../lib/smith/network.ts';
 import * as importedParts from '../../../lib/smith/parts.ts';
 import * as importedSolve from '../../../lib/smith/solve.ts';
 import * as importedGoal from '../../../lib/smith/goal.ts';
+import { runChartChecks, chartCounts } from './ui-solve-chart.mjs';
 
 const S = importedState.default ?? importedState;
 const N = importedNetwork.default ?? importedNetwork;
@@ -339,6 +340,9 @@ try {
     ok(!S.sameNetwork(await linked(p), before), 'Apply by Enter');
   } else ok(false, 'Tab reaches Apply');
 
+  // ---------- M4.3b: the circles, goal, previews, family slider, standard values and value lists (ui-solve-chart.mjs) ----------
+  await runChartChecks({ p, browser, ok, load, open, settle, linked, query, offGoal, gammaAt, expected, CASES, frame });
+
   // ---------- touch at 390 and 320 px ----------
   for (const width of [390, 320]) {
     const phone = await browser.newContext({ viewport: { width, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, colorScheme: 'dark' });
@@ -393,5 +397,6 @@ await browser.close();
 stopServer();
 for (const failure of await Promise.all(failures)) console.log(`FAIL ${failure}`);
 console.log(`messages reached: ${[...seen].sort().join(', ')}; ${counts.solutions} solutions and ${counts.values} values against solve(), Apply on ${counts.applied}`);
+console.log(`on the chart: ${Object.entries(chartCounts).map(([k, v]) => `${v} ${k}`).join(', ')}`);
 console.log(`solving: ${passed} of ${passed + failed} checks passed`);
 process.exitCode = failed ? 1 : 0;

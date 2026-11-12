@@ -1,4 +1,4 @@
-import React, { memo, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import React, { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 
 import { formatAmount, readAmount } from '../../lib/quantity';
 import { goalNode, goalProblem, goalValue, isWithin } from '../../lib/smith/goal';
@@ -9,6 +9,8 @@ import type { Solution, SolvedValue, SolveResult, ValueRange } from '../../lib/s
 import {
   Ask, askOf, Circuit, cleanAsk, KIND_NAMES, numText, toggleUnknown, Unknown, unknownName, withGoal, withPart,
 } from '../../lib/smith/state';
+import { LIST_IDS, VALUE_UNITS, parseOwnList, standardVariants } from '../../lib/smith/values';
+import type { ListId, ValueChoice, ValueKind, Variant } from '../../lib/smith/values';
 import styles from '../../styles/SmithSolve.module.css';
 import base from '../../styles/Smith.module.css';
 import { nodeName } from './pathLayer';
@@ -42,8 +44,13 @@ export interface SolvePanelProps {
   revision?: number;
   /** Whether a drag or a draw is in progress (a slow solve waits for its end). */
   busy?: () => boolean;
-  /** Every new outcome (M4.3b draws its circles, the family's slider uses `result.family`). */
+  /** Every new outcome (the chart draws its circles: solveLayer.ts). */
   onResult?: (outcome: Outcome | null) => void;
+  /** A solution's circuit to draw as a preview on the chart, null for none (M4.3b). */
+  onPreview?: (c: Circuit | null) => void;
+  /** The value lists per kind (D17) and their change (the page keeps them in the link and localStorage). */
+  lists: ValueChoice;
+  onLists: (next: ValueChoice) => void;
 }
 
 /** A slow solve waits this long after the last change, and again while a drag is in progress. */
@@ -215,28 +222,209 @@ function ValueText({ c, v }: { c: Circuit; v: SolvedValue }) {
   );
 }
 
-function SolutionList({ c, list, onApply, stale, best, node }: {
-  c: Circuit; list: Solution[]; onApply: (s: Solution) => void; stale: boolean; best?: boolean; node: string;
-}) {
+/**
+ * What the solution lists share: the solved circuit and its goal, Apply, whether the outcome is behind the circuit,
+ * the value lists, and the previews (a key per previewable item, `data-pv`; the panel looks the key up on hover and
+ * focus and draws that circuit on the chart).
+ */
+interface ListCtx {
+  c: Circuit;
+  goal: Goal;
+  node: string;
+  stale: boolean;
+  lists: ValueChoice;
+  apply: (s: Solution) => void;
+  makers: Map<string, () => Circuit>;
+}
+
+/** A solution with the values of a standard-value variant (values.ts standardVariants) in place of its own. */
+const withValues = (s: Solution, values: readonly number[]): Solution => ({ ...s, values: s.values.map((v, j) => ({ ...v, value: values[j] })) });
+
+/** How near the goal a variant comes, in the words of its goal. */
+function variantMeta(g: Goal, v: Variant, node: string): string {
+  if (g.kind === 'point') return `comes within ${small(v.mismatch)} of the target (|Γ| = ${small(v.gamma)} at ${node})`;
+  const within = isWithin(g);
+  return `|Γ| = ${small(v.gamma)} at ${node}; ${v.meets ? (within ? 'keeps the goal' : 'on the goal') : `${within ? 'outside the goal' : 'off the goal'} by ${small(v.residual)}`}`;
+}
+
+/** The standard values next to a solution's (none when every list is "any value"), each with Apply and a preview. */
+function Variants({ x, s, pv }: { x: ListCtx; s: Solution; pv: string }) {
+  const list = useMemo(() => standardVariants(x.c, x.goal, s, x.lists), [x.c, x.goal, s, x.lists]);
+  if (!list.some((v) => !v.exact)) return null;
+  return (
+    <div className={styles.variantBox}>
+      <span className={styles.variantHead}>With standard values:</span>
+      <ul className={styles.variants} data-variants="">
+        {list.map((v, j) => {
+          const key = `${pv}:${j}`, sv = withValues(s, v.values);
+          x.makers.set(key, () => applySolution(x.c, sv));
+          return (
+            <li key={j} className={styles.variant} data-variant={j} data-pv={key} tabIndex={0} data-meets={v.meets ? '' : undefined}
+              aria-label={`Standard values ${j + 1}: focus to preview on the chart`}>
+              <span className={styles.variantValues}>
+                {sv.values.map((u, i) => (
+                  <span key={i} data-variant-value="" data-raw={numText(u.value)}>
+                    {i ? ', ' : ''}{symbolOf(u.param === 'value' ? u.kind : x.c.parts[u.part]?.kind ?? -1, u.param)} = <b>{amount(u.param === 'value' ? u.kind : x.c.parts[u.part]?.kind ?? -1, u.param, u.value)}</b>
+                  </span>
+                ))}
+              </span>
+              <span className={styles.meta}>{variantMeta(x.goal, v, x.node)}</span>
+              <button type="button" className={`${base.button} ${styles.small}`} data-apply-variant={j} disabled={x.stale}
+                onClick={() => x.apply(sv)} title="Put these standard values in the circuit (one step; Undo takes it back)">Apply</button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function SolutionList({ x, list, best, item = 'solution' }: { x: ListCtx; list: Solution[]; best?: boolean; item?: 'solution' | 'member' }) {
   return (
     <ol className={styles.solutions}>
-      {list.map((s, k) => (
-        <li key={k} className={styles.solution} data-solution={k} data-residual={numText(s.residual)}>
-          <div className={styles.values}>{s.values.map((v, j) => <ValueText key={j} c={c} v={v} />)}</div>
-          <div className={styles.meta}>
-            {best
-              ? <span>comes within <b>{small(s.mismatch)}</b> of the target (|Γ| = {small(s.gamma)} at {node})</span>
-              : <span>|Γ| = {small(s.gamma)} at {node}; off the goal by {small(s.residual)}</span>}
-            {!s.realisable && !s.atF0Only && <span className={styles.flag}> not of the part’s own kind</span>}
-          </div>
-          <span className={styles.applyGroup}>
-            <button type="button" className={base.button} data-apply={k} disabled={stale} onClick={() => onApply(s)}
-              title="Put these values in the circuit (one step; Undo takes it back)">Apply</button>
-          </span>
-        </li>
-      ))}
+      {list.map((s, k) => {
+        const key = `${item}:${k}`;
+        x.makers.set(key, () => applySolution(x.c, s));
+        const attrs = item === 'solution' ? { 'data-solution': k } : { 'data-member': k };
+        return (
+          <li key={k} className={styles.solution} {...attrs} data-residual={numText(s.residual)} data-pv={key} tabIndex={0}
+            aria-label={`${item === 'solution' ? 'Solution' : 'Member'} ${k + 1}: focus to preview its path on the chart`}>
+            <div className={styles.values}>{s.values.map((v, j) => <ValueText key={j} c={x.c} v={v} />)}</div>
+            <div className={styles.meta}>
+              {best
+                ? <span>comes within <b>{small(s.mismatch)}</b> of the target (|Γ| = {small(s.gamma)} at {x.node})</span>
+                : <span>|Γ| = {small(s.gamma)} at {x.node}; off the goal by {small(s.residual)}</span>}
+              {!s.realisable && !s.atF0Only && <span className={styles.flag}> not of the part’s own kind</span>}
+            </div>
+            <span className={styles.applyGroup}>
+              <button type="button" className={base.button} {...{ [item === 'solution' ? 'data-apply' : 'data-apply-member']: k }} disabled={x.stale}
+                onClick={() => x.apply(s)} title="Put these values in the circuit (one step; Undo takes it back)">Apply</button>
+            </span>
+            <div className={styles.variantRow}><Variants x={x} s={s} pv={`v${key}`} /></div>
+          </li>
+        );
+      })}
     </ol>
   );
+}
+
+/** Positions of the family's slider: the ranges of the first unknown laid end to end. */
+const FAMILY_STEPS = 1000;
+/** A member is taken this far (relative) inside its range's ends, which the list of ends already gives. */
+const FAMILY_INSET = 1e-6;
+
+/** The first unknown's coordinate at slider position p over the ranges laid end to end. */
+export function familyT(ranges: readonly ValueRange[], p: number): number {
+  let total = 0;
+  for (const g of ranges) total += g.t1 - g.t0;
+  let u = (p / FAMILY_STEPS) * total;
+  for (let k = 0; k < ranges.length; k++) {
+    const g = ranges[k], len = g.t1 - g.t0;
+    if (u <= len || k === ranges.length - 1) {
+      const f = Math.min(Math.max(u / len, FAMILY_INSET), 1 - FAMILY_INSET);
+      return g.t0 + f * len;
+    }
+    u -= len;
+  }
+  return NaN;
+}
+
+/** The family's slider: a value of the first unknown inside its ranges and the 0 to 2 members there, live (D14: keys, touch). */
+function FamilySlider({ x, r, onMove }: { x: ListCtx; r: SolveResult; onMove: () => void }) {
+  const ranges = r.ranges;
+  const [pos, setPos] = useState(() => {
+    let total = 0;
+    for (const g of ranges) total += g.t1 - g.t0;
+    return Math.round((0.5 * (ranges[0].t1 - ranges[0].t0) / total) * FAMILY_STEPS);
+  });
+  const t = familyT(ranges, pos);
+  const members = useMemo(() => r.family!.at(t), [r, t]);
+  x.makers.set('fam', () => (members.length ? applySolution(x.c, members[0]) : x.c));
+  useEffect(onMove, [t, onMove]);
+  const first = members[0]?.values[0];
+  const firstText = first ? `${symbolOf(first.param === 'value' ? first.kind : x.c.parts[first.part]?.kind ?? -1, first.param)} = ${amount(first.param === 'value' ? first.kind : x.c.parts[first.part]?.kind ?? -1, first.param, first.value)}` : 'no member here';
+  return (
+    <div className={styles.family} data-family="">
+      <label className={styles.familyLabel}>
+        <span>Pick a member by {unknownName(x.c, r.unknowns[0])}:</span>
+        <input type="range" className={styles.slider} min={0} max={FAMILY_STEPS} step={1} value={pos} data-family-slider="" data-pv="fam"
+          data-t={numText(t)} aria-valuetext={firstText} onChange={(e) => setPos(Number(e.target.value))} />
+      </label>
+      <p className={styles.familyNow} data-family-first={first ? numText(first.value) : ''}>
+        {first ? <>{firstText}{first.swapped ? ' (true at this frequency only)' : ''}: {members.length === 2 ? 'two values' : 'one value'} of {unknownName(x.c, r.unknowns[1])}</> : 'No member at this value.'}
+      </p>
+      {members.length > 0 && <SolutionList x={x} list={members} item="member" />}
+    </div>
+  );
+}
+
+const LIST_KINDS: { kind: ValueKind; name: string }[] = [{ kind: 'R', name: 'R' }, { kind: 'L', name: 'L' }, { kind: 'C', name: 'C' }, { kind: 'Z', name: 'Zt, Zc' }];
+const listName = (id: string): string => (id === 'own' ? 'own list' : id === 'any' ? 'any value' : id);
+/** An own list as text to edit (no spaces inside an amount, so the reader splits only between values). */
+const ownText = (kind: ValueKind, values: readonly number[]): string =>
+  values.map((v) => formatAmount(v, VALUE_UNITS[kind], 4).replace(/\s+/g, '')).join(', ');
+
+/** The value list per kind (D17): what Snap and the standard values below each solution use; kept in the link. */
+function ListsSetting({ lists, onLists }: { lists: ValueChoice; onLists: (next: ValueChoice) => void }) {
+  const [texts, setTexts] = useState<Partial<Record<ValueKind, string>>>({});
+  const [rejected, setRejected] = useState<Partial<Record<ValueKind, string[]>>>({});
+  const choose = (kind: ValueKind, id: ListId) => {
+    if (id === 'own') {
+      const values = lists[kind].id === 'own' ? lists[kind].values ?? [] : [];
+      setTexts((t) => ({ ...t, [kind]: t[kind] ?? ownText(kind, values) }));
+      onLists({ ...lists, [kind]: { id, values } });
+    } else onLists({ ...lists, [kind]: { id } });
+  };
+  const typeOwn = (kind: ValueKind, text: string) => {
+    setTexts((t) => ({ ...t, [kind]: text }));
+    const { values, rejected: bad } = parseOwnList(text, kind);
+    setRejected((r) => ({ ...r, [kind]: bad }));
+    onLists({ ...lists, [kind]: { id: 'own', values } });
+  };
+  return (
+    <details className={styles.lists} data-lists="">
+      <summary className={styles.listsSummary}>
+        Standard values: {LIST_KINDS.map(({ kind, name }) => `${name.split(',')[0]} ${listName(lists[kind].id)}`).join(' · ')}
+      </summary>
+      <p className={styles.hint}>Snap rounds a dragged value to its kind’s list, and each solution shows its neighbours in it with what they cost.</p>
+      <div className={styles.listGrid}>
+        {LIST_KINDS.map(({ kind, name }) => {
+          const l = lists[kind];
+          return (
+            <div key={kind} className={styles.listRow}>
+              <label className={styles.goalPart}>
+                <span className={styles.label}>{name}</span>
+                <select className={base.select} data-list-kind={kind} value={l.id} onChange={(e) => choose(kind, e.target.value as ListId)}>
+                  {LIST_IDS.map((id) => <option key={id} value={id}>{listName(id)}</option>)}
+                </select>
+              </label>
+              {l.id === 'own' && (
+                <label className={styles.ownBox}>
+                  <span className={styles.label}>{name} values ({l.values?.length ?? 0})</span>
+                  <textarea className={styles.own} rows={2} data-list-own={kind} spellCheck={false}
+                    value={texts[kind] ?? ownText(kind, l.values ?? [])} onChange={(e) => typeOwn(kind, e.target.value)}
+                    placeholder={kind === 'R' ? '10, 22, 47, 4k7' : kind === 'L' ? '10n, 22n, 47n' : kind === 'C' ? '1p, 2.2p, 4.7p' : '35, 50, 75'} />
+                  {(rejected[kind]?.length ?? 0) > 0 && <span className={styles.flag} data-list-rejected={kind}>Not read: {rejected[kind]!.slice(0, 5).join(', ')}</span>}
+                </label>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </details>
+  );
+}
+
+/** Where the construction's circles are on the chart and what they mean (solver.md "On the chart"). */
+function circlesText(c: Circuit, r: SolveResult): string {
+  if (r.circleNode < 0) return '';
+  const n = c.parts.length, k = r.circleNode;
+  const at = k === n ? 'the input' : k === 0 ? 'the load' : `node ${k}`;
+  const a = unknownName(c, r.unknowns[0]);
+  if (r.status === 'family') return `On the chart: the circle ${a} moves ${at} on (its colour) and the goal carried back past ${unknownName(c, r.unknowns[1])} (the goal’s colour); each member is a point of the first that ${unknownName(c, r.unknowns[1])} carries onto the second.`;
+  if (r.unknowns.length === 2) return `On the chart at ${at}: the circle ${a} reaches (its colour) and the circle ${unknownName(c, r.unknowns[1])} must start on (its colour); the solutions are where they cross.`;
+  if (r.status === 'best') return `On the chart at ${at}: the circle ${a} moves the node on and the circle of the nearest mismatch, which it touches at the best value.`;
+  return `On the chart at ${at}: the circle ${a} moves the node on and the goal carried back to it; the values are where they cross.`;
 }
 
 function RangeList({ c, r, first }: { c: Circuit; r: SolveResult; first: Unknown }) {
@@ -258,7 +446,7 @@ function RangeList({ c, r, first }: { c: Circuit; r: SolveResult; first: Unknown
   );
 }
 
-function SolvePanel({ circuit, onChange, revision, busy, onResult }: SolvePanelProps) {
+function SolvePanel({ circuit, onChange, revision, busy, onResult, onPreview, lists, onLists }: SolvePanelProps) {
   const c = circuit;
   const n = c.parts.length;
   const ask = askOf(c);
@@ -318,6 +506,32 @@ function SolvePanel({ circuit, onChange, revision, busy, onResult }: SolvePanelP
   const apply = (s: Solution) => { if (!stale) onChange(applySolution(oc, s)); };
   const reason = r ? sentence(r.reason) : '';
 
+  // Previews (D14): hovering a solution, a member, a variant or the family's slider (mouse), or focusing it (keys, a
+  // tap) draws its circuit on the chart; hover wins over focus, leaving clears. Items carry a key (data-pv) whose
+  // circuit is made only when it is shown.
+  const makers = new Map<string, () => Circuit>();
+  const makersRef = useRef(makers);
+  makersRef.current = makers;
+  const pv = useRef({ hover: '', focus: '', shown: null as Circuit | null });
+  const sendRef = useRef(onPreview);
+  sendRef.current = onPreview;
+  const showPreview = useCallback(() => {
+    const s = pv.current, key = s.hover || s.focus, make = key ? makersRef.current.get(key) : undefined;
+    const c = make ? make() : null;
+    if (c !== s.shown) { s.shown = c; sendRef.current?.(c); }
+  }, []);
+  const keyAt = (e: React.SyntheticEvent): string => ((e.target as Element).closest?.('[data-pv]')?.getAttribute('data-pv')) ?? '';
+  const onOver = (e: React.MouseEvent) => { const k = keyAt(e); if (k !== pv.current.hover) { pv.current.hover = k; showPreview(); } };
+  const onOut = () => { if (pv.current.hover) { pv.current.hover = ''; showPreview(); } };
+  const onFocusIn = (e: React.FocusEvent) => { pv.current.focus = keyAt(e); showPreview(); };
+  const onFocusOut = (e: React.FocusEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) { pv.current.focus = ''; showPreview(); }
+  };
+  // A new outcome replaces the items: the preview goes with them; and with the panel.
+  useEffect(() => { pv.current.hover = ''; pv.current.focus = ''; showPreview(); }, [outcome, lists, showPreview]);
+  useEffect(() => () => sendRef.current?.(null), []);
+  const x: ListCtx = { c: oc, goal: askOf(oc).goal, node: r ? nodeText(r.goalNode) : '', stale, lists, apply, makers };
+
   let body: React.ReactNode = null;
   if (status === 'solving') body = <p className={styles.message}>Solving…</p>;
   else if (status === 'nothing') {
@@ -351,14 +565,15 @@ function SolvePanel({ circuit, onChange, revision, busy, onResult }: SolvePanelP
         {r.status === 'family' && r.family && r.family.ends.length > 0 && <p className={styles.hint}>At the ends of the ranges:</p>}
         {r.status === 'range' && r.solutions.length > 0 && <p className={styles.hint}>The edges, where the goal holds exactly:</p>}
         {r.solutions.length > 0 && r.status !== 'family' && (
-          <SolutionList c={oc} list={r.solutions} onApply={apply} stale={stale} best={r.status === 'best'} node={nodeText(r.goalNode)} />
+          <SolutionList x={x} list={r.solutions} best={r.status === 'best'} />
         )}
         {r.status === 'family' && r.family && r.family.ends.length > 0 && (
-          <SolutionList c={oc} list={distinctEnds(r.family.ends)} onApply={apply} stale={stale} node={nodeText(r.goalNode)} />
+          <SolutionList x={x} list={distinctEnds(r.family.ends)} />
         )}
+        {r.status === 'family' && r.family && r.ranges.length > 0 && <FamilySlider key={r.ranges.map((g) => `${g.t0}:${g.t1}`).join()} x={x} r={r} onMove={showPreview} />}
         {r.status === 'family' && r.ranges.length > 0 && (
           <p className={styles.hint}>
-            To choose one: fix {unknownName(oc, first)} at a value inside a range and solve for {unknownName(oc, r.unknowns[1])} alone, or
+            Or fix {unknownName(oc, first)} at a value inside a range and solve for {unknownName(oc, r.unknowns[1])} alone, or
             choose a point target.
           </p>
         )}
@@ -417,10 +632,13 @@ function SolvePanel({ circuit, onChange, revision, busy, onResult }: SolvePanelP
       {ask.unknowns.length > 0 && (
         <p className={styles.count} data-solve-count="">{countText(ask.unknowns.length, goal)} <Why k="solve-count" /></p>
       )}
-      <div className={styles.result} data-solve-status={status} aria-live="polite" aria-busy={stale || undefined}>
+      <div className={styles.result} data-solve-status={status} aria-live="polite" aria-busy={stale || undefined}
+        onMouseOver={onOver} onMouseLeave={onOut} onFocus={onFocusIn} onBlur={onFocusOut}>
         {body}
+        {r && r.circleNode >= 0 && <p className={styles.hint} data-solve-circles="">{circlesText(oc, r)}</p>}
         {r && r.solutions.length + (r.family?.ends.length ?? 0) > 0 && <span className={styles.applyWhy}><Why k="solve-apply" /></span>}
       </div>
+      <ListsSetting lists={lists} onLists={onLists} />
     </section>
   );
 }

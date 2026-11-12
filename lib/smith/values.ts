@@ -5,7 +5,7 @@
 // list and re-evaluate every combination with network.ts, so the page shows what the rounding costs; Snap (M4.3) uses
 // the same neighbours. The choice has a short text form for the link and localStorage. Framework-free.
 
-import { neighbours as seriesNeighbours, same } from '../resistor/eseries';
+import { neighbours as seriesNeighbours, same, series, standardValue } from '../resistor/eseries';
 import type { SeriesId } from '../resistor/eseries';
 import { LINK_LIST_MAX } from '../resistor/lists';
 import { cleanValues, parseValueList } from '../resistor/values';
@@ -72,9 +72,25 @@ export function around(value: number, list: ValueList): Around | null {
     if (lo < v.length && same(v[lo], value)) return { below: value, above: value, exact: true };
     return { below: lo > 0 ? v[lo - 1] : NaN, above: lo < v.length ? v[lo] : NaN, exact: false };
   }
-  const n = seriesNeighbours(value, list.id as SeriesId);
-  if (!n) return null;
-  return n.exact ? { below: value, above: value, exact: true } : { below: n.below, above: n.above, exact: false };
+  // eseries.ts `neighbours` builds every value of three decades from text (288 for E96): too slow for a drag's
+  // pointer moves. The same answer from the four values round the mantissa's place (M4.3b; check-values.mjs compares).
+  const ms = series(list.id as SeriesId)?.mantissas;
+  if (!ms) {
+    const n = seriesNeighbours(value, list.id as SeriesId);
+    if (!n) return null;
+    return n.exact ? { below: value, above: value, exact: true } : { below: n.below, above: n.above, exact: false };
+  }
+  const m = ms.length, dec = Math.floor(Math.log10(value)), x = value / 10 ** (dec - 2);
+  let lo = 0, hi = m;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (ms[mid] <= x) lo = mid + 1; else hi = mid; }
+  let below = -Infinity, above = Infinity, exact = false;
+  for (let g = lo - 2; g <= lo + 1; g++) {
+    const w = g < 0 ? -1 : g >= m ? 1 : 0;
+    const v = standardValue(ms[g - w * m], dec + w);
+    if (same(v, value)) exact = true;
+    else if (v < value) { if (v > below) below = v; } else if (v < above) above = v;
+  }
+  return exact ? { below: value, above: value, exact: true } : { below, above, exact: false };
 }
 
 /** The values of a list to try for `value`: itself when exact or when the list has none, else its one or two neighbours. */
@@ -107,7 +123,8 @@ export function parseOwnList(text: string, kind: ValueKind): { values: number[];
     for (const piece of pieces) {
       if (!piece) continue;
       const v = readAmount(piece, unit);
-      if (v !== null && v > 0 && v < Infinity) values.push(v); else rejected.push(piece);
+      // "22p" is 22 × 1e-12 = 2.1999999999999998e-11 in binary: kept as the decimal it was typed as (15 digits).
+      if (v !== null && v > 0 && v < Infinity) values.push(Number(v.toPrecision(15))); else rejected.push(piece);
     }
   }
   return { values: cleanValues(values), rejected };

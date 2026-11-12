@@ -1,5 +1,6 @@
 import Head from 'next/head';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import React, { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 
 import Bibliography from '../../components/Bibliography';
@@ -15,10 +16,13 @@ import { Why } from '../../components/Smith/Why';
 import type { ChartView } from '../../components/Smith/chartView';
 import { writeLive } from '../../components/Smith/live';
 import { PathLayer, SEL_NODE, SEL_NONE, SEL_PART } from '../../components/Smith/pathLayer';
+import { SolveLayer } from '../../components/Smith/solveLayer';
 import { BibEntry } from '../../lib/bibtex';
 import { loadReferences } from '../../lib/references';
 import { MODE_Y, MODE_Z, MODE_ZY } from '../../lib/smith/grid';
-import { Circuit, KIND_SHORT, decodeCircuit, defaultCircuit, encodeCircuit, sameCircuit, sameNetwork } from '../../lib/smith/state';
+import { Circuit, KIND_SHORT, LISTS_PARAM, decodeCircuit, defaultCircuit, encodeCircuit, sameCircuit, sameNetwork } from '../../lib/smith/state';
+import { choiceFromText, choiceToText, defaultChoice } from '../../lib/smith/values';
+import type { ValueChoice } from '../../lib/smith/values';
 import useReplayHighlight from '../../lib/useReplayHighlight';
 import styles from '../../styles/Smith.module.css';
 import theoryCss from '../../styles/SmithTheory.module.css';
@@ -33,7 +37,7 @@ import theoryCss from '../../styles/SmithTheory.module.css';
 // table and the chart, which picks arcs and markers by hover, click and tap.
 // From M3.3a a ring at the end of every arc drags its part's value (pathLayer.ts): the chart and the side panel follow
 // every frame outside React (live.ts) and the circuit arrives through `commit` once, on release. The Snap switch beside
-// the grid switch turns snapping to grid circles and E24 values off (Alt does the same for a mouse drag).
+// the grid switch turns snapping to grid circles and to the values of each kind's list off (Alt does the same for a mouse drag).
 // From M3.3b `commit` keeps the history for undo and redo (Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, Ctrl+Y and the buttons in the
 // toolbar): every commit is a step, except that the keystrokes of one field (until the focus moves) and the arrow keys
 // of one handle (less than GROUP_MS apart) make one; a drag and a draw commit once, so they are one step. The draw tool
@@ -59,6 +63,8 @@ const MODES = [{ mode: MODE_Z, name: 'Z', title: 'Impedance grid: r and x circle
 
 type Theme = 'light' | 'dark';
 const THEME_KEY = 'smith.theme';
+/** The value lists per kind (D17), values.ts's text form; the link's vl wins over it. */
+const LISTS_KEY = 'smith.lists';
 // What lies outside the tool's own element in the two themes (page background and the site footer of _app.tsx).
 /** Steps kept for undo, and the longest pause between a handle's arrow keys that still makes one step. */
 const HISTORY = 200;
@@ -102,21 +108,40 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   const [revision, setRevision] = useState(0);
   const [issues, setIssues] = useState<string[]>([]);
   const [linked, setLinked] = useState(false);
+  // The value lists of D17 (M4.3b): what dragging snaps to and the solutions' standard values. Not part of the circuit
+  // (no undo step): kept in the link (vl) and in localStorage, the link first; both read after mount, as the theme is.
+  const [lists, setListsState] = useState<ValueChoice>(defaultChoice);
+  const listsText = useMemo(() => choiceToText(lists), [lists]);
+  const setLists = (next: ValueChoice) => {
+    setListsState(next);
+    try {
+      const text = choiceToText(next);
+      if (text) window.localStorage.setItem(LISTS_KEY, text); else window.localStorage.removeItem(LISTS_KEY);
+    } catch { /* Storage can be blocked; the link still keeps the lists. */ }
+  };
   // The circuit comes from the link once the page is in the browser (never at build time).
   useEffect(() => {
     const read = decodeCircuit(window.location.search);
     if (read.linked) { now.current = read.circuit; setCircuit(read.circuit); }
+    let text = read.lists;
+    if (text === null) { try { text = window.localStorage.getItem(LISTS_KEY); } catch { /* Storage can be blocked. */ } }
+    if (text) setListsState(choiceFromText(text));
     setIssues(read.issues);
     setLinked(true);
   }, []);
-  // The circuit goes back into the link, without a new entry in the history.
+  // The circuit goes back into the link, without a new entry in the history. Not before the router is ready: Next.js
+  // gives a statically optimised page its query after hydration with a replaceState of the link as it was loaded, which
+  // would undo a first write (M4.3b: the value lists from localStorage).
+  const router = useRouter();
   useEffect(() => {
-    if (!linked) return;
-    const url = `${window.location.pathname}?${encodeCircuit(circuit)}${window.location.hash}`;
+    if (!linked || !router.isReady) return;
+    // A '+' in a number's exponent would read back as a space.
+    const vl = listsText ? `&${LISTS_PARAM}=${listsText.replace(/\+/g, '%2B')}` : '';
+    const url = `${window.location.pathname}?${encodeCircuit(circuit)}${vl}${window.location.hash}`;
     if (url !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
       window.history.replaceState(window.history.state, '', url);
     }
-  }, [linked, circuit]);
+  }, [linked, circuit, listsText, router.isReady]);
   // The one place a new circuit arrives: fields, add, remove, move, the end of a drag or a draw, a handle's keys.
   // Only refs and state setters are used, so the closures handed out once (the path layer, listeners) stay right.
   const commit = (next: Circuit, group = '') => {
@@ -140,8 +165,12 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   const [stable] = useState(() => ({
     commit: (next: Circuit, group?: string) => commitRef.current(next, group),
     busy: () => !!path.current && path.current.dragPart >= 0,
-    result: (o: Outcome | null) => { solved.current = o; },
+    result: (o: Outcome | null) => { solved.current = o; solveLayer.current?.setResult(o?.result ?? null, o?.circuit ?? null); },
+    preview: (c: Circuit | null) => solveLayer.current?.setPreview(c),
+    lists: (next: ValueChoice) => setListsRef.current(next),
   }));
+  const setListsRef = useRef(setLists);
+  setListsRef.current = setLists;
   const travel = (back: boolean) => {
     const h = hist.current, from = back ? h.past : h.future, to = back ? h.future : h.past;
     // Not in the middle of a drag or a draw: their circuit is not committed yet.
@@ -186,6 +215,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
 
   // The path on the chart and the selection shared by the strip, the node table and the chart.
   const path = useRef<PathLayer | null>(null);
+  const solveLayer = useRef<SolveLayer | null>(null);
   const tool = useRef<HTMLDivElement>(null);
   const [partSel, setPartSel] = useState(-1);
   const [nodeSel, setNodeSel] = useState(-1);
@@ -208,8 +238,17 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     layer.onLive = (c, i, half) => writeLive(tool.current ?? document, c, i, half);
     (v.box as HTMLElement & { smithPath?: PathLayer }).smithPath = layer;
     path.current = layer;
+    // The solver's circles, the goal's ring and the preview of a solution (M4.3b), under the path.
+    const solveL = new SolveLayer(v);
+    (v.box as HTMLElement & { smithSolveLayer?: SolveLayer }).smithSolveLayer = solveL;
+    solveLayer.current = solveL;
+    layer.setLists(lists);
+    solveL.setGoal(now.current);
+    const o = solved.current;
+    solveL.setResult(o?.result ?? null, o?.circuit ?? null);
   };
-  useEffect(() => { path.current?.setCircuit(circuit); }, [circuit]);
+  useEffect(() => { path.current?.setCircuit(circuit); solveLayer.current?.setGoal(circuit); }, [circuit]);
+  useEffect(() => { path.current?.setLists(lists); }, [lists]);
   useEffect(() => { if (path.current) path.current.snap = snap; }, [snap]);
   useEffect(() => { path.current?.arm(drawKind); }, [drawKind]);
   useEffect(() => {
@@ -220,7 +259,8 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
       <Strip circuit={circuit} onChange={commit} issues={issues} selected={part} onSelect={selectPart}
         revision={revision} drawKind={drawKind} onDraw={setDrawKind}
         onHover={(i) => path.current?.hover(SEL_PART, i)} />
-      <SolvePanel circuit={circuit} onChange={stable.commit} revision={revision} busy={stable.busy} onResult={stable.result} />
+      <SolvePanel circuit={circuit} onChange={stable.commit} revision={revision} busy={stable.busy} onResult={stable.result}
+        onPreview={stable.preview} lists={lists} onLists={stable.lists} />
       <Nodes circuit={circuit} selected={node} onSelect={(k) => setNodeSel(k === node ? -1 : k)}
         onHover={(k) => path.current?.hover(SEL_NODE, k)} />
     </>
@@ -279,7 +319,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
       </span>
       <span className={styles.toolGroup}>
         <button type="button" className={`${styles.button} ${styles.toggle}`} aria-pressed={snap} data-snap-toggle=""
-          onClick={() => setSnap(!snap)} title="Dragging a ring snaps to the grid's circles and to E24 values (Alt: not for this drag); arrow keys on a ring step by E24 values or whole degrees">Snap</button>
+          onClick={() => setSnap(!snap)} title="Dragging a ring snaps to the grid's circles and to the values of the part's list (E24 for R, L and C unless changed under Standard values in the Solve panel; Alt: not for this drag); arrow keys on a ring step through the list or by whole degrees">Snap</button>
         <Why k="snap" />
       </span>
       <span className={styles.history}>

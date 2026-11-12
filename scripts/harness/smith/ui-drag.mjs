@@ -134,8 +134,9 @@ const formText = (form, v) => (form.unit === 'λ' ? `${Q.formatAmount(v, '', 4)}
 
 // ---------- the page's side ----------
 
-async function load(page, c) {
-  await page.goto(`${base}/smith-chart/main${c ? `?${S.encodeCircuit(c)}` : ''}`, { waitUntil: 'networkidle' });
+async function load(page, c, vl = '') {
+  // A value-list text (vl, M4.3b) goes into the link; without one the page reads localStorage, which nothing here writes.
+  await page.goto(`${base}/smith-chart/main${c ? `?${S.encodeCircuit(c)}${vl ? `&vl=${vl}` : ''}` : ''}`, { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-circuit]');
   await page.waitForFunction(() => window.location.search.includes('v=1'));
   await frame(page);
@@ -357,6 +358,46 @@ try {
     }
   }
   ok(grids >= 5 && standards >= 3, `snapping met grid circles ${grids}×, E24 values ${standards}×, nothing ${nones}×`);
+
+  // M4.3b: snapping and the keys follow the value list of the part's kind (vl in the link; D17): E24 by default for C,
+  // E12, an own list, any value; λ/4's Zt on any value by default, on E24 when chosen.
+  {
+    const inList = (v, id) => E.series(id).mantissas.some((m) => [-14, -13, -12, -11, -10, 0, 1, 2, 3].some((d) => E.same(Number(`${m}e${d}`), v)));
+    const listDrag = async (vl, s, v, off = 2) => {
+      const c = circuitFor(s);
+      await load(page, c, vl);
+      await setSnap(page, true);
+      const vs = await viewState(page), h = client(vs, engine(c).gamma[1]), from = [h[0] - 2, h[1] + 2];
+      const tg = target(vs, c, v, off, 0);
+      const { held } = await mouseDrag(page, from, steps(from, [tg[0] - 2, tg[1] + 2]), { hold: async () => { await frame(page); return snapState(page); } });
+      return { got: (await linked(page)).parts[0].value, held, query: new URL(page.url()).search };
+    };
+    const C = KINDS[2], Q4 = KINDS[9];
+    let r = await listDrag('', C, 36e-12);
+    ok(r.got === 36e-12 && r.held.code === 2 && /36(\.0)?\s*pF · E24/.test(r.held.text), `C on E24 (default): snaps to 36 pF (${r.got}, ${JSON.stringify(r.held)})`);
+    r = await listDrag('C12', C, 36e-12);
+    ok(r.got !== 36e-12 && (r.held.code !== 2 || (inList(r.got, 'E12') && /· E12$/.test(r.held.text))) && /vl=C12/.test(r.query), `C on E12: no 36 pF, only E12 values (${r.got}, ${JSON.stringify(r.held)})`);
+    r = await listDrag('C12', C, 39e-12);
+    ok(r.got === 39e-12 && r.held.code === 2 && /39(\.0)?\s*pF · E12/.test(r.held.text), `C on E12: snaps to 39 pF (${r.got}, ${r.held.text})`);
+    r = await listDrag('Co3.5e-11_4.4e-11', C, 35e-12);
+    ok(r.got === 35e-12 && r.held.code === 2 && /35(\.0)?\s*pF · own list/.test(r.held.text), `C on an own list: snaps to 35 pF (${r.got}, ${r.held.text})`);
+    r = await listDrag('Ca', C, 36e-12);
+    ok(r.held.code !== 2, `C on any value: no value snapping (${r.got}, ${JSON.stringify(r.held)})`);
+    r = await listDrag('', Q4, 51);
+    ok(r.held.code !== 2, `λ/4 on any value (default): no value snapping (${r.got}, ${JSON.stringify(r.held)})`);
+    r = await listDrag('Z24', Q4, 51);
+    ok(r.got === 51 && r.held.code === 2 && /51(\.0)?\s*Ω · E24/.test(r.held.text), `λ/4 on E24: snaps to 51 Ω (${r.got}, ${r.held.text})`);
+    // The keys: C on E12 steps 33 pF → 39 pF; on an own list to its next entry; on any value by 1 %.
+    for (const [vl, want] of [['C12', 39e-12], ['Co3.3e-11_3.5e-11_4.4e-11', 35e-12], ['Ca', 33e-12 * 1.01]]) {
+      await load(page, circuitFor(C, 33e-12), vl);
+      await setSnap(page, true);
+      await page.focus('[data-handle-key="0"]');
+      await page.keyboard.press('ArrowUp');
+      await frame(page);
+      const got = (await linked(page)).parts[0].value;
+      ok(rel(got, want) <= 1e-12, `keys with vl=${vl}: 33 pF → ${got} (want ${want})`);
+    }
+  }
   ok(page.errors.length === 0, `no errors (mouse): ${page.errors.join(' | ')}`);
 
   // ---------- drag frame cost with 10 parts ----------
