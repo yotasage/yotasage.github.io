@@ -52,8 +52,8 @@ step, several starts, duplicates merged. Results are ordered the same way every 
 
 ## What comes back
 
-All solutions, each with the values, the residual |Γ|, the realisable flag, the nearest standard value (engine.md
-§7) with the |Γ| it actually gives, a preview path on the chart (on hover, and on tap on a phone), and "Apply". Ordered:
+All solutions, each with the values, the residual |Γ|, the realisable flag, the nearest standard value in the part
+kind's list (engine.md §7, plan.md D17; none for "any value") with the |Γ| it actually gives, a preview path on the chart (on hover, and on tap on a phone), and "Apply". Ordered:
 realisable first, then fewer parts changed, then the smaller total change, then by value.
 
 **When nothing is marked:** "Suggestions": for each free part the single change that reaches the goal, then pairs,

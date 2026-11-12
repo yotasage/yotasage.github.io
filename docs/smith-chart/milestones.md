@@ -81,7 +81,8 @@ at five zoom levels; the readout matches the engine at 20 points; frame time wit
   a part kind, drag from the end of the path); projection (engine.md §6); snapping to grid circles and standard
   values; undo and redo; keyboard use. Run in two steps: **M3.3a** handles, dragging, projection and snapping
   (notes-M3.3a.md); **M3.3b** the draw tool, undo and redo, keyboard use of the handles. The series for snapping
-  inductors is the owner's choice (E24 until then, one constant in `components/Smith/pathLayer.ts`).
+  inductors is the owner's choice (E24 until then, one constant in `components/Smith/pathLayer.ts`); chosen at
+  checkpoint 1 as plan.md D17, built in M4.3.
 - **M3.4 Card and start.** The card and icon on the main page (`TOOLS` in `pages/index.tsx`, `ToolIcon.tsx`, category
   "Electronics"), page metadata, the start state (D16) and empty state, README. From here the branch may be merged to
   `main` when the owner says so.
@@ -110,7 +111,8 @@ the link; read the topic "Moving on the chart". Is it nicer than the old one? Wh
 - **M4.2 Validation.** As solver.md's "Validation" says.
 - **M4.3 Page.** "Solve for" toggles, the goal selector, the two circles drawn on the chart, the solution list with a
   preview path (hover and tap) and Apply, standard-value variants, every message of solver.md's counting table; the M4
-  theory topics.
+  theory topics; the value list per part kind of plan.md D17 (E6–E96, own pasted list, any value; E24 default), used
+  by Snap and by the variants.
 - **M4.4 Suggestions** when nothing is marked.
 
 *Done when:* exact cases have a residual below 1e-9; brute force finds no missed solution on 200 or more random

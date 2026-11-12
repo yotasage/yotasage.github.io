@@ -107,7 +107,8 @@ susceptance converted to a length). Closed form for every v1 part.
   are labelled as normalised.
 - **Standard values:** `lib/resistor/eseries.ts` takes plain numbers, so it snaps nH and pF as it is. Which series or
   steps real inductors and capacitors come in (small RF inductors often in 0.1 nH steps, not E-series) is a fact for
-  M0.2; the snapping offers what M0.2 finds.
+  M0.2; the snapping offers what M0.2 finds. The owner's choice (D17): a list per part kind (E6–E96, own list, any
+  value), E24 by default for R, L and C.
 
 ## 8. Goal
 
