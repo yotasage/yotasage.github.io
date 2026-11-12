@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import React, { memo, useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { formatAmount, readAmount } from '../../lib/quantity';
 import { goalNode, goalProblem, goalValue, isWithin } from '../../lib/smith/goal';
@@ -253,7 +253,7 @@ function Variants({ x, s, pv }: { x: ListCtx; s: Solution; pv: string }) {
   if (!list.some((v) => !v.exact)) return null;
   return (
     <div className={styles.variantBox}>
-      <span className={styles.variantHead}>With standard values:</span>
+      <span className={styles.variantHead}>With standard values: <Why k="solve-variant" /></span>
       <ul className={styles.variants} data-variants="">
         {list.map((v, j) => {
           const key = `${pv}:${j}`, sv = withValues(s, v.values);
@@ -295,6 +295,7 @@ function SolutionList({ x, list, best, item = 'solution' }: { x: ListCtx; list: 
                 ? <span>comes within <b>{small(s.mismatch)}</b> of the target (|Γ| = {small(s.gamma)} at {x.node})</span>
                 : <span>|Γ| = {small(s.gamma)} at {x.node}; off the goal by {small(s.residual)}</span>}
               {!s.realisable && !s.atF0Only && <span className={styles.flag}> not of the part’s own kind</span>}
+              {k === 0 && <Why k="solve-solution" />}
             </div>
             <span className={styles.applyGroup}>
               <button type="button" className={base.button} {...{ [item === 'solution' ? 'data-apply' : 'data-apply-member']: k }} disabled={x.stale}
@@ -339,17 +340,18 @@ function FamilySlider({ x, r, onMove }: { x: ListCtx; r: SolveResult; onMove: ()
   });
   const t = familyT(ranges, pos);
   const members = useMemo(() => r.family!.at(t), [r, t]);
+  const sliderId = `family-${useId().replace(/:/g, '')}`;
   x.makers.set('fam', () => (members.length ? applySolution(x.c, members[0]) : x.c));
   useEffect(onMove, [t, onMove]);
   const first = members[0]?.values[0];
   const firstText = first ? `${symbolOf(first.param === 'value' ? first.kind : x.c.parts[first.part]?.kind ?? -1, first.param)} = ${amount(first.param === 'value' ? first.kind : x.c.parts[first.part]?.kind ?? -1, first.param, first.value)}` : 'no member here';
   return (
     <div className={styles.family} data-family="">
-      <label className={styles.familyLabel}>
-        <span>Pick a member by {unknownName(x.c, r.unknowns[0])}:</span>
-        <input type="range" className={styles.slider} min={0} max={FAMILY_STEPS} step={1} value={pos} data-family-slider="" data-pv="fam"
+      <div className={styles.familyLabel}>
+        <span><label htmlFor={sliderId}>Pick a member by {unknownName(x.c, r.unknowns[0])}:</label> <Why k="solve-family" /></span>
+        <input id={sliderId} type="range" className={styles.slider} min={0} max={FAMILY_STEPS} step={1} value={pos} data-family-slider="" data-pv="fam"
           data-t={numText(t)} aria-valuetext={firstText} onChange={(e) => setPos(Number(e.target.value))} />
-      </label>
+      </div>
       <p className={styles.familyNow} data-family-first={first ? numText(first.value) : ''}>
         {first ? <>{firstText}{first.swapped ? ' (true at this frequency only)' : ''}: {members.length === 2 ? 'two values' : 'one value'} of {unknownName(x.c, r.unknowns[1])}</> : 'No member at this value.'}
       </p>
@@ -385,6 +387,7 @@ function ListsSetting({ lists, onLists }: { lists: ValueChoice; onLists: (next: 
     <details className={styles.lists} data-lists="">
       <summary className={styles.listsSummary}>
         Standard values: {LIST_KINDS.map(({ kind, name }) => `${name.split(',')[0]} ${listName(lists[kind].id)}`).join(' · ')}
+        {' '}<Why k="solve-lists" />
       </summary>
       <p className={styles.hint}>Snap rounds a dragged value to its kind’s list, and each solution shows its neighbours in it with what they cost.</p>
       <div className={styles.listGrid}>
@@ -392,12 +395,15 @@ function ListsSetting({ lists, onLists }: { lists: ValueChoice; onLists: (next: 
           const l = lists[kind];
           return (
             <div key={kind} className={styles.listRow}>
-              <label className={styles.goalPart}>
-                <span className={styles.label}>{name}</span>
-                <select className={base.select} data-list-kind={kind} value={l.id} onChange={(e) => choose(kind, e.target.value as ListId)}>
-                  {LIST_IDS.map((id) => <option key={id} value={id}>{listName(id)}</option>)}
-                </select>
-              </label>
+              <div className={styles.listHead}>
+                <label className={styles.goalPart}>
+                  <span className={styles.label}>{name}</span>
+                  <select className={base.select} data-list-kind={kind} value={l.id} onChange={(e) => choose(kind, e.target.value as ListId)}>
+                    {LIST_IDS.map((id) => <option key={id} value={id}>{listName(id)}</option>)}
+                  </select>
+                </label>
+                <Why k={`list-${kind}`} />
+              </div>
               {l.id === 'own' && (
                 <label className={styles.ownBox}>
                   <span className={styles.label}>{name} values ({l.values?.length ?? 0})</span>
@@ -635,7 +641,7 @@ function SolvePanel({ circuit, onChange, revision, busy, onResult, onPreview, li
       <div className={styles.result} data-solve-status={status} aria-live="polite" aria-busy={stale || undefined}
         onMouseOver={onOver} onMouseLeave={onOut} onFocus={onFocusIn} onBlur={onFocusOut}>
         {body}
-        {r && r.circleNode >= 0 && <p className={styles.hint} data-solve-circles="">{circlesText(oc, r)}</p>}
+        {r && r.circleNode >= 0 && <p className={styles.hint} data-solve-circles="">{circlesText(oc, r)} <Why k="solve-circles" /></p>}
         {r && r.solutions.length + (r.family?.ends.length ?? 0) > 0 && <span className={styles.applyWhy}><Why k="solve-apply" /></span>}
       </div>
       <ListsSetting lists={lists} onLists={onLists} />

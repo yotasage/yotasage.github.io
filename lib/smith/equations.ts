@@ -950,6 +950,24 @@ const DEFS: Def[] = [
       ['abs(Gamma)*(VSWR + 1) = VSWR - 1', 'Gather the terms in |Γ|.'],
     ],
   },
+  // The solver's nearest value (theory-solver.md §10, claims 156–158; notes-M4.3c.md).
+  {
+    id: 'mismatch-to-target', title: 'Mismatch to a target',
+    text: 'm = abs(Gamma - Gamma_t)/abs(1 - conj(Gamma_t)*Gamma) = abs(z - z_t)/abs(z + conj(z_t))',
+    sources: [],
+    derivation: 'The |Γ| of the node on a chart whose centre is the target: Γ → (Γ − Γt)/(1 − Γt*Γ) takes Γt to 0 and keeps the unit circle. With Γ = (z − 1)/(z + 1) and Γt = (zt − 1)/(zt + 1) (gamma-z) the z form follows.',
+    assumptions: [REAL_Z0, 'target inside the chart, |Γt| < 1'], engine: 'goal.goalMismatch',
+    symbols: {
+      m: sym('mismatch to the target: |Γ| on a chart centred on it', '', 'metric'),
+      Gamma_t: sym('reflection coefficient of the target', '', 'point'),
+      z_t: sym('normalised impedance of the target', '', 'point'),
+    },
+    steps: [
+      ['Gamma - Gamma_t = 2*(z - z_t)/((z + 1)*(z_t + 1))', 'Put both Γ in terms of z and take one fraction.'],
+      ['1 - conj(Gamma_t)*Gamma = 2*(z + conj(z_t))/((conj(z_t) + 1)*(z + 1))', 'The same below the line.'],
+      ['m = abs(z - z_t)/abs(z + conj(z_t))', 'Divide; |conj(z_t) + 1| = |z_t + 1|, so the factors cancel.'],
+    ],
+  },
   { id: 'z-max', title: 'Impedance at a voltage maximum', text: 'Z_max = Z_0*VSWR', sources: [src(S2, '§2.3')], assumptions: [LOSSLESS, REAL_Z0], engine: 'convert.impedanceFromGamma at Γ = |Γ|' },
   { id: 'z-min', title: 'Impedance at a voltage minimum', text: 'Z_min = Z_0/VSWR', sources: [src(S2, '§2.3')], assumptions: [LOSSLESS, REAL_Z0], engine: 'convert.impedanceFromGamma at Γ = −|Γ|' },
   {

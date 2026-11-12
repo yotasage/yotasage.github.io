@@ -302,3 +302,83 @@ export function MatchFigure() {
     </Figure>
   );
 }
+
+// ------------------------------------------------------------------------------------------------------------------
+// Topic 8: two solutions, one or none: g = 1 (part 2's colour) against r = 0.5, 1 and 2 (part 1's).
+
+const TWO_ONE_NONE: { r: number; label: string; marks: P[] }[] = [
+  { r: 0.5, label: 'two', marks: [[-0.2, 0.4], [-0.2, -0.4]] },
+  { r: 1, label: 'one', marks: [[0, 0]] },
+  { r: 2, label: 'none', marks: [] },
+];
+
+export function TwoOneNoneFigure() {
+  return (
+    <Figure wide caption={<>The circle <span className={css.key2}>g = 1</span> that part 2 must start on, against <span className={css.key1}>part 1’s r circle</span>; left to right r = 0.5 crosses it twice, r = 1 touches it at the centre, r = 2 misses it.</>}>
+      {TWO_ONE_NONE.map(({ r, label, marks }) => (
+        <Disc key={label} label={`The g = 1 circle and the r = ${r} circle: ${label}`}>
+          <g className={css.figPart2}><Ring c={G_ONE} R={0.5} cls={css.figStroke} /></g>
+          <g className={css.figPart1}><Ring c={[r / (1 + r), 0]} R={1 / (1 + r)} cls={css.figStroke} /></g>
+          {marks.map((p, i) => <Dot key={i} p={p} cls={css.figLoad} r={0.05} />)}
+        </Disc>
+      ))}
+    </Figure>
+  );
+}
+
+// ------------------------------------------------------------------------------------------------------------------
+// Topic 9: the nearest value: r = 0.5 touches the circle |Γ| = 1/3 about the target (the centre) at Γ = −1/3.
+
+export function MismatchFigure() {
+  return (
+    <Figure caption={<><span className={css.key1}>Part 1’s r = 0.5 circle</span> never reaches the target at the centre (on r = 1, faint). The dashed circle |Γ| = 1/3 about it touches the part’s circle at the nearest point.</>}>
+      <Disc label="The r = 0.5 circle, the target at the centre and the circle of the nearest mismatch">
+        <Ring c={[0.5, 0]} R={0.5} cls={css.figZ} />
+        <g className={css.figPart1}><Ring c={R_HALF} R={2 / 3} cls={css.figStroke} /></g>
+        <g className={css.figAccent}><Ring c={[0, 0]} R={1 / 3} cls={css.figDash} /></g>
+        <Dot p={[0, 0]} cls={css.figAccent} r={0.04} />
+        <Label p={[0.06, 0.1]} anchor="start" cls={css.figAccentText}>target</Label>
+        <Dot p={[-1 / 3, 0]} cls={css.figLoad} r={0.045} />
+        <Label p={[-0.36, 0.13]} cls={css.figBold}>nearest</Label>
+        <Label p={[0.62, 0.56]}>r = 1</Label>
+      </Disc>
+    </Figure>
+  );
+}
+
+// ------------------------------------------------------------------------------------------------------------------
+// Topic 10: the start match's E24 neighbours near the centre, magnified 4× (|Γ| ≤ 0.25 fills the figure).
+
+const ZOOM = 4;
+
+export function StandardFigure({ points }: { points: { gr: number; gi: number; label: string }[] }) {
+  const id = React.useId().replace(/:/g, '');
+  const at = (gr: number, gi: number): P => [gr * ZOOM, gi * ZOOM];
+  return (
+    <Figure caption={<>Near the centre, 4× magnified (the rim is |Γ| = 0.25): the exact match at the centre, the dashed close-enough circle |Γ| = 0.2, and where the E24 pairs put the input: {points.map((q, i) => `${i + 1}: ${q.label}`).join('; ')}.</>}>
+      <svg viewBox="-1.25 -1.25 2.5 2.5" className={css.disc} role="img" aria-label="The input points of the E24 pairs near the centre">
+        <defs><clipPath id={`zoom${id}`}><circle cx="0" cy="0" r="1" /></clipPath></defs>
+        <circle cx="0" cy="0" r="1" className={css.figBack} />
+        <g clipPath={`url(#zoom${id})`}>
+          <line x1="-1" y1="0" x2="1" y2="0" className={css.figAxis} />
+          <line x1="0" y1="-1" x2="0" y2="1" className={css.figAxis} />
+          <g className={css.figAccent}><Ring c={[0, 0]} R={0.2 * ZOOM} cls={css.figDash} /></g>
+        </g>
+        <circle cx="0" cy="0" r="1" className={css.figRim} />
+        <Label p={[0.57, 0.62]} cls={css.figAccentText}>0.2</Label>
+        <Dot p={[0, 0]} cls={css.figAccent} r={0.045} />
+        {points.map(({ gr, gi, label }, i) => {
+          if (!ok(gr, gi)) return null;
+          // Numbered, the pairs in the caption: the four points lie within a label's width of each other.
+          const p = at(gr, gi), right = p[0] >= 0;
+          return (
+            <g key={label}>
+              <Dot p={p} cls={css.figLoad} r={0.04} />
+              <Label p={[p[0] + (right ? 0.08 : -0.08), p[1]]} anchor={right ? 'start' : 'end'} cls={css.figBold}>{i + 1}</Label>
+            </g>
+          );
+        })}
+      </svg>
+    </Figure>
+  );
+}

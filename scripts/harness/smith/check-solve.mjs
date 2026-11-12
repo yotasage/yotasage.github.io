@@ -474,6 +474,26 @@ export function runSolveChecks({ section, ok, near, printed, random }) {
     ok(r.status === 'solved' && r.solutions.length === 1, `g = 1 load, shunt then series: the circles touch, one solution (${r.solutions.length})`);
     near(r.solutions[0]?.values[0].added, -0.7, 'touching: b = −0.7');
     ok(Math.abs(r.solutions[0]?.values[1].added) < 1e-12, 'touching: x = 0');
+    // M4.3c: an x or b that is zero but for rounding is exactly 0, the part's own no-effect value, never swapped. The
+    // start circuit's second solution (x = 2e-17 by rounding: a series L of 1.66e-24 H before the fix).
+    const zeroCases = [
+      ['start circuit, C and L for the centre', { z0: 50, f0: 1e8, loadR: 25, loadX: 25, parts: [{ kind: SERIES_C, value: 1 / (TAU * 1e8 * 50) }, { kind: SHUNT_L, value: 50 / (TAU * 1e8) }] }, both, centre, 0, Infinity],
+      ['the same with a series L first', { z0: 50, f0: 1e8, loadR: 25, loadX: 25, parts: [{ kind: SERIES_L, value: 1e-8 }, { kind: SHUNT_L, value: 50 / (TAU * 1e8) }] }, both, centre, 0, 0],
+      ['g = 1 load, shunt C then series L, x = 0 at the touching point', c(...zOfY(1, 0.7), [SHUNT_C, SERIES_L]), both, centre, 1, 0],
+      ['a load on r = 1, series C then shunt C', { z0: 75, f0: 2.4e9, loadR: 75, loadX: 40, parts: [{ kind: SERIES_C, value: 1e-12 }, { kind: SHUNT_C, value: 1e-12 }] }, both, centre, 1, 0],
+    ];
+    for (const [what, circuit, unknowns, goal, part, noEffect] of zeroCases) {
+      r = solve(circuit, unknowns, goal);
+      const zero = r.solutions.map((s) => s.values[part]).filter((v) => v.added === 0);
+      ok(zero.length === 1, () => `${what}: one solution with part ${part + 1} at exactly 0 (${r.solutions.map((s) => s.values[part].added).join(', ')})`);
+      for (const v of zero) {
+        ok(v.kind === circuit.parts[part].kind && !v.swapped && v.value === noEffect, () => `${what}: part ${part + 1} is its own kind with its no-effect value ${noEffect} (kind ${v.kind}, ${v.value}, swapped ${v.swapped})`);
+      }
+      for (const s of r.solutions) {
+        ok(s.residual <= ACCEPT, `${what}: residual within ACCEPT (${s.residual})`);
+        for (const v of s.values) ok(v.added === 0 || Math.abs(v.added) > 1e-9, () => `${what}: no value at rounding level is left (${v.added})`);
+      }
+    }
     // circleIntersect directly: two lines, concentric circles, a point circle on a line.
     const cc = new Float64Array(8), out = new Float64Array(4);
     cc.set([0, 1, 0, 1, 0, 0, 1, 1]);

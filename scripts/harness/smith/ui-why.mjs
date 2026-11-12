@@ -1,6 +1,6 @@
 // Drives /smith-chart/main in the installed Edge (or Chrome) and checks step M3.5c: the short line and "→ theory" link
 // beside every control and readout (components/Smith/whys.ts, from docs/smith-chart/theory.md §8). Every one of the
-// 39 lines is on the page (the ten kinds' lines in the part card, one kind at a time) with its text, and its link
+// lines (39 of M3.5c, 5 of M4.3a, 9 of M4.3c) is on the page (the ten kinds' lines in the part card, one kind at a time) with its text, and its link
 // points at a topic that exists. By mouse: every info button opens its bubble, its link opens the topic (also when the
 // hash is already that topic's), makes it the target, puts the focus on its heading, and "Back to the tool" brings
 // the focus and the view back to the button. By keyboard alone: Tab to a button, Enter opens, Tab to the link, Enter
@@ -55,15 +55,20 @@ const failures = [];
 const ok = (condition, what) => { if (condition) passed++; else if (failed++ < 60) failures.push(typeof what === 'function' ? what() : what); };
 const frame = (page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 
-const TOPICS = ['how-to-use', 'gamma-z-y', 'reading-the-chart', 'moving-on-the-chart', 'transmission-lines', 'how-good-is-a-match', 'matching-with-two-parts'];
+const TOPICS = ['how-to-use', 'gamma-z-y', 'reading-the-chart', 'moving-on-the-chart', 'transmission-lines', 'how-good-is-a-match', 'matching-with-two-parts',
+  'two-one-or-none', 'one-value-and-a-point', 'realisable-values'];
 const KEYS = Object.keys(WHYS);
 const KIND_KEYS = KEYS.filter((k) => k.startsWith('kind-'));
 // Every kind once, so the card can show each kind's line.
 // M4.3a: two unknowns marked (the first as "L or C"), so the Solve panel shows its lines with a solution to apply.
 const ALL = S.cleanAsk({ z0: 50, f0: 1e8, loadR: 25, loadX: 25, parts: S.KIND_ORDER.map((kind) => S.newPart(kind, S.defaultCircuit())) },
   { unknowns: [{ part: 0, param: 'value', free: true }, { part: 3, param: 'value' }], goal: { kind: 'point' } });
-/** theory.md §8's 39 lines and M4.3a's five of the Solve panel. */
-const LINES = 44;
+// M4.3c: the same with a circle goal, so the family's slider (and its line) shows.
+const FAM = { ...ALL, ask: { ...ALL.ask, goal: { kind: 'vswr', value: 1.5, within: true } } };
+/** theory.md §8's 39 lines, M4.3a's five of the Solve panel and M4.3c's nine (theory-solver.md). */
+const LINES = 53;
+/** The Standard values setting is folded: open it so its lines are on the page. */
+const openLists = (page) => page.evaluate(() => { document.querySelector('[data-lists]').open = true; });
 
 async function open(context, c = null, hash = '') {
   const page = await context.newPage();
@@ -101,6 +106,8 @@ try {
   // ---------- every line on the page, with its text and a topic that exists ----------
   const desk = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: 'light' });
   const p = await open(desk, ALL);
+  await openLists(p);
+  await frame(p);
   ok(KEYS.length === LINES, `whys.ts has the ${LINES} lines (${KEYS.length})`);
   for (const k of KEYS) ok(TOPICS.includes(WHYS[k].topic), `${k}: its topic ${WHYS[k].topic} is a topic of the theory`);
   for (const t of TOPICS) ok(await p.$(`[data-topic][id="${t}"]`) !== null, `topic #${t} exists`);
@@ -117,6 +124,12 @@ try {
     ok(line[2] === `#${WHYS[key].topic}`, `${key}: links to #${WHYS[key].topic}`);
     seen.add(line[0]);
   }
+  // The family's line, on a page of its own with a circle goal.
+  const pf = await open(desk, FAM);
+  const famKeys = new Set();
+  for (const k of await pf.$$eval('[data-why]', (els) => els.map((e) => e.getAttribute('data-why')))) if (!seen.has(k)) famKeys.add(k);
+  for (const k of famKeys) seen.add(k);
+  ok(famKeys.has('solve-family'), 'solve-family: beside the family slider');
   for (const k of KEYS) ok(seen.has(k), `${k}: on the page`);
   ok(seen.size === LINES, () => `all ${LINES} lines seen (${seen.size})`);
 
@@ -124,14 +137,17 @@ try {
   // The fields' buttons are in the card of the selected part, so every part is selected in turn.
   const done = new Set();
   const followAll = [];
+  const page0 = p;
   for (let i = 0; i < ALL.parts.length; i++) {
     await p.click(`[data-tile="${i}"]`);
     await frame(p);
     for (const k of await p.$$eval('button[data-why]', (els) => els.map((e) => e.getAttribute('data-why')))) if (!done.has(k)) { done.add(k); followAll.push([i, k]); }
   }
   done.clear();
+  for (const k of famKeys) followAll.push([-1, k]);
   for (const [i, k] of followAll) {
-    if (await p.getAttribute(`[data-tile="${i}"]`, 'aria-pressed') !== 'true') { await p.click(`[data-tile="${i}"]`); await frame(p); }
+    const p = i < 0 ? pf : page0;
+    if (i >= 0 && await p.getAttribute(`[data-tile="${i}"]`, 'aria-pressed') !== 'true') { await p.click(`[data-tile="${i}"]`); await frame(p); }
     done.add(k);
     const sel = `button[data-why="${k}"]`;
     await p.locator(sel).first().scrollIntoViewIfNeeded();
@@ -158,6 +174,8 @@ try {
     counts.mouse++;
   }
   ok(counts.mouse === LINES - KIND_KEYS.length, () => `every info button was followed (${counts.mouse})`);
+  ok(pf.errors.length === 0, () => `family page: no errors in the console (${pf.errors.join(' | ')})`);
+  await pf.close();
   // Close by a second press and by a press elsewhere; one bubble at a time.
   await p.evaluate(() => window.scrollTo(0, 0));
   await p.click('button[data-why="snap"]');

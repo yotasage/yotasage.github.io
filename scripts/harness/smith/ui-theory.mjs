@@ -23,6 +23,8 @@ import * as importedParts from '../../../lib/smith/parts.ts';
 import * as importedConvert from '../../../lib/smith/convert.ts';
 import * as importedQuantity from '../../../lib/quantity.ts';
 import * as importedReadout from '../../../components/Smith/readout.ts';
+import * as importedSolve from '../../../lib/smith/solve.ts';
+import * as importedValues from '../../../lib/smith/values.ts';
 
 const S = importedState.default ?? importedState;
 const N = importedNetwork.default ?? importedNetwork;
@@ -30,6 +32,8 @@ const P = importedParts.default ?? importedParts;
 const cv = importedConvert.default ?? importedConvert;
 const Q = importedQuantity.default ?? importedQuantity;
 const R = importedReadout.default ?? importedReadout;
+const SV = importedSolve.default ?? importedSolve;
+const V = importedValues.default ?? importedValues;
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '../../..');
 const shots = process.env.SMITH_SHOTS || (process.argv[2] && process.argv[2] !== '-' ? process.argv[2] : null);
@@ -67,7 +71,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ---------- what theory.md §1–7 asks for ----------
 
-const TOPICS = ['how-to-use', 'gamma-z-y', 'reading-the-chart', 'moving-on-the-chart', 'transmission-lines', 'how-good-is-a-match', 'matching-with-two-parts'];
+const TOPICS = ['how-to-use', 'gamma-z-y', 'reading-the-chart', 'moving-on-the-chart', 'transmission-lines', 'how-good-is-a-match', 'matching-with-two-parts',
+  'two-one-or-none', 'one-value-and-a-point', 'realisable-values'];
 const EQUATIONS = {
   'how-to-use': [],
   'gamma-z-y': ['z-norm', 'y-norm', 'gamma-z', 'z-gamma', 'gamma-y', 'y-gamma'],
@@ -76,8 +81,12 @@ const EQUATIONS = {
   'transmission-lines': ['line-theta', 'beta', 'line-rotation', 'line-zin', 'line-circle-b', 'line-circle-centre', 'line-circle-radius', 'quarter-wave', 'quarter-wave-match', 'stub-short-z', 'stub-open-z', 'stub-open-b', 'stub-short-b', 'stub-short-l', 'stub-open-c'],
   'how-good-is-a-match': ['power-reflected', 'power-delivered', 'vswr', 'gamma-vswr', 'z-max', 'z-min', 'return-loss', 'mismatch-loss'],
   'matching-with-two-parts': ['series-adds-z', 'shunt-adds-y', 'circle-r', 'circle-g', 'x-series-c', 'b-shunt-l', 'b-shunt-c', 'q-node', 'q-l-network'],
+  // M4.3c: theory-solver.md §9–§11, in the order of the page.
+  'two-one-or-none': ['series-adds-z', 'shunt-adds-y', 'circle-r', 'circle-g', 'mobius', 'x-series-c', 'b-shunt-c', 'b-shunt-l'],
+  'one-value-and-a-point': ['gamma-z', 'circle-r', 'mismatch-to-target', 'x-series-c', 'gamma-vswr'],
+  'realisable-values': ['x-series-l', 'x-series-c', 'b-shunt-l', 'b-shunt-c', 'quarter-wave', 'line-rotation', 'line-theta', 'beta', 'vswr', 'return-loss'],
 };
-const CITED = ['Ellingson2018', 'WikiSmith', 'SteerVol2', 'SteerVol3', 'WikiMobius'];
+const CITED = ['Ellingson2018', 'WikiSmith', 'SteerVol2', 'SteerVol3', 'WikiMobius', 'WikiE', 'JohansonHighQ', 'WurthWEKI'];
 const GOAL_VSWR = 1.5;
 
 // ---------- the engine's side: every live number by name ----------
@@ -168,6 +177,116 @@ function expected(c) {
   put('start-node1-z', cx(s(1, M_ZR), s(1, M_ZI))); put('start-node1-y', cx(s(1, M_YR), s(1, M_YI))); put('start-input-y', cx(s(2, M_YR), s(2, M_YI)));
   put('start-c', amt(st.parts[0].value, 'F')); put('start-l', amt(st.parts[1].value, 'H'));
   put('start-shunt-c', amt(1 / (w * st.z0), 'F')); put('start-q', num(Math.abs(s(0, M_ZI)) / s(0, M_ZR)));
+  for (const [key, text] of solverExpected(c)) put(key, text);
+  return out;
+}
+
+// ---------- M4.3c: the solver's topics (theory-solver.md §9–§11), from solve.ts and values.ts ----------
+
+const KIND_WORDS = ['series R', 'series L', 'series C', 'shunt R', 'shunt L', 'shunt C', 'line', 'open stub', 'short stub', 'λ/4 transformer'];
+const unitValue = (k, v) => (k === P.SERIES_R || k === P.SHUNT_R || k === P.QUARTER ? amt(v, 'Ω') : k === P.SERIES_L || k === P.SHUNT_L ? amt(v, 'H')
+  : k === P.SERIES_C || k === P.SHUNT_C ? amt(v, 'F') : `${num(v)} λ`);
+const gammaWords = (g) => (g < 1e-12 ? '0' : num(g));
+function valueWords(c, v) {
+  if (v.param === 'f0') return `f0 ${amt(v.value, 'Hz')}`;
+  if (v.param === 'zc') return `part ${v.part + 1}’s Zc ${amt(v.value, 'Ω')}`;
+  const k = v.kind;
+  const sym = k === P.SERIES_R ? 'r' : k === P.SHUNT_R ? 'g' : k === P.SERIES_L || k === P.SERIES_C ? 'x' : k === P.LINE || k === P.QUARTER ? '' : 'b';
+  const series = k <= P.SERIES_C || k === P.LINE || k === P.QUARTER;
+  const what = !sym ? '' : v.added === 0 ? ` (${sym} = 0: ${series ? 'a plain connection' : 'no part'})` : ` (${sym} = ${num(v.added)})`;
+  return `part ${v.part + 1}: ${KIND_WORDS[k]} ${unitValue(k, v.value)}${what}${k !== c.parts[v.part].kind ? ' as the other kind' : ''}${v.swapped ? ', true at this frequency only' : ''}${v.period > 0 ? ', + λ/2 gives the same at f0' : ''}`;
+}
+// A generalised circle [a, bx, by, c]: a(x² + y²) − 2(bx·x + by·y) + c = 0 has centre (bx, by)/a.
+// A centre within 1e-12 (relative) of an axis is on it (rounding).
+function circ(k, o) {
+  if (!(Math.abs(k[o]) > 1e-12)) return null;
+  const x = k[o + 1] / k[o], y = k[o + 2] / k[o], r = Math.sqrt(Math.max(0, k[o + 1] ** 2 + k[o + 2] ** 2 - k[o] * k[o + 3])) / Math.abs(k[o]);
+  const tiny = 1e-12 * Math.max(1, Math.abs(x), r);
+  return { x: Math.abs(x) <= tiny ? 0 : x, y: Math.abs(y) <= tiny ? 0 : y, r };
+}
+const circleWords = (k, o) => { const q = circ(k, o); return q ? `centre ${cx(q.x, q.y)}, radius ${num(q.r)}` : 'a straight line'; };
+function statusWords(r) {
+  if (r.status === 'solved') return r.solutions.length === 1 ? 'one solution' : `${r.solutions.length === 2 ? 'two' : r.solutions.length} solutions`;
+  if (r.status === 'none') return r.sameJob ? 'none: the two parts do the same job' : 'no solution';
+  if (r.status === 'coincident') return r.sameJob ? 'the two parts do the same job: any value of one has one of the other' : 'every value works';
+  return r.status;
+}
+function rangeWords(c, r, g) {
+  const u = r.unknowns[0];
+  if (u.param === 'f0') return `f0 from ${amt(g.min, 'Hz')} to ${amt(g.max, 'Hz')}`;
+  if (u.param === 'zc') return `Zc from ${amt(g.min, 'Ω')} to ${amt(g.max, 'Ω')}`;
+  const k = g.kind >= 0 ? g.kind : c.parts[u.part].kind;
+  return `${KIND_WORDS[k]} from ${unitValue(k, g.min)} to ${unitValue(k, g.max)}${g.swapped ? ', true at this frequency only' : ''}`;
+}
+const variantWords = (s, v) => v.values.map((x, j) => (s.values[j].param === 'f0' ? amt(x, 'Hz') : s.values[j].param === 'zc' ? amt(x, 'Ω') : unitValue(s.values[j].kind, x))).join(' · ');
+const vswrOf = (m) => (1 + m) / (1 - m);
+const distinct = (list) => list.filter((s, i) => !list.slice(0, i).some((t) => t.values.every((v, j) => v.kind === s.values[j].kind && Object.is(v.value, s.values[j].value))));
+
+function solverExpected(c) {
+  const out = new Map(), put = (k, t) => out.set(k, t);
+  const st = S.defaultCircuit(), both = [{ part: 0, param: 'value' }, { part: 1, param: 'value' }], first = [{ part: 0, param: 'value' }];
+  const centre = { kind: 'point' }, vs = { kind: 'vswr', value: 1.5, within: true };
+  const ask = S.askOf(c);
+  const r = ask.unknowns.length ? SV.solve(c, ask.unknowns, ask.goal) : null;
+  // §9, the start example's text.
+  const two = SV.solve(st, both, centre), c1 = circ(two.circles, 0), c2 = circ(two.circles, 4);
+  put('sv9-c1-centre', num(c1.x)); put('sv9-c1-radius', num(c1.r)); put('sv9-c2-centre', num(c2.x)); put('sv9-c2-radius', num(c2.r));
+  put('sv9-d', num(Math.hypot(c1.x - c2.x, c1.y - c2.y))); put('sv9-diff', num(Math.abs(c1.r - c2.r))); put('sv9-sum', num(c1.r + c2.r));
+  const [s1, s2] = two.solutions;
+  put('sv9-s1-c', amt(s1.values[0].value, 'F')); put('sv9-s1-l', amt(s1.values[1].value, 'H'));
+  put('sv9-s2-x', num(s2.values[0].added)); put('sv9-s2-b', num(s2.values[1].added)); put('sv9-s2-c', amt(s2.values[1].value, 'F'));
+  put('sv9-s1-gamma', gammaWords(s1.gamma));
+  const r50 = SV.solve({ ...st, loadR: 50 }, both, centre);
+  put('sv9-r50-c', amt(r50.solutions[0].values[0].value, 'F')); put('sv9-r50-l', amt(r50.solutions[0].values[1].value, 'H'));
+  put('sv9-r100', statusWords(SV.solve({ ...st, loadR: 100 }, both, centre)));
+  const fam = SV.solve(st, both, vs), ft = Math.atan(P.added(st.parts[0].kind, st.parts[0].value, st.z0, st.f0, st.f0, st.z0)), mem = fam.family.at(ft);
+  put('sv9-fam-c', amt(mem[0].values[0].value, 'F')); put('sv9-fam-l0', amt(mem[0].values[1].value, 'H')); put('sv9-fam-l1', amt(mem[1].values[1].value, 'H'));
+  put('sv9-fam-min', amt(fam.ranges[0].min, 'F')); put('sv9-fam-max', amt(fam.ranges[0].max, 'F'));
+  // §9 boxes: the visitor's two unknowns and a point target, or the start example; the family likewise.
+  const twoMine = r && r.unknowns.length === 2 && ask.goal.kind === 'point' && r.circleNode >= 0;
+  const tr = twoMine ? r : two, tc = twoMine ? c : st;
+  put('b9-status', statusWords(tr)); put('b9-c1', circleWords(tr.circles, 0)); put('b9-c2', circleWords(tr.circles, 4));
+  const p1 = circ(tr.circles, 0), p2 = circ(tr.circles, 4);
+  if (p1 && p2) {
+    const dd = Math.hypot(p1.x - p2.x, p1.y - p2.y), sum = p1.r + p2.r, diff = Math.abs(p1.r - p2.r), tol = 1e-9 * Math.max(1, sum);
+    put('b9-d', num(dd)); put('b9-sum', num(sum)); put('b9-diff', num(diff));
+    put('b9-case', Math.abs(dd - sum) <= tol || Math.abs(dd - diff) <= tol ? 'they touch: one point' : dd < sum && dd > diff ? 'they cross twice' : 'they miss');
+  }
+  tr.solutions.forEach((s, k) => { s.values.forEach((v, j) => put(`b9-s${k}-v${j}`, valueWords(tc, v))); put(`b9-s${k}-gamma`, gammaWords(s.gamma)); });
+  const famMine = r && r.status === 'family' && r.family && r.ranges.length > 0;
+  const fr = famMine ? r : fam, fc = famMine ? c : st, fm = famMine ? r.family.at(0.5 * (r.ranges[0].t0 + r.ranges[0].t1)) : mem;
+  if (fm.length) { put('b9f-first', valueWords(fc, fm[0].values[0])); fm.forEach((s, i) => put(`b9f-m${i}`, valueWords(fc, s.values[1]))); } else put('b9f-none', 'No member at this value.');
+  fr.ranges.forEach((g, k) => put(`b9f-r${k}`, rangeWords(fc, fr, g)));
+  // §10.
+  const best = SV.solve(st, first, { kind: 'point', node: 1 }), b0 = best.solutions[0];
+  put('sv10-x', num(b0.values[0].added)); put('sv10-c', amt(b0.values[0].value, 'F')); put('sv10-m', num(b0.mismatch)); put('sv10-vswr', num(vswrOf(b0.mismatch)));
+  const range = SV.solve(st, first, vs);
+  put('sv10-min', amt(range.ranges[0].min, 'F')); put('sv10-max', amt(range.ranges[0].max, 'F'));
+  SV.solve(st, first, { kind: 'g', value: 1, node: 1 }).solutions.forEach((s, k) => put(`sv10-g${k}`, valueWords(st, s.values[0])));
+  const bestMine = r && r.status === 'best' && r.solutions.length > 0;
+  const br = bestMine ? r : best, bc = bestMine ? c : st;
+  put('b10-v', valueWords(bc, br.solutions[0].values[0])); put('b10-m', num(br.solutions[0].mismatch)); put('b10-vswr', num(vswrOf(br.solutions[0].mismatch)));
+  if (br.circleNode >= 0) { put('b10-c1', circleWords(br.circles, 0)); put('b10-c2', circleWords(br.circles, 4)); }
+  const rangeMine = r && r.status === 'range';
+  const rr = rangeMine ? r : range, rc = rangeMine ? c : st;
+  if (rr.ranges.length) rr.ranges.forEach((g, k) => put(`b10r-r${k}`, rangeWords(rc, rr, g))); else put('b10r-none', 'No value keeps the goal.');
+  // §11: the E24 variants of the start match; the box with the visitor's solutions and the page's lists (the default here).
+  const vars = V.standardVariants(st, centre, s1, V.defaultChoice());
+  put('sv11-s2-c', amt(s2.values[1].value, 'F'));
+  for (const [j, key] of [[0, 'c'], [1, 'l']]) {
+    const xs = vars.map((v) => v.values[j]), u = j ? 'H' : 'F';
+    put(`sv11-${key}-lo`, amt(Math.min(...xs), u)); put(`sv11-${key}-hi`, amt(Math.max(...xs), u));
+  }
+  vars.forEach((v, j) => { put(`sv11-v${j}`, variantWords(s1, v)); put(`sv11-v${j}-gamma`, num(v.gamma)); });
+  put('sv11-v0-vswr', num(vswrOf(vars[0].gamma))); put('sv11-v0-rl', amt(-20 * Math.log10(vars[0].gamma), 'dB'));
+  put(`sv11-v${vars.length - 1}-vswr`, num(vswrOf(vars[vars.length - 1].gamma)));
+  const mine = r ? (r.status === 'family' && r.family ? distinct(r.family.ends) : r.solutions) : [];
+  const ls = mine.length ? mine : two.solutions, lc = mine.length ? c : st, lg = mine.length ? ask.goal : centre;
+  ls.forEach((s, k) => s.values.forEach((v, j) => put(`b11-s${k}-v${j}`, valueWords(lc, v))));
+  put('b11-lists', 'R E24 · L E24 · C E24 · Zt, Zc any value');
+  const lv = V.standardVariants(lc, lg, ls[0], V.defaultChoice()).filter((v) => !v.exact);
+  if (lv.length) lv.forEach((v, j) => { put(`b11-v${j}`, variantWords(ls[0], v)); put(`b11-v${j}-gamma`, num(v.gamma)); });
+  else put('b11-none', 'No standard values differ from the solution’s own.');
   return out;
 }
 
@@ -188,7 +307,11 @@ const linked = async (page) => S.decodeCircuit(new URL(page.url()).search).circu
 const lives = (page) => page.$$eval('[data-live]', (els) => els.map((e) => [e.getAttribute('data-live'), e.textContent]));
 
 async function checkLive(page, c, what) {
-  const want = expected(c), got = await lives(page), seen = new Set();
+  // The theory renders deferred (and its solver topics after the Solve panel's outcome): wait up to 3 s for it to agree.
+  const want = expected(c), same = (g) => g.length === want.size && g.every(([k, t]) => want.get(k) === t);
+  let got = await lives(page);
+  for (let i = 0; i < 30 && !same(got); i++) { await sleep(100); got = await lives(page); }
+  const seen = new Set();
   for (const [key, text] of got) {
     seen.add(key);
     ok(want.has(key), `${what}: live number ${key} is one the harness knows`);
@@ -229,11 +352,18 @@ const animated = (page, id) => page.evaluate((i) => {
 const C1 = {
   z0: 75, f0: 2.4e9, loadR: 120, loadX: -60,
   parts: [{ kind: P.SERIES_L, value: 5e-9 }, { kind: P.LINE, value: 0.1, zc: 60 }, { kind: P.SHUNT_C, value: 1e-12 }, { kind: P.STUB_SHORT, value: 0.2, zc: 50 }],
+  // M4.3c: two unknowns and the centre (the solver topics' "Your circuit" for the circles and the standard values).
+  ask: { unknowns: [{ part: 0, param: 'value' }, { part: 2, param: 'value' }], goal: { kind: 'point' } },
 };
 const C2 = {
   z0: 50, f0: 1e9, loadR: 10, loadX: 5,
   parts: [{ kind: P.QUARTER, value: 30 }, { kind: P.SHUNT_R, value: 200 }, { kind: P.SERIES_R, value: 15 }, { kind: P.STUB_OPEN, value: 0.3, zc: 70 }, { kind: P.SERIES_C, value: 4e-12 }, { kind: P.SHUNT_L, value: 12e-9 }],
+  // M4.3c: one unknown and VSWR ≤ 2 at the input (the range box).
+  ask: { unknowns: [{ part: 4, param: 'value' }], goal: { kind: 'vswr', value: 2, within: true } },
 };
+// M4.3c: the start network with one unknown and a point target (the nearest value) and with two and a circle (a family).
+const C3 = { ...S.defaultCircuit(), loadR: 30, loadX: 40, ask: { unknowns: [{ part: 1, param: 'value' }], goal: { kind: 'point' } } };
+const C4 = { ...S.defaultCircuit(), loadR: 20, loadX: -10, ask: { unknowns: [{ part: 0, param: 'value' }, { part: 1, param: 'value' }], goal: { kind: 'mag', value: 0.2, within: true } } };
 
 const counts = {};
 try {
@@ -244,10 +374,10 @@ try {
   ok(S.sameCircuit(await linked(p0), S.defaultCircuit()), 'a fresh visit shows the start circuit');
   counts.live = await checkLive(p0, S.defaultCircuit(), 'start');
   counts.lines = await checkEquations(p0, 'start');
-  ok(JSON.stringify(await p0.$$eval('[data-topic]', (els) => els.map((e) => e.id))) === JSON.stringify(TOPICS), 'the seven topics in the order of theory.md');
+  ok(JSON.stringify(await p0.$$eval('[data-topic]', (els) => els.map((e) => e.id))) === JSON.stringify(TOPICS), 'the ten topics in the order of theory.md and theory-solver.md');
   ok((await openState(p0)).every(Boolean), 'at 1280 px every topic starts open');
   const contents = await p0.$$eval('[data-theory] ol a[href^="#"]', (els) => els.map((e) => e.getAttribute('href')));
-  ok(JSON.stringify(contents.slice(0, 7)) === JSON.stringify(TOPICS.map((t) => `#${t}`)), 'the contents link every topic id');
+  ok(JSON.stringify(contents.slice(0, TOPICS.length)) === JSON.stringify(TOPICS.map((t) => `#${t}`)), 'the contents link every topic id');
   const nav = await p0.$$eval('nav[aria-label="Sections"] a', (els) => els.map((e) => [e.getAttribute('href'), e.textContent]));
   ok(JSON.stringify(nav) === JSON.stringify([['#tool', 'Tool'], ['#theory', 'Theory'], ['#references', 'References']]), 'the bar has the section nav');
   for (const [href] of nav) ok(await p0.$(href) !== null, `section ${href} exists`);
@@ -258,7 +388,7 @@ try {
   for (const [key, href, text] of cites) {
     ok(href === `#ref-${key}`, `citation of ${key} links to its entry`);
     if (!order.includes(key)) order.push(key);
-    ok(text.startsWith(`[${order.indexOf(key) + 1}, `), () => `citation "${text}" of ${key} has number ${order.indexOf(key) + 1}`);
+    ok(text.startsWith(`[${order.indexOf(key) + 1}, `) || text === `[${order.indexOf(key) + 1}]`, () => `citation "${text}" of ${key} has number ${order.indexOf(key) + 1}`);
   }
   ok(JSON.stringify([...order].sort()) === JSON.stringify([...CITED].sort()), () => `the theory cites ${order.join(', ')}`);
   const refs = await p0.$$eval('[data-references] li', (els) => els.map((e) => [e.id, e.querySelector('span').textContent]));
@@ -282,9 +412,12 @@ try {
   await p0.close();
 
   // ---------- two circuits through the link; a load typed and an undo ----------
-  for (const [name, c] of [['C1', C1], ['C2', C2]]) {
+  for (const [name, c] of [['C1', C1], ['C2', C2], ['C3', C3], ['C4', C4]]) {
     const p = await open(desk, c);
     ok(S.sameCircuit(await linked(p), c), `${name}: the link gives the circuit`);
+    // The theory's solver topics follow the Solve panel's outcome (a deferred render after it).
+    await p.waitForSelector('[data-solve-status]:not([data-solve-status="solving"])');
+    await frame(p);
     await checkLive(p, c, name);
     await checkEquations(p, name);
     ok(p.errors.length === 0, () => `${name}: no errors in the console (${p.errors.join(' | ')})`);

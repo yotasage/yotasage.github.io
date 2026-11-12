@@ -204,6 +204,20 @@ try {
     if (r.status === 'best') ok(/Free a second value .*part 1’s C/.test(got.suggest), () => `${name}: suggests a second value (${got.suggest})`);
   }
   for (const s of MUST) ok(seen.has(s), `the message "${s}" was reached`);
+
+  // M4.3c: a value zero but for rounding (the start circuit's second solution, x = 2e-17: a series L of 1.66e-24 H,
+  // swapped, before solve.ts zeroRounding) shows as the part's own no-effect value, not swapped, without standard values.
+  await load(p, CASES.solved);
+  const zero = await p.evaluate(() => {
+    const s = document.querySelectorAll('[data-solution]')[1];
+    const v = s?.querySelector('[data-value][data-part="0"]');
+    return v ? {
+      kind: Number(v.getAttribute('data-kind')), raw: v.getAttribute('data-raw'), text: v.textContent, swapped: !!v.querySelector('[data-swapped]'),
+      variants: [...s.querySelectorAll('[data-variant]')].map((e) => [...e.querySelectorAll('[data-variant-value]')].map((x) => x.getAttribute('data-raw'))),
+    } : null;
+  });
+  ok(zero && zero.kind === P.SERIES_C && readRaw(zero.raw) === Infinity && !zero.swapped && /C = ∞ F/.test(zero.text), () => `near zero: part 1 of solution 2 is the series C's ∞ F, not swapped (${JSON.stringify(zero)})`);
+  ok(zero && zero.variants.length > 0 && zero.variants.every((vs) => readRaw(vs[0]) === Infinity), () => `near zero: its standard values keep part 1 at ∞ and vary only part 2 (${JSON.stringify(zero?.variants)})`);
   ok(p.errors.length === 0, () => `no errors: ${p.errors.join(' | ')}`);
 
   // ---------- Apply: the goal holds, one undo step ----------

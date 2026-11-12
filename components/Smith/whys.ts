@@ -1,4 +1,4 @@
-// The short lines beside the Smith chart's controls and readouts (docs/smith-chart/theory.md §8): what each one is,
+// The short lines beside the Smith chart's controls and readouts (docs/smith-chart/theory.md §8 and theory-solver.md): what each one is,
 // in at most about twelve words, and the Theory topic its "→ theory" link opens. The keys are what the page marks
 // the elements with (data-why) and what scripts/harness/smith/ui-why.mjs checks; the kinds' lines are keyed
 // `kind-<code>` by state.KIND_CODES. Each fact repeats a claim of the topic it links to (docs/smith-chart/claims.md).
@@ -39,7 +39,7 @@ export const WHYS: Readonly<Record<string, Why>> = {
   'field-zc': w('the line impedance', 'transmission-lines', 'The line’s own impedance; not Z0 means a circle off-centre.'),
   ring: w('the rings', 'moving-on-the-chart', 'Drag to change this part’s value along its circle.'),
   grid: w('Z, Y and ZY', 'reading-the-chart', 'Which grid to read: r and x, g and b, or both.'),
-  snap: w('Snap', 'reading-the-chart', 'Drags settle on drawn grid circles and each kind’s listed values (E24 unless changed); Alt drags free.'),
+  snap: w('Snap', 'realisable-values', 'Drags settle on grid circles and each kind’s Standard values list; Alt drags free.'),
   history: w('Undo, Redo and Start over', 'how-to-use', 'Step through changes; Start over brings back the worked example.'),
   zoom: w('Fit, Reset and zoom', 'reading-the-chart', 'Zoom in near the centre; the grid fills in finer circles.'),
   rim: w('the rim scales', 'reading-the-chart', 'Angle of Γ, and wavelengths towards the generator or the load.'),
@@ -53,13 +53,23 @@ export const WHYS: Readonly<Record<string, Why>> = {
   'read-rl': w('return loss', 'how-good-is-a-match', 'Reflected power below incident, in dB; larger is better.'),
   nodes: w('the node table', 'how-to-use', 'Each node from the load to the input: z, Γ, VSWR, return loss.'),
   input: w('the circuit input', 'how-good-is-a-match', 'What the source sees: the end of the path, In.'),
-  goal: w('the goal', 'how-good-is-a-match', 'The centre is the match; dashed circle: VSWR 1.5, |Γ| ≤ 0.2.'),
-  // M4.3a, the Solve panel (linked to the M3 topics until M4.3c adds the solver's own).
-  'solve-mark': w('Solve for', 'matching-with-two-parts', 'Leave this value to the solver: it finds what meets the goal.'),
-  'solve-free': w('L or C', 'moving-on-the-chart', 'An L adds +jx, a C −jx: the answer’s sign picks the kind.'),
-  'solve-goal': w('the solver’s goal', 'how-good-is-a-match', 'Where it must hold, and a point or a circle to reach there.'),
-  'solve-count': w('how many answers', 'matching-with-two-parts', 'A point needs two free values; a circle needs one.'),
+  goal: w('the goal', 'how-good-is-a-match', 'The solver’s goal; by default the centre, within |Γ| 0.2 (VSWR 1.5).'),
+  // M4.3a, the Solve panel (linked to the solver's own topics since M4.3c).
+  'solve-mark': w('Solve for', 'two-one-or-none', 'Leave this value to the solver: it finds what meets the goal.'),
+  'solve-free': w('L or C', 'realisable-values', 'An L adds +jx, a C −jx: the answer’s sign picks the kind.'),
+  'solve-goal': w('the solver’s goal', 'two-one-or-none', 'Where it must hold, and a point or a circle to reach there.'),
+  'solve-count': w('how many answers', 'one-value-and-a-point', 'A point needs two free values; a circle needs one.'),
   'solve-apply': w('Apply', 'how-to-use', 'Puts these values in the circuit as one step; Undo takes it back.'),
+  // M4.3c: the solutions, the circles, the family, the standard values and their lists.
+  'solve-solution': w('a solution', 'two-one-or-none', 'Values that meet the goal, and the |Γ| they give at its node.'),
+  'solve-circles': w('the circles on the chart', 'two-one-or-none', 'Each unknown moves a node on a circle; answers are where they cross.'),
+  'solve-family': w('the family slider', 'two-one-or-none', 'Slide the first value; the second follows to keep the goal.'),
+  'solve-variant': w('standard-value variants', 'realisable-values', 'The nearest standard values, and how far they move the input.'),
+  'solve-lists': w('Standard values', 'realisable-values', 'The values parts come in, per kind; drags and variants use them.'),
+  'list-R': w('the R list', 'realisable-values', 'E series of IEC 60063; E24 parts usually 5 %, E96 1 %.'),
+  'list-L': w('the L list', 'realisable-values', 'Chip inductors come in makers’ own lists (1.9 nH): paste yours.'),
+  'list-C': w('the C list', 'realisable-values', 'E series; RF chip capacitors below 10 pF have tolerances in pF.'),
+  'list-Z': w('the Zt and Zc list', 'realisable-values', 'Any value by default; a list if your lines come in set impedances.'),
 };
 
 /** The key of a value field's line by its form (state.ts FormId). */

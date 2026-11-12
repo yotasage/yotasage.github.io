@@ -454,8 +454,44 @@ function coordDistance(s: Slot, a: number, b: number): number {
   return d;
 }
 
+/**
+ * A solved x or b this small has no effect at rounding level: removing it moves Γ at the part's far node by at most
+ * ZERO_EFFECT (|dΓ| = 2|p|/|w + 1|² for w = z or y at the node before the part, = |p|·|1 ∓ Γ|²/2), far below ACCEPT.
+ * ZERO_ADDED bounds it absolutely, so a node at the open (series) or short (shunt) does not make a real value zero.
+ */
+const ZERO_EFFECT = 64 * Number.EPSILON;
+const ZERO_ADDED = 1e-9;
+
+/**
+ * Sets to exactly 0 the coordinate of every L or C unknown whose solved x or b is zero but for rounding (the start
+ * circuit's second solution gave a series L of 1.66e-24 H for x = 2e-17: a plain connection). The part then shows its
+ * own kind's no-effect value (series L 0, series C ∞, shunt C 0, shunt L ∞), not swapped, with no standard values.
+ * Returns whether any was set; the slots are settled at c.t on return.
+ */
+function zeroRounding(c: Candidate): boolean {
+  let any = false;
+  for (let i = 0; i < slots.length; i++) {
+    const s = slots[i];
+    if (s.param !== P_VALUE || !isReactive(s.kind) || c.t[i] === 0) continue;
+    const p = paramOf(s, c.t[i]);
+    if (!(Math.abs(p) <= ZERO_ADDED)) continue;
+    // Node s.part with the slots before this one settled (settleAll writes them all; the ones after do not matter).
+    gammaAt(gam, 0, s.part);
+    const series = s.kind === SERIES_L || s.kind === SERIES_C;
+    const d = series ? Math.hypot(1 - gam[0], gam[1]) : Math.hypot(1 + gam[0], gam[1]);
+    if (Math.abs(p) * d * d * 0.5 <= ZERO_EFFECT) {
+      if (!any) c.t = c.t.slice();
+      any = true;
+      c.t[i] = 0;
+      settleAll(c.t, c.codes);
+    }
+  }
+  return any;
+}
+
 function buildSolution(c: Candidate): Solution {
   settleAll(c.t, c.codes);
+  if (zeroRounding(c)) c.residual = residualOf(F0v);
   gammaAt(gam, 0, GNODE);
   const values: SolvedValue[] = [];
   let swapped = false, changed = 0, change = 0;

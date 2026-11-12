@@ -14,6 +14,7 @@ import * as importedParts from '../../../lib/smith/parts.ts';
 import * as importedNetwork from '../../../lib/smith/network.ts';
 import * as importedConvert from '../../../lib/smith/convert.ts';
 import * as importedGeometry from '../../../lib/smith/geometry.ts';
+import * as importedGoal from '../../../lib/smith/goal.ts';
 
 const katex = createRequire(import.meta.url)('../../../node_modules/katex');
 const Q = importedEquations.default ?? importedEquations;
@@ -21,6 +22,7 @@ const P = importedParts.default ?? importedParts;
 const N = importedNetwork.default ?? importedNetwork;
 const cv = importedConvert.default ?? importedConvert;
 const G = importedGeometry.default ?? importedGeometry;
+const { goalMismatch } = importedGoal.default ?? importedGoal;
 const { EQUATIONS, PARSE_MS, parse, toText, tex, valueTex, compile, bind, symbolOf, nameTex } = Q;
 const { SERIES_R, SERIES_L, SERIES_C, SHUNT_R, SHUNT_L, SHUNT_C, LINE, STUB_OPEN, STUB_SHORT, QUARTER, packParts, added, valueFor, partMatrix, turnsFromMetres, metresFromTurns, C0 } = P;
 const { evaluate, applyPart, nodeMetrics, inputGamma, M_ZR, M_ZI, M_YR, M_YI, M_GR, M_GI } = N;
@@ -33,6 +35,7 @@ const TOL = 1e-12;
 // Looser only with a reason: the centre of a line's circle, (B − 1/B)/(1 − |BΓ_c|²) + 1/B, subtracts two terms of
 // size 1/|B| to give a centre of size ≤ 1, so it keeps about 1e-16/|B|² of relative accuracy (|B| ≥ 0.05 here).
 const TOLS = { 'line-circle-centre': 1e-11 };
+let mismatchSeed = 0x4d3c5;
 
 export function runEquationChecks({ section, ok, random }) {
   const rnd = (a, b) => a + (b - a) * random();
@@ -114,6 +117,26 @@ export function runEquationChecks({ section, ok, random }) {
     'circle-r': PT, 'circle-x': PT, 'circle-g': PT, 'circle-b': PT,
     'line-circle-b': lineCircle, 'line-circle-centre': lineCircle, 'line-circle-radius': lineCircle,
     vswr: figures, 'gamma-vswr': figures, 'return-loss': figures, 'power-reflected': figures, 'power-delivered': figures, 'mismatch-loss': figures,
+    // M4.3c: the mismatch to an off-centre point target, m from goal.goalMismatch (a target inside the chart). Its
+    // points come from a generator of its own, so adding the entry left the shared stream (and every later check's
+    // random problems, check-validate's among them) as it was.
+    'mismatch-to-target': () => {
+      const own = () => {
+        mismatchSeed = (mismatchSeed + 0x6d2b79f5) | 0;
+        let t = Math.imul(mismatchSeed ^ (mismatchSeed >>> 15), 1 | mismatchSeed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+      const at = () => {
+        const m = 0.05 + 0.85 * own(), a = Math.PI * (2 * own() - 1), gr = m * Math.cos(a), gi = m * Math.sin(a);
+        zFromGamma(out, 0, gr, gi);
+        return { G: [gr, gi], z: [out[0], out[1]] };
+      };
+      const z0 = 10 + 190 * own(), p = at(), t = at();
+      const [tr, ti] = [t.z[0] * z0, t.z[1] * z0];
+      const m = goalMismatch({ kind: 'point', targetR: tr, targetX: ti }, p.G[0], p.G[1], z0);
+      return { m, Gamma: p.G, z: p.z, Gamma_t: t.G, z_t: t.z };
+    },
     'z-max': () => { const p = point(); impedanceFromGamma(out, 0, p.mag, 0, p.z0); return { Z_max: out[0], Z_0: p.z0, VSWR: vswr(p.mag) }; },
     'z-min': () => { const p = point(); impedanceFromGamma(out, 0, -p.mag, 0, p.z0); return { Z_min: out[0], Z_0: p.z0, VSWR: vswr(p.mag) }; },
     'q-node': () => { const p = point(); return { ...p.b, Q: qFromZ(p.b.r, p.b.x) }; },

@@ -119,10 +119,11 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   `docs/resistor/sources.md` says what each source may be cited for), styles and theme variables in
   `styles/Resistor.module.css` (the Combinations section in `styles/ResistorCombos.module.css`, the Design section in
   `styles/ResistorDesign.module.css`, the theory in `styles/ResistorTheory.module.css`), checks in `scripts/harness/resistor/` (`npm run check`, `npm run ui`).
-- Smith chart: built in steps by [docs/smith-chart/plan.md](docs/smith-chart/plan.md) (decisions, milestones and status,
-  module map; `notes-<step>.md` per step). Framework-free logic in `lib/smith/` (engine, network, geometry, grid, the
+- Smith chart: built in steps by [docs/smith-chart/plan.md](docs/smith-chart/plan.md) (decisions, milestones and status;
+  the module map in `modules.md`; `notes-<step>.md` per step). Framework-free logic in `lib/smith/` (engine, network, geometry, grid, the
   circuit and its link in `state.ts`, the solver in `goal.ts`, `solve.ts`, `search.ts`, value lists in `values.ts`), the page in `components/Smith/` (chart, path layer and drag outside React in
-  `chartView.ts`, `pathLayer.ts`, `live.ts`; the circuit panel `Strip.tsx`; the Theory section `Theory.tsx` with `TheoryFigures.tsx`, equations by id from
+  `chartView.ts`, `pathLayer.ts`, `live.ts`; the circuit panel `Strip.tsx`; the Theory section `Theory.tsx` with `TheoryFigures.tsx` and the solver's topics in `TheorySolver.tsx` (content in
+  `docs/smith-chart/theory.md` and `theory-solver.md`), equations by id from
   `lib/smith/equations.ts`, citations from `references.bib` loaded in `getStaticProps` of the page, styles in
   `styles/SmithTheory.module.css`; the short line and "→ theory" link beside every control in `Why.tsx` with the texts
   in `whys.ts`; every claim's source in `docs/smith-chart/claims.md`), state and undo history in
@@ -169,7 +170,7 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   status, how a step is run and verified), `test-files.md`, `architecture.md`, `model.md`, and `s1.md`–`s9.md` (each
   step's scope and the notes it left for later steps).
 - [docs/smith-chart/](docs/smith-chart/plan.md): Smith chart plan (built in steps on the branch `smith-chart`), in
-  parts: `plan.md` (index: goal, decisions, milestones and status, module map, how a step is run), `engine.md`,
+  parts: `plan.md` (index: goal, decisions, milestones and status, how a step is run), `modules.md` (module map), `engine.md`,
   `solver.md`, `learning.md`, `milestones.md`, and the `notes-<step>.md` each step leaves.
 - [docs/agent-workflow.md](docs/agent-workflow.md): how to run large work with Claude agents cheaply and safely, with
   the measured cost of the PCB viewer build.

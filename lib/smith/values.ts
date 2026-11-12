@@ -95,6 +95,8 @@ export function around(value: number, list: ValueList): Around | null {
 
 /** The values of a list to try for `value`: itself when exact or when the list has none, else its one or two neighbours. */
 export function candidates(value: number, list: ValueList): number[] {
+  // A part's no-effect value (an L or C of 0 or ∞, solve.ts zeroRounding) has no standard neighbours.
+  if (!(value > 0 && value < Infinity)) return [value];
   const a = around(value, list);
   if (!a || a.exact) return [value];
   const out: number[] = [];

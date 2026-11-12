@@ -28,7 +28,10 @@ import KatexSpan from '../KatexSpan';
 import { GOAL_VSWR } from './pathLayer';
 import { onFollowTopic } from './Why';
 import { complexText } from './readout';
+import type { Outcome } from './SolvePanel';
 import { CirclesFigure, GammaFigure, LineFigure, MatchFigure, PlaneFigure, VswrFigure, WalksFigure } from './TheoryFigures';
+import { SOLVER_IDS, SolverTopics } from './TheorySolver';
+import type { ValueChoice } from '../../lib/smith/values';
 
 /** The topics in the order of the page; the ids are the anchors (#moving-on-the-chart). */
 export const TOPICS: readonly { id: string; title: string }[] = [
@@ -39,6 +42,9 @@ export const TOPICS: readonly { id: string; title: string }[] = [
   { id: 'transmission-lines', title: 'Transmission lines' },
   { id: 'how-good-is-a-match', title: 'How good is a match' },
   { id: 'matching-with-two-parts', title: 'Matching with two parts' },
+  { id: 'two-one-or-none', title: 'Two solutions, one or none' },
+  { id: 'one-value-and-a-point', title: 'Why one value cannot reach a point' },
+  { id: 'realisable-values', title: 'Realisable values and standard values' },
 ];
 const TOPIC_IDS = new Set(TOPICS.map((t) => t.id));
 
@@ -142,9 +148,16 @@ const F0 = <>f<sub>0</sub></>;
 const Gr = <>Γ<sub>r</sub></>;
 const Gi = <>Γ<sub>i</sub></>;
 
-interface Props { bib: Bibliography; circuit: Circuit }
+interface Props {
+  bib: Bibliography;
+  circuit: Circuit;
+  /** The Solve panel's outcome (null while solving or before the first); the solver's topics show it when it is the circuit's. */
+  outcome: Outcome | null;
+  /** The value lists per kind (D17), for the standard values of topic 10. */
+  lists: ValueChoice;
+}
 
-function Theory({ bib, circuit: c }: Props) {
+function Theory({ bib, circuit: c, outcome, lists }: Props) {
   // Which topics are folded. Open on a wide screen; on a phone folded, except the one a link points at.
   const [closed, setClosed] = useState<Record<string, boolean>>({});
   useEffect(() => {
@@ -208,7 +221,7 @@ function Theory({ bib, circuit: c }: Props) {
     <span className={css.cites}>
       {' '}
       {refs.map(([key, at], i) => (
-        <React.Fragment key={i}>{i > 0 && ', '}<a className={bibCss.cite} href={`#ref-${key}`} data-cite={key}>[{bib.number(key)},{' '}{at}]</a></React.Fragment>
+        <React.Fragment key={i}>{i > 0 && ', '}<a className={bibCss.cite} href={`#ref-${key}`} data-cite={key}>[{bib.number(key)}{at ? <>,{' '}{at}</> : null}]</a></React.Fragment>
       ))}
     </span>
   );
@@ -315,13 +328,13 @@ function Theory({ bib, circuit: c }: Props) {
   const loadRows = matchRows(0, 'load'), inputRows = matchRows(n, 'input');
 
   let number = 0;
-  const topic = (id: string, children: React.ReactNode) => {
+  const topic = (id: string, children: React.ReactNode, no?: number) => {
     const entry = TOPICS.find((t) => t.id === id);
-    number += 1;
+    number = no ?? number + 1;
     return (
       <details key={id} id={id} className={css.topic} open={!closed[id]} data-topic={id}
         onToggle={(event) => { const open = event.currentTarget.open; setClosed((was) => (!was[id] === open ? was : { ...was, [id]: !open })); }}>
-        <summary><span className={css.topicNo}>{number}</span><h3>{entry.title}</h3><span className={css.chevron} aria-hidden="true" /></summary>
+        <summary><span className={css.topicNo}>{no ?? number}</span><h3>{entry.title}</h3><span className={css.chevron} aria-hidden="true" /></summary>
         <div className={css.body}>
           {back?.id === id && <button type="button" className={css.back} onClick={goBack} data-back-to-tool="">↩ Back to the tool</button>}
           {children}
@@ -373,7 +386,7 @@ function Theory({ bib, circuit: c }: Props) {
           <p>
             The usual aim is to bring the input to the centre. There Γ = 0: nothing is reflected and all the power the
             source sends reaches the load{cite([E, '§3.20'])}. The dashed circle around the centre is the tool’s “close
-            enough” (VSWR {num(GOAL_VSWR)}).
+            enough” (VSWR {num(GOAL_VSWR)}); it follows the goal when you choose another in the Solve panel.
           </p>
           <div className={css.live}>
             {head('the input')}
@@ -761,7 +774,7 @@ function Theory({ bib, circuit: c }: Props) {
             <b>Two routes, and when each works.</b> Series first (series, then shunt nearest the source) needs the load’s r
             circle to meet the g = 1 circle, which happens when r ≤ 1. Shunt first needs the load’s g circle to meet the r = 1
             circle, so g ≤ 1. Where a circle meets the target circle it usually meets it twice, so a route has two answers,
-            with different parts. (Why two, one or none comes with the solver.)
+            with different parts. ({jump('two-one-or-none', 'Why two, one or none')} is the next topic, with the solver.)
           </p>
           <p>
             <b>One part can be enough.</b> The start load already lies on g = 1 (its y
@@ -805,6 +818,11 @@ function Theory({ bib, circuit: c }: Props) {
           <Eq id="q-l-network" />
         </>
       ))}
+
+      {/* Memoised on what they show: a change of the network alone (every drag's commit) does not render them again. */}
+      <SolverTopics topic={(id, children) => topic(id, children, TOPICS.findIndex((t) => t.id === id) + 1)} cite={cite} L={L} jump={jump} Eq={Eq}
+        outcome={outcome} lists={lists} bib={bib} folded={SOLVER_IDS.map((id) => (closed[id] ? '1' : '0')).join('')}
+        back={back && SOLVER_IDS.includes(back.id) ? `${back.id}:${back.n}` : ''} />
     </div>
   );
 }

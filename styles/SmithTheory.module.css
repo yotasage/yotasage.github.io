@@ -362,6 +362,9 @@
   white-space: nowrap;
 }
 
+/* The solver's boxes hold whole sentences of values ("part 2: shunt C 31.83 pF (b = 1.000) as the other kind"). */
+.theory [data-solver-box] .n { white-space: normal; overflow-wrap: anywhere; }
+
 .theory .steps { padding-left: 1.3em; }
 
 /* --- Tables ---------------------------------------------------------------------------------------------------- */

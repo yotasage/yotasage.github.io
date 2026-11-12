@@ -119,3 +119,42 @@ Ideal parts at one frequency (claims 166, 186); a swapped kind is true at f0 onl
 at f0 and drifts faster away from it (175; bandwidth itself stays for M7); standard values move \|Γ\| (184), and the
 tool computes neither tolerance nor losses (186). Not claimed: what a usual tolerance does to a match, any Q or SRF
 beyond the WE-KI figures, IEC 60063's own text (cited through WikiE only).
+
+## Page (part 2, 2026-11-12)
+
+- **Topics 8–10** are in `components/Smith/TheorySolver.tsx`: `SolverTopics`, a child of Theory memoised on the
+  outcome, the lists, the bibliography, the three topics' folding and the way back, gets Theory's `topic` (with the
+  topic's number), `cite`, `L`, `jump` and `Eq`; a child renders after its parent, so citations stay in page order.
+  First they were rendered inside Theory's body: Theory renders on every committed network change, and the longer
+  render made ui-strip's keyboard moves flaky (focus left on the old tile, 2 runs in 3; 0 in 4 without them, 0 in 3
+  with the memo). The page also renders for an outcome only when it or the last one has a result. Theory.tsx was already 54 kB; the new file keeps it from growing. Text, equations (by id, as the table above),
+  citations (WikiE, JohansonHighQ and WurthWEKI are web pages without sections: Theory's `cite` prints `[n]` when the
+  section is empty) and the three figures (`TwoOneNoneFigure`, `MismatchFigure`, `StandardFigure` with the E24 variants'
+  input points evaluated by network.ts, 4× zoom) follow §9–§11.
+- **Live numbers.** The text's numbers (`sv9-*`, `sv10-*`, `sv11-*`) are the start examples, solved once at module
+  load (`solve`, `family.at` at the start C's coordinate, `standardVariants` with E24). Five boxes (`data-solver-box`:
+  two, family, best, range, standard) show the visitor's solve when the Solve panel's outcome is of the box's kind (two
+  unknowns and a point target with circles; a family; a best value; a range; any solutions, with the page's lists) and
+  else the start example, headed "Your circuit" or "Start circuit". The outcome reaches the theory as state in
+  `pages/smith-chart/main.tsx` (set in a transition from SolvePanel's `onResult`, read with `useDeferredValue`); nothing is
+  solved again per render. The mismatch equation's live z drops the evaluation's 1e-17 imaginary part: its last bits
+  differ between Node's and the browser's `Math` and broke hydration.
+- **Near-zero values (`solve.ts` `zeroRounding`).** In `buildSolution`, an L or C unknown whose solved x or b is at most
+  1e-9 and whose removal moves Γ at the part's far node by at most 64ε (|ΔΓ| = |p|·|1 ∓ Γ|²/2 with Γ at the node before
+  the part, − for series, + for shunt: the Γ-change of p at that node, so the tolerance follows the node's scale) is set
+  to exactly 0; the part then shows its own kind's no-effect value (series C ∞, series L 0, shunt L ∞, shunt C 0), not
+  swapped, and `values.ts` `candidates` gives 0 and ∞ no neighbours, so its variants vary the other unknown only. The
+  start circuit's second solution is now "series C ∞ F (x = 0: a plain connection)" with a shunt C of 31.83 pF.
+  check-solve.mjs "solve special cases" has four circuits for it, ui-solve.mjs checks it on the page.
+- **Registry:** `mismatch-to-target` (68 entries), checked in check-equations.mjs against `goalMismatch` with a generator
+  of its own: drawing from the shared stream shifted check-validate's random problems and exposed an unrelated family
+  gap (a shunt R of 0 Ω shorting the node onto an x = 0 goal), filed as **BL57**.
+- **Short lines:** 53 (nine new, `snap` and `goal` reworded, the solve lines relinked). The family's line is on a page
+  with a circle goal in ui-why.mjs; the lists' lines need the Standard values setting opened. Buttons sit outside
+  labels (the slider's label is now a `<label htmlFor>` beside its "?").
+- **Docs:** plan.md's module map moved whole to [modules.md](modules.md).
+- **Counts:** `npm run check` 1,378,467 checks; ui-theory 4,983 (169 live numbers on the start page, four circuits with
+  asks: C1 two unknowns, C2 a range, C3 a best value, C4 a family); ui-why 612 (43 buttons followed by mouse). ui-solve 471, ui-strip 347 (three runs), ui-path 1,117
+  (its 4× frame budget missed once inside the full `npm run ui`, passed alone), ui-drag 144 of 145: 10.29 ms per drag frame
+  at 4× against the absolute budget, excepted since notes-M4.3a.md. Figures: the E24 points are numbered, their pairs in
+  the caption (labels overlapped); circle centres within 1e-12 of an axis are on it (no "− j2.3e-17").

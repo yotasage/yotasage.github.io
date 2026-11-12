@@ -161,11 +161,26 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     now.current = next;
     setCircuit(next);
   };
+  // The Solve panel's outcome for the theory's solver topics (M4.3c): set in a transition and read deferred, so it
+  // renders with the theory, time-sliced, never in a drag's frames.
+  const [outcome, setOutcome] = useState<Outcome | null>(null);
+  /** Whether the outcome the theory has holds a result. */
+  const theoryHas = useRef(false);
+  const theoryOutcome = useDeferredValue(outcome);
   // The same functions for the life of the page (they use only refs and setters), so memoised panels skip renders.
   const [stable] = useState(() => ({
     commit: (next: Circuit, group?: string) => commitRef.current(next, group),
     busy: () => !!path.current && path.current.dragPart >= 0,
-    result: (o: Outcome | null) => { solved.current = o; solveLayer.current?.setResult(o?.result ?? null, o?.circuit ?? null); },
+    result: (o: Outcome | null) => {
+      solved.current = o;
+      solveLayer.current?.setResult(o?.result ?? null, o?.circuit ?? null);
+      // null while a slow problem waits: the theory keeps the last outcome until the next. Nothing marked before and
+      // after (the usual edit) changes nothing the theory shows: no render of the page for it.
+      if (o && (o.result || theoryHas.current)) {
+        theoryHas.current = !!o.result;
+        startTransition(() => setOutcome(o));
+      }
+    },
     preview: (c: Circuit | null) => solveLayer.current?.setPreview(c),
     lists: (next: ValueChoice) => setListsRef.current(next),
   }));
@@ -271,7 +286,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     <div className={theoryCss.sections}>
       <section id="theory" className={theoryCss.section} aria-labelledby="theory-title">
         <h2 className={theoryCss.sectionHead} id="theory-title">Theory</h2>
-        <Theory bib={bib} circuit={theoryCircuit} />
+        <Theory bib={bib} circuit={theoryCircuit} outcome={theoryOutcome} lists={lists} />
       </section>
       {/* After the last citation: the list is numbered while the page above it is drawn. */}
       <section id="references" className={theoryCss.section} aria-labelledby="references-title">
@@ -282,7 +297,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
         </div>
       </section>
     </div>
-  ), [bib, theoryCircuit]);
+  ), [bib, theoryCircuit, theoryOutcome, lists]);
   // null: follow the system. Read after mount, so the static page and the first render agree.
   const [theme, setTheme] = useState<Theme | null>(null);
   useEffect(() => {
