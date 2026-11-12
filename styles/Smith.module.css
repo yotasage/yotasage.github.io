@@ -1,5 +1,6 @@
-/* Smith chart. Every colour is a variable on .root; the themes are the two blocks below (after Resistor.module.css).
-   M2.3 makes the design pass; the grid colours here are a first quiet set: Z lines in ink, Y lines in the accent. */
+/* Smith chart. Every colour is a variable on .root; the themes are the blocks below (light; dark by the system unless
+   data-theme says light; dark by data-theme), after Resistor.module.css. The tokens are listed in
+   docs/smith-chart/notes-M2.3.md. Dark --bg is #2b2b2b, the site's dark background. */
 
 .root {
   --bg: #f6f4ee;
@@ -12,17 +13,36 @@
   --rule-strong: #cbc6ba;
   --accent: #0b6a5f;
   --accent-soft: rgba(11, 106, 95, 0.1);
+  --warn: #8a4b08;
 
+  --chart-bg: var(--field);
   --grid-axis: #6e6a61;
-  --grid-z-major: rgba(29, 28, 25, 0.42);
-  --grid-z-minor: rgba(29, 28, 25, 0.15);
+  --grid-z-major: rgba(29, 28, 25, 0.44);
+  --grid-z-minor: rgba(29, 28, 25, 0.14);
   --grid-y-major: rgba(11, 106, 95, 0.55);
-  --grid-y-minor: rgba(11, 106, 95, 0.2);
-  --grid-scale: #8d887d;
+  --grid-y-minor: rgba(11, 106, 95, 0.18);
+  --grid-scale: #9a958a;
+  --grid-label: #4a4741;
   --grid-y-ink: #0b6a5f;
+  --grid-scale-ink: #7a766d;
+
+  /* Part colours for M3 (arcs, strip, equations), in the order parts take them. */
+  --part-1: #1971c2;
+  --part-2: #d9480f;
+  --part-3: #c2255c;
+  --part-4: #2b8a3e;
+  --part-5: #7048e8;
+  --part-6: #9c7a00;
+  --part-7: #0c8599;
+  --part-8: #c92a2a;
 
   --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-num: ui-monospace, 'Cascadia Mono', 'Cascadia Code', 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+  --bar-h: 52px;
+  --page-w: 1600px;
+  --gutter: 32px;
+  --side-w: 340px;
+  --radius: 10px;
   --quick: 120ms;
 
   color-scheme: light;
@@ -39,53 +59,103 @@
 @media (prefers-color-scheme: dark) {
   .root:not([data-theme='light']) {
     --bg: #2b2b2b;
-    --field: #313131;
-    --raise: #383836;
+    --field: #313130;
+    --raise: #3a3a38;
     --ink: #edebe5;
-    --ink-2: #b7b4ab;
-    --ink-3: #8f8c83;
-    --rule: #3a3a38;
-    --rule-strong: #4d4d4a;
+    --ink-2: #bdbab1;
+    --ink-3: #9a978e;
+    --rule: #3d3d3a;
+    --rule-strong: #54544f;
     --accent: #72d1c0;
     --accent-soft: rgba(114, 209, 192, 0.13);
+    --warn: #f0b26b;
     --grid-axis: #a19e95;
     --grid-z-major: rgba(237, 235, 229, 0.42);
-    --grid-z-minor: rgba(237, 235, 229, 0.14);
-    --grid-y-major: rgba(114, 209, 192, 0.55);
-    --grid-y-minor: rgba(114, 209, 192, 0.19);
-    --grid-scale: #8f8c83;
+    --grid-z-minor: rgba(237, 235, 229, 0.13);
+    --grid-y-major: rgba(114, 209, 192, 0.52);
+    --grid-y-minor: rgba(114, 209, 192, 0.17);
+    --grid-scale: #77746c;
+    --grid-label: #cfccc3;
     --grid-y-ink: #72d1c0;
+    --grid-scale-ink: #9a978e;
+    --part-1: #74c0fc;
+    --part-2: #ffa94d;
+    --part-3: #f783ac;
+    --part-4: #8ce99a;
+    --part-5: #b197fc;
+    --part-6: #ffd43b;
+    --part-7: #66d9e8;
+    --part-8: #ff8787;
     color-scheme: dark;
   }
 }
 
 .root[data-theme='dark'] {
   --bg: #2b2b2b;
-  --field: #313131;
-  --raise: #383836;
+  --field: #313130;
+  --raise: #3a3a38;
   --ink: #edebe5;
-  --ink-2: #b7b4ab;
-  --ink-3: #8f8c83;
-  --rule: #3a3a38;
-  --rule-strong: #4d4d4a;
+  --ink-2: #bdbab1;
+  --ink-3: #9a978e;
+  --rule: #3d3d3a;
+  --rule-strong: #54544f;
   --accent: #72d1c0;
   --accent-soft: rgba(114, 209, 192, 0.13);
+  --warn: #f0b26b;
   --grid-axis: #a19e95;
   --grid-z-major: rgba(237, 235, 229, 0.42);
-  --grid-z-minor: rgba(237, 235, 229, 0.14);
-  --grid-y-major: rgba(114, 209, 192, 0.55);
-  --grid-y-minor: rgba(114, 209, 192, 0.19);
-  --grid-scale: #8f8c83;
+  --grid-z-minor: rgba(237, 235, 229, 0.13);
+  --grid-y-major: rgba(114, 209, 192, 0.52);
+  --grid-y-minor: rgba(114, 209, 192, 0.17);
+  --grid-scale: #77746c;
+  --grid-label: #cfccc3;
   --grid-y-ink: #72d1c0;
+  --grid-scale-ink: #9a978e;
+  --part-1: #74c0fc;
+  --part-2: #ffa94d;
+  --part-3: #f783ac;
+  --part-4: #8ce99a;
+  --part-5: #b197fc;
+  --part-6: #ffd43b;
+  --part-7: #66d9e8;
+  --part-8: #ff8787;
   color-scheme: dark;
 }
 
+.root button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.root :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---- the bar ---- */
+
 .bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--bg);
+  border-bottom: 1px solid var(--rule);
+}
+
+.barInner {
+  max-width: var(--page-w);
+  margin: 0 auto;
+  height: var(--bar-h);
+  padding: 0 var(--gutter);
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--rule);
+  gap: 12px;
 }
 
 .home {
@@ -108,15 +178,71 @@
   margin: 0;
   font-size: 15px;
   font-weight: 650;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
 }
 
-.controls {
+.barSpace { flex: 1; }
+
+.root .iconButton {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-right: -7px;
+  border-radius: 6px;
+  color: var(--ink-2);
+  transition: color var(--quick), background var(--quick);
+}
+
+.root .iconButton:hover {
+  color: var(--ink);
+  background: var(--raise);
+}
+
+.sun { display: none; }
+
+@media (prefers-color-scheme: dark) {
+  .root:not([data-theme='light']) .sun { display: block; }
+  .root:not([data-theme='light']) .moon { display: none; }
+}
+
+.root[data-theme='dark'] .sun { display: block; }
+.root[data-theme='dark'] .moon { display: none; }
+
+/* ---- the workspace: chart (hero) and side panel ---- */
+
+.layout {
+  max-width: var(--page-w);
+  margin: 0 auto;
+  padding: 16px var(--gutter) 40px;
+}
+
+.work {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--side-w);
+  gap: 28px;
+  align-items: start;
+}
+
+.stage { min-width: 0; }
+
+.toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px 22px;
-  padding: 12px 16px;
+  gap: 8px 12px;
+  min-height: 34px;
+  margin-bottom: 10px;
   font-size: 14px;
+}
+
+.toolSpace { flex: 1; }
+
+.viewTools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .modes {
@@ -124,20 +250,24 @@
   margin: 0;
   padding: 0;
   border: 1px solid var(--rule-strong);
-  border-radius: 6px;
+  border-radius: 7px;
   overflow: hidden;
+  background: var(--field);
 }
 
 .modes label {
   position: relative;
-  padding: 4px 13px;
+  min-width: 40px;
+  padding: 5px 12px;
+  text-align: center;
   cursor: pointer;
   color: var(--ink-2);
+  font-weight: 550;
+  transition: color var(--quick), background var(--quick);
 }
 
-.modes label + label {
-  border-left: 1px solid var(--rule-strong);
-}
+.modes label + label { border-left: 1px solid var(--rule-strong); }
+.modes label:hover { color: var(--ink); }
 
 .modes input {
   position: absolute;
@@ -150,7 +280,7 @@
 .modes label:has(input:checked) {
   background: var(--accent-soft);
   color: var(--accent);
-  font-weight: 600;
+  font-weight: 650;
 }
 
 .modes label:has(input:focus-visible) {
@@ -158,47 +288,36 @@
   outline-offset: -2px;
 }
 
-.num {
-  min-width: 6ch;
+.zoom {
+  min-width: 7ch;
+  padding-right: 4px;
+  text-align: right;
   font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
-  color: var(--ink);
+  font-size: 13px;
+  color: var(--ink-2);
 }
 
-.viewBar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-  padding: 0 16px 10px;
-  font-size: 14px;
-}
-
-.button {
-  font: inherit;
+.root .button {
   color: var(--ink);
   background: var(--field);
   border: 1px solid var(--rule-strong);
-  border-radius: 6px;
-  padding: 3px 12px;
-  cursor: pointer;
-  transition: background var(--quick);
+  border-radius: 7px;
+  padding: 5px 12px;
+  line-height: 1.3;
+  transition: background var(--quick), border-color var(--quick);
 }
 
-.button:hover { background: var(--raise); }
-.button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.root .button:hover { background: var(--raise); }
 
-.hint {
-  color: var(--ink-3);
-  font-size: 13px;
-}
-
-/* touch-action pan-y (D14): one finger moving vertically scrolls the page, two fingers and sideways go to the chart. */
+/* touch-action pan-y (D14): one finger moving vertically scrolls the page, two fingers and sideways go to the chart.
+   The height leaves the bar, the toolbar and the hint in view on a wide screen. */
 .chart {
   position: relative;
-  height: clamp(300px, min(80vh, 100vw + 120px), 920px);
-  border-top: 1px solid var(--rule);
-  border-bottom: 1px solid var(--rule);
+  height: clamp(440px, calc(100vh - var(--bar-h) - 112px), 1240px);
+  background: var(--chart-bg);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
   overflow: hidden;
   touch-action: pan-y;
   cursor: crosshair;
@@ -212,6 +331,124 @@
 .chart[data-drag] { cursor: grabbing; }
 .chart:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
 
+.hint {
+  margin: 8px 2px 0;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.hintTouch { display: none; }
+
+@media (pointer: coarse) {
+  .hintFine { display: none; }
+  .hintTouch { display: inline; }
+}
+
+.side {
+  position: sticky;
+  top: calc(var(--bar-h) + 16px);
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+  padding-top: 44px;
+}
+
+.panel { min-width: 0; }
+
+.panelTitle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--rule-strong);
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--ink-2);
+}
+
+.panelNote {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--ink-3);
+}
+
+.readout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0 28px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.readRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--rule);
+  min-width: 0;
+}
+
+.readRow dt { color: var(--ink-2); white-space: nowrap; }
+
+.readRow dd {
+  margin: 0;
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 13.5px;
+  color: var(--ink);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.readHint { color: var(--ink-3); font-size: 12px; }
+
+.readNote {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--warn);
+}
+
+.readNote:empty { display: none; }
+
+.readEmpty {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.work[data-read] .readEmpty { display: none; }
+
+/* Tablets and phones: one column, the readout below the chart. */
+@media (max-width: 959px) {
+  .work { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .side { position: static; padding-top: 0; }
+  .chart { height: clamp(300px, calc(100vw - 2 * var(--gutter) + 24px), 80vh); }
+  .readout { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+}
+
+/* Phones: the chart runs from edge to edge. */
+@media (max-width: 599px) {
+  .root { --gutter: 16px; }
+  .layout { padding-top: 12px; }
+  .chart {
+    height: clamp(300px, calc(100vw + 24px), 78vh);
+    margin: 0 calc(-1 * var(--gutter));
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+  }
+}
+
+/* ---- the layers ---- */
+
 .top {
   position: absolute;
   inset: 0;
@@ -223,53 +460,6 @@
 
 .top [data-part='read'] circle { fill: none; stroke: var(--accent); stroke-width: 1.5px; }
 .top [data-part='read'] path { fill: none; stroke: var(--accent); stroke-width: 1.5px; stroke-linecap: round; }
-
-.readout {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr));
-  gap: 2px 28px;
-  margin: 0;
-  padding: 12px 16px 4px;
-  font-size: 14px;
-}
-
-.readRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
-  padding: 3px 0;
-  border-bottom: 1px solid var(--rule);
-  min-width: 0;
-}
-
-.readRow dt { color: var(--ink-2); white-space: nowrap; }
-.readRow dd {
-  margin: 0;
-  font-family: var(--font-num);
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
-  text-align: right;
-  overflow-wrap: anywhere;
-}
-
-.readHint { color: var(--ink-3); font-size: 12px; }
-
-.readNote {
-  margin: 4px 16px 0;
-  font-size: 13px;
-  color: var(--ink-2);
-}
-
-.readNote:empty { display: none; }
-
-.readEmpty {
-  margin: 4px 16px 16px;
-  font-size: 13px;
-  color: var(--ink-3);
-}
-
-.chartFrame[data-read] .readEmpty { visibility: hidden; }
 
 /* The grid's <svg> paints what it holds beyond its box (overflow visible), so a gesture's stretch (a CSS transform,
    origin at the top left) shows grid there too; the chart box clips. */
@@ -303,8 +493,16 @@
   font-variant-numeric: tabular-nums;
   text-anchor: middle;
   dominant-baseline: central;
-  fill: var(--ink-2);
+  fill: var(--grid-label);
 }
 
 .grid text[data-kind='y'] { fill: var(--grid-y-ink); }
-.grid text[data-kind='scale'] { fill: var(--ink-3); }
+.grid text[data-kind='scale'] { fill: var(--grid-scale-ink); }
+
+/* Labels in the field sit on their line: a halo in the chart's colour cuts the line under the text. */
+.grid text[data-inner] {
+  paint-order: stroke;
+  stroke: var(--chart-bg);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}

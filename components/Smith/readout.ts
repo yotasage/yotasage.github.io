@@ -16,11 +16,15 @@ export const READOUT_DIGITS = 4;
 const EMPTY = '–';
 const scratch = new Float64Array(2);
 
-/** re ± j·im with the unit on both parts ("25 Ω − j15 Ω"); an infinite real part with no imaginary one is "∞ Ω". */
+// Every number of the readout has READOUT_DIGITS significant digits with its trailing zeros ("1.797 + j1.350",
+// "89.83 Ω + j67.50 Ω"), so both parts of a complex value show the same precision and no digit is dropped silently.
+const num = (value: number, unit: string, digits: number): string => formatAmount(value, unit, digits, true);
+
+/** re ± j·im with the unit on both parts ("25.00 Ω − j15.00 Ω"); an infinite real part with no imaginary one is "∞ Ω". */
 export function complexText(re: number, im: number, unit: string, digits = READOUT_DIGITS): string {
   if (re !== re || im !== im) return unit ? `${EMPTY} ${unit}` : EMPTY;
-  if (Math.abs(re) === Infinity && im === 0) return formatAmount(re, unit, digits);
-  return `${formatAmount(re, unit, digits)} ${im < 0 ? '−' : '+'} j${formatAmount(Math.abs(im), unit, digits)}`;
+  if (Math.abs(re) === Infinity && im === 0) return num(re, unit, digits);
+  return `${num(re, unit, digits)} ${im < 0 ? '−' : '+'} j${num(Math.abs(im), unit, digits)}`;
 }
 
 /** Writes the texts of the readout of Γ = (gr, gi) on a real Z0 (Ω) into out, in the order of READOUT_FIELDS. */
@@ -39,10 +43,10 @@ export function readoutTexts(gr: number, gi: number, z0: number, out: string[], 
   admittanceFromGamma(scratch, 0, gr, gi, z0);
   out[3] = complexText(scratch[0], scratch[1], 'S', digits);
   const mag = gammaMag(gr, gi);
-  out[4] = `${formatAmount(mag, '', digits)} ∠ ${formatAmount(toDegrees(gammaAngle(gr, gi)), '', digits)}°`;
+  out[4] = `${num(mag, '', digits)} ∠ ${num(toDegrees(gammaAngle(gr, gi)), '', digits)}°`;
   out[5] = complexText(gr, gi, '', digits);
-  out[6] = formatAmount(vswr(mag), '', digits);
-  out[7] = formatAmount(returnLoss(mag), 'dB', digits);
+  out[6] = num(vswr(mag), '', digits);
+  out[7] = num(returnLoss(mag), 'dB', digits);
   out[8] = mag > 1 ? '|Γ| > 1: outside the chart, r < 0 (an active load); VSWR is not defined there.'
     : mag === 1 ? '|Γ| = 1: on the rim, r = 0 (lossless).' : '';
 }

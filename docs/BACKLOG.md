@@ -5,9 +5,11 @@ scheduled it moves into the tool's plan (for the PCB viewer: [pcb-viewer/plan.md
 lookup: [resistor/plan.md](resistor/plan.md); for the Smith chart: [smith-chart/plan.md](smith-chart/plan.md)) and the move is noted here; when it is done the row is removed and that is
 noted here too.
 
+Done and removed: BL48 (Smith chart: grid labels inside the field when zoomed in), done 2026-11-12 by step M2.3
+(`lib/smith/grid.ts`'s inner labels; notes in [smith-chart/notes-M2.3.md](smith-chart/notes-M2.3.md)).
+
 | id | tool | what | why / trigger |
 |---|---|---|---|
-| BL48 | Smith chart | Grid labels inside the field: when zoomed in away from the real axis and the rim (e.g. 64× around Γ = 0.5 + j0.3) `lib/smith/grid.ts` places no r, x, g or b labels, because r and g labels sit on the real axis and x and b labels at the rim; label lines where they cross the window's edge or at their crossings in view | 2026-11-12: found by M2.1b's page harness. Trigger: M2.2 (zoom) or the design pass M2.3, whichever comes first |
 | BL47 | Smith chart | A printable cheat sheet: one page (A4, readable in black and white) with the key equations (Γ, z and y, the four circles with centre and radius, a line's input impedance, the λ/4 transformer, stubs), VSWR, return loss and mismatch loss with a small conversion table, the direction rules ("series L: clockwise along constant r", …) and the two-part matching recipe; generated from the tool's equation registry so it can never disagree with the tool; with blank Z, Y and ZY charts to print for exercises on paper; printed to PDF by the browser or saved as SVG | 2026-11-11: the owner asked for a cheat sheet while the tool was planned (docs/smith-chart/plan.md). Trigger: the equation layer (M5) exists; the blank charts could come with the SVG export (M8) |
 | BL46 | Smith chart | TikZ / LaTeX export of the chart and the schematic, after the resistor tool's TikZ export | 2026-11-11: in the Smith chart plan; the owner wants the chart in LaTeX documents. Trigger: the SVG export (M8) is done |
 | BL45 | Smith chart | A line part defined by physical length and εeff, with Z0 and εeff handed over from the EM tool by link or file | 2026-11-11: in the Smith chart plan. Trigger: the EM tool (TODO.md, "EM simulation") exists |

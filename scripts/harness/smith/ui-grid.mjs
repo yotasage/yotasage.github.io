@@ -284,6 +284,45 @@ ok(L.nonScaling === 'non-scaling-stroke', `strokes do not scale: ${L.nonScaling}
 ok(D.labels > 0 && D.labels === L.labels, `dark theme has the same labels: ${D.labels} ${L.labels}`);
 ok(pageDark.errors.length === 0, `no errors in the dark page: ${pageDark.errors.join(' | ')}`);
 
+// labels in the field (BL48): zoomed in away from the axis and the rim, lines are labelled inside the view; none at 1×
+{
+  const count = () => page.evaluate(() => {
+    const svg = document.querySelector('svg[data-level]'), r = svg.getBoundingClientRect();
+    return [...svg.querySelectorAll('text[data-inner]')].filter((t) => { const b = t.getBoundingClientRect(); return b.left >= r.left && b.right <= r.right && b.top >= r.top && b.bottom <= r.bottom; }).length;
+  });
+  await setView(page, { mode: 'Z', zoom: 1, centre: 0 });
+  const at1 = await count();
+  const seen = [];
+  for (const zoom of [3, 16, 64]) {
+    await page.evaluate(([z]) => { const v = document.querySelector('[data-chart]').smithChart; v.setView(0.3, 0.25, v.kFit * z); }, [zoom]);
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    seen.push(await count());
+  }
+  ok(at1 === 0 && seen.every((c) => c >= 2), `labels in the field: ${at1} at 1×, ${seen.join(', ')} at 3×, 16×, 64× around 0.3 + j0.25`);
+}
+
+// the theme switch (M2.3): light system → dark, kept in localStorage over a reload, back to the system's theme
+{
+  const tc = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: 'light' });
+  const pt = await open(tc);
+  const state = () => pt.evaluate(() => ({ theme: document.querySelector('[data-chart]').closest('[data-theme]')?.getAttribute('data-theme') ?? null,
+    body: getComputedStyle(document.body).backgroundColor, stored: localStorage.getItem('smith.theme') }));
+  const switchTheme = () => pt.getByRole('button', { name: 'Switch between the light and the dark theme' }).click();
+  const s0 = await state();
+  await switchTheme();
+  const s1 = await state();
+  await pt.reload({ waitUntil: 'networkidle' });
+  await pt.waitForFunction(() => document.querySelector('[data-chart]')?.smithChart);
+  await pt.waitForTimeout(100);
+  const s2 = await state();
+  await switchTheme();
+  const s3 = await state();
+  ok(s0.theme === null && s1.theme === 'dark' && s1.body === 'rgb(43, 43, 43)' && s1.stored === 'dark', `the switch turns a light page dark: ${JSON.stringify([s0, s1])}`);
+  ok(s2.theme === 'dark' && s2.body === 'rgb(43, 43, 43)', `the dark theme is kept over a reload: ${JSON.stringify(s2)}`);
+  ok(s3.theme === null && s3.stored === null && s3.body !== s1.body, `switching back follows the system again: ${JSON.stringify(s3)}`);
+  await tc.close();
+}
+
 // 320 px: no horizontal scroll, the chart fits
 const narrow = await browser.newContext({ viewport: { width: 320, height: 640 }, colorScheme: 'light' });
 const pageNarrow = await open(narrow);

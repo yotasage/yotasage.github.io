@@ -353,6 +353,10 @@ section('quantity: reading');
 
 section('quantity: writing');
 {
+  // keepZeros (M2.3: the readout shows every digit, so both parts of a complex value have the same precision)
+  for (const [v, u, d, want] of [[1.35, "", 4, "1.350"], [67.5, "Ω", 4, "67.50 Ω"], [-0.5, "", 4, "−0.5000"], [12345, "", 4, "12350"],
+    [0.0012, "", 4, "0.001200"], [1.23e-9, "", 4, "1.230e−9"], [999.96, "Ω", 4, "1.000 kΩ"], [0, "", 4, "0"], [0, "Ω", 4, "0 Ω"], [0.02, "S", 4, "20.00 mS"], [Infinity, "Ω", 4, "∞ Ω"]])
+    eq(formatAmount(v, u, d, true), want, `formatAmount(${v}, ${u}, ${d}, keepZeros)`);
   const cases = [
     [3.2961, 'V', 4, '3.296 V'], [0.000158, 'A', 3, '158 µA'], [-10, '', 4, '−10'], [0.9999999, 'V', 4, '1 V'],
     [999.96, 'Ω', 4, '1 kΩ'], [999.94, 'Ω', 4, '999.9 Ω'], [999960, 'Ω', 4, '1 MΩ'], [0.99996e-9, 'H', 4, '1 nH'],

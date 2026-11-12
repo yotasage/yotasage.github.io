@@ -30,6 +30,9 @@ const FLAT_PX = 0.02;
 export const SCALE_ROOM_PX = scaleLayout(GRID_DEFAULTS.fontPx).outer;
 
 /** k (px per unit Γ) at which the whole chart, its scales and a small margin fit a box of w × h px. */
+/** From this zoom (k over fitK) lines are also labelled inside the field (grid.ts's inner labels, BL48). */
+export const INNER_ZOOM = 1.5;
+
 export const fitK = (w: number, h: number, marginPx = 6): number => Math.max(24, Math.min(w, h) / 2 - SCALE_ROOM_PX - marginPx);
 
 export class GridLayer {
@@ -67,7 +70,8 @@ export class GridLayer {
     if (!(w > 0 && h > 0 && k > 0)) return false;
     const hw = w / (2 * k), hh = h / (2 * k), v = this.view;
     v.x0 = cx - hw; v.x1 = cx + hw; v.y0 = cy - hh; v.y1 = cy + hh;
-    if (this.options.mode !== mode) this.options = { mode };
+    const inner = k >= INNER_ZOOM * fitK(w, h);
+    if (this.options.mode !== mode || this.options.inner !== inner) this.options = { mode, inner };
     const g = gridFor(v, k, this.grid, this.options);
     const rebuilt = g !== this.grid;
     if (rebuilt) this.draw(g);
@@ -139,6 +143,7 @@ export class GridLayer {
       el.setAttribute('y', String(y));
       if (l.rotate) el.setAttribute('transform', `rotate(${l.rotate} ${x} ${y})`);
       el.setAttribute('data-kind', kindOf(l.kind));
+      if (l.inner) el.setAttribute('data-inner', '');
       el.textContent = l.text;
       frag.appendChild(el);
     }

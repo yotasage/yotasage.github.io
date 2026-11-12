@@ -16,8 +16,9 @@ const {
 const SX = 0, SY = 1, EX = 2, EY = 3, MX = 4, MY = 5, CX = 6, CY = 7, RR = 8, SW = 9, TU = 10, STRIDE = 11;
 const TAU = 2 * Math.PI;
 // The upper end of the spacing band, as a multiple of minPx at the level's k (the documented band is
-// [minPx, BAND·K_SPAN·minPx] at any k a level is shown at).
-const BAND = 7;
+// [minPx, BAND·K_SPAN·minPx] at any k a level is shown at). M2.3 cut each step's region to whole blocks of the next
+// step (outlines on whole circles, not stairs of cells), which leaves wider gaps where a block is dropped: 7 → 9.
+const BAND = 9;
 // Around Γ = 1, where every line meets, the last lines stop at most HOLE·minPx from it (at the level's k).
 const HOLE = 11;
 
@@ -51,7 +52,7 @@ function quadsOverlap(p, q) {
 
 export function runGridChecks({ section, ok, random }) {
   const minPx = GRID_DEFAULTS.minPx;
-  const stats = { holeMax: 0, ratioMax: 0, ratioMin: Infinity, gaps: 0, arcs: 0, labels: 0 };
+  const stats = { holeMax: 0, ratioMax: 0, ratioMin: Infinity, gaps: 0, arcs: 0, labels: 0, inner: 0, corners: '' };
 
   // Lines of a grid in one plane: { r: [[v, lo, hi]], x: [[w, lo, hi]] } with the rim and the axis.
   function linesOf(g, famR) {
@@ -124,7 +125,17 @@ export function runGridChecks({ section, ok, random }) {
     for (const l of L) {
       ok(Number.isFinite(l.x) && Number.isFinite(l.y) && l.rotate >= -90 && l.rotate < 90 && l.w > 0, `${what}: label ${l.text} is finite`);
       ok(Math.abs(Number(l.text.replace('−', '-')) - l.value) <= 1e-9 * Math.max(1, Math.abs(l.value)) + (l.kind >= LBL_ANGLE ? 0.5 * 10 ** -((l.text.split('.')[1] ?? '').length) : 0), `${what}: label text ${l.text} is ${l.value}`);
-      if (l.kind <= LBL_B) {
+      if (l.inner) {
+        // a label in the field: centred on its own line, inside the disc and the window, repeatPx from the line's others
+        const a = l.arc, [cx, cy, R] = circleOf(l.kind, l.value); // already in the Γ plane (g, b turned by π)
+        ok(g.family[a] === l.kind && g.value[a] === l.value && g.cls[a] === CLS_MAJOR, `${what}: inner label ${l.text} names its arc`);
+        ok(Math.abs(Math.hypot(l.x - cx, l.y - cy) - R) <= 1e-9 * Math.max(1, R) && Math.hypot(l.x, l.y) < 1 && inWin(g.covers, l.x, l.y),
+          `${what}: inner label ${l.text} on its line in the disc`);
+        const tang = Math.atan2(-(l.x - cx), -(l.y - cy)) * 180 / Math.PI; // screen tangent, y down
+        let dr = (l.rotate - tang) % 180; if (dr > 90) dr -= 180; if (dr < -90) dr += 180;
+        ok(Math.abs(dr) < 1e-6, `${what}: inner label ${l.text} turned along its line (${dr})`);
+        for (const m of L) if (m !== l && m.arc === a && Math.hypot(m.x - l.x, m.y - l.y) * g.k < g.settings.repeatPx * (1 - 1e-9)) ok(false, `${what}: two labels of ${l.text} closer than repeatPx`);
+      } else if (l.kind <= LBL_B) {
         const a = l.arc, sg = l.kind >= LBL_G ? -1 : 1;
         ok(g.family[a] === l.kind && g.value[a] === l.value && g.cls[a] === CLS_MAJOR, `${what}: label ${l.text} names its arc`);
         const P = l.kind === LBL_R || l.kind === LBL_G ? gam(l.value, 0) : gam(0, l.value);
@@ -206,7 +217,7 @@ export function runGridChecks({ section, ok, random }) {
     if (Z === 1 && (cx || cy)) continue;
     const k = K0 * Z, view = viewAt(Z === 1 ? 0 : cx, Z === 1 ? 0 : cy, k, W, H);
     for (const mode of W === 460 ? [MODE_Z, MODE_Y, MODE_ZY] : [MODE_Z]) {
-      const g = buildGrid(view, densityLevel(k), { mode });
+      const g = buildGrid(view, densityLevel(k), { mode, inner: Z > 1 });
       const what = `${W}×${H} ${mode === 1 ? 'Z' : mode === 2 ? 'Y' : 'ZY'} ${Z}× at (${cx}, ${cy})`;
       zoomGrids.push([g, k, what]);
       checkArcs(g, what);
@@ -224,6 +235,61 @@ export function runGridChecks({ section, ok, random }) {
       ok(g.labels.some((l) => l.kind === famR && l.value === v), `whole chart labels ${famR === LBL_R ? 'r' : 'g'} = ${v}`);
       for (const s of [1, -1]) ok(g.labels.some((l) => l.kind === famX && l.value === s * v), `whole chart labels ${famX === LBL_X ? 'x' : 'b'} = ${s * v}`);
     }
+  }
+
+  {
+    // zoomed into the field, away from the axis and the rim, lines of both families are labelled inside the view
+    for (const [cx, cy] of [[0.3, 0.25], [-0.4, -0.5], [0.5, 0.6]]) for (const Z of [3, 16, 64, 256]) for (const mode of [MODE_Z, MODE_Y]) {
+      const k = K0 * Z, view = viewAt(cx, cy, k, 390, 520), g = buildGrid(view, densityLevel(k), { mode, inner: true });
+      const what = `inner labels ${Z}× at (${cx}, ${cy}) ${mode === MODE_Z ? 'Z' : 'Y'}`;
+      checkLabels(g, what);
+      const seen = [0, 0];
+      for (const l of g.labels) if (l.inner && inWin(view, l.x, l.y)) seen[l.kind & 1]++;
+      ok(seen[0] + seen[1] >= 2 && (Z < 16 || (seen[0] >= 1 && seen[1] >= 1)), `${what}: ${seen[0]} ${mode === MODE_Z ? 'r' : 'g'} and ${seen[1]} ${mode === MODE_Z ? 'x' : 'b'} labels in the view`);
+      stats.inner += seen[0] + seen[1];
+    }
+    // the whole chart has none
+    ok(!buildGrid(viewAt(0, 0, K0, 460, 460), densityLevel(K0), { inner: false }).labels.some((l) => l.inner), 'whole chart: no inner labels');
+  }
+
+  section('grid: region outlines');
+  {
+    // Stairs in the outline of the fine regions: three neighbouring drawn lines of one family, equally spaced, whose
+    // outer ends (inside the window, off the rim) step down at each line. Single cells make such steps along every
+    // outline; with whole blocks the lines inside a block end together and a block's bounding line is a coarser one.
+    // Counted for the default rule and for single cells (blocks: Infinity) on the same views, away from Γ = 1 (Γ = −1
+    // for g and b), where every line meets and the last few cells of each step cannot form whole blocks.
+    const NEAR_TIP_PX = 150;
+    const corners = (g, famR, famX) => {
+      let c = 0, ends = 0;
+      for (const fam of [famR, famX]) {
+        const list = [];
+        for (let a = 0; a < g.count; a++) {
+          if (g.family[a] !== fam || g.value[a] <= 0) continue;
+          const o = a * STRIDE, ex = g.arcs[o + EX], ey = g.arcs[o + EY];
+          const tip = fam === FAM_G || fam === FAM_B ? -1 : 1;
+          const real = inWin(g.covers, ex, ey, 1e-9) && Math.hypot(ex, ey) < 1 - 1e-9 && Math.hypot(ex - tip, ey) * g.k >= NEAR_TIP_PX;
+          list.push([g.value[a], real ? g.ends[2 * a + 1] : NaN]);
+        }
+        list.sort((p, q) => p[0] - q[0]);
+        for (let i = 2; i < list.length; i++) {
+          const [v1, e1] = list[i - 2], [v2, e2] = list[i - 1], [v3, e3] = list[i];
+          if (!(e1 === e1 && e2 === e2 && e3 === e3) || Math.abs((v3 - v2) - (v2 - v1)) > 1e-9 * v3) continue;
+          ends++;
+          if (e1 > e2 * (1 + 1e-12) && e2 > e3 * (1 + 1e-12)) c++;
+        }
+      }
+      return [c, ends];
+    };
+    let cb = 0, cc = 0, eb = 0, ec = 0;
+    for (const [W, H] of sizes) for (const [cx, cy] of [[0, 0], ...centres, [0.3, 0.25], [-0.4, -0.5]]) for (const Z of [1, 3, 16, 64, 256]) {
+      const k = K0 * Z, view = viewAt(Z === 1 ? 0 : cx, Z === 1 ? 0 : cy, k, W, H);
+      const [c1, e1] = corners(buildGrid(view, densityLevel(k)), FAM_R, FAM_X);
+      const [c2, e2] = corners(buildGrid(view, densityLevel(k), { blocks: Infinity }), FAM_R, FAM_X);
+      cb += c1; eb += e1; cc += c2; ec += e2;
+    }
+    stats.corners = `${cb} stairs in ${eb} triples of ending lines with whole blocks, ${cc} in ${ec} with single cells`;
+    ok(cb <= 0.4 * cc, `region outlines: ${stats.corners} (≤ 40 %; the rest are steps whose region is under four blocks deep)`);
   }
 
   section('grid: spacing');
@@ -311,9 +377,9 @@ export function runGridChecks({ section, ok, random }) {
 
   section('grid: timing');
   {
-    const time = (view, k, mode) => {
+    const time = (view, k, mode, inner = false) => {
       const L = densityLevel(k), ms = [];
-      for (let i = 0; i < 40; i++) { const t0 = performance.now(); buildGrid(view, L, { mode }); ms.push(performance.now() - t0); }
+      for (let i = 0; i < 40; i++) { const t0 = performance.now(); buildGrid(view, L, { mode, inner }); ms.push(performance.now() - t0); }
       ms.sort((a, b) => a - b);
       return ms[20];
     };
@@ -322,14 +388,17 @@ export function runGridChecks({ section, ok, random }) {
       ['whole chart ZY 1000×400', viewAt(0, 0, K0, 1000, 400), K0, MODE_ZY],
       ['256× centre ZY', viewAt(0, 0, K0 * 256, 460, 460), K0 * 256, MODE_ZY], ['256× near Γ = 1 ZY', viewAt(0.995, 0.002, K0 * 256, 460, 460), K0 * 256, MODE_ZY],
       ['256× near the rim ZY', viewAt(0, 0.995, K0 * 256, 460, 460), K0 * 256, MODE_ZY],
+      ['3× field ZY 1440×900 inner labels', viewAt(0.3, 0.25, K0 * 3, 1440, 900), K0 * 3, MODE_ZY, true],
+      ['16× field ZY 1440×900 inner labels', viewAt(0.3, 0.25, K0 * 16, 1440, 900), K0 * 16, MODE_ZY, true],
     ];
     const out = [];
-    for (const [name, view, k, mode] of rows) {
-      const ms = time(view, k, mode);
+    for (const [name, view, k, mode, inner] of rows) {
+      const ms = time(view, k, mode, inner);
       out.push(`${name} ${ms.toFixed(3)} ms`);
       ok(ms < 2, `${name}: grid built in ${ms.toFixed(3)} ms (< 2)`);
     }
     console.log(`grid: build ${out.join(', ')}`);
     console.log(`grid: ${stats.arcs} arcs and ${stats.labels} labels checked; spacing over ${stats.gaps} gaps ${stats.ratioMin.toFixed(2)}–${stats.ratioMax.toFixed(2)} × minPx at the level's k (band ${minPx}–${BAND * minPx} px, ≤ ${(BAND * K_SPAN * minPx).toFixed(0)} px at any k shown), last lines up to ${stats.holeMax.toFixed(2)} × minPx from Γ = 1`);
+    console.log(`grid: ${stats.inner} inner labels in the views checked; region outlines: ${stats.corners}`);
   }
 }

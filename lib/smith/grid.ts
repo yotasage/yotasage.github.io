@@ -16,6 +16,10 @@
 // family (or the rim, or outside the window), and the set depends only on the level, not on the window, which only
 // limits which lines are listed (panning never changes a line). Drawing the edges of all fine cells instead fills
 // more of the chart near Γ = 1 but lets a last fine line come up to 17 % closer than minPx to a coarser one.
+// Blocks (M2.3): where a step's fine region reaches at least `blocks` (4) blocks of the next step along both axes,
+// it is cut back to whole blocks (5 × 5 cells from 1·10ⁿ, 2 × 2 from 5·10ⁿ), so its outline runs along whole circles
+// of the next step instead of a staircase of single cells; shallower regions (the last cells of each step near Γ = 1
+// and the coarse steps of a level) keep the cell rule, as whole blocks would empty them.
 //
 // Levels. The level is ⌊4·log2 k⌋ (k in px per unit of Γ) with a hysteresis of 1.06× each way, so zooming to and fro
 // by 1.05× never flips it; a level is built at its smallest k (`levelK`), so the spacing is ≥ minPx at any k shown.
@@ -88,11 +92,14 @@ export interface GridOptions {
   tickMinPx?: number;  // least distance between perimeter ticks
   scales?: boolean;    // perimeter scales
   pad?: number;        // the grid covers the window grown by this share of its size on each side
+  blocks?: number;     // a step's region is cut to whole blocks when it is this many blocks deep (Infinity: single cells)
+  inner?: boolean;     // also label lines inside the field, along them, wherever their other labels are far away
+  repeatPx?: number;   // least distance between two labels of one line (inner labels)
 }
 
-export interface GridSettings { mode: number; minPx: number; fontPx: number; labelGapPx: number; tickMinPx: number; scales: boolean; pad: number }
+export interface GridSettings { mode: number; minPx: number; fontPx: number; labelGapPx: number; tickMinPx: number; scales: boolean; pad: number; blocks: number; inner: boolean; repeatPx: number }
 
-export const GRID_DEFAULTS: GridSettings = { mode: MODE_Z, minPx: 8, fontPx: 11, labelGapPx: 6, tickMinPx: 6, scales: true, pad: 0.25 };
+export const GRID_DEFAULTS: GridSettings = { mode: MODE_Z, minPx: 8, fontPx: 11, labelGapPx: 6, tickMinPx: 6, scales: true, pad: 0.25, blocks: 4, inner: false, repeatPx: 280 };
 
 export interface GridLabel {
   x: number; y: number;  // centre, Γ
@@ -102,6 +109,7 @@ export interface GridLabel {
   kind: number;          // LBL_*
   value: number;         // r, x, g, b, degrees or wavelengths
   arc: number;           // index of the arc it labels, −1 for scales
+  inner: boolean;        // a label in the field, centred on its line and turned along it
 }
 
 export interface Grid {
@@ -331,8 +339,75 @@ function pushSpecial(fam: number, sx: number, sy: number, ex: number, ey: number
 const rExt = new Map<number, number>();
 const xExt = new Map<number, number>();
 
+// Blocks. The fine region of step d is cut back to whole blocks of the next step D = f·d (f = 5 from 1·10ⁿ, 2 from
+// 5·10ⁿ), so its outline runs along whole circles of value n·D, as on a printed chart, instead of a staircase of
+// single cells. Block (a, b) is [a·D, (a+1)·D] × [b·D, (b+1)·D] in (r, |x|); it is kept when its outermost line in each
+// direction is drawn across it by the cell rule above (the cell rule's guarantees hold inside it). Fineness falls
+// with r and |x|, so the kept blocks form a staircase of whole blocks: the r lines of column a reach |x| = colTop(a),
+// the x lines of row b reach r = rowEnd(b) (in cells of d; the line between two columns or rows takes the larger,
+// the inner one). Every line then ends on a line of value n·D that is drawn across the block.
+let stepI = 0, stepD = 1, stepF = 5, stepK = 1, stepK2 = 1;
+const colRaw = new Map<number, number>();
+const colFin = new Map<number, number>();
+const rowRaw = new Map<number, number>();
+const rowFin = new Map<number, number>();
+
+function colRawOf(a: number): number {
+  let t = colRaw.get(a);
+  if (t === undefined) {
+    const m = a < 0 ? 0 : rRows(1 + ladder((a + 1) * stepF, stepI), stepD, stepK, stepK2) - 1;
+    t = m > 0 ? m - m % stepF : 0;
+    colRaw.set(a, t);
+  }
+  return t;
+}
+
+function rowRawOf(b: number): number {
+  let t = rowRaw.get(b);
+  if (t === undefined) {
+    const m = b < 0 ? 0 : xCols(ladder((b + 1) * stepF, stepI), stepD, stepK, stepK2) - 1;
+    t = m > 0 ? m - m % stepF : 0;
+    rowRaw.set(b, t);
+  }
+  return t;
+}
+
+// The extent of the kept blocks of column a (rows b with both rowRaw(b) and colRaw(a) covering the block); rowRaw is
+// non-increasing in b, so the last such row is found by bisection.
+function colTop(a: number): number {
+  let t = colFin.get(a);
+  if (t !== undefined) return t;
+  const raw = colRawOf(a), need = (a + 1) * stepF;
+  let hi = raw / stepF - 1;
+  if (hi < 0 || rowRawOf(0) < need) t = 0;
+  else if (rowRawOf(hi) >= need) t = raw;
+  else {
+    let lo = 0;
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (rowRawOf(mid) >= need) lo = mid; else hi = mid; }
+    t = (lo + 1) * stepF;
+  }
+  colFin.set(a, t);
+  return t;
+}
+
+function rowEnd(b: number): number {
+  let t = rowFin.get(b);
+  if (t !== undefined) return t;
+  const raw = rowRawOf(b), need = (b + 1) * stepF;
+  let hi = raw / stepF - 1;
+  if (hi < 0 || colRawOf(0) < need) t = 0;
+  else if (colRawOf(hi) >= need) t = raw;
+  else {
+    let lo = 0;
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (colRawOf(mid) >= need) lo = mid; else hi = mid; }
+    t = (lo + 1) * stepF;
+  }
+  rowFin.set(b, t);
+  return t;
+}
+
 // One family pair (r, x) over the window in its own plane; sign −1 for g and b (the window is passed turned by π).
-function pass(famR: number, famX: number, sign: number, x0: number, y0: number, x1: number, y1: number, kq: number, minPx: number): void {
+function pass(famR: number, famX: number, sign: number, x0: number, y0: number, x1: number, y1: number, kq: number, minPx: number, blocksMin: number): void {
   if (!zRange(x0, y0, x1, y1)) return;
   const rmin = zrMin, rmax = zrMax, xmin = zxMin, xmax = zxMax;
   const xn = xmin > 0 ? xmin : xmax < 0 ? -xmax : 0, xn2 = xn * xn;
@@ -354,13 +429,19 @@ function pass(famR: number, famX: number, sign: number, x0: number, y0: number, 
     const d = ladder(1, i);
     if (d > dMax) break;
     const K = 2 * d * kq / minPx, K2 = K * K;
+    stepI = i; stepD = d; stepF = (i & 1) ? 2 : 5; stepK = K; stepK2 = K2;
+    colRaw.clear(); colFin.clear(); rowRaw.clear(); rowFin.clear();
+    // Whole blocks where the step's region reaches at least `blocksMin` blocks along both axes (the region of a step
+    // that is only a few cells deep would lose most of its lines to whole blocks); single cells otherwise.
+    const reach = blocksMin * stepF;
+    const blocks = rRows(1 + d, d, K, K2) - 1 >= reach && xCols(d, d, K, K2) - 1 >= reach;
     if (rmax >= d) {
       const s = 0.5 * (-xn2 + Math.sqrt(xn2 * xn2 + 4 * K2));
       const vB = Math.min(rmax, Math.sqrt(s) - 1, K / wMin - 1); // A1·A3 ≥ wMin²·(1 + v)²
       const nHi = Math.floor(vB / d);
       for (let k = Math.max(1, Math.ceil(rmin / d)); k <= nHi; k++) {
         const v = ladder(k, i);
-        const m = rRows(1 + v + d, d, K, K2) - 1;
+        const m = blocks ? colTop(k % stepF ? Math.floor(k / stepF) : k / stepF - 1) : rRows(1 + v + d, d, K, K2) - 1;
         if (m > 0) {
           const X = ladder(m, i), p = rExt.get(v);
           if (p === undefined || X > p) rExt.set(v, X);
@@ -372,7 +453,7 @@ function pass(famR: number, famX: number, sign: number, x0: number, y0: number, 
       const nHi = Math.floor(wB / d);
       for (let k = Math.max(1, Math.ceil(wlo / d)); k <= nHi; k++) {
         const w = ladder(k, i);
-        const m = xCols(w + d, d, K, K2) - 1;
+        const m = blocks ? rowEnd(k % stepF ? Math.floor(k / stepF) : k / stepF - 1) : xCols(w + d, d, K, K2) - 1;
         if (m > 0) {
           const R = ladder(m, i), p = xExt.get(w);
           if (p === undefined || R > p) xExt.set(w, R);
@@ -403,36 +484,66 @@ function pass(famR: number, famX: number, sign: number, x0: number, y0: number, 
 
 let boxes = new Float64Array(6 * 64); // cx, cy, ux, uy, hw, hh
 let nBoxes = 0;
+// A uniform hash of the boxes (cells of BOX_CELL px): each box is listed in every cell its bounding square meets, so
+// two boxes that overlap share a cell; a query visits each box once (by stamp).
+const BOX_CELL = 48;
+const bucket = new Map<number, number[]>();
+let stamp = new Uint32Array(64);
+let stampId = 0;
+const cellKey = (ix: number, iy: number): number => ix * 4194304 + iy;
+
+function resetBoxes(): void { nBoxes = 0; bucket.clear(); }
 
 function fits(cx: number, cy: number, ux: number, uy: number, hw: number, hh: number): boolean {
   const rA = Math.hypot(hw, hh);
-  for (let b = 0; b < nBoxes; b++) {
-    const o = 6 * b;
-    const dx = boxes[o] - cx, dy = boxes[o + 1] - cy;
-    const vx = boxes[o + 2], vy = boxes[o + 3], bw = boxes[o + 4], bh = boxes[o + 5];
-    const rB = Math.hypot(bw, bh);
-    if (dx * dx + dy * dy > (rA + rB) * (rA + rB)) continue;
-    // separating axes: A's u, A's v, B's u, B's v
-    let sep = false;
-    for (let a = 0; a < 4 && !sep; a++) {
-      const nx = a === 0 ? ux : a === 1 ? -uy : a === 2 ? vx : -vy;
-      const ny = a === 0 ? uy : a === 1 ? ux : a === 2 ? vy : vx;
-      const ra = hw * Math.abs(ux * nx + uy * ny) + hh * Math.abs(-uy * nx + ux * ny);
-      const rb = bw * Math.abs(vx * nx + vy * ny) + bh * Math.abs(-vy * nx + vx * ny);
-      if (Math.abs(dx * nx + dy * ny) > ra + rb) sep = true;
+  const ix0 = Math.floor((cx - rA) / BOX_CELL), ix1 = Math.floor((cx + rA) / BOX_CELL);
+  const iy0 = Math.floor((cy - rA) / BOX_CELL), iy1 = Math.floor((cy + rA) / BOX_CELL);
+  if (++stampId === 0xffffffff) { stamp.fill(0); stampId = 1; }
+  for (let ix = ix0; ix <= ix1; ix++) {
+    for (let iy = iy0; iy <= iy1; iy++) {
+      const list = bucket.get(cellKey(ix, iy));
+      if (list === undefined) continue;
+      for (let q = 0; q < list.length; q++) {
+        const b = list[q];
+        if (stamp[b] === stampId) continue;
+        stamp[b] = stampId;
+        const o = 6 * b;
+        const dx = boxes[o] - cx, dy = boxes[o + 1] - cy;
+        const vx = boxes[o + 2], vy = boxes[o + 3], bw = boxes[o + 4], bh = boxes[o + 5];
+        const rB = Math.hypot(bw, bh);
+        if (dx * dx + dy * dy > (rA + rB) * (rA + rB)) continue;
+        // separating axes: A's u, A's v, B's u, B's v
+        let sep = false;
+        for (let a = 0; a < 4 && !sep; a++) {
+          const nx = a === 0 ? ux : a === 1 ? -uy : a === 2 ? vx : -vy;
+          const ny = a === 0 ? uy : a === 1 ? ux : a === 2 ? vy : vx;
+          const ra = hw * Math.abs(ux * nx + uy * ny) + hh * Math.abs(-uy * nx + ux * ny);
+          const rb = bw * Math.abs(vx * nx + vy * ny) + bh * Math.abs(-vy * nx + vx * ny);
+          if (Math.abs(dx * nx + dy * ny) > ra + rb) sep = true;
+        }
+        if (!sep) return false;
+      }
     }
-    if (!sep) return false;
   }
   return true;
 }
 
 function addBox(cx: number, cy: number, ux: number, uy: number, hw: number, hh: number): void {
   if (6 * (nBoxes + 1) > boxes.length) { const b = new Float64Array(boxes.length * 2); b.set(boxes); boxes = b; }
-  const o = 6 * nBoxes++;
+  if (nBoxes >= stamp.length) { const t = new Uint32Array(stamp.length * 2); t.set(stamp); stamp = t; }
+  const id = nBoxes++, o = 6 * id;
   boxes[o] = cx; boxes[o + 1] = cy; boxes[o + 2] = ux; boxes[o + 3] = uy; boxes[o + 4] = hw; boxes[o + 5] = hh;
+  const r = Math.hypot(hw, hh);
+  const ix0 = Math.floor((cx - r) / BOX_CELL), ix1 = Math.floor((cx + r) / BOX_CELL);
+  const iy0 = Math.floor((cy - r) / BOX_CELL), iy1 = Math.floor((cy + r) / BOX_CELL);
+  for (let ix = ix0; ix <= ix1; ix++) {
+    for (let iy = iy0; iy <= iy1; iy++) {
+      const key = cellKey(ix, iy), list = bucket.get(key);
+      if (list === undefined) bucket.set(key, [id]); else list.push(id);
+    }
+  }
 }
 
-// Try to place a label; returns it when it fits.
 function place(out: GridLabel[], lab: GridLabel, kq: number, gap: number, win: GridWindow): boolean {
   if (!(lab.x >= win.x0 && lab.x <= win.x1 && lab.y >= win.y0 && lab.y <= win.y1)) return false;
   const a = lab.rotate * Math.PI / 180, ux = Math.cos(a), uy = Math.sin(a);
@@ -551,7 +662,7 @@ function scales(kq: number, st: GridSettings, covers: GridWindow, labels: GridLa
       pushTick(SCALE_ANGLE, isMajor, th, 1, 1 + (isMajor ? TICK_MAJOR_PX : TICK_MINOR_PX) / kq, v);
       if (isMajor) {
         const text = v < 0 ? '−' + (-v).toFixed(dec) : v.toFixed(dec);
-        labels.push({ x: rLab * Math.cos(th), y: rLab * Math.sin(th), rotate: normRot(90 - th * 180 / Math.PI), w: textWidth(text, f), h: f, text, kind: LBL_ANGLE, value: v, arc: -1 });
+        labels.push({ x: rLab * Math.cos(th), y: rLab * Math.sin(th), rotate: normRot(90 - th * 180 / Math.PI), w: textWidth(text, f), h: f, text, kind: LBL_ANGLE, value: v, arc: -1, inner: false });
       }
     }
   }
@@ -583,14 +694,77 @@ function scales(kq: number, st: GridSettings, covers: GridWindow, labels: GridLa
         const rot = normRot(90 - th * 180 / Math.PI), c = Math.cos(th), s = Math.sin(th);
         let l = 0.5 - g; if (l >= 0.5 - 1e-12) l = 0;
         const tg = g.toFixed(wDec), tl = l.toFixed(wDec);
-        labels.push({ x: rWtl * c, y: rWtl * s, rotate: rot, w: textWidth(tl, f), h: f, text: tl, kind: LBL_WTL, value: l, arc: -1 });
-        labels.push({ x: rWtg * c, y: rWtg * s, rotate: rot, w: textWidth(tg, f), h: f, text: tg, kind: LBL_WTG, value: g, arc: -1 });
+        labels.push({ x: rWtl * c, y: rWtl * s, rotate: rot, w: textWidth(tl, f), h: f, text: tl, kind: LBL_WTL, value: l, arc: -1, inner: false });
+        labels.push({ x: rWtg * c, y: rWtg * s, rotate: rot, w: textWidth(tg, f), h: f, text: tg, kind: LBL_WTG, value: g, arc: -1, inner: false });
       }
     }
   }
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+
+// Labels in the field (BL48). Zoomed in, the labels on the real axis and inside the rim are out of view, so lines
+// are labelled again on themselves: the text is centred on the line and turned along it (the layer gives it a halo
+// in the background colour, which cuts the line under it, as on a contour map). Only lines at least twice as round
+// as their spacing to the neighbouring drawn value of their family get them (every other line where the step is
+// 0.1, the integers where it is 0.5), so the field stays readable. Candidates sit at fixed angles about each
+// circle's centre, counted from its point on the rim (Γ = ±1), every repeatPx/2 of arc at the level's k, so they
+// depend on the level only and keep their place while panning; one is placed when no label of the same line is
+// within repeatPx and its box fits (inside the disc, with twice the label gap), roundest lines first.
+const innerVals: number[][] = [[], [], [], []];
+
+function innerLabels(labels: GridLabel[], cls: Uint8Array, kq: number, st: GridSettings, win: GridWindow): void {
+  const f = st.fontPx, gap = 2 * st.labelGapPx, rep = st.repeatPx, rep2 = (rep / kq) * (rep / kq);
+  // drawn values per family (|x|, |b| on one side), with the rim and the axis (0) as neighbours
+  for (let q = 0; q < 4; q++) { innerVals[q].length = 0; innerVals[q].push(0); }
+  for (let a = 0; a < n; a++) if (bFam[a] <= FAM_B) innerVals[bFam[a]].push(Math.abs(bVal[a]));
+  for (let q = 0; q < 4; q++) innerVals[q].sort((p, r) => p - r);
+  // the labels each arc already has (Γ), from the axis and rim pass
+  const own = new Map<number, number[]>();
+  for (const l of labels) if (l.arc >= 0) { const o = own.get(l.arc); if (o) o.push(l.x, l.y); else own.set(l.arc, [l.x, l.y]); }
+  const cand: number[] = []; // arc, angle, roundness
+  for (let a = 0; a < n; a++) {
+    const fam = bFam[a];
+    if (fam > FAM_B) continue;
+    const v = Math.abs(bVal[a]), vals = innerVals[fam];
+    // spacing to the neighbouring drawn values (vals[0] = 0 < v)
+    let lo = 0, hi = vals.length;
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (vals[mid] < v) lo = mid; else hi = mid; }
+    let j = lo + 1; while (j < vals.length && vals[j] <= v) j++;
+    const gapV = Math.min(v - vals[lo], j < vals.length ? vals[j] - v : Infinity);
+    const round = roundness(v);
+    if (!(round >= 2 * gapV * (1 - 1e-9))) continue;
+    const o = a * ARC_STRIDE, Cx = bArcs[o + ARC_CX], Cy = bArcs[o + ARC_CY], Rr = bArcs[o + ARC_R], sw = bArcs[o + ARC_SWEEP];
+    if (!(Rr < Infinity) || Rr * kq < 2 * rep / Math.PI) continue; // circles under 4·repeatPx round: axis and rim labels do
+    const tip = fam >= FAM_G ? -1 : 1; // the circle's point on the rim
+    const a0 = Math.atan2(-Cy, tip - Cx), aS = Math.atan2(bArcs[o + ARC_SY] - Cy, bArcs[o + ARC_SX] - Cx);
+    let t0 = aS - a0; t0 -= TAU * Math.round(t0 / TAU);
+    const t1 = t0 + sw, tlo = Math.min(t0, t1), thi = Math.max(t0, t1);
+    const dA = 0.5 * rep / (Rr * kq);
+    for (let m = Math.ceil(tlo / dA), mEnd = Math.floor(thi / dA); m <= mEnd; m++) if (m !== 0) cand.push(a, a0 + m * dA, round);
+  }
+  const nc = cand.length / 3;
+  const order = new Int32Array(nc);
+  for (let c = 0; c < nc; c++) order[c] = c;
+  order.sort((p, q) => (cand[3 * q + 2] - cand[3 * p + 2]) || (cand[3 * p] - cand[3 * q]) || (cand[3 * p + 1] - cand[3 * q + 1]));
+  const rimIn = 1 - (f + 2) / kq;
+  for (let c = 0; c < nc; c++) {
+    const k3 = 3 * order[c], a = cand[k3], ang = cand[k3 + 1];
+    const o = a * ARC_STRIDE, Rr = bArcs[o + ARC_R];
+    const ca = Math.cos(ang), sa = Math.sin(ang);
+    const x = bArcs[o + ARC_CX] + Rr * ca, y = bArcs[o + ARC_CY] + Rr * sa;
+    if (x * x + y * y > rimIn * rimIn || x < win.x0 || x > win.x1 || y < win.y0 || y > win.y1) continue;
+    const mine = own.get(a);
+    let near = false;
+    if (mine) for (let p = 0; p < mine.length && !near; p += 2) { const dx = mine[p] - x, dy = mine[p + 1] - y; near = dx * dx + dy * dy < rep2; }
+    if (near) continue;
+    const v = bVal[a], text = fmt(v);
+    const lab: GridLabel = { x, y, rotate: normRot(Math.atan2(-ca, -sa) * 180 / Math.PI), w: textWidth(text, f), h: f, text, kind: bFam[a], value: v, arc: a, inner: true };
+    if (!place(labels, lab, kq, gap, win)) continue;
+    if (mine) mine.push(x, y); else own.set(a, [x, y]);
+    cls[a] = CLS_MAJOR;
+  }
+}
 
 export function resolveOptions(options?: GridOptions): GridSettings {
   return { ...GRID_DEFAULTS, ...(options ?? {}) } as GridSettings;
@@ -612,14 +786,14 @@ export function buildGrid(view: GridWindow, level: number, options?: GridOptions
     const a = Math.max(-1, x0), b = Math.min(1, x1);
     if (a < b) pushSpecial(FAM_AXIS, a, 0, b, 0, Infinity, 0, 0.5 * (a + b), 0);
   }
-  if (st.mode & MODE_Z) pass(FAM_R, FAM_X, 1, x0, y0, x1, y1, kq, st.minPx);
-  if (st.mode & MODE_Y) pass(FAM_G, FAM_B, -1, -x1, -y1, -x0, -y0, kq, st.minPx);
+  if (st.mode & MODE_Z) pass(FAM_R, FAM_X, 1, x0, y0, x1, y1, kq, st.minPx, st.blocks);
+  if (st.mode & MODE_Y) pass(FAM_G, FAM_B, -1, -x1, -y1, -x0, -y0, kq, st.minPx, st.blocks);
 
   // labels: the scales first, then the lines by roundness
   const labels: GridLabel[] = [];
   const pending: GridLabel[] = [];
   if (st.scales) scales(kq, st, covers, pending);
-  nBoxes = 0;
+  resetBoxes();
   for (const l of pending) place(labels, l, kq, 1, { x0: -Infinity, y0: -Infinity, x1: Infinity, y1: Infinity });
   const f = st.fontPx;
   const cands: GridLabel[] = [];
@@ -639,7 +813,7 @@ export function buildGrid(view: GridWindow, level: number, options?: GridOptions
       gx = px * inR - Math.sin(th) * side; gy = py * inR + Math.cos(th) * side;
       rot = normRot(90 - th * 180 / Math.PI);
     }
-    cands.push({ x: sign * gx, y: sign * gy, rotate: rot, w, h: f, text, kind: fam, value: v, arc: a });
+    cands.push({ x: sign * gx, y: sign * gy, rotate: rot, w, h: f, text, kind: fam, value: v, arc: a, inner: false });
     score.push(roundness(Math.abs(v)));
   }
   const order = cands.map((_, j) => j);
@@ -660,6 +834,7 @@ export function buildGrid(view: GridWindow, level: number, options?: GridOptions
     cls[c.arc] = CLS_MAJOR;
     if (p !== undefined) cls[cands[p].arc] = CLS_MAJOR;
   }
+  if (st.inner) innerLabels(labels, cls, kq, st, covers);
 
   const flags = new Uint8Array(n);
   const arcs = bArcs.slice(0, n * ARC_STRIDE);
@@ -675,7 +850,8 @@ export function buildGrid(view: GridWindow, level: number, options?: GridOptions
 
 const sameSettings = (a: GridSettings, b: GridSettings): boolean =>
   a.mode === b.mode && a.minPx === b.minPx && a.fontPx === b.fontPx && a.labelGapPx === b.labelGapPx &&
-  a.tickMinPx === b.tickMinPx && a.scales === b.scales && a.pad === b.pad;
+  a.tickMinPx === b.tickMinPx && a.scales === b.scales && a.pad === b.pad && a.blocks === b.blocks &&
+  a.inner === b.inner && a.repeatPx === b.repeatPx;
 
 /** Whether `grid` can be shown for this window at this level (same level, window inside what it covers). */
 export function gridCovers(grid: Grid, view: GridWindow, level: number): boolean {

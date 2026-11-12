@@ -95,14 +95,16 @@ const STEP_PREFIXES = ['T', 'G', 'M', 'k', '', 'm', 'µ', 'n', 'p', 'f'];
 
 // A value with `digits` significant digits, an SI prefix (f to T) and a real minus sign: "3.296 V", "−10", "158 µA",
 // "2.2 nH", "13.98 dB". Rounded with carry: 999.96 at four digits is "1 kΩ", never "1000 Ω". Trailing zeros are
-// dropped. Infinity is "∞ Ω" (an open), NaN "–". Without a unit the number is written without a prefix.
-export function formatAmount(value: number, unit: string, digits = 4): string {
+// dropped, unless `keepZeros` (then every one of the `digits` is shown: "67.50 Ω", "1.350", for readouts whose parts
+// should show the same precision). Infinity is "∞ Ω" (an open), NaN "–". Without a unit the number is written without
+// a prefix.
+export function formatAmount(value: number, unit: string, digits = 4, keepZeros = false): string {
   if (value !== value) return unit ? `– ${unit}` : '–';
   const sign = value < 0 ? '−' : '';
   const abs = Math.abs(value);
   if (abs === Infinity) return unit ? `${sign}∞ ${unit}` : `${sign}∞`;
   if (!unit || NO_PREFIX.has(unit)) {
-    const text = `${sign}${Number(abs.toPrecision(digits))}`;
+    const text = `${sign}${keepZeros ? withZeros(abs, digits) : Number(abs.toPrecision(digits))}`;
     return unit ? `${text} ${unit}` : text;
   }
   if (abs === 0) return `0 ${unit}`;
@@ -111,5 +113,16 @@ export function formatAmount(value: number, unit: string, digits = 4): string {
   let mantissa = Number((abs / STEP_SCALES[i]).toPrecision(digits));
   // The carry: 999.96 rounds to 1000, which is 1 of the next prefix.
   if (mantissa >= 1000 && i > 0) mantissa = Number((abs / STEP_SCALES[--i]).toPrecision(digits));
-  return `${sign}${mantissa} ${STEP_PREFIXES[i]}${unit}`;
+  return `${sign}${keepZeros ? withZeros(mantissa, digits) : mantissa} ${STEP_PREFIXES[i]}${unit}`;
+}
+
+// abs (> 0, finite) with `digits` significant digits and its trailing zeros, without an exponent down to 1e-7
+// ("0.0000001230"); integers with more digits than that are written whole ("12350").
+function withZeros(abs: number, digits: number): string {
+  if (abs === 0) return '0';
+  const r = Number(abs.toPrecision(digits));
+  const dec = digits - 1 - Math.floor(Math.log10(r));
+  if (dec <= 0) return String(r);
+  if (dec > digits + 6) return r.toPrecision(digits).replace('e-', 'e−');
+  return r.toFixed(dec);
 }
