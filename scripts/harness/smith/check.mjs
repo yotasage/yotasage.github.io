@@ -11,6 +11,8 @@ import { runEquationChecks } from './check-equations.mjs';
 import { runGridChecks } from './check-grid.mjs';
 import { runStateChecks } from './check-state.mjs';
 import { runSolveChecks } from './check-solve.mjs';
+import { runSolveMoreChecks } from './check-solve-b.mjs';
+import { runValueChecks } from './check-values.mjs';
 
 const quantity = importedQuantity.default ?? importedQuantity;
 const cx = importedComplex.default ?? importedComplex;
@@ -403,6 +405,14 @@ runStateChecks({ section, ok, random });
 // ---------------------------------------------------------------------------------------------------------------
 // Goals and the solver's geometric core (M4.1a): check-solve.mjs, with the same counters.
 runSolveChecks({ section, ok, near, printed, random });
+
+// ---------------------------------------------------------------------------------------------------------------
+// The best value, ranges, families and the fallback search (M4.1b): check-solve-b.mjs, with the same counters.
+runSolveMoreChecks({ section, ok, near, random });
+
+// ---------------------------------------------------------------------------------------------------------------
+// Value lists and standard-value variants (M4.1b, D17): check-values.mjs, with the same counters.
+runValueChecks({ section, ok, near, random });
 
 // ---------------------------------------------------------------------------------------------------------------
 const total =[...groups.values()].reduce((a, b) => a + b, 0);

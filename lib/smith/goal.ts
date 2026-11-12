@@ -6,8 +6,10 @@
 // solver (solve.ts) intersects it with a part's locus. The circles of engine.md §1: r: (r/(1+r), 0), 1/(1+r);
 // g: (−g/(1+g), 0), 1/(1+g); x: (1, 1/x), 1/|x|; b: (−1, −1/b), 1/|b|.
 //
-// An inequality goal (|Γ| ≤ m, VSWR ≤ s, return loss ≥ dB: `within`) is represented here; the solver of M4.1a gives
-// the values on its boundary circle, and M4.1b turns them into the range of values that keeps it.
+// An inequality goal (|Γ| ≤ m, VSWR ≤ s, return loss ≥ dB: `within`, on the circles about the centre only): the
+// solver (M4.1b) gives the values on its boundary circle and the ranges of values between them that keep it.
+// How near a point target is reached is `goalMismatch`: the pseudo-hyperbolic distance |Γ − Γt|/|1 − Γt*·Γ|, which is
+// |Γ| for the centre and, for a real target R, |Γ| referred to R (the best value of one unknown minimises it).
 
 import { gammaFromImpedance, magFromReturnLoss, magFromVswr } from './convert';
 import type { Vec } from './complex';
@@ -30,13 +32,16 @@ export interface Goal {
   /** A point target in ohms; default Z0 + j0 (the centre). R = ∞ is the open. */
   targetR?: number;
   targetX?: number;
-  /** mag and vswr: at most the value; rl: at least the value. Ranges are M4.1b. */
+  /** mag and vswr: at most the value; rl: at least the value (ignored by the other kinds). */
   within?: boolean;
 }
 
 const DEFAULT_VALUE: Readonly<Record<GoalKind, number>> = { point: 0, mag: 0, vswr: 1, rl: Infinity, r: 1, g: 1, x: 0, b: 0 };
 
 export const isCircleGoal = (goal: Goal): boolean => goal.kind !== 'point';
+
+/** An inequality goal: within on a circle about the centre (mag, vswr, rl). */
+export const isWithin = (goal: Goal): boolean => !!goal.within && (goal.kind === 'mag' || goal.kind === 'vswr' || goal.kind === 'rl');
 
 /** The goal's figure with its default. */
 export const goalValue = (goal: Goal): number => goal.value ?? DEFAULT_VALUE[goal.kind];
@@ -82,6 +87,33 @@ export function goalTarget(out: Vec, o: number, goal: Goal, z0: number): void {
   const R = goal.targetR ?? z0, X = goal.targetX ?? 0;
   if (R === Infinity) { out[o] = 1; out[o + 1] = 0; return; }
   gammaFromImpedance(out, o, R, X, z0);
+}
+
+/**
+ * A circle goal that is one point (|Γ| = 0, VSWR 1, return loss ∞: the centre; r = ∞ the open; g = ∞ the short) as
+ * the equivalent point target, or null.
+ */
+export function pointGoal(goal: Goal): Goal | null {
+  const m = goalMag(goal), v = goalValue(goal);
+  if (m === 0) return { kind: 'point', node: goal.node };
+  if (goal.kind === 'r' && v === Infinity) return { kind: 'point', node: goal.node, targetR: Infinity, targetX: 0 };
+  if (goal.kind === 'g' && v === Infinity) return { kind: 'point', node: goal.node, targetR: 0, targetX: 0 };
+  return null;
+}
+
+/** Below this |Γt| the mismatch is pseudo-hyperbolic; at the rim (an open, short or pure reactance) it is |Γ − Γt|. */
+export const RIM = 1 - 1e-9;
+
+/**
+ * How far Γ is from a point target: |Γ − Γt|/|1 − Γt*·Γ| (|Γ| for the centre; for a target on the rim |Γ − Γt|);
+ * goalResidual for a circle goal.
+ */
+export function goalMismatch(goal: Goal, gr: number, gi: number, z0: number): number {
+  if (goal.kind !== 'point') return goalResidual(goal, gr, gi, z0);
+  goalTarget(tg, 0, goal, z0);
+  const tr = tg[0], ti = tg[1], d = Math.hypot(gr - tr, gi - ti);
+  if (!(Math.hypot(tr, ti) < RIM)) return d;
+  return d / Math.hypot(1 - (tr * gr + ti * gi), tr * gi - ti * gr);
 }
 
 /** The goal's circle into out[o…o+3]; false (and nothing written) for a point target. */

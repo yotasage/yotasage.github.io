@@ -121,7 +121,7 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   `styles/ResistorDesign.module.css`, the theory in `styles/ResistorTheory.module.css`), checks in `scripts/harness/resistor/` (`npm run check`, `npm run ui`).
 - Smith chart: built in steps by [docs/smith-chart/plan.md](docs/smith-chart/plan.md) (decisions, milestones and status,
   module map; `notes-<step>.md` per step). Framework-free logic in `lib/smith/` (engine, network, geometry, grid, the
-  circuit and its link in `state.ts`), the page in `components/Smith/` (chart, path layer and drag outside React in
+  circuit and its link in `state.ts`, the solver in `goal.ts`, `solve.ts`, `search.ts`, value lists in `values.ts`), the page in `components/Smith/` (chart, path layer and drag outside React in
   `chartView.ts`, `pathLayer.ts`, `live.ts`; the circuit panel `Strip.tsx`; the Theory section `Theory.tsx` with `TheoryFigures.tsx`, equations by id from
   `lib/smith/equations.ts`, citations from `references.bib` loaded in `getStaticProps` of the page, styles in
   `styles/SmithTheory.module.css`; the short line and "→ theory" link beside every control in `Why.tsx` with the texts
@@ -151,7 +151,8 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 - **No file over 40 kB is read whole.** Docs are split into parts with an index before they reach 40 kB (as
   `docs/pcb-viewer/`). For a large code file, list its outline first (`grep -n` for top-level declarations or methods),
   then read only the range needed (`offset`/`limit`). Large code files now: `lib/pcb/export/kicad.ts`,
-  `lib/pcb/pads/board.ts`, `lib/pcb/kicad/board.ts`, `lib/pcb/altium/board.ts` (splitting them is BL29). Never read
+  `lib/pcb/pads/board.ts`, `lib/pcb/kicad/board.ts`, `lib/pcb/altium/board.ts` (splitting them is BL29),
+  `lib/smith/solve.ts`. Never read
   `package-lock.json` or the generated glyph data `lib/pcb/font/newstroke-glyphs.ts`.
 - **Test files** are on the owner's machines; read them where they are and never copy them into the repo. PCB samples
   are listed in [docs/pcb-viewer/test-files.md](docs/pcb-viewer/test-files.md). Real 3D models for the

@@ -39,17 +39,21 @@ export function runSolveChecks({ section, ok, near, printed, random }) {
   // ----- evaluation of a solution by network.ts, independent of the solver's maps
   function gammaAt(circuit, parts, n) {
     const packed = packParts(parts), nodes = new Float64Array((parts.length + 1) * NODE_STRIDE);
-    evaluate(nodes, packed, parts.length, circuit.loadR, circuit.loadX, circuit.z0, circuit.f0, circuit.f0);
+    evaluate(nodes, packed, parts.length, circuit.loadR, circuit.loadX, circuit.z0, circuit.f ?? circuit.f0, circuit.f0);
     nodeGamma(w2, 0, nodes, n * NODE_STRIDE);
     return [w2[0], w2[1]];
   }
   function applied(circuit, sol) {
     const parts = circuit.parts.map((p) => ({ ...p }));
-    for (const v of sol.values) parts[v.part] = { kind: v.kind, value: v.value, zc: v.zc };
+    for (const v of sol.values) {
+      if (v.param === 'zc') parts[v.part].zc = v.value;
+      else if (v.param !== 'f0') parts[v.part] = { kind: v.kind, value: v.value, zc: v.zc };
+    }
     return parts;
   }
   function residualOf(circuit, goal, sol, res) {
-    const g = gammaAt(circuit, applied(circuit, sol), res.goalNode);
+    const fv = sol.values.find((v) => v.param === 'f0');
+    const g = gammaAt(fv ? { ...circuit, f: fv.value } : circuit, applied(circuit, sol), res.goalNode);
     return goalResidual(goal, g[0], g[1], circuit.z0);
   }
   const loadOfGamma = (gr, gi, z0) => { zFromGamma(w2, 0, gr, gi); return [w2[0] * z0, w2[1] * z0]; };
@@ -505,10 +509,11 @@ export function runSolveChecks({ section, ok, near, printed, random }) {
     const base = c(25, 25, [SERIES_L, SHUNT_C, LINE]);
     base.parts[2].zc = 50;
     const st = (unk, goal) => solve(base, unk, goal);
-    ok(st([{ part: 0 }], centre).status === 'unsupported', 'one unknown, a point target: unsupported (M4.1b)');
+    ok(['best', 'solved'].includes(st([{ part: 0 }], centre).status), 'one unknown, a point target: the best value (M4.1b)');
     ok(st(both, { kind: 'vswr', value: 1.5 }).status === 'family', 'two unknowns, a circle goal: a family (M4.1b)');
-    ok(st([{ part: 2, param: 'zc' }, { part: 0 }], centre).status === 'rejected', 'a line\'s Zc: rejected');
-    ok(st([{ part: 0, param: 'f0' }, { part: 1 }], centre).status === 'rejected', 'f0: rejected');
+    ok(st([{ part: 2, param: 'zc' }, { part: 0 }], centre).status !== 'rejected', 'a line\'s Zc: searched (M4.1b)');
+    ok(st([{ part: 0, param: 'f0' }, { part: 1 }], centre).status !== 'rejected', 'f0: searched (M4.1b)');
+    ok(st([{ part: 0, param: 'zc' }], centre).status === 'rejected', 'a series L\'s Zc: rejected');
     ok(st([{ part: 0 }, { part: 1 }, { part: 2 }], centre).status === 'rejected', 'three unknowns: rejected');
     ok(st([{ part: 0 }, { part: 0 }], centre).status === 'rejected', 'one part twice: rejected');
     ok(st([{ part: 0 }, { part: 2 }], { kind: 'point', node: 2 }).status === 'rejected', 'a part beyond the goal node: rejected');
@@ -575,13 +580,13 @@ export function runSolveChecks({ section, ok, near, printed, random }) {
       if (res.solutions.length) solved++;
       let fine = typeof res.reason === 'string' && res.circles.every(finiteish) && finiteish(res.nonPassive);
       for (const s of res.solutions) {
-        fine &&= Number.isFinite(s.residual) && Number.isFinite(s.gamma) && Number.isFinite(s.change) && s.residual <= ACCEPT;
+        fine &&= Number.isFinite(s.residual) && Number.isFinite(s.gamma) && Number.isFinite(s.change) && (res.status === 'best' || s.residual <= ACCEPT);
         for (const v of s.values) {
           // A lumped value may be its kind's 0 or ∞ limit (an open or short), never NaN; lengths and Zt are finite.
-          fine &&= finiteish(v.value) && finiteish(v.added) && v.value >= 0 && (v.kind <= SHUNT_C || Number.isFinite(v.value));
+          fine &&= finiteish(v.value) && finiteish(v.added) && v.value >= 0 && (v.kind <= SHUNT_C || v.param === 'zc' || Number.isFinite(v.value));
         }
         const r = residualOf(circuit, goal, s, res);
-        fine &&= r < 1e-9;
+        fine &&= res.status === 'best' ? Math.abs(r - s.residual) <= 1e-9 : r < 1e-9;
       }
       if (!fine) { bad++; ok(false, `fuzz ${n}: NaN, ∞ or a residual in ${JSON.stringify({ circuit, unknowns, goal })} → ${JSON.stringify(res)}`); }
     }
