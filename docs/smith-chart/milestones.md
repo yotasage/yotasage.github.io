@@ -108,6 +108,11 @@ the link; read the topic "Moving on the chart". Is it nicer than the old one? Wh
 
 - **M4.1 Engine.** Goals, unknown sets, the circle-intersection method, the best value and value ranges for one
   unknown, families, coincident circles, the fallback search ([solver.md](solver.md)).
+  Split in two: **M4.1a** goals (`goal.ts`), the unknowns and the circle-intersection core (`solve.ts`): two unknowns
+  with a point target, one unknown with a circle goal, coincident circles, realisable values and the other kind of
+  part, lengths, ordering; **M4.1b** one unknown with a point target (best value and its |Γ|), ranges for inequality
+  goals, families (two unknowns, circle goal), the fallback numerical search, and the value lists of plan.md D17 with
+  the nearest standard value and the |Γ| it gives.
 - **M4.2 Validation.** As solver.md's "Validation" says.
 - **M4.3 Page.** "Solve for" toggles, the goal selector, the two circles drawn on the chart, the solution list with a
   preview path (hover and tap) and Apply, standard-value variants, every message of solver.md's counting table; the M4
