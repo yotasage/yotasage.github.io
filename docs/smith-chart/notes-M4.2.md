@@ -172,6 +172,59 @@ is the larger refinement. `searchMixed` is unchanged. Such solves already run af
 (M4.3a). `npm run check` took 73.6 s (69.6 s without the extra streams in one run; this machine varies by ±10 %).
 BL54 stands: a grid is still not a proof of completeness.
 
+## BL58 fix
+
+The BL57 fix (M4.4a) changed which problems an earlier group draws, so the shared stream shifted and the fallback
+group "two unknowns" reported two answers of its brute force that the solver lacked. Both are real (Newton on
+network.ts's evaluation polishes them to 5e-12 and 5e-13) and the solver missed them before BL57 too. Causes and fixes:
+
+- **A ridge in both coordinates** (`solve.ts` `searchGrid`, `ridgeOf`, `f2r`): a line's Zc of 0.00028·Z0 with f0, after
+  a λ/4 whose output passes 8.7e-6 from the short at 4.94·f0 (the passage BL56's `passRows` already finds). With the
+  node z1 ≈ j·x1 by the short, the line's input has a pole at Zc/Z0 = x1·tan θ: across a band of relative width about
+  r1/x1 the input goes round a whole circle, elsewhere it stays by the short. As x1 follows f, the answers lie on a
+  curved ridge narrower than the grid in Zc and in f; every grid point near it read Γ within 0.15 of the target's
+  distance with no jump. The rows `passRows` adds now also give the ridge's point at each (Zc/Z0 = x1·tan θ near the
+  short, −x1/tan θ near the open; for a λ/4 the same as (Zt/Z0)²); Newton starts from each point lower than its
+  neighbours by row, in the ridge's own coordinates (v = ln of the parameter over the ridge's at the row, and the row),
+  where the ridge is straight. Newton in the grid's coordinates from the same points failed: the ridge is too curved.
+- **A dip under a grid step** (`search.ts` `roots1D`, `walk`, `passes`; `solve.ts` `searchMixed`): a series C with f0
+  after a λ/4 whose output passes 0.019 from the open at 9.67·f0. Every r circle passes the open, so there the
+  node's r runs from 0 to its peak and back within 0.003 of ln f, under one step of the grid (0.0046), and the signed
+  distance went positive and back between two negative grid points that were not a local minimum of |f|. `roots1D`
+  takes `passes` (`PASS_SHORT`, `PASS_OPEN`): its walk also halves an interval whose chord of CURVE's first point (the
+  node before the part) passes the short or open nearer than half the nearer end, as `passRows` does, up to 48 times.
+  `searchMixed` asks for the image point of its part: the open for a series part, the short for a shunt part or stub,
+  both for a λ/4, none for a line. The first version added these rows to the grid before the walk; it changed the
+  walk's midpoints and lost dips that golden section had found at local minima of the old grid (18 solutions in 160
+  10-part problems; 21 with the passages in the walk alone). Now the walk keeps its midpoints, and the local minima are also tried on the grid without the
+  passages' points, where a passage made a neighbour lower.
+
+Each problem is a fixed case, `fallback, two unknowns (BL58)` (19 solutions: the brute force's 5 and 14 more, all
+re-evaluated) and two `has` cases in `validate regressions`. Every group passes; the fallback groups' counts:
+
+| fallback, two unknowns | problems | solutions | brute-force finds | missed (before) | missed | false | solver only |
+|---|---|---|---|---|---|---|---|
+| shared stream | 280 | 349 | 291 | 2 | 0 | 0 | 58 |
+| seeds 0x3a7c5 / 0x6e1f9 / 0xc42d3 | 56 each | 72 / 73 / 71 | 66 / 57 / 55 | 0 | 0 | 0 | 6 / 16 / 16 |
+| BL58 cases | 2 | 19 | 5 | 2 | 0 | 0 | 14 |
+
+Cost and gain, measured on 160 problems per kind from two streams of the group's generator (each solve timed after a
+warm-up, with and without the change, in one run; ms, median / p90 / worst):
+
+| kind | before | after | solutions before → after |
+|---|---|---|---|
+| searchMixed, f0 + lumped | 0.3–0.4 / 1.9–2.1 / 5–11 | 0.3–0.4 / 1.8–1.9 / 4–6 | 405 → 413 |
+| searchMixed, Zc + lumped | 0.1–0.2 / 0.3 / 0.5 | 0.2 / 0.3 / 0.6 | 222 → 222 |
+| searchMixed, f0 + series C, 10 parts | 1.6–1.7 / 2.6–2.7 / 5–11 | 1.8 / 2.9–3.3 / 6–11 | 5,410 → 5,637 |
+| searchGrid, Zc + f0 | 15–16 / 24 / 46–53 | 15–17 / 24–25 / 44–62 | 801 → 810 |
+| searchGrid, f0 + λ/4 | 18–23 / 28–35 / 64–73 | 18–23 / 27–36 / 54–66 | 1,069 → 1,089 |
+| searchGrid, f0 + stub Zc, two Zc | unchanged within the machine's ±10 % | | 429 → 429 |
+
+The new solutions are re-evaluated by the check's groups (none false). Two solutions of the 10-part group were lost,
+both near x = ±∞ (a C near 0) with residuals of 1.0e-9 and 3.8e-10: `roots1D` returned the same roots to an ulp, and
+their polished residual crossed `ACCEPT` by rounding, so it is the bar on an ill-conditioned point, not the search.
+`npm run check` took 77–80 s.
+
 ## For M4.3 and M4.4
 
 - `goalPole(goal)` says which point a goal's circle excludes; the page can grey that point of the drawn circle.

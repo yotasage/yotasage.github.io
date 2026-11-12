@@ -761,6 +761,26 @@ const slotsFor = (circuit, res) => res.unknowns.map((u) => slotOf(circuit, u));
   validateFamily('two unknowns, family (BL55)',
     { z0: 1, f0: 18499221.86466119, loadR: 0.000014129134096097427, loadX: 0.5926040285741043, parts: [{ kind: SHUNT_C, value: 2.981543268285181e-8 }, { kind: QUARTER, value: 1.2090975166482885 }, { kind: SERIES_R, value: 0.0325795231506815 }, { kind: STUB_SHORT, value: 0.4697346456698142, zc: 0.740690008874131 }, { kind: STUB_OPEN, value: 0.11418702571652829, zc: 0.6714768973162805 }, { kind: STUB_SHORT, value: 0.06986530898604543, zc: 2.3169192246947525 }] },
     [{ part: 2 }, { part: 5 }], { kind: 'g', value: 0.1080963210837452 }, 120, 1500);
+  // BL57, as fixed cases. A goal circle that is itself one of b's loci (x = 0 for a shunt R, b = 0 for a series R):
+  // every other locus meets it only at their common point, a shunt R of 0 Ω shorting the node (on x = 0) or a series R
+  // of ∞ opening it (on b = 0), so every value of a has that member; the solver said none. On b = 0 the short of a
+  // shunt R is the goal's pole: none, as before.
+  validateFamily('two unknowns, family (BL57)',
+    { z0: 0.01, f0: 347640.8933728079, loadR: 0.00035465564922237464, loadX: -0.00822924286978905, parts: [{ kind: STUB_SHORT, value: 0.30427571006119253, zc: 0.016679042058429527 }, { kind: SHUNT_C, value: 0.00014943687403592176 }, { kind: SHUNT_R, value: 0.0007411742279090949 }] },
+    [{ part: 1 }, { part: 2 }], { kind: 'x', value: 0 }, 120, 1500);
+  validateFamily('two unknowns, family (BL57)',
+    { z0: 50, f0: 1e8, loadR: 20, loadX: 35, parts: [{ kind: SERIES_L, value: 4e-8 }, { kind: SERIES_R, value: 10 }] },
+    [{ part: 0 }, { part: 1 }], { kind: 'b', value: 0 }, 120, 1500);
+  validateFamily('two unknowns, family (BL57)',
+    { z0: 50, f0: 1e8, loadR: 20, loadX: 35, parts: [{ kind: SHUNT_C, value: 2e-11 }, { kind: SERIES_L, value: 3e-8 }, { kind: SHUNT_R, value: 80 }] },
+    [{ part: 0 }, { part: 2 }], { kind: 'x', value: 0 }, 120, 1500);
+  {
+    const res = solve({ z0: 50, f0: 1e8, loadR: 20, loadX: 35, parts: [{ kind: SERIES_L, value: 4e-8 }, { kind: SHUNT_R, value: 80 }] }, [{ part: 0 }, { part: 1 }], { kind: 'b', value: 0 });
+    ok(res.status === 'none' && res.ranges.length === 0, `two unknowns, family (BL57): a shunt R's short on b = 0 is the goal's pole, so none (${res.status})`);
+    const r2 = solve({ z0: 0.01, f0: 347640.8933728079, loadR: 0.00035465564922237464, loadX: -0.00822924286978905, parts: [{ kind: STUB_SHORT, value: 0.30427571006119253, zc: 0.016679042058429527 }, { kind: SHUNT_C, value: 0.00014943687403592176 }, { kind: SHUNT_R, value: 0.0007411742279090949 }] }, [{ part: 1 }, { part: 2 }], { kind: 'x', value: 0 });
+    const whole = r2.status === 'family' && r2.ranges.length > 0 && r2.family.ends.every((s) => s.values[1].value === 0 && s.residual <= 1e-9);
+    ok(whole, `two unknowns, family (BL57): every member is a shunt R of 0 Ω (${r2.status}, ${r2.ranges.length} ranges)`);
+  }
   function validateFamily(kind, circuit, unknowns, goal, NA, NB) {
     const res = run(kind, circuit, unknowns, goal), problem = describe(circuit, unknowns, goal);
     const ms = measureOf(goal, circuit.z0), n = nodeOf(goal, circuit), slots = slotsFor(circuit, res), [s1, s2] = slots;
@@ -844,6 +864,15 @@ const slotsFor = (circuit, res) => res.unknowns.map((u) => slotOf(circuit, u));
   validateTwoPoint('fallback, two unknowns (BL56)',
     { z0: 50, f0: 10412845.688968714, loadR: 0.00022087030992080846, loadX: 15.901485025339118, parts: [{ kind: SERIES_L, value: 0.000005255127872477878 }, { kind: LINE, value: 0.26568010600749403, zc: 69.59470565356887 }, { kind: LINE, value: 0.47148665005806834, zc: 28.866402420936677 }, { kind: STUB_SHORT, value: 0.33182412987807763, zc: 108.23198475555864 }, { kind: SERIES_L, value: 0.0000014309825266000554 }] },
     [{ part: 1, param: 'zc' }, { part: 4 }], { kind: 'point', targetR: 83.44083535207986, targetX: -73.46542292398598 }, 320, 320);
+  // BL58 (the shared stream shifted by BL57): answers on the ridge of a line whose Zc is far from Z0 (0.00028·Z0) where
+  // the node before it passes the short (a curved band narrower than the grid in both Zc and f), and a series C's r
+  // circles sweeping the chart where the node before it passes 0.019 from the open, in a band of f under a grid step.
+  validateTwoPoint('fallback, two unknowns (BL58)',
+    { z0: 1, f0: 8913207.766235983, loadR: 0.00047307988087246633, loadX: -12.11502651481781, parts: [{ kind: QUARTER, value: 1.0887863588446869 }, { kind: LINE, value: 0.01671707077184692, zc: 2.975106482096673 }] },
+    [{ part: 1, param: 'zc' }, { part: 0, param: 'f0' }], { kind: 'point', targetR: 0.07450623924821066, targetX: -0.023757635509562374 }, 160, 1600);
+  validateTwoPoint('fallback, two unknowns (BL58)',
+    { z0: 300, f0: 7647348.479657103, loadR: 1.3434231695059358, loadX: -900.5908485675504, parts: [{ kind: QUARTER, value: 529.8307855517733 }, { kind: SERIES_C, value: 3.67710435036924e-11 }, { kind: SERIES_L, value: 0.000006101824553740407 }] },
+    [{ part: 1 }, { part: 0, param: 'f0' }], { kind: 'point', targetR: 1219.4964578057186, targetX: 39.38605048877043, node: 2 }, 160, 1600);
 
   // ==============================================================================================================
   section('validate closed-form cases');
@@ -916,6 +945,12 @@ const slotsFor = (circuit, res) => res.unknowns.map((u) => slotOf(circuit, u));
       [{ part: 1, param: 'zc' }, { part: 0, param: 'f0' }], { kind: 'point', targetR: 1568.862596187903, targetX: -12357.428894033981 }, [0.00703202221109, 1.76224729111], 'small Zc with f0 in a curved valley (BL56)');
     has({ z0: 10000, f0: 7034444916.871903, loadR: 15315.32260632734, loadX: -10812.492577890602, parts: [{ kind: QUARTER, value: 17947.703206850005 }, { kind: QUARTER, value: 3732.331720894017 }, { kind: LINE, value: 0.14000273449346423, zc: 21912.318647715267 }] },
       [{ part: 1 }, { part: 0, param: 'f0' }], { kind: 'point' }, [0.00336625016363, 2.30020714732], 'small Zt with f0 at a resonance (BL56)');
+    // BL58: a small Zc on the ridge where the node before the line passes the short, and a series C (swapped to an L)
+    // whose r circles sweep the chart where the node before it passes the open.
+    has({ z0: 1, f0: 8913207.766235983, loadR: 0.00047307988087246633, loadX: -12.11502651481781, parts: [{ kind: QUARTER, value: 1.0887863588446869 }, { kind: LINE, value: 0.01671707077184692, zc: 2.975106482096673 }] },
+      [{ part: 1, param: 'zc' }, { part: 0, param: 'f0' }], { kind: 'point', targetR: 0.07450623924821066, targetX: -0.023757635509562374 }, [0.000276256097139, 1.59801757242], 'small Zc with f0 on a ridge (BL58)');
+    has({ z0: 300, f0: 7647348.479657103, loadR: 1.3434231695059358, loadX: -900.5908485675504, parts: [{ kind: QUARTER, value: 529.8307855517733 }, { kind: SERIES_C, value: 3.67710435036924e-11 }, { kind: SERIES_L, value: 0.000006101824553740407 }] },
+      [{ part: 1 }, { part: 0, param: 'f0' }], { kind: 'point', targetR: 1219.4964578057186, targetX: 39.38605048877043, node: 2 }, [1.47891823645, 2.26925203461], 'series C with f0 by the open (BL58)');
     // A stub's Zc of 0 shorts its node, which a λ/4 makes the open, where every r circle passes: no answer.
     {
       const circuit = { z0: 75, f0: 5608805560.350074, loadR: 0.04937582480809154, loadX: -1187.2909644886386, parts: [{ kind: STUB_SHORT, value: 0.4683808324951679, zc: 121.06637416262154 }, { kind: QUARTER, value: 70.02502612039825 }] };

@@ -57,7 +57,7 @@ import {
   SHUNT_L, SHUNT_R, STUB_OPEN, STUB_SHORT, added, noEffect, packParts, sincosTurns, turnsAt, valueFor,
 } from './parts';
 import type { Part, PartKind } from './parts';
-import { CURVE, golden, minima1D, newton2D, roots1D } from './search';
+import { CURVE, PASS_OPEN, PASS_SHORT, golden, minima1D, newton2D, roots1D } from './search';
 
 /** What is unknown: a part's value (the default), a line's or stub's Zc, or f0 (the frequency the goal holds at). */
 export type UnknownParam = 'value' | 'zc' | 'f0';
@@ -233,6 +233,12 @@ let ASKED: Goal = GOAL;
 let POLE = 0;
 /** Polish only this slot (a family's second unknown), or all (−1). */
 let ONLY = -1;
+/**
+ * A family whose K′ is itself one of b's loci (BL57): every other locus meets it where all of them meet, b's value at
+ * its limit (a shunt R of 0 Ω or a shunt reactance of ∞ shorts the node, a series R or reactance of ∞ opens it), so
+ * familyAt also offers b at that limit; consider drops it where that point is the goal's pole.
+ */
+let COMMON = false;
 
 const P_VALUE = 0, P_ZC = 1, P_F0 = 2;
 const M_ANGLE = 0, M_LEN = 1, M_LOG = 2;
@@ -577,7 +583,7 @@ function setup(circuit: Circuit, unknowns: readonly Unknown[], goal: Goal): void
   slots.length = 0;
   for (const u of unknowns) slots.push(makeSlot(circuit, u));
   goalTarget(tgt, 0, goal, Z0);
-  cands.length = 0; nonPassive = 0; ONLY = -1;
+  cands.length = 0; nonPassive = 0; ONLY = -1; COMMON = false;
 }
 
 function result(status: SolveStatus, reason: string, unknowns: Unknown[], circleNode = -1, circles: Float64Array = new Float64Array(8), sameJob = false): SolveResult {
@@ -1000,8 +1006,15 @@ function familyAt(t: number): void {
   gammaAt(gam, 0, sb.part);
   partLocus(locP, 0, sb.kind, sb.zc, gam[0], gam[1], Z0, F0, F0);
   if (locP[L_MODE] === LOCUS_FIXED) return;
-  const n = circleIntersect(pts, 0, locP, L_A, kp, 0, FAMILY_SPLIT);
   const ps = [pa, 0];
+  if (COMMON) {
+    // b's locus through P is K′ itself only at the crossings of A′ and K′ (range breaks); elsewhere it meets K′ at the
+    // family's common point alone.
+    ps[1] = Infinity;
+    consider(ps);
+    return;
+  }
+  const n = circleIntersect(pts, 0, locP, L_A, kp, 0, FAMILY_SPLIT);
   for (let i = 0; i < n; i++) {
     const pb = paramOn(locP, pts[2 * i], pts[2 * i + 1]);
     if (pb !== pb) continue;
@@ -1110,21 +1123,25 @@ function familyResult(circuit: Circuit, unknowns: Unknown[], circles: Float64Arr
     }
   };
   const nm = touching(members, sb.kind, sb.zc, kp, 0);
-  if (nm < 0) {
-    return result('none', `${partName(circuit, b)} moves the node along the goal circle itself, so it cannot bring the node onto it: fix ${partName(circuit, b)} and solve for ${partName(circuit, a)}`, unknowns, b, circles);
+  // K′ is one of b's loci: b brings a node onto it only through the loci's common point (BL57).
+  const common = nm < 0;
+  if (common && sameCircle(circles, 0, kp, 0)) {
+    return result('coincident', `${partName(circuit, a)} moves the node along the goal circle and ${partName(circuit, b)} keeps it there: every pair of values keeps the goal`, unknowns, b, circles);
   }
   for (let i = 0; i < nm; i++) crossings(members, 4 * i);
   crossings(kp, 0);
   ONLY = 1;
+  COMMON = common;
   const ranges = buildRanges(sa, breaks, (t) => { familyAt(t); return cands.length; }, FAMILY_GRID);
   const GOAL_USED = GOAL;
   const at = (t: number): Solution[] => {
     setup(circuit, unknowns, GOAL_USED);
     kp.set(kprime);
     ONLY = 1;
+    COMMON = common;
     familyAt(t);
     const sols = cands.map(buildSolution).sort(order);
-    ONLY = -1;
+    ONLY = -1; COMMON = false;
     return sols;
   };
   const ends: Solution[] = [];
@@ -1136,10 +1153,12 @@ function familyResult(circuit: Circuit, unknowns: Unknown[], circles: Float64Arr
     }
   }
   // at() set the state up again: the result's fields come from it.
-  ONLY = -1;
+  ONLY = -1; COMMON = false;
   const within = isWithin(GOAL);
   const reason = ranges.length === 0
-    ? `for no value of ${partName(circuit, a)} does ${partName(circuit, b)} reach the goal circle`
+    ? common
+      ? `${partName(circuit, b)} moves the node along the goal circle itself, so it cannot bring the node onto it: fix ${partName(circuit, b)} and solve for ${partName(circuit, a)}`
+      : `for no value of ${partName(circuit, a)} does ${partName(circuit, b)} reach the goal circle`
     : within
       ? 'two unknowns and a circle goal leave a family of solutions: these are the values on the goal\'s circle; values inside it keep the goal too'
       : 'two unknowns and a circle goal leave a family of solutions: choose the first value in its range, or fix one of them';
@@ -1267,9 +1286,14 @@ function atF0(sg: Slot, pg: number): void {
 
 function searchMixed(fi: number, gi: number): void {
   MF = fi; MG = gi;
-  const sf = slots[fi], sg = slots[gi];
+  const sf = slots[fi], sg = slots[gi], n = gridOf(sf, 1), at = sharpPoints(sf);
+  // Every locus of the geometric part passes its image point (the open for a series part, the short for a shunt one;
+  // a λ/4's both), so where the node before it passes close by, the loci sweep the chart within a band of the
+  // unknown far narrower than the grid, and the signed distance changes sign and back unseen (BL58: a series C's r
+  // circles at 9.67·f0, the node 0.019 from the open). roots1D halves the grid towards such passages.
+  const passes = sg.kind <= SERIES_C ? PASS_OPEN : sg.kind === QUARTER ? PASS_SHORT | PASS_OPEN : sg.kind === LINE ? 0 : PASS_SHORT;
   const roots: number[] = [];
-  roots1D(mixedAt, sf.lo, sf.hi, gridOf(sf, 1), roots, sharpPoints(sf));
+  roots1D(mixedAt, sf.lo, sf.hi, n, roots, at, passes);
   const ps = [0, 0];
   for (const u of roots) {
     const d = mixedAt(u);
@@ -1305,6 +1329,10 @@ let gridRe = new Float64Array(64 * 64), gridIm = new Float64Array(64 * 64);
 /** passRows: the most bisections of one passage (48 halvings take a grid row's width to the last bits of ln f). */
 const PASS_DEPTH = 48;
 const passRe: number[] = [], passIm: number[] = [];
+/** passRows: the rows it added (the coordinate of s1) and the node's Γ there. */
+const addY: number[] = [], addRe: number[] = [], addIm: number[] = [];
+/** searchGrid: the ridge points of the rows passRows added (the λ/4's or line's parameter, the row). */
+const ridgeX: number[] = [], ridgeY: number[] = [];
 
 /** Γ at node n at the frequency of f0's coordinate y into gam (false if it cannot be evaluated). */
 function nodeAtF(s1: Slot, n: number, y: number): boolean {
@@ -1318,24 +1346,25 @@ function nodeAtF(s1: Slot, n: number, y: number): boolean {
  * the whole chart, so where that node (which f alone moves) passes the short or open between two rows, the answers
  * lie in a band of f as narrow as the passage is close: a high-Q resonance before the part, which no grid resolves
  * and whose rows may show no jump at all. Such passages (the chord of two rows' points nearer the short or open than
- * half the nearer row) are bisected towards their nearest point, PASS_DEPTH times at most, and the rows added to ys.
+ * half the nearer row) are bisected towards their nearest point, PASS_DEPTH times at most, and the rows that gives
+ * written to addY (node `at` moved by slot s1 over its coordinates ys, ascending; sides: PASS_SHORT, PASS_OPEN or both).
+ * searchMixed does the same for a lumped part's image point (BL58).
  */
-function passRows(s0: Slot, s1: Slot, ys: number[]): void {
-  const n = ys.length, at = s0.part, added: number[] = [];
-  passRe.length = 0; passIm.length = 0;
+function passRows(s1: Slot, at: number, ys: readonly number[], sides: number): void {
+  const n = ys.length;
+  passRe.length = 0; passIm.length = 0; addY.length = 0; addRe.length = 0; addIm.length = 0;
   for (let j = 0; j < n; j++) {
     const ok = nodeAtF(s1, at, ys[j]);
     passRe.push(ok ? gam[0] : NaN); passIm.push(ok ? gam[1] : NaN);
   }
   for (let j = 0; j + 1 < n; j++) {
-    for (let p = -1; p <= 1; p += 2) passBisect(s1, at, p, ys[j], passRe[j], passIm[j], ys[j + 1], passRe[j + 1], passIm[j + 1], 0, added);
+    if (sides & PASS_SHORT) passBisect(s1, at, -1, ys[j], passRe[j], passIm[j], ys[j + 1], passRe[j + 1], passIm[j + 1], 0);
+    if (sides & PASS_OPEN) passBisect(s1, at, 1, ys[j], passRe[j], passIm[j], ys[j + 1], passRe[j + 1], passIm[j + 1], 0);
   }
-  for (const y of added) ys.push(y);
-  if (added.length) ys.sort((a, b) => a - b);
 }
 
-/** One passage of passRows between rows ya and yb (node points a, b) by the short (p = −1) or open (p = 1): midpoints into out. */
-function passBisect(s1: Slot, at: number, p: number, ya: number, ar: number, ai: number, yb: number, br: number, bi: number, depth: number, out: number[]): void {
+/** One passage of passRows between rows ya and yb (node points a, b) by the short (p = −1) or open (p = 1): midpoints into addY. */
+function passBisect(s1: Slot, at: number, p: number, ya: number, ar: number, ai: number, yb: number, br: number, bi: number, depth: number): void {
   if (depth >= PASS_DEPTH || !(yb - ya > 4e-16 * Math.max(1, Math.abs(ya)))) return;
   const ux = br - ar, uy = bi - ai, l2 = ux * ux + uy * uy;
   if (!(l2 > 0)) return;
@@ -1345,9 +1374,33 @@ function passBisect(s1: Slot, at: number, p: number, ya: number, ar: number, ai:
   const ym = 0.5 * (ya + yb);
   if (!nodeAtF(s1, at, ym)) return;
   const mr = gam[0], mi = gam[1];
-  out.push(ym);
-  passBisect(s1, at, p, ya, ar, ai, ym, mr, mi, depth + 1, out);
-  passBisect(s1, at, p, ym, mr, mi, yb, br, bi, depth + 1, out);
+  addY.push(ym); addRe.push(mr); addIm.push(mi);
+  passBisect(s1, at, p, ya, ar, ai, ym, mr, mi, depth + 1);
+  passBisect(s1, at, p, ym, mr, mi, yb, br, bi, depth + 1);
+}
+
+/**
+ * The ridge of a line's Zc or a λ/4's Zt (slot s0) at the row y of f0 where its input node is Γ = gr + j·gi near the
+ * short or open (BL58): its parameter (Zc/Z0, or (Zt/Z0)²) where the line resonates, a pole of its input z when the
+ * node is z1 ≈ j·x1 near the short (Zc/Z0 = x1·tan θ) or a zero near the open (−x1/tan θ). Across the ridge, a band
+ * of relative width about r1/|x1|, the input goes round a whole circle; off it, it stays by the short or the open. NaN
+ * when there is none in the slot's domain.
+ */
+function ridgeOf(s0: Slot, gr: number, gi: number, y: number): number {
+  const d = (1 - gr) * (1 - gr) + gi * gi, zr = (1 - gr * gr - gi * gi) / d, zi = (2 * gi) / d;
+  const t = Math.tan(TAU * (s0.kind === QUARTER ? 0.25 : packed[s0.part * PART_STRIDE + 1]) * Math.exp(y));
+  const z = zr * zr + zi * zi < 1 ? zi * t : -zi / t;
+  if (!(z > 0 && z < Infinity)) return NaN;
+  const p = s0.kind === QUARTER ? z * z : z, x = Math.atan(p);
+  return x > s0.lo && x < s0.hi ? p : NaN;
+}
+
+/** f2 in the ridge's own coordinates: v = ln of slot 0's parameter over the ridge's at the row y (searchGrid, BL58). */
+function f2r(v: number, y: number, out: Float64Array): number {
+  const s0 = slots[0];
+  if (!nodeAtF(slots[1], s0.part, y)) return NaN;
+  const p = ridgeOf(s0, gam[0], gam[1], y);
+  return p === p ? f2(Math.atan(p * Math.exp(v)), y, out) : NaN;
 }
 
 /** The midpoints of the intervals of `at` across which Γ jumps by more than GRID_JUMP near the target (along axis 0 or 1 of the grid). */
@@ -1384,7 +1437,18 @@ function searchGrid(): void {
   // f0 (always the second unknown) also gets every frequency where a stub before the goal is a multiple of λ/4.
   for (const u of sharpPoints(s1)) if (u > s1.lo && u < s1.hi) ys.push(u);
   ys.sort((a, b) => a - b);
-  if (s0.half && s1.param === P_F0) passRows(s0, s1, ys);
+  ridgeX.length = 0; ridgeY.length = 0;
+  if (s0.half && s1.param === P_F0) {
+    passRows(s1, s0.part, ys, PASS_SHORT | PASS_OPEN);
+    for (const y of addY) ys.push(y);
+    if (addY.length) ys.sort((a, b) => a - b);
+    if (s0.kind === QUARTER || s0.kind === LINE) {
+      for (let k = 0; k < addY.length; k++) {
+        const p = ridgeOf(s0, addRe[k], addIm[k], addY[k]);
+        if (p === p) { ridgeX.push(p); ridgeY.push(addY[k]); }
+      }
+    }
+  }
   let n0 = 0, n1 = 0, oldX: number[] = [], oldY: number[] = [];
   const started = new Set<string>();
   const ps = [0, 0];
@@ -1453,6 +1517,25 @@ function searchGrid(): void {
     ys = ys.concat(ay).sort((a, b) => a - b);
   }
   descend();
+  // The ridges of the passages (BL58): a line's Zc or a λ/4's Zt far from Z0 where its input node passes the short or
+  // open has answers on a curved ridge narrower than the grid in both coordinates, so no grid point lies on it. Its
+  // points at the added rows, by row, are evaluated, and Newton in the ridge's coordinates (f2r: the ridge straight)
+  // starts from each that is lower than its neighbours.
+  const m = ridgeX.length;
+  if (m) {
+    const idx = ridgeY.map((_, k) => k).sort((a, b) => ridgeY[a] - ridgeY[b]), rr = new Float64Array(m);
+    for (let k = 0; k < m; k++) { const r = f2(Math.atan(ridgeX[idx[k]]), ridgeY[idx[k]], nt); rr[k] = r === r ? r : Infinity; }
+    for (let k = 0; k < m; k++) {
+      if (rr[k] === Infinity || (k > 0 && rr[k - 1] < rr[k]) || (k + 1 < m && rr[k + 1] < rr[k])) continue;
+      let end = newton2D(f2r, 0, ridgeY[idx[k]], 40, nt);
+      if (end > 1e-10 && end < NEWTON_ON) end = newton2D(f2r, nt[0], nt[1], NEWTON_MORE, nt);
+      if (!(end <= 1e-10) || !(nt[1] >= s1.lo && nt[1] <= s1.hi) || !nodeAtF(s1, s0.part, nt[1])) continue;
+      const p = ridgeOf(s0, gam[0], gam[1], nt[1]) * Math.exp(nt[0]), x = Math.atan(p);
+      if (!(x >= s0.lo && x <= s0.hi)) continue;
+      ps[0] = p; ps[1] = paramOf(s1, nt[1]);
+      consider(ps);
+    }
+  }
 }
 
 /**

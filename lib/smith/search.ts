@@ -18,31 +18,54 @@ export const CURVE = new Float64Array(4);
 /** The largest distance of consecutive grid points on the chart (Γ moves about 0.2 per step at 32 per turn). */
 export const MAX_STEP = 0.25;
 const MAX_DEPTH = 18, MAX_EXTRA = 20000;
+/** roots1D's `passes`: refine where CURVE's first point passes close by the short (Γ = −1) or the open (Γ = +1). */
+export const PASS_SHORT = 1, PASS_OPEN = 2;
+/** The most halvings of one passage (48 take a grid step to the last bits of its argument). */
+const PASS_DEPTH = 48;
 
-const T: number[] = [], V: number[] = [];
+/** The samples: arguments, values, and 1 for a point added only for a passage (else 0). */
+const T: number[] = [], V: number[] = [], A: number[] = [];
 let C = new Float64Array(4 * 1025);
-let extra = 0;
+let extra = 0, passing = 0;
+
+/**
+ * Whether the chord of CURVE's first points at C[ca] and C[cb] passes the short or open (the `passing` ones) nearer
+ * than half the nearer of the two: a passage the points do not resolve (BL58).
+ */
+function passes(ca: number, cb: number): boolean {
+  const ar = C[ca], ai = C[ca + 1], br = C[cb], bi = C[cb + 1], ux = br - ar, uy = bi - ai, l2 = ux * ux + uy * uy;
+  if (!(l2 > 0)) return false;
+  for (let p = -1; p <= 1; p += 2) {
+    if (!(passing & (p < 0 ? PASS_SHORT : PASS_OPEN))) continue;
+    const s = Math.min(1, Math.max(0, ((p - ar) * ux - ai * uy) / l2));
+    if (Math.hypot(ar + s * ux - p, ai + s * uy) < 0.5 * Math.min(Math.hypot(ar - p, ai), Math.hypot(br - p, bi))) return true;
+  }
+  return false;
+}
 
 function walk(f: Fn1, ta: number, ca: number, tb: number, cb: number, depth: number): void {
+  if (extra >= MAX_EXTRA) return;
   const d = Math.hypot(C[ca] - C[cb], C[ca + 1] - C[cb + 1], C[ca + 2] - C[cb + 2], C[ca + 3] - C[cb + 3]);
-  if (!(d > MAX_STEP) || depth >= MAX_DEPTH || extra >= MAX_EXTRA) return;
+  const fast = d > MAX_STEP && depth < MAX_DEPTH;
+  if (!fast && !(passing && depth < PASS_DEPTH && tb - ta > 4e-16 * Math.max(1, Math.abs(ta)) && passes(ca, cb))) return;
   extra++;
   const tm = 0.5 * (ta + tb), vm = f(tm);
   const cm = 4 * T.length;
   if (C.length < cm + 4) { const bigger = new Float64Array(2 * C.length); bigger.set(C); C = bigger; }
   // The midpoint is appended at the end and sorted in later; its curve point stays at its own index.
   C[cm] = CURVE[0]; C[cm + 1] = CURVE[1]; C[cm + 2] = CURVE[2]; C[cm + 3] = CURVE[3];
-  T.push(tm); V.push(vm);
+  T.push(tm); V.push(vm); A.push(fast ? 0 : 1);
   walk(f, ta, ca, tm, cm, depth + 1);
   walk(f, tm, cm, tb, cb, depth + 1);
 }
 
 /**
  * f on n intervals of [lo, hi] and at the points `at` inside it (where the caller knows the curve is sharp), refined
- * where the chart's points are far apart: ascending arguments into T, values into V.
+ * where the chart's points are far apart and, with `passes`, where CURVE's first point passes the short or open
+ * between two of them: ascending arguments into T, values into V.
  */
-function sample(f: Fn1, lo: number, hi: number, n: number, at?: readonly number[]): void {
-  T.length = 0; V.length = 0; extra = 0;
+function sample(f: Fn1, lo: number, hi: number, n: number, at?: readonly number[], passes = 0): void {
+  T.length = 0; V.length = 0; A.length = 0; extra = 0; passing = passes;
   const step = (hi - lo) / n;
   const pts: number[] = [];
   for (let k = 0; k <= n; k++) pts.push(k === n ? hi : lo + step * k);
@@ -57,13 +80,13 @@ function sample(f: Fn1, lo: number, hi: number, n: number, at?: readonly number[
     CURVE[0] = 0; CURVE[1] = 0; CURVE[2] = 0; CURVE[3] = 0;
     const v = f(t);
     C[4 * k] = CURVE[0]; C[4 * k + 1] = CURVE[1]; C[4 * k + 2] = CURVE[2]; C[4 * k + 3] = CURVE[3];
-    T.push(t); V.push(v);
+    T.push(t); V.push(v); A.push(0);
   }
   for (let k = 0; k + 1 < np; k++) walk(f, T[k], 4 * k, T[k + 1], 4 * (k + 1), 0);
   if (T.length > np) {
     const idx = T.map((_, i) => i).sort((a, b) => T[a] - T[b]);
-    const t2 = idx.map((i) => T[i]), v2 = idx.map((i) => V[i]);
-    for (let i = 0; i < t2.length; i++) { T[i] = t2[i]; V[i] = v2[i]; }
+    const t2 = idx.map((i) => T[i]), v2 = idx.map((i) => V[i]), a2 = idx.map((i) => A[i]);
+    for (let i = 0; i < t2.length; i++) { T[i] = t2[i]; V[i] = v2[i]; A[i] = a2[i]; }
   }
 }
 
@@ -73,10 +96,14 @@ function sample(f: Fn1, lo: number, hi: number, n: number, at?: readonly number[
  * each side of it for a triple in one step; exact zeros of the grid count once. A pair of roots closer than the grid
  * (f dips through 0 and back between two points) is caught at the grid's local minima of |f|: golden section pushes f
  * towards the other sign and, if it gets there, both roots are refined. Appends the roots, ascending, to out. A jump
- * of f (a pole) also changes sign: the caller checks each root (solve.ts re-evaluates it).
+ * of f (a pole) also changes sign: the caller checks each root (solve.ts re-evaluates it). With `passes`
+ * (PASS_SHORT, PASS_OPEN or both), the grid is also halved towards every point where CURVE's first point passes the
+ * short or open between two grid points (BL58: where every locus of a part meets, f changes sign and back within a
+ * band of a part's resonance far narrower than the grid). The local minima are then looked for on the grid without
+ * those points too, so a dip they hide (a local minimum whose neighbour a passage made lower) is still tried.
  */
-export function roots1D(f: Fn1, lo: number, hi: number, n: number, out: number[], at?: readonly number[]): void {
-  sample(f, lo, hi, n, at);
+export function roots1D(f: Fn1, lo: number, hi: number, n: number, out: number[], at?: readonly number[], passes = 0): void {
+  sample(f, lo, hi, n, at, passes);
   const gt = T.slice(), gv = V.slice(), m = gt.length - 1, start = out.length;
   if (gv[0] === 0) out.push(lo);
   for (let k = 1; k <= m; k++) {
@@ -84,16 +111,25 @@ export function roots1D(f: Fn1, lo: number, hi: number, n: number, out: number[]
     if (fb === 0) out.push(gt[k]);
     else if (fa !== 0 && fa === fa && fb === fb && (fa < 0) !== (fb < 0)) bracketed(f, gt[k - 1], fa, gt[k], fb, out, 2);
   }
-  for (let k = 1; k < m; k++) {
-    const a = gv[k - 1], b = gv[k], c = gv[k + 1];
-    if (!(a === a && b === b && c === c) || a === 0 || b === 0 || c === 0) continue;
-    if ((a < 0) !== (b < 0) || (b < 0) !== (c < 0)) continue;
-    if (!(Math.abs(b) <= Math.abs(a) && Math.abs(b) <= Math.abs(c))) continue;
+  const dip = (i: number, j: number, l: number): void => {
+    const a = gv[i], b = gv[j], c = gv[l];
+    if (!(a === a && b === b && c === c) || a === 0 || b === 0 || c === 0) return;
+    if ((a < 0) !== (b < 0) || (b < 0) !== (c < 0)) return;
+    if (!(Math.abs(b) <= Math.abs(a) && Math.abs(b) <= Math.abs(c))) return;
     const s = b < 0 ? -1 : 1;
-    const t = golden((x) => s * f(x), gt[k - 1], gt[k + 1], gt[k], s * b, 0, 1e-13);
-    if (!(GOLDEN_F < 0)) continue;
+    const t = golden((x) => s * f(x), gt[i], gt[l], gt[j], s * b, 0, 1e-13);
+    if (!(GOLDEN_F < 0)) return;
     const fm = s * GOLDEN_F;
-    out.push(refineRoot(f, gt[k - 1], a, t, fm), refineRoot(f, t, fm, gt[k + 1], c));
+    out.push(refineRoot(f, gt[i], a, t, fm), refineRoot(f, t, fm, gt[l], c));
+  };
+  for (let k = 1; k < m; k++) dip(k - 1, k, k + 1);
+  if (A.includes(1)) {
+    // The grid without the passages' points: each triple not already tried above.
+    for (let i = -1, j = -1, l = 0; l <= m; l++) {
+      if (A[l]) continue;
+      if (i >= 0 && (j - i > 1 || l - j > 1)) dip(i, j, l);
+      i = j; j = l;
+    }
   }
   if (out.length - start > 1) {
     const mine = out.splice(start).sort((x, y) => x - y);

@@ -5,9 +5,10 @@ import { goalNode, goalProblem, goalValue, isWithin } from '../../lib/smith/goal
 import type { Goal, GoalKind } from '../../lib/smith/goal';
 import { LINE, QUARTER, SERIES_C, SERIES_L, SERIES_R, SHUNT_C, SHUNT_L, SHUNT_R, STUB_OPEN, STUB_SHORT } from '../../lib/smith/parts';
 import { atFrequency, solve } from '../../lib/smith/solve';
+import { cancelSolve, solveOffPage, stopSolveWorkers } from '../../lib/smith/solveClient';
 import type { Solution, SolvedValue, SolveResult, ValueRange } from '../../lib/smith/solve';
 import {
-  Ask, askOf, Circuit, cleanAsk, KIND_NAMES, numText, toggleUnknown, Unknown, unknownName, withGoal, withPart,
+  Ask, askOf, Circuit, cleanAsk, KIND_NAMES, numText, sameUnknown, toggleUnknown, Unknown, unknownName, withGoal, withPart,
 } from '../../lib/smith/state';
 import { LIST_IDS, VALUE_UNITS, parseOwnList, standardVariants } from '../../lib/smith/values';
 import type { ListId, ValueChoice, ValueKind, Variant } from '../../lib/smith/values';
@@ -24,8 +25,9 @@ import { Why } from './Why';
 // (state.ts), so the link, undo and redo carry them.
 //
 // Solving never runs in the drag's frames: the panel solves the committed circuit in a deferred render (most solves
-// take microseconds). The few problems of the generic 2-D search (f0 or a line's Zc with another such unknown: 7 to
-// 20 ms) are solved after a pause with no drag in progress, outside any render.
+// take microseconds). Problems with f0 among the unknowns (its search: up to about 20 ms for one unknown, 220 ms with
+// a λ/4's Zt) and the generic 2-D search of a line's Zc are solved in a Web Worker (solveClient.ts, M4.4a); only
+// where no worker can be made do they run on the page, after a pause with no drag in progress.
 
 export interface Outcome {
   /** The circuit (with its ask) that was solved. */
@@ -34,6 +36,8 @@ export interface Outcome {
   result: SolveResult | null;
   /** The solve's time in ms. */
   ms: number;
+  /** Where it was solved: in the render ('render'), the solver's worker, or the page's fallback after a pause. */
+  where?: 'render' | 'worker' | 'page';
 }
 
 export interface SolvePanelProps {
@@ -53,16 +57,25 @@ export interface SolvePanelProps {
   onLists: (next: ValueChoice) => void;
 }
 
-/** A slow solve waits this long after the last change, and again while a drag is in progress. */
-const SLOW_WAIT_MS = 150;
 const DIGITS = 4;
 
-/** Whether the solver takes its generic 2-D grid (notes-M4.2.md: 7–20 ms) for this ask. */
-function slowAsk(c: Circuit, ask: Ask): boolean {
+/**
+ * Whether the ask is solved off the page (notes-M4.4a.md): any f0 unknown (one: median 2 ms, worst 22 ms; with a
+ * part: worst 20 ms; with a λ/4 or a Zc: the grid, median 17 ms, worst over 200 ms) and the generic 2-D grid of a
+ * line's Zc with another Zc or a λ/4. A line's Zc alone or with a part stays in the render (under 1 ms).
+ */
+export function slowAsk(c: Circuit, ask: Ask): boolean {
+  if (ask.unknowns.some((u) => u.param === 'f0')) return true;
   if (ask.unknowns.length !== 2) return false;
   const kind = (u: Unknown) => c.parts[u.part]?.kind;
-  return ask.unknowns.some((u) => u.param === 'f0' || (u.param === 'zc' && kind(u) === LINE))
-    && ask.unknowns.every((u) => u.param === 'f0' || u.param === 'zc' || kind(u) === QUARTER);
+  return ask.unknowns.some((u) => u.param === 'zc' && kind(u) === LINE)
+    && ask.unknowns.every((u) => u.param === 'zc' || kind(u) === QUARTER);
+}
+
+/** The same unknowns are marked in both circuits. */
+function sameMarks(a: Circuit, b: Circuit): boolean {
+  const ua = askOf(a).unknowns, ub = askOf(b).unknowns;
+  return ua.length === ub.length && ua.every((u, i) => sameUnknown(u, ub[i]));
 }
 
 function run(c: Circuit): Outcome {
@@ -70,7 +83,7 @@ function run(c: Circuit): Outcome {
   if (!ask.unknowns.length) return { circuit: c, result: null, ms: 0 };
   const t = performance.now();
   const result = solve(c, ask.unknowns, ask.goal);
-  return { circuit: c, result, ms: performance.now() - t };
+  return { circuit: c, result, ms: performance.now() - t, where: 'render' };
 }
 
 /** The circuit with a solution's values in it: parts first (in wavelengths at the circuit's f0), then f0. */
@@ -458,22 +471,26 @@ function SolvePanel({ circuit, onChange, revision, busy, onResult, onPreview, li
   const ask = askOf(c);
   const goal = ask.goal;
 
-  // The outcome follows the committed circuit in a deferred render; slow problems after a pause, outside renders.
+  // The outcome follows the committed circuit in a deferred render; slow problems in the worker (the newest wins).
   const shown = useDeferredValue(circuit);
   const slow = slowAsk(shown, askOf(shown));
   const quick = useMemo(() => (slow ? null : run(shown)), [shown, slow]);
   const [late, setLate] = useState<Outcome | null>(null);
   useEffect(() => {
     if (!slow) return undefined;
-    let id = 0;
-    const go = () => {
-      if (busy?.()) { id = window.setTimeout(go, SLOW_WAIT_MS); return; }
-      setLate(run(shown));
-    };
-    id = window.setTimeout(go, SLOW_WAIT_MS);
-    return () => window.clearTimeout(id);
+    let live = true;
+    solveOffPage(shown, busy).then((r) => {
+      if (live && r) setLate({ circuit: shown, result: r.result, ms: r.ms, where: r.where });
+    }, (error) => { if (live) console.error(error); });
+    return () => { live = false; };
   }, [shown, slow, busy]);
-  const outcome = slow ? (late && late.circuit === shown ? late : null) : quick;
+  // A request that is no longer wanted (the ask became fast, or the panel went) is dropped; a newer one overtakes it anyway.
+  useEffect(() => (slow ? undefined : cancelSolve()), [slow]);
+  // The workers end with the panel (the tool's page left); the next request makes new ones.
+  useEffect(() => () => stopSolveWorkers(), []);
+  // While the worker solves, the last answer for the same unknowns stays (stale: aria-busy, Apply off) rather than
+  // "Solving…" for a few ms on every keystroke.
+  const outcome = slow ? (late && (late.circuit === shown || sameMarks(late.circuit, shown)) ? late : null) : quick;
   const box = useRef<HTMLElement>(null);
   useEffect(() => {
     if (box.current) (box.current as HTMLElement & { smithSolve?: Outcome | null }).smithSolve = outcome;

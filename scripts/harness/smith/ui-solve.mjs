@@ -248,6 +248,31 @@ try {
   }
   ok(counts.applied >= 12, `Apply checked on ${counts.applied} solutions`);
 
+  // ---------- M4.4a: a slow solve (f0 with a λ/4's Zt) runs in the solver's worker, not on the page's thread ----------
+  {
+    await load(p, 'v=1&z0=50&f0=100e6&zl=200:-80&p=ls:30e-9,tl:0.45:120,cp:5e-12,tl:0.31:40,qw:70&u=5,f0');
+    ok(await p.evaluate(() => document.querySelector('[data-solve]').smithSolve?.where) === 'worker', 'slow solve at load: from the worker');
+    // Watch the page's thread while the goal changes to a point Z (the same grid search again): frame gaps and long tasks.
+    await p.evaluate(() => {
+      const w = (window.__watch = { gap: 0, last: performance.now(), long: [], on: true });
+      const tick = (t) => { if (!w.on) return; w.gap = Math.max(w.gap, t - w.last); w.last = t; requestAnimationFrame(tick); };
+      requestAnimationFrame(tick);
+      try { w.obs = new PerformanceObserver((l) => { for (const e of l.getEntries()) w.long.push(e.duration); }); w.obs.observe({ type: 'longtask' }); } catch { /* no long tasks here */ }
+    });
+    await frame(p);
+    await p.selectOption('[data-goal-kind]', 'point');
+    await settle(p);
+    const seen = await p.evaluate(() => {
+      const w = window.__watch; w.on = false; w.obs?.disconnect();
+      const o = document.querySelector('[data-solve]').smithSolve;
+      return { where: o?.where, ms: o?.ms, status: o?.result?.status, n: o?.result?.solutions.length, gap: w.gap, long: w.long };
+    });
+    const r = expected(await linked(p)).r;
+    ok(seen.where === 'worker' && seen.status === r.status && seen.n === r.solutions.length, () => `the point Z goal's slow solve came from the worker as solve() gives it (${JSON.stringify(seen)}, ${r.status} ${r.solutions.length})`);
+    ok(seen.long.every((d) => d < 50), () => `no long task on the page's thread during the worker's ${seen.ms?.toFixed(1)} ms solve (${JSON.stringify(seen.long)})`);
+    console.log(`  slow solve in the worker: ${seen.ms?.toFixed(1)} ms, longest frame gap on the page meanwhile ${seen.gap.toFixed(1)} ms, long tasks ${seen.long.length}`);
+  }
+
   // ---------- marking by mouse; a third mark replaces the oldest; undo covers marks ----------
   await load(p, CASES.nothing);
   await p.click('[data-tile="0"]');

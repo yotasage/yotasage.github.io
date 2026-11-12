@@ -1,6 +1,6 @@
 # Backlog
 
-Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL58**). When a row is
+Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL60**). When a row is
 scheduled it moves into the tool's plan (for the PCB viewer: [pcb-viewer/plan.md](pcb-viewer/plan.md); for the resistor
 lookup: [resistor/plan.md](resistor/plan.md); for the Smith chart: [smith-chart/plan.md](smith-chart/plan.md)) and the move is noted here; when it is done the row is removed and that is
 noted here too.
@@ -16,11 +16,15 @@ fallback-search problems failed on other random streams), done 2026-11-12 (`solv
 domain's end −π/2; `searchGrid` columns towards a Zt's or Zc's 0 and ∞, rows where the node before it passes the short
 or open, Newton continued near the target, the grid budget counted exactly; the brute force's rounding floor over every
 value of the circuit; the fallback groups also on three streams of their own; notes in
-[smith-chart/notes-M4.2.md](smith-chart/notes-M4.2.md), "BL56 fix").
+[smith-chart/notes-M4.2.md](smith-chart/notes-M4.2.md), "BL56 fix"). BL57 (Smith chart: a family whose goal circle is one of the second unknown's loci, a shunt R of 0 Ω or a series R of ∞ onto x = 0 or b = 0, said none), done 2026-11-12 (`solve.ts` `familyAt` offers the loci's common point when K′ is one of them, `familyResult` no longer stops there; notes in [smith-chart/notes-M4.4a.md](smith-chart/notes-M4.4a.md)). BL58 (Smith chart: two fallback problems the solver missed
+when the shared stream shifted after BL57), done 2026-11-12 (`search.ts` `roots1D` halves its grid towards passages of
+the node by the short or open and still tries the dips they hide; `searchMixed` asks for it at its part's image
+point; `searchGrid` starts Newton on the ridge of a line's Zc or a λ/4's Zt from the rows of those passages; notes in
+[smith-chart/notes-M4.2.md](smith-chart/notes-M4.2.md), "BL58 fix").
 
 | id | tool | what | why / trigger |
 |---|---|---|---|
-| BL57 | Smith chart | A family of two unknowns where the second is a shunt R whose 0 Ω (or a series R's ∞) shorts (opens) the node onto a circle goal through that point: the solver says none ("part 3 (shunt R) moves the node along the goal circle itself …") while every value of the first with R = 0 holds the goal (x = 0 at the short). Found in M4.3c when a new registry entry shifted check.mjs's shared random stream: `{"z0":0.01,"f0":347640.8933728079,"loadR":0.00035465564922237464,"loadX":-0.00822924286978905,"parts":[{"kind":8,"value":0.30427571006119253,"zc":0.016679042058429527},{"kind":5,"value":0.00014943687403592176},{"kind":3,"value":0.0007411742279090949}]}`, unknowns parts 2 and 3, goal x = 0. Decide whether a short or open made by an R is an answer (as `goalPole` decides for r, g, x, b goals), then make solver and brute force agree; add the circuit to check-validate's fixed cases | 2026-11-12, notes-M4.3c.md "Page". Trigger: M4.4 or the next solver step |
+| BL59 | Smith chart | Suggestions of two parts for a circle goal: two unknowns there are a family, so the pair needs the member nearest the current values (a 1-D minimum of `Solution.change` along `family.at` over the ranges); M4.4a's `suggest.ts` offers pairs for point targets only, so a circle goal no single part reaches gets no suggestion | 2026-11-12, notes-M4.4a.md. Trigger: M4.4b shows "none" too often for circle goals, or the owner asks |
 | BL54 | Smith chart | A complete search for two unknowns whose loci are not circles (the generic grid of `lib/smith/solve.ts` `searchGrid`: f0 with a line's Zc, a λ/4's Zt or a stub's Zc, two Zc): it is a refined grid with Newton, and a brute force 4× finer still found one answer in 280 problems it missed (f0 + λ/4 at 7·f0). Perhaps a continuation along the resonance curves, or interval bounds on Γ per cell | 2026-11-12, from notes-M4.2.md "Left". Trigger: the owner meets a missed answer, or M4.4 suggests f0 pairs |
 | BL52 | Smith chart | Draw the grid's labels on a canvas (one bitmap per rebuild, or text drawn into a canvas layer under the top `<svg>`) so a grid rebuild fits in a frame at 4× CPU: today a rebuild costs ~32 ms (script 10, style 6.5, layout 7.5, paint 9, mostly the ~250 SVG `<text>` labels) and loses about one frame each, 5 per 2 s zoom; the page harnesses count lost frames against rebuilds instead of a p95 | 2026-11-12, from notes-M3.2.md "Fix after M3.2" (a hidden page filled in steps cost more than it saved). Trigger: the owner sees the zoom stutter on the phone, or M9's performance pass |
 | BL50 | Smith chart | A line's and a stub's length also in metres with an εeff per part (engine.md §2: "electrical, or physical with εeff"); M3.1 gives the length in λ and in degrees at f0. `turnsFromMetres` / `metresFromTurns` of `lib/smith/parts.ts` exist; the link would gain an optional fourth number per line (`tl:len:Zc:εeff`) | 2026-11-12, left out of step M3.1 to keep its scope. Trigger: the owner asks for physical lengths, or M7 (sweep) needs a dispersive εeff |
