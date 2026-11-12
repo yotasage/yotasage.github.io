@@ -360,7 +360,8 @@ try {
   ok(page.errors.length === 0, `no errors (mouse): ${page.errors.join(' | ')}`);
 
   // ---------- drag frame cost with 10 parts ----------
-  const TEN = '?v=1&z0=50&f0=100e6&zl=25:25&p=cs:31.83e-12,lp:79.58e-9,tl:0.3:75,so:0.1:50,rs:10,ls:20n,cp:5p,ss:0.2:60,qw:35,rp:200';
+  const TEN = '?v=1&z0=50&f0=100e6&zl=25:25&p=cs:31.83e-12,lp:79.58e-9,tl:0.3:75,so:0.1:50,rs:10,ls:20n,cp:5p,ss:0.2:60,qw:35,rp:200&u=1,5';
+  // M4.3a: two unknowns marked (parts 1 and 5), so the Solve panel solves on every commit while the line is dragged.
   const ten = S.decodeCircuit(TEN).circuit;
   async function timing(pt, rate) {
     await load(pt, ten);

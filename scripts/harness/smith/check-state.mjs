@@ -3,6 +3,7 @@
 // query holds unescaped; numText's form; 1,000 broken links (each with at least one defect) and 1,000 random strings
 // read without throwing, every result a usable circuit and every broken one with a reason; the start state D16 at the
 // centre (|Γin| < 1e-9) by an independent impedance computation; the three value forms of every kind back and forth.
+// M4.3a: the solver's unknowns and goal (the circuit's ask) through the link, broken u and g, toggles and edits.
 
 import * as importedState from '../../../lib/smith/state.ts';
 import * as importedParts from '../../../lib/smith/parts.ts';
@@ -13,13 +14,14 @@ const {
   encodeCircuit, decodeCircuit, defaultCircuit, sameCircuit, circuitProblem, numText, readNum, KIND_CODES, MAX_PARTS,
   formsOf, formValue, withForm, readForm, newPart, circuitInputGamma, movePart, insertPart, removePart,
 } = S;
-const { LINE, STUB_OPEN, STUB_SHORT, QUARTER, SERIES_C, SHUNT_L } = P;
+const { LINE, STUB_OPEN, STUB_SHORT, QUARTER, SERIES_C, SERIES_L, SHUNT_L } = P;
 
 const hasZc = (k) => k === LINE || k === STUB_OPEN || k === STUB_SHORT;
 const view = new DataView(new ArrayBuffer(8));
 
 export function runStateChecks({ section, ok, random }) {
-  const rnd = random ?? Math.random;
+  const rndBox = { f: random ?? Math.random };
+  const rnd = () => rndBox.f();
   // A positive double: log-uniform over 1e-15…1e15, or any finite positive double from its bits, or a short decimal.
   const pos = () => {
     const t = rnd();
@@ -199,4 +201,127 @@ export function runStateChecks({ section, ok, random }) {
   ok(step(LINE, 0.125, true) === 46 / 360 && step(LINE, 0.125, false) === 44 / 360 && step(LINE, 0.125, true, true) === 5 / 36 && step(STUB_SHORT, 0.1, false, true) === 3 / 36,
     'lengths step to the next whole degree (Shift: 10°)');
   ok(step(STUB_OPEN, 1 / 720, false) === 0 && step(LINE, 0, false, false, null) === 0 && step(LINE, 0.1, true, false, null) === 0.1 + 1 / 360, 'lengths never go below 0; ±1° without snapping');
+
+  // Its own seeded stream: the groups after this one (the solver's random problems) keep the problems they had.
+  let seed = 4302026;
+  const own = () => { seed = (seed + 0x6d2b79f5) >>> 0; let t = seed; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const saved = rndBox.f;
+  rndBox.f = own;
+  try { runAskChecks({ section, ok, rnd: own, circuit, pos }); } finally { rndBox.f = saved; }
+}
+
+// M4.3a: what the solver is asked (unknowns and goal) in the circuit, the link, the toggles and the edits.
+function runAskChecks({ section, ok, rnd, circuit, pos }) {
+  const isLC = (k) => k === 1 || k === 2 || k === 4 || k === 5;
+  const randomAsk = (c) => {
+    const n = c.parts.length, unknowns = [];
+    const want = Math.floor(rnd() * 3);
+    for (let t = 0; t < 8 && unknowns.length < want; t++) {
+      if (rnd() < 0.15) { if (!unknowns.some((u) => u.param === 'f0')) unknowns.push({ part: -1, param: 'f0' }); continue; }
+      if (!n) continue;
+      const i = Math.floor(rnd() * n), k = c.parts[i].kind;
+      const u = hasZc(k) && rnd() < 0.5 ? { part: i, param: 'zc' } : isLC(k) && rnd() < 0.5 ? { part: i, param: 'value', free: true } : { part: i, param: 'value' };
+      if (!unknowns.some((w) => S.sameUnknown(w, u))) unknowns.push(u);
+    }
+    const kind = ['point', 'point', 'mag', 'vswr', 'rl', 'r', 'g', 'x', 'b'][Math.floor(rnd() * 9)];
+    const goal = { kind };
+    if (kind === 'point') {
+      if (rnd() < 0.6) { goal.targetR = rnd() < 0.1 ? Infinity : rnd() < 0.1 ? 0 : pos(); goal.targetX = goal.targetR === Infinity ? 0 : (rnd() < 0.5 ? -1 : 1) * (rnd() < 0.1 ? 0 : pos()); }
+    } else if (rnd() < 0.8) {
+      goal.value = kind === 'mag' ? rnd() : kind === 'vswr' ? 1 + pos() : kind === 'rl' ? (rnd() < 0.1 ? Infinity : 40 * rnd()) : kind === 'r' || kind === 'g' ? (rnd() < 0.1 ? Infinity : pos()) : (rnd() - 0.5) * pos();
+    }
+    if ((kind === 'mag' || kind === 'vswr' || kind === 'rl') && rnd() < 0.5) goal.within = true;
+    if (rnd() < 0.4) goal.node = Math.floor(rnd() * (n + 1));
+    return { unknowns, goal };
+  };
+
+  section('state: unknowns and goal in the link (M4.3a)');
+  const SAFE = /^[A-Za-z0-9.:,=&_@-]*$/;
+  let trips = 0, quiet = 0, safe = 0, asked = 0;
+  for (let i = 0; i < 5000; i++) {
+    const c = S.cleanAsk(circuit(), undefined);
+    const a = S.cleanAsk(c, randomAsk(c));
+    if (a.ask) asked++;
+    const text = encodeCircuit(a);
+    const back = decodeCircuit(`?${text}`);
+    if (sameCircuit(a, back.circuit)) trips++; else if (trips + 5 > i) ok(false, `round trip of ${text} (${JSON.stringify(back.circuit.ask)}; ${back.issues.join('; ')})`);
+    if (back.issues.length === 0) quiet++; else if (quiet + 5 > i) ok(false, `issues for ${text}: ${back.issues.join('; ')}`);
+    if (SAFE.test(text)) safe++;
+  }
+  ok(trips === 5000 && asked > 3000, `5,000 random circuits with random unknowns and goals come back from the link (${trips}; ${asked} with an ask)`);
+  ok(quiet === 5000 && safe === 5000, `no issues, only characters a query keeps unescaped (${quiet}, ${safe})`);
+
+  const d = defaultCircuit();
+  ok(!/[?&](u|g)=/.test(encodeCircuit(d)) && decodeCircuit(`?${encodeCircuit(d)}`).circuit.ask === undefined, 'a link without u and g is written and read as before (no ask)');
+  ok(S.cleanAsk(d, { unknowns: [], goal: S.DEFAULT_GOAL }).ask === undefined && S.cleanAsk(d, { unknowns: [], goal: { kind: 'point', node: 2 } }).ask === undefined,
+    'nothing marked and the centre at the input is no ask at all');
+  const old = '?v=1&z0=50&f0=100e6&zl=25:25&p=cs:31.83098861837907e-12,lp:79.57747154594767e-9';
+  ok(sameCircuit(decodeCircuit(old).circuit, d) && decodeCircuit(old).issues.length === 0, 'an M3 link still reads the same');
+  const ex = decodeCircuit(`${old}&u=1,2lc&g=vswr:1.5:within@1`);
+  ok(ex.issues.length === 0 && JSON.stringify(ex.circuit.ask) === JSON.stringify({ unknowns: [{ part: 0, param: 'value' }, { part: 1, param: 'value', free: true }], goal: { kind: 'vswr', value: 1.5, within: true, node: 1 } }),
+    () => `a hand-written u and g are read (${JSON.stringify(ex.circuit.ask)})`);
+  ok(decodeCircuit(`${old}&g=pt:inf:5`).circuit.ask.goal.targetX === 0 && decodeCircuit(`${old}&g=pt@2`).circuit.ask === undefined, 'the open as a target; @input is the default');
+  ok(decodeCircuit(`${old}&g=pt:100:-50@0&u=f0,2`).circuit.ask.unknowns[0].param === 'f0', 'f0 as an unknown, goal at the load');
+
+  section('state: broken unknowns and goals');
+  for (const [q, what] of [['u=3', 'no part 3'], ['u=1zc', 'a series C has no Zc'], ['u=2zc', 'a shunt L has no Zc'], ['u=1,1', 'marked twice'],
+    ['u=1,2,f0', 'three unknowns'], ['u=x', 'not a token'], ['u=0', 'part 0'], ['g=foo', 'unknown kind'], ['g=vswr:0.5', 'VSWR below 1'], ['g=r:1:within', 'within on r'],
+    ['g=pt:1', 'one number for a point'], ['g=vswr@9', 'no node 9'], ['g=mag:2', '|Γ| over 1'], ['g=x:inf', 'x of ∞'], ['g=pt:-1:0', 'negative R'], ['g=r:1:2', 'two numbers'],
+    ['g=vswr:abc', 'not a number'], ['g=pt@1.5', 'node 1.5']]) {
+    let r;
+    try { r = decodeCircuit(`${old}&${q}`); } catch (err) { ok(false, `${q} threw ${err}`); continue; }
+    ok(r.issues.length >= 1 && r.circuit.parts.length >= 1 && !circuitProblem(r.circuit), () => `${q} (${what}): an issue, a usable circuit (${r.issues.join('; ')})`);
+  }
+  let fuzz = 0;
+  const CH = 'u=g&,:@0123456789fzclptwithinmagvswrx.-+% ';
+  for (let i = 0; i < 2000; i++) {
+    let s = `${old}&`;
+    const len = Math.floor(rnd() * 30);
+    for (let j = 0; j < len; j++) s += CH[Math.floor(rnd() * CH.length)];
+    try {
+      const r = decodeCircuit(s), a = r.circuit.ask;
+      const fine = !circuitProblem(r.circuit) && (!a || (a.unknowns.length <= 2 && a.unknowns.every((u) => u.param === 'f0' || (u.part >= 0 && u.part < r.circuit.parts.length))));
+      if (fine) fuzz++; else ok(false, `fuzz ${s}: ${JSON.stringify(a)}`);
+    } catch (err) { ok(false, `fuzz ${s} threw ${err}`); }
+  }
+  ok(fuzz === 2000, `2,000 random u and g texts read without throwing into a usable ask (${fuzz})`);
+
+  section('state: marking and edits keep the unknowns on their parts');
+  const mk = (part, param = 'value', free) => (free ? { part, param, free } : { part, param });
+  let c3 = { ...d, parts: [...d.parts, newPart(LINE, d)] };
+  let t = S.toggleUnknown(c3, mk(0));
+  t = S.toggleUnknown(t.circuit, mk(2, 'zc'));
+  ok(t.dropped === null && t.circuit.ask.unknowns.length === 2, 'two marks');
+  t = S.toggleUnknown(t.circuit, mk(-1, 'f0'));
+  ok(t.dropped && t.dropped.part === 0 && t.circuit.ask.unknowns.map((u) => u.param).join() === 'zc,f0', 'a third mark replaces the oldest and says which');
+  t = S.toggleUnknown(t.circuit, mk(-1, 'f0'));
+  ok(t.dropped === null && t.circuit.ask.unknowns.length === 1, 'a second press unmarks');
+  t = S.toggleUnknown(t.circuit, mk(2, 'zc'));
+  ok(t.circuit.ask === undefined && sameCircuit(t.circuit, c3), 'unmarking everything leaves no ask');
+  const fr = S.withFree(S.toggleUnknown(c3, mk(1)).circuit, 1, true);
+  ok(fr.ask.unknowns[0].free === true && S.withFree(fr, 1, false).ask.unknowns[0].free === undefined, '"L or C" on and off');
+  ok(S.unknownName(fr, fr.ask.unknowns[0]) === 'part 2’s L or C' && S.unknownName(c3, mk(2, 'zc')) === 'part 3’s Zc' && S.unknownName(c3, mk(-1, 'f0')) === 'f0', 'names of unknowns');
+  const lineMarked = S.toggleUnknown(c3, mk(2, 'zc')).circuit;
+  ok(S.withPart(lineMarked, 2, newPart(SERIES_C, d)).ask === undefined && S.withPart(lineMarked, 2, { ...lineMarked.parts[2], value: 0.3 }).ask.unknowns.length === 1,
+    'a part turned into a kind without Zc drops its Zc mark; a new value keeps it');
+  // Random edits: every unknown stays on the same part object; the goal's node stays in the circuit.
+  let kept = 0;
+  for (let r = 0; r < 1000; r++) {
+    let c = S.cleanAsk(circuit(), undefined);
+    if (c.parts.length < 2) c = { ...c, parts: [...c.parts, newPart(SERIES_C, c), newPart(LINE, c)] };
+    c = S.cleanAsk(c, randomAsk(c));
+    const before = (c.ask?.unknowns ?? []).map((u) => [u.param === 'f0' ? null : c.parts[u.part], u.param]);
+    const op = Math.floor(rnd() * 3), n = c.parts.length, i = Math.floor(rnd() * n), j = Math.floor(rnd() * n);
+    const next = op === 0 && n < MAX_PARTS ? insertPart(c, Math.floor(rnd() * (n + 1)), newPart(SERIES_L, c)) : op === 1 ? removePart(c, i) : movePart(c, i, j);
+    const after = (next.ask?.unknowns ?? []).map((u) => [u.param === 'f0' ? null : next.parts[u.part], u.param]);
+    const expect = before.filter(([p]) => p === null || next.parts.includes(p));
+    const same = expect.length === after.length && expect.every(([p, q], k) => after[k][0] === p && after[k][1] === q);
+    const node = next.ask?.goal.node;
+    if (same && (node === undefined || (node >= 0 && node < next.parts.length))) kept++;
+    else if (kept + 5 > r) ok(false, `edit ${op} ${i} ${j}: ${JSON.stringify(c.ask)} → ${JSON.stringify(next.ask)}`);
+  }
+  ok(kept === 1000, `1,000 random insert, remove and move edits keep every unknown on its part (${kept})`);
+  const g3 = S.withGoal(c3, { kind: 'r', value: 1, node: 2 });
+  ok(insertPart(g3, 0, newPart(SERIES_L, g3)).ask.goal.node === 3 && insertPart(g3, 3, newPart(SERIES_L, g3)).ask.goal.node === 2
+    && removePart(g3, 0).ask.goal.node === 1 && removePart(g3, 2).ask.goal.node === undefined, 'the goal\'s node follows inserts and removals (the input stays the input)');
 }

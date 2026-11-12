@@ -6,15 +6,34 @@
 // Framework-free; the page keeps the circuit in React state and writes the link with history.replaceState.
 
 import { readAmount } from '../quantity';
+import { GOAL_KINDS, goalProblem } from './goal';
+import type { Goal, GoalKind } from './goal';
 import { inputGamma } from './network';
-import type { Circuit } from './network';
+import type { Circuit as Network } from './network';
 import {
   added, ADDS, LINE, packParts, Part, PartKind, PART_KINDS, QUARTER, SERIES_C, SERIES_L, SERIES_R, SHUNT_C, SHUNT_L,
   SHUNT_R, STUB_OPEN, STUB_SHORT, valueFor,
 } from './parts';
+import type { Unknown } from './solve';
 
-export type { Circuit } from './network';
 export type { Part, PartKind } from './parts';
+export type { Goal } from './goal';
+export type { Unknown } from './solve';
+
+/**
+ * What the solver is asked (step M4.3a): at most two unknowns and the goal. Part of the circuit, so the link, undo and
+ * redo and every edit carry it; absent when nothing is marked and the goal is the default (the centre at the input).
+ */
+export interface Ask {
+  /** In the order they were marked (the oldest first: a third mark replaces it). */
+  unknowns: readonly Unknown[];
+  goal: Goal;
+}
+
+/** network.ts's circuit (Z0, f0, the load, the parts from the load) with what the solver is asked. */
+export interface Circuit extends Network {
+  ask?: Ask;
+}
 
 // ---------------------------------------------------------------------------------------------------------------
 // Kinds
@@ -176,18 +195,149 @@ function nextStandard(x: number, up: boolean, ms: readonly number[]): number {
 // ---------------------------------------------------------------------------------------------------------------
 // Edits (each returns a new circuit; the page's single commit point is where M3.3's undo hooks in)
 
-export const withPart = (c: Circuit, index: number, part: Part): Circuit =>
-  ({ ...c, parts: c.parts.map((p, i) => (i === index ? part : p)) });
+// The ask's unknowns name parts by index and its goal a node, so edits that shift parts carry them along (M4.3a).
+
+/** The circuit with its unknowns' parts renumbered by `part` (−1 drops one) and its goal's node by `node`. */
+function remap(c: Circuit, parts: Part[], part: (i: number) => number, node: (k: number) => number): Circuit {
+  const next: Circuit = { ...c, parts };
+  if (!c.ask) return next;
+  const unknowns: Unknown[] = [];
+  for (const u of c.ask.unknowns) {
+    if (u.param === 'f0') { unknowns.push(u); continue; }
+    const i = part(u.part);
+    if (i >= 0) unknowns.push(i === u.part ? u : { ...u, part: i });
+  }
+  const g = c.ask.goal;
+  const goal = g.node === undefined ? g : { ...g, node: node(g.node) };
+  return cleanAsk(next, { unknowns, goal });
+}
+
+export const withPart = (c: Circuit, index: number, part: Part): Circuit => {
+  const next: Circuit = { ...c, parts: c.parts.map((p, i) => (i === index ? part : p)) };
+  return c.ask && c.parts[index] && c.parts[index].kind !== part.kind ? cleanAsk(next, c.ask) : next;
+};
 export const insertPart = (c: Circuit, index: number, part: Part): Circuit =>
-  ({ ...c, parts: [...c.parts.slice(0, index), part, ...c.parts.slice(index)] });
-export const removePart = (c: Circuit, index: number): Circuit => ({ ...c, parts: c.parts.filter((_, i) => i !== index) });
-/** Moves part `from` to position `to` (both counted from the load). */
+  remap(c, [...c.parts.slice(0, index), part, ...c.parts.slice(index)], (i) => (i >= index ? i + 1 : i), (k) => (k > index ? k + 1 : k));
+export const removePart = (c: Circuit, index: number): Circuit =>
+  remap(c, c.parts.filter((_, i) => i !== index), (i) => (i === index ? -1 : i > index ? i - 1 : i), (k) => (k > index ? k - 1 : k));
+/** Moves part `from` to position `to` (both counted from the load); marked unknowns follow their parts. */
 export function movePart(c: Circuit, from: number, to: number): Circuit {
   if (from === to || to < 0 || to >= c.parts.length) return c;
   const parts = c.parts.slice();
   const [p] = parts.splice(from, 1);
   parts.splice(to, 0, p);
-  return { ...c, parts };
+  const lo = Math.min(from, to), hi = Math.max(from, to), step = from < to ? -1 : 1;
+  return remap(c, parts, (i) => (i === from ? to : i >= lo && i <= hi ? i + step : i), (k) => k);
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// What the solver is asked (M4.3a): unknowns and the goal
+
+/** The default goal: the centre (Z0, the match) at the input. */
+export const DEFAULT_GOAL: Goal = Object.freeze({ kind: 'point' }) as Goal;
+const NO_ASK: Ask = Object.freeze({ unknowns: Object.freeze([]) as readonly Unknown[], goal: DEFAULT_GOAL }) as Ask;
+/** At most this many unknowns at a time (solver.md: two). */
+export const MAX_UNKNOWNS = 2;
+
+/** The circuit's ask, or the empty one (nothing marked, the centre at the input). */
+export const askOf = (c: Circuit): Ask => c.ask ?? NO_ASK;
+
+const isLC = (kind: number): boolean => kind === SERIES_L || kind === SERIES_C || kind === SHUNT_L || kind === SHUNT_C;
+const paramOf = (u: Unknown): string => u.param ?? 'value';
+/** Whether two unknowns are the same parameter (a part's value, its Zc, or f0). */
+export const sameUnknown = (a: Unknown, b: Unknown): boolean =>
+  paramOf(a) === paramOf(b) && (paramOf(a) === 'f0' || a.part === b.part);
+
+/** The goal without the fields its kind does not use, the node at the input left out; the default is DEFAULT_GOAL. */
+function cleanGoal(g: Goal, count: number): Goal {
+  const node = g.node !== undefined && Number.isInteger(g.node) && g.node >= 0 && g.node < count ? g.node : undefined;
+  let goal: Goal;
+  if (g.kind === 'point') {
+    if (g.targetR === undefined && g.targetX === undefined) {
+      if (node === undefined) return DEFAULT_GOAL;
+      goal = { kind: 'point' };
+    } else goal = { kind: 'point', targetR: (g.targetR ?? 0) || 0, targetX: g.targetR === Infinity ? 0 : (g.targetX ?? 0) || 0 };
+  } else {
+    goal = { kind: g.kind };
+    // −0 is 0 (the link writes it as 0).
+    if (g.value !== undefined) goal.value = g.value || 0;
+    if (g.within && (g.kind === 'mag' || g.kind === 'vswr' || g.kind === 'rl')) goal.within = true;
+  }
+  if (node !== undefined) goal.node = node;
+  return goal;
+}
+
+/**
+ * The circuit with `ask` made tidy: unknowns that cannot exist for their part's kind dropped (Zc of a lumped part,
+ * a part that is not there; "L or C" kept only on an L or C), repeats dropped, at most MAX_UNKNOWNS (the newest), the
+ * goal's node at the input left out (it then follows the input when parts are added at the source end). With nothing
+ * marked and the default goal there is no `ask`, so such a circuit equals one without it.
+ */
+export function cleanAsk(c: Circuit, ask: Ask | undefined): Circuit {
+  const { ask: _, ...rest } = c;
+  if (!ask) return rest;
+  const n = c.parts.length, unknowns: Unknown[] = [];
+  for (const u of ask.unknowns) {
+    const param = paramOf(u);
+    let v: Unknown;
+    if (param === 'f0') v = { part: -1, param: 'f0' };
+    else {
+      if (!(Number.isInteger(u.part) && u.part >= 0 && u.part < n)) continue;
+      const kind = c.parts[u.part].kind;
+      if (param === 'zc') { if (!hasZc(kind)) continue; v = { part: u.part, param: 'zc' }; }
+      else if (param === 'value') v = u.free && isLC(kind) ? { part: u.part, param: 'value', free: true } : { part: u.part, param: 'value' };
+      else continue;
+    }
+    if (!unknowns.some((w) => sameUnknown(w, v))) unknowns.push(v);
+  }
+  if (unknowns.length > MAX_UNKNOWNS) unknowns.splice(0, unknowns.length - MAX_UNKNOWNS);
+  const goal = cleanGoal(ask.goal ?? DEFAULT_GOAL, n);
+  return unknowns.length === 0 && goal === DEFAULT_GOAL ? rest : { ...rest, ask: { unknowns, goal } };
+}
+
+/**
+ * Marks an unknown, or unmarks it when it is marked. A third mark replaces the oldest (returned as `dropped`, for the
+ * page to say so).
+ */
+export function toggleUnknown(c: Circuit, u: Unknown): { circuit: Circuit; dropped: Unknown | null } {
+  const ask = askOf(c);
+  const at = ask.unknowns.findIndex((w) => sameUnknown(w, u));
+  if (at >= 0) return { circuit: cleanAsk(c, { ...ask, unknowns: ask.unknowns.filter((_, i) => i !== at) }), dropped: null };
+  const unknowns = [...ask.unknowns, u];
+  const dropped = unknowns.length > MAX_UNKNOWNS ? unknowns[0] : null;
+  return { circuit: cleanAsk(c, { ...ask, unknowns }), dropped };
+}
+
+/** A marked L or C as "either L or C" (free: the sign of the answer picks) or as its own kind. */
+export function withFree(c: Circuit, part: number, free: boolean): Circuit {
+  const ask = askOf(c);
+  return cleanAsk(c, { ...ask, unknowns: ask.unknowns.map((u) => (paramOf(u) === 'value' && u.part === part ? { ...u, free } : u)) });
+}
+
+export const withGoal = (c: Circuit, goal: Goal): Circuit => cleanAsk(c, { ...askOf(c), goal });
+
+/** What an unknown is called on the page: "part 2's C", "part 3's Zc", "f0". */
+export function unknownName(c: Circuit, u: Unknown): string {
+  if (paramOf(u) === 'f0') return 'f0';
+  const p = c.parts[u.part];
+  const what = !p ? 'value' : paramOf(u) === 'zc' ? 'Zc' : u.free ? 'L or C' : VALUE_NAMES[p.kind];
+  return `part ${u.part + 1}’s ${what}`;
+}
+/** A part's value by kind, in words. */
+export const VALUE_NAMES: readonly string[] = ['R', 'L', 'C', 'R', 'L', 'C', 'length', 'length', 'length', 'Zt'];
+
+function sameGoal(a: Goal, b: Goal): boolean {
+  return a.kind === b.kind && a.node === b.node && Object.is(a.value, b.value) && Object.is(a.targetR, b.targetR)
+    && Object.is(a.targetX, b.targetX) && !!a.within === !!b.within;
+}
+function sameAsk(a: Ask | undefined, b: Ask | undefined): boolean {
+  if (a === b) return true;
+  if (!a || !b || a.unknowns.length !== b.unknowns.length || !sameGoal(a.goal, b.goal)) return false;
+  for (let i = 0; i < a.unknowns.length; i++) {
+    const u = a.unknowns[i], v = b.unknowns[i];
+    if (!sameUnknown(u, v) || !!u.free !== !!v.free) return false;
+  }
+  return true;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -314,8 +464,17 @@ export function circuitInputGamma(out: Float64Array | number[], o: number, c: Ci
 // written in engineering form (100e6, 31.83…e-12, 0.125), so every double comes back to the bit; ∞ is "inf".
 // Every character is one a query may hold unescaped (RFC 3986), so the link stays readable.
 
+// From M4.3a two optional parameters say what the solver is asked (version 1 still: a link without them reads as
+// before, and they are written only when something is marked or the goal is not the default):
+// u the unknowns, comma-separated, oldest first: "f0", or a part's number from the load (1 = nearest the load) for its
+//   value, with "zc" for its Zc or "lc" for an L or C that may be either ("u=1,2lc", "u=3zc,f0");
+// g the goal: a kind (pt, mag, vswr, rl, r, g, x, b), then its numbers after colons (pt: R:X in Ω; the circles: their
+//   figure), ":within" for |Γ| ≤ m, VSWR ≤ s, RL ≥ dB, and "@k" for node k (0 the load) when it is not the input
+//   ("g=vswr:1.5:within", "g=pt:25:10@1", "g=x:0").
+
 export const LINK_VERSION = 1;
-const PARAMS = ['v', 'z0', 'f0', 'zl', 'p'];
+const PARAMS = ['v', 'z0', 'f0', 'zl', 'p', 'u', 'g'];
+const GOAL_CODE = (k: GoalKind): string => (k === 'point' ? 'pt' : k);
 
 /** A double as the shortest digits that read back to it, in engineering form: "100e6", "0.125", "31.83098861837907e-12", "inf". */
 export function numText(v: number): string {
@@ -369,7 +528,98 @@ export function encodeCircuit(c: Circuit): string {
     const part = c.parts[i];
     p += `${i ? ',' : ''}${KIND_CODES[part.kind]}:${numText(part.value)}${hasZc(part.kind) ? `:${numText(part.zc)}` : ''}`;
   }
-  return `v=${LINK_VERSION}&z0=${numText(c.z0)}&f0=${numText(c.f0)}&zl=${numText(c.loadR)}:${numText(c.loadX)}&p=${p}`;
+  return `v=${LINK_VERSION}&z0=${numText(c.z0)}&f0=${numText(c.f0)}&zl=${numText(c.loadR)}:${numText(c.loadX)}&p=${p}${c.ask ? askText(c.ask) : ''}`;
+}
+
+/** The u and g parameters of an ask ("&u=1,2&g=vswr:1.5:within"), each only when it is not the default. */
+function askText(ask: Ask): string {
+  let s = '';
+  if (ask.unknowns.length) {
+    s += `&u=${ask.unknowns.map((u) => (paramOf(u) === 'f0' ? 'f0' : `${u.part + 1}${paramOf(u) === 'zc' ? 'zc' : u.free ? 'lc' : ''}`)).join(',')}`;
+  }
+  const g = ask.goal;
+  if (g !== DEFAULT_GOAL && !(g.kind === 'point' && g.targetR === undefined && g.node === undefined)) {
+    s += `&g=${GOAL_CODE(g.kind)}`;
+    if (g.kind === 'point') { if (g.targetR !== undefined) s += `:${numText(g.targetR)}:${numText(g.targetX ?? 0)}`; }
+    else if (g.value !== undefined) s += `:${numText(g.value)}`;
+    if (g.within) s += ':within';
+    if (g.node !== undefined) s += `@${g.node}`;
+  }
+  return s;
+}
+
+const UNKNOWN_TOKEN = /^(?:(f0)|(\d{1,3})(zc|lc)?)$/;
+
+/** Reads u and g into the circuit (after its parts), with an issue for everything left out. */
+function readAsk(c: Circuit, u: string | null, g: string | null, issues: string[]): Circuit {
+  if (u === null && g === null) return c;
+  const n = c.parts.length, unknowns: Unknown[] = [];
+  if (u !== null && u !== '') {
+    for (const token of u.split(',')) {
+      const m = UNKNOWN_TOKEN.exec(token.trim().toLowerCase());
+      let why = '';
+      let v: Unknown | null = null;
+      if (!m) why = 'not an unknown (a part number, with zc or lc, or f0)';
+      else if (m[1]) v = { part: -1, param: 'f0' };
+      else {
+        const i = Number(m[2]) - 1;
+        if (i < 0 || i >= n) why = `there is no part ${i + 1}`;
+        else if (m[3] === 'zc' && !hasZc(c.parts[i].kind)) why = `part ${i + 1} has no Zc`;
+        else if (m[3] === 'lc' && !isLC(c.parts[i].kind)) why = `part ${i + 1} is not an L or C`;
+        else v = m[3] === 'zc' ? { part: i, param: 'zc' } : m[3] === 'lc' ? { part: i, param: 'value', free: true } : { part: i, param: 'value' };
+      }
+      if (v && unknowns.some((w) => sameUnknown(w, v))) why = 'marked twice';
+      else if (v && unknowns.length === MAX_UNKNOWNS) why = `more than ${MAX_UNKNOWNS} unknowns`;
+      if (why) issues.push(`u ${quote(token)}: ${why}; left out`);
+      else unknowns.push(v);
+    }
+  }
+  let goal: Goal = DEFAULT_GOAL;
+  if (g !== null && g !== '') {
+    const read = readGoal(g, n);
+    if (typeof read === 'string') issues.push(`g ${quote(g)}: ${read}; the goal is the centre at the input`);
+    else goal = read;
+  }
+  return cleanAsk(c, { unknowns, goal });
+}
+
+/** A goal from its link text, or why it cannot be read. */
+function readGoal(text: string, count: number): Goal | string {
+  const at = text.indexOf('@');
+  const main = at < 0 ? text : text.slice(0, at);
+  let node: number | undefined;
+  if (at >= 0) {
+    const k = Number(text.slice(at + 1));
+    if (!(Number.isInteger(k) && k >= 0 && k <= count)) return `the node must be 0 (the load) to ${count} (the input)`;
+    if (k < count) node = k;
+  }
+  const bits = main.split(':');
+  const code = bits[0].trim().toLowerCase();
+  const kind = (code === 'pt' ? 'point' : code) as GoalKind;
+  if (!GOAL_KINDS.includes(kind)) return 'unknown kind of goal';
+  let within = false;
+  if (bits.length > 1 && bits[bits.length - 1].trim().toLowerCase() === 'within') {
+    if (kind !== 'mag' && kind !== 'vswr' && kind !== 'rl') return 'only |Γ|, VSWR and return loss take “within”';
+    within = true;
+    bits.pop();
+  }
+  const nums: number[] = [];
+  for (let i = 1; i < bits.length; i++) {
+    const v = readNum(bits[i]);
+    if (v === null) return `${quote(bits[i])} is not a number`;
+    nums.push(v);
+  }
+  const goal: Goal = { kind };
+  if (kind === 'point') {
+    if (nums.length !== 0 && nums.length !== 2) return 'a point wants R:X in ohms';
+    if (nums.length) { goal.targetR = nums[0]; goal.targetX = nums[0] === Infinity ? 0 : nums[1]; }
+  } else {
+    if (nums.length > 1) return 'a circle wants one number';
+    if (nums.length) goal.value = nums[0];
+  }
+  if (within) goal.within = true;
+  if (node !== undefined) goal.node = node;
+  return goalProblem(goal, count) ?? goal;
 }
 
 export interface Decoded {
@@ -464,11 +714,14 @@ export function decodeCircuit(search: string): Decoded {
       else c.parts.push(part);
     }
   }
-  return { circuit: c, issues, linked };
+  return { circuit: readAsk(c, get('u'), get('g'), issues), issues, linked };
 }
 
-/** Whether two circuits are the same to the bit (the harness's round trip and the page's "changed" test). */
-export function sameCircuit(a: Circuit, b: Circuit): boolean {
+/** Whether two circuits are the same to the bit, what the solver is asked included (the page's "changed" test). */
+export const sameCircuit = (a: Circuit, b: Circuit): boolean => sameNetwork(a, b) && sameAsk(a.ask, b.ask);
+
+/** Whether two circuits are the same to the bit, leaving out what the solver is asked (what the chart and theory show). */
+export function sameNetwork(a: Circuit, b: Circuit): boolean {
   if (!Object.is(a.z0, b.z0) || !Object.is(a.f0, b.f0) || !Object.is(a.loadR, b.loadR) || !Object.is(a.loadX, b.loadX)) return false;
   if (a.parts.length !== b.parts.length) return false;
   for (let i = 0; i < a.parts.length; i++) {

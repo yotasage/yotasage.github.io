@@ -7,6 +7,8 @@ import HomeIcon from '../../components/icons/home';
 import { MoonIcon, SunIcon } from '../../components/Resistor/parts';
 import Chart from '../../components/Smith/Chart';
 import Nodes from '../../components/Smith/Nodes';
+import SolvePanel from '../../components/Smith/SolvePanel';
+import type { Outcome } from '../../components/Smith/SolvePanel';
 import Strip from '../../components/Smith/Strip';
 import Theory from '../../components/Smith/Theory';
 import { Why } from '../../components/Smith/Why';
@@ -16,7 +18,7 @@ import { PathLayer, SEL_NODE, SEL_NONE, SEL_PART } from '../../components/Smith/
 import { BibEntry } from '../../lib/bibtex';
 import { loadReferences } from '../../lib/references';
 import { MODE_Y, MODE_Z, MODE_ZY } from '../../lib/smith/grid';
-import { Circuit, KIND_SHORT, decodeCircuit, defaultCircuit, encodeCircuit, sameCircuit } from '../../lib/smith/state';
+import { Circuit, KIND_SHORT, decodeCircuit, defaultCircuit, encodeCircuit, sameCircuit, sameNetwork } from '../../lib/smith/state';
 import useReplayHighlight from '../../lib/useReplayHighlight';
 import styles from '../../styles/Smith.module.css';
 import theoryCss from '../../styles/SmithTheory.module.css';
@@ -39,6 +41,9 @@ import theoryCss from '../../styles/SmithTheory.module.css';
 // From M3.5b the Theory section (components/Smith/Theory.tsx) and the References section follow the tool, with a section
 // nav in the bar (Tool · Theory · References). The theory follows the committed circuit; its citations are numbered by
 // one Bibliography of references.bib, read in getStaticProps (at build time only), in the order of the page.
+// From M4.3a the Solve panel (components/Smith/SolvePanel.tsx) sits between the strip and the node table: the unknowns
+// (marked on the cards and f0 there) and the goal are the circuit's `ask`, so marking, the goal and Apply are steps of
+// the same history and part of the link. The theory follows the circuit without its ask (marking does not re-render it).
 
 // The sources the page cites, read from references.bib when the site is built. An unknown key stops the build.
 export async function getStaticProps() {
@@ -87,7 +92,10 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   const [circuit, setCircuit] = useState<Circuit>(defaultCircuit);
   // The theory (3,600 nodes) follows in a deferred, time-sliced render: the commit that ends a drag renders the tool
   // only, so releasing a handle costs one short frame (a sync render of both took 230 ms at 4× CPU in development).
-  const theoryCircuit = useDeferredValue(circuit);
+  // The theory shows the network only: a change of what the solver is asked keeps the same circuit for it.
+  const network = useRef(circuit);
+  if (network.current !== circuit && !sameNetwork(network.current, circuit)) network.current = circuit;
+  const theoryCircuit = useDeferredValue(network.current);
   // The circuit as last committed (ahead of React's state between a commit and the render) and the history.
   const now = useRef<Circuit>(circuit);
   const hist = useRef<History>({ past: [], future: [], dropped: [], group: '', t: 0 });
@@ -128,6 +136,12 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     now.current = next;
     setCircuit(next);
   };
+  // The same functions for the life of the page (they use only refs and setters), so memoised panels skip renders.
+  const [stable] = useState(() => ({
+    commit: (next: Circuit, group?: string) => commitRef.current(next, group),
+    busy: () => !!path.current && path.current.dragPart >= 0,
+    result: (o: Outcome | null) => { solved.current = o; },
+  }));
   const travel = (back: boolean) => {
     const h = hist.current, from = back ? h.past : h.future, to = back ? h.future : h.past;
     // Not in the middle of a drag or a draw: their circuit is not committed yet.
@@ -140,6 +154,10 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     setRevision((r) => r + 1);
   };
   // Back to the start circuit as one step, which Undo takes back.
+  const commitRef = useRef(commit);
+  commitRef.current = commit;
+  // The last outcome of the Solve panel (M4.3b draws its circles and the family's slider from it).
+  const solved = useRef<Outcome | null>(null);
   const startOver = () => {
     if (path.current && path.current.dragPart >= 0) return;
     commit(defaultCircuit());
@@ -202,6 +220,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
       <Strip circuit={circuit} onChange={commit} issues={issues} selected={part} onSelect={selectPart}
         revision={revision} drawKind={drawKind} onDraw={setDrawKind}
         onHover={(i) => path.current?.hover(SEL_PART, i)} />
+      <SolvePanel circuit={circuit} onChange={stable.commit} revision={revision} busy={stable.busy} onResult={stable.result} />
       <Nodes circuit={circuit} selected={node} onSelect={(k) => setNodeSel(k === node ? -1 : k)}
         onHover={(k) => path.current?.hover(SEL_NODE, k)} />
     </>
@@ -281,7 +300,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     <div className={styles.root} data-theme={theme ?? undefined}>
       <Head>
         <title>Smith chart</title>
-        <meta name="description" content="Build a matching circuit of series and shunt R, L and C, transmission lines, stubs and λ/4 transformers on a zoomable Smith chart with impedance, admittance or combined grids: type or drag the values with snapping, read z, Γ, VSWR and return loss at every node, undo and redo, and keep the circuit in the link." />
+        <meta name="description" content="Build a matching circuit of series and shunt R, L and C, transmission lines, stubs and λ/4 transformers on a zoomable Smith chart with impedance, admittance or combined grids: type or drag the values with snapping, read z, Γ, VSWR and return loss at every node, let the solver find one or two missing values for a match or a circle, undo and redo, and keep the circuit in the link." />
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <style jsx global>{`

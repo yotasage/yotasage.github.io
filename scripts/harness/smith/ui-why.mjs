@@ -59,7 +59,11 @@ const TOPICS = ['how-to-use', 'gamma-z-y', 'reading-the-chart', 'moving-on-the-c
 const KEYS = Object.keys(WHYS);
 const KIND_KEYS = KEYS.filter((k) => k.startsWith('kind-'));
 // Every kind once, so the card can show each kind's line.
-const ALL = { z0: 50, f0: 1e8, loadR: 25, loadX: 25, parts: S.KIND_ORDER.map((kind) => S.newPart(kind, S.defaultCircuit())) };
+// M4.3a: two unknowns marked (the first as "L or C"), so the Solve panel shows its lines with a solution to apply.
+const ALL = S.cleanAsk({ z0: 50, f0: 1e8, loadR: 25, loadX: 25, parts: S.KIND_ORDER.map((kind) => S.newPart(kind, S.defaultCircuit())) },
+  { unknowns: [{ part: 0, param: 'value', free: true }, { part: 3, param: 'value' }], goal: { kind: 'point' } });
+/** theory.md §8's 39 lines and M4.3a's five of the Solve panel. */
+const LINES = 44;
 
 async function open(context, c = null, hash = '') {
   const page = await context.newPage();
@@ -97,7 +101,7 @@ try {
   // ---------- every line on the page, with its text and a topic that exists ----------
   const desk = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: 'light' });
   const p = await open(desk, ALL);
-  ok(KEYS.length === 39, `whys.ts has the 39 lines of theory.md §8 (${KEYS.length})`);
+  ok(KEYS.length === LINES, `whys.ts has the ${LINES} lines (${KEYS.length})`);
   for (const k of KEYS) ok(TOPICS.includes(WHYS[k].topic), `${k}: its topic ${WHYS[k].topic} is a topic of the theory`);
   for (const t of TOPICS) ok(await p.$(`[data-topic][id="${t}"]`) !== null, `topic #${t} exists`);
   const whysNow = () => p.$$eval('[data-why]', (els) => els.map((e) => e.getAttribute('data-why')));
@@ -114,7 +118,7 @@ try {
     seen.add(line[0]);
   }
   for (const k of KEYS) ok(seen.has(k), `${k}: on the page`);
-  ok(seen.size === 39, () => `all 39 lines seen (${seen.size})`);
+  ok(seen.size === LINES, () => `all ${LINES} lines seen (${seen.size})`);
 
   // ---------- by mouse: every info button, its bubble, its link and the way back ----------
   // The fields' buttons are in the card of the selected part, so every part is selected in turn.
@@ -153,7 +157,7 @@ try {
     ok(await inView(p, sel), `${k}: back brings the button into view`);
     counts.mouse++;
   }
-  ok(counts.mouse === 39 - KIND_KEYS.length, () => `every info button was followed (${counts.mouse})`);
+  ok(counts.mouse === LINES - KIND_KEYS.length, () => `every info button was followed (${counts.mouse})`);
   // Close by a second press and by a press elsewhere; one bubble at a time.
   await p.evaluate(() => window.scrollTo(0, 0));
   await p.click('button[data-why="snap"]');

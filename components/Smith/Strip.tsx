@@ -3,8 +3,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { formatAmount, readAmount } from '../../lib/quantity';
 import {
   Circuit, f0Problem, Form, formsOf, formValue, insertPart, KIND_CODES, KIND_NAMES, KIND_ORDER, KIND_SHORT,
-  circuitInputGamma, loadRProblem, loadXProblem, MAX_PARTS, movePart, newPart, Part, PartKind, readForm, removePart, withForm,
-  withPart, z0Problem,
+  askOf, circuitInputGamma, loadRProblem, loadXProblem, MAX_PARTS, movePart, newPart, Part, PartKind, readForm, removePart,
+  sameUnknown, toggleUnknown, Unknown, unknownName, VALUE_NAMES, withForm, withFree, withPart, z0Problem,
 } from '../../lib/smith/state';
 import {
   LINE, QUARTER, SERIES_C, SERIES_L, SERIES_R, SHUNT_C, SHUNT_L, SHUNT_R, STUB_OPEN, STUB_SHORT,
@@ -82,7 +82,7 @@ export function PartSymbol({ kind }: { kind: number }) {
 // A number field: shows the circuit's value until typed in; a typed text is read on every key and, when it can be
 // used, goes to the circuit at once (no submit); when it cannot, the field is marked and says why. Escape goes back.
 
-interface FieldProps {
+export interface FieldProps {
   label: string;
   hint?: string;
   /** The text of the circuit's current value. */
@@ -95,7 +95,7 @@ interface FieldProps {
   why?: string;
 }
 
-function Field({ label, hint, shown, edit, name, revision, why }: FieldProps) {
+export function Field({ label, hint, shown, edit, name, revision, why }: FieldProps) {
   const [draft, setDraft] = useState<string | null>(null);
   const [error, setError] = useState('');
   useEffect(() => { setDraft(null); setError(''); }, [revision]);
@@ -221,6 +221,44 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
         return '';
       }} />
   );
+  // M4.3a: "Solve for" toggles on the selected part's card (its value, a line's or stub's Zc; an L or C may be either
+  // kind), at most two unknowns at a time with f0 in the Solve panel; a third replaces the oldest and the card says so.
+  const ask = askOf(c);
+  const marked = (i: number) => ask.unknowns.some((u) => u.part === i && u.param !== 'f0');
+  const [markNote, setMarkNote] = useState<{ text: string; after: Circuit } | null>(null);
+  const mark = (u: Unknown) => {
+    const { circuit: next, dropped } = toggleUnknown(c, u);
+    onChange(next);
+    setMarkNote(dropped ? { text: `At most two at a time: ${unknownName(c, dropped)} is no longer solved for.`, after: next } : null);
+  };
+  const solveRow = (p: Part, i: number) => {
+    const value = ask.unknowns.find((u) => sameUnknown(u, { part: i, param: 'value' }));
+    const zc = ask.unknowns.some((u) => sameUnknown(u, { part: i, param: 'zc' }));
+    const lc = p.kind === SERIES_L || p.kind === SERIES_C || p.kind === SHUNT_L || p.kind === SHUNT_C;
+    const hasZc = p.kind === LINE || p.kind === STUB_OPEN || p.kind === STUB_SHORT;
+    return (
+      <div className={styles.solveRow} data-solve-row="">
+        <span className={styles.solveLabel}>Solve for</span>
+        <button type="button" className={`${styles.button} ${styles.toggle}`} aria-pressed={!!value} data-solve-mark="value"
+          onClick={() => mark({ part: i, param: 'value' })}
+          title={`Let the solver find this part’s ${VALUE_NAMES[p.kind]} (at most two unknowns at a time)`}>{VALUE_NAMES[p.kind]}</button>
+        {hasZc && (
+          <button type="button" className={`${styles.button} ${styles.toggle}`} aria-pressed={zc} data-solve-mark="zc"
+            onClick={() => mark({ part: i, param: 'zc' })} title="Let the solver find this line’s Zc">Zc</button>
+        )}
+        {lc && value && (
+          <label className={styles.solveFree} title={p.kind === SERIES_L || p.kind === SERIES_C ? 'A series reactance: the sign of the answer picks L or C' : 'A shunt susceptance: the sign of the answer picks L or C'}>
+            <input type="checkbox" data-solve-free="" checked={!!value.free} onChange={(e) => onChange(withFree(c, i, e.target.checked))} />
+            L or C
+          </label>
+        )}
+        <Why k="solve-mark" />
+        {lc && value && <Why k="solve-free" />}
+        {markNote && markNote.after === c && <span className={styles.solveNote} role="status" data-mark-note="">{markNote.text}</span>}
+      </div>
+    );
+  };
+
   const positions: { at: number; text: string }[] = [{ at: -1, text: 'at the source end' }];
   if (n > 0) positions.push({ at: 0, text: 'at the load end' });
   for (let i = 1; i < n; i++) positions.push({ at: i, text: `between ${i} and ${i + 1}` });
@@ -251,7 +289,8 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
           return (
             <button key={ids.current[i]} type="button" className={styles.tile} data-tile={i} data-kind={KIND_CODES[p.kind]}
               ref={(el) => { tiles.current[i] = el; }} style={{ color: partColour(i) }} aria-pressed={i === selected}
-              tabIndex={i === selected ? 0 : -1} aria-label={`Part ${i + 1}: ${KIND_NAMES[p.kind]}, ${value}`}
+              tabIndex={i === selected ? 0 : -1} aria-label={`Part ${i + 1}: ${KIND_NAMES[p.kind]}, ${value}${marked(i) ? ', solved for' : ''}`}
+              data-unknown={marked(i) ? '' : undefined}
               onClick={() => setSel(i)} onKeyDown={tileKey(i)}
               onMouseEnter={() => onHover?.(i)} onMouseLeave={() => onHover?.(-1)} onFocus={() => onHover?.(i)} onBlur={() => onHover?.(-1)}>
               <PartSymbol kind={p.kind} />
@@ -276,6 +315,7 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
             </span>
           </div>
           <WhyLine k={`kind-${KIND_CODES[part.kind]}`} />
+          {solveRow(part, selected)}
           <div className={styles.forms}>{formsOf(part.kind).map((form) => partField(part, selected, form))}</div>
         </div>
       )}

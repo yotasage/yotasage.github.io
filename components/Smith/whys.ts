@@ -54,6 +54,12 @@ export const WHYS: Readonly<Record<string, Why>> = {
   nodes: w('the node table', 'how-to-use', 'Each node from the load to the input: z, Γ, VSWR, return loss.'),
   input: w('the circuit input', 'how-good-is-a-match', 'What the source sees: the end of the path, In.'),
   goal: w('the goal', 'how-good-is-a-match', 'The centre is the match; dashed circle: VSWR 1.5, |Γ| ≤ 0.2.'),
+  // M4.3a, the Solve panel (linked to the M3 topics until M4.3c adds the solver's own).
+  'solve-mark': w('Solve for', 'matching-with-two-parts', 'Leave this value to the solver: it finds what meets the goal.'),
+  'solve-free': w('L or C', 'moving-on-the-chart', 'An L adds +jx, a C −jx: the answer’s sign picks the kind.'),
+  'solve-goal': w('the solver’s goal', 'how-good-is-a-match', 'Where it must hold, and a point or a circle to reach there.'),
+  'solve-count': w('how many answers', 'matching-with-two-parts', 'A point needs two free values; a circle needs one.'),
+  'solve-apply': w('Apply', 'how-to-use', 'Puts these values in the circuit as one step; Undo takes it back.'),
 };
 
 /** The key of a value field's line by its form (state.ts FormId). */
