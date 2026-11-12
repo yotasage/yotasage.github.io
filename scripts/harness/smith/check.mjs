@@ -10,6 +10,7 @@ import { runGeometryChecks } from './check-geometry.mjs';
 import { runEquationChecks } from './check-equations.mjs';
 import { runGridChecks } from './check-grid.mjs';
 import { runStateChecks } from './check-state.mjs';
+import { runSolveChecks } from './check-solve.mjs';
 
 const quantity = importedQuantity.default ?? importedQuantity;
 const cx = importedComplex.default ?? importedComplex;
@@ -398,6 +399,10 @@ runGridChecks({ section, ok, random });
 // ---------------------------------------------------------------------------------------------------------------
 // Circuit state and link (M3.1): check-state.mjs, with the same counters.
 runStateChecks({ section, ok, random });
+
+// ---------------------------------------------------------------------------------------------------------------
+// Goals and the solver's geometric core (M4.1a): check-solve.mjs, with the same counters.
+runSolveChecks({ section, ok, near, printed, random });
 
 // ---------------------------------------------------------------------------------------------------------------
 const total =[...groups.values()].reduce((a, b) => a + b, 0);

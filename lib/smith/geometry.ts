@@ -171,6 +171,87 @@ export function projectOnCircle(out: Vec, o: number, circ: Vec, co: number, px: 
   out[o + 1] = py - k * gy;
 }
 
+/** The point circle (radius 0) at (x, y): a goal of |Γ| = 0, or a line's backward locus through its own Zc. */
+export function pointCircle(out: Vec, o: number, x: number, y: number): void {
+  out[o] = 1; out[o + 1] = x; out[o + 2] = y; out[o + 3] = x * x + y * y;
+  normaliseCircle(out, o);
+}
+
+/**
+ * Whether two generalised circles are the same set: their coefficients, each scaled so the largest is 1, agree
+ * within tol up to sign (a circle's equation is defined up to a non-zero factor).
+ */
+export function sameCircle(c1: Vec, o1: number, c2: Vec, o2: number, tol = COINCIDENT_TOL): boolean {
+  const s1 = Math.max(Math.abs(c1[o1]), Math.abs(c1[o1 + 1]), Math.abs(c1[o1 + 2]), Math.abs(c1[o1 + 3]));
+  const s2 = Math.max(Math.abs(c2[o2]), Math.abs(c2[o2 + 1]), Math.abs(c2[o2 + 2]), Math.abs(c2[o2 + 3]));
+  if (!(s1 > 0 && s1 < Infinity && s2 > 0 && s2 < Infinity)) return false;
+  let plus = 0, minus = 0;
+  for (let k = 0; k < 4; k++) {
+    const a = c1[o1 + k] / s1, b = c2[o2 + k] / s2;
+    plus = Math.max(plus, Math.abs(a - b)); minus = Math.max(minus, Math.abs(a + b));
+  }
+  return Math.min(plus, minus) <= tol;
+}
+
+/** Coefficients (largest 1) closer than this are one circle (sameCircle, circleIntersect). */
+export const COINCIDENT_TOL = 1e-9;
+/** Circles that miss or cross each other by less than this (in Γ) touch: circleIntersect gives one point. */
+export const TANGENT_TOL = 1e-12;
+/** circleIntersect's result for two coincident circles. */
+export const CROSS_SAME = -1;
+
+/**
+ * The points where two generalised circles cross, into out[o…o+3] (x1, y1, x2, y2); returns their number: 0, 1
+ * (touching within TANGENT_TOL, or two lines, whose second common point is ∞), 2, or CROSS_SAME when they are one
+ * circle (sameCircle). The radical line A2·F1 − A1·F2 = 0, n·w = h with n = A2·D1 − A1·D2, h = (A2·C1 − A1·C2)/2, is
+ * cut with the circle of larger |A| (so a straight line is never the one cut); the gap R − δ (radius less the
+ * centre's distance from that line) decides 0, 1 or 2, and the two points come from a quadratic solved without
+ * cancellation. A degenerate circle (all zero) crosses nothing. Allocates nothing.
+ */
+export function circleIntersect(out: Vec, o: number, c1: Vec, o1: number, c2: Vec, o2: number): number {
+  if (sameCircle(c1, o1, c2, o2)) return CROSS_SAME;
+  const s1 = Math.max(Math.abs(c1[o1]), Math.abs(c1[o1 + 1]), Math.abs(c1[o1 + 2]), Math.abs(c1[o1 + 3]));
+  const s2 = Math.max(Math.abs(c2[o2]), Math.abs(c2[o2 + 1]), Math.abs(c2[o2 + 2]), Math.abs(c2[o2 + 3]));
+  if (!(s1 > 0 && s1 < Infinity && s2 > 0 && s2 < Infinity)) return 0;
+  const A1 = c1[o1] / s1, D1r = c1[o1 + 1] / s1, D1i = c1[o1 + 2] / s1, C1 = c1[o1 + 3] / s1;
+  const A2 = c2[o2] / s2, D2r = c2[o2 + 1] / s2, D2i = c2[o2 + 2] / s2, C2 = c2[o2 + 3] / s2;
+  if (A1 === 0 && A2 === 0) {
+    // Two straight lines D·w = C/2: one point unless parallel.
+    const det = D1r * D2i - D1i * D2r;
+    if (!(Math.abs(det) > 1e-15 * Math.hypot(D1r, D1i) * Math.hypot(D2r, D2i))) return 0;
+    const h1 = 0.5 * C1, h2 = 0.5 * C2;
+    out[o] = (h1 * D2i - h2 * D1i) / det; out[o + 1] = (D1r * h2 - D2r * h1) / det;
+    return 1;
+  }
+  let nx = A2 * D1r - A1 * D2r, ny = A2 * D1i - A1 * D2i;
+  const nn = Math.hypot(nx, ny);
+  if (!(nn > 0)) return 0; // concentric (and not the same circle)
+  nx /= nn; ny /= nn;
+  const d = (0.5 * (A2 * C1 - A1 * C2)) / nn;
+  // The circle with the larger |A|.
+  const one = Math.abs(A1) >= Math.abs(A2);
+  const A = one ? A1 : A2, Dr = one ? D1r : D2r, Di = one ? D1i : D2i, C = one ? C1 : C2;
+  const x0 = d * nx, y0 = d * ny, tx = -ny, ty = nx;
+  const beta = Dr * tx + Di * ty;
+  const gamma = A * (x0 * x0 + y0 * y0) - 2 * (Dr * x0 + Di * y0) + C;
+  const disc = beta * beta - A * gamma;
+  // Radius and the centre's distance from the line: half-chord² = R² − δ² = disc/A².
+  const s = Dr * Dr + Di * Di - A * C, R = Math.sqrt(s > 0 ? s : 0) / Math.abs(A);
+  const delta = Math.abs(Dr / A * nx + Di / A * ny - d);
+  const gap = disc / (A * A) / (R + delta || 1);
+  if (gap < -TANGENT_TOL) return 0;
+  if (gap <= TANGENT_TOL) {
+    const t = beta / A;
+    out[o] = x0 + t * tx; out[o + 1] = y0 + t * ty;
+    return 1;
+  }
+  const q = beta + (beta >= 0 ? 1 : -1) * Math.sqrt(disc);
+  const ta = q / A, tb = gamma / q;
+  out[o] = x0 + ta * tx; out[o + 1] = y0 + ta * ty;
+  out[o + 2] = x0 + tb * tx; out[o + 3] = y0 + tb * ty;
+  return 2;
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // The parameter maps of lumped parts, stubs and the λ/4 transformer at f0 (see the head of the file).
 
@@ -328,6 +409,15 @@ function quarterPoint(out: Vec, o: number, sr: number, si: number, zt: number, f
   sincosTurns(0.5 * (f / f0));
   const c = P.COS, s = P.SIN, gr = or * c + oi * s, gi = oi * c - or * s;
   cdiv(out, o, gr + B, gi, 1 + B * gr, B * gi);
+}
+
+/**
+ * The raw parameter of a point of a LOCUS_MOBIUS locus, of any sign and with no reach applied: the r, x, g or b the
+ * part adds (a stub's b), or (Zt/Z0)² for λ/4 at f0; Re of (δΓ − β)/(α − γΓ), so a point beside the circle gives the
+ * parameter of its nearby point; the point α/γ gives Infinity (the solver, solve.ts).
+ */
+export function locusParam(loc: Vec, l: number, gr: number, gi: number): number {
+  return paramAt(loc, l + L_MAP, gr, gi);
 }
 
 /** Γ at the end of the part with this value (the part's own unit: Ω, H, F, wavelengths at f0, Zt in Ω). */
