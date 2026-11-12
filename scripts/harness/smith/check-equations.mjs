@@ -25,7 +25,7 @@ const { EQUATIONS, PARSE_MS, parse, toText, tex, valueTex, compile, bind, symbol
 const { SERIES_R, SERIES_L, SERIES_C, SHUNT_R, SHUNT_L, SHUNT_C, LINE, STUB_OPEN, STUB_SHORT, QUARTER, packParts, added, valueFor, partMatrix, turnsFromMetres, metresFromTurns, C0 } = P;
 const { evaluate, applyPart, nodeMetrics, inputGamma, M_ZR, M_ZI, M_YR, M_YI, M_GR, M_GI } = N;
 const { zFromGamma, yFromGamma, impedanceFromGamma, admittanceFromGamma, gammaFromImpedance, gammaMag, vswr, returnLoss, reflectedPower, deliveredPower, mismatchLoss, qFromZ } = cv;
-const { partLocus, circleCentre, L_A, LOCUS_STRIDE } = G;
+const { partLocus, circleCentre, partMobius, L_A, LOCUS_STRIDE } = G;
 
 const TAU = 2 * Math.PI;
 const POINTS = 200;
@@ -210,6 +210,16 @@ export function runEquationChecks({ section, ok, random }) {
       const p = randomPart([SERIES_R, SERIES_L, SERIES_C, SHUNT_R, SHUNT_L, SHUNT_C, LINE, STUB_OPEN, STUB_SHORT, QUARTER]);
       const ZL = [rnd(1, 300), rnd(-300, 300)], I_2 = cplx(), V_2 = cmul(ZL, I_2), at = applyTo(p, V_2, I_2);
       return { ...abcd(p), Z_in: zinOf(p.kind, p.value, p.zc, ZL[0], ZL[1], p.z0, p.f0).Z, Z_L: ZL, V_1: at.V, I_1: at.I, V_2, I_2 };
+    },
+    // a, b, c, d from geometry.partMobius of a random part; Γ_in from network.evaluate of the part on the load Γ_L.
+    'mobius': () => {
+      const p = randomPart([SERIES_R, SERIES_L, SERIES_C, SHUNT_R, SHUNT_L, SHUNT_C, LINE, STUB_OPEN, STUB_SHORT, QUARTER]);
+      const pt = point(), ZL = scale(pt.b.z, p.z0), m = new Float64Array(8);
+      partMobius(m, 0, p.kind, p.value, p.zc, p.f0, p.f0, p.z0);
+      return {
+        ...abcd(p), Z_0: p.z0, a: [m[0], m[1]], b: [m[2], m[3]], c: [m[4], m[5]], d: [m[6], m[7]],
+        Gamma_L: pt.b.Gamma, Gamma_in: zinOf(p.kind, p.value, p.zc, ZL[0], ZL[1], p.z0, p.f0).G,
+      };
     },
     'node-z': () => {
       const all = [SERIES_R, SERIES_L, SERIES_C, SHUNT_R, SHUNT_L, SHUNT_C, LINE, STUB_OPEN, STUB_SHORT, QUARTER];

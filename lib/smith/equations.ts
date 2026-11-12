@@ -1078,6 +1078,24 @@ const DEFS: Def[] = [
       ['Z_in = V_1/I_1 = (A*Z_L + B)/(C*Z_L + D)', 'Divide; I_2 cancels.'],
     ],
   },
+  // A part maps Γ by a Möbius transformation (theory.md §4, claims 67–69): abcd-zin conjugated by z-gamma and gamma-z.
+  {
+    id: 'mobius', title: 'A part maps Γ by a Möbius transformation', text: 'Gamma_in = (a*Gamma_L + b)/(c*Gamma_L + d)',
+    sources: [src('WikiMobius', '"Elementary properties"')],
+    derivation: 'abcd-zin with Z_L = Z_0 (1 + Γ_L)/(1 − Γ_L) (z-gamma), then gamma-z for Γ_in; a, b, c, d up to a common factor. A series z gives a = 2 − z, b = z, c = −z, d = 2 + z.',
+    assumptions: [REAL_Z0, 'ideal part, fixed value'], engine: 'geometry.partMobius, geometry.mobApply',
+    symbols: {
+      ...ABCD_SYMBOLS,
+      a: sym('entry a of the part’s map of Γ', '', 'part'), b: sym('entry b of the part’s map of Γ', '', 'part'),
+      c: sym('entry c of the part’s map of Γ', '', 'part'), d: sym('entry d of the part’s map of Γ', '', 'part'),
+    },
+    steps: [
+      ['a = A - B/Z_0 - C*Z_0 + D', 'The coefficient of Γ_L above the line, after Z_L = Z_0 (1 + Γ_L)/(1 − Γ_L) is put into (A Z_L + B)/(C Z_L + D) and Γ = (Z − Z_0)/(Z + Z_0) is taken of the result.'],
+      ['b = A + B/Z_0 - C*Z_0 - D', 'The constant term above the line.'],
+      ['c = A - B/Z_0 + C*Z_0 - D', 'The coefficient of Γ_L below the line.'],
+      ['d = A + B/Z_0 + C*Z_0 + D', 'The constant term below the line.'],
+    ],
+  },
   { id: 'node-z', title: 'Impedance at a node', text: 'z = V/(I*Z_0)', sources: [], derivation: 'A node is (V, I) at the port towards the load (engine.md §4).', assumptions: [REAL_Z0], engine: 'network.nodeMetrics' },
 ];
 

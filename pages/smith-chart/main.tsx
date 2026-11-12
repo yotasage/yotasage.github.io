@@ -1,18 +1,24 @@
 import Head from 'next/head';
 import Link from 'next/link';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
+import Bibliography from '../../components/Bibliography';
 import HomeIcon from '../../components/icons/home';
 import { MoonIcon, SunIcon } from '../../components/Resistor/parts';
 import Chart from '../../components/Smith/Chart';
 import Nodes from '../../components/Smith/Nodes';
 import Strip from '../../components/Smith/Strip';
+import Theory from '../../components/Smith/Theory';
 import type { ChartView } from '../../components/Smith/chartView';
 import { writeLive } from '../../components/Smith/live';
 import { PathLayer, SEL_NODE, SEL_NONE, SEL_PART } from '../../components/Smith/pathLayer';
+import { BibEntry } from '../../lib/bibtex';
+import { loadReferences } from '../../lib/references';
 import { MODE_Y, MODE_Z, MODE_ZY } from '../../lib/smith/grid';
 import { Circuit, KIND_SHORT, decodeCircuit, defaultCircuit, encodeCircuit, sameCircuit } from '../../lib/smith/state';
+import useReplayHighlight from '../../lib/useReplayHighlight';
 import styles from '../../styles/Smith.module.css';
+import theoryCss from '../../styles/SmithTheory.module.css';
 
 // The Smith chart (milestone M2): the interactive chart in the site's frame, after the resistor tool: a slim bar
 // with the home link, the title and the theme switch, the chart as the hero with its tools above it and the readout
@@ -29,6 +35,17 @@ import styles from '../../styles/Smith.module.css';
 // toolbar): every commit is a step, except that the keystrokes of one field (until the focus moves) and the arrow keys
 // of one handle (less than GROUP_MS apart) make one; a drag and a draw commit once, so they are one step. The draw tool
 // is armed by the strip's Draw button and shown in the toolbar until a draw ends or Escape.
+// From M3.5b the Theory section (components/Smith/Theory.tsx) and the References section follow the tool, with a section
+// nav in the bar (Tool · Theory · References). The theory follows the committed circuit; its citations are numbered by
+// one Bibliography of references.bib, read in getStaticProps (at build time only), in the order of the page.
+
+// The sources the page cites, read from references.bib when the site is built. An unknown key stops the build.
+export async function getStaticProps() {
+  return { props: { references: loadReferences() } };
+}
+
+/** The sections of the page, in the order of the nav. */
+const SECTIONS = [{ id: 'tool', label: 'Tool' }, { id: 'theory', label: 'Theory' }, { id: 'references', label: 'References' }];
 
 const MODES = [{ mode: MODE_Z, name: 'Z', title: 'Impedance grid: r and x circles' },
   { mode: MODE_Y, name: 'Y', title: 'Admittance grid: g and b circles' },
@@ -49,7 +66,22 @@ const START = defaultCircuit();
 const LIGHT = { bg: '#f6f4ee', rule: '#e3dfd5', quiet: '#736f67', link: '#55524b', ink: '#1d1c19' };
 const DARK = { bg: '#2b2b2b', rule: '#3a3a38', quiet: '#8f8c83', link: '#b7b4ab', ink: '#edebe5' };
 
-export default function SmithChart() {
+export default function SmithChart({ references }: { references: BibEntry[] }) {
+  // One list of sources for the whole page, numbered by first citation (components/Bibliography.tsx).
+  const bib = useMemo(() => new Bibliography(references), [references]);
+  useReplayHighlight();
+  // The nav shows the section at the top of the window.
+  const [section, setSection] = useState('tool');
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) if (entry.isIntersecting) setSection(entry.target.id);
+    }, { rootMargin: '-15% 0px -75% 0px' });
+    for (const { id } of SECTIONS) {
+      const element = document.getElementById(id);
+      if (element) observer.observe(element);
+    }
+    return () => observer.disconnect();
+  }, []);
   const [mode, setMode] = useState(MODE_Z);
   const [circuit, setCircuit] = useState<Circuit>(defaultCircuit);
   // The circuit as last committed (ahead of React's state between a commit and the render) and the history.
@@ -132,6 +164,7 @@ export default function SmithChart() {
 
   // The path on the chart and the selection shared by the strip, the node table and the chart.
   const path = useRef<PathLayer | null>(null);
+  const tool = useRef<HTMLDivElement>(null);
   const [partSel, setPartSel] = useState(-1);
   const [nodeSel, setNodeSel] = useState(-1);
   const n = circuit.parts.length;
@@ -143,7 +176,8 @@ export default function SmithChart() {
     layer.onPick = (kind, i) => { if (kind === SEL_PART) selectPart(i); else setNodeSel(i); };
     layer.onCommit = commit;
     layer.onDraw = (i) => { setDrawKind(-1); if (i >= 0) selectPart(i); };
-    layer.onLive = (c, i, half) => writeLive(document, c, i, half);
+    // Scoped to the tool: a query over the whole document would walk the theory's MathML every drag frame.
+    layer.onLive = (c, i, half) => writeLive(tool.current ?? document, c, i, half);
     (v.box as HTMLElement & { smithPath?: PathLayer }).smithPath = layer;
     path.current = layer;
   };
@@ -261,6 +295,11 @@ export default function SmithChart() {
         <div className={styles.barInner}>
           <Link href="/" className={styles.home} aria-label="Home" title="All tools"><HomeIcon width={17} height={19} color="currentColor" /></Link>
           <h1 className={styles.title}>Smith chart</h1>
+          <nav className={theoryCss.nav} aria-label="Sections">
+            {SECTIONS.map(({ id, label }) => (
+              <a key={id} href={`#${id}`} className={theoryCss.navLink} aria-current={section === id ? 'true' : undefined} onClick={() => setSection(id)}>{label}</a>
+            ))}
+          </nav>
           <span className={styles.barSpace} />
           <button type="button" className={styles.iconButton} onClick={toggleTheme} aria-label="Switch between the light and the dark theme" title="Light or dark">
             <span className={styles.moon}><MoonIcon /></span>
@@ -269,8 +308,24 @@ export default function SmithChart() {
         </div>
       </header>
 
-      <main className={styles.layout}>
-        <Chart mode={mode} tools={modes} z0={circuit.z0} side={side} onView={onView} />
+      <main>
+        <div id="tool" ref={tool} className={`${styles.layout} ${theoryCss.tool}`}>
+          <Chart mode={mode} tools={modes} z0={circuit.z0} side={side} onView={onView} />
+        </div>
+        <div className={theoryCss.sections}>
+          <section id="theory" className={theoryCss.section} aria-labelledby="theory-title">
+            <h2 className={theoryCss.sectionHead} id="theory-title">Theory</h2>
+            <Theory bib={bib} circuit={circuit} />
+          </section>
+          {/* After the last citation: the list is numbered while the page above it is drawn. */}
+          <section id="references" className={theoryCss.section} aria-labelledby="references-title">
+            <h2 className={theoryCss.sectionHead} id="references-title">References</h2>
+            <div className={theoryCss.refs} data-references="">
+              <p className={theoryCss.lead}>The sources of the theory on this page, in the order they are first cited.</p>
+              {bib.list()}
+            </div>
+          </section>
+        </div>
       </main>
     </div>
   );

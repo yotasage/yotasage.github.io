@@ -1,0 +1,502 @@
+/* The Theory and References sections of the Smith chart, and the section nav in its bar. Uses the variables of .root
+   (Smith.module.css); after ResistorTheory.module.css. Rules start with .theory or .refs to win over the resets. */
+
+/* --- Sections and the nav in the bar -------------------------------------------------------------------------- */
+
+.nav {
+  align-self: stretch;
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  gap: 2px;
+  margin-left: 8px;
+  padding-left: 14px;
+  border-left: 1px solid var(--rule);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nav::-webkit-scrollbar { display: none; }
+
+.navLink {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-size: 14px;
+  color: var(--ink-3);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color var(--quick);
+}
+
+.navLink:hover,
+.navLink[aria-current='true'] { color: var(--ink); }
+
+.navLink[aria-current='true']::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--accent);
+}
+
+.section {
+  max-width: var(--page-w);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+  scroll-margin-top: calc(var(--bar-h) + 16px);
+}
+
+.section + .section { margin-top: 72px; }
+
+.sections {
+  padding: 56px 0 64px;
+  border-top: 1px solid var(--rule);
+}
+
+/* Off screen the sections are not laid out or painted, so they cost the chart's frames nothing (ui-chart.mjs measures
+   them at 4× CPU); anchors, find in page and scrollIntoView still render them on demand. */
+.section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 2400px;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 18px;
+  color: var(--ink-3);
+  font-size: 12.5px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sectionHead::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+}
+
+.tool { scroll-margin-top: var(--bar-h); }
+
+@media (max-width: 599px) {
+  .nav {
+    margin-left: 2px;
+    padding-left: 6px;
+  }
+
+  .navLink { padding: 0 6px; font-size: 13.5px; }
+  .navLink[aria-current='true']::after { left: 6px; right: 6px; }
+}
+
+/* --- Theory ---------------------------------------------------------------------------------------------------- */
+
+.theory {
+  max-width: 940px;
+  color: var(--ink);
+}
+
+.theory .lead,
+.theory .contents,
+.theory .body > p,
+.theory .body > ul,
+.theory .body > ol,
+.theory .eq,
+.theory .live {
+  max-width: 76ch;
+}
+
+.theory .lead {
+  margin: 0 0 14px;
+  color: var(--ink-2);
+  font-size: 14.5px;
+}
+
+.theory .contents {
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+  columns: 2;
+  column-gap: 32px;
+  counter-reset: topic;
+  font-size: 14px;
+}
+
+.theory .contents li {
+  counter-increment: topic;
+  break-inside: avoid;
+  display: grid;
+  grid-template-columns: 1.9em minmax(0, 1fr);
+  align-items: baseline;
+  padding: 2px 0;
+}
+
+.theory .contents li::before {
+  content: counter(topic);
+  color: var(--ink-3);
+  font-family: var(--font-num);
+  font-size: 12px;
+}
+
+.theory .contents a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.theory .contents a:hover,
+.theory .contents a:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.theory .tools {
+  display: flex;
+  gap: 14px;
+  margin: 0 0 4px;
+}
+
+.theory .fold {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.theory .fold:hover { text-decoration: underline; }
+
+/* --- Topics ---------------------------------------------------------------------------------------------------- */
+
+.theory .topic {
+  border-top: 1px solid var(--rule);
+  scroll-margin-top: calc(var(--bar-h) + 10px);
+}
+
+/* A #link to a topic lights it up and fades out, as the references do (useReplayHighlight restarts it). */
+@keyframes topicHighlight {
+  from { box-shadow: inset 0 0 0 100vmax var(--accent-soft), 0 0 0 4px var(--accent-soft); }
+  to { box-shadow: inset 0 0 0 100vmax transparent, 0 0 0 4px transparent; }
+}
+
+.theory .topic:target {
+  animation: topicHighlight 3s ease-in forwards;
+}
+
+.theory .topic > summary {
+  display: grid;
+  grid-template-columns: 1.9em minmax(0, 1fr) 16px;
+  align-items: baseline;
+  padding: 13px 0 11px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.theory .topic > summary::-webkit-details-marker { display: none; }
+
+.theory .topicNo {
+  color: var(--ink-3);
+  font-family: var(--font-num);
+  font-size: 12px;
+}
+
+.theory .topic > summary h3 {
+  margin: 0;
+  font-size: 16.5px;
+  font-weight: 620;
+  letter-spacing: -0.005em;
+  line-height: 1.3;
+}
+
+.theory .chevron {
+  width: 8px;
+  height: 8px;
+  align-self: center;
+  border-right: 1.5px solid var(--ink-3);
+  border-bottom: 1.5px solid var(--ink-3);
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform var(--quick);
+}
+
+.theory .topic[open] > summary .chevron { transform: rotate(-135deg) translate(-2px, -2px); }
+.theory .topic > summary:hover h3 { color: var(--accent); }
+
+.theory .topic > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.theory .body {
+  min-width: 0;
+  padding: 0 0 18px 1.9em;
+}
+
+.theory .body p {
+  margin: 0 0 10px;
+  line-height: 1.55;
+}
+
+.theory .body ul,
+.theory .body ol {
+  margin: 0 0 10px;
+  padding-left: 1.15em;
+  line-height: 1.5;
+}
+
+.theory .body li + li { margin-top: 4px; }
+.theory .body b { font-weight: 620; }
+.theory .body a { color: var(--accent); }
+
+.theory .jump {
+  text-decoration: underline;
+  text-decoration-color: var(--rule-strong);
+  text-underline-offset: 2px;
+}
+
+.theory .cites { white-space: nowrap; }
+.theory .small { color: var(--ink-2); font-size: 13.5px; }
+
+/* --- Formulas: the symbolic line, the line with your numbers, the registry's title ------------------------------ */
+
+.theory .eq {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin: 4px 0 12px;
+  padding: 2px 0 2px 14px;
+  border-left: 2px solid var(--rule-strong);
+  overflow-x: auto;
+  overflow-y: hidden;
+  font-size: 17px;
+  line-height: 2;
+}
+
+.theory .eq math { math-style: normal; }
+
+.theory .eqLive {
+  color: var(--ink-2);
+  font-size: 15px;
+}
+
+.theory .eqTitle {
+  color: var(--ink-3);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* --- What follows the circuit ---------------------------------------------------------------------------------- */
+
+.theory .liveRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 24px;
+  margin: 4px 0 14px;
+}
+
+.theory .liveRow > .live {
+  flex: 1 1 300px;
+  min-width: 0;
+  margin: 0;
+}
+
+.theory .live {
+  overflow-x: auto;
+  margin: 4px 0 14px;
+  padding: 11px 14px 12px;
+  border: 1px solid var(--rule);
+  border-left: 2px solid var(--accent);
+  border-radius: 2px 6px 6px 2px;
+  background: var(--field);
+}
+
+.theory .liveHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 0 0 7px;
+  color: var(--ink-3);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.theory .liveHead span {
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.theory .live p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.theory .live p + p,
+.theory .live table + p { margin-top: 4px; }
+
+.theory .n {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.92em;
+  white-space: nowrap;
+}
+
+.theory .steps { padding-left: 1.3em; }
+
+/* --- Tables ---------------------------------------------------------------------------------------------------- */
+
+.theory .tableWrap {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 4px 0 8px;
+}
+
+.theory .table,
+.theory .metrics {
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.theory .table th,
+.theory .table td,
+.theory .metrics th,
+.theory .metrics td {
+  padding: 5px 14px 5px 0;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  vertical-align: baseline;
+}
+
+.theory .table thead th,
+.theory .metrics thead th {
+  color: var(--ink-3);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.theory .table tbody th,
+.theory .metrics tbody th { font-weight: 560; }
+
+.theory .metrics { margin: 0 0 6px; }
+.theory .metrics th,
+.theory .metrics td { padding: 3px 12px 3px 0; }
+
+/* --- Figures: mini charts in chart units (1 unit = the chart's radius) ----------------------------------------- */
+
+.theory .figs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 4px 0 14px;
+}
+
+.theory .figure {
+  flex: 0 1 auto;
+  max-width: 260px;
+  margin: 0;
+}
+
+.theory .figureWide { max-width: 480px; }
+
+.theory .figRow {
+  display: flex;
+  gap: 12px;
+}
+
+.theory .figRow > svg { flex: 1 1 0; min-width: 0; }
+
+.theory .figure figcaption {
+  margin-top: 4px;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.theory .disc {
+  display: block;
+  width: 100%;
+  max-width: 240px;
+  height: auto;
+  overflow: visible;
+}
+
+.theory .disc text {
+  fill: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: 0.115px;
+}
+
+.theory .figBack { fill: var(--chart-bg); stroke: none; }
+.theory .figRim { fill: none; stroke: var(--grid-axis); stroke-width: 0.014; }
+.theory .figAxis { fill: none; stroke: var(--grid-z-major); stroke-width: 0.01; }
+.theory .figTick { stroke: var(--grid-axis); stroke-width: 0.012; }
+.theory .figZ { fill: none; stroke: var(--grid-z-major); stroke-width: 0.014; }
+.theory .figY { fill: none; stroke: var(--grid-y-major); stroke-width: 0.014; }
+.theory .figZStrong { fill: none; stroke: var(--ink-2); stroke-width: 0.02; }
+.theory .figYStrong { fill: none; stroke: var(--accent); stroke-width: 0.02; }
+.theory .figConst { fill: none; stroke: var(--grid-z-major); stroke-width: 0.012; stroke-dasharray: 0.035 0.03; }
+.theory .figStroke { fill: none; stroke: currentColor; stroke-width: 0.024; stroke-linecap: round; }
+.theory .figDash { fill: none; stroke: currentColor; stroke-width: 0.02; stroke-dasharray: 0.05 0.04; }
+.theory .figDot { fill: none; stroke: currentColor; stroke-width: 0.012; stroke-dasharray: 0.02 0.03; }
+.theory .figHead { fill: currentColor; stroke: none; }
+.theory .figFill { fill: currentColor; stroke: none; }
+.theory .figHollow { fill: var(--chart-bg); stroke: currentColor; stroke-width: 0.014; }
+.theory .figInk { color: var(--ink-2); }
+.theory .figLoad { color: var(--ink); }
+.theory .figAccent { color: var(--accent); }
+.theory .disc .figAccentText { fill: var(--accent); }
+.theory .disc .figBold { fill: var(--ink); font-weight: 650; }
+.theory .figPart1, .theory .key1 { color: var(--part-1); }
+.theory .figPart2, .theory .key2 { color: var(--part-2); }
+.theory .figPart3, .theory .key3 { color: var(--part-3); }
+.theory .figPart4, .theory .key4 { color: var(--part-4); }
+.theory .figPart5, .theory .key5 { color: var(--part-5); }
+.theory .key1, .theory .key2, .theory .key3, .theory .key4, .theory .key5 { font-weight: 600; }
+
+/* --- References ------------------------------------------------------------------------------------------------ */
+
+.refs {
+  max-width: 88ch;
+  color: var(--ink-2);
+  font-size: 13.5px;
+}
+
+.refs .lead {
+  margin: 0 0 10px;
+  font-size: 14.5px;
+}
+
+.refs li { scroll-margin-top: calc(var(--bar-h) + 16px); }
+
+.refs li > span:first-child {
+  color: var(--ink-3);
+  font-family: var(--font-num);
+  font-size: 12.5px;
+}
+
+.refs a {
+  color: var(--accent);
+  text-decoration-color: var(--rule-strong);
+  text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 560px) {
+  .theory .contents { columns: 1; }
+  .theory .body { padding-left: 0; }
+  .theory .eq { font-size: 15.5px; padding-left: 10px; }
+  .theory .figure, .theory .figureWide { max-width: 100%; }
+}

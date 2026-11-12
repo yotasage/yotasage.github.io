@@ -65,3 +65,43 @@ The short lines (theory.md §8) repeat claims of their topics and are not number
 - Registry: add `mobius` (theory.md §4 has its text, derivation, symbols, engine and harness binding).
 - The live numbers in theory.md are hand-worked; take every one from the engine as listed, never from these texts.
 - Strip the `⟨n⟩` markers; keep the order of first citation for the numbering.
+
+## M3.5b (2026-11-12): the sections on the page
+
+- **Placement.** `pages/smith-chart/main.tsx`: the tool (`#tool`) stays the hero; below it `#theory` and `#references`,
+  and a section nav in the bar (Tool · Theory · References, the current one marked by an IntersectionObserver, as the
+  resistor tool). `getStaticProps` loads `references.bib` (`loadReferences`); one `Bibliography` (useMemo) is handed to
+  `Theory` and lists the entries after it, so the numbers follow the order of first citation over the page.
+- **Citations.** `Theory.tsx` prints `[n, §x]` itself: `bib.number(key)` (which throws on an unknown key, so the build
+  stops) inside a link to `#ref-<key>`. Every citation is made in the render body, in page order; none in figures or
+  sub-components, so the numbering cannot depend on what is folded (folded topics are still rendered).
+- **Equations.** `Eq` takes a registry id: `tex(tree)` and, when values are given, a second line `tex(tree, {value})`
+  with the engine's numbers (`valueTex`; a value that is not finite is left out so KaTeX never sees ∞), and the entry's
+  title. Nothing is retyped. The registry has `mobius` (theory.md §4) with its four steps a, b, c, d from ABCD, checked
+  against `geometry.partMobius` and `network.evaluate` in check-equations.mjs (67 entries).
+- **Live numbers.** From `network.evaluateCircuit` / `nodeMetrics` of the committed circuit (and `applyPart` for the
+  λ/8 example, `partMobius`, `parts.added`, `turnsAt`, `convert`), written with `formatAmount(…, 4, true)` and
+  `complexText` as the readout and node table. Each is a `data-live` span; `ui-theory.mjs` recomputes every one from
+  the engine by name and compares the text. Theory is `React.memo` on the circuit: drags do not render it (commit
+  only). The step-by-step and one-part examples of topic 7 use the start circuit, computed once at module load.
+- **Cost to the tool.** The sections first raised ui-chart's zoom at 4× CPU from about 4.5 to 11–12 ms of main
+  thread per frame (the long MathML page laid out and painted with the chart); `content-visibility: auto` on each
+  section brings it back to 4.5 ms. Anchors and scrollIntoView still render them on demand.
+- **For M3.5c.** ui-drag's 4× drag check is now just over its budget: 10.0–11.1 ms of main thread per frame and 2
+  frames lost (8.4–8.9 ms and 1 lost without the theory). It is not the sections' rendering (the same with
+  `content-visibility: hidden`) nor the nav, but the page's DOM: 4,100 nodes, 3,600 of them the theory's (2,500 in
+  MathML), against 435 in the tool. `writeLive` now queries the tool's element instead of the document. M3.5c should
+  make the timing checks robust and may cut the DOM (e.g. value lines only for open topics, with citations numbered
+  up front).
+- **Assumptions** are stated in the section's lead (ideal parts, lossless lines, real Z0, one frequency f0).
+- **Figures** (`TheoryFigures.tsx`): inline SVG in chart units with the page's tokens (`--grid-*`, `--part-n`,
+  `--accent`), so both themes follow; topics 2, 3, 5 draw the visitor's load, 4, 6, 7 the start circuit. Not drawn by
+  the chart's own grid code (a mini chart needs four circles, not the grid's density machinery).
+- **Folding.** `details` per topic; under 720 px all start folded except a #link's target, which is then scrolled to
+  again after the fold (the browser scrolled while all were open); a `hashchange` opens its topic; `:target` lights a
+  topic for 3 s and `useReplayHighlight` restarts it.
+- **Harness** `ui-theory.mjs` (in `npm run ui`, 2,204 checks): live numbers for D16 and two circuits typed through the
+  link (lines, stubs, λ/4, R parts), after a typed load and an undo; equations per topic in theory.md's order, MathML,
+  no KaTeX errors; citations resolve and are numbered by first citation, the list in that order; topic anchors,
+  contents, #links (open, in view, lit, replayed), click/Enter/Space folding, folded at 390 px; no horizontal scroll
+  at 320 and 390 px with every topic open in both themes; no console errors (hydration included).

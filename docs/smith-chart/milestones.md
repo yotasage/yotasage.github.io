@@ -89,6 +89,9 @@ at five zoom levels; the readout matches the engine at 20 points; frame time wit
   numbers from the circuit; the short line and "→ theory" link beside every control and readout.
   Split in two: **M3.5a** writes the content (topics, equation ids, live numbers, figures, citations, short lines and
   the claims checklist) in theory.md and notes-M3.5.md, no code; **M3.5b** builds the sections, links and harness from it.
+  The page half is split again: **M3.5b** the Theory and References sections with live numbers (and the `mobius`
+  registry entry); **M3.5c** the short line and "→ theory" link beside every control and readout, the claims checklist
+  finished, and the harness's 4× frame-loss timing checks made robust.
 
 *Done when:* typing a value and dragging to it agree to the shown precision; edit → chart → drag back gives the same
 value to 1e-9 relative; undo and redo hold under random sequences; scripted drags on every part kind, by mouse and by
