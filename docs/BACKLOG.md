@@ -1,6 +1,6 @@
 # Backlog
 
-Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL56**). When a row is
+Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL57**). When a row is
 scheduled it moves into the tool's plan (for the PCB viewer: [pcb-viewer/plan.md](pcb-viewer/plan.md); for the resistor
 lookup: [resistor/plan.md](resistor/plan.md); for the Smith chart: [smith-chart/plan.md](smith-chart/plan.md)) and the move is noted here; when it is done the row is removed and that is
 noted here too.
@@ -11,11 +11,15 @@ main thread per frame while zooming at 4× CPU back under 6 ms), done 2026-11-12
 drawn with `text-rendering: geometricPrecision`; notes in [smith-chart/notes-M3.2.md](smith-chart/notes-M3.2.md), "Fix
 after M3.2"). BL55 (Smith chart: families of two unknowns missing members), done 2026-11-12 (`solve.ts` `familyAt` keeps
 two members where b's locus crosses K′ within `TANGENT_TOL`; the brute force refines roots near a goal's pole on the
-goal's own quantity; notes in [smith-chart/notes-M4.2.md](smith-chart/notes-M4.2.md), "BL55 fix").
+goal's own quantity; notes in [smith-chart/notes-M4.2.md](smith-chart/notes-M4.2.md), "BL55 fix"). BL56 (Smith chart:
+fallback-search problems failed on other random streams), done 2026-11-12 (`solve.ts`: a down stub's Zc of 0 at its
+domain's end −π/2; `searchGrid` columns towards a Zt's or Zc's 0 and ∞, rows where the node before it passes the short
+or open, Newton continued near the target, the grid budget counted exactly; the brute force's rounding floor over every
+value of the circuit; the fallback groups also on three streams of their own; notes in
+[smith-chart/notes-M4.2.md](smith-chart/notes-M4.2.md), "BL56 fix").
 
 | id | tool | what | why / trigger |
 |---|---|---|---|
-| BL56 | Smith chart | Two fallback-search problems that `check-validate.mjs` failed when the shared random stream shifted (found in M4.3b, before check-values.mjs took its own stream): (1) one unknown, a line's Zc, goal x = 0: the solver reports coord π/2 for a value whose coord is −π/2 (`{"z0":0.01,"f0":23038359.38250798,"loadR":0.00045312498546138633,"loadX":0.006211644672110538,"parts":[{"kind":8,"value":0.33214704575017096,"zc":0.00380777566860613},{"kind":7,"value":0.37031287051271644,"zc":0.010659093826941132}]}`, unknown part 2 zc); (2) two unknowns, λ/4 Zt and f0, a point target R 99.395, X 235.654 Ω: the brute force finds a solution at coords (1.57079, 2.08086) the solver lacks (`{"z0":300,"f0":4202204495.6798077,"loadR":5.745485383608313,"loadX":-93.01015563139133,"parts":[{"kind":6,"value":0.2284483519033529,"zc":335.4255064140361},{"kind":9,"value":95.78701555557096}]}`, unknowns part 2 and f0). | The solver should hold on any stream; (1) is the ±π/2 end of the angle coordinate (the same point), (2) a Zt near ∞ at the edge of the generic grid. Add both as fixed cases in check-validate.mjs. |
 | BL54 | Smith chart | A complete search for two unknowns whose loci are not circles (the generic grid of `lib/smith/solve.ts` `searchGrid`: f0 with a line's Zc, a λ/4's Zt or a stub's Zc, two Zc): it is a refined grid with Newton, and a brute force 4× finer still found one answer in 280 problems it missed (f0 + λ/4 at 7·f0). Perhaps a continuation along the resonance curves, or interval bounds on Γ per cell | 2026-11-12, from notes-M4.2.md "Left". Trigger: the owner meets a missed answer, or M4.4 suggests f0 pairs |
 | BL52 | Smith chart | Draw the grid's labels on a canvas (one bitmap per rebuild, or text drawn into a canvas layer under the top `<svg>`) so a grid rebuild fits in a frame at 4× CPU: today a rebuild costs ~32 ms (script 10, style 6.5, layout 7.5, paint 9, mostly the ~250 SVG `<text>` labels) and loses about one frame each, 5 per 2 s zoom; the page harnesses count lost frames against rebuilds instead of a p95 | 2026-11-12, from notes-M3.2.md "Fix after M3.2" (a hidden page filled in steps cost more than it saved). Trigger: the owner sees the zoom stutter on the phone, or M9's performance pass |
 | BL50 | Smith chart | A line's and a stub's length also in metres with an εeff per part (engine.md §2: "electrical, or physical with εeff"); M3.1 gives the length in λ and in degrees at f0. `turnsFromMetres` / `metresFromTurns` of `lib/smith/parts.ts` exist; the link would gain an optional fourth number per line (`tl:len:Zc:εeff`) | 2026-11-12, left out of step M3.1 to keep its scope. Trigger: the owner asks for physical lengths, or M7 (sweep) needs a dispersive εeff |

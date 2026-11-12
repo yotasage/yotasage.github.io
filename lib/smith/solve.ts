@@ -392,13 +392,19 @@ function polish(t: number[], codes: number[], residual: number): number {
   return residual;
 }
 
-/** Coordinates into their usual interval: lengths [0, λ/2), the projective coordinate (−π/2, π/2] (R, Zt, Zc past ∞: ∞). */
+/**
+ * The far end of a half slot's domain: +π/2, or −π/2 for a stub's Zc whose b is negative (domain [−π/2, 0]), where a
+ * Zc of 0 makes b = −∞ (BL56: it read +π/2, outside the domain).
+ */
+const farEnd = (s: Slot): number => (s.lo < 0 ? -HALF_PI : HALF_PI);
+
+/** Coordinates into their usual interval: lengths [0, λ/2), the projective coordinate (−π/2, π/2] (R, Zt, Zc past ∞: their far end). */
 function normalise(t: number[]): void {
   for (let i = 0; i < slots.length; i++) {
     const s = slots[i];
     if (s.mode === M_LEN) { t[i] -= LINE_PERIOD * Math.floor(t[i] / LINE_PERIOD); if (t[i] >= LINE_PERIOD) t[i] = 0; }
     else if (s.mode === M_LOG) continue;
-    else if (s.half && Math.abs(t[i]) >= HALF_PI) t[i] = HALF_PI;
+    else if (s.half && Math.abs(t[i]) >= HALF_PI) t[i] = farEnd(s);
     else if (t[i] > HALF_PI || t[i] <= -HALF_PI) { t[i] -= Math.PI * Math.round(t[i] / Math.PI); if (t[i] <= -HALF_PI) t[i] += Math.PI; }
   }
 }
@@ -416,8 +422,12 @@ function keep(t: number[], codes: number[], residual: number): void {
 /** Evaluates the slots at parameters ps, polishes, and keeps the candidate if it reaches the goal. */
 function consider(ps: readonly number[]): void {
   const t = ps.map((p, i) => coordOf(slots[i], p));
-  // An R or Zt at the far end of its circle (the open or short) reads as a huge value of either sign: take +∞.
-  for (let i = 0; i < t.length; i++) if (slots[i].half && t[i] < 1e-7 - HALF_PI) t[i] = HALF_PI;
+  // An R, Zt or Zc at the far end of its circle (the open or short) reads as a huge value of either sign: take the
+  // domain's far end (+∞, or a down stub's b of −∞).
+  for (let i = 0; i < t.length; i++) {
+    const s = slots[i];
+    if (s.half && (s.lo < 0 ? t[i] > HALF_PI - 1e-7 : t[i] < 1e-7 - HALF_PI)) t[i] = farEnd(s);
+  }
   const codes: number[] = new Array(slots.length);
   const worst = settleAll(t, codes);
   if (worst < -1) return;
@@ -1250,7 +1260,59 @@ function gridAt(s: Slot, i: number, n: number): number {
 const GRID_JUMP = 0.25;
 const GRID_PASSES = 6;
 const GRID_MAX = 8192 * 8;
+/** searchGrid: a Zt or Zc also gets columns towards 0 and ∞ past the first grid's end ones, END_RATIO apart, to END_NEAREST. */
+const END_RATIO = 0.125, END_NEAREST = 1e-12;
+/** searchGrid: Newton (40 steps) that ends within NEWTON_ON of the target goes on for NEWTON_MORE steps. */
+const NEWTON_ON = 0.03, NEWTON_MORE = 160;
 let gridRe = new Float64Array(64 * 64), gridIm = new Float64Array(64 * 64);
+
+/** passRows: the most bisections of one passage (48 halvings take a grid row's width to the last bits of ln f). */
+const PASS_DEPTH = 48;
+const passRe: number[] = [], passIm: number[] = [];
+
+/** Γ at node n at the frequency of f0's coordinate y into gam (false if it cannot be evaluated). */
+function nodeAtF(s1: Slot, n: number, y: number): boolean {
+  if (settle(s1, paramOf(s1, y)) < -1) return false;
+  gammaAt(gam, 0, n);
+  return gam[0] === gam[0] && gam[1] === gam[1];
+}
+
+/**
+ * searchGrid with f0 and a Zc or Zt (BL56): far from Z0 such a part turns the short or the open at its input node into
+ * the whole chart, so where that node (which f alone moves) passes the short or open between two rows, the answers
+ * lie in a band of f as narrow as the passage is close: a high-Q resonance before the part, which no grid resolves
+ * and whose rows may show no jump at all. Such passages (the chord of two rows' points nearer the short or open than
+ * half the nearer row) are bisected towards their nearest point, PASS_DEPTH times at most, and the rows added to ys.
+ */
+function passRows(s0: Slot, s1: Slot, ys: number[]): void {
+  const n = ys.length, at = s0.part, added: number[] = [];
+  passRe.length = 0; passIm.length = 0;
+  for (let j = 0; j < n; j++) {
+    const ok = nodeAtF(s1, at, ys[j]);
+    passRe.push(ok ? gam[0] : NaN); passIm.push(ok ? gam[1] : NaN);
+  }
+  for (let j = 0; j + 1 < n; j++) {
+    for (let p = -1; p <= 1; p += 2) passBisect(s1, at, p, ys[j], passRe[j], passIm[j], ys[j + 1], passRe[j + 1], passIm[j + 1], 0, added);
+  }
+  for (const y of added) ys.push(y);
+  if (added.length) ys.sort((a, b) => a - b);
+}
+
+/** One passage of passRows between rows ya and yb (node points a, b) by the short (p = −1) or open (p = 1): midpoints into out. */
+function passBisect(s1: Slot, at: number, p: number, ya: number, ar: number, ai: number, yb: number, br: number, bi: number, depth: number, out: number[]): void {
+  if (depth >= PASS_DEPTH || !(yb - ya > 4e-16 * Math.max(1, Math.abs(ya)))) return;
+  const ux = br - ar, uy = bi - ai, l2 = ux * ux + uy * uy;
+  if (!(l2 > 0)) return;
+  const s = Math.min(1, Math.max(0, ((p - ar) * ux - ai * uy) / l2));
+  const dc = Math.hypot(ar + s * ux - p, ai + s * uy);
+  if (!(dc < 0.5 * Math.min(Math.hypot(ar - p, ai), Math.hypot(br - p, bi)))) return;
+  const ym = 0.5 * (ya + yb);
+  if (!nodeAtF(s1, at, ym)) return;
+  const mr = gam[0], mi = gam[1];
+  out.push(ym);
+  passBisect(s1, at, p, ya, ar, ai, ym, mr, mi, depth + 1, out);
+  passBisect(s1, at, p, ym, mr, mi, yb, br, bi, depth + 1, out);
+}
 
 /** The midpoints of the intervals of `at` across which Γ jumps by more than GRID_JUMP near the target (along axis 0 or 1 of the grid). */
 function jumps(at: number[], other: number, axis: number, stride: number): number[] {
@@ -1274,10 +1336,19 @@ function searchGrid(): void {
   const s0 = slots[0], s1 = slots[1];
   let xs: number[] = [], ys: number[] = [];
   for (let i = 0, m = gridOf(s0, 2); i < m; i++) xs.push(gridAt(s0, i, m));
+  // A Zt or Zc: columns ever closer to 0 and ∞ too, where the answers of a λ/4 or line near a multiple of λ/2 lie
+  // (Zt·sin θ finite as Zt → ∞; BL56: Zt = 307·Z0 at 8.01·f0, past the first grid's last column at 64·Z0).
+  if (s0.half) {
+    const m = xs.length;
+    for (let d = xs[0] - s0.lo; d > END_NEAREST; ) { d *= END_RATIO; xs.push(s0.lo + d); }
+    for (let d = s0.hi - xs[m - 1]; d > END_NEAREST; ) { d *= END_RATIO; xs.push(s0.hi - d); }
+    xs.sort((a, b) => a - b);
+  }
   for (let j = 0, m = gridOf(s1, 2); j < m; j++) ys.push(gridAt(s1, j, m));
   // f0 (always the second unknown) also gets every frequency where a stub before the goal is a multiple of λ/4.
   for (const u of sharpPoints(s1)) if (u > s1.lo && u < s1.hi) ys.push(u);
   ys.sort((a, b) => a - b);
+  if (s0.half && s1.param === P_F0) passRows(s0, s1, ys);
   let n0 = 0, n1 = 0, oldX: number[] = [], oldY: number[] = [];
   const started = new Set<string>();
   const ps = [0, 0];
@@ -1300,7 +1371,10 @@ function searchGrid(): void {
         const key = `${xs[i]},${ys[j]}`;
         if (started.has(key)) continue;
         started.add(key);
-        const end = newton2D(f2, xs[i], ys[j], 40, nt);
+        let end = newton2D(f2, xs[i], ys[j], 40, nt);
+        // A start in a thin curved valley (an extreme Zc or Zt at a resonance, BL56) crawls along it: one that ends
+        // near the target goes on.
+        if (end > 1e-10 && end < NEWTON_ON) end = newton2D(f2, nt[0], nt[1], NEWTON_MORE, nt);
         if (!(end <= 1e-10)) continue;
         // Newton may leave a bounded coordinate (f0 outside its search range, M4.2): not an answer of this question.
         if ((!s0.periodic && !(nt[0] >= s0.lo && nt[0] <= s0.hi)) || (!s1.periodic && !(nt[1] >= s1.lo && nt[1] <= s1.hi))) continue;
@@ -1332,7 +1406,12 @@ function searchGrid(): void {
     // The first grid's minima, and the refined grid's (a refinement can turn a good start into a slope).
     if (pass === 0) descend();
     if (pass === GRID_PASSES) break;
-    const ax = n0 * 2 * n1 <= GRID_MAX ? jumps(xs, n1, 0, n1) : [], ay = n0 * n1 * 2 <= GRID_MAX ? jumps(ys, n0, 1, n1) : [];
+    let ax = jumps(xs, n1, 0, n1), ay = jumps(ys, n0, 1, n1);
+    // Within GRID_MAX points: both refinements, else the one that fits (the smaller first).
+    if ((n0 + ax.length) * (n1 + ay.length) > GRID_MAX) {
+      const fitX = (n0 + ax.length) * n1 <= GRID_MAX, fitY = n0 * (n1 + ay.length) <= GRID_MAX;
+      if (fitX && (!fitY || ax.length * n1 <= ay.length * n0)) ay = []; else if (fitY) ax = []; else break;
+    }
     if (!ax.length && !ay.length) break;
     xs = xs.concat(ax).sort((a, b) => a - b);
     ys = ys.concat(ay).sort((a, b) => a - b);

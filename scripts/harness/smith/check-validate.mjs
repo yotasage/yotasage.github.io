@@ -19,6 +19,11 @@ const TAU = 2 * Math.PI;
 const HALF_PI = Math.PI / 2;
 const EXACT = 1e-9;      // the bar for a solution of an exact kind, by the independent evaluation
 const MATCH = 1e-6;      // two solutions are the same when every coordinate is this close
+// The fallback groups also run on streams of their own (BL56), with this many problems each (one unknown: 20 of each
+// kind; two: 8 of each). The brute force of the full groups (200 and 280) takes 7 s a stream, which npm run check's
+// budget does not allow; they were run once in full (notes-M4.2.md "BL56 fix").
+const FALLBACK_SEEDS = [0x3a7c5, 0x6e1f9, 0xc42d3];
+const FALLBACK_ONE = 100, FALLBACK_TWO = 56;
 const isLC = (k) => k === SERIES_L || k === SERIES_C || k === SHUNT_L || k === SHUNT_C;
 
 // ---- the independent evaluation -------------------------------------------------------------------------------
@@ -536,20 +541,24 @@ export function runValidateChecks({ section, ok, random: sharedRandom }) {
     });
     return { coords, residual: r };
   }
-  // How far Γ moves when each unknown's value moves by 1e-15 relative (about 4 ulps) either way: the floor of any residual.
+  // How far Γ moves when any value of the circuit (each part's value and Zc, the load, the frequency; the unknowns
+  // among them) moves by 1e-15 relative (about 4 ulps) either way: the floor of any residual. Not only the unknowns'
+  // (BL56): at a high-Q resonance Γ moved 9e-8 per 1e-15 of f or of a fixed line's length, and network.ts and this
+  // evaluation, each exact to rounding, gave a residual of 4.7e-9 for a solution the unknowns alone bound at 2e-9.
 function conditioning(c, res, n) {
   gammaAt(c, n);
   const g0 = G[0], g1 = G[1];
   let k = 0;
-  res.unknowns.forEach((u) => {
+  const nudge = (obj, key) => {
+    const old = obj[key];
+    if (!(old !== 0 && Math.abs(old) < Infinity)) return;
     for (const e of [1e-15, -1e-15]) {
-      const p = u.param === 'f0' ? null : c.parts[u.part];
-      const key = u.param === 'f0' ? 'f' : u.param === 'zc' ? 'zc' : 'value';
-      const obj = p ?? c, old = obj[key];
       obj[key] = old * (1 + e); gammaAt(c, n); obj[key] = old;
       k = Math.max(k, Math.hypot(G[0] - g0, G[1] - g1));
     }
-  });
+  };
+  for (let i = 0; i < n; i++) { const p = c.parts[i]; nudge(p, 'value'); if (p.kind >= LINE && p.kind !== QUARTER) nudge(p, 'zc'); }
+  nudge(c, 'loadR'); nudge(c, 'loadX'); nudge(c, 'f');
   return k;
 }
 const slotsFor = (circuit, res) => res.unknowns.map((u) => slotOf(circuit, u));
@@ -777,26 +786,32 @@ const slotsFor = (circuit, res) => res.unknowns.map((u) => slotOf(circuit, u));
 
   // ==============================================================================================================
   section('validate fallback, one unknown');
-  for (let p = 0; p < 200; p++) {
-    const sub = p % 5;
-    const spec = sub === 1 ? 'zcStub' : sub === 0 || sub === 3 ? 'zcLine' : 'f0';
-    const { circuit, unknowns } = randomProblem([spec], { f0: spec === 'f0', maxFixed: spec === 'f0' ? 1 : 2 });
-    // f0 problems: a lumped part or a line as the circuit when nothing else is there.
-    if (spec === 'f0' && !circuit.parts.length) circuit.parts.push(randomPart(pick([SERIES_L, SHUNT_C, LINE, STUB_SHORT]), circuit.z0, TAU * circuit.f0, 0.25));
-    const kind = 'fallback, one unknown';
-    if (sub === 3) validateBest(kind, circuit, unknowns, placeGoal(pointGoal(circuit.z0), circuit, unknowns), 20000);
-    else if (sub === 4) validateRanges(kind, circuit, unknowns, placeGoal(withinGoal(), circuit, unknowns), 100000);
-    else validateOneCircle(kind, circuit, unknowns, placeGoal(circleGoal(), circuit, unknowns), spec === 'f0' ? 100000 : 20000);
-  }
+  const fallbackOne = (kind, count) => {
+    for (let p = 0; p < count; p++) {
+      const sub = p % 5;
+      const spec = sub === 1 ? 'zcStub' : sub === 0 || sub === 3 ? 'zcLine' : 'f0';
+      const { circuit, unknowns } = randomProblem([spec], { f0: spec === 'f0', maxFixed: spec === 'f0' ? 1 : 2 });
+      // f0 problems: a lumped part or a line as the circuit when nothing else is there.
+      if (spec === 'f0' && !circuit.parts.length) circuit.parts.push(randomPart(pick([SERIES_L, SHUNT_C, LINE, STUB_SHORT]), circuit.z0, TAU * circuit.f0, 0.25));
+      if (sub === 3) validateBest(kind, circuit, unknowns, placeGoal(pointGoal(circuit.z0), circuit, unknowns), 20000);
+      else if (sub === 4) validateRanges(kind, circuit, unknowns, placeGoal(withinGoal(), circuit, unknowns), 100000);
+      else validateOneCircle(kind, circuit, unknowns, placeGoal(circleGoal(), circuit, unknowns), spec === 'f0' ? 100000 : 20000);
+    }
+  };
+  fallbackOne('fallback, one unknown', 200);
+  // BL56 (1): a stub's Zc of 0 (b = −∞ for an open stub with tan θ < 0) read coord +π/2, outside its domain [−π/2, 0].
+  validateOneCircle('fallback, one unknown (BL56)',
+    { z0: 0.01, f0: 23038359.38250798, loadR: 0.00045312498546138633, loadX: 0.006211644672110538, parts: [{ kind: STUB_SHORT, value: 0.33214704575017096, zc: 0.00380777566860613 }, { kind: STUB_OPEN, value: 0.37031287051271644, zc: 0.010659093826941132 }] },
+    [{ part: 1, param: 'zc' }], { kind: 'x', value: 0 }, 20000);
 
   section('validate fallback, two unknowns');
-  {
+  const fallbackTwo = (kind, count) => {
     const subs = [
       ['zcLen'], ['f0', 'lumped'], ['zcLine', 'lumped'],                     // searchMixed
       ['zcLen', 'f0'], ['zcLine', 'zcLine'], ['f0', QUARTER], ['f0', 'zcStub'], // searchGrid
     ];
     const lumped = () => pick([SERIES_R, SERIES_L, SERIES_C, SHUNT_R, SHUNT_L, SHUNT_C]);
-    for (let p = 0; p < 280; p++) {
+    for (let p = 0; p < count; p++) {
       const sub = subs[p % subs.length];
       const specs = sub.map((x) => (x === 'lumped' ? lumped() : x));
       const f0 = specs.includes('f0');
@@ -806,9 +821,29 @@ const slotsFor = (circuit, res) => res.unknowns.map((u) => slotOf(circuit, u));
       const goal = placeGoal(pointGoal(circuit.z0), circuit, unknowns);
       // f0 is the solver's last unknown; it gets the fine side of the grid.
       const [NA, NB] = f0 ? [160, 1600] : [320, 320];
-      validateTwoPoint('fallback, two unknowns', circuit, unknowns, goal, NA, NB);
+      validateTwoPoint(kind, circuit, unknowns, goal, NA, NB);
     }
+  };
+  fallbackTwo('fallback, two unknowns', 280);
+  // The same on streams of their own (BL56: other streams found answers the solver lacked), the shared one untouched.
+  {
+    const shared = random;
+    for (const s of FALLBACK_SEEDS) {
+      random = seeded(s);
+      fallbackOne(`fallback, one unknown (seed ${s.toString(16)})`, FALLBACK_ONE);
+      fallbackTwo(`fallback, two unknowns (seed ${s.toString(16)})`, FALLBACK_TWO);
+    }
+    random = shared;
   }
+  // BL56 (2) and the extra streams' misses: answers in a band of f far narrower than the grid, where a Zt or Zc far
+  // from Z0 meets a resonance (the node before it passing the short or open), and a λ/4 of Zt = 307·Z0 near 8·f0 past
+  // the grid's last column. Then a solution at a high-Q resonance that rounding of the fixed values moves by 9e-8.
+  validateTwoPoint('fallback, two unknowns (BL56)',
+    { z0: 300, f0: 4202204495.6798077, loadR: 5.745485383608313, loadX: -93.01015563139133, parts: [{ kind: LINE, value: 0.2284483519033529, zc: 335.4255064140361 }, { kind: QUARTER, value: 95.78701555557096 }] },
+    [{ part: 1 }, { part: 0, param: 'f0' }], { kind: 'point', targetR: 99.395, targetX: 235.654 }, 160, 1600);
+  validateTwoPoint('fallback, two unknowns (BL56)',
+    { z0: 50, f0: 10412845.688968714, loadR: 0.00022087030992080846, loadX: 15.901485025339118, parts: [{ kind: SERIES_L, value: 0.000005255127872477878 }, { kind: LINE, value: 0.26568010600749403, zc: 69.59470565356887 }, { kind: LINE, value: 0.47148665005806834, zc: 28.866402420936677 }, { kind: STUB_SHORT, value: 0.33182412987807763, zc: 108.23198475555864 }, { kind: SERIES_L, value: 0.0000014309825266000554 }] },
+    [{ part: 1, param: 'zc' }, { part: 4 }], { kind: 'point', targetR: 83.44083535207986, targetX: -73.46542292398598 }, 320, 320);
 
   // ==============================================================================================================
   section('validate closed-form cases');
@@ -869,6 +904,18 @@ const slotsFor = (circuit, res) => res.unknowns.map((u) => slotOf(circuit, u));
       [{ part: 1 }, { part: 0, param: 'f0' }], { kind: 'point' }, [1.56339904878, 1.63354926689], 'Zt with f0');
     // That problem's Newton steps once left the f0 range (an answer at 0.06·f0 for a range from 0.1·f0).
     check(kind, r.solutions.every((sol) => sol.values[1].value >= 11895654.05238855 / 10 * (1 - 1e-12)), `${kind}: no f0 below the range`, '');
+    // BL56: a λ/4 of Zt = 307·Z0 at 8.01·f0 (past the grid's last column), and answers in bands of f narrower than the
+    // grid where a Zt or Zc far from Z0 meets a resonance before it (found on the extra streams).
+    has({ z0: 300, f0: 4202204495.6798077, loadR: 5.745485383608313, loadX: -93.01015563139133, parts: [{ kind: LINE, value: 0.2284483519033529, zc: 335.4255064140361 }, { kind: QUARTER, value: 95.78701555557096 }] },
+      [{ part: 1 }, { part: 0, param: 'f0' }], { kind: 'point', targetR: 99.395, targetX: 235.654 }, [1.57078566545, 2.08086164076], 'Zt near ∞ with f0 (BL56)');
+    has({ z0: 10000, f0: 675181.6869349823, loadR: 0.16665231638267025, loadX: -3367.800205392138, parts: [{ kind: QUARTER, value: 25430.627570621422 }, { kind: LINE, value: 0.2038056884193793, zc: 8444.410136600009 }] },
+      [{ part: 1, param: 'zc' }, { part: 0, param: 'f0' }], { kind: 'point', targetR: 1327.2028315375712, targetX: -3043.3801691217477 }, [0.0032232397065, 1.40692299563], 'small Zc with f0 at a resonance (BL56)');
+    has({ z0: 0.01, f0: 6377837.221285648, loadR: 6.42282952098162e-7, loadX: 0.004093406939205376, parts: [{ kind: STUB_OPEN, value: 0.04584984336048365, zc: 0.0154059101345973 }, { kind: LINE, value: 0.14803260972257704, zc: 0.007591890731764352 }, { kind: SERIES_L, value: 2.2260370744538225e-11 }] },
+      [{ part: 1, param: 'zc' }, { part: 0, param: 'f0' }], { kind: 'point', targetR: 0.0011679310875754882, targetX: -0.0032823576771299967, node: 3 }, [1.51881039336, 1.51721409384], 'large Zc with f0 at a resonance (BL56)');
+    has({ z0: 10000, f0: 990860.4935362092, loadR: 36358.522744376336, loadX: -34870.43986291888, parts: [{ kind: STUB_OPEN, value: 0.2150716417329386, zc: 5957.858925959073 }, { kind: LINE, value: 0.01617549394723028, zc: 16099.299079898205 }, { kind: STUB_OPEN, value: 0.14134038879536093, zc: 11009.454953671286 }] },
+      [{ part: 1, param: 'zc' }, { part: 0, param: 'f0' }], { kind: 'point', targetR: 1568.862596187903, targetX: -12357.428894033981 }, [0.00703202221109, 1.76224729111], 'small Zc with f0 in a curved valley (BL56)');
+    has({ z0: 10000, f0: 7034444916.871903, loadR: 15315.32260632734, loadX: -10812.492577890602, parts: [{ kind: QUARTER, value: 17947.703206850005 }, { kind: QUARTER, value: 3732.331720894017 }, { kind: LINE, value: 0.14000273449346423, zc: 21912.318647715267 }] },
+      [{ part: 1 }, { part: 0, param: 'f0' }], { kind: 'point' }, [0.00336625016363, 2.30020714732], 'small Zt with f0 at a resonance (BL56)');
     // A stub's Zc of 0 shorts its node, which a λ/4 makes the open, where every r circle passes: no answer.
     {
       const circuit = { z0: 75, f0: 5608805560.350074, loadR: 0.04937582480809154, loadX: -1187.2909644886386, parts: [{ kind: STUB_SHORT, value: 0.4683808324951679, zc: 121.06637416262154 }, { kind: QUARTER, value: 70.02502612039825 }] };

@@ -130,6 +130,48 @@ Two causes, one on each side:
 The other groups are unchanged in their bars and pass. `npm run check` now takes about 67 s (the three extra streams
 about 13 s).
 
+## BL56 fix
+
+Two fallback problems failed when the shared stream shifted (M4.3b), and the fallback groups on three streams of their
+own (seeds 0x3a7c5, 0x6e1f9, 0xc42d3) failed four more and one residual. Causes and fixes:
+
+- **Stub Zc of 0** (`solve.ts` `farEnd`, `normalise`, `consider`): an open stub with tan θ < 0 has the domain
+  [−π/2, 0] for its Zc (atan of its b); a Zc of 0 (b = −∞) was written as the coordinate +π/2, outside it. A half
+  slot's far end is now −π/2 when its domain is below 0.
+- **Zt near ∞** (`searchGrid`, `END_RATIO`, `END_NEAREST`): the answer (Zt = 307·Z0 at 8.01·f0, where the λ/4 is
+  almost 2λ long and Zt·sin θ stays finite) lay past the first grid's last column (Zt = 64·Z0). A Zt or Zc slot now also
+  gets columns towards 0 and ∞, 8× closer each, to 1e-12 of the end. The refinement's budget is counted on the points
+  it adds (it was refused whenever a doubling of the whole grid would exceed `GRID_MAX`), so the refinement reaches it.
+- **Narrow bands of f** (`passRows`, `passBisect`): with a Zc or Zt far from Z0 the answers lie where the node before
+  the part (which f alone moves) passes close to the short or open, a high-Q resonance of the fixed parts; the band
+  was far narrower than a row (under 1e-3 in ln f) and the rows either side showed no jump. Where the chord of two
+  rows' node points passes the short or open nearer than half the nearer point, it is bisected towards the nearest
+  point (at most 48 times) and those rows are added. Newton from a start in the thin, curved valley that follows
+  crawled: one that ends within 0.03 of the target after 40 steps goes on for 160 more.
+- **Brute force's rounding floor** (`check-validate.mjs` `conditioning`): a solution at a high-Q resonance
+  re-evaluated to 4.7e-9 while its unknowns' rounding bound it at 2e-9; a 1e-15 change of f or of a fixed line's length
+  moves Γ there by 9e-8, so network.ts and the check's evaluation differ by rounding. The floor now nudges every value
+  of the circuit (each part's value and Zc, the load, f), not only the unknowns'. Nothing else became "conditioned".
+
+Each case is fixed: `fallback, one unknown (BL56)`, `fallback, two unknowns (BL56)` (the Zt near ∞ and the resonance
+residual), and five `has` cases in `validate regressions` (with the coordinates of the brute force's answer). The
+extra streams run in `npm run check` with 100 one-unknown and 56 two-unknown problems each (the full groups cost 7 s a
+stream); the full groups were run once:
+
+| fallback | problems | solutions | brute-force finds | missed (before) | missed | false | solver only |
+|---|---|---|---|---|---|---|---|
+| shared stream, one | 200 | 161 | 262,650 | 0 | 0 | 0 | 0 |
+| shared stream, two | 280 | 360 | 320 | 0 | 0 | 0 | 40 |
+| 0x3a7c5, one / two | 200 / 280 | 157 / 416 | 626,831 / 373 | 0 / 0 | 0 / 0 | 0 / 0 | 6 / 43 |
+| 0x6e1f9, one / two | 200 / 280 | 153 / 364 | 474,648 / 300 | 0 / 1 | 0 / 0 | 0 / 0 | 1 / 64 |
+| 0xc42d3, one / two | 200 / 280 | 127 / 366 | 207,897 / 323 | 0 / 3 | 0 / 0 | 0 / 0 (1 before) | 1 / 43 |
+
+Cost: the generic grid (Zc + f0, two Zc, f0 + λ/4, f0 + stub Zc; 640 problems from four streams) went from a median of
+11 ms (p90 22, worst 52) to 17 ms (p90 32, worst about 100); the end columns cost about 2 ms of the median, the rest
+is the larger refinement. `searchMixed` is unchanged. Such solves already run after a pause, never during a drag
+(M4.3a). `npm run check` took 73.6 s (69.6 s without the extra streams in one run; this machine varies by ±10 %).
+BL54 stands: a grid is still not a proof of completeness.
+
 ## For M4.3 and M4.4
 
 - `goalPole(goal)` says which point a goal's circle excludes; the page can grey that point of the drawn circle.
