@@ -90,7 +90,7 @@ parts" in `check-state.mjs`) and `npm run ui` (`ui-solve.mjs`, new; `ui-why.mjs`
   0.88275, tl 0.210257 λ Zc 0.53621, lp 1.68087e-8]}` unknowns parts 3 and 6, goal g = 6.798966401818079 at the input;
   and `{"z0":75,"f0":5734371.20889579,"loadR":259.49852216344755,"loadX":-154.89638350056447,"parts":[qw 50.0556, rs
   2.7425, ls 7.9025e-6, ss 0.0967 λ Zc 33.277, ss 0.27835 λ Zc 84.588]}` unknowns parts 2 and 5, goal g =
-  0.11768843102733577. Not fixed here (the solver is outside this step).
+  0.11768843102733577. Not fixed here (the solver is outside this step); fixed since, see notes-M4.2.md "BL55 fix".
 
 ## For M4.3b
 

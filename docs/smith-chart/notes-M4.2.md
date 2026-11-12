@@ -94,6 +94,42 @@ force found it before it knew the pole; the solver never returned it).
   (for example a series R after the short makes the input real, b = 0): true, and harmless; M4.3 may hide members at
   a value's limit.
 
+## BL55 fix
+
+Another random stream (notes-M4.3a.md "Found on the way") made the family group report members the solver lacked.
+Two causes, one on each side:
+
+- **Solver** (`solve.ts` `familyAt`, `FAMILY_SPLIT`; `geometry.ts` `circleIntersect`'s new `split` argument, default
+  off): a short stub's length with a line's length, the node before the line 1e-11 inside the rim for every stub
+  length. The line's |Γ| circle then runs a hair inside the rim and crosses K′ (a g circle, which touches the rim at
+  the short) about 1.6e-6 either side of the short; the gap R − δ stayed under `TANGENT_TOL` (1e-12), so the two
+  crossings were taken for one touching point, which lies on the pole and was dropped, and the range ended early
+  (t up to 1.398 of π/2; now the whole domain). A crossing in the tangent band whose half-chord exceeds 1e-7 (rounding
+  gives about 1e-8) now gives both members, which Newton polishes as before. Other callers keep the old behaviour.
+- **Brute force** (`check-validate.mjs` `roots1`, `nearPole`): the second problem (a series R with a short stub
+  across the input, goal g) has no members off the single R where g(P) equals the goal: a shunt stub keeps g. Near
+  the short every g circle is within d²·Δg/2 of the goal's (d = 1.6e-6 there, Δg = 5e-5: 7e-17), below Γ's rounding,
+  so the signed distance changed sign by rounding (checked at 50 digits with mpmath: g at the input is g(P) = 0.10805,
+  the goal 0.10810). Roots within 1e-3 of an r, g, x or b goal's pole are now found again on the goal's own quantity
+  from Z = N/D (precise there): the sign change of q − v nearest the root within one cell, bisected and kept on the
+  goal's circle in Γ as before, or a touching minimum of |q − v| below 1e-9 relative; else no root. This is a more
+  precise brute force, not a looser bar: with it the main stream's family group finds more roots (19,528, was 19,395)
+  and "solver only" fell from 828 to 695; in one standalone run it dropped one root at d ≥ 1e-6 (the artefact above).
+- **Checks**: the family group also runs on three streams of its own (seeds 0x2f6b1, 0x9e3d7, 0x51c4a, 220 problems
+  each), and three fixed cases (`two unknowns, family (BL55)`: both circuits of notes-M4.3a.md and the full-precision
+  artefact from seed 0x51c4a). With `FAMILY_SPLIT` off, the first fixed case misses 3 members.
+
+| family group | problems | statuses | solutions | brute-force finds | missed | false | solver only |
+|---|---|---|---|---|---|---|---|
+| shared stream | 220 | 154 family, 66 none | 20,223 | 19,528 | 0 | 0 | 695 |
+| seed 0x2f6b1 | 220 | 155 family, 65 none | 19,247 | 18,410 | 0 | 0 | 837 |
+| seed 0x9e3d7 | 220 | 144 family, 76 none | 17,478 | 17,065 | 0 | 0 | 413 |
+| seed 0x51c4a | 220 | 144 family, 76 none | 19,892 | 19,359 | 0 | 0 | 533 |
+| BL55 cases | 3 | 1 family, 2 none | 240 | 114 | 0 | 0 | 33 |
+
+The other groups are unchanged in their bars and pass. `npm run check` now takes about 67 s (the three extra streams
+about 13 s).
+
 ## For M4.3 and M4.4
 
 - `goalPole(goal)` says which point a goal's circle excludes; the page can grey that point of the drawn circle.

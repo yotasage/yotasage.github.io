@@ -1,6 +1,6 @@
 # Backlog
 
-Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL53**). When a row is
+Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL56**). When a row is
 scheduled it moves into the tool's plan (for the PCB viewer: [pcb-viewer/plan.md](pcb-viewer/plan.md); for the resistor
 lookup: [resistor/plan.md](resistor/plan.md); for the Smith chart: [smith-chart/plan.md](smith-chart/plan.md)) and the move is noted here; when it is done the row is removed and that is
 noted here too.
@@ -9,12 +9,13 @@ Done and removed: BL48 (Smith chart: grid labels inside the field when zoomed in
 (`lib/smith/grid.ts`'s inner labels; notes in [smith-chart/notes-M2.3.md](smith-chart/notes-M2.3.md)). BL51 (Smith chart:
 main thread per frame while zooming at 4× CPU back under 6 ms), done 2026-11-12 after step M3.2 (turned grid labels
 drawn with `text-rendering: geometricPrecision`; notes in [smith-chart/notes-M3.2.md](smith-chart/notes-M3.2.md), "Fix
-after M3.2").
+after M3.2"). BL55 (Smith chart: families of two unknowns missing members), done 2026-11-12 (`solve.ts` `familyAt` keeps
+two members where b's locus crosses K′ within `TANGENT_TOL`; the brute force refines roots near a goal's pole on the
+goal's own quantity; notes in [smith-chart/notes-M4.2.md](smith-chart/notes-M4.2.md), "BL55 fix").
 
 | id | tool | what | why / trigger |
 |---|---|---|---|
 | BL54 | Smith chart | A complete search for two unknowns whose loci are not circles (the generic grid of `lib/smith/solve.ts` `searchGrid`: f0 with a line's Zc, a λ/4's Zt or a stub's Zc, two Zc): it is a refined grid with Newton, and a brute force 4× finer still found one answer in 280 problems it missed (f0 + λ/4 at 7·f0). Perhaps a continuation along the resonance curves, or interval bounds on Γ per cell | 2026-11-12, from notes-M4.2.md "Left". Trigger: the owner meets a missed answer, or M4.4 suggests f0 pairs |
-| BL55 | Smith chart | Families of two unknowns missing members: with another random stream, `check-validate.mjs` "two unknowns, family" found brute-force solutions the solver's `family.at` lacks in two problems (a short stub's length with a line's length, goal g = 6.8 at the input of a 7-part, Z0 = 1 Ω circuit with a load 7e-5 Ω from the rim; a series R with a short stub's length, g = 0.118, Z0 = 75 Ω): the ranges likely end early near a touching member. The circuits are in notes-M4.3a.md | 2026-11-12, from M4.3a (the state checks briefly shifted the shared random stream). Trigger: M4.3b's family slider, or the next solver step |
 | BL52 | Smith chart | Draw the grid's labels on a canvas (one bitmap per rebuild, or text drawn into a canvas layer under the top `<svg>`) so a grid rebuild fits in a frame at 4× CPU: today a rebuild costs ~32 ms (script 10, style 6.5, layout 7.5, paint 9, mostly the ~250 SVG `<text>` labels) and loses about one frame each, 5 per 2 s zoom; the page harnesses count lost frames against rebuilds instead of a p95 | 2026-11-12, from notes-M3.2.md "Fix after M3.2" (a hidden page filled in steps cost more than it saved). Trigger: the owner sees the zoom stutter on the phone, or M9's performance pass |
 | BL50 | Smith chart | A line's and a stub's length also in metres with an εeff per part (engine.md §2: "electrical, or physical with εeff"); M3.1 gives the length in λ and in degrees at f0. `turnsFromMetres` / `metresFromTurns` of `lib/smith/parts.ts` exist; the link would gain an optional fourth number per line (`tl:len:Zc:εeff`) | 2026-11-12, left out of step M3.1 to keep its scope. Trigger: the owner asks for physical lengths, or M7 (sweep) needs a dispersive εeff |
 | BL49 | Smith chart | The grid's remaining staircase edges in shallow fine regions: where a finer step's region is under 4 blocks deep, `lib/smith/grid.ts` keeps the cell rule (whole blocks would empty it), so its edge still steps cell by cell; visible around r 0.6–0.9 at the whole chart. M2.3 cut the measured stairs from 335 to 122 (`check-grid.mjs`, region outlines); the rest needs a rule for shallow regions (e.g. outlines on circles of the next step only along one axis) that keeps lines ≥ minPx apart and the widest gap within the band | 2026-11-12, seen after M2.3 (notes-M2.3.md, region boundaries). Trigger: the chart's polish (M9) or the owner finds it disturbing |

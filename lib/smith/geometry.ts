@@ -206,9 +206,12 @@ export const CROSS_SAME = -1;
  * circle (sameCircle). The radical line A2·F1 − A1·F2 = 0, n·w = h with n = A2·D1 − A1·D2, h = (A2·C1 − A1·C2)/2, is
  * cut with the circle of larger |A| (so a straight line is never the one cut); the gap R − δ (radius less the
  * centre's distance from that line) decides 0, 1 or 2, and the two points come from a quadratic solved without
- * cancellation. A degenerate circle (all zero) crosses nothing. Allocates nothing.
+ * cancellation. A degenerate circle (all zero) crosses nothing. Allocates nothing. Within TANGENT_TOL, two points that
+ * still cross are kept apart when their half-chord exceeds `split` (default never): such a crossing is real, not
+ * rounding (whose half-chord is about 1e-8), yet its gap R − δ ≈ half-chord²/2R stays under TANGENT_TOL up to about
+ * 1.4e-6·√R.
  */
-export function circleIntersect(out: Vec, o: number, c1: Vec, o1: number, c2: Vec, o2: number): number {
+export function circleIntersect(out: Vec, o: number, c1: Vec, o1: number, c2: Vec, o2: number, split = Infinity): number {
   if (sameCircle(c1, o1, c2, o2)) return CROSS_SAME;
   const s1 = Math.max(Math.abs(c1[o1]), Math.abs(c1[o1 + 1]), Math.abs(c1[o1 + 2]), Math.abs(c1[o1 + 3]));
   const s2 = Math.max(Math.abs(c2[o2]), Math.abs(c2[o2 + 1]), Math.abs(c2[o2 + 2]), Math.abs(c2[o2 + 3]));
@@ -240,7 +243,7 @@ export function circleIntersect(out: Vec, o: number, c1: Vec, o1: number, c2: Ve
   const delta = Math.abs(Dr / A * nx + Di / A * ny - d);
   const gap = disc / (A * A) / (R + delta || 1);
   if (gap < -TANGENT_TOL) return 0;
-  if (gap <= TANGENT_TOL) {
+  if (gap <= TANGENT_TOL && !(disc > 0 && Math.sqrt(disc) > split * Math.abs(A))) {
     const t = beta / A;
     out[o] = x0 + t * tx; out[o + 1] = y0 + t * ty;
     return 1;

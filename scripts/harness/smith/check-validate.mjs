@@ -25,6 +25,7 @@ const isLC = (k) => k === SERIES_L || k === SERIES_C || k === SHUNT_L || k === S
 // A circuit here: { z0, f0, w0, f, loadR, loadX, parts: [{ kind, value, zc }] }. Lumped values are physical (H, F, Ω)
 // and lengths are in λ at f0, as the editor holds them; f is the frequency it is evaluated at.
 const G = [0, 0];
+const ND = [0, 0, 0, 0]; // the last gammaAt's Z = N/D
 function gammaAt(c, n) {
   let nr, ni, dr, di;
   if (!Number.isFinite(c.loadR) || !Number.isFinite(c.loadX)) { nr = 1; ni = 0; dr = 0; di = 0; }
@@ -71,6 +72,7 @@ function gammaAt(c, n) {
     if (m === 0) { nr = 0; ni = 0; dr = 1; di = 0; }
     else if (m > 1e100 || m < 1e-100) { nr /= m; ni /= m; dr /= m; di /= m; }
   }
+  ND[0] = nr; ND[1] = ni; ND[2] = dr; ND[3] = di;
   // Γ = (N − Z0 D)/(N + Z0 D)
   const ar = nr - c.z0 * dr, ai = ni - c.z0 * di, br = nr + c.z0 * dr, bi = ni + c.z0 * di;
   const d = br * br + bi * bi;
@@ -98,11 +100,12 @@ function measureOf(goal, z0) {
   if (m === m) return { m, pole: 0 };
   const v = goal.value ?? (goal.kind === 'r' || goal.kind === 'g' ? 1 : 0);
   // pole: the point every circle of the kind passes through, where r, x (the open) or g, b (the short) mean nothing.
+  const q = { kind: goal.kind, v, z0 };
   switch (goal.kind) {
-    case 'r': return { cx: v / (1 + v), cy: 0, r: 1 / (1 + v), pole: 1 };
-    case 'g': return { cx: -v / (1 + v), cy: 0, r: 1 / (1 + v), pole: -1 };
-    case 'x': return v === 0 ? { line: true, pole: 1 } : { cx: 1, cy: 1 / v, r: 1 / Math.abs(v), pole: 1 };
-    case 'b': return v === 0 ? { line: true, pole: -1 } : { cx: -1, cy: -1 / v, r: 1 / Math.abs(v), pole: -1 };
+    case 'r': return { cx: v / (1 + v), cy: 0, r: 1 / (1 + v), pole: 1, q };
+    case 'g': return { cx: -v / (1 + v), cy: 0, r: 1 / (1 + v), pole: -1, q };
+    case 'x': return v === 0 ? { line: true, pole: 1, q } : { cx: 1, cy: 1 / v, r: 1 / Math.abs(v), pole: 1, q };
+    case 'b': return v === 0 ? { line: true, pole: -1, q } : { cx: -1, cy: -1 / v, r: 1 / Math.abs(v), pole: -1, q };
   }
   throw new Error(goal.kind);
 }
@@ -114,6 +117,13 @@ function signed(ms, gr, gi) {
   return Math.hypot(gr - ms.cx, gi - ms.cy) - ms.r;
 }
 const residualOf = (ms, gr, gi) => Math.abs(signed(ms, gr, gi));
+// An r, g, x or b goal's own quantity of the last gammaAt, from Z = N/D (not through Γ).
+function quantityOf(q) {
+  const [nr, ni, dr, di] = ND;
+  if (q.kind === 'r' || q.kind === 'x') { const d = dr * dr + di * di; return (q.kind === 'r' ? nr * dr + ni * di : ni * dr - nr * di) / d / q.z0; }
+  const d = nr * nr + ni * ni;
+  return ((q.kind === 'g' ? dr * nr + di * ni : di * nr - dr * ni) / d) * q.z0;
+}
 // A point target's mismatch |Γ − Γt|/|1 − Γt*Γ| (|Γ − Γt| at the rim).
 function mismatchOf(ms, gr, gi) {
   const d = Math.hypot(gr - ms.tr, gi - ms.ti);
@@ -256,7 +266,52 @@ function roots1(c, s, n, ms, M) {
   }
   // Roots at the goal's pole (an open or short made by the unknown) are not answers. 1e-6 rather than the solver's
   // 1e-7: near the pole every circle of the kind is within (distance)² of the goal's, so bisection there stops short.
-  return dedupe1(s, ms.pole ? roots.filter((u) => { setSlot(c, s, u); gammaAt(c, n); return !(Math.hypot(G[0] - ms.pole, G[1]) < 1e-6); }) : roots);
+  if (!ms.q) return dedupe1(s, roots);
+  const out = [];
+  for (const u0 of roots) {
+    setSlot(c, s, u0); gammaAt(c, n);
+    const u = Math.hypot(G[0] - ms.pole, G[1]) < POLE_NEAR ? nearPole(c, s, n, ms, u0, h) : u0;
+    if (!(u === u)) continue;
+    setSlot(c, s, u); gammaAt(c, n);
+    if (!(Math.hypot(G[0] - ms.pole, G[1]) < 1e-6)) out.push(u);
+  }
+  return dedupe1(s, out);
+}
+// Within POLE_NEAR of the pole, circles of the goal's kind that differ by Δq are only d²·Δq/2 apart in Γ (d the
+// distance from the pole), so the rounding of Γ can make sign changes of the signed distance where the goal's
+// quantity never meets the goal (a shunt stub that nearly shorts the input keeps g, yet seemed to meet a g circle at
+// 1.6e-6 from the short; BL55). Such a root is found again on the goal's own quantity from Z = N/D, which keeps its
+// precision there: the sign change of q − v nearest it within one cell either way, bisected, or a touching minimum of
+// |q − v|; none: no root (NaN).
+const POLE_NEAR = 1e-3;
+function nearPole(c, s, n, ms, u0, h) {
+  const v = ms.q.v;
+  const q = (u) => { setSlot(c, s, inDomain(s, u)); gammaAt(c, n); return quantityOf(ms.q) - v; };
+  let a = u0 - h, b = u0 + h;
+  if (!s.per) { a = Math.max(s.lo, a); b = Math.min(s.hi, b); }
+  const K = 64, step = (b - a) / K;
+  let best = NaN, xa = a, fa = q(a), minAt = a, minF = Math.abs(fa);
+  for (let k = 1; k <= K; k++) {
+    const xb = a + k * step, fb = q(xb);
+    if (Math.abs(fb) < minF) { minF = Math.abs(fb); minAt = xb; }
+    if (fa * fb <= 0) {
+      let lo = xa, hi = xb, flo = fa;
+      for (let it = 0; it < 200 && hi - lo > 1e-16 * (1 + Math.abs(lo)); it++) {
+        const mid = 0.5 * (lo + hi), fm = q(mid);
+        if (fm === 0) { lo = hi = mid; break; }
+        if ((fm < 0) === (flo < 0)) { lo = mid; flo = fm; } else hi = mid;
+      }
+      // q is finite off the pole, so a sign change through q = ±∞ ends at the pole, which the caller drops; q can be
+      // too steep at a root for any bar on q itself, so the root is the usual one on the goal's circle in Γ.
+      const r = 0.5 * (lo + hi);
+      q(r);
+      if (residualOf(ms, G[0], G[1]) < 1e-10 && !(Math.abs(r - u0) >= Math.abs(best - u0))) best = r;
+    }
+    xa = xb; fa = fb;
+  }
+  if (best === best) return inDomain(s, best);
+  const [r, f] = golden((u) => Math.abs(q(u)), Math.max(a, minAt - step), Math.min(b, minAt + step));
+  return f <= 1e-9 * Math.max(1, Math.abs(v)) ? inDomain(s, r) : NaN;
 }
 function dedupe1(s, roots) {
   roots.sort((a, b) => a - b);
@@ -331,7 +386,18 @@ function roots2(c, s1, s2, n, ms, NA, NB) {
 }
 
 // ---- problems ---------------------------------------------------------------------------------------------------
-export function runValidateChecks({ section, ok, random }) {
+// A seeded generator of its own (the same as check.mjs's), for streams beside the shared one.
+function seeded(seed) {
+  return () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+export function runValidateChecks({ section, ok, random: sharedRandom }) {
+  let random = sharedRandom;
   const logU = (lo, hi) => 10 ** (lo + (hi - lo) * random());
   const pick = (a) => a[Math.floor(random() * a.length)];
   const Z0S = [50, 75, 1, 300, 0.01, 1e4];
@@ -657,11 +723,35 @@ const slotsFor = (circuit, res) => res.unknowns.map((u) => slotOf(circuit, u));
 
   // ==============================================================================================================
   section('validate two unknowns, family');
-  for (let p = 0; p < 220; p++) {
-    const kinds = p < 100 ? [p % PART_KINDS, Math.floor(p / PART_KINDS) % PART_KINDS] : [Math.floor(random() * PART_KINDS), Math.floor(random() * PART_KINDS)];
-    const { circuit, unknowns } = randomProblem(kinds);
-    validateFamily('two unknowns, family', circuit, unknowns, placeGoal(circleGoal(), circuit, unknowns), 120, 1500);
+  const familyProblems = (kind) => {
+    for (let p = 0; p < 220; p++) {
+      const kinds = p < 100 ? [p % PART_KINDS, Math.floor(p / PART_KINDS) % PART_KINDS] : [Math.floor(random() * PART_KINDS), Math.floor(random() * PART_KINDS)];
+      const { circuit, unknowns } = randomProblem(kinds);
+      validateFamily(kind, circuit, unknowns, placeGoal(circleGoal(), circuit, unknowns), 120, 1500);
+    }
+  };
+  familyProblems('two unknowns, family');
+  // The same on streams of their own (BL55: another stream found members the solver lacked), the shared one untouched.
+  {
+    const shared = random;
+    for (const s of [0x2f6b1, 0x9e3d7, 0x51c4a]) {
+      random = seeded(s);
+      familyProblems(`two unknowns, family (seed ${s.toString(16)})`);
+    }
+    random = shared;
   }
+  // BL55, as fixed cases. A line's |Γ| circle through a node a hair inside the rim crosses a K′ that touches the rim
+  // within 1e-6 of that point, for every value of a short stub: the solver took the crossing for a touching (members
+  // missed). Then a shunt stub before the input, which keeps g: the brute force took rounding near the short for roots.
+  validateFamily('two unknowns, family (BL55)',
+    { z0: 1, f0: 132264808.36650285, loadR: 0.00007185043044411145, loadX: 2.774505980209877, parts: [{ kind: STUB_OPEN, value: 0.13164, zc: 0.3205 }, { kind: SERIES_C, value: 4.5536e-11 }, { kind: STUB_SHORT, value: 0.164438, zc: 0.87699 }, { kind: SHUNT_C, value: 7.9659e-9 }, { kind: QUARTER, value: 0.88275 }, { kind: LINE, value: 0.210257, zc: 0.53621 }, { kind: SHUNT_L, value: 1.68087e-8 }] },
+    [{ part: 2 }, { part: 5 }], { kind: 'g', value: 6.798966401818079 }, 120, 1500);
+  validateFamily('two unknowns, family (BL55)',
+    { z0: 75, f0: 5734371.20889579, loadR: 259.49852216344755, loadX: -154.89638350056447, parts: [{ kind: QUARTER, value: 50.0556 }, { kind: SERIES_R, value: 2.7425 }, { kind: SERIES_L, value: 7.9025e-6 }, { kind: STUB_SHORT, value: 0.0967, zc: 33.277 }, { kind: STUB_SHORT, value: 0.27835, zc: 84.588 }] },
+    [{ part: 1 }, { part: 4 }], { kind: 'g', value: 0.11768843102733577 }, 120, 1500);
+  validateFamily('two unknowns, family (BL55)',
+    { z0: 1, f0: 18499221.86466119, loadR: 0.000014129134096097427, loadX: 0.5926040285741043, parts: [{ kind: SHUNT_C, value: 2.981543268285181e-8 }, { kind: QUARTER, value: 1.2090975166482885 }, { kind: SERIES_R, value: 0.0325795231506815 }, { kind: STUB_SHORT, value: 0.4697346456698142, zc: 0.740690008874131 }, { kind: STUB_OPEN, value: 0.11418702571652829, zc: 0.6714768973162805 }, { kind: STUB_SHORT, value: 0.06986530898604543, zc: 2.3169192246947525 }] },
+    [{ part: 2 }, { part: 5 }], { kind: 'g', value: 0.1080963210837452 }, 120, 1500);
   function validateFamily(kind, circuit, unknowns, goal, NA, NB) {
     const res = run(kind, circuit, unknowns, goal), problem = describe(circuit, unknowns, goal);
     const ms = measureOf(goal, circuit.z0), n = nodeOf(goal, circuit), slots = slotsFor(circuit, res), [s1, s2] = slots;

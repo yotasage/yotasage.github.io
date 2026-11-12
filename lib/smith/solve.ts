@@ -938,6 +938,13 @@ function rangeResult(circuit: Circuit, unknowns: Unknown[], circles: Float64Arra
 // ---------------------------------------------------------------------------------------------------------------
 // Two unknowns, a circle goal: a family
 
+/**
+ * b's locus through P crossing K′ by a half-chord above this (in Γ) gives two members even when the circles touch
+ * within TANGENT_TOL: with P a hair inside the rim, b's locus (a line's |Γ| circle) runs a hair inside the rim and
+ * crosses a K′ that touches the rim within about 1e-6 of that point, for every value of a (BL55).
+ */
+const FAMILY_SPLIT = 1e-7;
+
 /** The solutions with slot 0 at coordinate t, into cands (K′ of the goal at node b + 1 in kp). */
 function familyAt(t: number): void {
   const sa = slots[0], sb = slots[1];
@@ -947,7 +954,7 @@ function familyAt(t: number): void {
   gammaAt(gam, 0, sb.part);
   partLocus(locP, 0, sb.kind, sb.zc, gam[0], gam[1], Z0, F0, F0);
   if (locP[L_MODE] === LOCUS_FIXED) return;
-  const n = circleIntersect(pts, 0, locP, L_A, kp, 0);
+  const n = circleIntersect(pts, 0, locP, L_A, kp, 0, FAMILY_SPLIT);
   const ps = [pa, 0];
   for (let i = 0; i < n; i++) {
     const pb = paramOn(locP, pts[2 * i], pts[2 * i + 1]);
