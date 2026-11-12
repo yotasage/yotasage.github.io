@@ -118,6 +118,11 @@ the link; read the topic "Moving on the chart". Is it nicer than the old one? Wh
   preview path (hover and tap) and Apply, standard-value variants, every message of solver.md's counting table; the M4
   theory topics; the value list per part kind of plan.md D17 (E6–E96, own pasted list, any value; E24 default), used
   by Snap and by the variants.
+  Split in three: **M4.3a** the Solve panel: "solve for" on parts (and f0, Zc where the solver takes them), the goal
+  selector, the solution list with Apply as one undo step, every message of the counting table, the goal and unknowns in
+  the link; **M4.3b** on the chart: the two circles and the goal circle, the preview path (hover and tap), the family
+  slider, standard-value variants and the value list per kind (D17, replacing `SNAP_SERIES`); **M4.3c** the three M4
+  theory topics (learning.md §5) with their claims, live numbers and short lines.
 - **M4.4 Suggestions** when nothing is marked.
 
 *Done when:* exact cases have a residual below 1e-9; brute force finds no missed solution on 200 or more random
