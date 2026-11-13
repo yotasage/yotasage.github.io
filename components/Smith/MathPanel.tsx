@@ -30,15 +30,21 @@ import { mathLink } from './mathLink';
 import type { ShowRequest } from './mathLink';
 import { COLOUR_KEYS, MathRow, Spec, Subject, rowOf, specsFor, subjectName } from './mathRows';
 import { Why } from './Why';
+import { markWide, watchWide } from './wide';
 
 // The sentinel colours of the TeX become a colour's class and the variable's target in the MathML (learning.md §2:
 // \htmlClass is dropped in MathML output): `#0a` + colour + the variable's index in its row.
 const CLASS_OF: readonly string[] = ['', ...COLOUR_KEYS.map((k) => css[k])];
+/** An equation's box in a row: it scrolls sideways when wider than the panel (wide.ts). */
+const WIDE = `.${css.grid}`;
 const SENTINEL = /mathcolor="#0a([0-9a-f]{2})([0-9a-f]{2})"/g;
 
-/** TeX as MathML with the sentinels as classes and targets (`data-mt`, the row's `targets` by index). */
-export function mathHtml(tex: string, targets: readonly string[] = []): string {
-  return katex.renderToString(`\\displaystyle ${tex}`, { output: 'mathml' }).replace(SENTINEL, (_, c: string, v: string) => {
+/**
+ * TeX as MathML with the sentinels as classes and targets (`data-mt`, the row's `targets` by index); in display style
+ * unless `inline` (maths within a sentence: a derivation's reasons).
+ */
+export function mathHtml(tex: string, targets: readonly string[] = [], inline = false): string {
+  return katex.renderToString(inline ? tex : `\\displaystyle ${tex}`, { output: 'mathml' }).replace(SENTINEL, (_, c: string, v: string) => {
     const t = targets[parseInt(v, 16)];
     return `class="${CLASS_OF[parseInt(c, 16)] ?? ''}"${t ? ` data-mt="${t}"` : ''}`;
   });
@@ -307,6 +313,10 @@ function MathPanel({ circuit, subject: selected, digits, live }: MathPanelProps)
     return () => { io.disconnect(); live.setRoot(null); };
   }, [live, open]);
   useLayoutEffect(() => { live.set(circuit, subject, digits, rows.length); }, [circuit, key, digits, live]);
+  // An equation wider than a phone scrolls sideways in its row with a Tab stop (wide.ts): checked after a render (the
+  // lines are written just above) and when the panel's width changes, never in a drag's frames.
+  useLayoutEffect(() => { if (open && section.current) markWide(section.current, WIDE); });
+  useEffect(() => (section.current ? watchWide(section.current, WIDE) : undefined), []);
 
   const name = subjectName(circuit, subject);
   return (

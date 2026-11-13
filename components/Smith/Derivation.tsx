@@ -9,7 +9,7 @@
 // modal it fixes the numbers it shows: nothing on the page can be dragged while it is open, so it costs drag frames
 // nothing, and nothing of it renders until it is opened.
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import type { Circuit } from '../../lib/smith/network';
 import css from '../../styles/SmithDerive.module.css';
@@ -17,6 +17,7 @@ import { derivation, theorySubject } from './derive';
 import { mathLink } from './mathLink';
 import { mathHtml } from './MathPanel';
 import type { Subject } from './mathRows';
+import { markWide, watchWide } from './wide';
 
 interface Request {
   id: string;
@@ -32,6 +33,26 @@ let opener: ((r: Request) => void) | null = null;
 /** Opens the derivation of a registry entry; `from` gets the focus back when it closes. */
 export function openDerivation(id: string, from: HTMLElement | null, subject?: Subject, gr = NaN, gi = NaN): void {
   opener?.({ id, subject, gr, gi, from });
+}
+
+/**
+ * An equation as the dialog prints it: each side a line of its own ("= …" from the second on) in a row that wraps, so
+ * a narrow screen breaks it between sides as the theory's aligned rows do; `tail` (the shared value) follows last.
+ */
+function sidesHtml(sides: readonly string[], targets: readonly string[], tail = ''): string {
+  let h = '';
+  for (let k = 0; k < sides.length; k++) h += `<span class="${css.line}" data-derive-line="">${mathHtml(k ? `{}= ${sides[k]}` : sides[k], targets)}</span>`;
+  if (tail) h += `<span class="${css.line}" data-derive-line="" data-derive-value="">${mathHtml(tail)}</span>`;
+  return h;
+}
+
+const LINE = '[data-derive-line]';
+const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;' };
+/** A reason: its text escaped, its maths inline (coloured and linked as the step's). */
+function reasonHtml(why: readonly string[], targets: readonly string[]): string {
+  let h = '';
+  for (let k = 0; k < why.length; k++) h += k % 2 ? mathHtml(why[k], targets, true) : why[k].replace(/[&<>]/g, (c) => ESC[c]);
+  return h;
 }
 
 /** The target tokens under a pointer or a tap ('' off a variable). */
@@ -51,11 +72,11 @@ function Derivation({ circuit, digits }: { circuit: Circuit; digits: number }) {
     return derivation(circuit, req.id, subject, digits, req.gr, req.gi);
   }, [req, circuit, digits]);
   const html = useMemo(() => d && {
-    eq: mathHtml(d.tex, d.targets),
+    eq: sidesHtml(d.tex, d.targets),
     steps: d.steps.map((s) => ({
-      sym: mathHtml(s.tex, d.targets),
-      nums: s.nums ? mathHtml(s.nums) : '',
-      value: s.value ? mathHtml(s.value) : '',
+      sym: sidesHtml(s.tex, d.targets),
+      why: reasonHtml(s.why, d.targets),
+      nums: s.nums.length ? sidesHtml(s.nums, [], s.value) : '',
     })),
   }, [d]);
   const n = d?.steps.length ?? 0;
@@ -63,6 +84,11 @@ function Derivation({ circuit, digits }: { circuit: Circuit; digits: number }) {
   const dlg = useRef<HTMLDialogElement>(null);
   const next = useRef<HTMLButtonElement>(null);
   const list = useRef<HTMLOListElement>(null);
+  const body = useRef<HTMLDivElement>(null);
+  // A side wider than the dialog even on a line of its own scrolls sideways with a Tab stop (wide.ts): checked after
+  // every render and when the dialog's width changes.
+  useLayoutEffect(() => { if (body.current) markWide(body.current, LINE); });
+  useEffect(() => (body.current ? watchWide(body.current, LINE) : undefined), [d !== null]);
   useEffect(() => {
     const el = dlg.current;
     if (!req || !el) return;
@@ -80,6 +106,8 @@ function Derivation({ circuit, digits }: { circuit: Circuit; digits: number }) {
   }, [shown]);
 
   const onClose = () => {
+    // The close event comes after the dialog is shut: opened again meanwhile, it belongs to the new opening.
+    if (dlg.current?.open) return;
     mathLink.unpin();
     mathLink.point('hover', '');
     mathLink.point('focus', '');
@@ -122,11 +150,11 @@ function Derivation({ circuit, digits }: { circuit: Circuit; digits: number }) {
             <h2 className={css.title} id="smith-derive-title">Derivation: {d.title}</h2>
             <button type="button" className={css.close} data-derive-close="" onClick={() => dlg.current?.close()} aria-label="Close the derivation">Close</button>
           </div>
-          <div className={css.body} data-derive-body=""
+          <div className={css.body} data-derive-body="" ref={body}
             onPointerOver={(e) => { if (e.pointerType !== 'touch') mathLink.point('hover', tokensAt(e.target)); }}
             onPointerLeave={() => mathLink.point('hover', '')}
             onClick={(e) => { if (!(e.target as Element).closest('button')) mathLink.point('pin', tokensAt(e.target)); }}>
-            <div className={css.goal} data-derive-goal="" dangerouslySetInnerHTML={{ __html: html.eq }} />
+            <div className={`${css.eqn} ${css.goal}`} data-derive-goal="" dangerouslySetInnerHTML={{ __html: html.eq }} />
             <p className={css.meta}>
               {d.assumptions.length > 0 && <>Assumes {d.assumptions.join(', ')}. </>}
               {d.owner && <>Finishes the owner’s notes, {d.owner}. </>}
@@ -139,13 +167,12 @@ function Derivation({ circuit, digits }: { circuit: Circuit; digits: number }) {
                   onFocus={(e) => { if (e.target === e.currentTarget) stop.current = -1; }}
                   onBlur={(e) => { if (e.target === e.currentTarget) mathLink.point('focus', ''); }}>
                   <span className={css.no} aria-hidden="true">{k + 1}</span>
-                  <div className={css.math} data-derive-sym="" dangerouslySetInnerHTML={{ __html: html.steps[k].sym }} />
-                  <p className={css.why} data-derive-why="">{s.why}</p>
-                  {s.nums && (
+                  <div className={`${css.eqn} ${css.math}`} data-derive-sym="" dangerouslySetInnerHTML={{ __html: html.steps[k].sym }} />
+                  <p className={css.why} data-derive-why="" dangerouslySetInnerHTML={{ __html: html.steps[k].why }} />
+                  {html.steps[k].nums && (
                     <div className={css.nums} data-derive-nums="">
                       <span className={css.numsLabel}>With your numbers</span>
-                      <div className={css.math} dangerouslySetInnerHTML={{ __html: html.steps[k].nums }} />
-                      {s.value && <div className={css.math} data-derive-value="" dangerouslySetInnerHTML={{ __html: html.steps[k].value }} />}
+                      <div className={`${css.eqn} ${css.math}`} dangerouslySetInnerHTML={{ __html: html.steps[k].nums }} />
                     </div>
                   )}
                 </li>

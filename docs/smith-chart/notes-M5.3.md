@@ -121,3 +121,45 @@ the way back caught Derive placed before "↩ Back to …": Derive now follows i
   series part's move to `series-adds-z`, a match to `match-two-parts`).
 - A dialog is the page's pattern for longer reading that fixes the circuit; a move's explanation shown during a drag
   must instead stay out of the drag's frames (it cannot be modal).
+
+## Fixes
+
+- **Wide lines in the dialog on phones.** At 390 px the "With your numbers" lines of `circle-r` (steps 7 and 8) ran
+  past the dialog's right edge with no visible way to reach the rest. Every equation of the dialog (the one derived, a
+  step, its numbers) is now a row of its sides (`data-derive-line`; "= …" from the second side on, the shared value
+  last) that wraps between sides, so a narrow screen gets one side per line as the theory's aligned rows have, and a
+  wide one keeps them on one line. A side still wider than the dialog on a line of its own scrolls sideways in that
+  line only and then has a Tab stop (`components/Smith/wide.ts`: `role="group"`, "Wide equation, scrolls sideways",
+  taken away again when it fits; checked after a render and on a change of width, never in drag frames). At 320 px 21
+  of the 478 lines of the 26 derivations scroll on their own (the long fractions of `z-parts`, `y-parts`, `line-zin`,
+  the Möbius coefficients), at 390 px 6.
+- **The same audit for the Equations panel and the theory** found nothing clipped (their boxes already scrolled), but at
+  320 px six equations (`gamma-parts-z`, `z-parts`, `gamma-parts-y`, `y-parts`, `mismatch-loss` in the theory; the
+  panel's `line-zin` or `mismatch-loss` row) scrolled without a way for the keyboard to scroll them. Their boxes (a
+  panel row's `.grid`, the theory's `[data-eq]`) now take the same Tab stop through `wide.ts`; nothing changes at
+  390 px and wider, where none is wide.
+- **Reasons with maths.** A step's reason writes its maths in the registry's text form between backticks
+  (``Complete the square: `Gamma_r^2 - 2*Gamma_r*r/(r + 1)` is …``); `parseReason` splits it when the registry is built
+  (a bad piece stops the build, naming the reason) and `Step.reason` holds text and trees alternately. The dialog
+  prints the trees with the same TeX printer, inline (`mathHtml(tex, targets, true)`), coloured and linked to the page
+  as the step's variables. Where a reason's maths had no text form it is said in words: "(not 0)" for ≠, "at most 1"
+  for ≤, and `e^{±jβℓ}` as its two signs written out. 75 of the 102 reasons have maths; check-equations.mjs fails a
+  reason whose plain text holds a Greek letter, a super- or subscript, an operator or an `a_b` name.
+- **The flaky engine check** was `[grid: timing] 16× field ZY 1440×900 inner labels: grid built in 2.123 ms (< 2)`:
+  the heaviest grid view's median of 40 builds is 1.2–1.5 ms on a quiet machine and went over its 2 ms budget when
+  another process (a second check run, the dev server compiling) took the CPU. Every random stream of the engine
+  checks is seeded, so only timing checks could vary. All eight timing checks of `npm run check` (grid, network
+  sweep, drag frame and λ/4 projection, equations, solve, fallback search, suggestions, E96 neighbours) now go through
+  `scripts/harness/smith/timing.mjs` `retried`: a measurement over its budget is taken again, three attempts in all,
+  and the check names the attempt that passed. The budgets are unchanged, so a real slowdown fails all three.
+- **A close event that came late.** `dialog.close()` shuts the dialog at once but fires `close` later; a derivation
+  opened in between was emptied by the late `onClose`. `onClose` now returns when the dialog is open again (the
+  harness opens 26 in a row; a person cannot click that fast, but it costs nothing).
+- **Checks.** ui-derive.mjs compares the dialog side by side with derive.ts (each side's TeX, the reasons' text and
+  their maths), renders every reason's maths with KaTeX `throwOnError` for every derivation and subject (6,532
+  pieces), and at 320 and 390 px opens all 26 derivations with every step shown and fails a line box outside the
+  dialog's body, a wide line without its own scroll and Tab stop, a line that fits with a Tab stop, a reason's maths
+  outside its text, a KaTeX error or a sideways scroll of the dialog; it checks the panel's and the theory's equations
+  for four subjects at both widths the same way.
+- **Runs.** `npm run check` 1,390,482 of 1,390,482, five runs in a row; `npm run ui` 11 of 12 scripts, ui-drag 143 of
+  145 with only its two 4× CPU checks over on this machine (notes-M4.3a.md); ui-derive 30,849 checks.

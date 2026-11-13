@@ -12,7 +12,7 @@
 import { belowFloor, ROUNDING_FLOOR } from '../../lib/quantity';
 import { gammaMag, mismatchLoss, returnLoss, vswr, yFromGamma, zFromGamma } from '../../lib/smith/convert';
 import { EQUATION_BY_ID, EQUATIONS, evaluate, symbolOf, tex, valueTex, variablesOf } from '../../lib/smith/equations';
-import type { Equation, TexPiece } from '../../lib/smith/equations';
+import type { Equation, Node, TexPiece } from '../../lib/smith/equations';
 import { goalMismatch, goalNode, goalTarget } from '../../lib/smith/goal';
 import type { Circuit } from '../../lib/smith/network';
 import { LINE, QUARTER, SERIES_C, SERIES_L, SERIES_R, SHUNT_C, SHUNT_L, SHUNT_R, STUB_OPEN, STUB_SHORT, added } from '../../lib/smith/parts';
@@ -27,12 +27,13 @@ export const hasDerivation = (id: string): boolean => HAS.has(id);
 
 /** One step as the dialog prints it. */
 export interface DerivationStep {
-  /** The symbolic step, variables in their sentinel colours. */
-  tex: string;
-  why: string;
-  /** The step with the numbers put in, '' when a quantity of it has no value here. */
-  nums: string;
-  /** The value every side shares ("= …", or a bound of plan.md D20), '' with `nums`. */
+  /** The symbolic step's sides, variables in their sentinel colours (the dialog puts "= " before every side but the first). */
+  tex: string[];
+  /** The reason: plain text at even indices, the TeX of its maths (coloured as the step) at odd ones. */
+  why: string[];
+  /** The step's sides with the numbers put in, empty when a quantity of it has no value here. */
+  nums: string[];
+  /** The value every side shares ("= …", or a bound of plan.md D20), '' when `nums` is empty. */
   value: string;
   /** Each side's value (re, im), for the harness; empty without numbers. */
   sides: [number, number][];
@@ -41,8 +42,8 @@ export interface DerivationStep {
 export interface Derivation {
   id: string;
   title: string;
-  /** The equation derived, symbolic and coloured. */
-  tex: string;
+  /** The equation derived, symbolic and coloured, side by side (as a step's `tex`). */
+  tex: string[];
   assumptions: readonly string[];
   /** The item of the owner's notes it finishes, if any. */
   owner?: string;
@@ -159,6 +160,8 @@ function mergedSpec(c: Circuit, id: string, s: Subject, gr: number, gi: number):
 
 const fin = (x: Var): boolean => Number.isFinite(x.re) && Number.isFinite(x.im);
 const signed = (s: string): string => (s.startsWith('-') ? `{${s}}` : s);
+/** The sides of an equality (a tree that is not one is its own single side). */
+const sidesOf = (n: Node): readonly Node[] => (n.t === 'eq' ? n.xs : [n]);
 
 /** The derivation of a registry entry, with the subject's numbers (none for a null subject); gr, gi the readout's point. */
 export function derivation(c: Circuit, id: string, subject: Subject | null, digits: number, gr = NaN, gi = NaN): Derivation {
@@ -187,7 +190,11 @@ export function derivation(c: Circuit, id: string, subject: Subject | null, digi
   }
   const z0 = c.z0;
   const steps = eq.steps.map((st): DerivationStep => {
-    const out: DerivationStep = { tex: tex(st.tree, deco), why: st.why, nums: '', value: '', sides: [] };
+    const out: DerivationStep = {
+      tex: sidesOf(st.tree).map((x) => tex(x, deco)),
+      why: st.reason.map((r) => (typeof r === 'string' ? r : tex(r, deco))),
+      nums: [], value: '', sides: [],
+    };
     const used = variablesOf(st.tree);
     if (!sp || !used.length || !used.every((name) => name in binding)) return out;
     let res: Float64Array[];
@@ -195,10 +202,10 @@ export function derivation(c: Circuit, id: string, subject: Subject | null, digi
     const sides = res.map((a): [number, number] => [a[0], a[1]]);
     if (!sides.every(([re, im]) => Number.isFinite(re) && Number.isFinite(im))) return out;
     out.sides = sides;
-    const xs = st.tree.t === 'eq' ? st.tree.xs : [st.tree];
+    const xs = sidesOf(st.tree);
     const value = { value: (name: string) => values[name] };
     const printed = xs.map((x) => signed(tex(x, value)));
-    out.nums = printed.join(' = ');
+    out.nums = printed;
     // The shared value in the unit of a first side that is one symbol (Z_in in Ω); D20 below the floor.
     const first = xs[0];
     const unit = first.t === 'id' ? symbolOf(eq, first.v)?.unit ?? '' : '';
@@ -212,8 +219,8 @@ export function derivation(c: Circuit, id: string, subject: Subject | null, digi
     return out;
   });
   return {
-    id, title: eq.title, tex: tex(eq.tree, deco), assumptions: eq.assumptions, owner: eq.owner, steps, targets,
-    source: sp && steps.some((s) => s.nums) ? subjectName(c, subject!) : '', binding,
+    id, title: eq.title, tex: sidesOf(eq.tree).map((x) => tex(x, deco)), assumptions: eq.assumptions, owner: eq.owner, steps, targets,
+    source: sp && steps.some((s) => s.nums.length) ? subjectName(c, subject!) : '', binding,
   };
 }
 

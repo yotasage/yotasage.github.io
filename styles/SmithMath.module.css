@@ -111,6 +111,8 @@
   background: color-mix(in srgb, currentColor 18%, transparent);
   box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 18%, transparent);
 }
+/* Wider than the panel: it scrolls sideways and takes a Tab stop (components/Smith/wide.ts). */
+.grid[data-wide]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 2px; }
 .row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
 .keys { margin: 8px 0 0; font-size: 12px; line-height: 1.4; color: var(--ink-3); }
 

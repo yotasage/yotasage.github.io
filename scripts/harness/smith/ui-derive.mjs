@@ -78,19 +78,24 @@ const CIRCUITS = [
 ];
 
 // ---------- the node side: KaTeX on every derivation for every subject ----------
-const renders = (s) => { try { katex.renderToString(`\\displaystyle ${s}`, { output: 'mathml', throwOnError: true, strict: 'error' }); return true; } catch { return false; } };
+const renders = (s, inline = false) => { try { katex.renderToString(inline ? s : `\\displaystyle ${s}`, { output: 'mathml', throwOnError: true, strict: 'error' }); return true; } catch { return false; } };
 const subjectsOf = (c) => [
   ...c.parts.map((_, i) => ({ t: 'part', i })), ...Array.from({ length: c.parts.length + 1 }, (_, k) => ({ t: 'node', k })),
 ];
-let rendered = 0;
+let rendered = 0, reasonMath = 0;
 for (const [, q] of CIRCUITS) {
   const c = S.decodeCircuit(q || `?${S.encodeCircuit(S.defaultCircuit())}`).circuit;
   for (const id of D.DERIVATION_IDS) {
     for (const s of [null, D.theorySubject(c, id), ...subjectsOf(c), { t: 'point' }]) {
       const d = D.derivation(c, id, s, 4, 0.31, -0.42);
-      for (const t of [d.tex, ...d.steps.flatMap((x) => [x.tex, x.nums, x.value].filter(Boolean))]) {
+      for (const t of [...d.tex, ...d.steps.flatMap((x) => [...x.tex, ...x.nums, x.value].filter(Boolean))]) {
         rendered++;
         ok(renders(t), () => `${id} (${JSON.stringify(s)}): KaTeX fails on ${t}`);
+      }
+      // The reasons' maths, inline (notes-M5.3.md, Fixes): every piece at an odd index is TeX that renders.
+      for (const x of d.steps) for (let k = 1; k < x.why.length; k += 2) {
+        reasonMath++;
+        ok(renders(x.why[k], true), () => `${id} (${JSON.stringify(s)}): KaTeX fails on the reason's ${x.why[k]}`);
       }
     }
   }
@@ -180,33 +185,45 @@ async function select(page, s) {
 const dialog = (page) => page.evaluate(() => {
   const d = document.querySelector('dialog[data-derive]');
   const tex = (el) => (el ? el.querySelector('annotation')?.textContent ?? null : null);
+  const texs = (el) => (el ? [...el.querySelectorAll('annotation')].map((a) => a.textContent) : []);
   return {
     open: !!d?.open, id: d?.dataset.derive ?? '', shown: Number(d?.dataset.deriveShown), bind: d?.dataset.deriveBind ? JSON.parse(d.dataset.deriveBind) : {},
-    goal: tex(d?.querySelector('[data-derive-goal]')), count: d?.querySelector('[data-derive-count]')?.textContent ?? '',
-    steps: [...(d?.querySelectorAll('[data-derive-step]') ?? [])].map((li) => ({
-      sym: tex(li.querySelector('[data-derive-sym]')), why: li.querySelector('[data-derive-why]')?.textContent ?? '',
-      nums: tex(li.querySelector('[data-derive-nums] div')), value: tex(li.querySelector('[data-derive-value]')), sides: JSON.parse(li.dataset.deriveSides),
-    })),
+    goal: texs(d?.querySelector('[data-derive-goal]')), count: d?.querySelector('[data-derive-count]')?.textContent ?? '',
+    steps: [...(d?.querySelectorAll('[data-derive-step]') ?? [])].map((li) => {
+      const why = li.querySelector('[data-derive-why]');
+      return {
+        sym: texs(li.querySelector('[data-derive-sym]')),
+        why: why ? [...why.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join('') : '', whyTex: texs(why),
+        whyMath: why ? why.querySelectorAll('math').length : 0,
+        nums: [...li.querySelectorAll('[data-derive-nums] [data-derive-line]:not([data-derive-value])')].map(tex),
+        value: tex(li.querySelector('[data-derive-value]')), sides: JSON.parse(li.dataset.deriveSides),
+      };
+    }),
     scroll: d ? d.scrollWidth - d.clientWidth : 0,
     body: d?.querySelector('[data-derive-body]') ? d.querySelector('[data-derive-body]').scrollWidth - d.querySelector('[data-derive-body]').clientWidth : 0,
     active: document.activeElement?.hasAttribute('data-derive-next') ? 'next' : document.activeElement?.getAttribute('data-math-eq') ?? document.activeElement?.getAttribute('data-derive-open') ?? document.activeElement?.tagName,
   };
 });
 const ds = (t) => (t ? `\\displaystyle ${t}` : null);
+/** An equation's sides as the dialog prints them, one line each: "= " before every side but the first. */
+const lines = (xs) => xs.map((t, k) => `\\displaystyle ${k ? '{}= ' : ''}${t}`);
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 let stepsChecked = 0, numbered = 0, bindingsChecked = 0;
 /** The dialog against derive.ts (all steps shown) and the engine. */
 async function compareDialog(page, c, id, s, what, gr = NaN, gi = NaN) {
   const g = await dialog(page);
   const want = D.derivation(c, id, s, 4, gr, gi);
   ok(g.open && g.id === id, `${what}: the dialog shows ${g.id} (open ${g.open}), wanted ${id}`);
-  ok(g.goal === ds(want.tex), () => `${what}: the equation ${g.goal} vs ${want.tex}`);
+  ok(same(g.goal, lines(want.tex)), () => `${what}: the equation ${g.goal} vs ${want.tex}`);
   ok(g.steps.length === want.steps.length, `${what}: ${g.steps.length} steps shown of ${want.steps.length}`);
   want.steps.forEach((w, k) => {
     const st = g.steps[k] ?? {};
     stepsChecked++;
-    ok(st.sym === ds(w.tex) && st.why === w.why, () => `${what} step ${k + 1}: ${st.sym} / ${st.why} vs ${w.tex} / ${w.why}`);
-    ok(st.nums === ds(w.nums || null) && st.value === ds(w.value || null), () => `${what} step ${k + 1}: numbers ${st.nums} ${st.value} vs ${w.nums} ${w.value}`);
-    if (!w.nums) return;
+    const text = w.why.filter((_, j) => j % 2 === 0).join(''), maths = w.why.filter((_, j) => j % 2 === 1);
+    ok(same(st.sym, lines(w.tex)) && st.why === text && same(st.whyTex, maths) && st.whyMath === maths.length,
+      () => `${what} step ${k + 1}: ${st.sym} / ${st.why} ${st.whyTex} vs ${w.tex} / ${w.why}`);
+    ok(same(st.nums, lines(w.nums)) && st.value === ds(w.value || null), () => `${what} step ${k + 1}: numbers ${st.nums} ${st.value} vs ${w.nums} ${w.value}`);
+    if (!w.nums.length) return;
     numbered++;
     // The registry's tree on the page's binding gives every side the page lists, and they are equal.
     const sides = EQ.evaluate(EQ.EQUATION_BY_ID.get(id).steps[k].tree, g.bind);
@@ -351,9 +368,96 @@ try {
       await v.tap();
       ok(await page.evaluate(() => !!document.querySelector('[data-tile="0"][data-lit], [data-card="0"][data-lit]')), `${width} px: a tapped variable lights its part`);
     } else ok(false, `${width} px: step 3 has a variable of part 1`);
-    if (shots && width === 390) { mkdirSync(shots, { recursive: true }); await page.screenshot({ path: join(shots, 'derive-390-dark.png') }); }
+    if (shots && width === 390) { mkdirSync(shots, { recursive: true }); await page.screenshot({ path: join(shots, 'derive-390-dark.png'), scale: 'css' }); }
     await page.tap('[data-derive-close]');
     await page.waitForFunction(() => !document.querySelector('dialog[data-derive]').open);
+
+    // Every derivation, all steps shown (notes-M5.3.md, Fixes): no equation line overflows its box unless that line
+    // scrolls sideways itself and has a Tab stop; the reasons' maths fit their text; no KaTeX error is shown.
+    await page.evaluate(() => document.querySelectorAll('[data-topic]').forEach((t) => { t.open = true; }));
+    // The same for the Equations panel and the theory: an equation wider than its box is in a box that scrolls
+    // sideways with a Tab stop, never clipped (wide.ts), for a line, a lumped part and two nodes.
+    for (const sel of ['[data-tile="2"]', '[data-tile="7"]', '[data-node-row="0"]', '[data-node-row="11"]']) {
+      await page.evaluate((s) => { document.querySelector(s).click(); document.querySelector('[data-math] details').open = true; }, sel);
+      await frame(page);
+      const r = await page.evaluate(() => {
+        const bad = [];
+        let n = 0, wide = 0;
+        for (const m of document.querySelectorAll('[data-math] math, [data-theory] math')) {
+          const mr = m.getBoundingClientRect();
+          if (!mr.width) continue;
+          n++;
+          let a = m.parentElement;
+          while (a !== document.body && getComputedStyle(a).overflowX === 'visible') a = a.parentElement;
+          const ar = a.getBoundingClientRect(), ox = getComputedStyle(a).overflowX;
+          if (mr.right <= ar.right + 0.5 && mr.left >= ar.left - 0.5) continue;
+          const where = m.closest('[data-math-eq]')?.dataset.mathEq ?? m.closest('[data-eq]')?.dataset.eq ?? '?';
+          if (ox !== 'auto' && ox !== 'scroll') bad.push(`clipped: ${where} (${ox})`);
+          else if (a.tabIndex !== 0) bad.push(`scrolls without a Tab stop: ${where}`);
+          else wide++;
+        }
+        return { n, wide, bad: [...new Set(bad)] };
+      });
+      ok(r.bad.length === 0 && r.n > 100, () => `${width} px ${sel}: panel and theory ${r.bad.slice(0, 4).join(' | ')} (${r.n} equations)`);
+      if (sel.endsWith('"0"]')) console.log(`panel and theory at ${width} px: ${r.n} equations shown, ${r.wide} in a box that scrolls sideways`);
+    }
+    let lineCount = 0, wideCount = 0;
+    for (const id of D.DERIVATION_IDS) {
+      await page.evaluate((i) => document.querySelector(`[data-theory] [data-derive-open="${i}"]`).click(), id);
+      await page.waitForFunction(() => document.querySelector('dialog[data-derive]')?.open);
+      await page.waitForSelector('[data-derive-all]');
+      await page.evaluate(() => document.querySelector('[data-derive-all]').click());
+      const n = EQ.EQUATION_BY_ID.get(id).steps.length;
+      await page.waitForFunction((k) => document.querySelectorAll('dialog [data-derive-step]').length === k, n);
+      await frame(page);
+      const r = await page.evaluate(() => {
+        const d = document.querySelector('dialog[data-derive]'), body = d.querySelector('[data-derive-body]');
+        const cs = getComputedStyle(body), b = body.getBoundingClientRect();
+        const left = b.left + parseFloat(cs.paddingLeft) - 0.5, right = b.right - parseFloat(cs.paddingRight) + 0.5;
+        const bad = [];
+        let lines = 0, wide = 0;
+        for (const el of d.querySelectorAll('[data-derive-line]')) {
+          lines++;
+          const e = el.getBoundingClientRect(), what = el.querySelector('annotation')?.textContent.slice(0, 60);
+          if (e.left < left || e.right > right) bad.push(`line box outside the body: ${what}`);
+          if (el.scrollWidth > el.clientWidth + 1) {
+            wide++;
+            if (el.tabIndex !== 0 || getComputedStyle(el).overflowX !== 'auto') bad.push(`wide line without a focusable scroll: ${what}`);
+            el.scrollLeft = 1e6;
+            if (!(el.scrollLeft > 0)) bad.push(`wide line does not scroll: ${what}`);
+            el.scrollLeft = 0;
+          } else if (el.hasAttribute('tabindex')) bad.push(`a line that fits has a Tab stop: ${what}`);
+          // What a line holds stays inside it (scrolled into view where it is wide).
+          const m = el.querySelector('math')?.getBoundingClientRect();
+          if (m && el.scrollWidth <= el.clientWidth + 1 && (m.left < e.left - 0.5 || m.right > e.right + 0.5)) bad.push(`maths outside its line: ${what}`);
+        }
+        for (const p of d.querySelectorAll('[data-derive-why]')) {
+          const pr = p.getBoundingClientRect();
+          if (pr.left < left || pr.right > right) bad.push(`reason box outside the body: ${p.textContent.slice(0, 40)}`);
+          for (const m of p.querySelectorAll('math')) {
+            const mr = m.getBoundingClientRect();
+            if (mr.left < pr.left - 0.5 || mr.right > pr.right + 0.5) bad.push(`reason maths overflow: ${m.querySelector('annotation')?.textContent}`);
+          }
+        }
+        for (const el of d.querySelectorAll('[data-derive-goal], [data-derive-step]')) {
+          const e = el.getBoundingClientRect();
+          if (e.right > right + 16) bad.push(`box outside the dialog: ${el.tagName}`);
+        }
+        if (d.querySelector('merror, .katex-error')) bad.push('a KaTeX error is shown');
+        if (body.scrollWidth > body.clientWidth || d.scrollWidth > d.clientWidth) bad.push(`the dialog scrolls sideways (${body.scrollWidth - body.clientWidth})`);
+        return { lines, wide, bad };
+      });
+      lineCount += r.lines; wideCount += r.wide;
+      ok(r.bad.length === 0 && r.lines > 0, () => `${width} px ${id}: ${r.bad.slice(0, 4).join(' | ')} (${r.lines} lines)`);
+      if (shots && width === 390 && id === 'circle-r') {
+        await page.evaluate(() => document.querySelector('dialog [data-derive-step="6"]').scrollIntoView({ block: 'start' }));
+        await page.screenshot({ path: join(shots, 'derive-390-circle-r.png'), scale: 'css' });
+      }
+      await page.evaluate(() => document.querySelector('dialog[data-derive]').close());
+      // Closed and emptied (the close event, which empties it, comes after the dialog is shut).
+      await page.waitForFunction(() => !document.querySelector('dialog[data-derive]').open && !document.querySelector('[data-derive-close]'));
+    }
+    console.log(`derivations at ${width} px: ${lineCount} equation lines in ${D.DERIVATION_IDS.length} dialogs, ${wideCount} scroll sideways on their own`);
     ok(page.errors.length === 0, () => `${width} px: no errors (${page.errors.join(' | ')})`);
     await phone.close();
   }
@@ -362,7 +466,7 @@ try {
 }
 await browser.close();
 stopServer();
-console.log(`derivations: ${D.DERIVATION_IDS.length} in the registry, ${D.DERIVATION_IDS.reduce((a, id) => a + EQ.EQUATION_BY_ID.get(id).steps.length, 0)} steps; ${rendered} TeX strings rendered; ${opened.size} opened from the panel, ${fromTheory.size} from the theory; ${stepsChecked} steps compared, ${numbered} with numbers, ${bindingsChecked} values against the engine`);
+console.log(`derivations: ${D.DERIVATION_IDS.length} in the registry, ${D.DERIVATION_IDS.reduce((a, id) => a + EQ.EQUATION_BY_ID.get(id).steps.length, 0)} steps; ${rendered} TeX strings and ${reasonMath} pieces of reasons rendered; ${opened.size} opened from the panel, ${fromTheory.size} from the theory; ${stepsChecked} steps compared, ${numbered} with numbers, ${bindingsChecked} values against the engine`);
 for (const f of failures) console.log(`FAIL ${f}`);
 console.log(`ui-derive: ${passed} of ${passed + failed} checks passed`);
 process.exit(failed ? 1 : 0);

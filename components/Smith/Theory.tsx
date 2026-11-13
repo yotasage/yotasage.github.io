@@ -5,7 +5,7 @@
 // (scripts/harness/smith/ui-theory.mjs) can compare it with its own engine run. Citations are numbered through the
 // page's one Bibliography, in the order this component calls them (the order of the page).
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { belowFloor, formatResidual, formatReturnLoss } from '../../lib/quantity';
 import { gammaFromImpedance, magFromVswr, mismatchLoss, reflectedPower, deliveredPower, returnLoss, toDegrees } from '../../lib/smith/convert';
@@ -29,6 +29,7 @@ import { openDerivation } from './Derivation';
 import { hasDerivation } from './derive';
 import { GOAL_VSWR } from './pathLayer';
 import { onFollowTopic } from './Why';
+import { markWide, watchWide } from './wide';
 import { complexText } from './readout';
 import type { Outcome } from './SolvePanel';
 import { CirclesFigure, GammaFigure, LineFigure, MatchFigure, PlaneFigure, VswrFigure, WalksFigure } from './TheoryFigures';
@@ -172,6 +173,11 @@ function Theory({ bib, circuit: c, outcome, lists }: Props) {
     document.getElementById(refold.current)?.scrollIntoView();
     refold.current = '';
   }, [closed]);
+  // An equation wider than a phone scrolls sideways with a Tab stop (wide.ts): checked after every render (a new
+  // circuit, a topic opened or closed) and when the theory's width changes.
+  const root = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => { if (root.current) markWide(root.current, '[data-eq]'); });
+  useEffect(() => (root.current ? watchWide(root.current, '[data-eq]') : undefined), []);
   const setAll = (value: boolean) => setClosed(Object.fromEntries(TOPICS.map(({ id }) => [id, value])));
 
   // A "→ theory" link of the tool (Why.tsx): open its topic even when the hash is already the link's (no hashchange),
@@ -337,7 +343,7 @@ function Theory({ bib, circuit: c, outcome, lists }: Props) {
   );
 
   return (
-    <div className={css.theory} data-theory="">
+    <div className={css.theory} data-theory="" ref={root}>
       <p className={css.lead}>
         What the chart shows and why the parts move the point the way they do. The boxes marked <i>Your circuit</i> follow
         the circuit above as you change it. Everything here assumes ideal parts, lossless lines and a real reference

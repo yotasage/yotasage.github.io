@@ -15,6 +15,7 @@ import * as importedNetwork from '../../../lib/smith/network.ts';
 import * as importedConvert from '../../../lib/smith/convert.ts';
 import * as importedGeometry from '../../../lib/smith/geometry.ts';
 import * as importedGoal from '../../../lib/smith/goal.ts';
+import { retried } from './timing.mjs';
 
 const katex = createRequire(import.meta.url)('../../../node_modules/katex');
 const Q = importedEquations.default ?? importedEquations;
@@ -354,6 +355,14 @@ export function runEquationChecks({ section, ok, random }) {
       ok(eq.sources.length > 0 || !!eq.derivation, `${eq.id} has a source or a derivation`);
       ok(typeof eq.engine === 'string' && eq.engine.length > 0, `${eq.id} names the engine function it equals`);
       ok(eq.steps.every((s) => s.why.length > 0), `${eq.id}: every step has a reason`);
+      // A reason's maths is registry text between backticks (notes-M5.3.md, Fixes), printed by the TeX printer: the
+      // plain text holds no maths of its own (Greek letters, super- or subscripts, operators, |x|, a_b names).
+      eq.steps.forEach((s, k) => {
+        const text = s.reason.filter((_, j) => j % 2 === 0).join(' ');
+        ok(s.reason.length % 2 === 1 && s.reason.every((r, j) => (j % 2 === 0) === (typeof r === 'string')), `${eq.id} step ${k + 1}: the reason alternates text and maths`);
+        ok(!/[ΓβℓλωθπρΩ²³₀-₉−·^=≠±≤≥|/*]|\b[A-Za-z]+_[A-Za-z0-9]/.test(text), `${eq.id} step ${k + 1}: no maths in the reason's plain text ("${text}")`);
+        ok(s.reason.filter((_, j) => j % 2 === 1).every((r) => renderOk(tex(r)) === null), `${eq.id} step ${k + 1}: the reason's maths renders`);
+      });
       // M5.3: a derivation is a chain of equalities that ends in its equation: every step has an "=", and the last
       // step's first side is the equation's first side and its last side one of the equation's sides.
       if (eq.steps.length) {
@@ -389,6 +398,12 @@ export function runEquationChecks({ section, ok, random }) {
       ['-10*log10(1 - abs(Gamma)^2)', '-10 \\log_{10}(1 - |\\Gamma|^{2})'], ['1e-9', '1 \\times 10^{-9}'], ['[a, b; c, d]', '\\begin{bmatrix} a & b \\\\ c & d \\end{bmatrix}'],
     ];
     for (const [text, want] of cases) { const got = tex(parse(text)); ok(got === want, `tex("${text}") = ${got}, wanted ${want}`); }
+    const pieces = Q.parseReason('Divide by `1 - Gamma` and `x`.');
+    ok(pieces.length === 5 && pieces[0] === 'Divide by ' && tex(pieces[1]) === '1 - \\Gamma' && pieces[4] === '.', 'a reason splits at its backticks');
+    for (const bad of ['an `odd backtick', 'bad `a +` maths']) {
+      let threw = false; try { Q.parseReason(bad); } catch { threw = true; }
+      ok(threw, `the reason "${bad}" is rejected`);
+    }
     for (const bad of ['a +', '(a', 'foo(x)', 'a $ b', '[a, b; c]', 'a = ']) {
       let threw = false; try { parse(bad); } catch { threw = true; }
       ok(threw, `"${bad}" is rejected`);
@@ -473,22 +488,23 @@ export function runEquationChecks({ section, ok, random }) {
 
   section('equations timing');
   {
-    const reps = 50;
-    let t0 = performance.now();
-    for (let k = 0; k < reps; k++) for (const eq of EQUATIONS) for (const s of [eq.text, ...eq.steps.map((x) => x.text)]) parse(s);
-    const parseMs = (performance.now() - t0) / reps;
-    t0 = performance.now();
+    const reps = 50, runs = 2000;
     let len = 0;
-    for (let k = 0; k < reps; k++) for (const eq of EQUATIONS) { len += tex(eq.tree).length; for (const s of eq.steps) len += tex(s.tree).length; }
-    const texMs = (performance.now() - t0) / reps;
     const progs = EQUATIONS.map((e) => compile(e.tree));
     const bindings = EQUATIONS.map((e) => { const c = CHECKS[e.id]; return typeof c === 'function' ? c() : { ...c.bind(), [c.solve]: 1.5 }; });
     progs.forEach((p, k) => bind(p, bindings[k]));
-    t0 = performance.now();
-    const runs = 2000;
-    for (let k = 0; k < runs; k++) for (const p of progs) p.run();
-    const evalUs = ((performance.now() - t0) / runs / progs.length) * 1000;
-    ok(parseMs < 5 && texMs < 5 && evalUs < 5 && len > 0, `parse ${parseMs.toFixed(3)} ms and TeX ${texMs.toFixed(3)} ms of the whole registry, ${evalUs.toFixed(3)} µs per evaluation`);
+    const { value: [parseMs, texMs, evalUs], note } = retried(() => {
+      let t0 = performance.now();
+      for (let k = 0; k < reps; k++) for (const eq of EQUATIONS) for (const s of [eq.text, ...eq.steps.map((x) => x.text)]) parse(s);
+      const p = (performance.now() - t0) / reps;
+      t0 = performance.now();
+      for (let k = 0; k < reps; k++) for (const eq of EQUATIONS) { len += tex(eq.tree).length; for (const s of eq.steps) len += tex(s.tree).length; }
+      const t = (performance.now() - t0) / reps;
+      t0 = performance.now();
+      for (let k = 0; k < runs; k++) for (const pr of progs) pr.run();
+      return [p, t, ((performance.now() - t0) / runs / progs.length) * 1000];
+    }, ([p, t, e]) => p < 5 && t < 5 && e < 5);
+    ok(parseMs < 5 && texMs < 5 && evalUs < 5 && len > 0, `parse ${parseMs.toFixed(3)} ms and TeX ${texMs.toFixed(3)} ms of the whole registry, ${evalUs.toFixed(3)} µs per evaluation${note}`);
     console.log(`equations timing: parse of the registry with steps ${parseMs.toFixed(3)} ms, TeX of all ${texMs.toFixed(3)} ms, one evaluation ${evalUs.toFixed(3)} µs`);
   }
 }

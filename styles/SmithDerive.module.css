@@ -34,8 +34,12 @@
 
 .body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 8px 16px 16px; }
 
-/* The equation derived, then the steps; a wide line scrolls sideways inside itself, the dialog never does. */
-.goal, .math { overflow-x: auto; overflow-y: hidden; min-width: 0; line-height: 1.5; }
+/* The equation derived, then the steps. An equation is a row of its sides ("= …" from the second on) that wraps
+   between sides on a narrow screen; a side wider than the dialog on a line of its own scrolls sideways inside itself
+   (Derivation.tsx gives it a Tab stop), the dialog never does. */
+.eqn { display: flex; flex-wrap: wrap; align-items: baseline; min-width: 0; line-height: 1.5; }
+.line { min-width: 0; max-width: 100%; overflow-x: auto; overflow-y: hidden; padding-bottom: 1px; }
+.line:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 2px; }
 .goal { padding: 6px 0; font-size: 16px; }
 .goal math, .math math { math-style: normal; }
 .meta { margin: 4px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--ink-3); }
