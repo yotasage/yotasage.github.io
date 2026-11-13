@@ -20,6 +20,7 @@ import { runTeachChecks } from './check-teach.mjs';
 import { runSweepChecks } from './check-sweep.mjs';
 import { runFigureChecks } from './check-figure.mjs';
 import { runTikzChecks } from './check-tikz.mjs';
+import { runExportChecks } from './check-export.mjs';
 
 const quantity = importedQuantity.default ?? importedQuantity;
 const cx = importedComplex.default ?? importedComplex;
@@ -473,6 +474,10 @@ runFigureChecks({ section, ok, random });
 // ---------------------------------------------------------------------------------------------------------------
 // The TikZ export and its compile (M8.1b): check-tikz.mjs (TeX Live and Edge or Chrome where present).
 await runTikzChecks({ section, ok, random });
+
+// ---------------------------------------------------------------------------------------------------------------
+// The data files (M8.2): check-export.mjs (CSV, Touchstone with a reference reader, the project file).
+runExportChecks({ section, ok, random });
 
 // ---------------------------------------------------------------------------------------------------------------
 const total =[...groups.values()].reduce((a, b) => a + b, 0);
