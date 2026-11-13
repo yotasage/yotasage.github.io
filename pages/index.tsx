@@ -41,6 +41,15 @@ const TOOLS: SiteTool[] = [
     tags: ['Model 1 and 2', 'Micro QR', 'rMQR', 'PNG · SVG · PDF'],
   },
   {
+    href: '/qr-reader/main',
+    title: 'QR code reader',
+    category: 'Codes',
+    description: 'Read QR codes with your camera or from images, screenshots and PDFs, and see what they hold: Wi-Fi networks, eSIMs, links, contacts, events, payments and sign-in codes, with the raw text, the bytes and the symbol.',
+    icon: 'qrreader',
+    color: '#2ec5a6',
+    tags: ['Camera', 'Images · PDF · paste', 'Micro QR · rMQR', 'Wi-Fi · eSIM', 'Links · contacts · events', 'Payments · 2FA', 'Raw text · hex'],
+  },
+  {
     href: '/pdf/main',
     title: 'PDF tools',
     category: 'Documents',

@@ -6,7 +6,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { builtinModules } from 'node:module';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SOURCE_DIRS = ['pages', 'components', 'lib'];
@@ -199,7 +199,19 @@ const pcb = [
   },
 ];
 
+// ZXing-C++, compiled into the WebAssembly reader of zxing-wasm that the QR code reader loads from public/qr (see
+// copy-qr-assets.mjs). zxing-wasm itself is found by the scan above.
+const zxingDir = resolvePackage('zxing-wasm', root);
+const zxingCommit = zxingDir ? (await import(pathToFileURL(join(zxingDir, 'dist', 'es', 'reader', 'index.js')).href)).ZXING_CPP_COMMIT : null;
+const qr = zxingDir ? [{
+  name: 'ZXing-C++ (compiled into zxing-wasm)', license: 'Apache-2.0',
+  url: zxingCommit ? `https://github.com/zxing-cpp/zxing-cpp/tree/${zxingCommit}` : 'https://github.com/zxing-cpp/zxing-cpp',
+  text: `Copyright the ZXing authors and Axel Waggershauser
+
+${APACHE}`,
+}] : [];
+
 const out = join(root, 'lib', 'generated');
 mkdirSync(out, { recursive: true });
-writeFileSync(join(out, 'third-party-licenses.json'), JSON.stringify({ packages: list, assets, viewer, pcb }, null, 1));
-console.log(`Collected the licences of ${list.length} packages, ${assets.length} pdf.js data files, ${viewer.length} 3D viewer files and ${pcb.length} PCB viewer files.`);
+writeFileSync(join(out, 'third-party-licenses.json'), JSON.stringify({ packages: list, assets, viewer, pcb, qr }, null, 1));
+console.log(`Collected the licences of ${list.length} packages, ${assets.length} pdf.js data files, ${viewer.length} 3D viewer files, ${pcb.length} PCB viewer files and ${qr.length} QR code reader file.`);

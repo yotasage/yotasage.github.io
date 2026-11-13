@@ -2,7 +2,7 @@ import React from 'react';
 
 // Icons for the tool cards on the main page, in the style of components/PdfTools/ToolIcon.tsx. Filled shapes use
 // currentColor, which the <svg> sets to the tool's colour.
-export type HomeIconName = 'simsetup' | 'qrcode' | 'pdf' | 'base64' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith';
+export type HomeIconName = 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith';
 
 const SAMPLES: [number, number][] = [[6, 24], [12, 12], [18, 12], [24, 24], [30, 36], [36, 36], [42, 24]];
 
@@ -30,6 +30,18 @@ const ICONS: Record<HomeIconName, React.ReactNode> = {
       {QR_MODULES.map(([x, y]) => (
         <rect key={`${x},${y}`} x={x} y={y} width={4} height={4} rx={0.5} fill="currentColor" stroke="none" />
       ))}
+    </>
+  ),
+  // A viewfinder's corners around a small code, with the scan line across it.
+  qrreader: (
+    <>
+      <path d="M4 14V7a3 3 0 0 1 3-3h7M34 4h7a3 3 0 0 1 3 3v7M44 34v7a3 3 0 0 1-3 3h-7M14 44H7a3 3 0 0 1-3-3v-7" />
+      <rect x={13} y={13} width={9} height={9} rx={1.2} />
+      <rect x={26} y={13} width={9} height={9} rx={1.2} />
+      <rect x={13} y={26} width={9} height={9} rx={1.2} />
+      <rect x={27} y={27} width={3.5} height={3.5} fill="currentColor" stroke="none" />
+      <rect x={31.5} y={31.5} width={3.5} height={3.5} fill="currentColor" stroke="none" />
+      <path d="M8 24h32" opacity={0.6} />
     </>
   ),
   // Two documents, the front one with lines of text.

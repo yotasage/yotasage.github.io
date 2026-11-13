@@ -1,0 +1,14 @@
+{
+  "name": "qr-reader-harness",
+  "private": true,
+  "description": "Checks of lib/qrread and of /qr-reader/main. Not part of the site.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx check.mjs",
+    "ui": "tsx ui.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.50.0",
+    "tsx": "^4.19.0"
+  }
+}

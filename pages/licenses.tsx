@@ -38,6 +38,7 @@ export default function Licenses() {
   const assets = data.assets as Entry[];
   const viewer = data.viewer as Entry[];
   const pcb = (data as { pcb?: Entry[] }).pcb ?? [];
+  const qr = (data as { qr?: Entry[] }).qr ?? [];
 
   // A link from the table opens the licence it points to.
   React.useEffect(() => {
@@ -120,6 +121,13 @@ export default function Licenses() {
           part of the site&apos;s source.
         </p>
         <Entries entries={pcb} />
+
+        <h2>Reader used by the QR code reader</h2>
+        <p className={styles.lead}>
+          The QR code reader finds and decodes codes with ZXing-C++, compiled to WebAssembly by zxing-wasm (listed above)
+          and served from this site.
+        </p>
+        <Entries entries={qr} />
       </div>
     </div>
   );

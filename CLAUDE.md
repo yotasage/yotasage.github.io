@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-A personal collection of browser tools (simulation setup calculator, QR code generator, PDF tools, Base64 image
+A personal collection of browser tools (simulation setup calculator, QR code generator and reader, PDF tools, Base64 image
 converter, text case converter, 3D viewer, PCB viewer, resistor lookup, Smith chart), so the owner does not have to use other people's sites with ads and bad design. Next.js 16 Pages Router,
 React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 
@@ -13,7 +13,8 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 - **Every tool is reachable from a card on the main page** ([pages/index.tsx](pages/index.tsx): an entry in `TOOLS`,
   with an icon in `components/Home/ToolIcon.tsx`). Don't add placeholder cards for tools that don't exist.
 - **Self-hosted assets only.** No CDN scripts, fonts, workers or wasm. pdf.js files are copied into `public/pdfjs/`
-  and the 3D viewer's readers and decoders (Open CASCADE, Draco, Basis Universal) into `public/3d/` on install.
+  the 3D viewer's readers and decoders (Open CASCADE, Draco, Basis Universal) into `public/3d/` and the QR code reader's
+  zxing-wasm reader into `public/qr/` on install.
 - **Files the user gives a tool never leave the device.** No uploads, no analytics, no third-party requests.
 - **Check the licence of a new dependency.** MIT/BSD/Apache-2.0/ISC are fine; GPL/LGPL/AGPL needs the owner's decision.
   The owner approved `occt-import-js` (LGPL-2.1, Open CASCADE) for the 3D viewer, on the condition that it is served
@@ -31,9 +32,9 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 - CI runs on Ubuntu with Node 22 (`npm ci`); development is on Windows with a newer Node. Import paths must match
   file name case exactly.
 - `postinstall` runs [scripts/copy-pdfjs-assets.mjs](scripts/copy-pdfjs-assets.mjs) (→ `public/pdfjs/`),
-  [scripts/copy-3d-assets.mjs](scripts/copy-3d-assets.mjs) (→ `public/3d/`) and
+  [scripts/copy-3d-assets.mjs](scripts/copy-3d-assets.mjs) (→ `public/3d/`), [scripts/copy-qr-assets.mjs](scripts/copy-qr-assets.mjs) (→ `public/qr/`) and
   [scripts/collect-licenses.mjs](scripts/collect-licenses.mjs) (→ `lib/generated/third-party-licenses.json`, shown by
-  `/licenses`; the list is found by scanning imports in `pages/`, `components/`, `lib/`). All three outputs are
+  `/licenses`; the list is found by scanning imports in `pages/`, `components/`, `lib/`). All four outputs are
   git-ignored. After adding or removing a dependency, run `npm install` so the licence list follows.
 
 ## Verifying changes
@@ -119,6 +120,21 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   `docs/resistor/sources.md` says what each source may be cited for), styles and theme variables in
   `styles/Resistor.module.css` (the Combinations section in `styles/ResistorCombos.module.css`, the Design section in
   `styles/ResistorDesign.module.css`, the theory in `styles/ResistorTheory.module.css`), checks in `scripts/harness/resistor/` (`npm run check`, `npm run ui`).
+- QR code reader (`pages/qr-reader/main.tsx`): codes are read by zxing-wasm (ZXing-C++ in WebAssembly, the reader
+  build only; MIT and Apache-2.0) in `lib/qrread/zxing.ts`, run in a worker (`scan.worker.ts` through `scanClient.ts`,
+  on the page when no worker can be made); the wasm is loaded from `/qr/` through `locateFile`, never from its
+  default CDN, and the harness hands it over as bytes (`useWasmBinary`). `images.ts` turns files, PDF pages (through
+  `lib/pdf/pdfjs.ts`) and camera frames into pixels; `content.ts` works out what a code holds and calls the parsers in
+  `network.ts` (links, Wi-Fi, eSIM, email, SMS, geo), `cards.ts` (vCard, MeCard, iCalendar), `payments.ts` (EPC,
+  Swiss QR bill, crypto), `codes.ts` (GS1, Matter, BCBP), `otp.ts` (otpauth, the Google Authenticator export, codes
+  by Web Crypto); `sequence.ts` joins structured append. The page is in `components/QrRead/` (`Camera.tsx`,
+  `SourceView.tsx`, `ResultCard.tsx` with `ContentView`, `RawView` and `SymbolView`, the status note in
+  `Status.tsx`), styles in `styles/QrRead.module.css`, checks in `scripts/harness/qr-reader/` (`npm run check`:
+  round trips of the generator's own symbols, every generator content type and the standards' test vectors;
+  `npm run ui [base URL]`: the page in Edge with a fake camera that plays a generated video). The generator's QR
+  Model 1 symbols from version 7 up are not read by ZXing-C++ (BL61). Real eSIM codes to test with are in
+  `C:UsersJonatDownloadseSIM` (`check.mjs` reads them where they are and never prints their content): the
+  owner's own, never to be copied into the repo or uploaded anywhere.
 - Smith chart: built in steps by [docs/smith-chart/plan.md](docs/smith-chart/plan.md) (decisions, milestones and status;
   the module map in `modules.md`; `notes-<step>.md` per step). Framework-free logic in `lib/smith/` (engine, network, geometry, grid, the
   circuit and its link in `state.ts`, the solver in `goal.ts`, `solve.ts`, `search.ts`, value lists in `values.ts`), the page in `components/Smith/` (chart, path layer and drag outside React in
