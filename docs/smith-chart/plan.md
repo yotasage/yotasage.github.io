@@ -20,7 +20,7 @@ Read only the files and sections a brief names. Every file stays under 40 kB; sp
 | File | What |
 | --- | --- |
 | [plan.md](plan.md) | This index: goal, decisions, ground rules, milestones and status, how a step is run, quality bar, risks |
-| [modules.md](modules.md) | The module map: one line per file and its main exports |
+| [modules.md](modules.md) | The module map: one line per file and its main exports (index and `lib/`; the page in [modules-page.md](modules-page.md), the checks in [modules-harness.md](modules-harness.md)) |
 | [engine.md](engine.md) | The model: conventions, parts, the geometry (every v1 locus is a circle), evaluation, drawing, dragging, numbers, goal, performance architecture and budgets |
 | [solver.md](solver.md) | Find the missing value: counting, the circle-intersection method, the fallback search, what comes back, suggestions |
 | [learning.md](learning.md) | Equations as data, the equation panel, derivations, the Theory section (from M3), the owner's notes, teaching content |
@@ -133,7 +133,9 @@ digits and sweep points (M5, M7), export size, detail and scale (M8, D18).
 
 ## Module map
 
-In [modules.md](modules.md): one line per file and its main exports; a step that renames or adds a file updates it.
+In [modules.md](modules.md) (`lib/`), [modules-page.md](modules-page.md) (the page) and
+[modules-harness.md](modules-harness.md) (the checks): one line per file and its main exports; a step that renames or
+adds a file updates the part it belongs to.
 
 ## Running a step
 
@@ -148,7 +150,7 @@ In [modules.md](modules.md): one line per file and its main exports; a step that
   that compare browsers (M5, M9) do that.
 - **Done means:** the harness passes, `npx tsc --noEmit` and `npm run build` pass (then `git checkout --
   next-env.d.ts`), the code was read against the static-export constraints, page steps were looked at in both themes at
-  both widths, and the step's `notes-<step>.md`, this file's status, [modules.md](modules.md) (and from M3 the card and README)
+  both widths, and the step's `notes-<step>.md`, this file's status, the module map ([modules.md](modules.md) and its parts) (and from M3 the card and README)
   are updated, and the page's status note is still true. Anything left out goes to `docs/BACKLOG.md` with the next
   free id.
 - **Commits:** one per step on the branch `smith-chart`, made by the step's agent when its checks pass (message as

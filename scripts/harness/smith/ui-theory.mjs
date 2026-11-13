@@ -486,6 +486,45 @@ try {
     await frame(q);
     ok((await openState(q))[5] === true, `${scheme}: a hash change opens its topic`);
     await q.close();
+
+    // The bar at narrow widths: every section link whole, in view, unclipped and 44 px to tap, with the home link and
+    // the theme switch beside it (two rows up to 480 px, one row above).
+    const b = await open(phone);
+    for (const width of [320, 360, 390, 440, 480, 481, 520, 600]) {
+      await b.setViewportSize({ width, height: 760 });
+      await frame(b);
+      const bar = await b.evaluate(() => {
+        const box = (e) => { const r = e.getBoundingClientRect(); return { l: r.left, r: r.right, t: r.top, b: r.bottom, w: r.width, h: r.height }; };
+        const nav = document.querySelector('nav[aria-label="Sections"]');
+        return {
+          vw: document.documentElement.clientWidth,
+          nav: { ...box(nav), sw: nav.scrollWidth, cw: nav.clientWidth },
+          links: [...nav.querySelectorAll('a')].map((a) => ({ ...box(a), text: a.textContent, sw: a.scrollWidth, cw: a.clientWidth })),
+          home: box(document.querySelector('header a[href="/"]')),
+          theme: box(document.querySelector('header button[aria-label*="theme"]')),
+          title: box(document.querySelector('header h1')),
+          bar: box(document.querySelector('header')),
+        };
+      });
+      const where = `${scheme} ${width} px bar`;
+      ok(bar.nav.sw <= bar.nav.cw, () => `${where}: the nav does not overflow (${bar.nav.sw} > ${bar.nav.cw})`);
+      ok(bar.links.map((l) => l.text).join() === 'Tool,Learn,Theory,References', () => `${where}: full labels (${bar.links.map((l) => l.text)})`);
+      for (const l of bar.links) {
+        ok(l.l >= -0.5 && l.r <= bar.vw + 0.5 && l.l >= bar.nav.l - 0.5 && l.r <= bar.nav.r + 0.5, () => `${where}: ${l.text} lies inside the viewport and the nav (${l.l}–${l.r} of ${bar.nav.l}–${bar.nav.r}, ${bar.vw})`);
+        ok(l.sw <= l.cw, () => `${where}: ${l.text} is not clipped (${l.sw} > ${l.cw})`);
+        if (width <= 480) ok(l.w >= 44 && l.h >= 44, () => `${where}: ${l.text} is a 44 px target (${l.w} × ${l.h})`);
+      }
+      for (const [name, e] of [['home link', bar.home], ['theme switch', bar.theme]]) {
+        ok(e.w > 0 && e.l >= 0 && e.r <= bar.vw && e.b <= bar.bar.b, () => `${where}: the ${name} is in the bar and in view`);
+      }
+      ok(bar.title.w > 1 && bar.title.r <= bar.theme.l, () => `${where}: the title shows beside the theme switch`);
+      ok(await noScroll(b), `${where}: no horizontal scroll`);
+      if (shots && (width === 320 || width === 390)) {
+        mkdirSync(shots, { recursive: true });
+        await b.screenshot({ path: join(shots, `bar-${width}-${scheme}.png`), clip: { x: 0, y: 0, width, height: Math.ceil(bar.bar.b) + 40 } });
+      }
+    }
+    await b.close();
     await phone.close();
   }
 
