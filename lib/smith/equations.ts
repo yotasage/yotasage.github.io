@@ -815,6 +815,7 @@ const src = (key: string, at: string): Source => ({ key, at });
 const EJWT = 'time dependence e^{jωt}';
 const REAL_Z0 = 'real reference impedance Z₀';
 const LOSSLESS = 'lossless line';
+const OUT_OF_PORT_2 = 'I_2 flows out of port 2 into the load';
 
 interface Def {
   id: string;
@@ -841,7 +842,7 @@ const DEFS: Def[] = [
     id: 'z-gamma', title: 'Impedance from the reflection coefficient', text: 'z = (1 + Gamma)/(1 - Gamma)',
     sources: [src(E, '§3.12'), src(S2, '§2.3'), src(S3, '§3.5')], assumptions: [REAL_Z0], engine: 'convert.zFromGamma',
     steps: [
-      ['Gamma = (z - 1)/(z + 1)', 'The definition of `Gamma` in normalised impedance.'],
+      ['Gamma = (z - 1)/(z + 1)', '`Gamma` is the reflected voltage wave over the incident one at a point; against a real `Z_0` it is `(z - 1)/(z + 1)`, the definition the other derivations rest on.'],
       ['Gamma*(z + 1) = z - 1', 'Multiply both sides by `z + 1`.'],
       ['z*(1 - Gamma) = 1 + Gamma', 'Gather the terms in `z` on one side.'],
       ['z = (1 + Gamma)/(1 - Gamma)', 'Divide by `1 - Gamma`.'],
@@ -915,11 +916,11 @@ const DEFS: Def[] = [
     sources: [src(W, '"Constant resistance and reactance circles"'), src(S3, '§3.4')], derivation: 'Completing the square in r = Re z (facts.md §3 item 8).',
     owner: 'items 7 and 8', assumptions: [REAL_Z0], engine: 'convert.zFromGamma',
     steps: [
-      ['r = (1 - Gamma_r^2 - Gamma_i^2)/(Gamma_i^2 + (1 - Gamma_r)^2)', 'The real part of `z` in parts of `Gamma` (the owner’s notes, item 7).'],
-      ['r*Gamma_i^2 + r*(1 - Gamma_r)^2 + Gamma_r^2 + Gamma_i^2 = 1', 'Multiply by the denominator and bring `Gamma_r^2 + Gamma_i^2` to the left (item 8 starts here).'],
+      ['r = (1 - Gamma_r^2 - Gamma_i^2)/(Gamma_i^2 + (1 - Gamma_r)^2)', 'The real part of `z` in parts of `Gamma` (see the derivation of `z` in parts of `Gamma`).'],
+      ['r*Gamma_i^2 + r*(1 - Gamma_r)^2 + Gamma_r^2 + Gamma_i^2 = 1', 'Multiply by the denominator and bring `Gamma_r^2 + Gamma_i^2` to the left.'],
       ['r*Gamma_i^2 + r*(1 - 2*Gamma_r + Gamma_r^2) + Gamma_r^2 + Gamma_i^2 = 1', 'Expand `(1 - Gamma_r)^2`.'],
       ['Gamma_i^2*(r + 1) + r - 2*r*Gamma_r + Gamma_r^2*(r + 1) = 1', 'Gather the terms in `Gamma_i^2` and in `Gamma_r^2`.'],
-      ['Gamma_r^2 - 2*Gamma_r*r/(r + 1) + r/(r + 1) + Gamma_i^2 = 1/(r + 1)', 'Divide by `r + 1` (where item 8 stops).'],
+      ['Gamma_r^2 - 2*Gamma_r*r/(r + 1) + r/(r + 1) + Gamma_i^2 = 1/(r + 1)', 'Divide by `r + 1`.'],
       ['(Gamma_r - r/(r + 1))^2 - (r/(r + 1))^2 + r/(r + 1) + Gamma_i^2 = 1/(r + 1)', 'Complete the square: `Gamma_r^2 - 2*Gamma_r*r/(r + 1)` is `(Gamma_r - r/(r + 1))^2` less `(r/(r + 1))^2`.'],
       ['(Gamma_r - r/(r + 1))^2 + Gamma_i^2 = 1/(r + 1) - r/(r + 1) + (r/(r + 1))^2', 'Move the constant terms to the right.'],
       ['(Gamma_r - r/(r + 1))^2 + Gamma_i^2 = ((1 - r)*(r + 1) + r^2)/(r + 1)^2', 'Bring the right side over one denominator, `(r + 1)^2`.'],
@@ -931,7 +932,7 @@ const DEFS: Def[] = [
     sources: [src(W, '"Constant resistance and reactance circles"'), src(S3, '§3.4')], derivation: 'Completing the square in x = Im z (facts.md §3 item 9).',
     owner: 'items 7 (i corrected to 1) and 9', assumptions: [REAL_Z0], engine: 'convert.zFromGamma',
     steps: [
-      ['x = 2*Gamma_i/(Gamma_i^2 + (1 - Gamma_r)^2)', 'The imaginary part of `z` in parts of `Gamma` (the owner’s notes, item 9, which stops here).'],
+      ['x = 2*Gamma_i/(Gamma_i^2 + (1 - Gamma_r)^2)', 'The imaginary part of `z` in parts of `Gamma` (see the derivation of `z` in parts of `Gamma`).'],
       ['x*Gamma_i^2 + x*(1 - Gamma_r)^2 = 2*Gamma_i', 'Multiply by the denominator.'],
       ['(Gamma_r - 1)^2 + Gamma_i^2 = 2*Gamma_i/x', 'Divide by `x` (not 0); `(1 - Gamma_r)^2 = (Gamma_r - 1)^2`.'],
       ['(Gamma_r - 1)^2 + Gamma_i^2 - 2*Gamma_i/x + (1/x)^2 = (1/x)^2', 'Bring `2*Gamma_i/x` to the left and complete the square in `Gamma_i`: add `(1/x)^2` to both sides.'],
@@ -943,8 +944,8 @@ const DEFS: Def[] = [
     sources: [src(W, '"Admittance chart"')], derivation: 'Completing the square in g = Re y (facts.md §3 item 10).',
     owner: 'items 5 and 10', assumptions: [REAL_Z0], engine: 'convert.yFromGamma',
     steps: [
-      ['g = (1 - Gamma_r^2 - Gamma_i^2)/(Gamma_i^2 + (Gamma_r + 1)^2)', 'The real part of `y` in parts of `Gamma` (the owner’s notes, item 5).'],
-      ['g*Gamma_i^2 + g*(Gamma_r + 1)^2 = 1 - Gamma_r^2 - Gamma_i^2', 'Multiply by the denominator (item 10, which stops here).'],
+      ['g = (1 - Gamma_r^2 - Gamma_i^2)/(Gamma_i^2 + (Gamma_r + 1)^2)', 'The real part of `y` in parts of `Gamma` (see the derivation of `y` in parts of `Gamma`).'],
+      ['g*Gamma_i^2 + g*(Gamma_r + 1)^2 = 1 - Gamma_r^2 - Gamma_i^2', 'Multiply by the denominator.'],
       ['g*Gamma_i^2 + g*(Gamma_r^2 + 2*Gamma_r + 1) + Gamma_r^2 + Gamma_i^2 = 1', 'Expand `(Gamma_r + 1)^2` and bring `Gamma_r^2 + Gamma_i^2` to the left.'],
       ['Gamma_i^2*(g + 1) + g + 2*g*Gamma_r + Gamma_r^2*(g + 1) = 1', 'Gather the terms in `Gamma_i^2` and in `Gamma_r^2`.'],
       ['Gamma_r^2 + 2*Gamma_r*g/(g + 1) + g/(g + 1) + Gamma_i^2 = 1/(g + 1)', 'Divide by `g + 1`.'],
@@ -959,8 +960,8 @@ const DEFS: Def[] = [
     sources: [src(W, '"Admittance chart"')], derivation: 'Completing the square in b = Im y (facts.md §3 item 11).',
     owner: 'items 5 and 11', assumptions: [REAL_Z0], engine: 'convert.yFromGamma',
     steps: [
-      ['b = -2*Gamma_i/(Gamma_i^2 + (Gamma_r + 1)^2)', 'The imaginary part of `y` in parts of `Gamma` (the owner’s notes, item 5).'],
-      ['b*Gamma_i^2 + b*(Gamma_r + 1)^2 = -2*Gamma_i', 'Multiply by the denominator (item 11, which stops here).'],
+      ['b = -2*Gamma_i/(Gamma_i^2 + (Gamma_r + 1)^2)', 'The imaginary part of `y` in parts of `Gamma` (see the derivation of `y` in parts of `Gamma`).'],
+      ['b*Gamma_i^2 + b*(Gamma_r + 1)^2 = -2*Gamma_i', 'Multiply by the denominator.'],
       ['(Gamma_r + 1)^2 + Gamma_i^2 = -2*Gamma_i/b', 'Divide by `b` (not 0).'],
       ['(Gamma_r + 1)^2 + Gamma_i^2 + 2*Gamma_i/b + (1/b)^2 = (1/b)^2', 'Bring `-2*Gamma_i/b` to the left and complete the square in `Gamma_i`: add `(1/b)^2` to both sides.'],
       ['(Gamma_r + 1)^2 + (Gamma_i + 1/b)^2 = (1/b)^2', '`Gamma_i^2 + 2*Gamma_i/b + (1/b)^2` is `(Gamma_i + 1/b)^2`: a circle with centre (`-1`, `-1/b`) and radius `1/abs(b)`.'],
@@ -983,17 +984,22 @@ const DEFS: Def[] = [
   {
     id: 'vswr', title: 'Voltage standing wave ratio', text: 'VSWR = V_max/V_min = (1 + abs(Gamma))/(1 - abs(Gamma))',
     sources: [src(E, '§3.14'), src(S2, '§2.3')], assumptions: [LOSSLESS], engine: 'convert.vswr',
+    symbols: {
+      V: sym('voltage on the line at ℓ from the load', 'V', 'metric'),
+      ell: sym('distance from the load towards the source', 'm', 'line'),
+    },
     steps: [
-      ['V_max = V_inc*(1 + abs(Gamma))', 'Where the incident and reflected waves add in phase.'],
-      ['V_min = V_inc*(1 - abs(Gamma))', 'Where they are in antiphase.'],
-      ['VSWR = (V_inc*(1 + abs(Gamma)))/(V_inc*(1 - abs(Gamma))) = (1 + abs(Gamma))/(1 - abs(Gamma))', 'The ratio; the incident amplitude cancels.'],
+      ['abs(V) = abs(V_inc)*abs(1 + Gamma*exp(-j*2*beta*ell))', 'The voltage is the incident wave plus the reflected one, which is `Gamma` times it at the load (`Gamma` is the reflected voltage wave over the incident one); moving `ell` towards the source the incident wave gains `exp(j*beta*ell)` and the reflected `exp(-j*beta*ell)`.'],
+      ['V_max = abs(V_inc)*(1 + abs(Gamma))', 'The reflected amplitude is `abs(Gamma)` times the incident, so `abs(V)` is largest where `Gamma*exp(-j*2*beta*ell)` is real and positive: the two waves add in phase.'],
+      ['V_min = abs(V_inc)*(1 - abs(Gamma))', 'It is smallest where `Gamma*exp(-j*2*beta*ell)` is real and negative: the waves are in antiphase.'],
+      ['VSWR = (abs(V_inc)*(1 + abs(Gamma)))/(abs(V_inc)*(1 - abs(Gamma))) = (1 + abs(Gamma))/(1 - abs(Gamma))', 'The ratio; `abs(V_inc)` cancels.'],
     ],
   },
   {
     id: 'gamma-vswr', title: '|Γ| from the VSWR', text: 'abs(Gamma) = (VSWR - 1)/(VSWR + 1)', sources: [src(E, '§3.14'), src(S2, '§2.3')],
     assumptions: [LOSSLESS], engine: 'convert.magFromVswr',
     steps: [
-      ['VSWR*(1 - abs(Gamma)) = 1 + abs(Gamma)', 'Multiply the `VSWR` by `1 - abs(Gamma)`.'],
+      ['VSWR*(1 - abs(Gamma)) = 1 + abs(Gamma)', 'Start from `VSWR = (1 + abs(Gamma))/(1 - abs(Gamma))` and multiply both sides by `1 - abs(Gamma)`.'],
       ['abs(Gamma)*(VSWR + 1) = VSWR - 1', 'Gather the terms in `abs(Gamma)`.'],
       ['abs(Gamma) = (VSWR - 1)/(VSWR + 1)', 'Divide by `VSWR + 1`.'],
     ],
@@ -1011,8 +1017,9 @@ const DEFS: Def[] = [
       z_t: sym('normalised impedance of the target', '', 'point'),
     },
     steps: [
+      ['m = abs(Gamma - Gamma_t)/abs(1 - conj(Gamma_t)*Gamma)', 'The map `(Gamma - Gamma_t)/(1 - conj(Gamma_t)*Gamma)` takes the target to 0 and keeps the edge of the chart, so it redraws the chart with the target at its centre; `m` is the `abs(Gamma)` the node has on that chart.'],
       ['Gamma - Gamma_t = 2*(z - z_t)/((z + 1)*(z_t + 1))', 'Put both `Gamma` in terms of `z` and take one fraction.'],
-      ['1 - conj(Gamma_t)*Gamma = 2*(z + conj(z_t))/((conj(z_t) + 1)*(z + 1))', 'The same below the line.'],
+      ['1 - conj(Gamma_t)*Gamma = 2*(z + conj(z_t))/((conj(z_t) + 1)*(z + 1))', 'The same below the line, with `conj(Gamma_t) = (conj(z_t) - 1)/(conj(z_t) + 1)`, true because `Z_0` is real.'],
       ['m = abs(z - z_t)/abs(z + conj(z_t))', 'Divide; `abs(conj(z_t) + 1) = abs(z_t + 1)`, so the factors cancel.'],
     ],
   },
@@ -1022,7 +1029,7 @@ const DEFS: Def[] = [
     id: 'return-loss', title: 'Return loss', text: 'RL = 10*log10(P_inc/P_ref) = -20*log10(abs(Gamma))', sources: [src(S3, '§2.8')],
     assumptions: ['passive load, |Γ| ≤ 1'], engine: 'convert.returnLoss',
     steps: [
-      ['RL = 10*log10(1/abs(Gamma)^2)', 'The reflected power is `abs(Gamma)^2` times the incident power.'],
+      ['RL = 10*log10(1/abs(Gamma)^2)', '`Gamma` is the reflected voltage wave over the incident one, and power goes with the square of the amplitude, so the reflected power is `abs(Gamma)^2` times the incident power.'],
       ['RL = -20*log10(abs(Gamma))', 'The logarithm of a reciprocal is the negative, of a square twice the logarithm.'],
     ],
   },
@@ -1032,7 +1039,7 @@ const DEFS: Def[] = [
     id: 'mismatch-loss', title: 'Mismatch loss', text: 'ML = 10*log10(P_inc/P_load) = -10*log10(1 - abs(Gamma)^2)', sources: [src(S3, '§2.8')],
     derivation: '[S3] names mismatch loss without a formula; it is the delivered power in decibels (facts.md eq. 16).', assumptions: ['passive load, |Γ| ≤ 1'], engine: 'convert.mismatchLoss',
     steps: [
-      ['ML = 10*log10(1/(1 - abs(Gamma)^2))', 'The load receives `1 - abs(Gamma)^2` of the incident power.'],
+      ['ML = 10*log10(1/(1 - abs(Gamma)^2))', '`Gamma` is the reflected voltage wave over the incident one, so `abs(Gamma)^2` of the incident power is reflected and the load receives `1 - abs(Gamma)^2` of it.'],
       ['ML = -10*log10(1 - abs(Gamma)^2)', 'The logarithm of a reciprocal is the negative.'],
     ],
   },
@@ -1044,7 +1051,9 @@ const DEFS: Def[] = [
     id: 'q-l-network', title: 'Q of an L network', text: 'Q = sqrt(R_high/R_low - 1)', sources: [src(S3, '§6.4')], assumptions: ['lossless parts'],
     engine: 'network.inputGamma of the L network built with this Q',
     steps: [
-      ['R_high = R_low*(1 + Q^2)', 'A series leg `R_low + j*X` with `Q = abs(X)/R_low` is, seen in parallel, a resistance `R_low*(1 + Q^2)`.'],
+      ['1/(R_low + j*X) = (R_low - j*X)/(R_low^2 + X^2)', 'The series leg `R_low + j*X` next to the lower resistance, with `Q = abs(X)/R_low`, as an admittance: multiply above and below by `R_low - j*X`.'],
+      ['(R_low^2 + X^2)/R_low = R_low*(1 + Q^2)', 'Its real part is one over a parallel resistance `(R_low^2 + X^2)/R_low`, which is `R_low*(1 + Q^2)` with `X^2 = Q^2*R_low^2`.'],
+      ['R_high = (R_low^2 + X^2)/R_low = R_low*(1 + Q^2)', 'The shunt part cancels the parallel reactance, so only that resistance is left, and for a match it must equal `R_high`.'],
       ['Q^2 = R_high/R_low - 1', 'Solve for `Q^2`.'],
       ['Q = sqrt(R_high/R_low - 1)', 'Take the positive root: `Q` is a ratio of magnitudes.'],
     ],
@@ -1052,9 +1061,11 @@ const DEFS: Def[] = [
   // Lines (eqs. 18–20).
   {
     id: 'line-zin', title: 'Input impedance of a line', sources: [src(E, '§3.15'), src(S2, '§2.3')], assumptions: [LOSSLESS, EJWT], engine: 'network.evaluate (LINE)',
+    symbols: { Gamma_ell: sym('reflection coefficient at ℓ from the load, against the line’s Z_c', '', 'line') },
     text: 'Z_in = Z_c*((Z_L + j*Z_c*tan(beta*ell))/(Z_c + j*Z_L*tan(beta*ell))) = Z_c*((1 + Gamma_c*exp(-j*2*beta*ell))/(1 - Gamma_c*exp(-j*2*beta*ell)))',
     steps: [
-      ['Z_in = Z_c*((1 + Gamma_c*exp(-j*2*beta*ell))/(1 - Gamma_c*exp(-j*2*beta*ell)))', 'Over the length `ell` the reflected wave turns by `exp(-j*2*beta*ell)` against the incident one.'],
+      ['Gamma_ell = Gamma_c*exp(-j*2*beta*ell)', '`Gamma` is the reflected voltage wave over the incident one. Moving `ell` towards the source, the incident wave gains `exp(j*beta*ell)` and the reflected `exp(-j*beta*ell)`, so their ratio turns by `exp(-j*2*beta*ell)` (both against the line’s `Z_c`).'],
+      ['Z_in = Z_c*((1 + Gamma_ell)/(1 - Gamma_ell)) = Z_c*((1 + Gamma_c*exp(-j*2*beta*ell))/(1 - Gamma_c*exp(-j*2*beta*ell)))', 'The impedance there is `Z = Z_0*(1 + Gamma)/(1 - Gamma)` with `Z_c` in place of `Z_0`.'],
       ['Z_in = Z_c*(((Z_L + Z_c)*exp(j*beta*ell) + (Z_L - Z_c)*exp(-j*beta*ell))/((Z_L + Z_c)*exp(j*beta*ell) - (Z_L - Z_c)*exp(-j*beta*ell)))', 'Put in `Gamma_c = (Z_L - Z_c)/(Z_L + Z_c)` and multiply above and below by `(Z_L + Z_c)*exp(j*beta*ell)`.'],
       ['Z_in = Z_c*((Z_L*cos(beta*ell) + j*Z_c*sin(beta*ell))/(Z_c*cos(beta*ell) + j*Z_L*sin(beta*ell)))', 'Write `exp(j*beta*ell) = cos(beta*ell) + j*sin(beta*ell)` and `exp(-j*beta*ell) = cos(beta*ell) - j*sin(beta*ell)`; the factors 2 cancel.'],
       ['Z_in = Z_c*((Z_L + j*Z_c*tan(beta*ell))/(Z_c + j*Z_L*tan(beta*ell)))', 'Divide above and below by `cos(beta*ell)`.'],
@@ -1064,7 +1075,7 @@ const DEFS: Def[] = [
     id: 'line-rotation', title: 'Rotation on a matched line', text: 'Gamma_in = Gamma_L*exp(-j*2*theta)', sources: [src(E, '§3.15'), src(E, '§3.17'), src(S3, '§3.4')],
     assumptions: [LOSSLESS, 'the line’s Z_c equals Z₀'], engine: 'network.evaluate (LINE with Z_c = Z₀)',
     steps: [
-      ['Gamma_in = Gamma_c*exp(-j*2*beta*ell)', 'Over the length `ell` the reflected wave turns by `exp(-j*2*beta*ell)` against the incident one (`Gamma_c` against the line’s `Z_c`).'],
+      ['Gamma_in = Gamma_c*exp(-j*2*beta*ell)', '`Gamma` is the reflected voltage wave over the incident one. Moving `ell` towards the source, the incident wave gains `exp(j*beta*ell)` and the reflected `exp(-j*beta*ell)`, so their ratio turns by `exp(-j*2*beta*ell)` (`Gamma_c` against the line’s `Z_c`).'],
       ['Gamma_in = Gamma_L*exp(-j*2*theta)', 'With `Z_c = Z_0` the line’s `Gamma_c` is the chart’s `Gamma_L`, and `beta*ell` is `theta`.'],
     ],
   },
@@ -1084,7 +1095,7 @@ const DEFS: Def[] = [
     id: 'quarter-wave-match', title: 'Quarter-wave match', text: 'Z_t = sqrt(Z_0*R_L)', sources: [src(E, '§3.19'), src(S2, '§2.4')], assumptions: [LOSSLESS, 'ℓ = λ/4 + nλ/2', 'resistive load'],
     engine: 'network.inputGamma (QUARTER) is 0',
     steps: [
-      ['Z_0 = Z_t^2/R_L', 'A match needs the input impedance `Z_t^2/R_L` to equal `Z_0`.'],
+      ['Z_0 = Z_t^2/R_L', 'A match needs the input impedance `Z_t^2/R_L` to equal `Z_0` (the same for `ell = lambda/4 + n*lambda/2`: `tan(beta*ell)` repeats every half wave).'],
       ['Z_t^2 = Z_0*R_L', 'Multiply by `R_L`.'],
       ['Z_t = sqrt(Z_0*R_L)', 'Take the positive root: a line’s impedance `Z_t` is positive.'],
     ],
@@ -1116,7 +1127,7 @@ const DEFS: Def[] = [
   // Series adds z, shunt adds y (learning.md §4).
   {
     id: 'series-adds-z', title: 'A series part adds its impedance', text: 'z_in = z_L + z_s', sources: [src(S3, '§2.2.6')],
-    derivation: 'From the ABCD matrix [1 Z_s; 0 1] of a series part.', assumptions: [REAL_Z0], engine: 'network.applyPart (series parts)',
+    derivation: 'From the ABCD matrix [1 Z_s; 0 1] of a series part.', assumptions: [REAL_Z0, OUT_OF_PORT_2], engine: 'network.applyPart (series parts)',
     steps: [
       ['z_in = V_1/(I_1*Z_0)', 'The normalised impedance at the input.'],
       ['z_in = (V_2 + Z_s*I_2)/(I_2*Z_0)', 'Across a series part `V_1 = V_2 + Z_s*I_2` and `I_1 = I_2`.'],
@@ -1125,7 +1136,7 @@ const DEFS: Def[] = [
   },
   {
     id: 'shunt-adds-y', title: 'A shunt part adds its admittance', text: 'y_in = y_L + y_p', sources: [src(S3, '§2.2.6')],
-    derivation: 'From the ABCD matrix [1 0; Y_p 1] of a shunt part.', assumptions: [REAL_Z0], engine: 'network.applyPart (shunt parts and stubs)',
+    derivation: 'From the ABCD matrix [1 0; Y_p 1] of a shunt part.', assumptions: [REAL_Z0, OUT_OF_PORT_2], engine: 'network.applyPart (shunt parts and stubs)',
     steps: [
       ['y_in = I_1*Z_0/V_1', 'The normalised admittance at the input.'],
       ['y_in = (Y_p*V_2 + I_2)*Z_0/V_2', 'Across a shunt part `V_1 = V_2` and `I_1 = Y_p*V_2 + I_2`.'],
@@ -1137,7 +1148,7 @@ const DEFS: Def[] = [
     id: 'match-two-parts', title: 'Matching with two parts', text: 'y_in = 1/(r_L + j*(x_L + x_s)) + j*b_p = 1',
     sources: [src(S3, '§6.7')],
     derivation: 'Series adds z, then shunt adds y; the series part must land the point on the g = 1 circle (theory.md §7).',
-    assumptions: [REAL_Z0, 'lossless parts', 'r_L ≤ 1'], engine: 'network.evaluate of the series and shunt part built from x_s and b_p',
+    assumptions: [REAL_Z0, 'lossless parts', '0 < r_L ≤ 1'], engine: 'network.evaluate of the series and shunt part built from x_s and b_p',
     symbols: {
       z_L: sym('normalised impedance of the load', '', 'load'),
       r_L: sym('normalised resistance of the load', '', 'load'), x_L: sym('normalised reactance of the load', '', 'load'),
@@ -1190,7 +1201,10 @@ const DEFS: Def[] = [
       c: sym('entry c of the part’s map of Γ', '', 'part'), d: sym('entry d of the part’s map of Γ', '', 'part'),
     },
     steps: [
-      ['a = A - B/Z_0 - C*Z_0 + D', 'The coefficient of `Gamma_L` above the line, after `Z_L = Z_0*(1 + Gamma_L)/(1 - Gamma_L)` is put into `(A*Z_L + B)/(C*Z_L + D)` and `Gamma = (Z - Z_0)/(Z + Z_0)` is taken of the result.'],
+      ['Z_in = Z_0*((A*(1 + Gamma_L) + B/Z_0*(1 - Gamma_L))/(C*Z_0*(1 + Gamma_L) + D*(1 - Gamma_L)))', 'Put `Z_L = Z_0*(1 + Gamma_L)/(1 - Gamma_L)` into `Z_in = (A*Z_L + B)/(C*Z_L + D)` and multiply above and below by `1 - Gamma_L`.'],
+      ['Gamma_in = (Z_in - Z_0)/(Z_in + Z_0) = (A*(1 + Gamma_L) + B/Z_0*(1 - Gamma_L) - C*Z_0*(1 + Gamma_L) - D*(1 - Gamma_L))/(A*(1 + Gamma_L) + B/Z_0*(1 - Gamma_L) + C*Z_0*(1 + Gamma_L) + D*(1 - Gamma_L))', 'Take `Gamma = (Z - Z_0)/(Z + Z_0)` of it: `Z_0` cancels, leaving the difference of the two brackets over their sum.'],
+      ['Gamma_in = ((A - B/Z_0 - C*Z_0 + D)*Gamma_L + A + B/Z_0 - C*Z_0 - D)/((A - B/Z_0 + C*Z_0 - D)*Gamma_L + A + B/Z_0 + C*Z_0 + D)', 'Multiply out and collect the terms in `Gamma_L` above and below the line.'],
+      ['a = A - B/Z_0 - C*Z_0 + D', 'Read off the coefficient of `Gamma_L` above the line.'],
       ['b = A + B/Z_0 - C*Z_0 - D', 'The constant term above the line.'],
       ['c = A - B/Z_0 + C*Z_0 - D', 'The coefficient of `Gamma_L` below the line.'],
       ['d = A + B/Z_0 + C*Z_0 + D', 'The constant term below the line.'],

@@ -38,6 +38,7 @@ const TOL = 1e-12;
 const TOLS = { 'line-circle-centre': 1e-11 };
 let mismatchSeed = 0x4d3c5;
 let matchSeed = 0x2b9e1;
+let vswrSeed = 0x5a17e;
 
 export function runEquationChecks({ section, ok, random }) {
   const rnd = (a, b) => a + (b - a) * random();
@@ -118,7 +119,19 @@ export function runEquationChecks({ section, ok, random }) {
     'z-parts': PT, 'y-parts': PT, 'r-gamma': PT, 'x-gamma': PT, 'g-gamma': PT, 'b-gamma': PT,
     'circle-r': PT, 'circle-x': PT, 'circle-g': PT, 'circle-b': PT,
     'line-circle-b': lineCircle, 'line-circle-centre': lineCircle, 'line-circle-radius': lineCircle,
-    vswr: figures, 'gamma-vswr': figures, 'return-loss': figures, 'power-reflected': figures, 'power-delivered': figures, 'mismatch-loss': figures,
+    // The read-through's first step of vswr (notes-M5.3.md): |V| at ℓ from the load, V from network's applyPart of a
+    // line of Z0 on the load (V, I) = (V_inc(1 + Γ), V_inc(1 − Γ)/Z0). Its length from a generator of its own, so the
+    // shared stream (and every later check's random problems) stays as it was.
+    vswr: () => {
+      const f = figures();
+      vswrSeed = (vswrSeed + 0x6d2b79f5) | 0;
+      let s = Math.imul(vswrSeed ^ (vswrSeed >>> 15), 1 | vswrSeed);
+      s = (s + Math.imul(s ^ (s >>> 7), 61 | s)) ^ s;
+      const t = 0.01 + 0.98 * (((s ^ (s >>> 14)) >>> 0) / 4294967296), z0 = 50, [gr, gi] = f.Gamma;
+      const at = applyTo({ kind: LINE, value: t, zc: z0, f0: 1e9, z0 }, [f.V_inc * (1 + gr), f.V_inc * gi], [f.V_inc * (1 - gr) / z0, -f.V_inc * gi / z0]);
+      return { ...f, V: at.V, beta: TAU, ell: t };
+    },
+    'gamma-vswr': figures, 'return-loss': figures, 'power-reflected': figures, 'power-delivered': figures, 'mismatch-loss': figures,
     // M4.3c: the mismatch to an off-centre point target, m from goal.goalMismatch (a target inside the chart). Its
     // points come from a generator of its own, so adding the entry left the shared stream (and every later check's
     // random problems, check-validate's among them) as it was.
@@ -143,7 +156,8 @@ export function runEquationChecks({ section, ok, random }) {
     'z-min': () => { const p = point(); impedanceFromGamma(out, 0, -p.mag, 0, p.z0); return { Z_min: out[0], Z_0: p.z0, VSWR: vswr(p.mag) }; },
     'q-node': () => { const p = point(); return { ...p.b, Q: qFromZ(p.b.r, p.b.x) }; },
     'q-l-network': {
-      bind: () => { const lo = rnd(2, 100); return { R_low: lo, R_high: lo * Math.exp(rnd(Math.log(1.1), Math.log(50))), Q: 0 }; },
+      // X is the series leg's reactance Q·R_low of the read-through's steps, from the two resistances alone.
+      bind: () => { const lo = rnd(2, 100), hi = lo * Math.exp(rnd(Math.log(1.1), Math.log(50))); return { R_low: lo, R_high: hi, Q: 0, X: Math.sqrt(lo * (hi - lo)) }; },
       solve: 'Q',
       verify: (b) => {
         // Series L of X = Q·R_low next to the load, then shunt C of B = Q/R_high, on Z0 = R_high.
@@ -156,7 +170,10 @@ export function runEquationChecks({ section, ok, random }) {
     'line-zin': () => {
       const z0 = rnd(10, 200), zc = rnd(20, 150), R = rnd(1, 300), X = rnd(-300, 300), f0 = rnd(1e7, 1e10), l = lineBinding();
       gammaFromImpedance(out, 0, R, X, zc);
-      return { ...l, Z_in: zinOf(LINE, l.t, zc, R, X, z0, f0).Z, Z_c: zc, Z_L: [R, X], Gamma_c: [out[0], out[1]] };
+      const Gamma_c = [out[0], out[1]], Z_in = zinOf(LINE, l.t, zc, R, X, z0, f0).Z;
+      // Γ at the input against Z_c, from the engine's Z_in.
+      gammaFromImpedance(out, 0, Z_in[0], Z_in[1], zc);
+      return { ...l, Z_in, Z_c: zc, Z_L: [R, X], Gamma_c, Gamma_ell: [out[0], out[1]] };
     },
     'line-rotation': () => {
       const p = point(), l = lineBinding();
@@ -265,9 +282,10 @@ export function runEquationChecks({ section, ok, random }) {
       const p = randomPart([SERIES_R, SERIES_L, SERIES_C, SHUNT_R, SHUNT_L, SHUNT_C, LINE, STUB_OPEN, STUB_SHORT, QUARTER]);
       const pt = point(), ZL = scale(pt.b.z, p.z0), m = new Float64Array(8);
       partMobius(m, 0, p.kind, p.value, p.zc, p.f0, p.f0, p.z0);
+      const zin = zinOf(p.kind, p.value, p.zc, ZL[0], ZL[1], p.z0, p.f0);
       return {
         ...abcd(p), Z_0: p.z0, a: [m[0], m[1]], b: [m[2], m[3]], c: [m[4], m[5]], d: [m[6], m[7]],
-        Gamma_L: pt.b.Gamma, Gamma_in: zinOf(p.kind, p.value, p.zc, ZL[0], ZL[1], p.z0, p.f0).G,
+        Gamma_L: pt.b.Gamma, Gamma_in: zin.G, Z_in: zin.Z,
       };
     },
     'node-z': () => {

@@ -23,13 +23,13 @@ the equation's first side and its last side one of the equation's sides (the der
 | `circle-x` | 5 | the x circle (owner's item 9, finished) |
 | `circle-g` | 9 | the g circle (owner's items 5, 10, finished) |
 | `circle-b` | 5 | the b circle (owner's items 5, 11, finished) |
-| `vswr` | 3 | VSWR from V_max and V_min |
+| `vswr` | 4 | VSWR from \|V\| along the line, its largest and smallest values |
 | `gamma-vswr` | 3 | \|Γ\| from the VSWR (a last step to the result added) |
-| `mismatch-to-target` | 3 | the solver's mismatch to a point target, in z |
+| `mismatch-to-target` | 4 | the solver's mismatch to a point target, in z |
 | `return-loss` | 2 | RL = −20 log₁₀\|Γ\| |
 | `mismatch-loss` | 2 | ML = −10 log₁₀(1 − \|Γ\|²) |
-| `q-l-network` | 3 | Q of an L network (last step added) |
-| `line-zin` | 4 | Z_in of a line |
+| `q-l-network` | 5 | Q of an L network (last step added) |
+| `line-zin` | 5 | Z_in of a line |
 | `line-rotation` | 2 | Γ turning on a line of Z0 (new steps) |
 | `quarter-wave` | 3 | the λ/4 transformer |
 | `quarter-wave-match` | 3 | Z_t = √(Z0 R_L) (two steps added) |
@@ -37,9 +37,9 @@ the equation's first side and its last side one of the equation's sides (the der
 | `shunt-adds-y` | 3 | a shunt part adds y |
 | `match-two-parts` | 8 | matching with two parts, series next to the load then shunt (new entry) |
 | `abcd-zin` | 3 | Z_in of a two-port |
-| `mobius` | 5 | a part maps Γ by a Möbius transformation (last step added) |
+| `mobius` | 8 | a part maps Γ by a Möbius transformation (last step added) |
 
-26 derivations, 102 steps. The owner's notes (notes-M0.1.md, "transcribed"): items 8–11 stopped before the circle
+26 derivations, 110 steps (102 before the read-through below). The owner's notes (notes-M0.1.md, "transcribed"): items 8–11 stopped before the circle
 forms; `circle-r` now follows item 8's own lines (multiply out, gather, divide by r + 1, where the notes stop) and
 completes the square; `circle-x`, `circle-g` and `circle-b` start from items 9, 10 and 11 (the notes' order of the
 denominator, Γi² first) and end in (Γr − 1)² + (Γi − 1/x)² = (1/x)², (Γr + g/(1+g))² + Γi² = (1/(1+g))² and
@@ -155,6 +155,29 @@ the way back caught Derive placed before "↩ Back to …": Derive now follows i
 - **A close event that came late.** `dialog.close()` shuts the dialog at once but fires `close` later; a derivation
   opened in between was emptied by the late `onClose`. `onClose` now returns when the dialog is open again (the
   harness opens 26 in a row; a person cannot click that fast, but it costs nothing).
+
+## Read-through
+
+An independent read of all 26 derivations (as a reader would follow them, not as the harness checks them) found gaps,
+all fixed; 8 steps added (102 → 110), each checked like every other step:
+
+- **Gaps.** `vswr` started at V_max = V_inc(1 + |Γ|) without saying why: a first step |V| = |V_inc||1 + Γe^{−j2βℓ}| (the
+  harness takes V from `applyPart` of a line of Z0 on the load (V_inc(1 + Γ), V_inc(1 − Γ)/Z0), ℓ from a generator of
+  its own), and |V_inc| throughout. `gamma-vswr` step 1 now says it starts from the VSWR and multiplies both sides.
+  `mismatch-to-target` opens with m as the |Γ| on a chart centred on the target (the map of its derivation note) and its
+  step 3 names conj(Γt) = (conj(zt) − 1)/(conj(zt) + 1), true for a real Z0. `q-l-network` gains the series leg as an
+  admittance and its parallel resistance R_low(1 + Q²), which the shunt part leaves alone to equal R_high (the harness
+  binds X = √(R_low(R_high − R_low)) without a random draw). `line-zin` splits its first step: Γ_ℓ = Γ_c e^{−j2βℓ}
+  (the incident wave gains e^{jβℓ}, the reflected e^{−jβℓ}; Γ_ℓ from the engine's Z_in against Z_c), then Z_in from
+  Γ_ℓ; `line-rotation` step 1 says the same. `mobius` gains Z_in in Γ_L, Γ_in as the brackets' difference over their
+  sum, and the terms collected in Γ_L, before a, b, c, d are read off (Z_in from network.evaluate).
+- **Small.** `series-adds-z` and `shunt-adds-y` assume I_2 flows out of port 2 into the load; `quarter-wave-match`
+  step 1 adds that λ/4 + nλ/2 gives the same; `match-two-parts` assumes 0 < r_L ≤ 1 (step 6 divides by r_L).
+- **Systematic.** Γ as the reflected over the incident voltage wave at a point is now the opening reason of `z-gamma`
+  (the first derivation on the page); `vswr`, `return-loss`, `mismatch-loss`, `line-zin` and `line-rotation` say it
+  where they use it. The circles' reasons cited "the owner's notes, item N", which a reader cannot see; they now point
+  to the derivations of z and y in parts of Γ (`z-parts`, `y-parts`). The owner's items stay credited in the table
+  above and in `owner` of each entry.
 - **Checks.** ui-derive.mjs compares the dialog side by side with derive.ts (each side's TeX, the reasons' text and
   their maths), renders every reason's maths with KaTeX `throwOnError` for every derivation and subject (6,532
   pieces), and at 320 and 390 px opens all 26 derivations with every step shown and fails a line box outside the

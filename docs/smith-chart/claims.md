@@ -111,10 +111,10 @@ your numbers (components/Smith/Derivation.tsx, derive.ts; ui-derive.mjs). Claim 
 shows every step". The derivations' mathematical claims are their registry steps, each an equality that
 check-equations.mjs evaluates at 200 random points against the engine (and that the last step ends in the equation):
 `z-gamma` (4), `gamma-y` (2), `y-gamma` (2), `gamma-parts-z` (4), `gamma-parts-y` (4), `z-parts` (4), `y-parts` (4),
-`circle-r` (9), `circle-x` (5), `circle-g` (9), `circle-b` (5), `vswr` (3), `gamma-vswr` (3), `mismatch-to-target`
-(3), `return-loss` (2), `mismatch-loss` (2), `q-l-network` (3), `line-zin` (4), `line-rotation` (2), `quarter-wave`
+`circle-r` (9), `circle-x` (5), `circle-g` (9), `circle-b` (5), `vswr` (4), `gamma-vswr` (3), `mismatch-to-target`
+(4), `return-loss` (2), `mismatch-loss` (2), `q-l-network` (5), `line-zin` (5), `line-rotation` (2), `quarter-wave`
 (3), `quarter-wave-match` (3), `series-adds-z` (3), `shunt-adds-y` (3), `match-two-parts` (8, [S3 §6.7] for the
-route; new, D on the page), `abcd-zin` (3), `mobius` (5): 26 derivations, 102 steps. The reasons are one-line
+route; new, D on the page), `abcd-zin` (3), `mobius` (8): 26 derivations, 110 steps (after the read-through of notes-M5.3.md). The reasons are one-line
 statements of the algebra the step does; the step itself is what is checked. All: 189 claims.
 
 ## Sentences the page added (M3.5b, M3.5c)
