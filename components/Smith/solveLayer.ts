@@ -66,6 +66,9 @@ export class SolveLayer {
   previewShape: CircleShape | null = null;
   private result: SolveResult | null = null;
   private resultOf: Circuit | null = null;
+  /** A challenge's first hint (M6.3b): its circles stand in for the result's while it is shown. */
+  private hint: CircleShape | null = null;
+  private hintOf: Circuit | null = null;
   previewArcs = new Float64Array(0);
   previewCount = 0;
   readonly previewEnd = new Float64Array(2);
@@ -127,7 +130,14 @@ export class SolveLayer {
   /** The solver's outcome: its two circles (none when it has none) and the crossings of a solved pair. */
   setResult(r: SolveResult | null, c: Circuit | null): void {
     this.result = r; this.resultOf = c;
-    if (!this.previewShape) this.drawCircles(r, c);
+    if (!this.previewShape && !this.hint) this.drawCircles(r, c);
+  }
+
+  /** A challenge's hint circles for circuit c (drawn as the solver's), null to go back to the result's. */
+  setHint(shape: CircleShape | null, c: Circuit | null): void {
+    if (shape === this.hint) return;
+    this.hint = shape; this.hintOf = c;
+    if (!this.previewShape) this.drawCircles(shape ?? this.result, shape ? c : this.resultOf);
   }
 
   /** Draws the circles of a result, or of a suggestion's construction while it is previewed (M4.4b). */
@@ -162,7 +172,7 @@ export class SolveLayer {
     if (c === this.preview && shape === this.previewShape) return;
     if (shape !== this.previewShape) {
       this.previewShape = shape;
-      this.drawCircles(shape ?? this.result, shape ? base : this.resultOf);
+      this.drawCircles(shape ?? this.hint ?? this.result, shape ? base : this.hint ? this.hintOf : this.resultOf);
     }
     if (c === this.preview) return;
     this.preview = c;

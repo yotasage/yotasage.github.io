@@ -14,6 +14,10 @@ import {
   EXAMPLES, Figure, NodeRef, Quantity, answerCheck, exampleById, guideFigure, nodeGammas, stepDone,
 } from '../../lib/smith/examples';
 import type { Circuit } from '../../lib/smith/state';
+import { ChallengeList } from './Challenge';
+import type { ChallengeListProps } from './Challenge';
+import { LessonMaker } from './Lesson';
+import type { LessonMakerProps } from './Lesson';
 import { Why, followTopic } from './Why';
 
 export type Grid = 'Z' | 'Y' | 'ZY';
@@ -25,10 +29,13 @@ export interface LearnSectionProps {
   /** The id of the example the guide shows, '' for none. */
   open: string;
   onLoad: (id: string) => void;
+  /** M6.3b: the challenges (below the examples) and "Make a lesson link" (last). */
+  challenges: ChallengeListProps;
+  maker: LessonMakerProps;
 }
 
-/** The Learn section: the examples in examples.md's order. */
-export const LearnSection = memo(function LearnSection({ open, onLoad }: LearnSectionProps) {
+/** The Learn section: the examples in examples.md's order, the challenges and the lesson-link maker. */
+export const LearnSection = memo(function LearnSection({ open, onLoad, challenges, maker }: LearnSectionProps) {
   return (
     <div className={learn.wrap}>
       <section id="learn" className={`${theoryCss.section} ${learn.section}`} aria-labelledby="learn-title">
@@ -42,7 +49,7 @@ export const LearnSection = memo(function LearnSection({ open, onLoad }: LearnSe
           {EXAMPLES.map((ex, i) => (
             <li key={ex.id}>
               <button type="button" className={learn.item} data-example={ex.id} aria-current={open === ex.id ? 'true' : undefined}
-                onClick={() => onLoad(ex.id)}>
+                disabled={!!challenges.blocked} onClick={() => onLoad(ex.id)}>
                 <span className={learn.num}>E{i + 1}</span>
                 <span className={learn.itemTitle}>{ex.title}</span>
                 <span className={learn.itemIntro}>{ex.intro}</span>
@@ -50,6 +57,8 @@ export const LearnSection = memo(function LearnSection({ open, onLoad }: LearnSe
             </li>
           ))}
         </ol>
+        <ChallengeList {...challenges} />
+        <LessonMaker {...maker} />
       </section>
     </div>
   );

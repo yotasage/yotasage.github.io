@@ -60,6 +60,8 @@ export interface SolvePanelProps {
   /** The value lists per kind (D17) and their change (the page keeps them in the link and localStorage). */
   lists: ValueChoice;
   onLists: (next: ValueChoice) => void;
+  /** M6.3b: no suggestions (a lesson hides them): none are asked for and none are shown. */
+  noSuggest?: boolean;
 }
 
 const DIGITS = 4;
@@ -553,7 +555,7 @@ function RangeList({ c, r, first }: { c: Circuit; r: SolveResult; first: Unknown
   );
 }
 
-function SolvePanel({ circuit, onChange, revision, busy, onResult, onPreview, lists, onLists }: SolvePanelProps) {
+function SolvePanel({ circuit, onChange, revision, busy, onResult, onPreview, lists, onLists, noSuggest }: SolvePanelProps) {
   const c = circuit;
   const n = c.parts.length;
   const ask = askOf(c);
@@ -581,7 +583,7 @@ function SolvePanel({ circuit, onChange, revision, busy, onResult, onPreview, li
   const outcome = slow ? (late && (late.circuit === shown || sameMarks(late.circuit, shown)) ? late : null) : quick;
   // Suggestions (M4.4b) when nothing is marked: suggest.ts in the worker, the newest request winning; the last list
   // stays (stale) while the next is found.
-  const unmarked = askOf(shown).unknowns.length === 0;
+  const unmarked = !noSuggest && askOf(shown).unknowns.length === 0;
   const [sug, setSug] = useState<{ circuit: Circuit; lists: ValueChoice; o: Suggestions; ms: number } | null>(null);
   useEffect(() => {
     if (!unmarked) return undefined;
@@ -664,7 +666,7 @@ function SolvePanel({ circuit, onChange, revision, busy, onResult, onPreview, li
   const x: ListCtx = { c: oc, goal: askOf(oc).goal, node: r ? nodeText(r.goalNode) : '', stale, lists, apply, makers };
 
   // The suggestions shown: for the circuit as it is, or (stale) the last ones while the next are found.
-  const unmarkedNow = status === 'nothing' && ask.unknowns.length === 0;
+  const unmarkedNow = !noSuggest && status === 'nothing' && ask.unknowns.length === 0;
   const sugShown = unmarkedNow ? sug : null;
   const sugStale = unmarkedNow && (!sugShown || sugShown.circuit !== circuit || sugShown.lists !== lists);
   sugBase.current = sugShown?.circuit ?? null;

@@ -11,6 +11,8 @@ import {
   LINE, QUARTER, SERIES_C, SERIES_L, SERIES_R, SHUNT_C, SHUNT_L, SHUNT_R, STUB_OPEN, STUB_SHORT,
 } from '../../lib/smith/parts';
 import type Bibliography from '../Bibliography';
+import { hasLock, kindLocked, valueLocked } from '../../lib/smith/lesson';
+import type { Lesson } from '../../lib/smith/lesson';
 import styles from '../../styles/Smith.module.css';
 import Explain from './Explain';
 import type { Move } from './Explain';
@@ -47,6 +49,25 @@ export interface StripProps {
   digits?: number;
   /** M5.4: the page's sources, for the citations of "Explain this move". */
   bib?: Bibliography;
+  /** M6.3b: what a lesson or a challenge locks, and why (said beside every locked control). */
+  lock?: StripLock | null;
+  /** M6.3b: no "Solve for" (a challenge runs, or the lesson hides the Solve panel). */
+  noSolve?: boolean;
+  /** M6.3b: no load fields and no circuit input (a "read this point" challenge: they would print the answer). */
+  noRead?: boolean;
+}
+
+/** The locks the strip obeys (lesson.ts's form) and the sentence that says why. */
+export interface StripLock { lesson: Lesson; why: string }
+
+/** A small padlock beside a locked control; the reason is its title and, for screen readers, its text. */
+function LockMark({ id, why }: { id: string; why: string }) {
+  return (
+    <span className={styles.lockMark} id={id} title={why} data-lock-mark="">
+      <svg viewBox="0 0 12 14" width="10" height="12" aria-hidden="true"><path d="M3 6V4a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" strokeWidth="1.6" /><rect x="1" y="6" width="10" height="7.5" rx="1.5" fill="currentColor" /></svg>
+      <span className={styles.srOnly}>{why}</span>
+    </span>
+  );
 }
 
 /** M5.4: changes of one part's value within this time are one move (the keystrokes of a typed value, a drag and its fix). */
@@ -105,9 +126,11 @@ export interface FieldProps {
   revision?: number;
   /** The key of its short line (whys.ts), shown as an info button after the label. */
   why?: string;
+  /** Why the field is locked (M6.3b): read only, with a padlock that says so; '' or absent when it is not. */
+  locked?: string;
 }
 
-export function Field({ label, hint, shown, edit, name, revision, why }: FieldProps) {
+export function Field({ label, hint, shown, edit, name, revision, why, locked }: FieldProps) {
   const [draft, setDraft] = useState<string | null>(null);
   const [error, setError] = useState('');
   useEffect(() => { setDraft(null); setError(''); }, [revision]);
@@ -117,16 +140,20 @@ export function Field({ label, hint, shown, edit, name, revision, why }: FieldPr
       <span className={styles.fieldHead}>
         <label className={styles.fieldLabel} htmlFor={id}>{label}{hint && <span className={styles.readHint}> {hint}</span>}</label>
         {why && <Why k={why} />}
+        {locked && <LockMark id={`${id}-lock`} why={locked} />}
       </span>
       <input
         id={id}
         className={styles.input}
-        value={draft ?? shown}
+        value={locked ? shown : draft ?? shown}
+        readOnly={!!locked}
+        aria-readonly={locked ? true : undefined}
+        data-locked={locked ? '' : undefined}
         spellCheck={false}
         autoComplete="off"
         aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${id}-e` : undefined}
-        onChange={(e) => { const t = e.target.value; setDraft(t); setError(edit(t)); }}
+        aria-describedby={error ? `${id}-e` : locked ? `${id}-lock` : undefined}
+        onChange={(e) => { if (locked) return; const t = e.target.value; setDraft(t); setError(edit(t)); }}
         onBlur={() => { if (!error) setDraft(null); }}
         onKeyDown={(e) => { if (e.key === 'Escape' && draft !== null) { setDraft(null); setError(''); } }}
       />
@@ -145,9 +172,17 @@ const UNIT_WORD: Record<string, string> = { Ω: 'ohms', S: 'siemens', H: 'henrie
 const INPUT_SHOWN = [[0, 'z', 'normalised'], [1, 'Z', 'in Ω'], [4, 'Γ', 'polar'], [6, 'VSWR', ''], [7, 'Return loss', '']] as const;
 const INPUT_KEYS = ['z', 'Z', 'y', 'Y', 'gamma', 'gammaRect', 'vswr', 'rl', 'note'];
 
-export default function Strip({ circuit, onChange, issues, selected: chosen, onSelect, onHover, revision, drawKind = -1, onDraw, digits, bib }: StripProps) {
+export default function Strip({ circuit, onChange, issues, selected: chosen, onSelect, onHover, revision, drawKind = -1, onDraw, digits, bib, lock, noSolve, noRead }: StripProps) {
   const c = circuit;
   const n = c.parts.length;
+  // M6.3b: the locks. A kind-locked part cannot be removed or moved, nor another moved onto its place; with the parts'
+  // list locked nothing is added; a new part goes only where it shifts no locked part (the source side of them).
+  const ls = lock?.lesson ?? null, lockWhy = lock?.why ?? '';
+  const listLocked = hasLock(ls, 'parts');
+  let lastLocked = -1;
+  if (ls) for (let i = 0; i < n; i++) if (kindLocked(ls, i) || valueLocked(ls, i)) lastLocked = i;
+  const kindFixed = (i: number) => kindLocked(ls, i) || valueLocked(ls, i);
+  const canMove = (i: number, to: number) => !listLocked && to >= 0 && to < n && !kindFixed(i) && !kindFixed(to);
   // Stable keys for the parts across reorders (the circuit itself has no ids).
   const ids = useRef<number[]>([]);
   const nextId = useRef(1);
@@ -203,7 +238,9 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
   });
 
   const add = () => {
+    if (listLocked) return;
     const at = addAt < 0 || addAt > n ? n : addAt;
+    if (at <= lastLocked) return;
     ids.current.splice(at, 0, nextId.current++);
     const next = insertPart(c, at, newPart(addKind, c));
     onChange(next);
@@ -212,6 +249,7 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
     focusFor.current = next;
   };
   const remove = (i: number) => {
+    if (listLocked || i <= lastLocked) return;
     ids.current.splice(i, 1);
     const after = removePart(c, i);
     onChange(after);
@@ -222,7 +260,7 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
     if (addAt >= n - 1) setAddAt(-1);
   };
   const move = (i: number, to: number) => {
-    if (to < 0 || to >= n || to === i) return;
+    if (to < 0 || to >= n || to === i || !canMove(i, to)) return;
     const [id] = ids.current.splice(i, 1);
     ids.current.splice(to, 0, id);
     const next = movePart(c, i, to);
@@ -250,8 +288,8 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
     return out;
   }, [c, digits]);
 
-  const param = (name: string, label: string, unit: string, value: number, problem: (v: number) => string, set: (v: number) => Circuit, infinite = false, why = '') => (
-    <Field name={name} label={label} why={why || undefined} revision={revision} shown={formatAmount(value, unit, DIGITS)} edit={(t) => {
+  const param = (name: string, label: string, unit: string, value: number, problem: (v: number) => string, set: (v: number) => Circuit, infinite = false, why = '', locked = '') => (
+    <Field name={name} label={label} why={why || undefined} revision={revision} locked={locked} shown={formatAmount(value, unit, DIGITS)} edit={(t) => {
       const v = readAmount(t, unit, infinite);
       const why = reason(t, v, UNIT_WORD[unit] ?? unit, v === null ? '' : problem(v));
       if (!why) onChange(set(v), `field:${name}`);
@@ -261,7 +299,8 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
 
   const part = selected >= 0 ? c.parts[selected] : null;
   const partField = (p: Part, i: number, form: Form) => (
-    <Field key={form.id} name={`p${i + 1}-${form.id}`} label={form.label} hint={form.hint} why={FIELD_WHY[form.id]} revision={revision} shown={formText(form, formValue(form.id, p, c))}
+    <Field key={form.id} name={`p${i + 1}-${form.id}`} label={form.label} hint={form.hint} why={FIELD_WHY[form.id]} revision={revision}
+      locked={valueLocked(ls, i) ? lockWhy : ''} shown={formText(form, formValue(form.id, p, c))}
       edit={(t) => {
         const v = readForm(form, t);
         if (v === null) return reason(t, v, UNIT_WORD[form.unit] ?? '', '');
@@ -310,8 +349,8 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
   };
 
   const positions: { at: number; text: string }[] = [{ at: -1, text: 'at the source end' }];
-  if (n > 0) positions.push({ at: 0, text: 'at the load end' });
-  for (let i = 1; i < n; i++) positions.push({ at: i, text: `between ${i} and ${i + 1}` });
+  if (n > 0 && lastLocked < 0) positions.push({ at: 0, text: 'at the load end' });
+  for (let i = Math.max(1, lastLocked + 1); i < n; i++) positions.push({ at: i, text: `between ${i} and ${i + 1}` });
 
   return (
     <section className={styles.panel} aria-labelledby="smith-circuit" data-circuit="">
@@ -323,10 +362,10 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
         </div>
       )}
       <div className={styles.params}>
-        {param('z0', 'Z0', 'Ω', c.z0, z0Problem, (v) => ({ ...c, z0: v }), false, 'z0')}
-        {param('f0', 'f0', 'Hz', c.f0, f0Problem, (v) => ({ ...c, f0: v }), false, 'f0')}
-        {param('loadR', 'Load R', 'Ω', c.loadR, loadRProblem, (v) => ({ ...c, loadR: v, loadX: v === Infinity ? 0 : c.loadX }), true, 'load')}
-        {param('loadX', 'Load X', 'Ω', c.loadX, loadXProblem, (v) => ({ ...c, loadX: v }), false, 'load')}
+        {param('z0', 'Z0', 'Ω', c.z0, z0Problem, (v) => ({ ...c, z0: v }), false, 'z0', hasLock(ls, 'z0') ? lockWhy : '')}
+        {param('f0', 'f0', 'Hz', c.f0, f0Problem, (v) => ({ ...c, f0: v }), false, 'f0', hasLock(ls, 'f0') ? lockWhy : '')}
+        {!noRead && param('loadR', 'Load R', 'Ω', c.loadR, loadRProblem, (v) => ({ ...c, loadR: v, loadX: v === Infinity ? 0 : c.loadX }), true, 'load', hasLock(ls, 'zl') ? lockWhy : '')}
+        {!noRead && param('loadX', 'Load X', 'Ω', c.loadX, loadXProblem, (v) => ({ ...c, loadX: v }), false, 'load', hasLock(ls, 'zl') ? lockWhy : '')}
       </div>
 
       <div className={styles.strip} role="toolbar" aria-label="Parts from the source (left) to the load (right); arrows choose, Alt+arrows move, Delete removes" data-strip="">
@@ -339,8 +378,8 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
           return (
             <button key={ids.current[i]} type="button" className={styles.tile} data-tile={i} data-kind={KIND_CODES[p.kind]}
               ref={(el) => { tiles.current[i] = el; }} style={{ color: partColour(i) }} aria-pressed={i === selected}
-              tabIndex={i === selected ? 0 : -1} aria-label={`Part ${i + 1}: ${KIND_NAMES[p.kind]}, ${value}${marked(i) ? ', solved for' : ''}`}
-              data-unknown={marked(i) ? '' : undefined}
+              tabIndex={i === selected ? 0 : -1} aria-label={`Part ${i + 1}: ${KIND_NAMES[p.kind]}, ${value}${marked(i) ? ', solved for' : ''}${kindFixed(i) ? `, locked: ${lockWhy}` : ''}`}
+              data-unknown={marked(i) ? '' : undefined} data-locked={kindFixed(i) ? '' : undefined}
               onClick={() => setSel(i)} onKeyDown={tileKey(i)}
               onMouseEnter={() => onHover?.(i)} onMouseLeave={() => onHover?.(-1)} onFocus={() => onHover?.(i)} onBlur={() => onHover?.(-1)}>
               <PartSymbol kind={p.kind} />
@@ -358,14 +397,15 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
           <div className={styles.cardHead}>
             <span className={styles.cardName}>{selected + 1} · {KIND_NAMES[part.kind]}<ShowEq subject={{ t: 'part', i: selected }} k="part" what={`part ${selected + 1}`} back="the part card" /></span>
             <span className={styles.cardActions}>
-              <button type="button" className={styles.button} data-move="source" disabled={selected === n - 1} onClick={() => move(selected, selected + 1)} title="Move towards the source (Alt+←)" aria-label="Move towards the source">←</button>
-              <button type="button" className={styles.button} data-move="load" disabled={selected === 0} onClick={() => move(selected, selected - 1)} title="Move towards the load (Alt+→)" aria-label="Move towards the load">→</button>
-              <button type="button" className={styles.button} data-remove="" onClick={() => remove(selected)} title="Remove (Delete)">Remove</button>
+              {kindFixed(selected) && <LockMark id="smith-card-lock" why={lockWhy} />}
+              <button type="button" className={styles.button} data-move="source" disabled={!canMove(selected, selected + 1)} onClick={() => move(selected, selected + 1)} title="Move towards the source (Alt+←)" aria-label="Move towards the source">←</button>
+              <button type="button" className={styles.button} data-move="load" disabled={!canMove(selected, selected - 1)} onClick={() => move(selected, selected - 1)} title="Move towards the load (Alt+→)" aria-label="Move towards the load">→</button>
+              <button type="button" className={styles.button} data-remove="" disabled={listLocked || selected <= lastLocked} onClick={() => remove(selected)} title="Remove (Delete)">Remove</button>
               <Why k="card" />
             </span>
           </div>
           <WhyLine k={`kind-${KIND_CODES[part.kind]}`} />
-          {solveRow(part, selected)}
+          {!noSolve && !valueLocked(ls, selected) && solveRow(part, selected)}
           <div className={styles.forms}>{formsOf(part.kind).map((form) => partField(part, selected, form))}</div>
           <div className={styles.explainBar}>
             <button type="button" className={`${styles.button} ${styles.toggle}`} aria-pressed={explainFull} data-explain-open=""
@@ -395,19 +435,21 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
           {positions.map(({ at, text }) => <option key={at} value={at}>{text}</option>)}
         </select>
         <span className={styles.addGroup}>
-          <button type="button" className={styles.button} data-add="" onClick={add} disabled={n >= MAX_PARTS}>Add</button>
+          <button type="button" className={styles.button} data-add="" onClick={add} disabled={n >= MAX_PARTS || listLocked}>Add</button>
           <Why k="add" />
         </span>
         {onDraw && (
           <span className={styles.addGroup}>
             <button type="button" className={`${styles.button} ${styles.toggle}`} data-draw="" aria-pressed={drawKind >= 0}
-              disabled={n >= MAX_PARTS} onClick={() => onDraw(drawKind >= 0 ? -1 : addKind)}
+              disabled={n >= MAX_PARTS || listLocked} onClick={() => onDraw(drawKind >= 0 ? -1 : addKind)}
               title="Draw: drag from the input (In) on the chart to add this kind at the source end; Escape cancels">Draw</button>
             <Why k="draw" />
           </span>
         )}
       </div>
 
+      {listLocked && <p className={styles.readNote} data-parts-locked="">The parts’ list is locked: {lockWhy}</p>}
+      {!noRead && <>
       <h3 className={styles.subTitle}><span>Circuit input <Why k="input" /><ShowEq subject={{ t: 'node', k: n }} k="input" what="the circuit input" back="the circuit input" /></span><span className={styles.panelNote}>at f0</span></h3>
       <dl className={styles.readout} data-input-box="">
         {INPUT_SHOWN.map(([k, label, hint]) => (
@@ -418,6 +460,7 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
         ))}
       </dl>
       {inputTexts[8] && <p className={styles.readNote}>{inputTexts[8]}</p>}
+      </>}
     </section>
   );
 }

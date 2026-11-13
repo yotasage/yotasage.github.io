@@ -167,7 +167,7 @@ to r = 1), 214 (every \|Γ\| circle with 0 < \|Γ\| < 1 meets g = 1 at Γr = −
 228 T (challenge.ts hints from `solve`'s circles and solutions, M6.2; solveLayer.ts draws them); "Zt between Z0 and R"
 D `quarter-wave-match` (a geometric mean) · 229 T (lesson.ts, the page's `commit`; M6.3b).
 
-**Short lines** (examples-challenges.md §3; added to the table below when M6.3 puts them in `whys.ts`): `learn`,
+**Short lines** (examples-challenges.md §3; in `whys.ts` and theory.md §8 since M6.3a and M6.3b): `learn`,
 `learn-example`, `guide`, `guide-answer`, `guide-hint`, `challenge`, `challenge-reveal`, `challenge-progress`,
 `lesson`, `lesson-lock`, `lesson-hide`, `lesson-text`, `lesson-box` T; `challenge-check` D 226, T; `challenge-hint`
 T 228.

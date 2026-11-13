@@ -84,6 +84,17 @@ export const WHYS: Readonly<Record<string, Why>> = {
   guide: w('the guide', 'how-to-use', 'What to do now; it ticks when your circuit gets there.'),
   'guide-answer': w('the answer field', 'how-to-use', 'Type the number you read; it is checked within its tolerance.'),
   'guide-hint': w('Hint', 'how-to-use', 'One nudge for this step; “→ theory” says why.'),
+  // M6.3b: challenges and lesson links (examples-challenges.md §3).
+  challenge: w('the challenges', 'two-one-or-none', 'A new problem of this kind; the same link is the same problem.'),
+  'challenge-check': w('Check', 'how-good-is-a-match', 'Reached when the goal holds at f0 with the allowed parts only.'),
+  'challenge-hint': w('the hint ladder', 'two-one-or-none', 'Each press tells more: the circle, the part, a value, then all.'),
+  'challenge-reveal': w('Reveal', 'two-one-or-none', 'Shows the solver’s answers with Apply; counted as revealed, not solved.'),
+  'challenge-progress': w('the progress', 'how-to-use', 'Solved per kind, hints used, fewest parts: kept in this browser only.'),
+  lesson: w('Make a lesson link', 'how-to-use', 'Writes a link with your circuit, locks, hidden panels and text.'),
+  'lesson-lock': w('the locks', 'how-to-use', 'Locked values can’t be changed on the page, but the link can be edited.'),
+  'lesson-hide': w('Hide', 'how-to-use', 'Hides these panels for whoever opens the link.'),
+  'lesson-text': w('the text', 'how-to-use', 'Up to 500 characters, shown as plain text above the guide.'),
+  'lesson-box': w('the lesson', 'how-to-use', 'Set by the lesson’s link; Leave the lesson unlocks everything.'),
 };
 
 /** The key of a value field's line by its form (state.ts FormId). */

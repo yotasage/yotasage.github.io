@@ -67,17 +67,17 @@ const ALL = S.cleanAsk({ z0: 50, f0: 1e8, loadR: 25, loadX: 25, parts: S.KIND_OR
 const FAM = { ...ALL, ask: { ...ALL.ask, goal: { kind: 'vswr', value: 1.5, within: true } } };
 // M4.4b: nothing marked, so the panel shows its suggestions (and their line).
 const SUG = S.cleanAsk(ALL, { unknowns: [], goal: { kind: 'point' } });
-/** theory.md §8's 39 lines, M4.3a's five of the Solve panel, M4.3c's nine (theory-solver.md), M4.4b's suggestions and M5.2's two (show equation, the equations), M5.3's derivations, M5.4's Explain and M6.3a's five of the Learn section and the guide. */
-const LINES = 63;
+/** theory.md §8's 39 lines, M4.3a's five of the Solve panel, M4.3c's nine (theory-solver.md), M4.4b's suggestions and M5.2's two (show equation, the equations), M5.3's derivations, M5.4's Explain, M6.3a's five of the Learn section and the guide and M6.3b's ten of the challenges and lesson links. */
+const LINES = 73;
 /** The Standard values setting is folded: open it so its lines are on the page. */
-const openLists = (page) => page.evaluate(() => { document.querySelector('[data-lists]').open = true; });
+const openLists = (page) => page.evaluate(() => { for (const s of ['[data-lists]', '[data-lesson-maker]']) { const d = document.querySelector(s); if (d) d.open = true; } });
 
-async function open(context, c = null, hash = '') {
+async function open(context, c = null, hash = '', extra = '') {
   const page = await context.newPage();
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
   page.on('console', (msg) => { if (msg.type() === 'error') page.errors.push(msg.text()); });
-  await page.goto(`${base}/smith-chart/main${c ? `?${S.encodeCircuit(c)}` : ''}${hash}`, { waitUntil: 'networkidle' });
+  await page.goto(`${base}/smith-chart/main${c ? `?${S.encodeCircuit(c)}${extra}` : ''}${hash}`, { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-theory]');
   await page.waitForFunction(() => window.location.search.includes('v=1'));
   await frame(page);
@@ -146,6 +146,15 @@ try {
   for (const k of await pg.$$eval('[data-why]', (els) => els.map((e) => e.getAttribute('data-why')))) if (!seen.has(k)) guideKeys.add(k);
   for (const k of guideKeys) seen.add(k);
   ok(['guide', 'guide-answer', 'guide-hint'].every((k) => guideKeys.has(k)), () => `the guide's lines with an example loaded (${[...guideKeys]})`);
+  // M6.3b: a running challenge's lines and the Lesson box's, from a link with both.
+  const pc = await open(desk, ALL, '', '&ch=two.5&tx=Hi');
+  await pc.waitForSelector('[data-challenge]');
+  await openLists(pc);
+  await frame(pc);
+  const chKeys = new Set();
+  for (const k of await pc.$$eval('[data-why]', (els) => els.map((e) => e.getAttribute('data-why')))) if (!seen.has(k)) chKeys.add(k);
+  for (const k of chKeys) seen.add(k);
+  ok(['challenge-check', 'challenge-hint', 'challenge-reveal', 'lesson-box'].every((k) => chKeys.has(k)), () => `the challenge's and the lesson's lines (${[...chKeys]})`);
   for (const k of KEYS) ok(seen.has(k), `${k}: on the page`);
   ok(seen.size === LINES, () => `all ${LINES} lines seen (${seen.size})`);
 
@@ -163,8 +172,9 @@ try {
   for (const k of famKeys) followAll.push([-1, k]);
   for (const k of sugKeys) followAll.push([-2, k]);
   for (const k of guideKeys) followAll.push([-3, k]);
+  for (const k of chKeys) followAll.push([-4, k]);
   for (const [i, k] of followAll) {
-    const p = i === -1 ? pf : i === -2 ? ps : i === -3 ? pg : page0;
+    const p = i === -1 ? pf : i === -2 ? ps : i === -3 ? pg : i === -4 ? pc : page0;
     if (i >= 0 && await p.getAttribute(`[data-tile="${i}"]`, 'aria-pressed') !== 'true') { await p.click(`[data-tile="${i}"]`); await frame(p); }
     done.add(k);
     const sel = `button[data-why="${k}"]`;

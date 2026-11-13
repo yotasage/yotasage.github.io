@@ -8,7 +8,10 @@ import HomeIcon from '../../components/icons/home';
 import { MoonIcon, SunIcon } from '../../components/Resistor/parts';
 import Chart from '../../components/Smith/Chart';
 import Derivation from '../../components/Smith/Derivation';
+import { ChallengePanel, NO_PROGRESS, PROGRESS_KEY, addProgress, readProgress } from '../../components/Smith/Challenge';
+import type { Progress, ProgressEvent } from '../../components/Smith/Challenge';
 import { Guide, LearnSection } from '../../components/Smith/Learn';
+import { LessonBox, linkSearch } from '../../components/Smith/Lesson';
 import type { Grid } from '../../components/Smith/Learn';
 import MathPanel, { MathLive } from '../../components/Smith/MathPanel';
 import { mathLink } from '../../components/Smith/mathLink';
@@ -19,6 +22,7 @@ import SolvePanel from '../../components/Smith/SolvePanel';
 import { Status } from '../../components/Smith/Status';
 import type { Outcome } from '../../components/Smith/SolvePanel';
 import Strip from '../../components/Smith/Strip';
+import type { StripLock } from '../../components/Smith/Strip';
 import Theory from '../../components/Smith/Theory';
 import { Why } from '../../components/Smith/Why';
 import type { ChartView } from '../../components/Smith/chartView';
@@ -28,9 +32,13 @@ import { SolveLayer } from '../../components/Smith/solveLayer';
 import type { CircleShape } from '../../components/Smith/solveLayer';
 import { BibEntry } from '../../lib/bibtex';
 import { loadReferences } from '../../lib/references';
+import { makeChallenge } from '../../lib/smith/challenge';
+import type { Challenge, ChallengeKind } from '../../lib/smith/challenge';
 import { exampleById } from '../../lib/smith/examples';
+import { keepLocks, valueLocked } from '../../lib/smith/lesson';
+import type { Lesson, Lock } from '../../lib/smith/lesson';
 import { MODE_Y, MODE_Z, MODE_ZY } from '../../lib/smith/grid';
-import { Circuit, KIND_SHORT, LISTS_PARAM, decodeCircuit, defaultCircuit, encodeCircuit, sameCircuit, sameNetwork } from '../../lib/smith/state';
+import { Circuit, KIND_SHORT, decodeCircuit, defaultCircuit, sameCircuit, sameNetwork } from '../../lib/smith/state';
 import { choiceFromText, choiceToText, defaultChoice } from '../../lib/smith/values';
 import type { ValueChoice } from '../../lib/smith/values';
 import useReplayHighlight from '../../lib/useReplayHighlight';
@@ -87,6 +95,14 @@ interface History { past: Circuit[]; future: Circuit[]; dropped: Circuit[]; grou
 /** The start circuit (D16), to compare with; Start over commits a fresh copy. */
 const START = defaultCircuit();
 
+/** A running challenge and the locks it keeps (Z0, f0 and the load; for "read this point" the parts too). */
+interface Running { ch: Challenge; seq: number; locks: Lesson }
+const challengeLocks = (ch: Challenge): Lesson => ({ locks: ch.kind === 'read' ? ['z0', 'f0', 'zl', 'parts'] : ['z0', 'f0', 'zl'], hidden: [], text: '' });
+/** A lesson from the link and the circuit its locks keep. */
+interface LessonOn { lesson: Lesson; base: Circuit; seq: number }
+const LESSON_WHY = 'locked by the lesson’s link (Leave the lesson unlocks it).';
+const CHALLENGE_WHY = 'fixed by the challenge (Close it to change).';
+
 const LIGHT = { bg: '#f6f4ee', rule: '#e3dfd5', quiet: '#736f67', link: '#55524b', ink: '#1d1c19' };
 const DARK = { bg: '#2b2b2b', rule: '#3a3a38', quiet: '#8f8c83', link: '#b7b4ab', ink: '#edebe5' };
 
@@ -131,10 +147,44 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
       if (text) window.localStorage.setItem(LISTS_KEY, text); else window.localStorage.removeItem(LISTS_KEY);
     } catch { /* Storage can be blocked; the link still keeps the lists. */ }
   };
+  // M6.3b: the running challenge, the lesson of the link and the challenges' progress (localStorage, read after mount).
+  // The refs are what `commit` reads (it is handed out once); they change together with the state.
+  const seq = useRef(0);
+  const [challenge, setChallenge] = useState<Running | null>(null);
+  const running = useRef<Running | null>(null);
+  const [lesson, setLesson] = useState<LessonOn | null>(null);
+  const lessonOn = useRef<LessonOn | null>(null);
+  const [progress, setProgress] = useState<Progress>(NO_PROGRESS);
+  const saveProgress = (p: Progress) => {
+    setProgress(p);
+    try { window.localStorage.setItem(PROGRESS_KEY, JSON.stringify(p)); } catch { /* Kept for this visit. */ }
+  };
+  const progressRef = useRef(progress);
+  progressRef.current = progress;
   // The circuit comes from the link once the page is in the browser (never at build time).
   useEffect(() => {
     const read = decodeCircuit(window.location.search);
-    if (read.linked) { now.current = read.circuit; setCircuit(read.circuit); }
+    // M6.3b: a challenge starts from its own problem unless the link also holds the visitor's circuit (a load).
+    let c = read.circuit, ch: Challenge | null = null;
+    if (read.challenge) {
+      ch = makeChallenge(read.challenge.kind, read.challenge.seed);
+      if (!new URLSearchParams(window.location.search).has('zl')) c = ch.circuit;
+    }
+    if (read.linked || ch) { now.current = c; setCircuit(c); }
+    let stored: string | null = null;
+    try { stored = window.localStorage.getItem(PROGRESS_KEY); } catch { /* Storage can be blocked. */ }
+    const prog = readProgress(stored);
+    if (ch) {
+      const run = { ch, seq: ++seq.current, locks: challengeLocks(ch) };
+      running.current = run;
+      setChallenge(run);
+      saveProgress(addProgress(prog, ch.kind, { t: 'tried' }));
+    } else setProgress(prog);
+    if (read.lesson) {
+      const on = { lesson: read.lesson, base: c, seq: ++seq.current };
+      lessonOn.current = on;
+      setLesson(on);
+    }
     let text = read.lists;
     if (text === null) { try { text = window.localStorage.getItem(LISTS_KEY); } catch { /* Storage can be blocked. */ } }
     if (text) setListsState(choiceFromText(text));
@@ -147,18 +197,24 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   const router = useRouter();
   useEffect(() => {
     if (!linked || !router.isReady) return;
-    // A '+' in a number's exponent would read back as a space.
-    const vl = listsText ? `&${LISTS_PARAM}=${listsText.replace(/\+/g, '%2B')}` : '';
-    const url = `${window.location.pathname}?${encodeCircuit(circuit)}${vl}${window.location.hash}`;
+    const url = `${window.location.pathname}?${linkSearch(circuit, listsText, lesson?.lesson ?? null, challenge?.ch ?? null)}${window.location.hash}`;
     if (url !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
       window.history.replaceState(window.history.state, '', url);
     }
-  }, [linked, circuit, listsText, router.isReady]);
+  }, [linked, circuit, listsText, router.isReady, lesson, challenge]);
   // The one place a new circuit arrives: fields, add, remove, move, the end of a drag or a draw, a handle's keys.
   // Only refs and state setters are used, so the closures handed out once (the path layer, listeners) stay right.
   const commit = (next: Circuit, group = '') => {
     const h = hist.current, before = now.current;
-    if (next === before || sameCircuit(next, before)) return;
+    // M6.3b: every locked value of a lesson or a challenge stays, whatever the path (lesson.ts keepLocks).
+    const ls = lessonOn.current, run = running.current, asked = next;
+    if (ls) next = keepLocks(ls.lesson, ls.base, next);
+    if (run) next = keepLocks(run.locks, run.ch.circuit, next);
+    if (next === before || sameCircuit(next, before)) {
+      // A change the locks undid: the chart may show it already (a key step), so it gets the circuit back.
+      if (next !== asked) path.current?.setCircuit(before);
+      return;
+    }
     const t = performance.now();
     if (group && group === h.group && (group.startsWith('field:') || t - h.t < GROUP_MS)) {
       // The same step goes on; back where it began, there is no step at all.
@@ -197,7 +253,19 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     lists: (next: ValueChoice) => setListsRef.current(next),
     load: (id: string) => loadRef.current(id),
     closeGuide: () => setGuide(null),
+    start: (kind: ChallengeKind) => startRef.current(kind),
+    closeChallenge: () => {
+      running.current = null;
+      setChallenge(null);
+      solveLayer.current?.setHint(null, null);
+    },
+    apply: (c: Circuit) => applyRef.current(c),
+    circles: (shape: CircleShape | null, c: Circuit | null) => solveLayer.current?.setHint(shape, c),
+    progress: (kind: ChallengeKind, e: ProgressEvent) => saveRef.current(addProgress(progressRef.current, kind, e)),
+    leave: () => { lessonOn.current = null; setLesson(null); },
   }));
+  const saveRef = useRef(saveProgress);
+  saveRef.current = (p: Progress) => { progressRef.current = p; saveProgress(p); };
   const [stableRead] = useState(() => (gr: number, gi: number) => mathLive.point(gr, gi));
   const setListsRef = useRef(setLists);
   setListsRef.current = setLists;
@@ -217,9 +285,11 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   commitRef.current = commit;
   // The last outcome of the Solve panel (M4.3b draws its circles and the family's slider from it).
   const solved = useRef<Outcome | null>(null);
+  // Start over goes back to the lesson's circuit, else the challenge's problem, else the start circuit.
+  const startCircuit = (): Circuit => lessonOn.current?.base ?? running.current?.ch.circuit ?? defaultCircuit();
   const startOver = () => {
     if (path.current && path.current.dragPart >= 0) return;
-    commit(defaultCircuit());
+    commit(startCircuit());
     hist.current.group = '';
     setRevision((r) => r + 1);
     setPartSel(-1);
@@ -232,16 +302,45 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     const ex = exampleById(id);
     if (!ex || (path.current && path.current.dragPart >= 0)) return;
     stopDraw();
+    if (running.current) stable.closeChallenge();
     commit(decodeCircuit(ex.link).circuit);
     hist.current.group = '';
     setRevision((r) => r + 1);
     setPartSel(-1);
     setNodeSel(-1);
-    setGuide((g) => ({ id, seq: (g?.seq ?? 0) + 1 }));
+    setGuide({ id, seq: ++seq.current });
     tool.current?.scrollIntoView({ block: 'start' });
   };
   const loadRef = useRef(loadExample);
   loadRef.current = loadExample;
+  // M6.3b: a challenge of a kind with a new seed, as one undo step; its panel takes the guide's place.
+  const startChallenge = (kind: ChallengeKind) => {
+    if (path.current && path.current.dragPart >= 0) return;
+    const ch = makeChallenge(kind, crypto.getRandomValues(new Uint32Array(1))[0]);
+    stopDraw();
+    solveLayer.current?.setHint(null, null);
+    // The new problem's locks before its circuit arrives: the last problem's would keep the last load.
+    const run = { ch, seq: ++seq.current, locks: challengeLocks(ch) };
+    running.current = run;
+    commit(ch.circuit);
+    hist.current.group = '';
+    setRevision((r) => r + 1);
+    setPartSel(-1);
+    setNodeSel(-1);
+    setChallenge(run);
+    setGuide(null);
+    saveRef.current(addProgress(progressRef.current, kind, { t: 'tried' }));
+    tool.current?.scrollIntoView({ block: 'start' });
+  };
+  const startRef = useRef(startChallenge);
+  startRef.current = startChallenge;
+  // A revealed circuit, as one undo step.
+  const applyRef = useRef((c: Circuit) => {
+    if (path.current && path.current.dragPart >= 0) return;
+    commitRef.current(c);
+    hist.current.group = '';
+    setRevision((r) => r + 1);
+  });
   const [snap, setSnap] = useState(true);
   const [drawKind, setDrawKind] = useState(-1);
   // The digits setting (M5.1): readout.ts holds it for the frame loops, this state re-renders what shows it. Kept in
@@ -311,6 +410,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     (v.box as HTMLElement & { smithSolveLayer?: SolveLayer }).smithSolveLayer = solveL;
     solveLayer.current = solveL;
     layer.setLists(lists);
+    layer.setFixed(fixedRef.current);
     solveL.setGoal(now.current);
     const o = solved.current;
     solveL.setResult(o?.result ?? null, o?.circuit ?? null);
@@ -331,18 +431,55 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     path.current?.select(node >= 0 ? SEL_NODE : part >= 0 ? SEL_PART : SEL_NONE, node >= 0 ? node : part);
   }, [node, part]);
   const grid: Grid = mode === MODE_Y ? 'Y' : mode === MODE_ZY ? 'ZY' : 'Z';
+  // M6.3b: what the lesson hides and what a challenge hides while it runs (examples-challenges.md §1, §2).
+  const hidden = lesson?.lesson.hidden ?? [];
+  const noSolve = !!challenge || hidden.includes('solve');
+  const noSuggest = hidden.includes('suggest');
+  const noRead = challenge?.ch.kind === 'read';
+  // The locks the strip and the chart obey: the lesson's and the challenge's together.
+  const lock = useMemo<StripLock | null>(() => {
+    if (!lesson && !challenge) return null;
+    const locks: Lock[] = [...(lesson?.lesson.locks ?? []), ...(challenge?.locks.locks ?? [])];
+    return { lesson: { locks, hidden: [], text: '' }, why: lesson?.lesson.locks.length ? LESSON_WHY : CHALLENGE_WHY };
+  }, [lesson, challenge]);
+  const fixedRef = useRef<boolean[]>([]);
+  useEffect(() => {
+    fixedRef.current = circuit.parts.map((_, i) => valueLocked(lock?.lesson ?? null, i));
+    path.current?.setFixed(fixedRef.current);
+  }, [lock, circuit]);
+  // The solver's circles go with its panel.
+  useEffect(() => {
+    if (noSolve) { solved.current = null; solveLayer.current?.setResult(null, null); }
+  }, [noSolve]);
   const side = (
     <>
-      {guide && <Guide key={guide.seq} id={guide.id} circuit={circuit} grid={grid} digits={digits} onLoad={stable.load} onClose={stable.closeGuide} />}
+      {lesson && <LessonBox key={lesson.seq} lesson={lesson.lesson} onLeave={stable.leave} />}
+      {challenge
+        ? <ChallengePanel key={challenge.seq} ch={challenge.ch} circuit={circuit} noReveal={hidden.includes('reveal')}
+          fixed={!!lesson?.lesson.locks.length} onApply={stable.apply} onNew={stable.start} onClose={stable.closeChallenge}
+          onCircles={stable.circles} onProgress={stable.progress} />
+        : guide && <Guide key={guide.seq} id={guide.id} circuit={circuit} grid={grid} digits={digits} onLoad={stable.load} onClose={stable.closeGuide} />}
       <Strip circuit={circuit} onChange={commit} issues={issues} selected={part} onSelect={selectPart}
         revision={revision} drawKind={drawKind} onDraw={setDrawKind}
-        onHover={(i) => { path.current?.hover(SEL_PART, i); mathLink.fromPage(SEL_PART, i); }} digits={digits} bib={bib} />
-      <SolvePanel circuit={circuit} onChange={stable.commit} revision={revision} busy={stable.busy} onResult={stable.result}
-        onPreview={stable.preview} lists={lists} onLists={stable.lists} />
-      <Nodes circuit={circuit} selected={node} onSelect={(k) => setNodeSel(k === node ? -1 : k)}
-        onHover={(k) => { path.current?.hover(SEL_NODE, k); mathLink.fromPage(SEL_NODE, k); }} digits={digits} />
+        onHover={(i) => { path.current?.hover(SEL_PART, i); mathLink.fromPage(SEL_PART, i); }} digits={digits} bib={bib}
+        lock={lock} noSolve={noSolve} noRead={noRead} />
+      {!noSolve && (
+        <SolvePanel circuit={circuit} onChange={stable.commit} revision={revision} busy={stable.busy} onResult={stable.result}
+          onPreview={stable.preview} lists={lists} onLists={stable.lists} noSuggest={noSuggest} />
+      )}
+      {!noRead && (
+        <Nodes circuit={circuit} selected={node} onSelect={(k) => setNodeSel(k === node ? -1 : k)}
+          onHover={(k) => { path.current?.hover(SEL_NODE, k); mathLink.fromPage(SEL_NODE, k); }} digits={digits} />
+      )}
     </>
   );
+  // The Learn section's props, the same objects between commits (the section is memoised).
+  const blocked = lesson?.lesson.locks.length
+    ? 'The lesson’s locks hold the circuit: Leave the lesson (above the circuit) to load an example or start a challenge.' : '';
+  const challengesProps = useMemo(() => ({ running: challenge?.ch.kind ?? '', progress, onStart: stable.start, blocked }),
+    [challenge, progress, stable, blocked]);
+  const makerProps = useMemo(() => ({ circuit, lists: listsText, challenge: challenge ? { kind: challenge.ch.kind, seed: challenge.ch.seed } : null }),
+    [circuit, listsText, challenge]);
   // The equation panel (M5.1) under the readout: the selected node, else the selected (or last) part, else the load.
   // The same object while the selection stays, so the memoised panel skips the page's other renders.
   const subject = useMemo<Subject>(() => (node >= 0 ? { t: 'node', k: node } : part >= 0 ? { t: 'part', i: part } : { t: 'node', k: 0 }), [node, part]);
@@ -353,7 +490,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     <div className={theoryCss.sections}>
       <section id="theory" className={theoryCss.section} aria-labelledby="theory-title">
         <h2 className={theoryCss.sectionHead} id="theory-title">Theory</h2>
-        <Theory bib={bib} circuit={theoryCircuit} outcome={theoryOutcome} lists={lists} />
+        <Theory bib={bib} circuit={noRead ? START : theoryCircuit} outcome={theoryOutcome} lists={lists} />
       </section>
       {/* After the last citation: the list is numbered while the page above it is drawn. */}
       <section id="references" className={theoryCss.section} aria-labelledby="references-title">
@@ -364,7 +501,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
         </div>
       </section>
     </div>
-  ), [bib, theoryCircuit, theoryOutcome, lists]);
+  ), [bib, theoryCircuit, theoryOutcome, lists, noRead]);
   // null: follow the system. Read after mount, so the static page and the first render agree.
   const [theme, setTheme] = useState<Theme | null>(null);
   useEffect(() => {
@@ -407,8 +544,9 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
       <span className={styles.history}>
         <button type="button" className={styles.button} data-undo="" disabled={!hist.current.past.length} onClick={() => travel(true)} title="Undo (Ctrl+Z)">Undo</button>
         <button type="button" className={styles.button} data-redo="" disabled={!hist.current.future.length} onClick={() => travel(false)} title="Redo (Ctrl+Shift+Z or Ctrl+Y)">Redo</button>
-        <button type="button" className={styles.button} data-start-over="" disabled={sameCircuit(circuit, START)} onClick={startOver}
-          title="Back to the start circuit (Z0 = 50 Ω, load 25 + j25 Ω, f0 = 100 MHz, two parts); Undo brings this circuit back">Start over</button>
+        <button type="button" className={styles.button} data-start-over="" disabled={sameCircuit(circuit, lesson?.base ?? challenge?.ch.circuit ?? START)} onClick={startOver}
+          title={lesson ? 'Back to the lesson’s circuit; Undo brings this circuit back' : challenge ? 'Back to the challenge’s problem; Undo brings this circuit back'
+            : 'Back to the start circuit (Z0 = 50 Ω, load 25 + j25 Ω, f0 = 100 MHz, two parts); Undo brings this circuit back'}>Start over</button>
         <Why k="history" />
       </span>
       {drawKind >= 0 && (
@@ -422,7 +560,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     <div className={styles.root} data-theme={theme ?? undefined}>
       <Head>
         <title>Smith chart</title>
-        <meta name="description" content="Build a matching circuit of series and shunt R, L and C, transmission lines, stubs and λ/4 transformers on a zoomable Smith chart with impedance, admittance or combined grids: type or drag the values with snapping, read z, Γ, VSWR and return loss at every node, follow 16 worked examples step by step, let the solver find one or two missing values for a match or a circle, undo and redo, and keep the circuit in the link." />
+        <meta name="description" content="Build a matching circuit of series and shunt R, L and C, transmission lines, stubs and λ/4 transformers on a zoomable Smith chart with impedance, admittance or combined grids: type or drag the values with snapping, read z, Γ, VSWR and return loss at every node, follow 16 worked examples step by step, try challenges of five kinds with a ladder of hints, make lesson links with locked values, let the solver find one or two missing values for a match or a circle, undo and redo, and keep the circuit in the link." />
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <style jsx global>{`
@@ -487,11 +625,11 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
       <main>
         <Status />
         <div id="tool" ref={tool} className={`${styles.layout} ${theoryCss.tool}`}>
-          <Chart mode={mode} tools={modes} z0={circuit.z0} side={side} onView={onView} after={math}
-            onReadout={stableRead} digits={digits} onDigits={setDigits} />
-          <Derivation circuit={circuit} digits={digits} />
+          <Chart mode={mode} tools={modes} z0={circuit.z0} side={side} onView={onView} after={noRead ? null : math}
+            onReadout={stableRead} digits={digits} onDigits={setDigits} noReadout={noRead} />
+          {!noRead && <Derivation circuit={circuit} digits={digits} />}
         </div>
-        <LearnSection open={guide?.id ?? ''} onLoad={stable.load} />
+        <LearnSection open={guide?.id ?? ''} onLoad={stable.load} challenges={challengesProps} maker={makerProps} />
         {sections}
       </main>
     </div>

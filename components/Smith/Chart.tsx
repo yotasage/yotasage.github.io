@@ -24,6 +24,8 @@ export interface ChartProps {
   /** The digits setting (readout.ts shownDigits, already set by the page) and its change. */
   digits?: number;
   onDigits?: (digits: number) => void;
+  /** No readout at all (M6.3b: a "read this point" challenge; the grid and its labels stay). */
+  noReadout?: boolean;
 }
 
 const LABELS: Record<(typeof READOUT_FIELDS)[number], string> = {
@@ -43,7 +45,7 @@ const HINTS: Partial<Record<(typeof READOUT_FIELDS)[number], string>> = {
  * top <svg>, the gesture hint, and the side panel with the readout (beside the chart on wide screens, below it on
  * phones). Everything that changes with the pointer is written by ChartView in its frame loop; React renders this once.
  */
-export default function Chart({ mode, z0 = 50, tools, side, onView, after, onReadout, digits, onDigits }: ChartProps) {
+export default function Chart({ mode, z0 = 50, tools, side, onView, after, onReadout, digits, onDigits, noReadout }: ChartProps) {
   const box = useRef<HTMLDivElement>(null);
   const gridSvg = useRef<SVGSVGElement>(null);
   const top = useRef<SVGSVGElement>(null);
@@ -111,7 +113,7 @@ export default function Chart({ mode, z0 = 50, tools, side, onView, after, onRea
       </section>
       <aside className={styles.side}>
         {side}
-        <section className={styles.panel} aria-labelledby="smith-readout">
+        {!noReadout && <section className={styles.panel} aria-labelledby="smith-readout" data-readout="">
           <h2 className={styles.panelTitle} id="smith-readout">
             <span>Readout<Why k="show-eq" /></span>
             {onDigits && (
@@ -135,7 +137,7 @@ export default function Chart({ mode, z0 = 50, tools, side, onView, after, onRea
           </dl>
           <p className={styles.readNote} data-field="note" ref={(el) => { values.current[READOUT_FIELDS.indexOf('note')] = el; }} />
           <p className={styles.readEmpty}>Hover, tap or use the arrow keys on the chart to read a point.</p>
-        </section>
+        </section>}
         {after}
       </aside>
     </div>

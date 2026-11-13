@@ -467,6 +467,21 @@ At most about 12 words, after the control or under the readout row, followed by 
 | Its kind L (`list-L`) | Chip inductors come in makers’ own lists (1.9 nH): paste yours. | `realisable-values` |
 | Its kind C (`list-C`) | E series; RF chip capacitors below 10 pF have tolerances in pF. | `realisable-values` |
 | Its kind "Zt, Zc" (`list-Z`) | Any value by default; a list if your lines come in set impedances. | `realisable-values` |
+| Learn section (`learn`, M6.3a) | Worked examples: load one and follow its steps; any route counts. | `how-to-use` |
+| An example in the list (`learn-example`) | Loads its circuit as one step; Undo brings yours back. | `how-to-use` |
+| Guide panel (`guide`) | What to do now; it ticks when your circuit gets there. | `how-to-use` |
+| Guide: the answer field (`guide-answer`) | Type the number you read; it is checked within its tolerance. | the step's topic |
+| Guide: Hint (`guide-hint`) | One nudge for this step; "→ theory" says why. | the step's topic |
+| Challenge kinds (`challenge`, M6.3b) | A new problem of this kind; the same link is the same problem. | `two-one-or-none` |
+| Check (`challenge-check`) | Reached when the goal holds at f0 with the allowed parts only. | `how-good-is-a-match` |
+| Hint ladder (`challenge-hint`) | Each press tells more: the circle, the part, a value, then all. | `two-one-or-none` |
+| Reveal (`challenge-reveal`) | Shows the solver's answers with Apply; counted as revealed, not solved. | `two-one-or-none` |
+| Progress (`challenge-progress`) | Solved per kind, hints used, fewest parts: kept in this browser only. | `how-to-use` |
+| Make a lesson link (`lesson`) | Writes a link with your circuit, locks, hidden panels and text. | `how-to-use` |
+| Locks (`lesson-lock`) | Locked values can't be changed on the page, but the link can be edited. | `how-to-use` |
+| Hide (`lesson-hide`) | Hides these panels for whoever opens the link. | `how-to-use` |
+| Text (`lesson-text`) | Up to 500 characters, shown as plain text above the guide. | `how-to-use` |
+| Lesson box (`lesson-box`) | Set by the lesson's link; Leave the lesson unlocks everything. | `how-to-use` |
 
 Facts in the short lines repeat claims of the topics they link to (Series L: claims 48, 56; Line: 61, 84; stubs: 95,
 97; λ/4: 89, 91; Z/Y/ZY: 38; VSWR: 101, 102; return loss: 104, 105; goal: 110, 14; the solver's lines: claims.md);

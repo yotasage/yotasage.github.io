@@ -867,6 +867,8 @@
   background: color-mix(in srgb, currentColor 16%, transparent);
 }
 .chart [data-layer='path-marks'] [data-handle][data-hot]::before { width: 32px; height: 32px; }
+/* A locked value (M6.3b): a dashed ring that does not take the pointer. */
+.chart [data-layer='path-marks'] [data-handle][data-fixed]::before { border-style: dashed; background: none; }
 .chart [data-layer='path-marks'] [data-handle][data-drag]::before {
   width: 34px;
   height: 34px;
@@ -1269,3 +1271,22 @@
 .readRow[data-lit],
 .readout[data-lit],
 .goalText[data-lit] { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+
+/* M6.3b: a locked control's padlock (Strip.tsx LockMark) and text kept for screen readers only. */
+.lockMark {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  color: var(--ink-3);
+  cursor: help;
+}
+.root .input[data-locked] { background: transparent; border-style: dashed; color: var(--ink-2); }
+.root .tile[data-locked] { border-style: dashed; }
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

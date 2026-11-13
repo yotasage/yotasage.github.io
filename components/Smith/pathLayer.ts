@@ -137,6 +137,8 @@ export class PathLayer {
   private keyMantissas: (readonly number[] | null)[] = [];
   /** The part being dragged (−1 none) and what the last move snapped to (harness and M3.3b). */
   dragPart = -1;
+  /** Parts whose value a lesson or a challenge locks (M6.3b): their handles do not drag and their keys do nothing. */
+  private fixed: readonly boolean[] = [];
   snapCode = SNAP_NONE; snapFamily = -1; snapGridValue = NaN; snapX = NaN; snapY = NaN; snapLabel = '';
 
   /** The evaluated circuit at f0: count parts, nodes (network.ts), arcs (geometry.ts), Γ of every node (re, im). */
@@ -348,7 +350,23 @@ export class PathLayer {
       const t = formatAmount(p.value, KEY_UNIT[p.kind], 4);
       if (hd.getAttribute('aria-valuetext') !== t) hd.setAttribute('aria-valuetext', t);
     }
+    this.markFixed();
     this.evaluate(c);
+  }
+
+  /** The parts whose value is locked (by index; M6.3b). Their handles keep their place and say so. */
+  setFixed(fixed: readonly boolean[]): void {
+    this.fixed = fixed;
+    this.markFixed();
+  }
+
+  private markFixed(): void {
+    for (let i = 0; i < this.keyEls.length; i++) {
+      const on = !!this.fixed[i];
+      this.keyEls[i].toggleAttribute('aria-readonly', on);
+      if (on) this.keyEls[i].setAttribute('aria-readonly', 'true');
+      this.handleEls[i]?.toggleAttribute('data-fixed', on);
+    }
   }
 
   /** The committed circuit as the layer has it (the page's, or a key step's before React renders it). */
@@ -372,6 +390,7 @@ export class PathLayer {
     let best = -1, bestD = HANDLE_PX;
     // From the source end: of handles that coincide (parts of no effect) the one nearer the source is taken.
     for (let i = this.count - 1; i >= 0; i--) {
+      if (this.fixed[i]) continue; // a locked value's handle is not there for the pointer
       const d = Math.hypot(v.screenX(g[2 * i + 2]) - px, v.screenY(g[2 * i + 3]) - py);
       if (d < bestD) { bestD = d; best = i; }
     }
@@ -381,7 +400,7 @@ export class PathLayer {
   /** Starts a drag of part i's handle (pointer; from M3.3b also the keyboard). False when there is no such part. */
   beginDrag(i: number): boolean {
     const c = this.circuit;
-    if (!c || !(i >= 0 && i < this.count) || this.dragPart >= 0) return false;
+    if (!c || !(i >= 0 && i < this.count) || this.dragPart >= 0 || this.fixed[i]) return false;
     this.trace(null);
     this.dragPart = i;
     this.base = c;
@@ -546,7 +565,7 @@ export class PathLayer {
    */
   keyStep(i: number, up: boolean, coarse: boolean): void {
     const c = this.circuit;
-    if (!c || this.dragPart >= 0 || !(i >= 0 && i < this.count)) return;
+    if (!c || this.dragPart >= 0 || !(i >= 0 && i < this.count) || this.fixed[i]) return;
     const p = c.parts[i], list = this.lists[VKIND[p.kind]];
     let v = NaN;
     if (this.snap && list?.id === 'own' && list.values?.length && p.value > 0 && p.value < Infinity) {

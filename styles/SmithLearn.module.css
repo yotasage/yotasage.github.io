@@ -158,3 +158,83 @@
 @media (pointer: coarse) {
   .btn.btn.btn { min-height: 44px; min-width: 44px; }
 }
+
+/* ---- M6.3b: challenges (Challenge.tsx), the Lesson box and "Make a lesson link" (Lesson.tsx) ---- */
+
+.listHead + .note, .note { margin: 0 0 10px; font-size: 13px; color: var(--ink-3); }
+.list + .listHead { margin-top: 22px; }
+.headNote { display: inline-flex; align-items: center; gap: 4px; font-weight: 500; color: var(--ink-3); }
+.item.item:disabled { cursor: not-allowed; opacity: 0.6; }
+.progress {
+  grid-column: 2;
+  font: 11.5px/1.4 var(--font-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+}
+
+.checkRow { display: flex; align-items: center; gap: 6px; }
+.answer:has(.checkRow:only-child) { grid-template-columns: auto; }
+
+.hints {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.hints > li { padding: 6px 0 0; border-top: 1px solid var(--rule); margin-top: 6px; overflow-wrap: anywhere; }
+.hints > li:focus { outline: none; }
+.hints > li:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.reveal, .standard { margin: 6px 0 0; padding: 0 0 0 16px; }
+.reveal > li, .standard > li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 4px; }
+.revealText { font: 12.5px/1.45 var(--font-num); overflow-wrap: anywhere; }
+
+.lessonText { margin: 6px 0 0; font-size: 14px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.maker {
+  margin-top: 22px;
+  padding: 10px 12px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--field);
+}
+.makerHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.maker[open] > .makerHead { margin-bottom: 8px; }
+.maker .lead { margin-bottom: 10px; font-size: 13px; }
+
+.set {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  min-width: 0;
+  margin: 0 0 10px;
+  padding: 6px 10px 8px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+.set > legend { display: flex; align-items: center; gap: 4px; padding: 0 4px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+.check { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; font-size: 13px; }
+.partLocks { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0 10px; flex-basis: 100%; }
+.partName { font-size: 12.5px; color: var(--ink-3); }
+
+.textRow { display: grid; gap: 4px; margin-bottom: 8px; }
+.counter { font: 12px var(--font-num); color: var(--ink-3); }
+.textarea.textarea { width: 100%; min-height: 4.5em; resize: vertical; font: inherit; font-size: 14px; }
+
+.linkRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; margin-top: 8px; }
+
+@media (pointer: coarse) {
+  .check, .makerHead { min-height: 44px; }
+}
