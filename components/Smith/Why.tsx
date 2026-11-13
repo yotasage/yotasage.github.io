@@ -24,9 +24,11 @@ let closeOpen: (() => void) | null = null;
 
 const BUBBLE_W = 288, MARGIN = 12, GAP = 6;
 
-export function Why({ k, label }: { k: string; label?: string }) {
+/** `topic` replaces the line's own topic where it depends on the context (the guide's step, M6.3a). */
+export function Why({ k, label, topic: topicFor }: { k: string; label?: string; topic?: string }) {
   const why = WHYS[k];
   if (!why) throw new Error(`Unknown short line "${k}" in the Smith chart.`);
+  const topic = topicFor ?? why.topic;
   const [at, setAt] = useState<React.CSSProperties | null>(null);
   const wrap = useRef<HTMLSpanElement>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -83,15 +85,15 @@ export function Why({ k, label }: { k: string; label?: string }) {
       {/* Unlabelled, the button is the 15 px mark itself, a box of fixed size with layout containment: the side panel
           is laid out again on every drag frame (live.ts), and these boxes then cost it nothing inside. */}
       <button ref={button} type="button" className={label ? styles.whyLabelled : styles.whyButton}
-        data-why={k} aria-expanded={!!at} aria-controls={at ? id : undefined} aria-label={label ? undefined : `About ${why.about}`}
+        data-why={k} data-why-topic={topicFor} aria-expanded={!!at} aria-controls={at ? id : undefined} aria-label={label ? undefined : `About ${why.about}`}
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(); }}>
         {label ? <>{label}<span className={styles.whyMark} aria-hidden="true">?</span></> : '?'}
       </button>
       {at && (
         <span className={styles.whyBubble} id={id} role="note" style={at} data-why-bubble={k}>
           {why.text}{' '}
-          <a href={`#${why.topic}`} className={styles.whyLink} data-why-link={k}
-            onClick={() => { followTopic(why.topic, button.current); close(); }}>→ theory</a>
+          <a href={`#${topic}`} className={styles.whyLink} data-why-link={k}
+            onClick={() => { followTopic(topic, button.current); close(); }}>→ theory</a>
         </span>
       )}
     </span>

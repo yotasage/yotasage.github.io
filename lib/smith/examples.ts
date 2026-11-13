@@ -575,6 +575,51 @@ export function stepDone(step: Step, circuit: Circuit, ctx: GuideContext): boole
   return false;
 }
 
+/**
+ * The figure the guide shows for a step (M6.3a), from the engine at f0: `q` at the node (for 'z', `value` + j`im`), and
+ * what the step wants there (`target`, `tim`; for the centre `target` is the largest |Γ| that counts). A typed answer's
+ * quantity once the step is done (never before: it would give the answer away), else the first near or circle check.
+ */
+export interface Figure {
+  q: Quantity | 'z';
+  node: NodeRef;
+  value: number;
+  im: number;
+  target: number;
+  tim: number;
+  /** What the figure is for: a typed answer's quantity, a circle's r, g or x, a point's z, or |Γ| for the centre (done when value ≤ target). */
+  of: 'answer' | 'circle' | 'near' | 'centre';
+}
+
+/** The step's figure for the visitor's circuit now (`done`: whether the step is done), or null when it has none. */
+export function guideFigure(step: Step, circuit: Circuit, done: boolean): Figure | null {
+  let pick: Check | null = null;
+  for (const group of step.done) {
+    for (const ch of group) {
+      if (ch.k === 'answer' ? done : ch.k === 'near' || ch.k === 'circle') { pick = ch; break; }
+    }
+    if (pick) break;
+  }
+  if (!pick) return null;
+  const n = evaluateNodes(circuit);
+  const k = pick.k === 'answer' || pick.k === 'near' || pick.k === 'circle' ? (pick.node === 'in' ? n : pick.node) : 0;
+  if (k > n) return null;
+  nodeMetrics(metrics, 0, nodes, k);
+  switch (pick.k) {
+    case 'answer':
+      return { q: pick.quantity, node: pick.node, value: quantityOf(pick.quantity, metrics, 0, circuit.z0), im: 0, target: pick.value, tim: 0, of: 'answer' };
+    case 'circle':
+      return { q: pick.kind, node: pick.node, value: quantityOf(pick.kind, metrics, 0, circuit.z0), im: 0, target: pick.value, tim: 0, of: 'circle' };
+    case 'near':
+      if (pick.r === 1 && pick.x === 0) {
+        return { q: 'mag', node: pick.node, value: metrics[M_MAG], im: 0, target: pick.tol, tim: 0, of: 'centre' };
+      }
+      return { q: 'z', node: pick.node, value: metrics[M_ZR], im: metrics[M_ZI], target: pick.r, tim: pick.x, of: 'near' };
+    default:
+      return null;
+  }
+}
+
 /** The step's answer check, if it asks for a typed number (the page shows the answer field). */
 export function answerCheck(step: Step): Extract<Check, { k: 'answer' }> | null {
   for (const group of step.done) for (const ch of group) if (ch.k === 'answer') return ch;

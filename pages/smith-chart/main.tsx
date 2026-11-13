@@ -8,6 +8,8 @@ import HomeIcon from '../../components/icons/home';
 import { MoonIcon, SunIcon } from '../../components/Resistor/parts';
 import Chart from '../../components/Smith/Chart';
 import Derivation from '../../components/Smith/Derivation';
+import { Guide, LearnSection } from '../../components/Smith/Learn';
+import type { Grid } from '../../components/Smith/Learn';
 import MathPanel, { MathLive } from '../../components/Smith/MathPanel';
 import { mathLink } from '../../components/Smith/mathLink';
 import type { Subject } from '../../components/Smith/mathRows';
@@ -26,6 +28,7 @@ import { SolveLayer } from '../../components/Smith/solveLayer';
 import type { CircleShape } from '../../components/Smith/solveLayer';
 import { BibEntry } from '../../lib/bibtex';
 import { loadReferences } from '../../lib/references';
+import { exampleById } from '../../lib/smith/examples';
 import { MODE_Y, MODE_Z, MODE_ZY } from '../../lib/smith/grid';
 import { Circuit, KIND_SHORT, LISTS_PARAM, decodeCircuit, defaultCircuit, encodeCircuit, sameCircuit, sameNetwork } from '../../lib/smith/state';
 import { choiceFromText, choiceToText, defaultChoice } from '../../lib/smith/values';
@@ -62,7 +65,7 @@ export async function getStaticProps() {
 }
 
 /** The sections of the page, in the order of the nav. */
-const SECTIONS = [{ id: 'tool', label: 'Tool' }, { id: 'theory', label: 'Theory' }, { id: 'references', label: 'References' }];
+const SECTIONS = [{ id: 'tool', label: 'Tool' }, { id: 'learn', label: 'Learn' }, { id: 'theory', label: 'Theory' }, { id: 'references', label: 'References' }];
 
 const MODES = [{ mode: MODE_Z, name: 'Z', title: 'Impedance grid: r and x circles' },
   { mode: MODE_Y, name: 'Y', title: 'Admittance grid: g and b circles' },
@@ -192,6 +195,8 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     },
     preview: (c: Circuit | null, shape?: CircleShape | null, base?: Circuit | null) => solveLayer.current?.setPreview(c, shape, base),
     lists: (next: ValueChoice) => setListsRef.current(next),
+    load: (id: string) => loadRef.current(id),
+    closeGuide: () => setGuide(null),
   }));
   const [stableRead] = useState(() => (gr: number, gi: number) => mathLive.point(gr, gi));
   const setListsRef = useRef(setLists);
@@ -220,6 +225,23 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     setPartSel(-1);
     setNodeSel(-1);
   };
+  // The worked example the guide shows (M6.3a); `seq` gives the guide a new key, so every load starts at step 1.
+  const [guide, setGuide] = useState<{ id: string; seq: number } | null>(null);
+  // Its circuit as one step, which Undo takes back; the tool comes into view with the guide focused beside the chart.
+  const loadExample = (id: string) => {
+    const ex = exampleById(id);
+    if (!ex || (path.current && path.current.dragPart >= 0)) return;
+    stopDraw();
+    commit(decodeCircuit(ex.link).circuit);
+    hist.current.group = '';
+    setRevision((r) => r + 1);
+    setPartSel(-1);
+    setNodeSel(-1);
+    setGuide((g) => ({ id, seq: (g?.seq ?? 0) + 1 }));
+    tool.current?.scrollIntoView({ block: 'start' });
+  };
+  const loadRef = useRef(loadExample);
+  loadRef.current = loadExample;
   const [snap, setSnap] = useState(true);
   const [drawKind, setDrawKind] = useState(-1);
   // The digits setting (M5.1): readout.ts holds it for the frame loops, this state re-renders what shows it. Kept in
@@ -308,8 +330,10 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   useEffect(() => {
     path.current?.select(node >= 0 ? SEL_NODE : part >= 0 ? SEL_PART : SEL_NONE, node >= 0 ? node : part);
   }, [node, part]);
+  const grid: Grid = mode === MODE_Y ? 'Y' : mode === MODE_ZY ? 'ZY' : 'Z';
   const side = (
     <>
+      {guide && <Guide key={guide.seq} id={guide.id} circuit={circuit} grid={grid} digits={digits} onLoad={stable.load} onClose={stable.closeGuide} />}
       <Strip circuit={circuit} onChange={commit} issues={issues} selected={part} onSelect={selectPart}
         revision={revision} drawKind={drawKind} onDraw={setDrawKind}
         onHover={(i) => { path.current?.hover(SEL_PART, i); mathLink.fromPage(SEL_PART, i); }} digits={digits} bib={bib} />
@@ -398,7 +422,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     <div className={styles.root} data-theme={theme ?? undefined}>
       <Head>
         <title>Smith chart</title>
-        <meta name="description" content="Build a matching circuit of series and shunt R, L and C, transmission lines, stubs and λ/4 transformers on a zoomable Smith chart with impedance, admittance or combined grids: type or drag the values with snapping, read z, Γ, VSWR and return loss at every node, let the solver find one or two missing values for a match or a circle, undo and redo, and keep the circuit in the link." />
+        <meta name="description" content="Build a matching circuit of series and shunt R, L and C, transmission lines, stubs and λ/4 transformers on a zoomable Smith chart with impedance, admittance or combined grids: type or drag the values with snapping, read z, Γ, VSWR and return loss at every node, follow 16 worked examples step by step, let the solver find one or two missing values for a match or a circle, undo and redo, and keep the circuit in the link." />
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <style jsx global>{`
@@ -467,6 +491,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
             onReadout={stableRead} digits={digits} onDigits={setDigits} />
           <Derivation circuit={circuit} digits={digits} />
         </div>
+        <LearnSection open={guide?.id ?? ''} onLoad={stable.load} />
         {sections}
       </main>
     </div>

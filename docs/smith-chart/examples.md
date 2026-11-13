@@ -456,7 +456,7 @@ antenna). Match it with two parts the solver finds, then round to E24.
 j1.077, so r and g are both below 1 and either order of an L-match works ⟨223⟩. With the series part at the load,
 x′ = ±√(r − r²) = ±0.49: the L adds 1.19 or 0.21. The solutions are a series L of 10.91 nH with a shunt C of 4.491 pF,
 and a series L of 1.926 nH with a shunt L of 7.486 nH ⟨224⟩. Rounded to E24, 11 nH with 4.3 pF gives |Γ| = 0.0267
-(31.5 dB) and with 4.7 pF 0.0337 (29.5 dB); 10 nH gives 0.123 or 0.127 (18.2, 17.9 dB): 8 % off in the L costs far
+(31.5 dB) and with 4.7 pF 0.0337 (29.5 dB); 10 nH gives 0.127 with 4.3 pF and 0.123 with 4.7 pF (17.9, 18.2 dB): 8 % off in the L costs far
 more than 1 % ⟨225⟩.
 
 **Solutions.** `v=1&z0=50&f0=868e6&zl=20:-35&p=ls:10.90887904883032e-9,cp:4.491341020931314e-12` (step 2),

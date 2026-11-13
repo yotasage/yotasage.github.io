@@ -1,0 +1,160 @@
+/* The Smith chart's Learn section and guide panel (step M6.3a, components/Smith/Learn.tsx). The theme's variables
+   come from Smith.module.css's .root. */
+
+/* ---- the Learn section (between the tool and the theory) ---- */
+
+.wrap {
+  padding: 44px 0 8px;
+  border-top: 1px solid var(--rule);
+}
+
+/* Laid out always (16 buttons): content-visibility would move the info bubbles of its lines when it renders. */
+.section.section { content-visibility: visible; }
+
+.lead {
+  max-width: 72ch;
+  margin: 0 0 14px;
+  color: var(--ink-2);
+  font-size: 14.5px;
+}
+
+.listHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--ink-2);
+}
+
+.list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item.item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 12px;
+  text-align: left;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--field);
+  cursor: pointer;
+}
+
+.item.item:hover { border-color: var(--rule-strong); background: var(--raise); }
+.item.item[aria-current='true'] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+
+.num {
+  grid-row: span 2;
+  min-width: 2.4em;
+  color: var(--ink-3);
+  font: 12.5px/1.6 var(--font-num);
+}
+
+.itemTitle { font-size: 14px; font-weight: 600; color: var(--ink); }
+.itemIntro { font-size: 12.5px; line-height: 1.4; color: var(--ink-3); }
+
+/* ---- the guide panel (top of the side panel: beside the chart on wide screens, right under it on phones) ---- */
+
+/* No containment: it would make the guide the containing block of the info bubbles (position: fixed). */
+.guide {
+  min-width: 0;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--field);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--ink-2);
+}
+
+.head:focus { outline: none; }
+.head:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.title { margin: 4px 0 0; font-size: 14.5px; font-weight: 600; line-height: 1.35; }
+.intro { margin: 4px 0 0; font-size: 12.5px; line-height: 1.4; color: var(--ink-3); }
+
+.step {
+  margin: 10px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--rule);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.step:focus { outline: none; }
+.step:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.stepNo {
+  display: block;
+  color: var(--ink-3);
+  font: 12px var(--font-num);
+}
+
+.answer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 6px;
+  margin-top: 8px;
+}
+
+.answerHead { grid-column: 1 / -1; display: flex; align-items: center; font-size: 12.5px; color: var(--ink-2); }
+
+.state {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.state[data-done] { color: var(--accent); font-weight: 600; }
+.tick { font-weight: 700; }
+
+.figure {
+  margin: 4px 0 0;
+  font: 12.5px/1.45 var(--font-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.hintRow { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.hint { margin: 6px 0 0; font-size: 13px; line-height: 1.45; color: var(--ink-2); }
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.space { flex: 1; }
+
+.btn.btn.btn { padding: 3px 12px; }
+.next.next.next { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+@media (pointer: coarse) {
+  .btn.btn.btn { min-height: 44px; min-width: 44px; }
+}

@@ -67,8 +67,8 @@ const ALL = S.cleanAsk({ z0: 50, f0: 1e8, loadR: 25, loadX: 25, parts: S.KIND_OR
 const FAM = { ...ALL, ask: { ...ALL.ask, goal: { kind: 'vswr', value: 1.5, within: true } } };
 // M4.4b: nothing marked, so the panel shows its suggestions (and their line).
 const SUG = S.cleanAsk(ALL, { unknowns: [], goal: { kind: 'point' } });
-/** theory.md §8's 39 lines, M4.3a's five of the Solve panel, M4.3c's nine (theory-solver.md), M4.4b's suggestions and M5.2's two (show equation, the equations), M5.3's derivations and M5.4's Explain. */
-const LINES = 58;
+/** theory.md §8's 39 lines, M4.3a's five of the Solve panel, M4.3c's nine (theory-solver.md), M4.4b's suggestions and M5.2's two (show equation, the equations), M5.3's derivations, M5.4's Explain and M6.3a's five of the Learn section and the guide. */
+const LINES = 63;
 /** The Standard values setting is folded: open it so its lines are on the page. */
 const openLists = (page) => page.evaluate(() => { document.querySelector('[data-lists]').open = true; });
 
@@ -138,6 +138,14 @@ try {
   for (const k of await ps.$$eval('[data-why]', (els) => els.map((e) => e.getAttribute('data-why')))) if (!seen.has(k)) sugKeys.add(k);
   for (const k of sugKeys) seen.add(k);
   ok(sugKeys.has('solve-suggest'), 'solve-suggest: beside the first suggestion');
+  // M6.3a: the guide's lines, with an example loaded (the answer's and the hint's link to the step's topic).
+  const pg = await open(desk, ALL);
+  await pg.click('[data-example="reading-a-match"]');
+  await frame(pg);
+  const guideKeys = new Set();
+  for (const k of await pg.$$eval('[data-why]', (els) => els.map((e) => e.getAttribute('data-why')))) if (!seen.has(k)) guideKeys.add(k);
+  for (const k of guideKeys) seen.add(k);
+  ok(['guide', 'guide-answer', 'guide-hint'].every((k) => guideKeys.has(k)), () => `the guide's lines with an example loaded (${[...guideKeys]})`);
   for (const k of KEYS) ok(seen.has(k), `${k}: on the page`);
   ok(seen.size === LINES, () => `all ${LINES} lines seen (${seen.size})`);
 
@@ -154,22 +162,23 @@ try {
   done.clear();
   for (const k of famKeys) followAll.push([-1, k]);
   for (const k of sugKeys) followAll.push([-2, k]);
+  for (const k of guideKeys) followAll.push([-3, k]);
   for (const [i, k] of followAll) {
-    const p = i === -1 ? pf : i === -2 ? ps : page0;
+    const p = i === -1 ? pf : i === -2 ? ps : i === -3 ? pg : page0;
     if (i >= 0 && await p.getAttribute(`[data-tile="${i}"]`, 'aria-pressed') !== 'true') { await p.click(`[data-tile="${i}"]`); await frame(p); }
     done.add(k);
     const sel = `button[data-why="${k}"]`;
     await p.locator(sel).first().scrollIntoViewIfNeeded();
     await p.locator(sel).first().click();
     await frame(p);
+    const topic = (await p.getAttribute(sel, 'data-why-topic')) ?? WHYS[k].topic;
     const text = await p.$eval('[data-why-bubble]', (e) => [e.getAttribute('data-why-bubble'), e.textContent, e.querySelector('a').getAttribute('href')]).catch(() => null);
-    ok(text && text[0] === k && text[1] === `${WHYS[k].text} → theory` && text[2] === `#${WHYS[k].topic}`, () => `${k}: the bubble shows "${text?.[1]}"`);
+    ok(text && text[0] === k && text[1] === `${WHYS[k].text} → theory` && text[2] === `#${topic}`, () => `${k}: the bubble shows "${text?.[1]}"`);
     const box = await bubbleBox(p);
     ok(box && box.left >= 0 && box.right <= box.vw && box.top >= 0 && box.bottom <= box.vh, () => `${k}: the bubble is on the screen (${JSON.stringify(box)})`);
     await p.click(`[data-why-link="${k}"]`);
     await frame(p);
     s = await state(p);
-    const topic = WHYS[k].topic;
     ok(s.hash === `#${topic}` && s.open.includes(topic), () => `${k}: the link opens #${topic} (${JSON.stringify(s)})`);
     ok(s.focus === topic, () => `${k}: the focus is on the topic's heading (${s.active})`);
     ok(s.bubbles.length === 0, `${k}: the bubble closed`);

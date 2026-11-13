@@ -380,7 +380,7 @@ try {
   const contents = await p0.$$eval('[data-theory] ol a[href^="#"]', (els) => els.map((e) => e.getAttribute('href')));
   ok(JSON.stringify(contents.slice(0, TOPICS.length)) === JSON.stringify(TOPICS.map((t) => `#${t}`)), 'the contents link every topic id');
   const nav = await p0.$$eval('nav[aria-label="Sections"] a', (els) => els.map((e) => [e.getAttribute('href'), e.textContent]));
-  ok(JSON.stringify(nav) === JSON.stringify([['#tool', 'Tool'], ['#theory', 'Theory'], ['#references', 'References']]), 'the bar has the section nav');
+  ok(JSON.stringify(nav) === JSON.stringify([['#tool', 'Tool'], ['#learn', 'Learn'], ['#theory', 'Theory'], ['#references', 'References']]), 'the bar has the section nav (M6.3a: with Learn)');
   for (const [href] of nav) ok(await p0.$(href) !== null, `section ${href} exists`);
 
   // Citations: every link resolves to an entry; numbered by first citation; the list in that order.

@@ -77,6 +77,13 @@ export const WHYS: Readonly<Record<string, Why>> = {
   'list-L': w('the L list', 'realisable-values', 'Chip inductors come in makers’ own lists (1.9 nH): paste yours.'),
   'list-C': w('the C list', 'realisable-values', 'E series; RF chip capacitors below 10 pF have tolerances in pF.'),
   'list-Z': w('the Zt and Zc list', 'realisable-values', 'Any value by default; a list if your lines come in set impedances.'),
+  // M6.3a: the Learn section and the guide (examples-challenges.md §3). The answer's and the hint's lines link to the
+  // step's own topic on the page (Why's `topic`); the topic here is their fallback.
+  learn: w('Learn', 'how-to-use', 'Worked examples: load one and follow its steps; any route counts.'),
+  'learn-example': w('the examples', 'how-to-use', 'Loads its circuit as one step; Undo brings yours back.'),
+  guide: w('the guide', 'how-to-use', 'What to do now; it ticks when your circuit gets there.'),
+  'guide-answer': w('the answer field', 'how-to-use', 'Type the number you read; it is checked within its tolerance.'),
+  'guide-hint': w('Hint', 'how-to-use', 'One nudge for this step; “→ theory” says why.'),
 };
 
 /** The key of a value field's line by its form (state.ts FormId). */

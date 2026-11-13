@@ -95,6 +95,11 @@
   .navLink[aria-current='true']::after { left: 6px; right: 6px; }
 }
 
+@media (max-width: 360px) {
+  .navLink { padding: 0 3px; }
+  .navLink[aria-current='true']::after { left: 3px; right: 3px; }
+}
+
 /* --- Theory ---------------------------------------------------------------------------------------------------- */
 
 .theory {
