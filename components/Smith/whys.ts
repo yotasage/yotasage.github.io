@@ -95,6 +95,13 @@ export const WHYS: Readonly<Record<string, Why>> = {
   'lesson-hide': w('Hide', 'how-to-use', 'Hides these panels for whoever opens the link.'),
   'lesson-text': w('the text', 'how-to-use', 'Up to 500 characters, shown as plain text above the guide.'),
   'lesson-box': w('the lesson', 'how-to-use', 'Set by the lesson’s link; Leave the lesson unlocks everything.'),
+  // M7.2a: the frequency sweep (Sweep panel, the trace and its markers on the chart).
+  sweep: w('the sweep', 'moving-on-the-chart', 'Reactances and line lengths change with f; the trace shows the input then.'),
+  'sweep-trace': w('the trace', 'how-good-is-a-match', 'Γ at the input across the band: nearer the centre, a better match.'),
+  'sweep-band': w('the band', 'how-to-use', 'The frequencies swept, in Hz; f0 need not lie inside them.'),
+  'sweep-points': w('Points', 'how-to-use', 'Even steps across the band; more are added where the trace bends.'),
+  'sweep-log': w('Spacing', 'how-to-use', 'Log gives each decade the same number of points, for wide bands.'),
+  'sweep-marker': w('markers', 'how-good-is-a-match', 'Marks the input’s point at one frequency and follows the circuit.'),
 };
 
 /** The key of a value field's line by its form (state.ts FormId). */

@@ -17,11 +17,11 @@ import { Why } from './Why';
 
 /** The page's link (after "?"): the circuit, the value lists, the lesson part and the challenge. A "read this point"
  * challenge writes no circuit: its load is the answer, and the seed brings it back. */
-export function linkSearch(c: Circuit, lists: string, lesson: Lesson | null, ch: { kind: ChallengeKind; seed: number } | null): string {
+export function linkSearch(c: Circuit, lists: string, lesson: Lesson | null, ch: { kind: ChallengeKind; seed: number } | null, sweep = ''): string {
   // A '+' in a number's exponent would read back as a space.
   const vl = lists ? `&${LISTS_PARAM}=${lists.replace(/\+/g, '%2B')}` : '';
   const head = ch && ch.kind === 'read' ? `v=${LINK_VERSION}` : encodeCircuit(c);
-  return `${head}${vl}${lessonParams(lesson)}${ch ? `&ch=${challengeText(ch.kind, ch.seed)}` : ''}`;
+  return `${head}${vl}${sweep}${lessonParams(lesson)}${ch ? `&ch=${challengeText(ch.kind, ch.seed)}` : ''}`;
 }
 
 /** A lock in words. */

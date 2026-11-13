@@ -17,6 +17,8 @@ import {
 import type { Unknown } from './solve';
 import { readChallenge, readLesson } from './lesson';
 import type { ChallengeKind, Lesson } from './lesson';
+import { bandProblem } from './sweep';
+import type { Band } from './sweep';
 
 export type { Part, PartKind } from './parts';
 export type { Goal } from './goal';
@@ -481,8 +483,73 @@ export function circuitInputGamma(out: Float64Array | number[], o: number, c: Ci
 //   Not circuit parameters (`linked` ignores them): decodeCircuit hands them back as `lesson` and `challenge`, the page
 //   appends lessonParams(lesson) and "&ch=" + challengeText to encodeCircuit's text, as it appends vl.
 
+// sw, mk the frequency sweep (M7.2a): sw the band, start:stop:points in Hz, ":log" for even steps in log f
+//   ("sw=50e6:150e6:401", "sw=1e6:1e9:1001:log"); mk the markers' frequencies in Hz, comma-separated, in the order they
+//   were added ("mk=100e6,120e6"), read only with sw. Not circuit parameters (`linked` ignores them, no undo step):
+//   decodeCircuit hands them back as `sweep`, the page appends sweepParams(sweep) as it appends vl. A band the page
+//   cannot sweep, or a marker outside the band, is left out with an issue.
+
 export const LINK_VERSION = 1;
-const PARAMS = ['v', 'z0', 'f0', 'zl', 'p', 'u', 'g', 'vl', 'lk', 'hd', 'tx', 'ch'];
+const PARAMS = ['v', 'z0', 'f0', 'zl', 'p', 'u', 'g', 'vl', 'lk', 'hd', 'tx', 'ch', 'sw', 'mk'];
+
+/** The page's largest band: the refinement's cap (sweep.ts REFINE_DEFAULTS), and a drag's budget (notes-M7.2a.md). */
+export const SWEEP_MAX_POINTS = 10_000;
+/** Markers on the trace at most. */
+export const MAX_MARKERS = 9;
+
+/** The sweep the page shows (M7.2a): the band and the markers' frequencies (Hz, in the order they were added). */
+export interface SweepSetting {
+  band: Band;
+  markers: number[];
+}
+
+/** Why the page cannot sweep this band, '' when it can (sweep.ts bandProblem, and at most SWEEP_MAX_POINTS points). */
+export function bandIssue(band: Band): string {
+  const p = bandProblem(band);
+  if (p === 'start') return band.log && band.start === 0 ? 'a logarithmic band cannot start at 0 Hz' : 'the start must be 0 Hz or more';
+  if (p === 'stop') return 'the stop must be above the start';
+  if (p === 'points' || band.points > SWEEP_MAX_POINTS) return `the points must be a whole number from 2 to ${SWEEP_MAX_POINTS.toLocaleString('en-US')}`;
+  if (p === 'narrow') return 'the band is too narrow for that many points';
+  return '';
+}
+
+/** The link's text of a sweep ("&sw=…&mk=…"), '' without one. */
+export function sweepParams(s: SweepSetting | null): string {
+  if (!s) return '';
+  const { start, stop, points, log } = s.band;
+  const mk = s.markers.length ? `&mk=${s.markers.map(numText).join(',')}` : '';
+  return `&sw=${numText(start)}:${numText(stop)}:${points}${log ? ':log' : ''}${mk}`;
+}
+
+/** The sweep of the link's sw and mk (null without sw, or when sw cannot be read: with an issue). */
+function readSweep(sw: string | null, mk: string | null, issues: string[]): SweepSetting | null {
+  if (sw === null) {
+    if (mk !== null) issues.push('mk (markers) without sw (a band) left out');
+    return null;
+  }
+  const bits = sw.split(':');
+  const log = bits.length === 4 && bits[3].trim().toLowerCase() === 'log';
+  const start = readNum(bits[0] ?? ''), stop = bits.length > 1 ? readNum(bits[1]) : null;
+  const points = bits.length > 2 ? Number(bits[2].trim()) : NaN;
+  let why = bits.length < 3 || bits.length > 4 || (bits.length === 4 && !log) ? 'wants start:stop:points or start:stop:points:log'
+    : start === null ? 'the start is not a number' : stop === null ? 'the stop is not a number' : '';
+  const band: Band = { start: start ?? NaN, stop: stop ?? NaN, points, log };
+  if (!why) why = bandIssue(band);
+  if (why) {
+    issues.push(`sw ${quote(sw)}: ${why}; no sweep is shown`);
+    return null;
+  }
+  const markers: number[] = [];
+  if (mk !== null && mk !== '') {
+    for (const token of mk.split(',')) {
+      const f = readNum(token);
+      if (markers.length === MAX_MARKERS) { issues.push(`more than ${MAX_MARKERS} markers; the rest are left out`); break; }
+      if (f === null || !(f >= band.start && f <= band.stop)) issues.push(`marker ${quote(token)}: ${f === null ? 'not a number' : 'outside the band'}; left out`);
+      else markers.push(f);
+    }
+  }
+  return { band, markers };
+}
 /** The link's parameter of the value lists (M4.3b). */
 export const LISTS_PARAM = 'vl';
 const GOAL_CODE = (k: GoalKind): string => (k === 'point' ? 'pt' : k);
@@ -644,7 +711,8 @@ export interface Decoded {
   /** The lesson part (lk, hd, tx), null when the link has none. */
   lesson: Lesson | null;
   /** The challenge (ch), null when the link has none or it cannot be read (with an issue). */
-  challenge: { kind: ChallengeKind; seed: number } | null;
+  challenge: { kind: ChallengeKind; seed: number } | null;  /** The sweep (sw, mk; M7.2a), null when the link has none or its band cannot be swept (with an issue). */
+  sweep: SweepSetting | null;
 }
 
 const quote = (s: string): string => `“${s.length > 40 ? `${s.slice(0, 40)}…` : s}”`;
@@ -661,7 +729,7 @@ export function decodeCircuit(search: string): Decoded {
   try {
     params = new URLSearchParams(String(search ?? ''));
   } catch {
-    return { circuit: c, issues: ['the link could not be read; the start circuit is shown'], linked: false, lists: null, lesson: null, challenge: null };
+    return { circuit: c, issues: ['the link could not be read; the start circuit is shown'], linked: false, lists: null, lesson: null, challenge: null, sweep: null };
   }
   let linked = false;
   for (const key of new Set(params.keys())) {
@@ -740,7 +808,8 @@ export function decodeCircuit(search: string): Decoded {
     if (typeof read === 'string') issues.push(`ch ${quote(ch)}: ${read}; left out`);
     else challenge = read;
   }
-  return { circuit, issues, linked, lists: params.get(LISTS_PARAM), lesson, challenge };
+  const sweep = readSweep(params.get('sw'), params.get('mk'), issues);
+  return { circuit, issues, linked, lists: params.get(LISTS_PARAM), lesson, challenge, sweep };
 }
 
 /** Whether two circuits are the same to the bit, what the solver is asked included (the page's "changed" test). */

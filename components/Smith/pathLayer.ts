@@ -379,6 +379,9 @@ export class PathLayer {
   /** The committed circuit as the layer has it (the page's, or a key step's before React renders it). */
   get committed(): Circuit | null { return this.circuit; }
 
+  /** During a handle's drag the circuit of its last move (null before it moved, and when no drag runs; M7.2a). */
+  get liveCircuit(): Circuit | null { return this.dragPart >= 0 ? this.live : null; }
+
   private evaluate(c: Circuit): void {
     const n = this.count;
     evaluate(this.nodes, this.parts, n, c.loadR, c.loadX, c.z0, c.f0, c.f0);

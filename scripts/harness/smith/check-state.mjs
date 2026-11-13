@@ -247,6 +247,39 @@ function runListsChecks({ section, ok, rnd, circuit }) {
   ok(VL.choiceToText(bad) === '', `broken vl tokens keep the defaults: ${VL.choiceToText(bad)}`);
   const big = decodeCircuit(`?vl=${'Co1e-12_2.2e+21'.replace(/\+/g, '%2B')}`);
   ok(VL.choiceFromText(big.lists).C.values[1] === 2.2e21, `an exponent's '+' survives the link: ${big.lists}`);
+
+  // M7.2a: the sweep (sw, mk) beside the circuit, as the page writes it (linkSearch appends sweepParams).
+  section('state: the sweep in the link (M7.2a)');
+  let sTrips = 0, sQuiet = 0, sSame = 0;
+  for (let t = 0; t < 2000; t++) {
+    const c = circuit();
+    const log = rnd() < 0.5, start = log ? 10 ** (3 + 7 * rnd()) : (rnd() < 0.1 ? 0 : 10 ** (3 + 7 * rnd()));
+    const stop = (start || 1e3) * (1 + 1e-3 + 100 * rnd()), points = 2 + Math.floor(rnd() * (S.SWEEP_MAX_POINTS - 1));
+    const band = { start, stop, points, log };
+    if (S.bandIssue(band)) continue;
+    const markers = Array.from({ length: Math.floor(rnd() * (S.MAX_MARKERS + 1)) }, () => (rnd() < 0.2 ? (rnd() < 0.5 ? start : stop) : start + (stop - start) * rnd()));
+    const d = decodeCircuit(`?${encodeCircuit(c)}${S.sweepParams({ band, markers })}`);
+    sTrips++;
+    if (d.issues.length === 0) sQuiet++;
+    const b = d.sweep?.band;
+    if (b && b.start === start && b.stop === stop && b.points === points && b.log === log && d.sweep.markers.length === markers.length
+      && d.sweep.markers.every((f, i) => f === markers[i]) && sameCircuit(d.circuit, c)) sSame++;
+  }
+  ok(sTrips > 1900 && sQuiet === sTrips && sSame === sTrips, `random sweeps through the link: ${sTrips} written, ${sQuiet} without issues, ${sSame} read back to the bit with the circuit unchanged`);
+  const none = decodeCircuit(`?${encodeCircuit(defaultCircuit())}`);
+  ok(none.sweep === null && none.issues.length === 0, 'an old link (no sw) has no sweep and no issue');
+  const swOnly = decodeCircuit('?sw=50e6:150e6:401');
+  ok(swOnly.sweep && !swOnly.linked && swOnly.issues.length === 0 && swOnly.sweep.band.points === 401 && !swOnly.sweep.band.log, 'a link with only sw is no circuit link, without issues');
+  const bads = ['?sw=1e6:1e9', '?sw=0:1e9:101:log', '?sw=2e6:1e6:101', '?sw=1e6:2e6:1', '?sw=1e6:2e6:10001', '?sw=1e6:2e6:10.5', '?sw=x:2e6:11', '?sw=1e6:2e6:11:lin', '?mk=1e6'];
+  for (const q of bads) {
+    const d = decodeCircuit(q);
+    ok(d.sweep === null && d.issues.length === 1, `${q}: no sweep, one issue: ${JSON.stringify(d.issues)}`);
+  }
+  const out = decodeCircuit('?sw=1e6:2e6:11&mk=1.5e6,3e6,abc,1M');
+  ok(out.sweep && out.sweep.markers.join() === '1500000,1000000' && out.issues.length === 2, `markers outside the band or unreadable are left out: ${JSON.stringify(out)}`);
+  const many = decodeCircuit(`?sw=1e6:2e6:11&mk=${Array.from({ length: 12 }, (_, i) => 1e6 + i * 1e4).join(',')}`);
+  ok(many.sweep.markers.length === S.MAX_MARKERS && many.issues.length === 1, `at most ${S.MAX_MARKERS} markers: ${many.sweep.markers.length}`);
+  ok(S.sweepParams(null) === '' && S.sweepParams({ band: { start: 1e6, stop: 1e9, points: 1001, log: true }, markers: [] }) === '&sw=1e6:1e9:1001:log', 'sweepParams writes the documented form');
 }
 
 // M4.3a: what the solver is asked (unknowns and goal) in the circuit, the link, the toggles and the edits.

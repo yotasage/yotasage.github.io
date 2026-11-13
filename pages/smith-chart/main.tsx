@@ -19,6 +19,7 @@ import type { Subject } from '../../components/Smith/mathRows';
 import { DIGIT_CHOICES, READOUT_DIGITS, setShownDigits } from '../../components/Smith/readout';
 import Nodes from '../../components/Smith/Nodes';
 import SolvePanel from '../../components/Smith/SolvePanel';
+import SweepPanel from '../../components/Smith/SweepPanel';
 import { Status } from '../../components/Smith/Status';
 import type { Outcome } from '../../components/Smith/SolvePanel';
 import Strip from '../../components/Smith/Strip';
@@ -29,6 +30,7 @@ import type { ChartView } from '../../components/Smith/chartView';
 import { writeLive } from '../../components/Smith/live';
 import { PathLayer, SEL_NODE, SEL_NONE, SEL_PART } from '../../components/Smith/pathLayer';
 import { SolveLayer } from '../../components/Smith/solveLayer';
+import { TraceLayer } from '../../components/Smith/traceLayer';
 import type { CircleShape } from '../../components/Smith/solveLayer';
 import { BibEntry } from '../../lib/bibtex';
 import { loadReferences } from '../../lib/references';
@@ -38,7 +40,8 @@ import { exampleById } from '../../lib/smith/examples';
 import { keepLocks, valueLocked } from '../../lib/smith/lesson';
 import type { Lesson, Lock } from '../../lib/smith/lesson';
 import { MODE_Y, MODE_Z, MODE_ZY } from '../../lib/smith/grid';
-import { Circuit, KIND_SHORT, decodeCircuit, defaultCircuit, sameCircuit, sameNetwork } from '../../lib/smith/state';
+import { Circuit, KIND_SHORT, decodeCircuit, defaultCircuit, sameCircuit, sameNetwork, sweepParams } from '../../lib/smith/state';
+import type { SweepSetting } from '../../lib/smith/state';
 import { choiceFromText, choiceToText, defaultChoice } from '../../lib/smith/values';
 import type { ValueChoice } from '../../lib/smith/values';
 import useReplayHighlight from '../../lib/useReplayHighlight';
@@ -141,6 +144,11 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   // The value lists of D17 (M4.3b): what dragging snaps to and the solutions' standard values. Not part of the circuit
   // (no undo step): kept in the link (vl) and in localStorage, the link first; both read after mount, as the theme is.
   const [lists, setListsState] = useState<ValueChoice>(defaultChoice);
+  // M7.2a: the frequency sweep (band and markers), in the link but not part of the circuit or its undo history.
+  const [sweep, setSweep] = useState<SweepSetting | null>(null);
+  const sweepRef = useRef(sweep);
+  sweepRef.current = sweep;
+  const sweepText = useMemo(() => sweepParams(sweep), [sweep]);
   const listsText = useMemo(() => choiceToText(lists), [lists]);
   const setLists = (next: ValueChoice) => {
     setListsState(next);
@@ -190,6 +198,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     let text = read.lists;
     if (text === null) { try { text = window.localStorage.getItem(LISTS_KEY); } catch { /* Storage can be blocked. */ } }
     if (text) setListsState(choiceFromText(text));
+    if (read.sweep) setSweep(read.sweep);
     setIssues(read.issues);
     setLinked(true);
   }, []);
@@ -199,11 +208,11 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   const router = useRouter();
   useEffect(() => {
     if (!linked || !router.isReady) return;
-    const url = `${window.location.pathname}?${linkSearch(circuit, listsText, lesson?.lesson ?? null, challenge?.ch ?? null)}${window.location.hash}`;
+    const url = `${window.location.pathname}?${linkSearch(circuit, listsText, lesson?.lesson ?? null, challenge?.ch ?? null, sweepText)}${window.location.hash}`;
     if (url !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
       window.history.replaceState(window.history.state, '', url);
     }
-  }, [linked, circuit, listsText, router.isReady, lesson, challenge]);
+  }, [linked, circuit, listsText, router.isReady, lesson, challenge, sweepText]);
   // The one place a new circuit arrives: fields, add, remove, move, the end of a drag or a draw, a handle's keys.
   // Only refs and state setters are used, so the closures handed out once (the path layer, listeners) stay right.
   const commit = (next: Circuit, group = '') => {
@@ -381,6 +390,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   // The path on the chart and the selection shared by the strip, the node table and the chart.
   const path = useRef<PathLayer | null>(null);
   const solveLayer = useRef<SolveLayer | null>(null);
+  const traceLayer = useRef<TraceLayer | null>(null);
   const tool = useRef<HTMLDivElement>(null);
   const [partSel, setPartSel] = useState(-1);
   const [nodeSel, setNodeSel] = useState(-1);
@@ -416,7 +426,15 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     solveL.setGoal(now.current);
     const o = solved.current;
     solveL.setResult(o?.result ?? null, o?.circuit ?? null);
+    // M7.2a: the sweep's trace and markers, between the solver's circles and the path; it reads the path's circuit.
+    const trace = new TraceLayer(v, layer);
+    trace.onMarkers = (markers) => setSweep((s) => (s ? { band: s.band, markers } : s));
+    (v.box as HTMLElement & { smithTrace?: TraceLayer }).smithTrace = trace;
+    traceLayer.current = trace;
+    trace.setSweep(sweepRef.current);
   };
+  useEffect(() => { traceLayer.current?.setSweep(sweep); }, [sweep]);
+  useEffect(() => () => traceLayer.current?.dispose(), []);
   useEffect(() => { path.current?.setCircuit(circuit); solveLayer.current?.setGoal(circuit); }, [circuit]);
   // "Show equation" (M5.2) sets the selection without the node table's toggle; the link's queries stay in the tool.
   useEffect(() => {
@@ -474,6 +492,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
         <SolvePanel circuit={circuit} onChange={stable.commit} revision={revision} busy={stable.busy} onResult={stable.result}
           onPreview={stable.preview} lists={lists} onLists={stable.lists} noSuggest={noSuggest} />
       )}
+      <SweepPanel sweep={sweep} f0={circuit.f0} onChange={setSweep} revision={revision} />
       {!noRead && (
         <Nodes circuit={circuit} selected={node} onSelect={(k) => setNodeSel(k === node ? -1 : k)}
           onHover={(k) => { path.current?.hover(SEL_NODE, k); mathLink.fromPage(SEL_NODE, k); }} digits={digits} />

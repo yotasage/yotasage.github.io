@@ -175,6 +175,22 @@ T 228.
 **Count:** 39 claims (191–229): 15 with a source (some with a derived part), 21 derived, 3 describing the tool. All:
 229 claims.
 
+## The frequency sweep on the chart (M7.2a)
+
+230 T: with "Show the trace on the chart" the Sweep panel sweeps a band (start and stop in Hz, 2 to 10,000 points,
+linear or logarithmic steps, in the link as `sw`) and the chart draws the input's Γ at each frequency, with points added
+where the trace bends (lib/smith/sweep.ts `runSweep`; ui-trace.mjs: the DOM's trace equals the sweep to 1e-9 for five
+circuits). 231 T: a marker sits on the input's Γ at its frequency (`markerAt`); a tap or click on the trace adds one, a
+drag moves it along the trace, its arrow keys step to the next trace point (Shift ten), Home and End to the band's ends,
+Delete removes it; the markers are in the link (`mk`) (traceLayer.ts, SweepPanel.tsx; ui-trace.mjs). 232 T: while a
+part is dragged the trace follows the circuit, drawn at fewer points, and the refined trace returns after the release
+(ui-trace.mjs: every drag frame's trace is the coarse sweep of the live circuit; the trace after the release is the
+refined sweep of the committed circuit). The short lines `sweep-band`, `sweep-points`, `sweep-log` are T 230,
+`sweep-marker` T 231; `sweep` repeats f0's definition (73, 78), `sweep-trace` |Γ| as the distance from the centre (101,
+104).
+
+**Count:** 3 claims (230–232), all describing the tool. All: 232 claims.
+
 ## Sentences the page added (M3.5b, M3.5c)
 
 | Where | Sentence | Kind |
@@ -259,6 +275,12 @@ Each repeats claims of the topic it links to; the tool's own behaviour is T. Key
 | math | Point at or tap a variable: its part, node or readout row lights up. | T 188 (mathLink.ts; ui-math-link: hover, focus, tap) |
 | derive | Derive shows how an equation follows, one reasoned step at a time. | T 189 (Derivation.tsx; ui-derive: panel, theory, keys, taps) |
 | explain | Says which equation moved the point, along which circle and which way. | T 190 (Explain.tsx; ui-explain: drag, typing, keys, taps, reduced motion) |
+| sweep | Reactances and line lengths change with f; the trace shows the input then. | Def (73, 78); T 230 |
+| sweep-trace | Γ at the input across the band: nearer the centre, a better match. | S 101, 104; T 230 |
+| sweep-band | The frequencies swept, in Hz; f0 need not lie inside them. | T 230 |
+| sweep-points | Even steps across the band; more are added where the trace bends. | T 230 (sweep.ts `refine`) |
+| sweep-log | Log gives each decade the same number of points, for wide bands. | T 230 (`bandFrequencies`) |
+| sweep-marker | Marks the input's point at one frequency and follows the circuit. | T 231 |
 
 ## Deliberately left out (not sourced)
 

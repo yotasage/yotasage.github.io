@@ -573,7 +573,7 @@ try {
           await frame(q);
           const more = await q.evaluate(() => ({ open: document.querySelector('#status details').open, text: document.getElementById('status').innerText,
             s: document.documentElement.scrollWidth, c: document.documentElement.clientWidth }));
-          ok(more.open && /ideal parts, lossless lines, one frequency/.test(more.text) && /real Z0/.test(more.text) && /Still to come/.test(more.text),
+          ok(more.open && /ideal parts, lossless lines and a real Z0/.test(more.text) && /real Z0/.test(more.text) && /Still to come/.test(more.text),
             () => `${width} px, ${path}: More shows the assumptions and what is coming: ${more.text}`);
           ok(more.s <= more.c, `${width} px, ${path}: no horizontal scroll with More open (${more.s} > ${more.c})`);
         }

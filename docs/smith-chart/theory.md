@@ -482,6 +482,12 @@ At most about 12 words, after the control or under the readout row, followed by 
 | Hide (`lesson-hide`) | Hides these panels for whoever opens the link. | `how-to-use` |
 | Text (`lesson-text`) | Up to 500 characters, shown as plain text above the guide. | `how-to-use` |
 | Lesson box (`lesson-box`) | Set by the lesson's link; Leave the lesson unlocks everything. | `how-to-use` |
+| Sweep panel (`sweep`, M7.2a) | Reactances and line lengths change with f; the trace shows the input then. | `moving-on-the-chart` |
+| Show the trace (`sweep-trace`) | Γ at the input across the band: nearer the centre, a better match. | `how-good-is-a-match` |
+| Start and Stop (`sweep-band`) | The frequencies swept, in Hz; f0 need not lie inside them. | `how-to-use` |
+| Points (`sweep-points`) | Even steps across the band; more are added where the trace bends. | `how-to-use` |
+| Spacing (`sweep-log`) | Log gives each decade the same number of points, for wide bands. | `how-to-use` |
+| Markers (`sweep-marker`) | Marks the input's point at one frequency and follows the circuit. | `how-good-is-a-match` |
 
 Facts in the short lines repeat claims of the topics they link to (Series L: claims 48, 56; Line: 61, 84; stubs: 95,
 97; λ/4: 89, 91; Z/Y/ZY: 38; VSWR: 101, 102; return loss: 104, 105; goal: 110, 14; the solver's lines: claims.md);

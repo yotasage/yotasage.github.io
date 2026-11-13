@@ -1027,6 +1027,65 @@
 }
 .chart [data-layer='path-marks'] [data-handle][data-focus]::before { width: 32px; height: 32px; }
 
+/* ---- the frequency sweep (M7.2a; components/Smith/traceLayer.ts): Γ(f) under the path, markers over the chart ---- */
+.top [data-sweep-trace] {
+  fill: none;
+  stroke: var(--ink);
+  stroke-opacity: 0.72;
+  stroke-width: 1.75px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.top [data-sweep-trace][data-state='coarse'] { stroke-opacity: 0.55; }
+.chart [data-layer='sweep-marks'] {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+.chart [data-layer='sweep-marks'] > [data-sweep-marker] {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  outline: none;
+}
+.chart [data-layer='sweep-marks'] > [hidden] { display: none !important; }
+.chart [data-sweep-dot] {
+  position: absolute;
+  left: -6px;
+  top: -6px;
+  width: 12px;
+  height: 12px;
+  box-sizing: border-box;
+  border: 2px solid var(--chart-bg);
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 0 0 1.5px var(--ink);
+}
+.chart [data-sweep-label] {
+  position: absolute;
+  left: 9px;
+  bottom: 7px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--chart-bg) 84%, transparent);
+  font: 600 11.5px/1.35 var(--font-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.chart [data-sweep-marker]:focus-visible [data-sweep-dot], .chart [data-sweep-marker][data-drag] [data-sweep-dot] {
+  box-shadow: 0 0 0 1.5px var(--ink), 0 0 0 4px var(--accent);
+}
+.chart [data-sweep-marker]:focus-visible [data-sweep-label] { outline: 2px solid var(--accent); }
+.chart[data-sweep-near]:not([data-pick]):not([data-handle-hot]) { cursor: copy; }
+.chart[data-sweep-hot] { cursor: grab; }
+.chart[data-sweep-drag], .chart[data-sweep-drag][data-pick] { cursor: grabbing; }
+
 /* ---- short lines and their "→ theory" links (M3.5c; components/Smith/Why.tsx) ---- */
 
 .why { display: inline; }

@@ -1,0 +1,55 @@
+/* The Sweep panel (components/Smith/SweepPanel.tsx, step M7.2a). The trace and its markers on the chart are styled in
+   Smith.module.css with the path layer. */
+
+.head { display: inline-flex; align-items: center; gap: 4px; }
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-top: 10px;
+}
+
+.check { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; font-size: 13px; color: var(--ink-2); }
+.check input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+
+.label { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
+
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+
+.btn.btn.btn { padding: 4px 10px; font-size: 13px; }
+
+.hint { margin: 8px 0 0; font-size: 12.5px; line-height: 1.4; color: var(--ink-3); }
+
+.markers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.marker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 2px 2px 2px 8px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 7px;
+  background: var(--field);
+  font-size: 13px;
+}
+
+.markerName { font-weight: 650; color: var(--ink-2); }
+.markerF { font-family: var(--font-num); font-variant-numeric: tabular-nums; color: var(--ink); }
+
+.remove.remove.remove { padding: 0 8px; min-height: 26px; border: none; background: transparent; font-size: 16px; line-height: 1; color: var(--ink-3); }
+.remove.remove.remove:hover { color: var(--warn); background: var(--raise); }
+
+@media (pointer: coarse) {
+  .btn.btn.btn, .remove.remove.remove { min-height: 44px; min-width: 44px; }
+  .check { min-height: 44px; }
+}

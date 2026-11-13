@@ -68,7 +68,7 @@ const FAM = { ...ALL, ask: { ...ALL.ask, goal: { kind: 'vswr', value: 1.5, withi
 // M4.4b: nothing marked, so the panel shows its suggestions (and their line).
 const SUG = S.cleanAsk(ALL, { unknowns: [], goal: { kind: 'point' } });
 /** theory.md §8's 39 lines, M4.3a's five of the Solve panel, M4.3c's nine (theory-solver.md), M4.4b's suggestions and M5.2's two (show equation, the equations), M5.3's derivations, M5.4's Explain, M6.3a's five of the Learn section and the guide and M6.3b's ten of the challenges and lesson links. */
-const LINES = 73;
+const LINES = 79;
 /** The Standard values setting is folded: open it so its lines are on the page. */
 const openLists = (page) => page.evaluate(() => { for (const s of ['[data-lists]', '[data-lesson-maker]']) { const d = document.querySelector(s); if (d) d.open = true; } });
 
@@ -107,7 +107,8 @@ let s;
 try {
   // ---------- every line on the page, with its text and a topic that exists ----------
   const desk = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: 'light' });
-  const p = await open(desk, ALL);
+  // M7.2a: with a band in the link, so the Sweep panel's lines are on the page.
+  const p = await open(desk, ALL, '', '&sw=50e6:150e6:101');
   await openLists(p);
   await frame(p);
   ok(KEYS.length === LINES, `whys.ts has the ${LINES} lines (${KEYS.length})`);
