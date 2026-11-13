@@ -2,8 +2,9 @@
 
 The source text of the page's Theory section and of the short lines beside the controls. Step M3.5b turns it into
 `components/Smith/Theory.tsx` and the References section (learning.md §5). Part of [plan.md](plan.md). M4.3c added the
-solver's topics as §9–§11 in [theory-solver.md](theory-solver.md) (split off for size; §8 keeps its number, which
-whys.ts and claims.md name); on the page they follow topic 7, as topics 8–10.
+solver's topics as §9–§11 in [theory-solver.md](theory-solver.md), M7.4a the sweep's as §12–§13 in
+[theory-sweep.md](theory-sweep.md) (split off for size; §8 keeps its number, which
+whys.ts and claims.md name); on the page they follow topic 7, as topics 8–10 and 11–12.
 
 **How to read this file.**
 - One section per topic of learning.md §5, in that order. **Id** is the page anchor (`#moving-on-the-chart`).
@@ -385,7 +386,7 @@ point onto g = 1, the stub cancels b [Ellingson2018 §3.23]. ⟨125⟩
 
 **Q.** For a resistive load matched by an L network, the Q of both legs is √(R_high/R_low − 1) [SteerVol3 §6.4]. ⟨126⟩
 Any point has its own Q = |x|/r = |b|/g [SteerVol3 §6.4]; ⟨127⟩ the start load's is 1. ⟨128⟩ What Q means for
-bandwidth comes with the frequency sweep. ⟨129⟩
+bandwidth is in Q and bandwidth. ⟨129⟩
 
 **Equations:** `series-adds-z`, `shunt-adds-y`, `circle-r`, `circle-g`, `x-series-c`, `b-shunt-l`, `b-shunt-c`,
 `q-node`, `q-l-network`.
@@ -482,18 +483,18 @@ At most about 12 words, after the control or under the readout row, followed by 
 | Hide (`lesson-hide`) | Hides these panels for whoever opens the link. | `how-to-use` |
 | Text (`lesson-text`) | Up to 500 characters, shown as plain text above the guide. | `how-to-use` |
 | Lesson box (`lesson-box`) | Set by the lesson's link; Leave the lesson unlocks everything. | `how-to-use` |
-| Sweep panel (`sweep`, M7.2a) | Reactances and line lengths change with f; the trace shows the input then. | `moving-on-the-chart` |
-| Show the trace (`sweep-trace`) | Γ at the input across the band: nearer the centre, a better match. | `how-good-is-a-match` |
-| Start and Stop (`sweep-band`) | The frequencies swept, in Hz; f0 need not lie inside them. | `how-to-use` |
-| Points (`sweep-points`) | Even steps across the band; more are added where the trace bends. | `how-to-use` |
-| Spacing (`sweep-log`) | Log gives each decade the same number of points, for wide bands. | `how-to-use` |
-| Markers (`sweep-marker`) | Marks the input's point at one frequency and follows the circuit. | `how-good-is-a-match` |
-| Sweep plot (`sweep-plot`, M7.2b) | The trace against frequency: a dip is a better match, a peak a worse. | `how-good-is-a-match` |
+| Sweep panel (`sweep`, M7.2a) | Reactances and line lengths change with f; the trace shows the input then. | `reading-a-trace` |
+| Show the trace (`sweep-trace`) | Γ at the input across the band: nearer the centre, a better match. | `reading-a-trace` |
+| Start and Stop (`sweep-band`) | The frequencies swept, in Hz; f0 need not lie inside them. | `reading-a-trace` |
+| Points (`sweep-points`) | Even steps across the band; more are added where the trace bends. | `reading-a-trace` |
+| Spacing (`sweep-log`) | Log gives each decade the same number of points, for wide bands. | `reading-a-trace` |
+| Markers (`sweep-marker`) | Marks the input's point at one frequency and follows the circuit. | `reading-a-trace` |
+| Sweep plot (`sweep-plot`, M7.2b) | The trace against frequency: a dip is a better match, a peak a worse. | `reading-a-trace` |
 | Return loss or VSWR (`sweep-plot-kind`) | Two scales of \|Γ\|: return loss falls and VSWR rises as the match worsens. | `how-good-is-a-match` |
-| Limit (`sweep-limit`) | The return loss to beat; where \|Γ\| stays below it is shaded and measured. | `how-good-is-a-match` |
-| Band figures (`sweep-figures`) | Found on the refined trace, edges and extremes polished between its points. | `how-good-is-a-match` |
-| Loaded Q (`sweep-q`) | f over the width where the power delivered is over half its peak, near f0. | `how-good-is-a-match` |
-| Marker table (`sweep-table`) | Each marker's input point at its frequency, in the digits you chose. | `how-to-use` |
+| Limit (`sweep-limit`) | The return loss to beat; where \|Γ\| stays below it is shaded and measured. | `reading-a-trace` |
+| Band figures (`sweep-figures`) | Found on the refined trace, edges and extremes polished between its points. | `q-and-bandwidth` |
+| Loaded Q (`sweep-q`) | f over the width where the power delivered is over half its peak, near f0. | `q-and-bandwidth` |
+| Marker table (`sweep-table`) | Each marker's input point at its frequency, in the digits you chose. | `reading-a-trace` |
 | Report (`report`) | The circuit and its figures at f0 and across the band, to print or keep. | `how-to-use` |
 | The report's link (`report-link`) | Opens this circuit, band, markers and limit again, as printed here. | `how-to-use` |
 

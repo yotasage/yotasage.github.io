@@ -57,6 +57,14 @@ f(z) = (az + b)/(cz + d) with ad − bc ≠ 0 takes generalised circles (circles
 (lead; "Elementary properties"), and that such maps form a group under composition ("Definition"). **Not for:**
 anything about the Smith chart or circuits.
 
+### `WikiQ`: "Q factor", Wikipedia
+https://en.wikipedia.org/wiki/Q_factor, revision 1374399236 of 11 September 2026 (opened in M7.4a, 2026-11-13, by a
+sub-agent; the text from "References" on was not read). Licence CC BY-SA 4.0. **Cite for:** Q as the resonant frequency
+over the half-power width, "the reciprocal of fractional bandwidth" ("Bandwidth definition"); the Q of an ideal series
+RLC circuit, (1/R)√(L/C) = ω0L/R ("RLC circuits"). **Not for:** loaded Q (the article does not use the term), the Q of
+matching networks, or anything about the Smith chart. Also opened and not usable: "Quarter-wave impedance transformer"
+(revision 1381286039 of 21 October 2026) gives no bandwidth formula, only that λ/4 inverter filters are narrow-band.
+
 ### `Touchstone21`: IBIS Open Forum, *Touchstone File Format Specification*, Version 2.1
 Ratified 26 January 2024. https://ibis.org/touchstone_ver2.1/ (landing page; © 1995–2026 IBIS Open Forum, no licence
 terms). Opened: the landing page only; the PDF (36 pages) is password-protected against text extraction and the
@@ -102,4 +110,4 @@ The Smith papers may be named on the page as history ("P. H. Smith published the
 | How good is a match: \|Γ\|, VSWR, RL, ML | Ellingson2018 §3.14, §3.20; SteerVol2 §2.3; SteerVol3 §2.8; ML: derivation |
 | Matching with two parts | SteerVol3 §6.4, §6.7; Ellingson2018 §3.22 |
 | Realisable and standard values (M4) | WikiE, IEC60063, JohansonHighQ, WurthWEKI |
-| Q and bandwidth (M7) | SteerVol3 §6.4 for node Q; bandwidth: derivations in notes-M7.1.md (series RLC, λ/4 transformer), no source at hand |
+| Q and bandwidth, reading a trace (M7) | WikiQ (Q and half-power width, series RLC); SteerVol3 §6.4 (node and L-network Q); the bandwidths: derivations (notes-M7.1.md, registry entries of notes-M7.4a.md) |

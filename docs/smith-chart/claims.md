@@ -218,6 +218,62 @@ engine for three circuits, and in the text of the PDF Edge prints at A4 and Lett
 
 **Count:** 1 claim (236), describing the tool. All: 236 claims.
 
+## The sweep's topics (theory-sweep.md §12–13, M7.4a)
+
+Q = `WikiQ`. "engine" = `bandFigures` / `markerAt` / `M_Q` on the circuit and band the sentence names, every number
+checked in notes-M7.4a.md "Checks" (and by ui-theory once on the page). New registry ids: notes-M7.4a.md.
+
+| n | Kind | Source or derivation |
+|---|---|---|
+| 237 | D | `x-series-l`, `x-series-c`, `b-shunt-c`, `b-shunt-l` (only ωL, ωC appear), `line-theta` (θ ∝ f; the λ/4 transformer's too) |
+| 238 | D | 237, 75 (an arc's length is what the part does) |
+| 239 | Def, T 233 | the limit is a return loss (plot's Limit) |
+| 240 | Def, T 235 | `fractional-bandwidth`; divides by f0 (notes-M7.1.md "Decisions") |
+| 241 | S | Q "Bandwidth definition" (Q = f_r/Δf, half power; "the reciprocal of fractional bandwidth") |
+| 242 | T 235, D | `q-loaded`; |Γ| = 1/√2 from `power-delivered`; VSWR 5.828 (`vswr`), 3.010 dB (`return-loss`) |
+| 243 | D | `series-adds-z` (r stays 1), `circle-r` |
+| 244 | S + D | Q "RLC circuits" (Q = ω0L/R); loop resistance R + Z0 and f0/Q_L exact: `q-series-rlc` (notes-M7.1.md closed form) |
+| 245 | D | `fbw-series-rlc` |
+| 246 | D | `q-series-rlc`, `fbw-series-rlc`; engine (10 MHz–1 GHz log) |
+| 247 | S | SteerVol3 §6.4 (= 126, `q-l-network`) |
+| 248 | D | `l-network-slope`; engine slope 0.7071, 1.789 (central difference) |
+| 249 | D | 248, first order: |Γ| ≈ v·|δ| = Γm |
+| 250 | D | engine; estimates from 249 |
+| 251 | D | `q-node` (127), engine `M_Q` (node 1: 2 and 1) |
+| 252 | D | `q-l-network` with R_m = √(R_low·R_high) (equal Q per step), engine (node Q 1.112, 0, 1.112) |
+| 253 | D | 250, 252 (engine) |
+| 254 | D | `line-rotation`, `line-theta`; 175 |
+| 255 | D | engine; line 0.1619 λ from the angles of Γ = −0.2 ± j0.4 (the load on g = 1, 123) |
+| 256 | D | `stub-open-b` (d tan/dθ = sec²(π/4) = 2, θ = π/4 per δ), `b-shunt-c`; engine |
+| 257 | D | `quarter-wave-bandwidth` (notes-M7.1.md; the textbook result is in Pozar, not opened) |
+| 258 | D | engine = the formula (0.36700, 0.14337) |
+| 259 | D | engine (1–199 MHz) = the formula (1.5673) |
+| 260 | D | `q-node`, engine `M_Q` |
+| 261 | D | engine; worked by hand at 79.496 MHz (notes) |
+| 262 | D | engine; `x-series-c`, `b-shunt-l` as f → ∞; 109 (|Γ| 0.4472, 0.8 delivered) |
+| 263 | D | engine (10 MHz–1 GHz log) |
+| 264 | Def | the registry's assumptions (`EJWT`, `LOSSLESS`), the fixed load (network.ts `loadNode`); BL42 |
+| 265 | T 230 | |
+| 266 | D | 99, 103, 104 |
+| 267 | D | 237, 77, 61 |
+| 268 | D | engine: signed turning summed along every refined trace of the examples, negative for all 13 circuits (16 sweeps) |
+| 269 | D | `series-adds-z`, 56; engine |
+| 270 | D | `x-series-c`, `b-shunt-l` as f → 0; engine |
+| 271 | D | 245, 248 |
+| 272 | D | engine (`markerAt`) |
+| 273 | D | |Γ| = 0 (99); `return-loss` → ∞ |
+| 274 | D | engine (minimum polished to |Γ| < 1e-15 at 61.803 MHz; maximum by golden section) |
+| 275 | Def | |
+| 276 | D | 84 (λ/2 period); engine (crossings counted on the refined trace; interval up to 56.71 MHz) |
+| 277 | T 233 | `return-loss`, `vswr` |
+| 278 | D, T 233 | `return-loss`, `vswr` (1.92495); 266 |
+| 279 | D | engine |
+| 280 | T 235 | |
+| 281 | T 230, 231 | sweep.ts `refine` (`REFINE_DEFAULTS`), `markerAt` bit-identical to the sweep |
+
+**Count:** 45 claims (237–281): 3 sourced or partly sourced (241, 244, 247), 33 derived, 2 definitions (264, 275),
+7 describing the tool (239, 240, 265, 277, 280, 281, and 242 with its derivation). All: 281 claims.
+
 ## Sentences the page added (M3.5b, M3.5c)
 
 | Where | Sentence | Kind |
@@ -319,8 +375,9 @@ Each repeats claims of the topic it links to; the tool's own behaviour is T. Key
 
 ## Deliberately left out (not sourced)
 
-- Bandwidth and what Q means for it (sources.md: not yet sourced; M7). The λ/2 note (175) says only that the extra
-  turning grows with Δf, which is derived; how wide a band is stays for M7.
+- Bandwidth and Q: covered in M7.4a (237–264) by `WikiQ` and derivations. Still left out: a general bound on how wide
+  any match of a load can be (Bode–Fano; no source opened), and a general theorem that every trace turns clockwise
+  (Foster's reactance theorem; not opened): 268 says only that the examples' traces do.
 - What tolerance does to a match, and lossy parts (186 says the tool computes neither).
 - That VSWR 1.5 is a usual "good enough": the page calls it the tool's default only (claim 111).
 - Physical line length with εeff and c: the page speaks of wavelengths and degrees only.
