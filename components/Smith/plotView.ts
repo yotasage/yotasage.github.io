@@ -150,6 +150,34 @@ export class PlotView implements PlotSink {
     this.svg.remove();
   }
 
+  /**
+   * M7.3: a copy of the plot laid out again at w × h px (axes, ticks, lines and markers for that size; the trace's `d`
+   * is the same, under the new frame transform), for the printed report: no cursor, a clip path of its own, scaled by
+   * its viewBox. The plot on the page is laid out back at once, before any paint.
+   */
+  printCopy(w: number, h: number): SVGSVGElement {
+    const W = this.W, H = this.H;
+    this.W = Math.max(10, w - ML - MR);
+    this.H = Math.max(10, h - MT - MB);
+    this.layout();
+    this.writeMarks();
+    const copy = this.svg.cloneNode(true) as SVGSVGElement;
+    this.W = W;
+    this.H = H;
+    this.layout();
+    this.writeMarks();
+    copy.querySelector('[data-plot-cursor]')?.remove();
+    const clip = copy.querySelector('clipPath'), id = `${clip.id}-print`;
+    clip.id = id;
+    copy.querySelector('[clip-path]').setAttribute('clip-path', `url(#${id})`);
+    copy.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    copy.setAttribute('width', '100%');
+    copy.setAttribute('height', '100%');
+    copy.removeAttribute('data-plot-svg');
+    copy.setAttribute('data-print-plot', '');
+    return copy;
+  }
+
   // ---------- options from the page ----------
 
   /** Return loss or VSWR, and the limit (return loss in dB). */

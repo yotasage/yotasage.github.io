@@ -5,14 +5,16 @@
 
 import React, { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-import { formatAmount, formatReturnLoss } from '../../lib/quantity';
+import { formatAmount } from '../../lib/quantity';
 import { magFromReturnLoss, vswr } from '../../lib/smith/convert';
 import type { Circuit } from '../../lib/smith/network';
 import { SWEEP_LIMIT_DB, limitIssue } from '../../lib/smith/state';
 import type { SweepSetting } from '../../lib/smith/state';
-import type { BandFigures, Interval } from '../../lib/smith/sweep';
+import type { BandFigures } from '../../lib/smith/sweep';
 import styles from '../../styles/Smith.module.css';
 import css from '../../styles/SmithSweep.module.css';
+import { figureTexts } from './bandText';
+import type { FigureText } from './bandText';
 import MarkerTable from './MarkerTable';
 import { PlotView } from './plotView';
 import { Field } from './Strip';
@@ -29,31 +31,27 @@ export interface SweepPlotProps {
   revision?: number;
 }
 
-const hz = (f: number, d: number): string => formatAmount(f, 'Hz', d, true);
-
-/** An interval's text: "95.1 MHz – 104.9 MHz", an open end marked as the band's ("≤ 20 MHz" for an open start). */
-function intervalText(iv: Interval, d: number): string {
-  return `${iv.openLo ? '≤ ' : ''}${hz(iv.lo, d)} – ${iv.openHi ? '≥ ' : ''}${hz(iv.hi, d)}`;
-}
-
-function Figures({ fig, sweep, digits }: { fig: BandFigures | null; sweep: SweepSetting; digits: number }) {
-  if (!fig) return <p className={css.hint} data-figures-none="">Working out the band figures…</p>;
-  const d = digits, limit = sweep.limit ?? SWEEP_LIMIT_DB, a = fig.atF0, q = fig.q;
+/** The band figures (null: still being worked out), in bandText.ts's words; shared with the report. */
+export function Figures({ fig, sweep, f0, digits, report }: { fig: BandFigures | null; sweep: SweepSetting; f0: number; digits: number; report?: boolean }) {
+  if (!fig) return <p className={css.hint} {...{ [report ? 'data-r-figures-none' : 'data-figures-none']: '' }}>Working out the band figures…</p>;
+  // The report's copy has attributes of its own (data-r-…), so the plot's stay unique on the page.
+  const attr = report ? 'data-r-fig' : 'data-fig';
+  const t = figureTexts(fig, f0, sweep.limit ?? SWEEP_LIMIT_DB, digits);
+  const row = (k: string, label: React.ReactNode, [v, at]: FigureText) => (
+    <div {...{ [attr]: k }}><dt>{label}</dt><dd>{v}{at && <> <span className={css.at}>{at}</span></>}</dd></div>
+  );
   return (
-    <dl className={css.figures} data-figures="">
-      <div data-fig="worst"><dt>Worst return loss</dt><dd>{formatReturnLoss(fig.worstRL, d)} <span className={css.at}>at {hz(fig.worst.f, d)}</span></dd></div>
-      <div data-fig="best"><dt>Best return loss</dt><dd>{formatReturnLoss(fig.bestRL, d)} <span className={css.at}>at {hz(fig.best.f, d)}</span></dd></div>
-      <div data-fig="vswr"><dt>Largest VSWR</dt><dd>{formatAmount(fig.maxVswr, '', d, true)}</dd></div>
-      <div data-fig="intervals"><dt>Return loss ≥ {formatAmount(limit, 'dB', 4)}</dt>
-        <dd>{fig.intervals.length === 0 ? 'nowhere in the band' : fig.intervals.map((iv, i) => <span key={i} className={css.interval} data-lo={iv.lo} data-hi={iv.hi}>{intervalText(iv, d)}</span>)}</dd></div>
-      <div data-fig="f0"><dt>Around f0</dt>
-        <dd>{a ? <>{intervalText(a, d)} <span className={css.at}>{a.openLo || a.openHi ? '≥ ' : ''}{formatAmount(a.hi - a.lo, 'Hz', d, true)}, {a.openLo || a.openHi ? '≥ ' : ''}{formatAmount(100 * fig.fractional, '%', d, true)} of f0</span></> : 'f0 is not in a part of the band below the limit'}</dd></div>
-      <div data-fig="q"><dt>Loaded Q <Why k="sweep-q" /></dt>
-        <dd>{q ? <>{q.openLo || q.openHi ? '≤ ' : ''}{formatAmount(q.q, '', d, true)} <span className={css.at}>at {hz(q.f, d)}{q.openLo || q.openHi ? ', the band ends before half power' : ''}</span></> : 'no match to measure'}</dd></div>
+    <dl className={css.figures} {...{ [report ? 'data-r-figures' : 'data-figures']: '' }}>
+      {row('worst', 'Worst return loss', t.worst)}
+      {row('best', 'Best return loss', t.best)}
+      {row('vswr', 'Largest VSWR', t.vswr)}
+      <div {...{ [attr]: 'intervals' }}><dt>{t.limitLabel}</dt>
+        <dd>{fig.intervals.length === 0 ? t.intervals[0] : fig.intervals.map((iv, i) => <span key={i} className={css.interval} data-lo={iv.lo} data-hi={iv.hi}>{t.intervals[i]}</span>)}</dd></div>
+      {row('f0', 'Around f0', t.f0)}
+      {row('q', report ? 'Loaded Q' : <>Loaded Q <Why k="sweep-q" /></>, t.q)}
     </dl>
   );
 }
-
 function SweepPlot({ layer, sweep, circuit, digits, onChange, revision }: SweepPlotProps) {
   const root = useRef<HTMLElement>(null);
   const box = useRef<HTMLDivElement>(null);
@@ -70,14 +68,14 @@ function SweepPlot({ layer, sweep, circuit, digits, onChange, revision }: SweepP
       view.current = v;
       (box.current as HTMLElement & { smithPlot?: PlotView }).smithPlot = v;
       v.setOptions(isVswr, limit);
-      l.onFigures = setFig;
+      l.figureListeners.add(setFig);
       setFig(l.figures);
     };
     make();
     return () => {
       cancelAnimationFrame(raf);
       const l = layer();
-      if (l && l.onFigures === setFig) l.onFigures = null;
+      l?.figureListeners.delete(setFig);
       view.current?.destroy();
       view.current = null;
     };
@@ -119,7 +117,7 @@ function SweepPlot({ layer, sweep, circuit, digits, onChange, revision }: SweepP
       <div className={css.under}>
         <div>
           <h3 className={css.sub}>Band figures <Why k="sweep-figures" /></h3>
-          <Figures fig={fig} sweep={sweep} digits={digits} />
+          <Figures fig={fig} sweep={sweep} f0={circuit.f0} digits={digits} />
         </div>
         <MarkerTable circuit={circuit} markers={sweep.markers} digits={digits} />
       </div>

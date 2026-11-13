@@ -1366,3 +1366,45 @@
   border-radius: 50%;
   background: color-mix(in srgb, var(--chart-bg) 40%, transparent);
 }
+/* ---- print (M7.3): the report alone (components/Smith/Report.tsx, styles/SmithReport.module.css), light whatever the
+   theme (white paper: --bg, --field and the chart's background white), nothing of the bar, the status note, the
+   chart's workspace, the Learn section or the theory. @page and the site footer are in pages/smith-chart/main.tsx. ---- */
+@media print {
+  .root.root.root {
+    --bg: #fff;
+    --field: #fff;
+    --raise: #ece9e0;
+    --ink: #1d1c19;
+    --ink-2: #55524b;
+    --ink-3: #736f67;
+    --rule: #e3dfd5;
+    --rule-strong: #cbc6ba;
+    --accent: #0b6a5f;
+    --accent-soft: rgba(11, 106, 95, 0.1);
+    --warn: #8a4b08;
+    --chart-bg: #fff;
+    --grid-axis: #6e6a61;
+    --grid-z-major: rgba(29, 28, 25, 0.44);
+    --grid-z-minor: rgba(29, 28, 25, 0.14);
+    --grid-y-major: rgba(11, 106, 95, 0.55);
+    --grid-y-minor: rgba(11, 106, 95, 0.18);
+    --grid-scale: #9a958a;
+    --grid-label: #4a4741;
+    --grid-y-ink: #0b6a5f;
+    --grid-scale-ink: #7a766d;
+    --part-1: #1971c2;
+    --part-2: #d9480f;
+    --part-3: #c2255c;
+    --part-4: #2b8a3e;
+    --part-5: #7048e8;
+    --part-6: #9c7a00;
+    --part-7: #0c8599;
+    --part-8: #c92a2a;
+    color-scheme: light;
+    min-height: 0;
+    background: #fff;
+    font-size: 13px;
+  }
+  .root .bar,
+  .root main > :not([data-report]) { display: none !important; }
+}

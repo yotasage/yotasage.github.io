@@ -18,6 +18,7 @@ import { mathLink } from '../../components/Smith/mathLink';
 import type { Subject } from '../../components/Smith/mathRows';
 import { DIGIT_CHOICES, READOUT_DIGITS, setShownDigits } from '../../components/Smith/readout';
 import Nodes from '../../components/Smith/Nodes';
+import Report from '../../components/Smith/Report';
 import SolvePanel from '../../components/Smith/SolvePanel';
 import SweepPanel from '../../components/Smith/SweepPanel';
 import SweepPlot from '../../components/Smith/SweepPlot';
@@ -207,13 +208,15 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   // gives a statically optimised page its query after hydration with a replaceState of the link as it was loaded, which
   // would undo a first write (M4.3b: the value lists from localStorage).
   const router = useRouter();
+  // M7.3: the same search is printed under the report.
+  const search = useMemo(() => linkSearch(circuit, listsText, lesson?.lesson ?? null, challenge?.ch ?? null, sweepText), [circuit, listsText, lesson, challenge, sweepText]);
   useEffect(() => {
     if (!linked || !router.isReady) return;
-    const url = `${window.location.pathname}?${linkSearch(circuit, listsText, lesson?.lesson ?? null, challenge?.ch ?? null, sweepText)}${window.location.hash}`;
+    const url = `${window.location.pathname}?${search}${window.location.hash}`;
     if (url !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
       window.history.replaceState(window.history.state, '', url);
     }
-  }, [linked, circuit, listsText, router.isReady, lesson, challenge, sweepText]);
+  }, [linked, search, router.isReady]);
   // The one place a new circuit arrives: fields, add, remove, move, the end of a drag or a draw, a handle's keys.
   // Only refs and state setters are used, so the closures handed out once (the path layer, listeners) stay right.
   const commit = (next: Circuit, group = '') => {
@@ -392,6 +395,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   const path = useRef<PathLayer | null>(null);
   const solveLayer = useRef<SolveLayer | null>(null);
   const traceLayer = useRef<TraceLayer | null>(null);
+  const chartView = useRef<ChartView | null>(null);
   const tool = useRef<HTMLDivElement>(null);
   const [partSel, setPartSel] = useState(-1);
   const [nodeSel, setNodeSel] = useState(-1);
@@ -400,6 +404,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   const node = nodeSel <= n ? nodeSel : -1;
   const selectPart = (i: number) => { setPartSel(i); setNodeSel(-1); };
   const onView = (v: ChartView) => {
+    chartView.current = v;
     const layer = new PathLayer(v);
     // A drag's pick renders in a transition: time-sliced, so the side panel's re-render (≈ 30 ms at 4× CPU in
     // development) does not drop the drag's first frames; the live frames rewrite the card once it is mounted.
@@ -437,6 +442,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   useEffect(() => { traceLayer.current?.setSweep(sweep); }, [sweep]);
   // M7.2b: the sweep's plot, band figures and marker table under the chart, fed by the trace layer.
   const getTrace = useCallback(() => traceLayer.current, []);
+  const getChart = useCallback(() => chartView.current, []);
   useEffect(() => () => traceLayer.current?.dispose(), []);
   useEffect(() => { path.current?.setCircuit(circuit); solveLayer.current?.setGoal(circuit); }, [circuit]);
   // "Show equation" (M5.2) sets the selection without the node table's toggle; the link's queries stay in the tool.
@@ -632,6 +638,18 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
         * {
           box-sizing: border-box;
         }
+        @page {
+          margin: 12mm;
+        }
+        @media print {
+          html,
+          body {
+            background: #fff !important;
+          }
+          #__next > footer {
+            display: none !important;
+          }
+        }
       `}</style>
 
       <header className={styles.bar}>
@@ -659,6 +677,8 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
             below={sweep && !noRead ? <SweepPlot layer={getTrace} sweep={sweep} circuit={circuit} digits={digits} onChange={setSweep} revision={revision} /> : null} />
           {!noRead && <Derivation circuit={circuit} digits={digits} />}
         </div>
+        {/* M7.3: outside #tool, so a drag's live writes (scoped to #tool) never walk it; off screen it is not laid out. */}
+        {!noRead && <Report circuit={circuit} sweep={sweep} digits={digits} search={search} layer={getTrace} chart={getChart} />}
         <LearnSection open={guide?.id ?? ''} onLoad={stable.load} challenges={challengesProps} maker={makerProps} />
         {sections}
       </main>

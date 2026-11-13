@@ -494,6 +494,8 @@ At most about 12 words, after the control or under the readout row, followed by 
 | Band figures (`sweep-figures`) | Found on the refined trace, edges and extremes polished between its points. | `how-good-is-a-match` |
 | Loaded Q (`sweep-q`) | f over the width where the power delivered is over half its peak, near f0. | `how-good-is-a-match` |
 | Marker table (`sweep-table`) | Each marker's input point at its frequency, in the digits you chose. | `how-to-use` |
+| Report (`report`) | The circuit and its figures at f0 and across the band, to print or keep. | `how-to-use` |
+| The report's link (`report-link`) | Opens this circuit, band, markers and limit again, as printed here. | `how-to-use` |
 
 Facts in the short lines repeat claims of the topics they link to (Series L: claims 48, 56; Line: 61, 84; stubs: 95,
 97; λ/4: 89, 91; Z/Y/ZY: 38; VSWR: 101, 102; return loss: 104, 105; goal: 110, 14; the solver's lines: claims.md);

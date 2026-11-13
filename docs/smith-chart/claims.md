@@ -208,6 +208,16 @@ falls and VSWR rises as |Γ| grows), `sweep-limit` and `sweep-figures` are T 233
 
 **Count:** 3 claims (233–235), all describing the tool. All: 235 claims.
 
+## The report and its print (M7.3)
+
+236 T: the report gives Z0, f0, the load, every part's values, the input's and every node's z, Z, Γ, VSWR and return
+loss at f0 (network.ts), with a sweep its band, the band figures and the marker table (T 235), and the page's link,
+which opens the same circuit, band, markers, limit and plot again (Report.tsx; ui-report.mjs: every value against the
+engine for three circuits, and in the text of the PDF Edge prints at A4 and Letter in both themes). The short lines
+`report` and `report-link` are T 236.
+
+**Count:** 1 claim (236), describing the tool. All: 236 claims.
+
 ## Sentences the page added (M3.5b, M3.5c)
 
 | Where | Sentence | Kind |
@@ -304,6 +314,8 @@ Each repeats claims of the topic it links to; the tool's own behaviour is T. Key
 | sweep-figures | Found on the refined trace, edges and extremes polished between its points. | T 235 |
 | sweep-q | f over the width where the power delivered is over half its peak, near f0. | T 235 |
 | sweep-table | Each marker's input point at its frequency, in the digits you chose. | T 235 |
+| report | The circuit and its figures at f0 and across the band, to print or keep. | T 236 |
+| report-link | Opens this circuit, band, markers and limit again, as printed here. | T 236 |
 
 ## Deliberately left out (not sourced)
 

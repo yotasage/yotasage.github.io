@@ -182,7 +182,8 @@ const belowFloorShown = (page) => page.evaluate(() => {
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let t = walker.nextNode(); t; t = walker.nextNode()) {
     const el = t.parentElement;
-    if (!el || el.closest('[data-math-raw], annotation, script, style')) continue;
+    // (M7.3: the report's printed link is the link's machine form, not a number shown)
+    if (!el || el.closest('[data-math-raw], [data-r="link"], annotation, script, style')) continue;
     for (const m of t.textContent.matchAll(/\d\s*e\s*[−-]\s*(\d+)/g)) if (+m[1] > 12) bad.push(t.textContent.trim().slice(0, 80));
   }
   for (const s of document.querySelectorAll('msup')) {

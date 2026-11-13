@@ -109,6 +109,9 @@ export const WHYS: Readonly<Record<string, Why>> = {
   'sweep-figures': w('the band figures', 'how-good-is-a-match', 'Found on the refined trace, edges and extremes polished between its points.'),
   'sweep-q': w('loaded Q', 'how-good-is-a-match', 'f over the width where the power delivered is over half its peak, near f0.'),
   'sweep-table': w('the marker table', 'how-to-use', 'Each marker’s input point at its frequency, in the digits you chose.'),
+  // M7.3: the report and its printed link.
+  report: w('the report', 'how-to-use', 'The circuit and its figures at f0 and across the band, to print or keep.'),
+  'report-link': w('the link', 'how-to-use', 'Opens this circuit, band, markers and limit again, as printed here.'),
 };
 
 /** The key of a value field's line by its form (state.ts FormId). */

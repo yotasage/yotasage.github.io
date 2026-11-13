@@ -1,0 +1,60 @@
+/* The report (components/Smith/Report.tsx, step M7.3): a panel after the tool on screen, the whole page in print.
+   What else is hidden in print and the light colours are in Smith.module.css (@media print on .root), @page in
+   pages/smith-chart/main.tsx. The chart's copy and the plot's are made only for print, so their boxes show only then. */
+
+.report {
+  max-width: var(--page-w);
+  margin: 0 auto;
+  padding: 0 var(--gutter) 40px;
+  min-width: 0;
+}
+/* The body's last size, remembered while it is rendered (Report.tsx renders it once before .lazy). */
+.body { min-width: 0; contain-intrinsic-size: auto 1200px; }
+/* Off screen the report's body is not laid out, styled or painted, so a drag's frames cost nothing for it (an A/B without this:
+   +1.4 ms per 4× drag frame). Added after the first render, so the remembered size is the real one and nothing jumps
+   when it comes into view. Not on the section: a short line's fixed bubble inside containment is placed in its frame. */
+.lazy { content-visibility: auto; }
+.title { align-items: center; }
+.head { display: inline-flex; align-items: center; gap: 4px; }
+.print { display: none; }
+.printButton.printButton.printButton { padding: 3px 12px; font-size: 13px; }
+
+.figs, .plotBox { display: none; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 12px 28px;
+  margin-top: 12px;
+}
+.block { min-width: 0; margin-top: 14px; }
+.grid > .block { margin-top: 0; }
+
+.list { display: grid; gap: 2px; margin: 0; font-size: 13px; }
+.list > div { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.list dt { color: var(--ink-2); }
+.list dd { margin: 0; font-family: var(--font-num); font-variant-numeric: tabular-nums; color: var(--ink); overflow-wrap: anywhere; }
+
+.note { margin: 8px 0 4px; font-size: 13px; line-height: 1.4; color: var(--ink-2); }
+.parts { margin: 0; padding-left: 1.6em; font-size: 13px; font-variant-numeric: tabular-nums; }
+.parts li { overflow-wrap: anywhere; }
+.sweep { margin-top: 16px; }
+.link { margin: 0; font-family: var(--font-num); font-size: 12px; line-height: 1.4; color: var(--ink-2); word-break: break-all; }
+
+@media print {
+  .report { max-width: none; margin: 0; padding: 0; }
+  .body.body { content-visibility: visible; }
+  .screen, .printButton, .report [data-why-wrap] { display: none !important; }
+  .print { display: inline; }
+  .title { font-size: 15px; color: var(--ink); }
+  .figs { display: block; margin: 4mm 0 2mm; }
+  .chartFrame { position: relative; width: 150mm; margin: 0 auto; overflow: hidden; break-inside: avoid; }
+  .plotBox.plotBox { display: block; height: auto; aspect-ratio: 680 / 240; margin: 3mm 0 0; border: none; border-radius: 0; break-inside: avoid; }
+  .grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4mm 8mm; }
+  .grid.stack { grid-template-columns: minmax(0, 1fr); }
+  .block, .list > div, .parts li, .report tr, .report dl > div { break-inside: avoid; }
+  .report h3 { break-after: avoid; }
+  .report thead { display: table-header-group; }
+  .report table { font-size: 11px; }
+  .report table th, .report table td { padding: 3px 6px; }
+}

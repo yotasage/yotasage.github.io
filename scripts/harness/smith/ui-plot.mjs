@@ -455,6 +455,22 @@ try {
     ok(await noSideScroll(pt), `${width} px: no horizontal scroll with the plot, figures and table`);
     const fits = await pt.evaluate(() => { const r = document.querySelector('[data-sweep-results]').getBoundingClientRect(); return r.left >= 0 && r.right <= document.documentElement.clientWidth + 0.5; });
     ok(fits, `${width} px: the results fit the width`);
+    // M7.3: no cell of the marker table outside the box that clips it, unless that box scrolls and takes the focus.
+    const cut = await pt.evaluate(() => {
+      const bad = [];
+      for (const td of document.querySelectorAll('[data-marker-table] td')) {
+        const r = td.getBoundingClientRect();
+        if (r.right > document.documentElement.clientWidth + 0.5 || r.left < -0.5) bad.push(`${td.textContent} past the screen`);
+        for (let a = td.parentElement; a && a !== document.body; a = a.parentElement) {
+          if (getComputedStyle(a).overflowX === 'visible') continue;
+          const b = a.getBoundingClientRect();
+          if ((r.left < b.left - 0.5 || r.right > b.right + 0.5) && !(a.scrollWidth > a.clientWidth && a.tabIndex >= 0)) bad.push(`${td.textContent} cut by ${a.tagName}`);
+          break;
+        }
+      }
+      return bad;
+    });
+    ok(cut.length === 0, () => `${width} px: no marker table cell cut (${cut.slice(0, 4).join(' | ')})`);
     ok(pt.errors.length === 0, () => `${width} px: no errors (${pt.errors.join(' | ')})`);
     await phone.close();
   }

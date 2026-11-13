@@ -137,6 +137,15 @@
 @media (max-width: 599px) {
   .results { --plot-h: 190px; }
   .figures > div { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  /* M7.3: one card per row, a label before each value, so no column is cut or scrolled at 320 px. */
+  .tableWrap { overflow: visible; border: none; border-radius: 0; }
+  .table, .table tbody, .table tr { display: block; }
+  .table thead { display: none; }
+  .table tr { margin-bottom: 6px; padding: 4px 10px; border: 1px solid var(--rule); border-radius: 8px; }
+  .table tr:last-child { margin-bottom: 0; }
+  .table tbody th { display: block; padding: 2px 0; border: none; }
+  .table td { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; border: none; white-space: normal; overflow-wrap: anywhere; }
+  .table td::before { content: attr(data-label); flex: none; font-family: var(--font-ui); color: var(--ink-3); }
 }
 @media (pointer: coarse) {
   .limit input { min-height: 44px; }

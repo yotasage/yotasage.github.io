@@ -72,8 +72,8 @@ export class TraceLayer {
   readonly path: PathLayer;
   /** The markers moved or added or removed on the chart (the page keeps them, and the link). */
   onMarkers: ((markers: number[]) => void) | null = null;
-  /** M7.2b: the band figures of each refined trace (null when the sweep is off). */
-  onFigures: ((f: BandFigures | null) => void) | null = null;
+  /** M7.2b: told the band figures of each refined trace (null when the sweep is off); M7.3: the plot's and the report's. */
+  readonly figureListeners = new Set<(f: BandFigures | null) => void>();
   /** M7.2b: the plot, fed in this layer's frames. */
   plot: PlotSink | null = null;
   /** The band figures of the refined trace shown, at the limit (null before the first). */
@@ -260,7 +260,7 @@ export class TraceLayer {
   private setFigures(f: BandFigures | null): void {
     this.figures = f;
     this.plot?.figures(f);
-    this.onFigures?.(f);
+    for (const fn of this.figureListeners) fn(f);
   }
 
   /** Hands the plot what is shown now (it then follows in the frames). */
