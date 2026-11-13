@@ -2,7 +2,9 @@ import React, { ReactNode, useEffect, useLayoutEffect, useRef } from 'react';
 
 import styles from '../../styles/Smith.module.css';
 import { ChartView } from './chartView';
+import { READOUT_ROWS } from './mathLink';
 import { DIGIT_CHOICES, READOUT_FIELDS, writeReadout } from './readout';
+import { ShowEq } from './ShowEq';
 import { Why } from './Why';
 
 export interface ChartProps {
@@ -27,6 +29,11 @@ export interface ChartProps {
 const LABELS: Record<(typeof READOUT_FIELDS)[number], string> = {
   z: 'z', Z: 'Z', y: 'y', Y: 'Y', gamma: 'Γ', gammaRect: 'Γ', vswr: 'VSWR', rl: 'Return loss', note: '',
 };
+/** What a readout row's "show equation" names (M5.2). */
+const WHATS: Record<(typeof READOUT_FIELDS)[number], string> = {
+  z: 'z', Z: 'Z', y: 'y', Y: 'Y', gamma: 'Γ', gammaRect: 'Γ', vswr: 'the VSWR', rl: 'the return loss', note: '',
+};
+const POINT = { t: 'point' } as const;
 const HINTS: Partial<Record<(typeof READOUT_FIELDS)[number], string>> = {
   z: 'normalised', y: 'normalised', gamma: 'polar', gammaRect: 'Cartesian',
 };
@@ -106,7 +113,7 @@ export default function Chart({ mode, z0 = 50, tools, side, onView, after, onRea
         {side}
         <section className={styles.panel} aria-labelledby="smith-readout">
           <h2 className={styles.panelTitle} id="smith-readout">
-            <span>Readout</span>
+            <span>Readout<Why k="show-eq" /></span>
             {onDigits && (
               <label className={styles.digits} title="Significant digits of the readout, the node table, the circuit input and the equations">
                 <span>Digits</span>
@@ -119,8 +126,9 @@ export default function Chart({ mode, z0 = 50, tools, side, onView, after, onRea
           </h2>
           <dl className={styles.readout}>
             {READOUT_FIELDS.map((f, i) => f !== 'note' && (
-              <div key={f} className={styles.readRow}>
-                <dt>{LABELS[f]}{HINTS[f] && <span className={styles.readHint}> {HINTS[f]}</span>}{(f === 'Z' || f === 'Y') && <span className={styles.readHint}> in {f === 'Z' ? 'Ω' : 'S'}</span>}<Why k={`read-${f}`} /></dt>
+              <div key={f} className={styles.readRow} data-read-row={f}>
+                <dt>{LABELS[f]}{HINTS[f] && <span className={styles.readHint}> {HINTS[f]}</span>}{(f === 'Z' || f === 'Y') && <span className={styles.readHint}> in {f === 'Z' ? 'Ω' : 'S'}</span>}<Why k={`read-${f}`} />
+                  <ShowEq subject={POINT} row={READOUT_ROWS[f]} k={`read:${f}`} what={`${WHATS[f]} at the readout's point`} back="the readout" /></dt>
                 <dd data-field={f} ref={(el) => { values.current[i] = el; }}>–</dd>
               </div>
             ))}

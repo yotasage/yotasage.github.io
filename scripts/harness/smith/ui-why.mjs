@@ -67,8 +67,8 @@ const ALL = S.cleanAsk({ z0: 50, f0: 1e8, loadR: 25, loadX: 25, parts: S.KIND_OR
 const FAM = { ...ALL, ask: { ...ALL.ask, goal: { kind: 'vswr', value: 1.5, within: true } } };
 // M4.4b: nothing marked, so the panel shows its suggestions (and their line).
 const SUG = S.cleanAsk(ALL, { unknowns: [], goal: { kind: 'point' } });
-/** theory.md §8's 39 lines, M4.3a's five of the Solve panel, M4.3c's nine (theory-solver.md) and M4.4b's suggestions. */
-const LINES = 54;
+/** theory.md §8's 39 lines, M4.3a's five of the Solve panel, M4.3c's nine (theory-solver.md), M4.4b's suggestions and M5.2's two (show equation, the equations). */
+const LINES = 56;
 /** The Standard values setting is folded: open it so its lines are on the page. */
 const openLists = (page) => page.evaluate(() => { document.querySelector('[data-lists]').open = true; });
 

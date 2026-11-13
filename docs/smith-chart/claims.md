@@ -12,7 +12,7 @@ without a source says "derived" on the page through its equation, or describes t
 
 **Checks.** `ui-theory.mjs`: every citation on the page resolves to an entry of the reference list, numbered by first
 citation; every #link of the page (contents, citations, nav, short lines) has its target; every live number equals
-the engine's. `ui-why.mjs`: all short lines with their text (39 in M3.5, 44 after M4.3a, 53 after M4.3c), and every one's link opens a topic that exists.
+the engine's. `ui-why.mjs`: all short lines with their text (39 in M3.5, 44 after M4.3a, 53 after M4.3c, 54 after M4.4b, 56 after M5.2), and every one's link opens a topic that exists.
 
 ## The theory, by topic (theory.md §1–7)
 
@@ -101,6 +101,10 @@ worked by hand to 0.0377) · 185 D 184, 110 · 186 T; Def (registry assumptions)
 **Count:** 58 claims (130–187): 10 sourced (some with a derived part), 31 derived, 6 definitions, 11 describing the
 tool. All: 187 claims.
 
+**Added in M5.2 (topic 1, "Read").** 188 T: the = beside a number shows its equation with your values; pointing at or
+tapping a variable lights its part, node or readout row, and pointing at an arc or a node of the chart lights its
+variables (components/Smith/mathLink.ts, ShowEq.tsx, MathPanel.tsx; ui-math-link.mjs). All: 188 claims.
+
 ## Sentences the page added (M3.5b, M3.5c)
 
 | Where | Sentence | Kind |
@@ -181,6 +185,8 @@ Each repeats claims of the topic it links to; the tool's own behaviour is T. Key
 | list-L | Chip inductors come in makers’ own lists (1.9 nH): paste yours. | S 179 |
 | list-C | E series; RF chip capacitors below 10 pF have tolerances in pF. | S 176, 178 |
 | list-Z | Any value by default; a list if your lines come in set impedances. | T 180 |
+| show-eq | The = beside a number shows its equation, with your values put in. | T 188 (ShowEq.tsx; ui-math-link: every readout row, the input, node rows, the part card) |
+| math | Point at or tap a variable: its part, node or readout row lights up. | T 188 (mathLink.ts; ui-math-link: hover, focus, tap) |
 
 ## Deliberately left out (not sourced)
 

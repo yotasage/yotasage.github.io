@@ -362,7 +362,10 @@ function Theory({ bib, circuit: c, outcome, lists }: Props) {
               part’s value follows. Type a value in the part’s card when you know it exactly. Undo and Redo step through
               every change.</li>
             <li><b>Read.</b> Hover over or tap any place on the chart and the readout gives z, Z, y, Y, Γ, the VSWR and the
-              return loss there. The node table gives the same for every node of the path, from the load to the input.</li>
+              return loss there. The node table gives the same for every node of the path, from the load to the input.
+              The = beside a number shows its equation in the Equations panel, with your values put in; point at or tap
+              a variable there and its part, node or readout row lights up, and pointing at an arc or a node on the
+              chart lights its variables.</li>
           </ol>
           <p>
             The usual aim is to bring the input to the centre. There Γ = 0: nothing is reflected and all the power the

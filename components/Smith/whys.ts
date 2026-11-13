@@ -53,6 +53,9 @@ export const WHYS: Readonly<Record<string, Why>> = {
   'read-rl': w('return loss', 'how-good-is-a-match', 'Reflected power below incident, in dB; larger is better.'),
   nodes: w('the node table', 'how-to-use', 'Each node from the load to the input: z, Γ, VSWR, return loss.'),
   input: w('the circuit input', 'how-good-is-a-match', 'What the source sees: the end of the path, In.'),
+  // M5.2: the "show equation" control and the equation panel's linking.
+  'show-eq': w('show equation', 'how-to-use', 'The = beside a number shows its equation, with your values put in.'),
+  math: w('the equations', 'how-to-use', 'Point at or tap a variable: its part, node or readout row lights up.'),
   goal: w('the goal', 'how-good-is-a-match', 'The solver’s goal; by default the centre, within |Γ| 0.2 (VSWR 1.5).'),
   // M4.3a, the Solve panel (linked to the solver's own topics since M4.3c).
   'solve-mark': w('Solve for', 'two-one-or-none', 'Leave this value to the solver: it finds what meets the goal.'),

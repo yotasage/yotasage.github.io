@@ -10,29 +10,44 @@
 // per frame to RATE ms (engine.md §9, notes-M0.3.md (a): the MathML costs DOM, style and layout work far beyond the
 // 0.04 ms of KaTeX itself, so the visible rows are refreshed round-robin, a few per second at 4× CPU, and every row
 // gets its final value once the values stop changing). A closed or scrolled-away panel does no work until it is seen.
+//
+// From M5.2 each variable carries what it stands for (`data-mt`, from the sentinels' second index): pointing at one
+// (hover, a tap, or the arrow keys in a focused row) lights it on the page, and the page's pointing lights it here
+// (components/Smith/mathLink.ts); "show equation" requests (ShowEq.tsx) set the subject, focus a row and offer a way back.
 
 import katex from 'katex';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
+import { goalNode } from '../../lib/smith/goal';
 import type { Circuit } from '../../lib/smith/network';
+import { askOf } from '../../lib/smith/state';
+import type { Circuit as StateCircuit } from '../../lib/smith/state';
 import styles from '../../styles/Smith.module.css';
 import css from '../../styles/SmithMath.module.css';
-import { COLOUR_KEYS, MathRow, SENTINELS, Spec, Subject, rowOf, specsFor, subjectName } from './mathRows';
+import { mathLink } from './mathLink';
+import type { ShowRequest } from './mathLink';
+import { COLOUR_KEYS, MathRow, Spec, Subject, rowOf, specsFor, subjectName } from './mathRows';
+import { Why } from './Why';
 
-// The sentinel colours of the TeX become classes in the MathML (learning.md §2: \htmlClass is dropped in MathML output).
-const CLASS_OF: Record<string, string> = Object.fromEntries(COLOUR_KEYS.map((k) => [SENTINELS[k], css[k]]));
-const SENTINEL = /mathcolor="(#0a0b[0-9a-f]{2})"/g;
+// The sentinel colours of the TeX become a colour's class and the variable's target in the MathML (learning.md §2:
+// \htmlClass is dropped in MathML output): `#0a` + colour + the variable's index in its row.
+const CLASS_OF: readonly string[] = ['', ...COLOUR_KEYS.map((k) => css[k])];
+const SENTINEL = /mathcolor="#0a([0-9a-f]{2})([0-9a-f]{2})"/g;
 
-/** TeX as MathML with the sentinel colours as classes. */
-export function mathHtml(tex: string): string {
-  return katex.renderToString(`\\displaystyle ${tex}`, { output: 'mathml' }).replace(SENTINEL, (_, c: string) => `class="${CLASS_OF[c] ?? ''}"`);
+/** TeX as MathML with the sentinels as classes and targets (`data-mt`, the row's `targets` by index). */
+export function mathHtml(tex: string, targets: readonly string[] = []): string {
+  return katex.renderToString(`\\displaystyle ${tex}`, { output: 'mathml' }).replace(SENTINEL, (_, c: string, v: string) => {
+    const t = targets[parseInt(v, 16)];
+    return `class="${CLASS_OF[parseInt(c, 16)] ?? ''}"${t ? ` data-mt="${t}"` : ''}`;
+  });
 }
 
 /** The HTML of a row's lines with numbers: each "= …" line, the result (or its bound) and the raw number of D20. */
 function liveHtml(r: MathRow): string {
   let h = '';
-  for (const l of r.lines) h += `<span class="${css.line}">${mathHtml(`{}= ${l}`)}</span>`;
-  h += `<span class="${css.line} ${css.result}" data-math-result="">${mathHtml(r.bound ? r.result : `{}= ${r.result}`)}</span>`;
+  const t = r.targets;
+  for (const l of r.lines) h += `<span class="${css.line}">${mathHtml(`{}= ${l}`, t)}</span>`;
+  h += `<span class="${css.line} ${css.result}" data-math-result="">${mathHtml(r.bound ? r.result : `{}= ${r.result}`, t)}</span>`;
   if (r.raw) h += `<span class="${css.raw}" data-math-raw="">computed: ${r.raw}</span>`;
   return h;
 }
@@ -166,6 +181,7 @@ export class MathLive {
     const r = rowOf(spec, this.digits);
     el.innerHTML = liveHtml(r);
     el.dataset.mathBind = JSON.stringify(r.binding);
+    mathLink.mark(el);
   }
 }
 
@@ -177,19 +193,98 @@ export interface MathPanelProps {
   live: MathLive;
 }
 
+/** A subject as `data-math-subject` writes it. */
+const subjectKey = (s: Subject): string => (s.t === 'point' ? 'point' : `${s.t}:${s.t === 'part' ? s.i : s.k}`);
+
+/** The target tokens under a pointer or a tap: the variable's, else its row's left side's ('' outside the rows). */
+function tokensAt(target: EventTarget | null): string {
+  const e = target as Element | null;
+  if (!e?.closest) return '';
+  const v = e.closest('[data-mt]');
+  if (v) return v.getAttribute('data-mt') ?? '';
+  return e.closest('[data-math-eq]')?.getAttribute('data-math-t') ?? '';
+}
+
 function MathPanel({ circuit, subject: selected, digits, live }: MathPanelProps) {
   const [follow, setFollow] = useState<'selection' | 'point'>('selection');
   const subject: Subject = follow === 'point' ? { t: 'point' } : selected;
+  // The goal's node and kind: which variables also stand for the goal (mathRows' targets).
+  const goal = askOf(circuit as StateCircuit).goal;
+  const goalKey = `${goal.kind}${goalNode(goal, circuit.parts.length)}`;
   // The rows' frames: the symbolic lines from the committed circuit (they do not depend on the numbers).
   const rows = useMemo(() => specsFor(circuit, subject, 0, 0).map((s) => rowOf(s, digits)),
-    // The shape changes with the subject and the selected part's kind only.
-    [subject.t, subject.t === 'part' ? subject.i : subject.t === 'node' ? subject.k : -1, subject.t === 'part' ? circuit.parts[subject.i]?.kind : -1, circuit.parts.length]);
-  const key = rows.map((r) => r.id).join(',') + `|${subject.t}${subject.t === 'part' ? subject.i : subject.t === 'node' ? subject.k : ''}`;
-  const symbolic = useMemo(() => rows.map((r) => ({ lhs: mathHtml(r.lhs), rhs: mathHtml(`{}= ${r.rhs}`) })), [key]);
+    // The shape changes with the subject, the selected part's kind and the goal only.
+    [subject.t, subject.t === 'part' ? subject.i : subject.t === 'node' ? subject.k : -1, subject.t === 'part' ? circuit.parts[subject.i]?.kind : -1, circuit.parts.length, goalKey]);
+  const sKey = subjectKey(subject);
+  const key = rows.map((r) => r.id).join(',') + `|${sKey}|${goalKey}`;
+  const symbolic = useMemo(() => rows.map((r) => ({ lhs: mathHtml(r.lhs, r.targets), rhs: mathHtml(`{}= ${r.rhs}`, r.targets) })), [key]);
+  // Each row's distinct targets, in order: the arrow keys step through them in a focused row.
+  const stops = useMemo(() => rows.map((r) => [...new Set(r.targets.filter(Boolean))]), [key]);
 
   // Open beside the chart, closed on phones (read after mount, as the node table does).
   const [open, setOpen] = useState(true);
   useEffect(() => { if (window.matchMedia('(max-width: 599px)').matches) setOpen(false); }, []);
+
+  // "Show equation" (ShowEq.tsx): the subject (the page has set its selection), the panel open, the row focused and
+  // brought into view once rendered, and a way back to the control in that row.
+  const [req, setReq] = useState<(ShowRequest & { n: number }) | null>(null);
+  useEffect(() => {
+    mathLink.shower = (r) => {
+      setFollow(r.subject.t === 'point' ? 'point' : 'selection');
+      setOpen(true);
+      setReq((was) => ({ ...r, n: (was?.n ?? 0) + 1 }));
+    };
+    return () => { mathLink.shower = null; };
+  }, []);
+  const list = useRef<HTMLOListElement>(null);
+  const reqKey = req ? subjectKey(req.subject) : '';
+  const backAt = req && reqKey === sKey ? Math.max(0, rows.findIndex((r) => r.id === req.row)) : -1;
+  useEffect(() => {
+    if (!req) return undefined;
+    // After the commit and the details' opening: the row is laid out.
+    const raf = requestAnimationFrame(() => {
+      const li = list.current?.children[backAt] as HTMLElement | undefined;
+      if (!li) return;
+      li.scrollIntoView({ block: 'center' });
+      li.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [req?.n]);
+  const goBack = () => {
+    const r = req;
+    setReq(null);
+    if (!r) return;
+    const el = r.from?.isConnected ? r.from : document.querySelector<HTMLElement>(`[data-show-eq="${r.key}"]`);
+    if (!el) return;
+    el.scrollIntoView({ block: 'center' });
+    el.focus({ preventScroll: true });
+  };
+
+  // A new subject: what was pointed at in the panel is gone.
+  useLayoutEffect(() => { mathLink.reset(); }, [key]);
+  useEffect(() => {
+    mathLink.rows = list.current;
+    return () => { mathLink.rows = null; };
+  }, [open]);
+  // The arrow keys in a focused row: its targets one by one (the row's own when the stop is −1).
+  const stop = useRef(-1);
+  const onKey = (j: number) => (e: React.KeyboardEvent<HTMLLIElement>) => {
+    if (e.target !== e.currentTarget) return;
+    const s = stops[j];
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      if (!s.length) return;
+      const step = e.key === 'ArrowRight' ? 1 : -1;
+      stop.current = stop.current < 0 ? (step > 0 ? 0 : s.length - 1) : (stop.current + step + s.length) % s.length;
+      mathLink.unpin();
+      mathLink.point('focus', s[stop.current]);
+    } else if (e.key === 'Escape' && (stop.current >= 0 || mathLink.pinned)) {
+      e.preventDefault();
+      stop.current = -1;
+      mathLink.unpin();
+      mathLink.point('focus', rows[j].target);
+    }
+  };
 
   const section = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -205,10 +300,11 @@ function MathPanel({ circuit, subject: selected, digits, live }: MathPanelProps)
 
   const name = subjectName(circuit, subject);
   return (
-    <section className={styles.panel} data-math="" data-math-subject={subject.t === 'point' ? 'point' : `${subject.t}:${subject.t === 'part' ? subject.i : subject.k}`} ref={section}>
+    <section className={styles.panel} data-math="" data-math-subject={sKey} ref={section}>
       <details className={css.box} open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
         <summary className={`${styles.panelTitle} ${css.summary}`}>
           <span>Equations</span>
+          <span className={css.summaryWhy}><Why k="math" /></span>
           <span className={styles.panelNote}>{name}</span>
         </summary>
         <div className={css.follow} role="group" aria-label="Show the equations of">
@@ -216,15 +312,23 @@ function MathPanel({ circuit, subject: selected, digits, live }: MathPanelProps)
           <button type="button" aria-pressed={follow === 'point'} data-math-follow="point" onClick={() => setFollow('point')}>Readout point</button>
         </div>
         <p className={css.empty}>Hover, tap or use the arrow keys on the chart to read a point.</p>
-        <ol className={css.rows}>
+        <p className={css.keys} id="smith-math-keys">Point at or tap a variable to light up what it stands for; in a focused equation, ← and → step through them.</p>
+        <ol className={css.rows} ref={list}
+          onPointerOver={(e) => { if (e.pointerType !== 'touch') mathLink.point('hover', tokensAt(e.target)); }}
+          onPointerLeave={() => mathLink.point('hover', '')}
+          onClick={(e) => { if (!(e.target as Element).closest('button')) mathLink.point('pin', tokensAt(e.target)); }}>
           {rows.map((r, j) => (
-            <li key={`${key}:${j}`} className={css.row} data-math-eq={r.id}>
+            <li key={`${key}:${j}`} className={css.row} data-math-eq={r.id} data-math-t={r.target} tabIndex={0}
+              aria-describedby="smith-math-keys" onKeyDown={onKey(j)}
+              onFocus={(e) => { if (e.target === e.currentTarget) { stop.current = -1; mathLink.point('focus', r.target); } }}
+              onBlur={(e) => { if (e.target === e.currentTarget) mathLink.point('focus', ''); }}>
               <div className={css.grid}>
                 <span className={css.lhs} dangerouslySetInnerHTML={{ __html: symbolic[j].lhs }} />
                 <span dangerouslySetInnerHTML={{ __html: symbolic[j].rhs }} />
                 <div className={css.live} data-math-live="" ref={(el) => live.attach(j, el)} />
               </div>
               <span className={css.title}>{r.title}</span>
+              {j === backAt && <button type="button" className={css.back} data-math-back="" onClick={goBack}>↩ Back to {req.back}</button>}
             </li>
           ))}
         </ol>

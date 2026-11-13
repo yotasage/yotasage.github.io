@@ -13,6 +13,7 @@ import {
 import styles from '../../styles/Smith.module.css';
 import { partColour } from './pathLayer';
 import { readoutTexts } from './readout';
+import { ShowEq } from './ShowEq';
 import { Why, WhyLine } from './Why';
 import { FIELD_WHY } from './whys';
 
@@ -320,7 +321,7 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
       {part && (
         <div className={styles.card} key={ids.current[selected]} data-card={selected} style={{ '--card': partColour(selected) } as React.CSSProperties}>
           <div className={styles.cardHead}>
-            <span className={styles.cardName}>{selected + 1} · {KIND_NAMES[part.kind]}</span>
+            <span className={styles.cardName}>{selected + 1} · {KIND_NAMES[part.kind]}<ShowEq subject={{ t: 'part', i: selected }} k="part" what={`part ${selected + 1}`} back="the part card" /></span>
             <span className={styles.cardActions}>
               <button type="button" className={styles.button} data-move="source" disabled={selected === n - 1} onClick={() => move(selected, selected + 1)} title="Move towards the source (Alt+←)" aria-label="Move towards the source">←</button>
               <button type="button" className={styles.button} data-move="load" disabled={selected === 0} onClick={() => move(selected, selected - 1)} title="Move towards the load (Alt+→)" aria-label="Move towards the load">→</button>
@@ -362,8 +363,8 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
         )}
       </div>
 
-      <h3 className={styles.subTitle}><span>Circuit input <Why k="input" /></span><span className={styles.panelNote}>at f0</span></h3>
-      <dl className={styles.readout}>
+      <h3 className={styles.subTitle}><span>Circuit input <Why k="input" /><ShowEq subject={{ t: 'node', k: n }} k="input" what="the circuit input" back="the circuit input" /></span><span className={styles.panelNote}>at f0</span></h3>
+      <dl className={styles.readout} data-input-box="">
         {INPUT_SHOWN.map(([k, label, hint]) => (
           <div key={k} className={styles.readRow}>
             <dt>{label}{hint && <span className={styles.readHint}> {hint}</span>}</dt>

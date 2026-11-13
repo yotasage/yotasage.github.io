@@ -43,6 +43,9 @@ the chart by a series capacitor and a shunt inductor. ⟨1⟩ Change it, or pres
    through every change. ⟨10⟩
 4. **Read.** Hover over or tap any place on the chart and the readout gives z, Z, y, Y, Γ, the VSWR and the return
    loss there. ⟨11⟩ The node table gives the same for every node of the path, from the load to the input. ⟨12⟩
+   The = beside a number shows its equation in the Equations panel, with your values put in; point at or tap a
+   variable there and its part, node or readout row lights up, and pointing at an arc or a node on the chart lights
+   its variables. ⟨188⟩ (M5.2)
 
 The usual aim is to bring the input to the centre. There Γ = 0: nothing is reflected and all the power the source
 sends reaches the load [Ellingson2018 §3.20]. ⟨13⟩ The dashed circle around the centre is the tool's "close enough"
@@ -443,6 +446,8 @@ At most about 12 words, after the control or under the readout row, followed by 
 | Readout Return loss | Reflected power below incident, in dB; larger is better. | `how-good-is-a-match` |
 | Node table | Each node from the load to the input: z, Γ, VSWR, return loss. | `how-to-use` |
 | Circuit input | What the source sees: the end of the path, In. | `how-good-is-a-match` |
+| Show equation (`show-eq`, M5.2; at the readout's title, for the "=" beside every readout row, the circuit input, node rows and the part card) | The = beside a number shows its equation, with your values put in. | `how-to-use` |
+| Equations panel (`math`, M5.2) | Point at or tap a variable: its part, node or readout row lights up. | `how-to-use` |
 | Goal mark and text | The solver’s goal; by default the centre, within \|Γ\| 0.2 (VSWR 1.5). | `how-good-is-a-match` |
 | Solve for (`solve-mark`) | Leave this value to the solver: it finds what meets the goal. | `two-one-or-none` |
 | L or C (`solve-free`) | An L adds +jx, a C −jx: the answer’s sign picks the kind. | `realisable-values` |

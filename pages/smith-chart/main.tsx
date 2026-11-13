@@ -8,6 +8,7 @@ import HomeIcon from '../../components/icons/home';
 import { MoonIcon, SunIcon } from '../../components/Resistor/parts';
 import Chart from '../../components/Smith/Chart';
 import MathPanel, { MathLive } from '../../components/Smith/MathPanel';
+import { mathLink } from '../../components/Smith/mathLink';
 import type { Subject } from '../../components/Smith/mathRows';
 import { DIGIT_CHOICES, READOUT_DIGITS, setShownDigits } from '../../components/Smith/readout';
 import Nodes from '../../components/Smith/Nodes';
@@ -273,6 +274,10 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
       else setNodeSel(i);
     };
     layer.onCommit = commit;
+    // M5.2: the chart's hover lights the variables of its arc or node in the equation panel, and the panel's pointing
+    // lights the arc, handle or node marker.
+    layer.onHot = (kind, i) => mathLink.fromPage(kind, i);
+    mathLink.path = layer;
     layer.onDraw = (i) => { setDrawKind(-1); if (i >= 0) selectPart(i); };
     // Scoped to the tool: a query over the whole document would walk the theory's MathML every drag frame.
     layer.onLive = (c, i, half) => { writeLive(tool.current ?? document, c, i, half); mathLive.live(c); };
@@ -288,6 +293,14 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     solveL.setResult(o?.result ?? null, o?.circuit ?? null);
   };
   useEffect(() => { path.current?.setCircuit(circuit); solveLayer.current?.setGoal(circuit); }, [circuit]);
+  // "Show equation" (M5.2) sets the selection without the node table's toggle; the link's queries stay in the tool.
+  useEffect(() => {
+    mathLink.scope = tool.current;
+    mathLink.select = (s) => {
+      if (s.t === 'part') { setPartSel(s.i); setNodeSel(-1); } else if (s.t === 'node') setNodeSel(s.k);
+    };
+    return () => { mathLink.scope = null; mathLink.select = null; mathLink.path = null; };
+  }, []);
   useEffect(() => { path.current?.setLists(lists); }, [lists]);
   useEffect(() => { if (path.current) path.current.snap = snap; }, [snap]);
   useEffect(() => { path.current?.arm(drawKind); }, [drawKind]);
@@ -298,11 +311,11 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     <>
       <Strip circuit={circuit} onChange={commit} issues={issues} selected={part} onSelect={selectPart}
         revision={revision} drawKind={drawKind} onDraw={setDrawKind}
-        onHover={(i) => path.current?.hover(SEL_PART, i)} digits={digits} />
+        onHover={(i) => { path.current?.hover(SEL_PART, i); mathLink.fromPage(SEL_PART, i); }} digits={digits} />
       <SolvePanel circuit={circuit} onChange={stable.commit} revision={revision} busy={stable.busy} onResult={stable.result}
         onPreview={stable.preview} lists={lists} onLists={stable.lists} />
       <Nodes circuit={circuit} selected={node} onSelect={(k) => setNodeSel(k === node ? -1 : k)}
-        onHover={(k) => path.current?.hover(SEL_NODE, k)} digits={digits} />
+        onHover={(k) => { path.current?.hover(SEL_NODE, k); mathLink.fromPage(SEL_NODE, k); }} digits={digits} />
     </>
   );
   // The equation panel (M5.1) under the readout: the selected node, else the selected (or last) part, else the load.

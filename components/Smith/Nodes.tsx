@@ -10,6 +10,8 @@ import { toDegrees } from '../../lib/smith/convert';
 import styles from '../../styles/Smith.module.css';
 import { nodeLabel, nodeName } from './pathLayer';
 import { complexText, gammaPolarText, shownDigits } from './readout';
+import { subjectName } from './mathRows';
+import { ShowEq } from './ShowEq';
 import { Why } from './Why';
 
 // The table of the path's nodes (step M3.2): for every node from the load to the input its z, Γ, VSWR and return
@@ -106,7 +108,7 @@ export default function Nodes({ circuit, selected, onSelect, onHover, digits }: 
         </summary>
         <ol className={styles.nodeList} aria-label="Nodes from the load to the input">
           {rows.map((t, k) => (
-            <li key={k}>
+            <li key={k} className={styles.nodeItem}>
               <button type="button" className={styles.nodeRow} data-node-row={k} aria-pressed={k === selected}
                 aria-label={`${nodeName(k, n)}: z ${t.z}, Γ ${t.gamma}, VSWR ${t.vswr}, return loss ${t.rl}`}
                 onClick={() => onSelect(k)} onMouseEnter={() => onHover(k)} onMouseLeave={() => onHover(-1)}
@@ -120,6 +122,7 @@ export default function Nodes({ circuit, selected, onSelect, onHover, digits }: 
                   <span><i>RL</i><b data-v="rl">{t.rl}</b></span>
                 </span>
               </button>
+              <ShowEq subject={{ t: 'node', k }} k={`node:${k}`} what={subjectName(circuit, { t: 'node', k })} back="the node table" />
             </li>
           ))}
         </ol>

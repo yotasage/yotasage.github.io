@@ -1188,3 +1188,53 @@
   font-family: var(--font-num);
   font-size: 12.5px;
 }
+
+/* M5.2: "show equation" (ShowEq.tsx), a small "=" beside a readout row, the circuit input, a node row and the part
+   card, the same size as the short lines' mark, with a touch target of about 32 px around it. */
+.root .showEq {
+  position: relative;
+  display: inline-block;
+  width: 17px;
+  height: 15px;
+  margin-left: 5px;
+  padding: 0;
+  border: 1px solid var(--rule-strong);
+  border-radius: 4px;
+  background: none;
+  color: var(--ink-3);
+  font: 650 12px/12px var(--font-ui);
+  letter-spacing: 0;
+  text-align: center;
+  vertical-align: -2px;
+  cursor: pointer;
+  contain: layout size style;
+  transition: color var(--quick), border-color var(--quick);
+}
+.root .showEq::before { content: ''; position: absolute; inset: -9px -8px; }
+.root .showEq:hover { color: var(--accent); border-color: var(--accent); }
+.root .showEq:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Placed over the row's right edge, out of flow: the row's texts change in every drag frame (live.ts) and a flex row
+   would measure them again; the row keeps block layout and room on the right. */
+.nodeItem { position: relative; }
+.root .nodeItem > .nodeRow { padding-right: 30px; }
+.root .nodeItem > .showEq { position: absolute; top: 50%; right: 6px; margin: -8px 0 0; }
+
+/* What the equation panel points at (mathLink.ts, data-lit): toggled on pointer, focus and key events only. */
+.top [data-arcs] path[data-lit] { stroke-width: 5px; }
+.top [data-goal-ring][data-lit] { stroke-width: 3px; stroke-opacity: 1; }
+.chart [data-layer='path-marks'] [data-handle][data-lit]::before {
+  width: 34px;
+  height: 34px;
+  background: color-mix(in srgb, currentColor 30%, transparent);
+}
+.chart [data-layer='path-marks'] [data-node][data-lit],
+.chart [data-layer='path-marks'] [data-goal][data-lit] {
+  border: 2.5px solid var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.root .tile[data-lit] { border-color: currentColor; box-shadow: 0 0 0 2px currentColor; }
+.card[data-lit] { box-shadow: 0 0 0 2px var(--card); }
+.root .nodeRow[data-lit],
+.readRow[data-lit],
+.readout[data-lit],
+.goalText[data-lit] { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }

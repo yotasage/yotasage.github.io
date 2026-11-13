@@ -381,7 +381,8 @@ try {
   await page.keyboard.press('Enter'); await frame(page);
   s = await sel();
   ok(s.nodes.join() === '1' && s.row === '1', `keys: Enter on a row selects the node (${JSON.stringify(s)})`);
-  await page.keyboard.press('Shift+Tab'); await frame(page);
+  // M5.2: the row's "show equation" button sits between the rows.
+  await page.keyboard.press('Shift+Tab'); await page.keyboard.press('Shift+Tab'); await frame(page);
   s = await sel();
   ok(s.hotNodes.join() === '0', `keys: focus on the row before highlights its marker (${JSON.stringify(s)}, focus ${await active()})`);
   await page.keyboard.press(' '); await frame(page);

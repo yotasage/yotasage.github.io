@@ -47,8 +47,9 @@
 .rows { margin: 6px 0 0; padding: 0; list-style: none; }
 
 /* The panel's MathML is laid out on its own: the side panel's texts that change in a drag frame (the node table, the
-   readout) do not lay it out again, and rows out of view are not rendered at all. */
-.box { contain: layout style; }
+   readout) do not lay it out again, and rows out of view are not rendered at all. On the rows, not the whole box:
+   containment makes the box the containing block of fixed elements, and the title's short line has a fixed bubble. */
+.rows { contain: layout style; }
 
 .row {
   content-visibility: auto;
@@ -101,3 +102,31 @@
 .p7 { color: var(--part-7); }
 .p8 { color: var(--part-8); }
 .pt { color: var(--accent); }
+
+/* M5.2: the variables point at what they stand for (mathLink.ts): lit by hover, tap or the arrow keys, and by the page's
+   pointing at a part or a node. Attribute toggles only. */
+.rows [data-mt] { cursor: pointer; }
+.rows [data-lit] {
+  border-radius: 3px;
+  background: color-mix(in srgb, currentColor 18%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 18%, transparent);
+}
+.row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+.keys { margin: 8px 0 0; font-size: 12px; line-height: 1.4; color: var(--ink-3); }
+
+.rows .back {
+  display: inline-block;
+  margin-top: 6px;
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 7px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.rows .back:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.summaryWhy { margin-right: auto; margin-left: -6px; }

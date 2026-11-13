@@ -21,6 +21,9 @@ import type { Circuit } from '../../lib/smith/network';
 import {
   LINE, QUARTER, SERIES_C, SERIES_L, SERIES_R, SHUNT_C, SHUNT_L, SHUNT_R, STUB_OPEN, STUB_SHORT, added, turnsAt,
 } from '../../lib/smith/parts';
+import { goalNode, isCircleGoal } from '../../lib/smith/goal';
+import { askOf } from '../../lib/smith/state';
+import type { Circuit as StateCircuit } from '../../lib/smith/state';
 import { complexText } from './readout';
 
 const TAU = 2 * Math.PI;
@@ -31,10 +34,31 @@ export type Subject = { t: 'part'; i: number } | { t: 'node'; k: number } | { t:
 /** The colours of the panel: the eight part colours of the chart (`--part-n`) and the readout's point (`--accent`). */
 export const COLOUR_KEYS = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'pt'] as const;
 export type ColourKey = (typeof COLOUR_KEYS)[number];
-/** The sentinel colour of each key in the TeX (`\textcolor`), replaced by a class in the MathML (learning.md §2). */
-export const SENTINELS: Readonly<Record<ColourKey, string>> = Object.fromEntries(
-  COLOUR_KEYS.map((k, i) => [k, `#0a0b${(i + 1).toString(16).padStart(2, '0')}`]),
-) as Record<ColourKey, string>;
+/**
+ * The sentinel colour of a variable in the TeX (`\textcolor`), replaced in the MathML by its colour's class and its
+ * target (learning.md §2; M5.2): `#0a` + the colour (1 + its index in COLOUR_KEYS, 0 for none) + the variable's index
+ * among its row's variables (`MathRow.targets`), two hex digits each.
+ */
+export const sentinel = (colour: number, variable: number): string =>
+  `#0a${colour.toString(16).padStart(2, '0')}${variable.toString(16).padStart(2, '0')}`;
+
+/**
+ * What a variable stands for on the page (M5.2), as space-separated tokens: `p<i>` part i (its arc, handle, tile and
+ * card), `n<k>` node k (its marker, its row of the node table, the circuit input when k is the input), `goal` the
+ * goal's ring, mark and line (a variable of the goal's node that the goal is about), `r<field>` the readout's row of a
+ * READOUT_FIELDS field (`rgamma` both Γ rows).
+ */
+const POINT_TARGETS: Readonly<Record<string, string>> = {
+  z: 'rz', r: 'rz', x: 'rz', Z: 'rZ', y: 'ry', g: 'ry', b: 'ry', Y: 'rY', Gamma: 'rgamma', VSWR: 'rvswr', RL: 'rrl',
+};
+/** Constants: no target. */
+const NO_TARGET = new Set(['Z_0', 'Y_0', 'omega', 'beta', 'lambda']);
+/** A part's variables that are the node it starts at, and those of the node it ends at (with Γ, z and Z of `gamma-z`). */
+const BEFORE = new Set(['z_L', 'y_L', 'Z_L', 'Gamma_c']);
+const AFTER = new Set(['z_in', 'y_in', 'Z_in']);
+/** The variables of the goal's node that a goal is about: a circle goal's |Γ| and its measures, a point target's z. */
+const CIRCLE_GOAL = new Set(['Gamma', 'VSWR', 'RL', 'ML']);
+const POINT_GOAL = new Set(['Gamma', 'z', 'Z']);
 
 const partKey = (i: number): ColourKey => COLOUR_KEYS[i % 8];
 /** A node takes the colour of the arc that ends at it (part k − 1); the load has none. */
@@ -44,7 +68,11 @@ const nodeKey = (k: number): ColourKey | undefined => (k > 0 ? partKey(k - 1) : 
 export interface Var { re: number; im: number; unit: string; floor: number; tex?: (digits: number) => TexPiece }
 
 /** The registry entry, its variables' values and colours (cheap to make; a row's TeX is made from it when it is drawn). */
-export interface Spec { id: string; vars: Record<string, Var>; colours: Record<string, ColourKey | undefined> }
+export interface Spec {
+  id: string; vars: Record<string, Var>; colours: Record<string, ColourKey | undefined>;
+  /** What each variable stands for on the page (M5.2, POINT_TARGETS), set by specsOf. */
+  targets?: Record<string, string>;
+}
 
 /** One row as the panel prints it. */
 export interface MathRow {
@@ -62,6 +90,9 @@ export interface MathRow {
   raw: string;
   /** Every variable with a finite value: (re, im), raw (for the harness). */
   binding: Record<string, [number, number]>;
+  /** M5.2: the targets of the spec's variables in their order (the sentinels' second index; '' for none), and the left side's. */
+  targets: string[];
+  target: string;
 }
 
 const fin = (re: number, im: number): boolean => Number.isFinite(re) && Number.isFinite(im);
@@ -215,12 +246,37 @@ export function specsFor(c: Circuit, s: Subject, gr = NaN, gi = NaN): Spec[] {
 }
 
 function specsOf(c: Circuit, s: Subject, gr: number, gi: number, out: Spec[], shapeOnly = false): void {
-  if (s.t === 'point') { pointSpecs(shapeOnly ? 0 : gr, shapeOnly ? 0 : gi, c.z0, out); return; }
+  if (s.t === 'point') { pointSpecs(shapeOnly ? 0 : gr, shapeOnly ? 0 : gi, c.z0, out); pointTargets(out); return; }
   const n = c.parts.length;
   // Only the shape is needed: a circuit's evaluation is cheap, but not needed for the ids.
   const metrics = shapeOnly ? new Float64Array((n + 1) * METRIC_STRIDE) : evaluateCircuit(c).metrics;
   if (s.t === 'part' && s.i >= 0 && s.i < n) partSpecs(c, metrics, s.i, out);
   else if (s.t === 'node') { const k = Math.max(0, Math.min(n, s.k)); nodeSpecs(metrics, k * METRIC_STRIDE, c.z0, nodeKey(k), out); }
+  else return;
+  // The targets: a node's every variable is the node; a part's are the part, or the node it starts or ends at.
+  const goal = askOf(c as StateCircuit).goal;
+  const gk = goalNode(goal, n), about = isCircleGoal(goal) ? CIRCLE_GOAL : POINT_GOAL;
+  const pi = s.t === 'part' ? s.i : -1;
+  for (const sp of out) {
+    const t: Record<string, string> = {};
+    const end = s.t === 'node' ? Math.max(0, Math.min(n, s.k)) : sp.id === 'gamma-z' ? pi + 1 : -1;
+    for (const name in sp.vars) {
+      if (NO_TARGET.has(name)) continue;
+      let k = end;
+      if (pi >= 0 && k < 0) k = BEFORE.has(name) ? pi : AFTER.has(name) ? pi + 1 : -1;
+      t[name] = k < 0 ? `p${pi}` : k === gk && about.has(name) ? `n${k} goal` : `n${k}`;
+    }
+    sp.targets = t;
+  }
+}
+
+/** The point's rows: each variable's readout row. */
+function pointTargets(out: Spec[]): void {
+  for (const sp of out) {
+    const t: Record<string, string> = {};
+    for (const name in sp.vars) if (POINT_TARGETS[name]) t[name] = POINT_TARGETS[name];
+    sp.targets = t;
+  }
 }
 
 /** The subject in words, for the panel's head ("Part 2: series L", "Node 1", "The input", "The readout's point"). */
@@ -258,18 +314,24 @@ export function rowOf(sp: Spec, digits: number): MathRow {
     values[name] = texOf(x, digits);
     if (fin(x.re, x.im)) binding[name] = [x.re, x.im];
   }
+  // A variable with a colour or a target is wrapped in its sentinel (learning.md §2), which the panel turns into a class
+  // and a target attribute.
+  const names = Object.keys(sp.vars), tg = sp.targets ?? {};
+  const targets = names.map((name) => tg[name] ?? '');
   const colour = (name: string, tex: string): string => {
-    const k = sp.colours[name];
-    return k ? `\\textcolor{${SENTINELS[k]}}{${tex}}` : tex;
+    const k = sp.colours[name], j = names.indexOf(name);
+    if (!k && !(j >= 0 && targets[j])) return tex;
+    return `\\textcolor{${sentinel(k ? COLOUR_KEYS.indexOf(k) + 1 : 0, j >= 0 ? j : 255)}}{${tex}}`;
   };
   const lhsName = eq.tree.t === 'eq' && eq.tree.xs[0].t === 'id' ? eq.tree.xs[0].v : '';
+  const target = tg[lhsName] ?? '';
   const sub = substitutions(eq.tree, values, colour);
   if (!sub) {
     // The left side has no finite value here (an open, a part at ∞): the symbolic line only.
     const sides = eq.tree.t === 'eq' ? eq.tree.xs : [eq.tree];
     const deco = { variable: colour };
     const rhs = sides.slice(1).map((x) => { const t = tex(x, deco); return t.startsWith('-') ? `{${t}}` : t; }).join(' = ');
-    return { id: sp.id, title: eq.title, lhs: tex(sides[0], deco), rhs, lines: [], result: '\\text{not a finite number here}', bound: true, raw: '', binding };
+    return { id: sp.id, title: eq.title, lhs: tex(sides[0], deco), rhs, lines: [], result: '\\text{not a finite number here}', bound: true, raw: '', binding, targets, target };
   }
   const shown = values[lhsName]!;
   const lines = sub.lines;
@@ -292,5 +354,5 @@ export function rowOf(sp: Spec, digits: number): MathRow {
   if (bound || (x.floor > 0 && (fl(x.re, x.floor) !== x.re || fl(x.im, x.floor) !== x.im))) {
     raw = x.im === 0 ? formatAmount(x.re, x.unit, digits, true) : complexText(x.re, x.im, x.unit, digits, 0);
   }
-  return { id: sp.id, title: eq.title, lhs: sub.lhs, rhs: sub.rhs, lines, result, bound, raw, binding };
+  return { id: sp.id, title: eq.title, lhs: sub.lhs, rhs: sub.rhs, lines, result, bound, raw, binding, targets, target };
 }

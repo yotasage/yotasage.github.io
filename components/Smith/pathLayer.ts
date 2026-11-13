@@ -120,6 +120,8 @@ export class PathLayer {
   /** Called when the visitor picks an arc or a node on the chart (tap or click), and with SEL_PART and `drag` when a drag
    *  starts (the page then selects in a transition, so the render never holds up a drag frame). */
   onPick: ((kind: number, index: number, drag?: boolean) => void) | null = null;
+  /** The chart's own hover moved to another arc or node (SEL_PART, SEL_NODE or SEL_NONE): the equation panel lights its variables (M5.2). */
+  onHot: ((kind: number, index: number) => void) | null = null;
   /** The circuit at the end of a drag that changed it: the page's single commit point (once per drag). */
   onCommit: ((c: Circuit, group?: string) => void) | null = null;
   /** The end of a draw gesture: the new part's index once committed, -1 when it was taken away. */
@@ -188,6 +190,9 @@ export class PathLayer {
   private listHot = 0;
   private drawnHot = 0;
   private drawnSel = 0;
+  /** What the equation panel points at (M5.2): its arc, arrow and handle, or its node marker, marked `data-lit`. */
+  private lit = 0;
+  private drawnLit = 0;
   private stale = true;
   private marks = true;
   private drawnFrame = -1;
@@ -265,6 +270,7 @@ export class PathLayer {
       this.chartHot = code;
       view.box.toggleAttribute('data-pick', code !== 0);
       this.touch();
+      this.onHot?.(codeKind(code), codeIndex(code));
     };
     view.onTap = (px, py) => {
       const code = this.pickCode(px, py);
@@ -690,6 +696,12 @@ export class PathLayer {
     if (code !== this.listHot) { this.listHot = code; this.touch(); }
   }
 
+  /** What the equation panel points at (M5.2): SEL_PART or SEL_NODE with its index, or SEL_NONE; drawn in the next frame. */
+  light(kind: number, index: number): void {
+    const code = toCode(kind, index);
+    if (code !== this.lit) { this.lit = code; this.touch(); }
+  }
+
   /** What a tap or click at box px (px, py) would pick: [kind, index]. */
   pick(px: number, py: number): [number, number] {
     const code = this.pickCode(px, py);
@@ -748,7 +760,7 @@ export class PathLayer {
     this.d = new Array(n).fill('');
     this.shown = new Uint8Array(n + 1);
     this.hshown = new Uint8Array(n);
-    this.drawnHot = this.drawnSel = 0;
+    this.drawnHot = this.drawnSel = this.drawnLit = 0;
   }
 
   // ---------- the frame ----------
@@ -862,6 +874,13 @@ export class PathLayer {
       this.markEl(this.drawnSel, 'data-sel', false);
       this.markEl(sel, 'data-sel', true);
       this.drawnSel = sel;
+    }
+    if (this.lit !== this.drawnLit) {
+      this.markEl(this.drawnLit, 'data-lit', false);
+      if (this.drawnLit > 0) this.handleEls[this.drawnLit - 1]?.removeAttribute('data-lit');
+      this.markEl(this.lit, 'data-lit', true);
+      if (this.lit > 0) this.handleEls[this.lit - 1]?.setAttribute('data-lit', '');
+      this.drawnLit = this.lit;
     }
     const i = sel > 0 && sel <= this.count ? sel - 1 : -1;
     const d = i >= 0 ? this.d[i] : '';
