@@ -153,7 +153,10 @@ In [modules.md](modules.md): one line per file and its main exports; a step that
   free id.
 - **Commits:** one per step on the branch `smith-chart`, made by the step's agent when its checks pass (message as
   CLAUDE.md's "Commits" says, files named explicitly, no push). Merging to `main` is the main session's call, once
-  the step's checks pass (D19).
+  the step's checks pass (D19). Other sessions push other tools to `main` from their own clones, so the main session
+  first runs `git fetch` and, if `origin/main` moved, `git merge origin/main` into `smith-chart` (stash the owner's
+  uncommitted `.gitignore` line around it), `npm install` for new dependencies (do not commit a lockfile change that
+  is only the project's `name`), re-checks, then `git push origin smith-chart:main` and `git branch -f main smith-chart`.
 
 ## Quality bar ("10/10", made checkable)
 
