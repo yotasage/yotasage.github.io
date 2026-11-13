@@ -382,6 +382,7 @@ export class PathLayer {
   beginDrag(i: number): boolean {
     const c = this.circuit;
     if (!c || !(i >= 0 && i < this.count) || this.dragPart >= 0) return false;
+    this.trace(null);
     this.dragPart = i;
     this.base = c;
     this.raw = this.value = c.parts[i].value;
@@ -594,6 +595,37 @@ export class PathLayer {
     this.handleEls[i]?.setAttribute('data-focus', '');
     this.focusKey = i;
   }
+
+  /**
+   * M5.4 ("Explain this move"): a marker that runs along `pts` (Γ, interleaved, from geometry's locus) in `ms`, in its
+   * own animation frames: it moves one contained HTML element by a transform and redraws nothing of the chart. Never in
+   * a drag (a drag stops it) and never with prefers-reduced-motion (returns false, nothing shown); null stops it.
+   */
+  trace(pts: Float64Array | null, ms = 900): boolean {
+    if (this.traceRaf) { cancelAnimationFrame(this.traceRaf); this.traceRaf = 0; }
+    if (this.traceEl && !this.traceEl.hidden) { this.traceEl.hidden = true; this.overlay.removeAttribute('data-tracing'); }
+    if (!pts || pts.length < 4 || this.dragPart >= 0) return false;
+    if (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+    if (!this.traceEl) { this.traceEl = span({ 'data-trace': '' }); this.traceEl.hidden = true; this.overlay.appendChild(this.traceEl); }
+    const el = this.traceEl, v = this.view, n = pts.length / 2 - 1;
+    let t0 = -1;
+    const step = (t: number): void => {
+      if (t0 < 0) t0 = t;
+      const f = Math.min(1, (t - t0) / ms), e = f < 0.5 ? 2 * f * f : 1 - 2 * (1 - f) * (1 - f);
+      const x = e * n, j = Math.min(n - 1, Math.floor(x)), u = x - j, o = 2 * j;
+      const gr = pts[o] + (pts[o + 2] - pts[o]) * u, gi = pts[o + 1] + (pts[o + 3] - pts[o + 1]) * u;
+      const sx = v.screenX(gr), sy = v.screenY(gi);
+      if (sx === sx && sy === sy) el.style.transform = `translate(${sx}px,${sy}px)`;
+      if (el.hidden) { el.hidden = false; this.overlay.setAttribute('data-tracing', ''); }
+      this.traceRaf = f < 1 ? requestAnimationFrame(step) : 0;
+      if (f >= 1) setTimeout(() => { if (!this.traceRaf) { el.hidden = true; this.overlay.removeAttribute('data-tracing'); } }, 450);
+    };
+    this.traceRaf = requestAnimationFrame(step);
+    return true;
+  }
+
+  private traceEl: HTMLSpanElement | null = null;
+  private traceRaf = 0;
 
   private stopDrag(): void {
     this.handleEls[this.dragPart]?.removeAttribute('data-drag');

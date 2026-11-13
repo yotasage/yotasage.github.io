@@ -11,15 +11,14 @@ export const STATUS_LEAD = 'New and still growing.';
 export const STATUS_NOW =
   'It draws the Smith chart, lets you build a matching circuit by typing values or dragging on the chart, ' +
   'finds a missing value with suggestions, shows the equations with your numbers, linked both ways to the chart, ' +
-  'derives them step by step, and explains the theory.';
+  'derives them step by step, explains each move of a part on the chart, and explains the theory.';
 export const STATUS_CHECKED =
   'Checked by automated tests against independent computations and textbook cases, but not yet used for real ' +
   'design work, so a quick check against another source is a good idea for results that matter.';
 /** Behind "More". */
 export const STATUS_ASSUMES = 'It assumes ideal parts, lossless lines, one frequency at a time and a real Z0.';
 export const STATUS_COMING =
-  'Still to come: an “explain this move” for each change, worked examples and exercises, frequency sweeps and a ' +
-  'report, and export as SVG, LaTeX/TikZ and ' +
+  'Still to come: worked examples and exercises, frequency sweeps and a report, and export as SVG, LaTeX/TikZ and ' +
   'data files.';
 
 export function Status() {

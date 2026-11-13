@@ -671,6 +671,9 @@
 .root .cardActions .button { padding: 3px 10px; }
 .root .button:disabled { opacity: 0.45; cursor: default; background: var(--field); }
 
+.explainBar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.root .explainBar .button { padding: 3px 10px; }
+
 .forms {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
@@ -786,6 +789,16 @@
   border: 2px solid var(--accent);
   border-radius: 50%;
   background: radial-gradient(circle, var(--accent) 0 2.5px, transparent 3px);
+}
+
+.chart [data-layer='path-marks'] [data-trace] {
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border: 2px solid var(--chart-bg);
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
 }
 
 .chart [data-layer='path-marks'] [data-goal-line] {

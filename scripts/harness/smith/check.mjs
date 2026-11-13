@@ -15,6 +15,7 @@ import { runSolveMoreChecks } from './check-solve-b.mjs';
 import { runValueChecks } from './check-values.mjs';
 import { runValidateChecks } from './check-validate.mjs';
 import { runSuggestChecks } from './check-suggest.mjs';
+import { runExplainChecks } from './check-explain.mjs';
 
 const quantity = importedQuantity.default ?? importedQuantity;
 const cx = importedComplex.default ?? importedComplex;
@@ -450,6 +451,10 @@ runValidateChecks({ section, ok, random });
 // ---------------------------------------------------------------------------------------------------------------
 // Suggestions and the solver worker's core (M4.4a): check-suggest.mjs, on a stream of its own.
 runSuggestChecks({ section, ok });
+
+// ---------------------------------------------------------------------------------------------------------------
+// "Explain this move" (M5.4): check-explain.mjs.
+runExplainChecks({ section, ok, random });
 
 // ---------------------------------------------------------------------------------------------------------------
 const total =[...groups.values()].reduce((a, b) => a + b, 0);

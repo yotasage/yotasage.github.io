@@ -450,6 +450,7 @@ At most about 12 words, after the control or under the readout row, followed by 
 | Show equation (`show-eq`, M5.2; at the readout's title, for the "=" beside every readout row, the circuit input, node rows and the part card) | The = beside a number shows its equation, with your values put in. | `how-to-use` |
 | Equations panel (`math`, M5.2) | Point at or tap a variable: its part, node or readout row lights up. | `how-to-use` |
 | Derive (`derive`, M5.3; in the Equations panel, beside the hint on Derive) | Derive shows how an equation follows, one reasoned step at a time. | `how-to-use` |
+| Explain (`explain`, M5.4; on the part card, beside Explain) | Says which equation moved the point, along which circle and which way. | `moving-on-the-chart` |
 | Goal mark and text | The solver’s goal; by default the centre, within \|Γ\| 0.2 (VSWR 1.5). | `how-good-is-a-match` |
 | Solve for (`solve-mark`) | Leave this value to the solver: it finds what meets the goal. | `two-one-or-none` |
 | L or C (`solve-free`) | An L adds +jx, a C −jx: the answer’s sign picks the kind. | `realisable-values` |

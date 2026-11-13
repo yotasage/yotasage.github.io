@@ -117,6 +117,24 @@ check-equations.mjs evaluates at 200 random points against the engine (and that 
 route; new, D on the page), `abcd-zin` (3), `mobius` (8): 26 derivations, 110 steps (after the read-through of notes-M5.3.md). The reasons are one-line
 statements of the algebra the step does; the step itself is what is checked. All: 189 claims.
 
+**Added in M5.4 ("Explain this move", the part card).** 190 T: after a drag, a typed value or a handle's key changes
+a part's value, the card says what the change did (old and new value, the change in x, b, r, g or length, the node's z
+and |Γ| before and after, the sense), and "Explain" shows the part's arc from no effect with its rule, circle, sense,
+equations with your numbers, Derive and the theory link (components/Smith/Explain.tsx, lib/smith/explain.ts;
+check-explain.mjs, ui-explain.mjs). Every other sentence of the narration is a claim of theory.md §4 in its wording,
+with its sources: series adds z 46 [S3]; L and C add ±x 47, 48 [W]; series R along its x arc towards +1 49 [W]; shunt
+adds y 50 [S3]; shunt C and L add ±b 51 [W], keep g 52; shunt R towards −1 53 [W]; stubs move along g circles 54, 62;
+the r circle's run and the sense of series L and C 55, 56 [S3 §3.4], 58; the g circle's run and the sense of shunt C
+and L 57 [S3 §6.7], 58; why a circle 63–66 [M] (series reactance) and 67–70 [M] (the others); a line clockwise 61
+[S3 §3.4, §3.5], a line of another Zc off-centre 71 [S3 §3.5]; the arc starts at no effect 73, 74, its length is how
+much the part does 75; "making an L or a C larger always turns its point clockwise" 77 (its converse, smaller turns
+counter-clockwise, is the same rule read backwards). Two statements are derived from registry equations, D: a stub's b
+grows with its length (`stub-open-b`, `stub-short-b`: tan θ and −cot θ increase with θ), so a longer stub turns
+clockwise by 57; a resistor's way to its pole is counter-clockwise on an arc whose centre (`circle-x`: (1, 1/x);
+`circle-b`: (−1, −1/b)) lies above the axis for a series R (below for a shunt R) and clockwise on the other side,
+from 49 and 53. The numbers (centre and radius from `circle-r`…`circle-b`, `line-circle-centre`, `line-circle-radius`,
+`line-rotation`) and every sense are checked against geometry.ts in check-explain.mjs. All: 190 claims.
+
 ## Sentences the page added (M3.5b, M3.5c)
 
 | Where | Sentence | Kind |
@@ -200,6 +218,7 @@ Each repeats claims of the topic it links to; the tool's own behaviour is T. Key
 | show-eq | The = beside a number shows its equation, with your values put in. | T 188 (ShowEq.tsx; ui-math-link: every readout row, the input, node rows, the part card) |
 | math | Point at or tap a variable: its part, node or readout row lights up. | T 188 (mathLink.ts; ui-math-link: hover, focus, tap) |
 | derive | Derive shows how an equation follows, one reasoned step at a time. | T 189 (Derivation.tsx; ui-derive: panel, theory, keys, taps) |
+| explain | Says which equation moved the point, along which circle and which way. | T 190 (Explain.tsx; ui-explain: drag, typing, keys, taps, reduced motion) |
 
 ## Deliberately left out (not sourced)
 

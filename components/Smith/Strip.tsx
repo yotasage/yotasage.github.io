@@ -10,7 +10,10 @@ import {
 import {
   LINE, QUARTER, SERIES_C, SERIES_L, SERIES_R, SHUNT_C, SHUNT_L, SHUNT_R, STUB_OPEN, STUB_SHORT,
 } from '../../lib/smith/parts';
+import type Bibliography from '../Bibliography';
 import styles from '../../styles/Smith.module.css';
+import Explain from './Explain';
+import type { Move } from './Explain';
 import { partColour } from './pathLayer';
 import { readoutTexts } from './readout';
 import { ShowEq } from './ShowEq';
@@ -42,7 +45,12 @@ export interface StripProps {
   onHover?: (index: number) => void;
   /** The digits setting (readout.ts shownDigits): the circuit input's texts are written again when it changes. */
   digits?: number;
+  /** M5.4: the page's sources, for the citations of "Explain this move". */
+  bib?: Bibliography;
 }
+
+/** M5.4: changes of one part's value within this time are one move (the keystrokes of a typed value, a drag and its fix). */
+const MOVE_MS = 1500;
 
 /** The colour of the part at an index (counted from the load): the eight `--part-n` of notes-M2.3.md in turn. */
 export { partColour };
@@ -137,7 +145,7 @@ const UNIT_WORD: Record<string, string> = { Ω: 'ohms', S: 'siemens', H: 'henrie
 const INPUT_SHOWN = [[0, 'z', 'normalised'], [1, 'Z', 'in Ω'], [4, 'Γ', 'polar'], [6, 'VSWR', ''], [7, 'Return loss', '']] as const;
 const INPUT_KEYS = ['z', 'Z', 'y', 'Y', 'gamma', 'gammaRect', 'vswr', 'rl', 'note'];
 
-export default function Strip({ circuit, onChange, issues, selected: chosen, onSelect, onHover, revision, drawKind = -1, onDraw, digits }: StripProps) {
+export default function Strip({ circuit, onChange, issues, selected: chosen, onSelect, onHover, revision, drawKind = -1, onDraw, digits, bib }: StripProps) {
   const c = circuit;
   const n = c.parts.length;
   // Stable keys for the parts across reorders (the circuit itself has no ids).
@@ -148,6 +156,33 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
   const sel = chosen ?? own;
   const setSel = (i: number) => { setOwn(i); onSelect?.(i); };
   const selected = sel >= 0 && sel < n ? sel : n - 1;
+  // M5.4: a move is a change of exactly one part's value (a drag, a typed value, a handle's keys, undo), found by
+  // comparing with the circuit of the last render; its old value is the one before the first change of a run of them.
+  const prevC = useRef(c);
+  const lastMove = useRef<Move | null>(null);
+  const moveAt = useRef(0);
+  if (prevC.current !== c) {
+    const p = prevC.current;
+    prevC.current = c;
+    if (p.parts.length === n && p.z0 === c.z0 && p.f0 === c.f0 && p.loadR === c.loadR && p.loadX === c.loadX) {
+      let changed = -1, count = 0;
+      for (let j = 0; j < n && count < 2; j++) {
+        const a = p.parts[j], b = c.parts[j];
+        if (a.kind !== b.kind || (a.zc ?? 0) !== (b.zc ?? 0)) count = 2;
+        else if (a.value !== b.value) { changed = j; count++; }
+      }
+      if (count === 1) {
+        const t = performance.now(), m = lastMove.current;
+        const old = m && m.i === changed && t - moveAt.current < MOVE_MS ? m.old : p.parts[changed].value;
+        lastMove.current = { i: changed, old, seq: (m?.seq ?? 0) + 1 };
+        moveAt.current = t;
+      }
+    }
+  }
+  const [explainFull, setExplainFull] = useState(false);
+  const [hiddenMove, setHiddenMove] = useState(0);
+  const mv = lastMove.current;
+  const shownMove = mv && mv.i === selected && mv.seq !== hiddenMove ? mv : null;
   const [addKind, setAddKind] = useState<PartKind>(SERIES_L);
   const [addAt, setAddAt] = useState(-1);
   const tiles = useRef<(HTMLButtonElement | null)[]>([]);
@@ -332,6 +367,16 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
           <WhyLine k={`kind-${KIND_CODES[part.kind]}`} />
           {solveRow(part, selected)}
           <div className={styles.forms}>{formsOf(part.kind).map((form) => partField(part, selected, form))}</div>
+          <div className={styles.explainBar}>
+            <button type="button" className={`${styles.button} ${styles.toggle}`} aria-pressed={explainFull} data-explain-open=""
+              onClick={() => setExplainFull(!explainFull)}>Explain</button>
+            <Why k="explain" />
+            {shownMove && (
+              <button type="button" className={styles.button} data-explain-close="" onClick={() => setHiddenMove(shownMove.seq)}
+                aria-label="Hide the explanation of the last move">Hide move</button>
+            )}
+          </div>
+          <Explain circuit={c} i={selected} digits={digits ?? 4} bib={bib ?? null} move={shownMove} full={explainFull} />
         </div>
       )}
 
