@@ -102,6 +102,13 @@ export const WHYS: Readonly<Record<string, Why>> = {
   'sweep-points': w('Points', 'how-to-use', 'Even steps across the band; more are added where the trace bends.'),
   'sweep-log': w('Spacing', 'how-to-use', 'Log gives each decade the same number of points, for wide bands.'),
   'sweep-marker': w('markers', 'how-good-is-a-match', 'Marks the input’s point at one frequency and follows the circuit.'),
+  // M7.2b: the sweep's plot, its band figures and the marker table.
+  'sweep-plot': w('the plot', 'how-good-is-a-match', 'The trace against frequency: a dip is a better match, a peak a worse.'),
+  'sweep-plot-kind': w('Return loss or VSWR', 'how-good-is-a-match', 'Two scales of |Γ|: return loss falls and VSWR rises as the match worsens.'),
+  'sweep-limit': w('the limit', 'how-good-is-a-match', 'The return loss to beat; where |Γ| stays below it is shaded and measured.'),
+  'sweep-figures': w('the band figures', 'how-good-is-a-match', 'Found on the refined trace, edges and extremes polished between its points.'),
+  'sweep-q': w('loaded Q', 'how-good-is-a-match', 'f over the width where the power delivered is over half its peak, near f0.'),
+  'sweep-table': w('the marker table', 'how-to-use', 'Each marker’s input point at its frequency, in the digits you chose.'),
 };
 
 /** The key of a value field's line by its form (state.ts FormId). */

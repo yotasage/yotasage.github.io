@@ -23,6 +23,7 @@ import { returnLoss, vswr, zFromGamma } from './convert';
 import { inputGamma, sweep as sweepNetwork } from './network';
 import type { Circuit } from './network';
 import { packParts } from './parts';
+import type { PlotPaths } from './plot';
 
 /** A band: `points` frequencies (Hz) from `start` to `stop`, evenly spaced in f or in log f. */
 export interface Band {
@@ -308,7 +309,7 @@ export function pathData(g: Vec, n: number): string {
   return d;
 }
 
-/** What sweep.worker.ts answers: the refined trace (arrays of exactly n points), its `d` and the worker's time. */
+/** What sweep.worker.ts answers: the refined trace (arrays of exactly n points), its `d`, the plot's, the figures and the worker's time. */
 export interface SweepReply {
   id: number;
   n: number;
@@ -316,6 +317,9 @@ export interface SweepReply {
   freqs: Float64Array<ArrayBuffer>;
   gamma: Float64Array<ArrayBuffer>;
   d: string;
+  /** M7.2b: the plot's paths (plot.ts plotPath) and the band figures at the request's threshold. */
+  plot: PlotPaths;
+  figures: BandFigures;
   ms: number;
 }
 

@@ -13,13 +13,22 @@
 // budget gives fewer points at 4× than at 1×), and the refined trace, with its `d` written in the worker
 // (lib/smith/sweep.worker.ts, the newest request wins), replaces it when it comes. During a handle's drag only the
 // coarse trace is drawn, each frame, for the live circuit; the refined one is asked for when the drag ends.
+//
+// M7.2b: the plot (plotView.ts) is fed from here as a PlotSink, in the same frames: each trace drawn (the coarse ones
+// during a drag, the refined one with the worker's plot paths), the markers and the cursor. The cursor is one frequency
+// pointed at on either view (the chart: hovering near the trace or a tap that adds a marker; the plot: setCursor), shown
+// on both. The band figures (sweep.ts bandFigures at the limit) come with the refined trace from the worker only, and are
+// worked out here when only the limit changes.
 
 import { formatAmount } from '../../lib/quantity';
 import type { Circuit } from '../../lib/smith/network';
 import { MAX_MARKERS } from '../../lib/smith/state';
 import type { SweepSetting } from '../../lib/smith/state';
-import { TRACE_SCALE, Trace, gammaAt, pathData, pickOnTrace, refine, segmentAt, sweepBand, sweepCircuit } from '../../lib/smith/sweep';
-import type { Band, SweepCircuit, SweepReply } from '../../lib/smith/sweep';
+import { magFromReturnLoss } from '../../lib/smith/convert';
+import type { PlotPaths } from '../../lib/smith/plot';
+import { SWEEP_LIMIT_DB } from '../../lib/smith/state';
+import { TRACE_SCALE, Trace, bandFigures, gammaAt, pathData, pickOnTrace, refine, segmentAt, sweepBand, sweepCircuit } from '../../lib/smith/sweep';
+import type { Band, BandFigures, SweepCircuit, SweepReply } from '../../lib/smith/sweep';
 import { ChartView, DIRTY_CONTENT, DIRTY_VIEW, TAP_MS, TAP_SLOP } from './chartView';
 import { PathLayer, SEL_NONE } from './pathLayer';
 
@@ -36,6 +45,23 @@ const MOUSE_SLOP = 3;
 /** First guess of the script per swept point and per part plus one (ms), before a frame has measured it. */
 const COST_GUESS = 6e-5;
 
+/** What the plot (plotView.ts) is told, in the trace layer's frames. */
+export interface PlotSink {
+  /** A trace drawn: coarse (`full` false: the plot writes its own `d`) or refined (with the worker's paths, or null). */
+  trace(tr: Trace, full: boolean, paths: PlotPaths | null, f0: number): void;
+  /** The markers' frequencies and Γ (mg: re, im per marker), and the cursor's frequency (NaN: none) and Γ. */
+  marks(markers: readonly number[], mg: Float64Array, cursor: number, cr: number, ci: number): void;
+  /** The band figures of the refined trace (null: none yet, or no sweep). */
+  figures(f: BandFigures | null): void;
+  /** No sweep. */
+  clear(): void;
+}
+
+/** Who set the cursor: nobody, the chart (hover or tap), or the plot. */
+export const CURSOR_NONE = 0;
+export const CURSOR_CHART = 1;
+export const CURSOR_PLOT = 2;
+
 const STATE_NONE = 0;
 const STATE_COARSE = 1;
 const STATE_FULL = 2;
@@ -46,6 +72,17 @@ export class TraceLayer {
   readonly path: PathLayer;
   /** The markers moved or added or removed on the chart (the page keeps them, and the link). */
   onMarkers: ((markers: number[]) => void) | null = null;
+  /** M7.2b: the band figures of each refined trace (null when the sweep is off). */
+  onFigures: ((f: BandFigures | null) => void) | null = null;
+  /** M7.2b: the plot, fed in this layer's frames. */
+  plot: PlotSink | null = null;
+  /** The band figures of the refined trace shown, at the limit (null before the first). */
+  figures: BandFigures | null = null;
+  /** The cursor: its frequency (NaN: none), Γ on the drawn circuit, who set it. */
+  cursorF = NaN;
+  cursorFrom = CURSOR_NONE;
+  private readonly cg = new Float64Array(2);
+  private readonly cursorEl: HTMLSpanElement;
 
   /** The trace on the chart: `full` once refined, else `coarse` (read its arrays after each frame). */
   full = new Trace(1024);
@@ -110,6 +147,11 @@ export class TraceLayer {
     this.overlay.hidden = true;
     view.box.appendChild(this.overlay);
     this.overlay.addEventListener('keydown', this.keyDown);
+    this.cursorEl = document.createElement('span');
+    this.cursorEl.setAttribute('data-sweep-cursor', '');
+    this.cursorEl.setAttribute('aria-hidden', 'true');
+    this.cursorEl.hidden = true;
+    this.overlay.appendChild(this.cursorEl);
 
     const before = view.onFrame;
     view.onFrame = (dirty) => { before?.(dirty); this.frame(dirty); };
@@ -125,6 +167,18 @@ export class TraceLayer {
       const near = live && m < 0 && this.nearTrace(px, py);
       if (m !== this.hotMarker) { this.hotMarker = m; view.box.toggleAttribute('data-sweep-hot', m >= 0); }
       if (near !== this.near) { this.near = near; view.box.toggleAttribute('data-sweep-near', near); }
+      // The cursor follows a pointer near the trace (or over a marker), for the plot.
+      if (live && this.mDrag < 0) {
+        const tr = this.shown;
+        let f = NaN;
+        if (m >= 0) f = this.markers[m];
+        else if (tr && tr.n >= 2) {
+          const pk = pickOnTrace(tr, view.gammaX(px), view.gammaY(py));
+          if (pk.dist * view.k <= TRACE_PICK_PX) f = pk.f;
+        }
+        if (f === f) this.setCursor(f, CURSOR_CHART);
+        else if (this.cursorFrom === CURSOR_CHART) this.setCursor(NaN, CURSOR_NONE);
+      } else if (px !== px && this.cursorFrom === CURSOR_CHART) this.setCursor(NaN, CURSOR_NONE);
     };
 
     const h = view.handles;
@@ -176,11 +230,20 @@ export class TraceLayer {
       this.asked = null;
       this.setMarkerCount(0);
       this.markers = [];
+      this.cursorF = NaN; this.cursorFrom = CURSOR_NONE; this.cursorEl.hidden = true;
+      this.setFigures(null);
+      this.plot?.clear();
       return;
     }
     if (!was) { this.group.removeAttribute('display'); this.overlay.hidden = false; }
     const a = was?.band, b = s.band;
-    if (!a || a.start !== b.start || a.stop !== b.stop || a.points !== b.points || a.log !== b.log) this.bandDirty = true;
+    if (!a || a.start !== b.start || a.stop !== b.stop || a.points !== b.points || a.log !== b.log) {
+      this.bandDirty = true;
+      if (this.cursorF === this.cursorF && !(this.cursorF >= b.start && this.cursorF <= b.stop)) { this.cursorF = NaN; this.cursorFrom = CURSOR_NONE; }
+    } else if (this.figures && this.figures.threshold !== this.threshold && this.state === STATE_FULL && this.full === this.shown && this.sc) {
+      // Only the limit changed: the figures of the refined trace shown, here (a scan of its points and a few brackets).
+      this.setFigures(figuresOf(this.full, this.sc, this.threshold));
+    }
     // The page's markers win, except during a marker's drag (its own frames move it).
     if (this.mDrag < 0) {
       this.markers = s.markers.slice(0, MAX_MARKERS);
@@ -190,6 +253,61 @@ export class TraceLayer {
     this.marksDirty = true;
     this.view.request(DIRTY_CONTENT);
   }
+
+  /** The figures' |Γ| threshold: the limit's. */
+  get threshold(): number { return magFromReturnLoss(this.setting?.limit ?? SWEEP_LIMIT_DB); }
+
+  private setFigures(f: BandFigures | null): void {
+    this.figures = f;
+    this.plot?.figures(f);
+    this.onFigures?.(f);
+  }
+
+  /** Hands the plot what is shown now (it then follows in the frames). */
+  attachPlot(p: PlotSink | null): void {
+    this.plot = p;
+    if (!p) return;
+    if (!this.setting || !this.shown) { p.clear(); return; }
+    p.trace(this.shown, this.state === STATE_FULL, null, this.sc?.f0 ?? NaN);
+    p.figures(this.figures);
+    p.marks(this.markers, this.mg, this.cursorF, this.cg[0], this.cg[1]);
+  }
+
+  /** The cursor at f (NaN: none), set by `from` (the plot's pointer, the chart's hover or tap). */
+  setCursor(f: number, from: number): void {
+    const b = this.setting?.band;
+    if (f === f && b) f = f < b.start ? b.start : f > b.stop ? b.stop : f;
+    if (!b) f = NaN;
+    const nf = f === f ? from : CURSOR_NONE;
+    if (Object.is(f, this.cursorF) && nf === this.cursorFrom) return;
+    this.cursorF = f;
+    this.cursorFrom = nf;
+    if (f === f && this.sc) gammaAt(this.cg, 0, this.sc, f);
+    this.cursorEl.setAttribute('data-f', String(f));
+    this.marksDirty = true;
+    this.view.request(DIRTY_CONTENT);
+  }
+
+  /** Marker m to f (from the plot's drag); `done` at the drag's end tells the page. */
+  moveMarker(m: number, f: number, done: boolean): void {
+    if (!(m >= 0 && m < this.markers.length)) return;
+    this.setMarker(m, f);
+    if (done) this.onMarkers?.(this.markers.slice());
+  }
+
+  /** A marker at f (from the plot); false when there are MAX_MARKERS already. */
+  addMarker(f: number): boolean {
+    if (!this.setting || !this.sc || this.markers.length >= MAX_MARKERS) return false;
+    const m = this.markers.length;
+    this.markers.push(f);
+    this.setMarkerCount(m + 1);
+    this.setMarker(m, f);
+    this.onMarkers?.(this.markers.slice());
+    return true;
+  }
+
+  /** The markers on the chart now (their frequencies). */
+  get markerFreqs(): readonly number[] { return this.markers; }
 
   /** For the harness: the trace's state ('none', 'coarse', 'full'). */
   get stateName(): string { return STATE_NAMES[this.state]; }
@@ -218,7 +336,12 @@ export class TraceLayer {
         if (!this.askFull(c)) this.drawFull(c);
       }
     }
-    if (this.marksDirty || dirty & DIRTY_VIEW) { this.writeMarks(); this.marksDirty = false; }
+    if (this.marksDirty || dirty & DIRTY_VIEW) {
+      const changed = this.marksDirty;
+      this.writeMarks();
+      this.marksDirty = false;
+      if (changed) this.plot?.marks(this.markers, this.mg, this.cursorF, this.cg[0], this.cg[1]);
+    }
   }
 
   /** The band at as many even points as fit COARSE_MS (never more than the band's own). */
@@ -250,6 +373,7 @@ export class TraceLayer {
     refine(tr, sc);
     this.writePath(tr, STATE_FULL);
     this.placeMarkers(sc);
+    this.setFigures(bandFigures(tr, sc, this.threshold));
     this.drawnCircuit = c;
     this.bandDirty = false;
     this.fullMs = performance.now() - t0;
@@ -276,7 +400,7 @@ export class TraceLayer {
     this.asked = c;
     this.askedBand = this.setting!.band;
     this.askedAt = performance.now();
-    w.postMessage({ id: ++this.askId, circuit: c, band: this.askedBand });
+    w.postMessage({ id: ++this.askId, circuit: c, band: this.askedBand, threshold: this.threshold });
     return true;
   }
 
@@ -312,7 +436,12 @@ export class TraceLayer {
     this.line.setAttribute('d', r.d);
     this.shown = tr;
     if (this.state !== STATE_FULL) { this.state = STATE_FULL; this.line.setAttribute('data-state', STATE_NAMES[STATE_FULL]); }
-    this.placeMarkers((this.sc = sweepCircuit(c, this.sc ?? undefined)));
+    const sc = (this.sc = sweepCircuit(c, this.sc ?? undefined));
+    this.placeMarkers(sc);
+    this.plot?.trace(tr, true, r.plot, sc.f0);
+    // Figures at another limit than asked (changed while the worker swept) are worked out again here.
+    const th = this.threshold;
+    this.setFigures(r.figures.threshold === th ? r.figures : figuresOf(tr, sc, th));
     this.drawnCircuit = c;
     this.asked = null;
     this.workerMs = r.ms;
@@ -333,12 +462,14 @@ export class TraceLayer {
     this.line.setAttribute('d', pathData(tr.gamma, tr.n));
     this.shown = tr;
     if (state !== this.state) { this.state = state; this.line.setAttribute('data-state', STATE_NAMES[state]); }
+    this.plot?.trace(tr, state === STATE_FULL, null, this.sc?.f0 ?? NaN);
   }
 
   private placeMarkers(sc: SweepCircuit): void {
     const ms = this.markers;
     for (let m = 0; m < ms.length; m++) gammaAt(this.mg, 2 * m, sc, ms[m]);
-    if (ms.length) this.marksDirty = true;
+    if (this.cursorF === this.cursorF) gammaAt(this.cg, 0, sc, this.cursorF);
+    if (ms.length || this.cursorF === this.cursorF) this.marksDirty = true;
   }
 
   // ---------- markers ----------
@@ -383,6 +514,11 @@ export class TraceLayer {
       if (on) el.style.transform = `translate(${x}px,${y}px)`;
       if (el.hidden === on) el.hidden = !on;
     }
+    const cf = this.cursorF, ce = this.cursorEl;
+    const cx = cf === cf ? v.screenX(this.cg[0]) : NaN, cy = cf === cf ? v.screenY(this.cg[1]) : NaN;
+    const con = cx === cx && cy === cy && cx >= -12 && cx <= w + 12 && cy >= -12 && cy <= h + 12;
+    if (con) ce.style.transform = `translate(${cx}px,${cy}px)`;
+    if (ce.hidden === con) ce.hidden = !con;
   }
 
   /** Marker m to frequency f on the drawn circuit (the DOM follows in the next frame). */
@@ -426,6 +562,7 @@ export class TraceLayer {
     this.markers.push(f);
     this.setMarkerCount(m + 1);
     this.setMarker(m, f);
+    this.setCursor(f, CURSOR_CHART);
     this.onMarkers?.(this.markers.slice());
     return true;
   }
@@ -467,6 +604,12 @@ export class TraceLayer {
     if (steps) to = stepAlong(tr, this.markers[m], steps);
     if (to !== this.markers[m]) { this.setMarker(m, to); this.onMarkers?.(this.markers.slice()); }
   };
+}
+
+/** bandFigures of a trace; one made from the worker's arrays gets its workspace first. */
+function figuresOf(tr: Trace, sc: SweepCircuit, threshold: number): BandFigures {
+  if (tr.work.length < tr.n) tr.work = new Float64Array(tr.n);
+  return bandFigures(tr, sc, threshold);
 }
 
 /** The trace's point `steps` points above f (below when negative), counting a point at f itself as passed. */

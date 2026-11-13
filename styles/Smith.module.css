@@ -1349,3 +1349,20 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* ---- M7.2b: with the sweep's plot under it (components/Smith/SweepPlot.tsx) the chart is lower on wide screens, so
+   the plot's top shows with it; the cursor shared with the plot on the chart (traceLayer.ts) ---- */
+@media (min-width: 960px) {
+  .stage[data-below] .chart { height: clamp(380px, calc(100vh - var(--bar-h) - 112px - 250px), 1240px); }
+}
+.chart [data-sweep-cursor] {
+  position: absolute;
+  left: -7px;
+  top: -7px;
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--chart-bg) 40%, transparent);
+}

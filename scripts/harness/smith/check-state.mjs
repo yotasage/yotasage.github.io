@@ -280,6 +280,18 @@ function runListsChecks({ section, ok, rnd, circuit }) {
   const many = decodeCircuit(`?sw=1e6:2e6:11&mk=${Array.from({ length: 12 }, (_, i) => 1e6 + i * 1e4).join(',')}`);
   ok(many.sweep.markers.length === S.MAX_MARKERS && many.issues.length === 1, `at most ${S.MAX_MARKERS} markers: ${many.sweep.markers.length}`);
   ok(S.sweepParams(null) === '' && S.sweepParams({ band: { start: 1e6, stop: 1e9, points: 1001, log: true }, markers: [] }) === '&sw=1e6:1e9:1001:log', 'sweepParams writes the documented form');
+  // M7.2b: the plot's limit (sl, return loss in dB) and kind (sp=vswr), read only with sw; the default limit is not written.
+  for (let i = 0; i < 300; i++) {
+    const limit = i % 3 === 0 ? S.SWEEP_LIMIT_DB : Math.min(S.SWEEP_LIMIT_MAX, 1e-3 + rnd() * 99), vswr = i % 2 === 0;
+    const s = { band: { start: 1e6, stop: 2e6, points: 11, log: false }, markers: [], ...(limit !== S.SWEEP_LIMIT_DB && { limit }), ...(vswr && { vswr }) };
+    const text = S.sweepParams(s), d = decodeCircuit(`?${text.slice(1)}`);
+    ok(d.issues.length === 0 && (d.sweep.limit ?? S.SWEEP_LIMIT_DB) === limit && !!d.sweep.vswr === vswr && text.includes('&sl=') === (limit !== S.SWEEP_LIMIT_DB),
+      `the plot's limit ${limit} dB and ${vswr ? 'VSWR' : 'return loss'} round-trip through ${text}`);
+  }
+  for (const q of ['?sw=1e6:2e6:11&sl=0', '?sw=1e6:2e6:11&sl=-3', '?sw=1e6:2e6:11&sl=101', '?sw=1e6:2e6:11&sl=x', '?sw=1e6:2e6:11&sp=db', '?sl=10', '?sp=vswr']) {
+    const d = decodeCircuit(q);
+    ok(d.issues.length === 1 && (q.startsWith('?sw') ? d.sweep && d.sweep.limit === undefined && !d.sweep.vswr : d.sweep === null), `${q}: one issue, the default plot: ${JSON.stringify(d.issues)}`);
+  }
 }
 
 // M4.3a: what the solver is asked (unknowns and goal) in the circuit, the link, the toggles and the edits.

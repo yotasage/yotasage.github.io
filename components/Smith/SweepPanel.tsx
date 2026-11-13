@@ -26,7 +26,7 @@ const DIGITS = 6;
 const hz = (f: number): string => formatAmount(f, 'Hz', 4);
 
 /** A new band with the markers that are still inside it. */
-const withBand = (s: SweepSetting, band: Band): SweepSetting => ({ band, markers: s.markers.filter((f) => f >= band.start && f <= band.stop) });
+const withBand = (s: SweepSetting, band: Band): SweepSetting => ({ ...s, band, markers: s.markers.filter((f) => f >= band.start && f <= band.stop) });
 
 /** Where "Add marker" puts one: f0 when it is in the band and free, else the middle of the widest gap. */
 export function newMarker(s: SweepSetting, f0: number): number {
@@ -112,7 +112,7 @@ function SweepPanel({ sweep, f0, onChange, revision }: SweepPanelProps) {
               ±50 % around f0
             </button>
             <button type="button" className={`${styles.button} ${css.btn}`} data-sweep-add="" disabled={sweep.markers.length >= MAX_MARKERS}
-              onClick={() => onChange({ band, markers: [...sweep.markers, newMarker(sweep, f0)] })}>
+              onClick={() => onChange({ ...sweep, markers: [...sweep.markers, newMarker(sweep, f0)] })}>
               Add marker
             </button>
             <Why k="sweep-marker" />
@@ -130,7 +130,7 @@ function SweepPanel({ sweep, f0, onChange, revision }: SweepPanelProps) {
                   <span className={css.markerF} data-raw={String(f)}>{hz(f)}</span>
                   <button type="button" className={`${styles.button} ${css.remove}`} data-sweep-remove={i}
                     aria-label={`Remove marker ${i + 1} at ${hz(f)}`}
-                    onClick={() => onChange({ band, markers: sweep.markers.filter((_, j) => j !== i) })}>
+                    onClick={() => onChange({ ...sweep, markers: sweep.markers.filter((_, j) => j !== i) })}>
                     ×
                   </button>
                 </li>

@@ -53,3 +53,91 @@
   .btn.btn.btn, .remove.remove.remove { min-height: 44px; min-width: 44px; }
   .check { min-height: 44px; }
 }
+
+/* ---- the sweep's plot, band figures and marker table under the chart (components/Smith/SweepPlot.tsx, plotView.ts,
+   MarkerTable.tsx; step M7.2b). `data-state` on .results is the trace's: while it is coarse (a drag) the shading,
+   the figures and the table are from the last refined trace, so they are dimmed or hidden. ---- */
+.results { margin-top: 14px; min-width: 0; --plot-h: 210px; }
+.plotHead { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 10px; margin-bottom: 8px; }
+.plotHead h2 { margin: 0 auto 0 0; }
+.limit { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 4px 8px; }
+.limit > div { width: 9.5em; }
+.at { font-size: 12.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+.plot {
+  position: relative;
+  height: var(--plot-h);
+  background: var(--chart-bg);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  overflow: hidden;
+  touch-action: pan-y;
+  cursor: crosshair;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+.plot:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+.plot[data-plot-near] { cursor: copy; }
+.plot[data-plot-hot] { cursor: grab; }
+.plot[data-plot-drag] { cursor: grabbing; }
+.plot svg { position: absolute; inset: 0; display: block; overflow: visible; }
+.plot [data-plot-grid] line { stroke: var(--grid-z-minor); stroke-width: 1px; shape-rendering: crispEdges; }
+.plot [data-plot-grid] [data-plot-box] { fill: none; stroke: var(--rule-strong); stroke-width: 1px; shape-rendering: crispEdges; }
+.plot text { font: 11px var(--font-num); font-variant-numeric: tabular-nums; fill: var(--grid-label); }
+.plot [data-plot-unit] { font-weight: 600; fill: var(--ink-3); }
+.plot [data-plot-shade] rect { fill: var(--accent-soft); }
+.results[data-state='coarse'] .plot [data-plot-shade] { display: none; }
+.plot [data-plot-limit] { stroke: var(--accent); stroke-width: 1.25px; stroke-dasharray: 6 4; }
+.plot [data-plot-f0] { stroke: var(--ink-3); stroke-width: 1px; stroke-dasharray: 2 3; }
+.plot [data-plot-trace] {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.75px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.plot [data-plot-trace][data-state='coarse'] { stroke-opacity: 0.6; }
+.plot [data-plot-cursor] line { stroke: var(--accent); stroke-width: 1px; }
+.plot [data-plot-cursor] circle { fill: var(--accent); stroke: var(--chart-bg); stroke-width: 1.5px; }
+.plot [data-plot-cursor] text { font-weight: 600; fill: var(--ink); paint-order: stroke; stroke: var(--chart-bg); stroke-width: 3px; }
+.plot [data-plot-marker] circle { fill: var(--ink); stroke: var(--chart-bg); stroke-width: 2px; }
+.plot [data-plot-marker] text { font-weight: 650; text-anchor: middle; fill: var(--ink); paint-order: stroke; stroke: var(--chart-bg); stroke-width: 3px; }
+
+.under {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 12px 28px;
+  margin-top: 14px;
+  transition: opacity var(--quick);
+}
+.results[data-state='coarse'] .under { opacity: 0.55; }
+.sub { display: flex; align-items: center; gap: 4px; margin: 0 0 6px; font-size: 13px; font-weight: 650; color: var(--ink-2); }
+
+.figures { display: grid; gap: 4px; margin: 0; font-size: 13px; }
+.figures > div { display: grid; grid-template-columns: 10.5em minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.figures dt { display: flex; align-items: center; gap: 2px; color: var(--ink-2); }
+.figures dd { margin: 0; font-family: var(--font-num); font-variant-numeric: tabular-nums; color: var(--ink); overflow-wrap: anywhere; }
+.interval { display: block; }
+
+.tableWrap { overflow-x: auto; max-width: 100%; border: 1px solid var(--rule); border-radius: 8px; }
+.tableWrap:focus-visible { outline: 2px solid var(--accent); }
+.table { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.table th, .table td { padding: 4px 8px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--rule); }
+.table thead th { font-weight: 650; color: var(--ink-2); background: var(--raise); }
+.table tbody th { text-align: left; font-weight: 650; color: var(--ink-2); }
+.table td { font-family: var(--font-num); color: var(--ink); }
+.table tr:last-child > * { border-bottom: none; }
+
+@media (max-width: 959px) {
+  .under { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 599px) {
+  .results { --plot-h: 190px; }
+  .figures > div { grid-template-columns: minmax(0, 1fr); gap: 0; }
+}
+@media (pointer: coarse) {
+  .limit input { min-height: 44px; }
+}

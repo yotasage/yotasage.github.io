@@ -488,6 +488,12 @@ At most about 12 words, after the control or under the readout row, followed by 
 | Points (`sweep-points`) | Even steps across the band; more are added where the trace bends. | `how-to-use` |
 | Spacing (`sweep-log`) | Log gives each decade the same number of points, for wide bands. | `how-to-use` |
 | Markers (`sweep-marker`) | Marks the input's point at one frequency and follows the circuit. | `how-good-is-a-match` |
+| Sweep plot (`sweep-plot`, M7.2b) | The trace against frequency: a dip is a better match, a peak a worse. | `how-good-is-a-match` |
+| Return loss or VSWR (`sweep-plot-kind`) | Two scales of \|Γ\|: return loss falls and VSWR rises as the match worsens. | `how-good-is-a-match` |
+| Limit (`sweep-limit`) | The return loss to beat; where \|Γ\| stays below it is shaded and measured. | `how-good-is-a-match` |
+| Band figures (`sweep-figures`) | Found on the refined trace, edges and extremes polished between its points. | `how-good-is-a-match` |
+| Loaded Q (`sweep-q`) | f over the width where the power delivered is over half its peak, near f0. | `how-good-is-a-match` |
+| Marker table (`sweep-table`) | Each marker's input point at its frequency, in the digits you chose. | `how-to-use` |
 
 Facts in the short lines repeat claims of the topics they link to (Series L: claims 48, 56; Line: 61, 84; stubs: 95,
 97; λ/4: 89, 91; Z/Y/ZY: 38; VSWR: 101, 102; return loss: 104, 105; goal: 110, 14; the solver's lines: claims.md);

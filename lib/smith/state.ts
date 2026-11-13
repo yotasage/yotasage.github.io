@@ -488,9 +488,11 @@ export function circuitInputGamma(out: Float64Array | number[], o: number, c: Ci
 //   were added ("mk=100e6,120e6"), read only with sw. Not circuit parameters (`linked` ignores them, no undo step):
 //   decodeCircuit hands them back as `sweep`, the page appends sweepParams(sweep) as it appends vl. A band the page
 //   cannot sweep, or a marker outside the band, is left out with an issue.
+// sl, sp the sweep's plot (M7.2b), read only with sw: sl the limit as a return loss in dB (above 0, at most
+//   SWEEP_LIMIT_MAX; the default SWEEP_LIMIT_DB is not written), sp=vswr the plot in VSWR (return loss without it).
 
 export const LINK_VERSION = 1;
-const PARAMS = ['v', 'z0', 'f0', 'zl', 'p', 'u', 'g', 'vl', 'lk', 'hd', 'tx', 'ch', 'sw', 'mk'];
+const PARAMS = ['v', 'z0', 'f0', 'zl', 'p', 'u', 'g', 'vl', 'lk', 'hd', 'tx', 'ch', 'sw', 'mk', 'sl', 'sp'];
 
 /** The page's largest band: the refinement's cap (sweep.ts REFINE_DEFAULTS), and a drag's budget (notes-M7.2a.md). */
 export const SWEEP_MAX_POINTS = 10_000;
@@ -501,7 +503,19 @@ export const MAX_MARKERS = 9;
 export interface SweepSetting {
   band: Band;
   markers: number[];
+  /** M7.2b: the limit as a return loss in dB (SWEEP_LIMIT_DB when left out): the band figures count |Γ| below it. */
+  limit?: number;
+  /** M7.2b: the plot shows VSWR (else return loss). */
+  vswr?: boolean;
 }
+
+/** The sweep's default limit: 10 dB of return loss (|Γ| = 0.3162, VSWR 1.925). */
+export const SWEEP_LIMIT_DB = 10;
+/** The largest limit the page takes (dB). */
+export const SWEEP_LIMIT_MAX = 100;
+/** Why a limit (return loss in dB) cannot be taken, '' when it can. */
+export const limitIssue = (rl: number): string =>
+  rl > 0 && rl <= SWEEP_LIMIT_MAX ? '' : `the limit must be a return loss above 0 dB and at most ${SWEEP_LIMIT_MAX} dB`;
 
 /** Why the page cannot sweep this band, '' when it can (sweep.ts bandProblem, and at most SWEEP_MAX_POINTS points). */
 export function bandIssue(band: Band): string {
@@ -518,13 +532,15 @@ export function sweepParams(s: SweepSetting | null): string {
   if (!s) return '';
   const { start, stop, points, log } = s.band;
   const mk = s.markers.length ? `&mk=${s.markers.map(numText).join(',')}` : '';
-  return `&sw=${numText(start)}:${numText(stop)}:${points}${log ? ':log' : ''}${mk}`;
+  const sl = s.limit !== undefined && s.limit !== SWEEP_LIMIT_DB ? `&sl=${numText(s.limit)}` : '';
+  return `&sw=${numText(start)}:${numText(stop)}:${points}${log ? ':log' : ''}${mk}${sl}${s.vswr ? '&sp=vswr' : ''}`;
 }
 
 /** The sweep of the link's sw and mk (null without sw, or when sw cannot be read: with an issue). */
-function readSweep(sw: string | null, mk: string | null, issues: string[]): SweepSetting | null {
+function readSweep(sw: string | null, mk: string | null, sl: string | null, sp: string | null, issues: string[]): SweepSetting | null {
   if (sw === null) {
     if (mk !== null) issues.push('mk (markers) without sw (a band) left out');
+    if (sl !== null || sp !== null) issues.push('sl or sp (the sweep’s plot) without sw (a band) left out');
     return null;
   }
   const bits = sw.split(':');
@@ -548,7 +564,17 @@ function readSweep(sw: string | null, mk: string | null, issues: string[]): Swee
       else markers.push(f);
     }
   }
-  return { band, markers };
+  const out: SweepSetting = { band, markers };
+  if (sl !== null) {
+    const v = readNum(sl), why = v === null ? 'not a number' : limitIssue(v);
+    if (why) issues.push(`sl ${quote(sl)}: ${why}; ${SWEEP_LIMIT_DB} dB is used`);
+    else if (v !== SWEEP_LIMIT_DB) out.limit = v!;
+  }
+  if (sp !== null) {
+    if (sp.trim().toLowerCase() === 'vswr') out.vswr = true;
+    else if (sp.trim().toLowerCase() !== 'rl') issues.push(`sp ${quote(sp)}: wants vswr or rl; return loss is shown`);
+  }
+  return out;
 }
 /** The link's parameter of the value lists (M4.3b). */
 export const LISTS_PARAM = 'vl';
@@ -808,7 +834,7 @@ export function decodeCircuit(search: string): Decoded {
     if (typeof read === 'string') issues.push(`ch ${quote(ch)}: ${read}; left out`);
     else challenge = read;
   }
-  const sweep = readSweep(params.get('sw'), params.get('mk'), issues);
+  const sweep = readSweep(params.get('sw'), params.get('mk'), params.get('sl'), params.get('sp'), issues);
   return { circuit, issues, linked, lists: params.get(LISTS_PARAM), lesson, challenge, sweep };
 }
 

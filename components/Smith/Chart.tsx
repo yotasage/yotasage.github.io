@@ -26,6 +26,8 @@ export interface ChartProps {
   onDigits?: (digits: number) => void;
   /** No readout at all (M6.3b: a "read this point" challenge; the grid and its labels stay). */
   noReadout?: boolean;
+  /** Under the chart, in its column (M7.2b: the sweep's plot, figures and markers); on wide screens the chart is then lower. */
+  below?: ReactNode;
 }
 
 const LABELS: Record<(typeof READOUT_FIELDS)[number], string> = {
@@ -45,7 +47,7 @@ const HINTS: Partial<Record<(typeof READOUT_FIELDS)[number], string>> = {
  * top <svg>, the gesture hint, and the side panel with the readout (beside the chart on wide screens, below it on
  * phones). Everything that changes with the pointer is written by ChartView in its frame loop; React renders this once.
  */
-export default function Chart({ mode, z0 = 50, tools, side, onView, after, onReadout, digits, onDigits, noReadout }: ChartProps) {
+export default function Chart({ mode, z0 = 50, tools, side, onView, after, onReadout, digits, onDigits, noReadout, below }: ChartProps) {
   const box = useRef<HTMLDivElement>(null);
   const gridSvg = useRef<SVGSVGElement>(null);
   const top = useRef<SVGSVGElement>(null);
@@ -86,7 +88,7 @@ export default function Chart({ mode, z0 = 50, tools, side, onView, after, onRea
 
   return (
     <div className={styles.work} ref={frame}>
-      <section className={styles.stage} aria-label="Chart">
+      <section className={styles.stage} aria-label="Chart" data-below={below ? '' : undefined}>
         <div className={styles.toolbar}>
           {tools}
           <span className={styles.toolSpace} />
@@ -110,6 +112,7 @@ export default function Chart({ mode, z0 = 50, tools, side, onView, after, onRea
           </p>
           <span className={styles.hintWhys}><Why k="ring" label="Rings" /><Why k="rim" label="Rim scales" /></span>
         </div>
+        {below}
       </section>
       <aside className={styles.side}>
         {side}

@@ -1,7 +1,7 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import React, { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import React, { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 
 import Bibliography from '../../components/Bibliography';
 import HomeIcon from '../../components/icons/home';
@@ -20,6 +20,7 @@ import { DIGIT_CHOICES, READOUT_DIGITS, setShownDigits } from '../../components/
 import Nodes from '../../components/Smith/Nodes';
 import SolvePanel from '../../components/Smith/SolvePanel';
 import SweepPanel from '../../components/Smith/SweepPanel';
+import SweepPlot from '../../components/Smith/SweepPlot';
 import { Status } from '../../components/Smith/Status';
 import type { Outcome } from '../../components/Smith/SolvePanel';
 import Strip from '../../components/Smith/Strip';
@@ -428,12 +429,14 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     solveL.setResult(o?.result ?? null, o?.circuit ?? null);
     // M7.2a: the sweep's trace and markers, between the solver's circles and the path; it reads the path's circuit.
     const trace = new TraceLayer(v, layer);
-    trace.onMarkers = (markers) => setSweep((s) => (s ? { band: s.band, markers } : s));
+    trace.onMarkers = (markers) => setSweep((s) => (s ? { ...s, markers } : s));
     (v.box as HTMLElement & { smithTrace?: TraceLayer }).smithTrace = trace;
     traceLayer.current = trace;
     trace.setSweep(sweepRef.current);
   };
   useEffect(() => { traceLayer.current?.setSweep(sweep); }, [sweep]);
+  // M7.2b: the sweep's plot, band figures and marker table under the chart, fed by the trace layer.
+  const getTrace = useCallback(() => traceLayer.current, []);
   useEffect(() => () => traceLayer.current?.dispose(), []);
   useEffect(() => { path.current?.setCircuit(circuit); solveLayer.current?.setGoal(circuit); }, [circuit]);
   // "Show equation" (M5.2) sets the selection without the node table's toggle; the link's queries stay in the tool.
@@ -652,7 +655,8 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
         <Status />
         <div id="tool" ref={tool} className={`${styles.layout} ${theoryCss.tool}`}>
           <Chart mode={mode} tools={modes} z0={circuit.z0} side={side} onView={onView} after={noRead ? null : math}
-            onReadout={stableRead} digits={digits} onDigits={setDigits} noReadout={noRead} />
+            onReadout={stableRead} digits={digits} onDigits={setDigits} noReadout={noRead}
+            below={sweep && !noRead ? <SweepPlot layer={getTrace} sweep={sweep} circuit={circuit} digits={digits} onChange={setSweep} revision={revision} /> : null} />
           {!noRead && <Derivation circuit={circuit} digits={digits} />}
         </div>
         <LearnSection open={guide?.id ?? ''} onLoad={stable.load} challenges={challengesProps} maker={makerProps} />

@@ -191,6 +191,23 @@ refined sweep of the committed circuit). The short lines `sweep-band`, `sweep-po
 
 **Count:** 3 claims (230–232), all describing the tool. All: 232 claims.
 
+## The sweep's plot, band figures and marker table (M7.2b)
+
+233 T: the plot under the chart draws the sweep's return loss (0 dB at the top, downward) or VSWR (1 at the bottom,
+upward) at every point of the trace, with the f0 line, the limit (a return loss in dB, in the link as `sl`; `sp=vswr`
+for VSWR) and the intervals where |Γ| is below it shaded (plotView.ts, plot.ts; ui-plot.mjs: the plot's points equal
+the engine's return loss or VSWR to 1e-6 for five circuits). 234 T: pointing at a frequency on the plot (hover, tap,
+keys) shows the input's point at that frequency on the chart, pointing at the trace shows it on the plot, and markers
+are the same on both (ui-plot.mjs). 235 T: the band figures (worst and best return loss, largest VSWR, the intervals
+below the limit, the one around f0 with its fractional bandwidth, the loaded Q) are sweep.ts `bandFigures` of the refined
+trace, found between its points (notes-M7.1.md "How the figures are found"; ui-plot.mjs: the page's figures equal
+`bandFigures` for five circuits); the marker table gives `markerAt` in the readout's format (ui-plot.mjs). The loaded Q
+is f over the band where the delivered power 1 − |Γ|² is above half its peak, around the |Γ| minimum nearest f0
+(notes-M7.1.md). The short lines `sweep-plot` and `sweep-plot-kind` repeat return loss and VSWR (104, 101: return loss
+falls and VSWR rises as |Γ| grows), `sweep-limit` and `sweep-figures` are T 233 and 235, `sweep-q` T 235, `sweep-table` T 235.
+
+**Count:** 3 claims (233–235), all describing the tool. All: 235 claims.
+
 ## Sentences the page added (M3.5b, M3.5c)
 
 | Where | Sentence | Kind |
@@ -281,6 +298,12 @@ Each repeats claims of the topic it links to; the tool's own behaviour is T. Key
 | sweep-points | Even steps across the band; more are added where the trace bends. | T 230 (sweep.ts `refine`) |
 | sweep-log | Log gives each decade the same number of points, for wide bands. | T 230 (`bandFrequencies`) |
 | sweep-marker | Marks the input's point at one frequency and follows the circuit. | T 231 |
+| sweep-plot | The trace against frequency: a dip is a better match, a peak a worse. | S 101, 104; T 233 |
+| sweep-plot-kind | Two scales of \|Γ\|: return loss falls and VSWR rises as the match worsens. | S 101, 104 |
+| sweep-limit | The return loss to beat; where \|Γ\| stays below it is shaded and measured. | T 233, 235 |
+| sweep-figures | Found on the refined trace, edges and extremes polished between its points. | T 235 |
+| sweep-q | f over the width where the power delivered is over half its peak, near f0. | T 235 |
+| sweep-table | Each marker's input point at its frequency, in the digits you chose. | T 235 |
 
 ## Deliberately left out (not sourced)
 
