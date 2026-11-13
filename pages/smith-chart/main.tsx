@@ -7,6 +7,7 @@ import Bibliography from '../../components/Bibliography';
 import HomeIcon from '../../components/icons/home';
 import { MoonIcon, SunIcon } from '../../components/Resistor/parts';
 import Chart from '../../components/Smith/Chart';
+import Derivation from '../../components/Smith/Derivation';
 import MathPanel, { MathLive } from '../../components/Smith/MathPanel';
 import { mathLink } from '../../components/Smith/mathLink';
 import type { Subject } from '../../components/Smith/mathRows';
@@ -464,6 +465,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
         <div id="tool" ref={tool} className={`${styles.layout} ${theoryCss.tool}`}>
           <Chart mode={mode} tools={modes} z0={circuit.z0} side={side} onView={onView} after={math}
             onReadout={stableRead} digits={digits} onDigits={setDigits} />
+          <Derivation circuit={circuit} digits={digits} />
         </div>
         {sections}
       </main>

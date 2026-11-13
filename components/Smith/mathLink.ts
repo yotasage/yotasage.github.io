@@ -47,6 +47,8 @@ export class MathLink {
   /** The panel's handler of a request (MathPanel registers it) and its rows' list. */
   shower: ((r: ShowRequest) => void) | null = null;
   rows: HTMLElement | null = null;
+  /** M5.3: the derivation dialog while it is open; its variables are lit with the panel's. */
+  extra: HTMLElement | null = null;
 
   /** What the panel points at: by hover, by focus (a row, or its variables with the arrow keys), by a tap (stays). */
   private hover = '';
@@ -111,6 +113,7 @@ export class MathLink {
       this.panelLit.length = 0;
       this.shownPanel = panel;
       if (this.rows) this.mark(this.rows);
+      if (this.extra) this.mark(this.extra);
     }
   }
 

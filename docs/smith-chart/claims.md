@@ -12,7 +12,7 @@ without a source says "derived" on the page through its equation, or describes t
 
 **Checks.** `ui-theory.mjs`: every citation on the page resolves to an entry of the reference list, numbered by first
 citation; every #link of the page (contents, citations, nav, short lines) has its target; every live number equals
-the engine's. `ui-why.mjs`: all short lines with their text (39 in M3.5, 44 after M4.3a, 53 after M4.3c, 54 after M4.4b, 56 after M5.2), and every one's link opens a topic that exists.
+the engine's. `ui-why.mjs`: all short lines with their text (39 in M3.5, 44 after M4.3a, 53 after M4.3c, 54 after M4.4b, 56 after M5.2, 57 after M5.3), and every one's link opens a topic that exists.
 
 ## The theory, by topic (theory.md §1–7)
 
@@ -105,6 +105,18 @@ tool. All: 187 claims.
 tapping a variable lights its part, node or readout row, and pointing at an arc or a node of the chart lights its
 variables (components/Smith/mathLink.ts, ShowEq.tsx, MathPanel.tsx; ui-math-link.mjs). All: 188 claims.
 
+**Added in M5.3 (topic 1, "Read"; topics 3 and 7).** 189 T: Derive beside an equation, in the Equations panel or
+the theory, shows how it follows one step at a time with each step's reason and, where every quantity has a value,
+your numbers (components/Smith/Derivation.tsx, derive.ts; ui-derive.mjs). Claim 37 now ends "“derive” beside each
+shows every step". The derivations' mathematical claims are their registry steps, each an equality that
+check-equations.mjs evaluates at 200 random points against the engine (and that the last step ends in the equation):
+`z-gamma` (4), `gamma-y` (2), `y-gamma` (2), `gamma-parts-z` (4), `gamma-parts-y` (4), `z-parts` (4), `y-parts` (4),
+`circle-r` (9), `circle-x` (5), `circle-g` (9), `circle-b` (5), `vswr` (3), `gamma-vswr` (3), `mismatch-to-target`
+(3), `return-loss` (2), `mismatch-loss` (2), `q-l-network` (3), `line-zin` (4), `line-rotation` (2), `quarter-wave`
+(3), `quarter-wave-match` (3), `series-adds-z` (3), `shunt-adds-y` (3), `match-two-parts` (8, [S3 §6.7] for the
+route; new, D on the page), `abcd-zin` (3), `mobius` (5): 26 derivations, 102 steps. The reasons are one-line
+statements of the algebra the step does; the step itself is what is checked. All: 189 claims.
+
 ## Sentences the page added (M3.5b, M3.5c)
 
 | Where | Sentence | Kind |
@@ -187,6 +199,7 @@ Each repeats claims of the topic it links to; the tool's own behaviour is T. Key
 | list-Z | Any value by default; a list if your lines come in set impedances. | T 180 |
 | show-eq | The = beside a number shows its equation, with your values put in. | T 188 (ShowEq.tsx; ui-math-link: every readout row, the input, node rows, the part card) |
 | math | Point at or tap a variable: its part, node or readout row lights up. | T 188 (mathLink.ts; ui-math-link: hover, focus, tap) |
+| derive | Derive shows how an equation follows, one reasoned step at a time. | T 189 (Derivation.tsx; ui-derive: panel, theory, keys, taps) |
 
 ## Deliberately left out (not sourced)
 

@@ -130,3 +130,19 @@
 }
 .rows .back:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .summaryWhy { margin-right: auto; margin-left: -6px; }
+
+/* M5.3: "Derive" under the title of an equation that has a derivation (components/Smith/Derivation.tsx). */
+.derive {
+  margin: 6px 8px 0 0;
+  min-height: 28px;
+  padding: 2px 9px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.derive:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

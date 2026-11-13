@@ -1,0 +1,92 @@
+/* The Smith chart's derivations (step M5.3, components/Smith/Derivation.tsx): a modal dialog on the right of the screen
+   (the chart stays visible on the left, so its lit parts show) and the whole screen on phones. Theme tokens come from
+   Smith.module.css's .root, which the dialog sits in. */
+
+.dialog {
+  width: min(620px, calc(100vw - 32px));
+  max-width: none;
+  height: calc(100dvh - 32px);
+  max-height: none;
+  margin: 16px 16px 16px auto;
+  padding: 0;
+  border: 1px solid var(--rule-strong);
+  border-radius: 10px;
+  background: var(--field);
+  color: var(--ink);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+}
+.dialog[open] { display: flex; flex-direction: column; }
+.dialog::backdrop { background: rgba(0, 0, 0, 0.16); }
+
+@media (max-width: 599px) {
+  .dialog { width: 100vw; height: 100dvh; margin: 0; border: 0; border-radius: 0; }
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--rule);
+}
+.title { flex: 1; min-width: 0; margin: 0; font-size: 15.5px; font-weight: 650; line-height: 1.3; }
+
+.body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 8px 16px 16px; }
+
+/* The equation derived, then the steps; a wide line scrolls sideways inside itself, the dialog never does. */
+.goal, .math { overflow-x: auto; overflow-y: hidden; min-width: 0; line-height: 1.5; }
+.goal { padding: 6px 0; font-size: 16px; }
+.goal math, .math math { math-style: normal; }
+.meta { margin: 4px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--ink-3); }
+
+.steps { margin: 10px 0 0; padding: 0; list-style: none; }
+.step {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  column-gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid var(--rule);
+}
+.step > :not(.no) { grid-column: 2; }
+.step:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+.no { grid-row: 1 / span 3; padding-top: 2px; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--ink-3); }
+.step .math { font-size: 15px; }
+.why { margin: 4px 0 0; font-size: 13.5px; line-height: 1.45; color: var(--ink-2); }
+.nums { margin-top: 6px; padding-left: 8px; border-left: 2px solid var(--rule-strong); color: var(--ink-2); }
+.nums .math { font-size: 14px; }
+.numsLabel { display: block; font-size: 11.5px; color: var(--ink-3); }
+
+/* M5.2's links: lit by hover, a tap or the arrow keys. */
+.body [data-mt] { cursor: pointer; }
+.body [data-lit] {
+  border-radius: 3px;
+  background: color-mix(in srgb, currentColor 18%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--rule);
+}
+.count { margin-left: auto; font-size: 12.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+.controls button, .close {
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 7px;
+  background: var(--raise);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.controls .primary { border-color: var(--accent); background: var(--accent); color: var(--field); }
+.controls button[aria-disabled='true'] { opacity: 0.45; cursor: default; }
+.controls button:focus-visible, .close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

@@ -24,6 +24,8 @@ import { askOf } from '../../lib/smith/state';
 import type { Circuit as StateCircuit } from '../../lib/smith/state';
 import styles from '../../styles/Smith.module.css';
 import css from '../../styles/SmithMath.module.css';
+import { openDerivation } from './Derivation';
+import { hasDerivation } from './derive';
 import { mathLink } from './mathLink';
 import type { ShowRequest } from './mathLink';
 import { COLOUR_KEYS, MathRow, Spec, Subject, rowOf, specsFor, subjectName } from './mathRows';
@@ -87,6 +89,9 @@ export class MathLive {
   private raf = 0;
   private lastLive = -1e9;
   private root: HTMLElement | null = null;
+
+  /** The readout's point (NaN when there is none): a derivation opened from the point's rows takes it. */
+  get readPoint(): [number, number] { return [this.gr, this.gi]; }
 
   /** Every row written with the latest values (for the harness). */
   get idle(): boolean { return !this.raf && !this.dirty.some(Boolean); }
@@ -266,6 +271,8 @@ function MathPanel({ circuit, subject: selected, digits, live }: MathPanelProps)
     mathLink.rows = list.current;
     return () => { mathLink.rows = null; };
   }, [open]);
+  // M5.3: a row's derivation, with the panel's subject (and the readout's point).
+  const derive = (id: string, from: HTMLElement) => openDerivation(id, from, subject, ...live.readPoint);
   // The arrow keys in a focused row: its targets one by one (the row's own when the stop is −1).
   const stop = useRef(-1);
   const onKey = (j: number) => (e: React.KeyboardEvent<HTMLLIElement>) => {
@@ -278,6 +285,9 @@ function MathPanel({ circuit, subject: selected, digits, live }: MathPanelProps)
       stop.current = stop.current < 0 ? (step > 0 ? 0 : s.length - 1) : (stop.current + step + s.length) % s.length;
       mathLink.unpin();
       mathLink.point('focus', s[stop.current]);
+    } else if (e.key === 'Enter' && hasDerivation(rows[j].id)) {
+      e.preventDefault();
+      derive(rows[j].id, e.currentTarget);
     } else if (e.key === 'Escape' && (stop.current >= 0 || mathLink.pinned)) {
       e.preventDefault();
       stop.current = -1;
@@ -312,7 +322,8 @@ function MathPanel({ circuit, subject: selected, digits, live }: MathPanelProps)
           <button type="button" aria-pressed={follow === 'point'} data-math-follow="point" onClick={() => setFollow('point')}>Readout point</button>
         </div>
         <p className={css.empty}>Hover, tap or use the arrow keys on the chart to read a point.</p>
-        <p className={css.keys} id="smith-math-keys">Point at or tap a variable to light up what it stands for; in a focused equation, ← and → step through them.</p>
+        <p className={css.keys} id="smith-math-keys">Point at or tap a variable to light up what it stands for; in a focused equation, ← and → step through them, and Enter shows its derivation.</p>
+        <p className={css.keys}>Derive shows where an equation comes from, one step at a time. <Why k="derive" /></p>
         <ol className={css.rows} ref={list}
           onPointerOver={(e) => { if (e.pointerType !== 'touch') mathLink.point('hover', tokensAt(e.target)); }}
           onPointerLeave={() => mathLink.point('hover', '')}
@@ -328,7 +339,9 @@ function MathPanel({ circuit, subject: selected, digits, live }: MathPanelProps)
                 <div className={css.live} data-math-live="" ref={(el) => live.attach(j, el)} />
               </div>
               <span className={css.title}>{r.title}</span>
+              {/* The way back is the next Tab stop after a shown row (M5.2); Derive follows it. */}
               {j === backAt && <button type="button" className={css.back} data-math-back="" onClick={goBack}>↩ Back to {req.back}</button>}
+              {hasDerivation(r.id) && <button type="button" className={css.derive} data-derive-open={r.id} onClick={(e) => derive(r.id, e.currentTarget)}>Derive</button>}
             </li>
           ))}
         </ol>

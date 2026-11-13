@@ -76,11 +76,11 @@ const TOPICS = ['how-to-use', 'gamma-z-y', 'reading-the-chart', 'moving-on-the-c
 const EQUATIONS = {
   'how-to-use': [],
   'gamma-z-y': ['z-norm', 'y-norm', 'gamma-z', 'z-gamma', 'gamma-y', 'y-gamma'],
-  'reading-the-chart': ['gamma-parts-z', 'r-gamma', 'x-gamma', 'circle-r', 'circle-x', 'gamma-parts-y', 'g-gamma', 'b-gamma', 'circle-g', 'circle-b'],
+  'reading-the-chart': ['gamma-parts-z', 'r-gamma', 'x-gamma', 'circle-r', 'circle-x', 'z-parts', 'gamma-parts-y', 'y-parts', 'g-gamma', 'b-gamma', 'circle-g', 'circle-b'],
   'moving-on-the-chart': ['series-adds-z', 'x-series-l', 'x-series-c', 'r-series', 'circle-r', 'shunt-adds-y', 'b-shunt-c', 'b-shunt-l', 'g-shunt', 'circle-g', 'gamma-z', 'abcd-zin', 'mobius', 'line-rotation'],
   'transmission-lines': ['line-theta', 'beta', 'line-rotation', 'line-zin', 'line-circle-b', 'line-circle-centre', 'line-circle-radius', 'quarter-wave', 'quarter-wave-match', 'stub-short-z', 'stub-open-z', 'stub-open-b', 'stub-short-b', 'stub-short-l', 'stub-open-c'],
   'how-good-is-a-match': ['power-reflected', 'power-delivered', 'vswr', 'gamma-vswr', 'z-max', 'z-min', 'return-loss', 'mismatch-loss'],
-  'matching-with-two-parts': ['series-adds-z', 'shunt-adds-y', 'circle-r', 'circle-g', 'x-series-c', 'b-shunt-l', 'b-shunt-c', 'q-node', 'q-l-network'],
+  'matching-with-two-parts': ['series-adds-z', 'shunt-adds-y', 'circle-r', 'circle-g', 'match-two-parts', 'x-series-c', 'b-shunt-l', 'b-shunt-c', 'q-node', 'q-l-network'],
   // M4.3c: theory-solver.md §9–§11, in the order of the page.
   'two-one-or-none': ['series-adds-z', 'shunt-adds-y', 'circle-r', 'circle-g', 'mobius', 'x-series-c', 'b-shunt-c', 'b-shunt-l'],
   'one-value-and-a-point': ['gamma-z', 'circle-r', 'mismatch-to-target', 'x-series-c', 'gamma-vswr'],

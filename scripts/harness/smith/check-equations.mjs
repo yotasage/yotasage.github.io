@@ -36,6 +36,7 @@ const TOL = 1e-12;
 // size 1/|B| to give a centre of size ≤ 1, so it keeps about 1e-16/|B|² of relative accuracy (|B| ≥ 0.05 here).
 const TOLS = { 'line-circle-centre': 1e-11 };
 let mismatchSeed = 0x4d3c5;
+let matchSeed = 0x2b9e1;
 
 export function runEquationChecks({ section, ok, random }) {
   const rnd = (a, b) => a + (b - a) * random();
@@ -158,7 +159,31 @@ export function runEquationChecks({ section, ok, random }) {
     },
     'line-rotation': () => {
       const p = point(), l = lineBinding();
-      return { Gamma_L: p.b.Gamma, Gamma_in: zinOf(LINE, l.t, p.z0, p.b.Z[0], p.b.Z[1], p.z0, 1e9).G, theta: l.theta };
+      // M5.3: its steps also use Γ_c (the load against the line's Z_c, here Z0), β and ℓ.
+      gammaFromImpedance(out, 0, p.b.Z[0], p.b.Z[1], p.z0);
+      return { Gamma_L: p.b.Gamma, Gamma_c: [out[0], out[1]], Gamma_in: zinOf(LINE, l.t, p.z0, p.b.Z[0], p.b.Z[1], p.z0, 1e9).G, theta: l.theta, beta: l.beta, ell: l.ell };
+    },
+    // M5.3: the two-part match, series next to the load and shunt nearest the source. The design (x_1, x_s, b_p) comes
+    // from the formula; z_1, y_1 and y_in from network.evaluate of the circuit built from it. Its own random sequence, so
+    // the shared stream (and every later check's random problems) stays as it was.
+    'match-two-parts': () => {
+      const own = () => {
+        matchSeed = (matchSeed + 0x6d2b79f5) | 0;
+        let t = Math.imul(matchSeed ^ (matchSeed >>> 15), 1 | matchSeed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+      const z0 = 10 + 190 * own(), f = 1e8, rL = 0.05 + 0.9 * own(), xL = 6 * own() - 3;
+      const x1 = (own() < 0.5 ? -1 : 1) * Math.sqrt(rL * (1 - rL)), xs = x1 - xL, bp = x1 / rL;
+      const parts = [
+        { kind: xs > 0 ? SERIES_L : SERIES_C, value: valueFor(xs > 0 ? SERIES_L : SERIES_C, xs, 0, f, f, z0) },
+        { kind: bp > 0 ? SHUNT_C : SHUNT_L, value: valueFor(bp > 0 ? SHUNT_C : SHUNT_L, bp, 0, f, f, z0) },
+      ];
+      evaluate(nodes, packParts(parts), 2, rL * z0, xL * z0, z0, f, f);
+      nodeMetrics(metrics, 0, nodes, 1);
+      const z_1 = [metrics[M_ZR], metrics[M_ZI]], y_1 = [metrics[M_YR], metrics[M_YI]];
+      nodeMetrics(metrics, 0, nodes, 2);
+      return { r_L: rL, x_L: xL, z_L: [rL, xL], x_1: x1, x_s: xs, b_p: bp, z_1, y_1, y_in: [metrics[M_YR], metrics[M_YI]] };
     },
     'line-theta': () => {
       const f = Math.exp(rnd(Math.log(1e6), Math.log(1e10))), e = rnd(1, 12), ell = rnd(0.001, 2);
@@ -329,6 +354,14 @@ export function runEquationChecks({ section, ok, random }) {
       ok(eq.sources.length > 0 || !!eq.derivation, `${eq.id} has a source or a derivation`);
       ok(typeof eq.engine === 'string' && eq.engine.length > 0, `${eq.id} names the engine function it equals`);
       ok(eq.steps.every((s) => s.why.length > 0), `${eq.id}: every step has a reason`);
+      // M5.3: a derivation is a chain of equalities that ends in its equation: every step has an "=", and the last
+      // step's first side is the equation's first side and its last side one of the equation's sides.
+      if (eq.steps.length) {
+        const sides = (t) => (t.t === 'eq' ? t.xs : [t]).map((x) => JSON.stringify(x));
+        ok(eq.steps.every((s) => s.tree.t === 'eq'), `${eq.id}: every step is an equality`);
+        const last = sides(eq.steps[eq.steps.length - 1].tree), own = sides(eq.tree);
+        ok(last[0] === own[0] && own.includes(last[last.length - 1]), `${eq.id}: the derivation ends in the equation`);
+      }
       for (const v of eq.variables) ok(!!symbolOf(eq, v), `${eq.id}: variable ${v} has a meaning, unit and chart object`);
       ok(eq.id in CHECKS, `${eq.id} has an engine check in the harness`);
     }

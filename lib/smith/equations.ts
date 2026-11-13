@@ -901,13 +901,15 @@ const DEFS: Def[] = [
     sources: [src(W, '"Constant resistance and reactance circles"'), src(S3, '§3.4')], derivation: 'Completing the square in r = Re z (facts.md §3 item 8).',
     owner: 'items 7 and 8', assumptions: [REAL_Z0], engine: 'convert.zFromGamma',
     steps: [
-      ['r = (1 - Gamma_r^2 - Gamma_i^2)/((1 - Gamma_r)^2 + Gamma_i^2)', 'The real part of z in parts of Γ.'],
-      ['r*((1 - Gamma_r)^2 + Gamma_i^2) = 1 - Gamma_r^2 - Gamma_i^2', 'Multiply by the denominator.'],
-      ['(r + 1)*Gamma_r^2 - 2*r*Gamma_r + (r + 1)*Gamma_i^2 = 1 - r', 'Multiply out and gather the powers of Γr and Γi.'],
-      ['Gamma_r^2 - 2*r/(r + 1)*Gamma_r + Gamma_i^2 = (1 - r)/(r + 1)', 'Divide by r + 1.'],
-      ['(Gamma_r - r/(r + 1))^2 + Gamma_i^2 = (1 - r)/(r + 1) + (r/(r + 1))^2', 'Complete the square: add (r/(r + 1))² to both sides.'],
-      ['(Gamma_r - r/(r + 1))^2 + Gamma_i^2 = ((1 - r)*(1 + r) + r^2)/(r + 1)^2', 'Bring the right side over one denominator.'],
-      ['(Gamma_r - r/(1 + r))^2 + Gamma_i^2 = (1/(1 + r))^2', 'The numerator is 1: a circle with centre (r/(1 + r), 0) and radius 1/(1 + r).'],
+      ['r = (1 - Gamma_r^2 - Gamma_i^2)/(Gamma_i^2 + (1 - Gamma_r)^2)', 'The real part of z in parts of Γ (the owner’s notes, item 7).'],
+      ['r*Gamma_i^2 + r*(1 - Gamma_r)^2 + Gamma_r^2 + Gamma_i^2 = 1', 'Multiply by the denominator and bring Γr² + Γi² to the left (item 8 starts here).'],
+      ['r*Gamma_i^2 + r*(1 - 2*Gamma_r + Gamma_r^2) + Gamma_r^2 + Gamma_i^2 = 1', 'Expand (1 − Γr)².'],
+      ['Gamma_i^2*(r + 1) + r - 2*r*Gamma_r + Gamma_r^2*(r + 1) = 1', 'Gather the terms in Γi² and in Γr².'],
+      ['Gamma_r^2 - 2*Gamma_r*r/(r + 1) + r/(r + 1) + Gamma_i^2 = 1/(r + 1)', 'Divide by r + 1 (where item 8 stops).'],
+      ['(Gamma_r - r/(r + 1))^2 - (r/(r + 1))^2 + r/(r + 1) + Gamma_i^2 = 1/(r + 1)', 'Complete the square: Γr² − 2Γr·r/(r + 1) is (Γr − r/(r + 1))² less (r/(r + 1))².'],
+      ['(Gamma_r - r/(r + 1))^2 + Gamma_i^2 = 1/(r + 1) - r/(r + 1) + (r/(r + 1))^2', 'Move the constant terms to the right.'],
+      ['(Gamma_r - r/(r + 1))^2 + Gamma_i^2 = ((1 - r)*(r + 1) + r^2)/(r + 1)^2', 'Bring the right side over one denominator, (r + 1)².'],
+      ['(Gamma_r - r/(1 + r))^2 + Gamma_i^2 = (1/(1 + r))^2', 'The numerator (1 − r)(1 + r) + r² is 1: a circle with centre (r/(1 + r), 0) and radius 1/(1 + r).'],
     ],
   },
   {
@@ -915,11 +917,11 @@ const DEFS: Def[] = [
     sources: [src(W, '"Constant resistance and reactance circles"'), src(S3, '§3.4')], derivation: 'Completing the square in x = Im z (facts.md §3 item 9).',
     owner: 'items 7 (i corrected to 1) and 9', assumptions: [REAL_Z0], engine: 'convert.zFromGamma',
     steps: [
-      ['x = 2*Gamma_i/((1 - Gamma_r)^2 + Gamma_i^2)', 'The imaginary part of z in parts of Γ.'],
-      ['x*((1 - Gamma_r)^2 + Gamma_i^2) = 2*Gamma_i', 'Multiply by the denominator.'],
-      ['(Gamma_r - 1)^2 + Gamma_i^2 = 2*Gamma_i/x', 'Divide by x; (1 − Γr)² = (Γr − 1)².'],
-      ['(Gamma_r - 1)^2 + Gamma_i^2 - 2*Gamma_i/x + (1/x)^2 = (1/x)^2', 'Complete the square: subtract 2Γi/x and add (1/x)² on both sides.'],
-      ['(Gamma_r - 1)^2 + (Gamma_i - 1/x)^2 = (1/x)^2', 'A circle with centre (1, 1/x) and radius 1/|x|.'],
+      ['x = 2*Gamma_i/(Gamma_i^2 + (1 - Gamma_r)^2)', 'The imaginary part of z in parts of Γ (the owner’s notes, item 9, which stops here).'],
+      ['x*Gamma_i^2 + x*(1 - Gamma_r)^2 = 2*Gamma_i', 'Multiply by the denominator.'],
+      ['(Gamma_r - 1)^2 + Gamma_i^2 = 2*Gamma_i/x', 'Divide by x (x ≠ 0); (1 − Γr)² = (Γr − 1)².'],
+      ['(Gamma_r - 1)^2 + Gamma_i^2 - 2*Gamma_i/x + (1/x)^2 = (1/x)^2', 'Bring 2Γi/x to the left and complete the square in Γi: add (1/x)² to both sides.'],
+      ['(Gamma_r - 1)^2 + (Gamma_i - 1/x)^2 = (1/x)^2', 'Γi² − 2Γi/x + (1/x)² is (Γi − 1/x)²: a circle with centre (1, 1/x) and radius 1/|x|.'],
     ],
   },
   {
@@ -927,12 +929,15 @@ const DEFS: Def[] = [
     sources: [src(W, '"Admittance chart"')], derivation: 'Completing the square in g = Re y (facts.md §3 item 10).',
     owner: 'items 5 and 10', assumptions: [REAL_Z0], engine: 'convert.yFromGamma',
     steps: [
-      ['g = (1 - Gamma_r^2 - Gamma_i^2)/((1 + Gamma_r)^2 + Gamma_i^2)', 'The real part of y in parts of Γ.'],
-      ['g*Gamma_i^2 + g*(Gamma_r + 1)^2 = 1 - Gamma_r^2 - Gamma_i^2', 'Multiply by the denominator (the notes’ last line).'],
-      ['(g + 1)*Gamma_r^2 + 2*g*Gamma_r + (g + 1)*Gamma_i^2 = 1 - g', 'Multiply out and gather the powers of Γr and Γi.'],
-      ['Gamma_r^2 + 2*g/(g + 1)*Gamma_r + Gamma_i^2 = (1 - g)/(1 + g)', 'Divide by g + 1.'],
-      ['(Gamma_r + g/(g + 1))^2 + Gamma_i^2 = (1 - g)/(1 + g) + (g/(g + 1))^2', 'Complete the square: add (g/(g + 1))² to both sides.'],
-      ['(Gamma_r + g/(1 + g))^2 + Gamma_i^2 = (1/(1 + g))^2', 'The right side is 1/(1 + g)²: centre (−g/(1 + g), 0), radius 1/(1 + g).'],
+      ['g = (1 - Gamma_r^2 - Gamma_i^2)/(Gamma_i^2 + (Gamma_r + 1)^2)', 'The real part of y in parts of Γ (the owner’s notes, item 5).'],
+      ['g*Gamma_i^2 + g*(Gamma_r + 1)^2 = 1 - Gamma_r^2 - Gamma_i^2', 'Multiply by the denominator (item 10, which stops here).'],
+      ['g*Gamma_i^2 + g*(Gamma_r^2 + 2*Gamma_r + 1) + Gamma_r^2 + Gamma_i^2 = 1', 'Expand (Γr + 1)² and bring Γr² + Γi² to the left.'],
+      ['Gamma_i^2*(g + 1) + g + 2*g*Gamma_r + Gamma_r^2*(g + 1) = 1', 'Gather the terms in Γi² and in Γr².'],
+      ['Gamma_r^2 + 2*Gamma_r*g/(g + 1) + g/(g + 1) + Gamma_i^2 = 1/(g + 1)', 'Divide by g + 1.'],
+      ['(Gamma_r + g/(g + 1))^2 - (g/(g + 1))^2 + g/(g + 1) + Gamma_i^2 = 1/(g + 1)', 'Complete the square: Γr² + 2Γr·g/(g + 1) is (Γr + g/(g + 1))² less (g/(g + 1))².'],
+      ['(Gamma_r + g/(g + 1))^2 + Gamma_i^2 = 1/(g + 1) - g/(g + 1) + (g/(g + 1))^2', 'Move the constant terms to the right.'],
+      ['(Gamma_r + g/(g + 1))^2 + Gamma_i^2 = ((1 - g)*(g + 1) + g^2)/(g + 1)^2', 'Bring the right side over one denominator, (g + 1)².'],
+      ['(Gamma_r + g/(1 + g))^2 + Gamma_i^2 = (1/(1 + g))^2', 'The numerator (1 − g)(1 + g) + g² is 1: a circle with centre (−g/(1 + g), 0) and radius 1/(1 + g).'],
     ],
   },
   {
@@ -940,11 +945,11 @@ const DEFS: Def[] = [
     sources: [src(W, '"Admittance chart"')], derivation: 'Completing the square in b = Im y (facts.md §3 item 11).',
     owner: 'items 5 and 11', assumptions: [REAL_Z0], engine: 'convert.yFromGamma',
     steps: [
-      ['b = -2*Gamma_i/((1 + Gamma_r)^2 + Gamma_i^2)', 'The imaginary part of y in parts of Γ.'],
-      ['b*Gamma_i^2 + b*(Gamma_r + 1)^2 = -2*Gamma_i', 'Multiply by the denominator (the notes’ last line).'],
-      ['(Gamma_r + 1)^2 + Gamma_i^2 = -2*Gamma_i/b', 'Divide by b.'],
-      ['(Gamma_r + 1)^2 + Gamma_i^2 + 2*Gamma_i/b + (1/b)^2 = (1/b)^2', 'Complete the square: add 2Γi/b and (1/b)² on both sides.'],
-      ['(Gamma_r + 1)^2 + (Gamma_i + 1/b)^2 = (1/b)^2', 'A circle with centre (−1, −1/b) and radius 1/|b|.'],
+      ['b = -2*Gamma_i/(Gamma_i^2 + (Gamma_r + 1)^2)', 'The imaginary part of y in parts of Γ (the owner’s notes, item 5).'],
+      ['b*Gamma_i^2 + b*(Gamma_r + 1)^2 = -2*Gamma_i', 'Multiply by the denominator (item 11, which stops here).'],
+      ['(Gamma_r + 1)^2 + Gamma_i^2 = -2*Gamma_i/b', 'Divide by b (b ≠ 0).'],
+      ['(Gamma_r + 1)^2 + Gamma_i^2 + 2*Gamma_i/b + (1/b)^2 = (1/b)^2', 'Bring −2Γi/b to the left and complete the square in Γi: add (1/b)² to both sides.'],
+      ['(Gamma_r + 1)^2 + (Gamma_i + 1/b)^2 = (1/b)^2', 'Γi² + 2Γi/b + (1/b)² is (Γi + 1/b)²: a circle with centre (−1, −1/b) and radius 1/|b|.'],
     ],
   },
   // A line of another impedance (eq. 12).
@@ -976,6 +981,7 @@ const DEFS: Def[] = [
     steps: [
       ['VSWR*(1 - abs(Gamma)) = 1 + abs(Gamma)', 'Multiply the VSWR by 1 − |Γ|.'],
       ['abs(Gamma)*(VSWR + 1) = VSWR - 1', 'Gather the terms in |Γ|.'],
+      ['abs(Gamma) = (VSWR - 1)/(VSWR + 1)', 'Divide by VSWR + 1.'],
     ],
   },
   // The solver's nearest value (theory-solver.md §10, claims 156–158; notes-M4.3c.md).
@@ -1026,6 +1032,7 @@ const DEFS: Def[] = [
     steps: [
       ['R_high = R_low*(1 + Q^2)', 'A series leg R_low + jX with Q = |X|/R_low is, seen in parallel, a resistance R_low(1 + Q²).'],
       ['Q^2 = R_high/R_low - 1', 'Solve for Q².'],
+      ['Q = sqrt(R_high/R_low - 1)', 'Take the positive root: Q is a ratio of magnitudes.'],
     ],
   },
   // Lines (eqs. 18–20).
@@ -1042,6 +1049,10 @@ const DEFS: Def[] = [
   {
     id: 'line-rotation', title: 'Rotation on a matched line', text: 'Gamma_in = Gamma_L*exp(-j*2*theta)', sources: [src(E, '§3.15'), src(E, '§3.17'), src(S3, '§3.4')],
     assumptions: [LOSSLESS, 'the line’s Z_c equals Z₀'], engine: 'network.evaluate (LINE with Z_c = Z₀)',
+    steps: [
+      ['Gamma_in = Gamma_c*exp(-j*2*beta*ell)', 'Over the length ℓ the reflected wave turns by e^{−j2βℓ} against the incident one (Γ_c against the line’s Z_c).'],
+      ['Gamma_in = Gamma_L*exp(-j*2*theta)', 'With Z_c = Z₀ the line’s Γ_c is the chart’s Γ_L, and βℓ is θ.'],
+    ],
   },
   { id: 'line-theta', title: 'Electrical length', text: 'theta = beta*ell = 2*pi*ell/lambda', sources: [src(E, '§3.15'), src(E, '§3.17')], assumptions: [LOSSLESS], engine: 'parts.turnsFromMetres' },
   { id: 'beta', title: 'Phase constant', text: 'beta = 2*pi/lambda = omega/v_p', sources: [src(E, '§3.15')], assumptions: [LOSSLESS], engine: 'parts.turnsFromMetres, parts.metresFromTurns' },
@@ -1058,7 +1069,11 @@ const DEFS: Def[] = [
   {
     id: 'quarter-wave-match', title: 'Quarter-wave match', text: 'Z_t = sqrt(Z_0*R_L)', sources: [src(E, '§3.19'), src(S2, '§2.4')], assumptions: [LOSSLESS, 'ℓ = λ/4 + nλ/2', 'resistive load'],
     engine: 'network.inputGamma (QUARTER) is 0',
-    steps: [['Z_0 = Z_t^2/R_L', 'A match needs the input impedance Z_t²/R_L to equal Z₀.']],
+    steps: [
+      ['Z_0 = Z_t^2/R_L', 'A match needs the input impedance Z_t²/R_L to equal Z₀.'],
+      ['Z_t^2 = Z_0*R_L', 'Multiply by R_L.'],
+      ['Z_t = sqrt(Z_0*R_L)', 'Take the positive root: a line’s impedance Z_t is positive.'],
+    ],
   },
   // Stubs (eqs. 21–23).
   { id: 'stub-short-z', title: 'Shorted line', text: 'Z_in = j*Z_c*tan(beta*ell)', sources: [src(E, '§3.16'), src(S2, '§2.4')], assumptions: [LOSSLESS], engine: 'network.evaluate (LINE on a short)' },
@@ -1103,6 +1118,31 @@ const DEFS: Def[] = [
       ['y_in = I_2*Z_0/V_2 + Y_p*Z_0 = y_L + y_p', 'Split the fraction: the first term is the admittance at the output.'],
     ],
   },
+  // Matching with two parts, series next to the load and shunt nearest the source (learning.md §4, step M5.3; theory.md §7).
+  {
+    id: 'match-two-parts', title: 'Matching with two parts', text: 'y_in = 1/(r_L + j*(x_L + x_s)) + j*b_p = 1',
+    sources: [src(S3, '§6.7')],
+    derivation: 'Series adds z, then shunt adds y; the series part must land the point on the g = 1 circle (theory.md §7).',
+    assumptions: [REAL_Z0, 'lossless parts', 'r_L ≤ 1'], engine: 'network.evaluate of the series and shunt part built from x_s and b_p',
+    symbols: {
+      z_L: sym('normalised impedance of the load', '', 'load'),
+      r_L: sym('normalised resistance of the load', '', 'load'), x_L: sym('normalised reactance of the load', '', 'load'),
+      x_s: sym('normalised reactance of the series part', '', 'part'), b_p: sym('normalised susceptance of the shunt part', '', 'part'),
+      z_1: sym('normalised impedance between the two parts', '', 'node'), y_1: sym('normalised admittance between the two parts', '', 'node'),
+      x_1: sym('normalised reactance between the two parts', '', 'node'),
+      y_in: sym('normalised admittance at the input', '', 'input'),
+    },
+    steps: [
+      ['z_1 = z_L + j*x_s = r_L + j*(x_L + x_s) = r_L + j*x_1', 'The series part next to the load adds jx_s and keeps r (series adds z); x_1 = x_L + x_s.'],
+      ['y_1 = 1/z_1 = r_L/(r_L^2 + x_1^2) - j*(x_1/(r_L^2 + x_1^2))', 'Turn it over and multiply above and below by r_L − jx_1.'],
+      ['r_L/(r_L^2 + x_1^2) = 1', 'The shunt part keeps g, so the series part must land the point on the g = 1 circle: Re y_1 = 1.'],
+      ['x_1^2 = r_L*(1 - r_L)', 'Multiply out: r_L = r_L² + x_1². A real x_1 needs r_L ≤ 1; its two signs are the two solutions.'],
+      ['x_s = x_1 - x_L', 'The series part to add, for either sign of x_1.'],
+      ['y_1 = 1 - j*(x_1/r_L)', 'With r_L² + x_1² = r_L the imaginary part is −x_1/r_L.'],
+      ['b_p = x_1/r_L', 'The shunt part must cancel that susceptance.'],
+      ['y_in = y_1 + j*b_p = 1', 'It adds jb_p (shunt adds y): y_in = 1, the centre of the chart.'],
+    ],
+  },
   // ABCD (eqs. 25–28).
   { id: 'abcd', title: 'ABCD matrix of a two-port', text: '[V_1; I_1] = [A, B; C, D]*[V_2; I_2]', sources: [src(S3, '§2.2.6')], assumptions: ['I_2 flows out of port 2'], engine: 'parts.partMatrix, network.applyPart', symbols: ABCD_SYMBOLS },
   { id: 'abcd-cascade', title: 'Parts in cascade', text: '[A, B; C, D] = [A_1, B_1; C_1, D_1]*[A_2, B_2; C_2, D_2]', sources: [src(S3, '§2.2.6')], assumptions: ['I_2 flows out of port 2'], engine: 'network.applyPart twice', symbols: ABCD_SYMBOLS },
@@ -1140,6 +1180,7 @@ const DEFS: Def[] = [
       ['b = A + B/Z_0 - C*Z_0 - D', 'The constant term above the line.'],
       ['c = A - B/Z_0 + C*Z_0 - D', 'The coefficient of Γ_L below the line.'],
       ['d = A + B/Z_0 + C*Z_0 + D', 'The constant term below the line.'],
+      ['Gamma_in = (a*Gamma_L + b)/(c*Gamma_L + d)', 'So Γ_in is a ratio of first-degree expressions in Γ_L: a Möbius transformation.'],
     ],
   },
   { id: 'node-z', title: 'Impedance at a node', text: 'z = V/(I*Z_0)', sources: [], derivation: 'A node is (V, I) at the port towards the load (engine.md §4).', assumptions: [REAL_Z0], engine: 'network.nodeMetrics' },

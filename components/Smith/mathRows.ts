@@ -99,7 +99,7 @@ const fin = (re: number, im: number): boolean => Number.isFinite(re) && Number.i
 const fl = (v: number, floor: number): number => (floor > 0 && belowFloor(v, floor) ? 0 : v);
 
 /** A unitless, ohm or siemens value with its floor of D20 (a part at rounding level of 1, of Z0 or of 1/Z0). */
-const v = (re: number, im: number, unit: string, z0: number): Var => ({
+export const v = (re: number, im: number, unit: string, z0: number): Var => ({
   re, im, unit, floor: unit === 'Ω' ? ROUNDING_FLOOR * z0 : unit === 'S' ? ROUNDING_FLOOR / z0 : unit === '' || unit === 'dB' ? ROUNDING_FLOOR : 0,
 });
 /** A value with a printed form of its own (ω as 2π·f0, βℓ in wavelengths, Γ in polar form). */
@@ -111,9 +111,9 @@ const omegaVar = (f0: number): Var => special(TAU * f0, (d) => {
   const f = valueTex(f0, 0, 'Hz', d);
   return { s: `2\\pi \\cdot ${f.s}`, p: 2, digit: true };
 });
-const BETA = special(TAU, () => ({ s: '\\frac{2\\pi}{\\lambda}', p: 5, tall: true }));
+export const BETA = special(TAU, () => ({ s: '\\frac{2\\pi}{\\lambda}', p: 5, tall: true }));
 const LAMBDA = special(1, () => ({ s: '\\lambda', p: 5 }));
-const ellVar = (turns: number): Var => special(turns, (d) => ({ s: `${valueTex(turns, 0, '', d).s}\\,\\lambda`, p: 2, digit: true }));
+export const ellVar = (turns: number): Var => special(turns, (d) => ({ s: `${valueTex(turns, 0, '', d).s}\\,\\lambda`, p: 2, digit: true }));
 const thetaVar = (turns: number): Var => special(TAU * turns, (d) => ({ s: `${valueTex(TAU * turns, 0, '', d).s}\\,\\mathrm{rad}`, p: 2, digit: true }));
 /** Γ in polar form (inside |…| of the VSWR and the losses); 0 and a residual under the floor are 0. */
 const polarVar = (gr: number, gi: number): Var => ({
@@ -290,7 +290,7 @@ export function subjectName(c: Circuit, s: Subject): string {
 const GAMMAS = new Set(['Gamma', 'Gamma_in', 'Gamma_L', 'Gamma_c']);
 
 /** The TeX of a variable's value (D20: a part under its floor put in as 0); ±∞ alone as ∞, otherwise undefined when not finite. */
-function texOf(x: Var, digits: number): TexPiece | undefined {
+export function texOf(x: Var, digits: number): TexPiece | undefined {
   if (!fin(x.re, x.im)) return x.im === 0 && Math.abs(x.re) === Infinity && !x.tex ? valueTex(x.re, 0, x.unit, digits) : undefined;
   return x.tex ? x.tex(digits) : valueTex(fl(x.re, x.floor), fl(x.im, x.floor), x.unit, digits);
 }

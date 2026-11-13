@@ -25,6 +25,8 @@ import bibCss from '../../styles/Bibliography.module.css';
 import css from '../../styles/SmithTheory.module.css';
 import Bibliography from '../Bibliography';
 import KatexSpan from '../KatexSpan';
+import { openDerivation } from './Derivation';
+import { hasDerivation } from './derive';
 import { GOAL_VSWR } from './pathLayer';
 import { onFollowTopic } from './Why';
 import { complexText } from './readout';
@@ -98,6 +100,13 @@ const omegaTex = (f0: number): TexPiece | undefined => {
 function Eq({ id, values, note }: { id: string; values?: Values; note?: string }) {
   const eq = EQUATION_BY_ID.get(id);
   if (!eq) throw new Error(`Unknown equation "${id}" in the Smith chart's theory.`);
+  // M5.3: "derive" opens its derivation, with the numbers of the place the theory uses (derive.ts theorySubject).
+  const title = (
+    <span className={css.eqTitle}>
+      {eq.title}{note ? ` · ${note}` : ''}
+      {hasDerivation(id) && <> · <button type="button" className={css.derive} data-derive-open={id} onClick={(e) => openDerivation(id, e.currentTarget)}>derive</button></>}
+    </span>
+  );
   const sub = values && substitutions(eq.tree, values);
   // Aligned on "=": the symbol, then its equation and every substitution line in the second column.
   if (sub) {
@@ -110,7 +119,7 @@ function Eq({ id, values, note }: { id: string; values?: Values; note?: string }
             <KatexSpan key={i} className={css.eqLive} data-eq-live={id} text={`\\displaystyle {}= ${s}`} />
           ))}
         </div>
-        <span className={css.eqTitle}>{eq.title}{note ? ` · ${note}` : ''}</span>
+        {title}
       </div>
     );
   }
@@ -119,7 +128,7 @@ function Eq({ id, values, note }: { id: string; values?: Values; note?: string }
     <div className={css.eq} data-eq={id}>
       <KatexSpan text={`\\displaystyle ${tex(eq.tree)}`} />
       {live && <KatexSpan className={css.eqLive} data-eq-live={id} text={`\\displaystyle ${live}`} />}
-      <span className={css.eqTitle}>{eq.title}{note ? ` · ${note}` : ''}</span>
+      {title}
     </div>
   );
 }
@@ -365,7 +374,8 @@ function Theory({ bib, circuit: c, outcome, lists }: Props) {
               return loss there. The node table gives the same for every node of the path, from the load to the input.
               The = beside a number shows its equation in the Equations panel, with your values put in; point at or tap
               a variable there and its part, node or readout row lights up, and pointing at an arc or a node on the
-              chart lights its variables.</li>
+              chart lights its variables. Derive, beside an equation there or in this theory, shows how it follows, one
+              step at a time with the reason for each and, where every quantity has a value, your numbers.</li>
           </ol>
           <p>
             The usual aim is to bring the input to the centre. There Γ = 0: nothing is reflected and all the power the
@@ -449,14 +459,16 @@ function Theory({ bib, circuit: c, outcome, lists }: Props) {
           <Eq id="x-gamma" />
           <Eq id="circle-r" values={loadValues} note="below: through your load" />
           <Eq id="circle-x" values={loadValues} />
+          <Eq id="z-parts" />
           <Eq id="gamma-parts-y" />
+          <Eq id="y-parts" />
           <Eq id="g-gamma" />
           <Eq id="b-gamma" />
           <Eq id="circle-g" values={loadValues} />
           <Eq id="circle-b" values={loadValues} />
           <p>
             The circle equations are not taken on trust: each comes from writing r, x, g or b in terms of {Gr} and {Gi} and
-            completing the square (the derivations come with the equation panel).
+            completing the square: “derive” beside each shows every step.
           </p>
           <div className={css.liveRow}>
             <div className={css.live}>
@@ -743,6 +755,7 @@ function Theory({ bib, circuit: c, outcome, lists }: Props) {
           <Eq id="shunt-adds-y" />
           <Eq id="circle-r" />
           <Eq id="circle-g" />
+          <Eq id="match-two-parts" note="series next to the load, then shunt" />
           <p>
             <b>The start circuit, step by step.</b> The load is z = {L('start-load-z', cx(sm(0, M_ZR), sm(0, M_ZI)))}. A
             series capacitor of x = {L('start-x', num(added(SERIES_C, START_C, 0, START.f0, START.f0, START.z0)))} takes it
