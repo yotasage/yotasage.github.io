@@ -80,7 +80,15 @@ A brief names:
 - how to check with few calls: one harness command that runs the type-check and the comparisons and prints a short
   summary; shell commands chained; a new file written whole rather than through many small edits;
 - that screenshots are downscaled (about 1,000 px wide at most) and taken only when needed;
-- the commit rules (CLAUDE.md, explicit paths, no push) and a report of under 300 words.
+- the commit rules (CLAUDE.md, explicit paths, no push) and a report of under 300 words;
+- **background tasks:** every wait loop has a time limit (for example `for i in $(seq 1 60); do …; sleep 10; done`,
+  never a bare `until …; do sleep …; done`, which runs forever when the awaited text never appears, as five loops
+  did for 19 hours in the Smith chart build); before reporting, the agent stops every background task and process
+  it started (wait loops, harness runs, dev servers, browsers) and says in the report that none is left. A dev
+  server that was already running when the agent started is left running.
+
+After each step the main session checks for leftover processes (`node`, `bash`, headless `msedge` started by the
+step) and stops them, or asks the owner when the permission system blocks that.
 
 ### Test harness
 
