@@ -102,4 +102,4 @@ The Smith papers may be named on the page as history ("P. H. Smith published the
 | How good is a match: \|Γ\|, VSWR, RL, ML | Ellingson2018 §3.14, §3.20; SteerVol2 §2.3; SteerVol3 §2.8; ML: derivation |
 | Matching with two parts | SteerVol3 §6.4, §6.7; Ellingson2018 §3.22 |
 | Realisable and standard values (M4) | WikiE, IEC60063, JohansonHighQ, WurthWEKI |
-| Q and bandwidth (M7) | SteerVol3 §6.4 for node Q; bandwidth not yet sourced |
+| Q and bandwidth (M7) | SteerVol3 §6.4 for node Q; bandwidth: derivations in notes-M7.1.md (series RLC, λ/4 transformer), no source at hand |

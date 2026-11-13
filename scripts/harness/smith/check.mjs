@@ -17,6 +17,7 @@ import { runValidateChecks } from './check-validate.mjs';
 import { runSuggestChecks } from './check-suggest.mjs';
 import { runExplainChecks } from './check-explain.mjs';
 import { runTeachChecks } from './check-teach.mjs';
+import { runSweepChecks } from './check-sweep.mjs';
 
 const quantity = importedQuantity.default ?? importedQuantity;
 const cx = importedComplex.default ?? importedComplex;
@@ -460,6 +461,8 @@ runExplainChecks({ section, ok, random });
 // ---------------------------------------------------------------------------------------------------------------
 // The teaching engine (M6.2): check-teach.mjs (examples, challenges, lesson links).
 runTeachChecks({ section, ok, random });
+
+runSweepChecks({ section, ok, random });
 
 // ---------------------------------------------------------------------------------------------------------------
 const total =[...groups.values()].reduce((a, b) => a + b, 0);
