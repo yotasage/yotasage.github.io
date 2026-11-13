@@ -18,6 +18,7 @@ import { runSuggestChecks } from './check-suggest.mjs';
 import { runExplainChecks } from './check-explain.mjs';
 import { runTeachChecks } from './check-teach.mjs';
 import { runSweepChecks } from './check-sweep.mjs';
+import { runFigureChecks } from './check-figure.mjs';
 
 const quantity = importedQuantity.default ?? importedQuantity;
 const cx = importedComplex.default ?? importedComplex;
@@ -463,6 +464,10 @@ runExplainChecks({ section, ok, random });
 runTeachChecks({ section, ok, random });
 
 runSweepChecks({ section, ok, random });
+
+// ---------------------------------------------------------------------------------------------------------------
+// The export's figure model and standalone SVG (M8.1a): check-figure.mjs.
+runFigureChecks({ section, ok, random });
 
 // ---------------------------------------------------------------------------------------------------------------
 const total =[...groups.values()].reduce((a, b) => a + b, 0);
