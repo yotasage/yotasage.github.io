@@ -4,7 +4,7 @@
     "dev": "next dev -H 0.0.0.0 -p 3020",
     "build": "next build",
     "start": "next start -H 0.0.0.0",
-    "postinstall": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-3d-assets.mjs && node scripts/collect-licenses.mjs"
+    "postinstall": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-3d-assets.mjs && node scripts/copy-qr-assets.mjs && node scripts/collect-licenses.mjs"
   },
   "dependencies": {
     "@cantoo/pdf-lib": "^2.11.1",
@@ -28,7 +28,8 @@
     "react-dom": "^19.3.1",
     "socket.io": "^4.8.4",
     "socket.io-client": "^4.8.4",
-    "three": "^0.186.1"
+    "three": "^0.186.1",
+    "zxing-wasm": "3.1.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",

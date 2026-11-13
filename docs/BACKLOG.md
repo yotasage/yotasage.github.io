@@ -1,6 +1,6 @@
 # Backlog
 
-Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL61**). When a row is
+Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL63**). When a row is
 scheduled it moves into the tool's plan (for the PCB viewer: [pcb-viewer/plan.md](pcb-viewer/plan.md); for the resistor
 lookup: [resistor/plan.md](resistor/plan.md); for the Smith chart: [smith-chart/plan.md](smith-chart/plan.md)) and the move is noted here; when it is done the row is removed and that is
 noted here too.
@@ -24,6 +24,8 @@ point; `searchGrid` starts Newton on the ridge of a line's Zc or a λ/4's Zt fro
 
 | id | tool | what | why / trigger |
 |---|---|---|---|
+| BL62 | QR code reader | More inputs and memory: read codes in a video file or a screen share (`getDisplayMedia`), keep a history of read codes in the browser, and open a read code in the generator with its settings | 2026-11-13: left out of the first version, which reads the camera, images, PDFs and pasted pictures and keeps results only while the page is open. Trigger: the owner wants one of them |
+| BL61 | QR code reader, QR code generator | QR Code Model 1 from version 7 up: ZXing-C++ reads the generator's Model 1 symbols of versions 1 to 6 but not 7 to 14 (`scripts/harness/qr-reader/check.mjs` reports which). Either the generator's Model 1 layout from version 7 (extension patterns, codeword placement) or ZXing-C++'s Model 1 reader is off; find out from the 1994 JIS X 0510 / AIM ITS/97-001 text or a Model 1 symbol from another encoder, then fix the side that is wrong | 2026-11-13: found by the reader's round trips; Model 1 is obsolete, so it was noted on the reader's status note and left. Trigger: the owner wants large Model 1 symbols |
 | BL60 | Smith chart | LaTeX code for the rest of a report: the schematic strip as circuitikz and the return-loss plot as pgfplots (both in TeX Live), with the size and colour modes of the chart's TikZ export (D18) | 2026-11-12, owner checkpoint 2: the chart's TikZ is M8; these were left out to keep M8's size. The CSV export (M8.2) already feeds a pgfplots plot by hand. Trigger: the owner wants them in a report |
 | BL59 | Smith chart | Suggestions of two parts for a circle goal: two unknowns there are a family, so the pair needs the member nearest the current values (a 1-D minimum of `Solution.change` along `family.at` over the ranges); M4.4a's `suggest.ts` offers pairs for point targets only, so a circle goal no single part reaches gets no suggestion | 2026-11-12, notes-M4.4a.md. Trigger: M4.4b shows "none" too often for circle goals, or the owner asks |
 | BL54 | Smith chart | A complete search for two unknowns whose loci are not circles (the generic grid of `lib/smith/solve.ts` `searchGrid`: f0 with a line's Zc, a λ/4's Zt or a stub's Zc, two Zc): it is a refined grid with Newton, and a brute force 4× finer still found one answer in 280 problems it missed (f0 + λ/4 at 7·f0). Perhaps a continuation along the resonance curves, or interval bounds on Γ per cell | 2026-11-12, from notes-M4.2.md "Left". Trigger: the owner meets a missed answer, or M4.4 suggests f0 pairs |

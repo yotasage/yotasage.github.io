@@ -30,6 +30,9 @@ yarn-error.log*
 # 3D viewer assets (Open CASCADE, Draco, Basis Universal), copied from node_modules on install
 /public/3d/
 
+# QR code reader (zxing-wasm), copied from node_modules on install
+/public/qr/
+
 # Licence list, generated from node_modules on install
 /lib/generated/
 
