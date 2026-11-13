@@ -36,6 +36,24 @@ export interface LearnSectionProps {
 
 /** The Learn section: the examples in examples.md's order, the challenges and the lesson-link maker. */
 export const LearnSection = memo(function LearnSection({ open, onLoad, challenges, maker }: LearnSectionProps) {
+  // `maker` changes with every commit (it carries the circuit); the rest only with what it shows, so a commit renders
+  // the maker's summary and nothing else of the section.
+  const blocked = !!challenges.blocked;
+  const examples = useMemo(() => (
+    <ol className={learn.list} data-examples="">
+      {EXAMPLES.map((ex, i) => (
+        <li key={ex.id}>
+          <button type="button" className={learn.item} data-example={ex.id} aria-current={open === ex.id ? 'true' : undefined}
+            disabled={blocked} onClick={() => onLoad(ex.id)}>
+            <span className={learn.num}>E{i + 1}</span>
+            <span className={learn.itemTitle}>{ex.title}</span>
+            <span className={learn.itemIntro}>{ex.intro}</span>
+          </button>
+        </li>
+      ))}
+    </ol>
+  ), [open, onLoad, blocked]);
+  const list = useMemo(() => <ChallengeList {...challenges} />, [challenges]);
   return (
     <div className={learn.wrap}>
       <section id="learn" className={`${theoryCss.section} ${learn.section}`} aria-labelledby="learn-title">
@@ -45,19 +63,8 @@ export const LearnSection = memo(function LearnSection({ open, onLoad, challenge
           circuit gets there. <Why k="learn" />
         </p>
         <h3 className={learn.listHead}>Worked examples <Why k="learn-example" /></h3>
-        <ol className={learn.list} data-examples="">
-          {EXAMPLES.map((ex, i) => (
-            <li key={ex.id}>
-              <button type="button" className={learn.item} data-example={ex.id} aria-current={open === ex.id ? 'true' : undefined}
-                disabled={!!challenges.blocked} onClick={() => onLoad(ex.id)}>
-                <span className={learn.num}>E{i + 1}</span>
-                <span className={learn.itemTitle}>{ex.title}</span>
-                <span className={learn.itemIntro}>{ex.intro}</span>
-              </button>
-            </li>
-          ))}
-        </ol>
-        <ChallengeList {...challenges} />
+        {examples}
+        {list}
         <LessonMaker {...maker} />
       </section>
     </div>

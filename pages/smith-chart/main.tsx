@@ -100,6 +100,8 @@ interface Running { ch: Challenge; seq: number; locks: Lesson }
 const challengeLocks = (ch: Challenge): Lesson => ({ locks: ch.kind === 'read' ? ['z0', 'f0', 'zl', 'parts'] : ['z0', 'f0', 'zl'], hidden: [], text: '' });
 /** A lesson from the link and the circuit its locks keep. */
 interface LessonOn { lesson: Lesson; base: Circuit; seq: number }
+/** No part locked: one array, so the effect below can tell nothing changed without a loop. */
+const NONE_FIXED: readonly boolean[] = [];
 const LESSON_WHY = 'locked by the lesson’s link (Leave the lesson unlocks it).';
 const CHALLENGE_WHY = 'fixed by the challenge (Close it to change).';
 
@@ -442,10 +444,15 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     const locks: Lock[] = [...(lesson?.lesson.locks ?? []), ...(challenge?.locks.locks ?? [])];
     return { lesson: { locks, hidden: [], text: '' }, why: lesson?.lesson.locks.length ? LESSON_WHY : CHALLENGE_WHY };
   }, [lesson, challenge]);
-  const fixedRef = useRef<boolean[]>([]);
+  // Read by the path layer when a drag or a key step starts; with nothing locked it stays the one empty array and a
+  // commit (the end of every drag) touches no handle.
+  const fixedRef = useRef<readonly boolean[]>(NONE_FIXED);
   useEffect(() => {
-    fixedRef.current = circuit.parts.map((_, i) => valueLocked(lock?.lesson ?? null, i));
-    path.current?.setFixed(fixedRef.current);
+    const was = fixedRef.current;
+    const next = lock ? circuit.parts.map((_, i) => valueLocked(lock.lesson, i)) : NONE_FIXED;
+    if (next === was || (next.length === was.length && next.every((f, i) => f === was[i]))) return;
+    fixedRef.current = next;
+    path.current?.setFixed(next);
   }, [lock, circuit]);
   // The solver's circles go with its panel.
   useEffect(() => {

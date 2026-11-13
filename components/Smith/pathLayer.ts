@@ -139,6 +139,8 @@ export class PathLayer {
   dragPart = -1;
   /** Parts whose value a lesson or a challenge locks (M6.3b): their handles do not drag and their keys do nothing. */
   private fixed: readonly boolean[] = [];
+  /** Some handle carries a lock's marks (markFixed). */
+  private marked = false;
   snapCode = SNAP_NONE; snapFamily = -1; snapGridValue = NaN; snapX = NaN; snapY = NaN; snapLabel = '';
 
   /** The evaluated circuit at f0: count parts, nodes (network.ts), arcs (geometry.ts), Γ of every node (re, im). */
@@ -360,13 +362,18 @@ export class PathLayer {
     this.markFixed();
   }
 
+  /** Writes the marks only where they change; with nothing locked now or before (the usual case) it does nothing. */
   private markFixed(): void {
+    const fixed = this.fixed;
+    if (!fixed.length && !this.marked) return;
+    let any = false;
     for (let i = 0; i < this.keyEls.length; i++) {
-      const on = !!this.fixed[i];
-      this.keyEls[i].toggleAttribute('aria-readonly', on);
-      if (on) this.keyEls[i].setAttribute('aria-readonly', 'true');
-      this.handleEls[i]?.toggleAttribute('data-fixed', on);
+      const on = !!fixed[i], key = this.keyEls[i], hd = this.handleEls[i];
+      any ||= on;
+      if (key.hasAttribute('aria-readonly') !== on) { if (on) key.setAttribute('aria-readonly', 'true'); else key.removeAttribute('aria-readonly'); }
+      if (hd && hd.hasAttribute('data-fixed') !== on) hd.toggleAttribute('data-fixed', on);
     }
+    this.marked = any;
   }
 
   /** The committed circuit as the layer has it (the page's, or a key step's before React renders it). */

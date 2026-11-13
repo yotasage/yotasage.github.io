@@ -93,6 +93,32 @@ commit), the fixed-handle test is in `handleAt`, `beginDrag` and `keyStep` only,
 i.e. once at the drag's end. At 1× 2.56–3.01 (HEAD) and 2.60–2.89 (after). ui-drag's absolute 4× budget and 4×
 frame-loss checks fail on this machine at HEAD as well (143 of 145 in every run, notes-M4.3a.md).
 
+## Drag cost fix
+
+The main session's A/B with ui-drag (71e6c89 against this step) read 10.98, 10.90, 11.24 against 12.22, 15.58, 11.96 ms.
+
+- **Cause.** CDP traces and CPU profiles of the 4× drag on a fresh page (scratch script with ui-drag's drag and metric)
+  show the drag frames unchanged: per frame the same style (39 elements), layout (114 objects), paint, Layerize and
+  script, the same functions in the rAF frame; nothing of the locks runs while dragging. What this step added is in
+  the release: the commit at pointerup re-rendered the whole Learn section (its memo was broken every commit by the
+  maker's `circuit` prop), i.e. the 16 example cards, the challenge list and the lesson maker's lock rows and link,
+  about 4.4 ms at 4× in that one task, plus the lock effect and `markFixed` touching every handle per commit. The
+  rest of the +1 ms was the machine: single runs of the same build range 11.5–19 ms, and slow runs are slow in every
+  phase alike (hit test and compositor commit too, which no page code changes).
+- **Fix.** `LessonMaker` is memoised and renders its body (memoised `MakerBody`) with the circuit only while the box is
+  open; closed, the body keeps the circuit it last showed, so a commit renders only the summary. The Learn section's
+  example list and challenge list are `useMemo` elements on what they show. The page's lock effect keeps one empty
+  array when nothing is locked and calls `setFixed` only when the flags change; `markFixed` writes only changed
+  attributes and returns at once with nothing locked now or before. Profiles of the release: LearnSection, LessonMaker
+  and ChallengeList no longer appear.
+- **A/B** (fresh page per run, ui-drag's 10-part drag and TaskDuration metric at 4×, 5 runs per side, medians, ms):
+  71e6c89 / fix, three pairs with 71e6c89 run first 12.94 / 13.42, 13.17 / 14.93, 13.05 / 13.11 and three with the
+  fix run first 14.67 / 12.81, 12.91 / 13.23, 13.60 / 13.51. All 30 runs per side: medians 13.16 (71e6c89) and 13.41 (fix), +0.25 ms; the drag
+  frames' own thread time 2.937 and 2.977 ms (+0.04, unthrottled), the release task 33.2 and 34.6 ms of thread time.
+- **Checks after the fix.** `npm run check` 1,390,800 of 1,390,800; ui-challenge 344/344, ui-learn 197/197, ui-edit
+  3,734/3,734, ui-strip 347/347, ui-why 836/836, ui-drag 143/145 (only its two absolute 4× checks, as at 71e6c89;
+  4× runs 13.04, 14.64, 18.79 | 11.64, 11.93, 11.97 | 11.13, 11.70, 13.38); `npx tsc --noEmit` and `npm run build`.
+
 ## Runs
 
 `npm run check`: 1,390,800 of 1,390,800. `npm run ui`: 14 of 15 scripts; ui-drag with only its two 4× checks (143 of

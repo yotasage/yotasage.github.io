@@ -79,7 +79,23 @@ const LOCK_ROWS: { lock: Lock; label: string }[] = [
   { lock: 'parts', label: 'The parts’ list (no add, remove or move)' },
 ];
 
-export function LessonMaker({ circuit, lists, challenge }: LessonMakerProps) {
+/**
+ * "Make a lesson link". The body is rendered with the circuit only while the box is open: closed, it keeps the circuit
+ * it last showed, so a commit (the end of every drag) renders the summary alone and the memoised body is skipped.
+ */
+export const LessonMaker = memo(function LessonMaker({ circuit, lists, challenge }: LessonMakerProps) {
+  const [open, setOpen] = useState(false);
+  const kept = useRef(circuit);
+  if (open) kept.current = circuit;
+  return (
+    <details className={learn.maker} data-lesson-maker="" onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary className={learn.makerHead}>Make a lesson link <Why k="lesson" /></summary>
+      <MakerBody circuit={kept.current} lists={lists} challenge={challenge} />
+    </details>
+  );
+});
+
+const MakerBody = memo(function MakerBody({ circuit, lists, challenge }: LessonMakerProps) {
   const [locks, setLocks] = useState<ReadonlySet<string>>(() => new Set());
   const [hidden, setHidden] = useState<ReadonlySet<Panel>>(() => new Set());
   const [text, setText] = useState('');
@@ -121,8 +137,7 @@ export function LessonMaker({ circuit, lists, challenge }: LessonMakerProps) {
   const count = [...text].length;
 
   return (
-    <details className={learn.maker} data-lesson-maker="">
-      <summary className={learn.makerHead}>Make a lesson link <Why k="lesson" /></summary>
+    <>
       <p className={learn.lead}>
         The link holds the circuit as it is now. A lock is a teaching aid, not security: anyone can edit the link.
       </p>
@@ -166,6 +181,6 @@ export function LessonMaker({ circuit, lists, challenge }: LessonMakerProps) {
         <button type="button" className={`${styles.button} ${learn.btn} ${learn.next}`} data-lesson-copy="" onClick={copy}>Copy link</button>
       </div>
       <p className={learn.state} role="status" data-lesson-copied="">{copied}</p>
-    </details>
+    </>
   );
-}
+});
