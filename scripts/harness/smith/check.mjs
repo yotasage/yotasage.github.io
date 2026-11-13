@@ -19,6 +19,7 @@ import { runExplainChecks } from './check-explain.mjs';
 import { runTeachChecks } from './check-teach.mjs';
 import { runSweepChecks } from './check-sweep.mjs';
 import { runFigureChecks } from './check-figure.mjs';
+import { runTikzChecks } from './check-tikz.mjs';
 
 const quantity = importedQuantity.default ?? importedQuantity;
 const cx = importedComplex.default ?? importedComplex;
@@ -468,6 +469,10 @@ runSweepChecks({ section, ok, random });
 // ---------------------------------------------------------------------------------------------------------------
 // The export's figure model and standalone SVG (M8.1a): check-figure.mjs.
 runFigureChecks({ section, ok, random });
+
+// ---------------------------------------------------------------------------------------------------------------
+// The TikZ export and its compile (M8.1b): check-tikz.mjs (TeX Live and Edge or Chrome where present).
+await runTikzChecks({ section, ok, random });
 
 // ---------------------------------------------------------------------------------------------------------------
 const total =[...groups.values()].reduce((a, b) => a + b, 0);
