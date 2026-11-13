@@ -135,6 +135,46 @@ clockwise by 57; a resistor's way to its pole is counter-clockwise on an arc who
 from 49 and 53. The numbers (centre and radius from `circle-r`…`circle-b`, `line-circle-centre`, `line-circle-radius`,
 `line-rotation`) and every sense are checked against geometry.ts in check-explain.mjs. All: 190 claims.
 
+## The worked examples, challenges and lesson links (examples.md, examples-challenges.md, M6.1)
+
+Every number was worked by hand and reproduced by an independent formula and by the engine (`evaluateCircuit`,
+`solve`, `standardVariants`) to the digits stated, with a scratch script (notes-M6.1.md "Checks"); M6.2's harness
+checks them again from `lib/smith/examples.ts`. Numbers are D unless a source is named.
+
+**Examples.** 191 S E §3.20 Example 1 (facts-cases C2: Γ = 0.2, 4 % reflected, VSWR 1.5) · 192 D `return-loss`,
+`mismatch-loss` · 193 D `gamma-z` (a real z gives a real Γ, positive for z > 1), `vswr`, `return-loss` · 194 D
+`gamma-z`, `vswr`, `return-loss`, `mismatch-loss`, `power-delivered` · 195 S S3 §3.4 (upper half inductive) · 196 D
+`y-norm`, `gamma-y` · 197 S W "Admittance chart"; D 26 · 198 D `gamma-parts-y` (Γi has the sign of −b) · 199 D
+`x-series-l`, `b-shunt-l` · 200 D `series-adds-z`, `shunt-adds-y`, 47, 52, 56, 57 · 201 D `shunt-adds-y`,
+`b-shunt-c` · 202 D `y-parts` (g = r/(r² + x²)) · 203 D `x-series-l`, `x-series-c`, `b-shunt-c`, `b-shunt-l`; engine
+`solve` · 204 S S3 §6.4 (Q = √(R_high/R_low − 1); two solutions, Example 6.4.2); D `q-node` · 205 D `z-parts`
+(r = g/(g² + b²)), the four part ids; S S3 §6.4 (Q) · 206 T (solve.ts status `none` and its reason) · 207 D
+`circle-r`, `circle-g`, 120–121 · 208 S E §3.15 (84), S3 §3.4.1 (61); D `line-rotation`, `gamma-z` · 209 D
+`line-rotation` · 210 S S2 §2.3 (Z_max = Z0·VSWR); Z_min = Z0/VSWR D `gamma-z` at Γ = −|Γ| · 211 S S2 §2.4 (impedance
+inverter); D `quarter-wave` · 212 S E §3.19; D `quarter-wave-match` · 213 S E §3.19 Example 2 (facts-cases C15: a line
+to a real point, then λ/4); D `quarter-wave-match`, 210; engine `solve` · 214 D `shunt-adds-y`, `gamma-y` (y = 1 + jb
+gives |Γ|² = b²/(4 + b²), as 151), `circle-g` · 215 S E §3.23, S2 §2.4 (single stub); D `line-rotation`,
+`stub-open-b`, 97 · 216 D `gamma-z`, 214 · 217 D `line-rotation`, `stub-short-b`; S E §3.23 · 218 D
+`shunt-adds-y`, `series-adds-z`, `b-shunt-c`, `x-series-l`, 202 · 219 D `q-node`; S S3 §6.4 (the L network's Q) · 220
+S WikiE (E24 has 30, 33, 39, 43; via docs/resistor/facts.md, as 176) · 221 D the network by hand; engine
+`standardVariants` · 222 D 221; T (`standardVariants` orders by mismatch, 182) · 223 D `gamma-z`, `vswr`,
+`return-loss`, `mismatch-loss`, `y-norm`, 202, 205 · 224 D 202, `x-series-l`, `b-shunt-c`, `b-shunt-l`; engine `solve`
+· 225 S WikiE (10, 11, 4.3, 4.7 in E24); D the network by hand; engine `standardVariants`.
+
+**Challenges and lesson links.** 226 D (each kind draws \|Γ_L\| ≥ 0.3, or ≥ 0.2 for a real `qw` load, above its goal of
+at most 0.2 or 0.05); T `goalHolds` · 227 D 202, 205 (r ≤ 1: series to g = 1; r ≥ 1 gives g = r/(r² + x²) ≤ 1: shunt
+to r = 1), 214 (every \|Γ\| circle with 0 < \|Γ\| < 1 meets g = 1 at Γr = −\|Γ\|², twice); the sample T (notes-M6.1.md) ·
+228 T (challenge.ts hints from `solve`'s circles and solutions, M6.2; solveLayer.ts draws them); "Zt between Z0 and R"
+D `quarter-wave-match` (a geometric mean) · 229 T (lesson.ts, the page's `commit`; M6.3b).
+
+**Short lines** (examples-challenges.md §3; added to the table below when M6.3 puts them in `whys.ts`): `learn`,
+`learn-example`, `guide`, `guide-answer`, `guide-hint`, `challenge`, `challenge-reveal`, `challenge-progress`,
+`lesson`, `lesson-lock`, `lesson-hide`, `lesson-text`, `lesson-box` T; `challenge-check` D 226, T; `challenge-hint`
+T 228.
+
+**Count:** 39 claims (191–229): 15 with a source (some with a derived part), 21 derived, 3 describing the tool. All:
+229 claims.
+
 ## Sentences the page added (M3.5b, M3.5c)
 
 | Where | Sentence | Kind |
