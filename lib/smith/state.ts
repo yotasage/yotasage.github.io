@@ -15,10 +15,13 @@ import {
   SHUNT_R, STUB_OPEN, STUB_SHORT, valueFor,
 } from './parts';
 import type { Unknown } from './solve';
+import { readChallenge, readLesson } from './lesson';
+import type { ChallengeKind, Lesson } from './lesson';
 
 export type { Part, PartKind } from './parts';
 export type { Goal } from './goal';
 export type { Unknown } from './solve';
+export type { ChallengeKind, Lesson, Lock, Panel } from './lesson';
 
 /**
  * What the solver is asked (step M4.3a): at most two unknowns and the goal. Part of the circuit, so the link, undo and
@@ -474,9 +477,12 @@ export function circuitInputGamma(out: Float64Array | number[], o: number, c: Ci
 
 // vl the value lists of D17 (M4.3b; values.ts choiceToText: "vl=L12,Co1e-12_2.2e-12"), only when not the defaults. Not part
 //   of the circuit (no undo step): decodeCircuit hands its text back as `lists`, the page reads it with choiceFromText.
+// lk, hd, tx the lesson (M6.2, lesson.ts): locks, hidden panels, the teacher's text; ch a challenge ("ch=two.48213").
+//   Not circuit parameters (`linked` ignores them): decodeCircuit hands them back as `lesson` and `challenge`, the page
+//   appends lessonParams(lesson) and "&ch=" + challengeText to encodeCircuit's text, as it appends vl.
 
 export const LINK_VERSION = 1;
-const PARAMS = ['v', 'z0', 'f0', 'zl', 'p', 'u', 'g', 'vl'];
+const PARAMS = ['v', 'z0', 'f0', 'zl', 'p', 'u', 'g', 'vl', 'lk', 'hd', 'tx', 'ch'];
 /** The link's parameter of the value lists (M4.3b). */
 export const LISTS_PARAM = 'vl';
 const GOAL_CODE = (k: GoalKind): string => (k === 'point' ? 'pt' : k);
@@ -635,6 +641,10 @@ export interface Decoded {
   linked: boolean;
   /** The text of the value lists (vl), null when the link has none; not a circuit parameter (`linked` ignores it). */
   lists: string | null;
+  /** The lesson part (lk, hd, tx), null when the link has none. */
+  lesson: Lesson | null;
+  /** The challenge (ch), null when the link has none or it cannot be read (with an issue). */
+  challenge: { kind: ChallengeKind; seed: number } | null;
 }
 
 const quote = (s: string): string => `“${s.length > 40 ? `${s.slice(0, 40)}…` : s}”`;
@@ -651,7 +661,7 @@ export function decodeCircuit(search: string): Decoded {
   try {
     params = new URLSearchParams(String(search ?? ''));
   } catch {
-    return { circuit: c, issues: ['the link could not be read; the start circuit is shown'], linked: false, lists: null };
+    return { circuit: c, issues: ['the link could not be read; the start circuit is shown'], linked: false, lists: null, lesson: null, challenge: null };
   }
   let linked = false;
   for (const key of new Set(params.keys())) {
@@ -721,7 +731,16 @@ export function decodeCircuit(search: string): Decoded {
       else c.parts.push(part);
     }
   }
-  return { circuit: readAsk(c, get('u'), get('g'), issues), issues, linked, lists: params.get(LISTS_PARAM) };
+  const circuit = readAsk(c, get('u'), get('g'), issues);
+  const lesson = readLesson(params.get('lk'), params.get('hd'), params.get('tx'), circuit.parts.length, issues);
+  const ch = params.get('ch');
+  let challenge: Decoded['challenge'] = null;
+  if (ch !== null) {
+    const read = readChallenge(ch);
+    if (typeof read === 'string') issues.push(`ch ${quote(ch)}: ${read}; left out`);
+    else challenge = read;
+  }
+  return { circuit, issues, linked, lists: params.get(LISTS_PARAM), lesson, challenge };
 }
 
 /** Whether two circuits are the same to the bit, what the solver is asked included (the page's "changed" test). */
