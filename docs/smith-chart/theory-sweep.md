@@ -56,7 +56,7 @@ node Q has the wider band around f0. ⟨253⟩
 **A longer line.** A line's θ grows in proportion to f, so a line ℓ long (ℓ/λ at f0) turns its point a further
 720°·(ℓ/λ)·δ: each extra λ/2 adds 360°·δ. ⟨254⟩ The start load sits on g = 1, so a shunt part alone matches it, and
 lines can be put in front of it. At 10 dB: an open stub of λ/8 alone is matched from before the band's start to
-131.19 MHz (at least 81.19 %); 0.1619 λ of line and a shorted stub of λ/8 from 88.92 to 114.30 MHz, 25.37 %; λ/2 of
+131.19 MHz (at least 81.19 %); 0.3238 λ of line and a shorted stub of λ/8 from 88.92 to 114.30 MHz, 25.37 %; λ/2 of
 line and the open stub from 90.55 to 107.94 MHz, 17.39 %; λ of line and the stub from 95.21 to 104.37 MHz,
 9.16 %. ⟨255⟩ Even the stub is narrower than the part it stands for: its b = tan θ rises by π/2 per unit of δ at λ/8,
 a capacitor's b = ωCZ0 by 1, and the shunt C of 31.83 pF keeps the whole 50–150 MHz band above 12.30 dB. ⟨256⟩

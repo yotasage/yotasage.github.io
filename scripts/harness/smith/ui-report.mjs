@@ -167,6 +167,13 @@ const printState = (page, width) => page.evaluate((width) => {
     wide: wide.slice(0, 5), nWide: wide.length,
     chartSvgs: document.querySelectorAll('[data-report-chart] [data-print-chart] > svg').length,
     chartFrame: fr ? { left: fr.left, right: fr.right, w: fr.width, h: fr.height } : null,
+    // M7.4b: every perimeter-scale label of the copy inside the printed chart's box (none cut by its edges).
+    rim: (() => {
+      if (!fr) return { n: 0, cut: [], nCut: 0 };
+      const labels = [...document.querySelectorAll('[data-print-chart] [data-kind="scale"]')].filter((e) => e.getClientRects().length && e.textContent.trim());
+      const cut = labels.filter((e) => { const r = e.getBoundingClientRect(); return r.left < fr.left - 0.5 || r.right > fr.right + 0.5 || r.top < fr.top - 0.5 || r.bottom > fr.bottom + 0.5; });
+      return { n: labels.length, cut: cut.slice(0, 4).map((e) => `${e.textContent} ${JSON.stringify(e.getBoundingClientRect())}`), nCut: cut.length };
+    })(),
     plot: !!document.querySelector('[data-report-plot] svg[data-print-plot] [data-plot-trace]'),
     plotBox: (() => { const b = document.querySelector('[data-report-plot]')?.getBoundingClientRect(); return b ? { w: b.width, h: b.height } : null; })(),
     onlyReport: [...document.querySelectorAll('main > *, [id="tool"] > *')].filter(shown).every((e) => e.id === 'tool' || e.hasAttribute('data-report')),
@@ -266,6 +273,7 @@ try {
       ok(s.nWide === 0, () => `${tag}: nothing wider than the page (${s.nWide}: ${s.wide.join(' | ')})`);
       ok(s.onlyReport, `${tag}: only the report is printed`);
       ok(s.chartSvgs === 2 && s.chartFrame && Math.abs(s.chartFrame.w - 150 * 96 / 25.4) < 1 && s.chartFrame.h > 300, () => `${tag}: the chart's copy, two SVGs, 150 mm wide (${s.chartSvgs}, ${JSON.stringify(s.chartFrame)})`);
+      ok(s.rim.n > 20 && s.rim.nCut === 0, () => `${tag}: every rim scale label inside the printed chart (${s.rim.n} labels, ${s.rim.nCut} cut: ${s.rim.cut.join(' | ')})`);
       ok(s.plot && s.plotBox && Math.abs(s.plotBox.w / s.plotBox.h - 680 / 240) < 0.02, () => `${tag}: the plot's SVG copy at 680:240 (${JSON.stringify(s.plotBox)})`);
       ok(s.bodyBg === 'rgb(255, 255, 255)' && s.ink === 'rgb(29, 28, 25)' && s.chartBg === '#fff', () => `${tag}: light colours (${s.bodyBg}, ${s.ink}, ${s.chartBg})`);
       const pdf = await p.pdf({ format: paper, preferCSSPageSize: false });

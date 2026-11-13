@@ -95,20 +95,21 @@ export const WHYS: Readonly<Record<string, Why>> = {
   'lesson-hide': w('Hide', 'how-to-use', 'Hides these panels for whoever opens the link.'),
   'lesson-text': w('the text', 'how-to-use', 'Up to 500 characters, shown as plain text above the guide.'),
   'lesson-box': w('the lesson', 'how-to-use', 'Set by the lesson’s link; Leave the lesson unlocks everything.'),
-  // M7.2a: the frequency sweep (Sweep panel, the trace and its markers on the chart).
-  sweep: w('the sweep', 'moving-on-the-chart', 'Reactances and line lengths change with f; the trace shows the input then.'),
-  'sweep-trace': w('the trace', 'how-good-is-a-match', 'Γ at the input across the band: nearer the centre, a better match.'),
-  'sweep-band': w('the band', 'how-to-use', 'The frequencies swept, in Hz; f0 need not lie inside them.'),
-  'sweep-points': w('Points', 'how-to-use', 'Even steps across the band; more are added where the trace bends.'),
-  'sweep-log': w('Spacing', 'how-to-use', 'Log gives each decade the same number of points, for wide bands.'),
-  'sweep-marker': w('markers', 'how-good-is-a-match', 'Marks the input’s point at one frequency and follows the circuit.'),
+  // M7.2a: the frequency sweep (Sweep panel, the trace and its markers on the chart). M7.4b: the sweep's lines link its
+  // topics, Reading a frequency trace and Q and bandwidth (theory.md §8).
+  sweep: w('the sweep', 'reading-a-trace', 'Reactances and line lengths change with f; the trace shows the input then.'),
+  'sweep-trace': w('the trace', 'reading-a-trace', 'Γ at the input across the band: nearer the centre, a better match.'),
+  'sweep-band': w('the band', 'reading-a-trace', 'The frequencies swept, in Hz; f0 need not lie inside them.'),
+  'sweep-points': w('Points', 'reading-a-trace', 'Even steps across the band; more are added where the trace bends.'),
+  'sweep-log': w('Spacing', 'reading-a-trace', 'Log gives each decade the same number of points, for wide bands.'),
+  'sweep-marker': w('markers', 'reading-a-trace', 'Marks the input’s point at one frequency and follows the circuit.'),
   // M7.2b: the sweep's plot, its band figures and the marker table.
-  'sweep-plot': w('the plot', 'how-good-is-a-match', 'The trace against frequency: a dip is a better match, a peak a worse.'),
+  'sweep-plot': w('the plot', 'reading-a-trace', 'The trace against frequency: a dip is a better match, a peak a worse.'),
   'sweep-plot-kind': w('Return loss or VSWR', 'how-good-is-a-match', 'Two scales of |Γ|: return loss falls and VSWR rises as the match worsens.'),
-  'sweep-limit': w('the limit', 'how-good-is-a-match', 'The return loss to beat; where |Γ| stays below it is shaded and measured.'),
-  'sweep-figures': w('the band figures', 'how-good-is-a-match', 'Found on the refined trace, edges and extremes polished between its points.'),
-  'sweep-q': w('loaded Q', 'how-good-is-a-match', 'f over the width where the power delivered is over half its peak, near f0.'),
-  'sweep-table': w('the marker table', 'how-to-use', 'Each marker’s input point at its frequency, in the digits you chose.'),
+  'sweep-limit': w('the limit', 'reading-a-trace', 'The return loss to beat; where |Γ| stays below it is shaded and measured.'),
+  'sweep-figures': w('the band figures', 'q-and-bandwidth', 'Found on the refined trace, edges and extremes polished between its points.'),
+  'sweep-q': w('loaded Q', 'q-and-bandwidth', 'f over the width where the power delivered is over half its peak, near f0.'),
+  'sweep-table': w('the marker table', 'reading-a-trace', 'Each marker’s input point at its frequency, in the digits you chose.'),
   // M7.3: the report and its printed link.
   report: w('the report', 'how-to-use', 'The circuit and its figures at f0 and across the band, to print or keep.'),
   'report-link': w('the link', 'how-to-use', 'Opens this circuit, band, markers and limit again, as printed here.'),

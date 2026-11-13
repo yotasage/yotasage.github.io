@@ -76,7 +76,10 @@ export function theorySubject(c: Circuit, id: string): Subject | null {
       const goal = askOf(c as StateCircuit).goal;
       return goal.kind === 'point' ? { t: 'node', k: goalNode(goal, n) } : null;
     }
-    case 'abcd-zin': case 'mobius': case 'q-l-network': return null;
+    // M7.4b: the band's derivations are about example circuits (a series resonator, an L network, a λ/4 transformer),
+    // not a node of the visitor's: no numbers.
+    case 'abcd-zin': case 'mobius': case 'q-l-network':
+    case 'q-series-rlc': case 'fbw-series-rlc': case 'l-network-slope': case 'quarter-wave-bandwidth': return null;
     default: return { t: 'node', k: 0 };
   }
 }

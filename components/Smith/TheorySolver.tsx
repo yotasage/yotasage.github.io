@@ -422,7 +422,7 @@ function solverTopics({ topic, cite, L, jump, Eq, outcome, lists }: SolverCtx): 
             more round its full circle at f<sub>0</sub>, so it gives the same match there
             ({jump('transmission-lines', 'Transmission lines')}). Away from f<sub>0</sub> each extra λ/2 turns the point a
             further 360°·Δf/f<sub>0</sub>, so the match drifts away faster as f leaves f<sub>0</sub>; the page notes “(+ λ/2
-            gives the same match at f0, over a narrower band)”.
+            gives the same match at f0, over a narrower band)” ({jump('q-and-bandwidth', 'Q and bandwidth')}).
           </p>
           <Eq id="line-rotation" />
           <Eq id="line-theta" />

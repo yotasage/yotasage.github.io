@@ -32,7 +32,7 @@ theory.md §8. M7.4b builds it on the page, as M3.5b/M4.4a did for the earlier t
 | L25 / L10 | 25 / 10 | series C 1/(ω0·Q·R), shunt L Z0/(ω0·Q), Q = √(50/R − 1) | 20 dB |
 | two | 10 | (series C, shunt L) for 10 → √500 Ω, then for √500 → 50 Ω, Q 1.1118 each | 10 and 20 dB |
 | stub | 25 + j25 | open stub λ/8 (Zc 50) | 10 dB |
-| line+short | 25 + j25 | line 0.32379/2 = 0.161896 λ, shorted stub λ/8 | 10 dB |
+| line+short | 25 + j25 | line 0.32379 λ (233.1° of turn, back onto g = 1; M7.4b: 0.161896 λ, as first written, leaves \|Γ(f0)\| = 0.689), shorted stub λ/8 | 10 dB |
 | half / one | 25 + j25 | line λ/2 / λ, open stub λ/8 | 10 dB |
 | shuntC | 25 + j25 | shunt C 1/(ω0·50) = 31.83 pF | 10 dB |
 | qw25 / qw10 | 25 / 10 | λ/4 of Zt = √(50·R) | 20 dB; qw25 also 1–199 MHz linear at 10 dB |

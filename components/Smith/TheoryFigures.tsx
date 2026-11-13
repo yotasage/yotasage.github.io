@@ -7,10 +7,10 @@ import React from 'react';
 
 import css from '../../styles/SmithTheory.module.css';
 
-type P = readonly [number, number];
+export type P = readonly [number, number];
 const TAU = 2 * Math.PI;
-const f = (v: number): number => Math.round(v * 1e4) / 1e4;
-const xy = (p: P): string => `${f(p[0])} ${f(-p[1])}`;
+export const f = (v: number): number => Math.round(v * 1e4) / 1e4;
+export const xy = (p: P): string => `${f(p[0])} ${f(-p[1])}`;
 const ok = (...v: number[]): boolean => v.every((n) => Number.isFinite(n));
 const on = (c: P, R: number, a: number): P => [c[0] + R * Math.cos(a), c[1] + R * Math.sin(a)];
 const angle = (c: P, p: P): number => Math.atan2(p[1] - c[1], p[0] - c[0]);
@@ -23,7 +23,7 @@ function arcPath(c: P, R: number, p: P, q: P, ccw: boolean): string {
 }
 
 /** An arrowhead at tip pointing along the unit direction d (chart coordinates). */
-function head(tip: P, d: P, size = 0.075): string {
+export function head(tip: P, d: P, size = 0.075): string {
   const b: P = [tip[0] - d[0] * size, tip[1] - d[1] * size], n: P = [-d[1] * size * 0.5, d[0] * size * 0.5];
   return `${xy(tip)} ${xy([b[0] + n[0], b[1] + n[1]])} ${xy([b[0] - n[0], b[1] - n[1]])}`;
 }
@@ -56,19 +56,19 @@ function ArcTo({ c, p, q, ccw, cls, dashed = false }: { c: P; p: P; q: P; ccw: b
   );
 }
 
-const Dot = ({ p, cls = css.figInk, r = 0.035, hollow = false }: { p: P; cls?: string; r?: number; hollow?: boolean }) => (
+export const Dot = ({ p, cls = css.figInk, r = 0.035, hollow = false }: { p: P; cls?: string; r?: number; hollow?: boolean }) => (
   <circle cx={f(p[0])} cy={f(-p[1])} r={r} className={`${cls} ${hollow ? css.figHollow : css.figFill}`} />
 );
 
-const Label = ({ p, children, anchor = 'middle', cls = '' }: { p: P; children: React.ReactNode; anchor?: 'start' | 'middle' | 'end'; cls?: string }) => (
+export const Label = ({ p, children, anchor = 'middle', cls = '' }: { p: P; children: React.ReactNode; anchor?: 'start' | 'middle' | 'end'; cls?: string }) => (
   <text x={f(p[0])} y={f(-p[1])} textAnchor={anchor} dominantBaseline="middle" className={cls || undefined}>{children}</text>
 );
 
 /** A circle in chart coordinates. */
-const Ring = ({ c, R, cls }: { c: P; R: number; cls: string }) => (ok(c[0], c[1], R) && R > 0 ? <circle cx={f(c[0])} cy={f(-c[1])} r={f(R)} className={cls} /> : null);
+export const Ring = ({ c, R, cls }: { c: P; R: number; cls: string }) => (ok(c[0], c[1], R) && R > 0 ? <circle cx={f(c[0])} cy={f(-c[1])} r={f(R)} className={cls} /> : null);
 
 /** The unit disc with its rim and real axis; the children are clipped to the disc when clip is set. */
-function Disc({ label, children, outside, clip = false, box = 1.25 }: { label: string; children?: React.ReactNode; outside?: React.ReactNode; clip?: boolean; box?: number }) {
+export function Disc({ label, children, outside, clip = false, box = 1.25 }: { label: string; children?: React.ReactNode; outside?: React.ReactNode; clip?: boolean; box?: number }) {
   // A stable id per figure (the static page and the browser render the figures in the same order).
   const id = React.useId().replace(/:/g, '');
   return (
@@ -83,10 +83,10 @@ function Disc({ label, children, outside, clip = false, box = 1.25 }: { label: s
   );
 }
 
-function Figure({ caption, children, wide = false }: { caption: React.ReactNode; children: React.ReactNode; wide?: boolean }) {
+export function Figure({ caption, children, wide = false, stack = false }: { caption: React.ReactNode; children: React.ReactNode; wide?: boolean; stack?: boolean }) {
   return (
     <figure className={wide ? `${css.figure} ${css.figureWide}` : css.figure}>
-      <div className={css.figRow}>{children}</div>
+      <div className={stack ? `${css.figRow} ${css.figStack}` : css.figRow}>{children}</div>
       <figcaption>{caption}</figcaption>
     </figure>
   );

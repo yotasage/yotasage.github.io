@@ -34,6 +34,9 @@ import { complexText } from './readout';
 import type { Outcome } from './SolvePanel';
 import { CirclesFigure, GammaFigure, LineFigure, MatchFigure, PlaneFigure, VswrFigure, WalksFigure } from './TheoryFigures';
 import { SOLVER_IDS, SolverTopics } from './TheorySolver';
+import { SWEEP_IDS, SweepCircuitContext, SweepTopics } from './TheorySweep';
+import type { TraceLayer } from './traceLayer';
+import type { SweepSetting } from '../../lib/smith/state';
 import type { ValueChoice } from '../../lib/smith/values';
 
 /** The topics in the order of the page; the ids are the anchors (#moving-on-the-chart). */
@@ -48,6 +51,8 @@ export const TOPICS: readonly { id: string; title: string }[] = [
   { id: 'two-one-or-none', title: 'Two solutions, one or none' },
   { id: 'one-value-and-a-point', title: 'Why one value cannot reach a point' },
   { id: 'realisable-values', title: 'Realisable values and standard values' },
+  { id: 'q-and-bandwidth', title: 'Q and bandwidth' },
+  { id: 'reading-a-trace', title: 'Reading a frequency trace' },
 ];
 const TOPIC_IDS = new Set(TOPICS.map((t) => t.id));
 
@@ -146,9 +151,12 @@ interface Props {
   outcome: Outcome | null;
   /** The value lists per kind (D17), for the standard values of topic 10. */
   lists: ValueChoice;
+  /** M7.4b: the page's sweep (null when off) and the trace layer, whose band figures topics 11–12 show. */
+  sweep: SweepSetting | null;
+  layer: () => TraceLayer | null;
 }
 
-function Theory({ bib, circuit: c, outcome, lists }: Props) {
+function Theory({ bib, circuit: c, outcome, lists, sweep, layer }: Props) {
   // Which topics are folded. Open on a wide screen; on a phone folded, except the one a link points at.
   const [closed, setClosed] = useState<Record<string, boolean>>({});
   useEffect(() => {
@@ -347,7 +355,7 @@ function Theory({ bib, circuit: c, outcome, lists }: Props) {
       <p className={css.lead}>
         What the chart shows and why the parts move the point the way they do. The boxes marked <i>Your circuit</i> follow
         the circuit above as you change it. Everything here assumes ideal parts, lossless lines and a real reference
-        impedance Z<sub>0</sub>, at the one frequency f<sub>0</sub>. Numbers in brackets lead to
+        impedance Z<sub>0</sub>, at the one frequency f<sub>0</sub> (the last two topics sweep a band around it). Numbers in brackets lead to
         the <a href="#references" className={css.jump}>sources</a>.
       </p>
       <ol className={css.contents}>
@@ -815,7 +823,7 @@ function Theory({ bib, circuit: c, outcome, lists }: Props) {
           <p>
             <b>Q.</b> For a resistive load matched by an L network, the Q of both legs is √(R<sub>high</sub>/R<sub>low</sub> − 1){cite([S3, '§6.4'])}.
             Any point has its own Q = |x|/r = |b|/g{cite([S3, '§6.4'])}; the start load’s is {L('start-q', num(sm(0, M_Q)))}.
-            What Q means for bandwidth comes with the frequency sweep.
+            What Q means for bandwidth is in {jump('q-and-bandwidth', 'Q and bandwidth')}.
           </p>
           <Eq id="q-node" values={loadValues} note="below: your load" />
           <Eq id="q-l-network" />
@@ -826,6 +834,12 @@ function Theory({ bib, circuit: c, outcome, lists }: Props) {
       <SolverTopics topic={(id, children) => topic(id, children, TOPICS.findIndex((t) => t.id === id) + 1)} cite={cite} L={L} jump={jump} Eq={Eq}
         outcome={outcome} lists={lists} bib={bib} folded={SOLVER_IDS.map((id) => (closed[id] ? '1' : '0')).join('')}
         back={back && SOLVER_IDS.includes(back.id) ? `${back.id}:${back.n}` : ''} />
+      {/* M7.4b: after the solver's, so their citations are numbered in page order. */}
+      <SweepCircuitContext.Provider value={c}>
+        <SweepTopics topic={(id, children) => topic(id, children, TOPICS.findIndex((t) => t.id === id) + 1)} cite={cite} L={L} jump={jump} Eq={Eq}
+          sweep={sweep} layer={layer} bib={bib} folded={SWEEP_IDS.map((id) => (closed[id] ? '1' : '0')).join('')}
+          back={back && SWEEP_IDS.includes(back.id) ? `${back.id}:${back.n}` : ''} />
+      </SweepCircuitContext.Provider>
     </div>
   );
 }

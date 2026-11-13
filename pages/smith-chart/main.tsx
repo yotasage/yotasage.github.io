@@ -521,11 +521,13 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   const math = <MathPanel circuit={circuit} subject={subject} digits={digits} live={mathLive} />;
   // The same element while the theory's circuit stays, so the page's renders during a drag (a pick, a selection) skip
   // the sections and the reference list entirely.
+  // M7.4b: the sweep for the theory's topics 11–12, deferred as its circuit is (a marker moved renders them after).
+  const theorySweep = useDeferredValue(noRead ? null : sweep);
   const sections = useMemo(() => (
     <div className={theoryCss.sections}>
       <section id="theory" className={theoryCss.section} aria-labelledby="theory-title">
         <h2 className={theoryCss.sectionHead} id="theory-title">Theory</h2>
-        <Theory bib={bib} circuit={noRead ? START : theoryCircuit} outcome={theoryOutcome} lists={lists} />
+        <Theory bib={bib} circuit={noRead ? START : theoryCircuit} outcome={theoryOutcome} lists={lists} sweep={theorySweep} layer={getTrace} />
       </section>
       {/* After the last citation: the list is numbered while the page above it is drawn. */}
       <section id="references" className={theoryCss.section} aria-labelledby="references-title">
@@ -536,7 +538,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
         </div>
       </section>
     </div>
-  ), [bib, theoryCircuit, theoryOutcome, lists, noRead]);
+  ), [bib, theoryCircuit, theoryOutcome, lists, noRead, theorySweep, getTrace]);
   // null: follow the system. Read after mount, so the static page and the first render agree.
   const [theme, setTheme] = useState<Theme | null>(null);
   useEffect(() => {

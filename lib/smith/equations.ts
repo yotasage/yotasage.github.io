@@ -28,7 +28,7 @@ export type Node =
 
 /** The functions a call may name. */
 export const FUNCTIONS: ReadonlySet<string> = new Set([
-  'abs', 'sqrt', 'exp', 'conj', 'ln', 'log10', 'sin', 'cos', 'tan', 'cot', 'arctan', 'Re', 'Im', 'arg',
+  'abs', 'sqrt', 'exp', 'conj', 'ln', 'log10', 'sin', 'cos', 'tan', 'cot', 'arctan', 'arccos', 'Re', 'Im', 'arg',
 ]);
 
 /** Names that are constants, never variables. */
@@ -318,7 +318,7 @@ function bare(n: Node, o: TexOptions): string {
   return texOf(n.t === 'group' ? n.a : n, o).s;
 }
 
-const NAMED = new Set(['sin', 'cos', 'tan', 'cot', 'ln', 'arctan']);
+const NAMED = new Set(['sin', 'cos', 'tan', 'cot', 'ln', 'arctan', 'arccos']);
 
 function callTex(f: string, arg: Node, o: TexOptions): TexPiece {
   const a = texOf(arg.t === 'group' ? arg.a : arg, o);
@@ -549,6 +549,14 @@ export function compile(tree: Node): Program {
         const wr = r[o], wi = r[o + 1];
         r[o] = -Math.atan2(wi, wr) / 2; r[o + 1] = Math.log(cabs(wr, wi)) / 2;
       };
+      case 'arccos': return () => {
+        const x = r[a], y = r[a + 1];
+        if (y === 0 && x >= -1 && x <= 1) { r[o] = Math.acos(x); r[o + 1] = 0; return; }
+        // The principal value elsewhere (a real x beyond ±1, or a complex z): acos z = −j ln(z + j√(1 − z²)).
+        csqrt(r, o, 1 - x * x + y * y, -2 * x * y);
+        const wr = x - r[o + 1], wi = y + r[o];
+        r[o] = Math.atan2(wi, wr); r[o + 1] = -Math.log(cabs(wr, wi));
+      };
     }
     throw new Error(`unknown function ${f}`);
   }
@@ -753,6 +761,24 @@ export const SYMBOLS: Readonly<Record<string, SymbolInfo>> = {
   I_1: sym('current into port 1', 'A', 'input'),
   V_2: sym('voltage at port 2 (towards the load)', 'V', 'node'),
   I_2: sym('current out of port 2', 'A', 'node'),
+  // M7.4b: the band of a match (theory-sweep.md §12).
+  f_0: sym('the frequency the circuit is designed at, f0', 'Hz', 'frequency'),
+  omega_0: sym('angular frequency at f0', 'rad/s', 'frequency'),
+  FBW: sym('fractional bandwidth: the width of the matched band around f0, over f0', '', 'metric'),
+  f_lo: sym('lower end of the band below the limit around f0', 'Hz', 'frequency'),
+  f_hi: sym('upper end of the band below the limit around f0', 'Hz', 'frequency'),
+  Q_L: sym('loaded Q: the best point’s frequency over the half-power width', '', 'metric'),
+  f_m: sym('frequency of the best match near f0', 'Hz', 'frequency'),
+  f_1: sym('lower half-power frequency', 'Hz', 'frequency'),
+  f_2: sym('upper half-power frequency', 'Hz', 'frequency'),
+  omega_1: sym('angular frequency of the band’s lower edge (half power, or the limit)', 'rad/s', 'frequency'),
+  omega_2: sym('angular frequency of the band’s upper edge (half power, or the limit)', 'rad/s', 'frequency'),
+  X_m: sym('reactance at which |Γ| reaches the limit', 'Ω', 'part'),
+  Gamma_m: sym('the limit as a |Γ|', '', 'metric'),
+  v_Gamma: sym('how fast Γ leaves the centre: |dΓ/dδ| at f0, δ = (f − f0)/f0', '', 'input'),
+  y_d: sym('how fast y at the input changes: dy/dδ at f0', '', 'input'),
+  s: sym('+1 for a series L next to the load, −1 for a series C', '', 'part'),
+  theta_m: sym('electrical length of the transformer at the band’s lower edge', 'rad', 'quarter'),
 };
 
 const ABCD_SYMBOLS: Readonly<Record<string, SymbolInfo>> = {
@@ -809,7 +835,7 @@ export interface Equation {
   symbols?: Readonly<Record<string, SymbolInfo>>;
 }
 
-const E = 'Ellingson2018', S2 = 'SteerVol2', S3 = 'SteerVol3', W = 'WikiSmith';
+const E = 'Ellingson2018', S2 = 'SteerVol2', S3 = 'SteerVol3', W = 'WikiSmith', WQ = 'WikiQ';
 const src = (key: string, at: string): Source => ({ key, at });
 
 const EJWT = 'time dependence e^{jωt}';
@@ -1098,6 +1124,63 @@ const DEFS: Def[] = [
       ['Z_0 = Z_t^2/R_L', 'A match needs the input impedance `Z_t^2/R_L` to equal `Z_0` (the same for `ell = lambda/4 + n*lambda/2`: `tan(beta*ell)` repeats every half wave).'],
       ['Z_t^2 = Z_0*R_L', 'Multiply by `R_L`.'],
       ['Z_t = sqrt(Z_0*R_L)', 'Take the positive root: a line’s impedance `Z_t` is positive.'],
+    ],
+  },
+  // M7.4b: the band of a match (theory-sweep.md §12; notes-M7.4a.md "New registry entries").
+  {
+    id: 'fractional-bandwidth', title: 'Fractional bandwidth', text: 'FBW = (f_hi - f_lo)/f_0', sources: [],
+    derivation: 'A definition: the interval below the limit that holds f0, over f0 (the band’s middle would differ when the band is lopsided).',
+    engine: 'sweep.bandFigures (atF0, fractional)',
+  },
+  {
+    id: 'q-loaded', title: 'Loaded Q', text: 'Q_L = f_m/(f_2 - f_1)', sources: [src(WQ, '"Bandwidth definition"')],
+    derivation: 'The resonator’s Q applied to the power delivered, 1 − |Γ|²: f₁ and f₂ are where it is half its value at the best point f_m near f0, |Γ|² = (1 + |Γ_m|²)/2.',
+    engine: 'sweep.bandFigures (q)',
+  },
+  {
+    id: 'q-series-rlc', title: 'Loaded Q of a series resonator', text: 'Q_L = omega_0*L/(R + Z_0) = 1/(omega_0*C*(R + Z_0))', sources: [src(WQ, '"RLC circuits"')],
+    assumptions: [EJWT, REAL_Z0, 'load R in series with L and C, f0 = 1/(2π√(LC))'], engine: 'sweep.bandFigures (q)',
+    steps: [
+      ['omega_2*L - 1/(omega_2*C) = R + Z_0', 'The power delivered, `4*R*Z_0/((R + Z_0)^2 + X^2)` of the incident power, is half its peak where `X^2 = (R + Z_0)^2`; above f0 the reactance is positive.'],
+      ['omega_1*L - 1/(omega_1*C) = -(R + Z_0)', 'Below f0 it is negative.'],
+      ['omega_2*omega_1 = 1/(L*C)', 'Add the two: `(omega_2 + omega_1)*L = (omega_2 + omega_1)/(omega_2*omega_1*C)`.'],
+      ['omega_2 - omega_1 = (R + Z_0)/L', 'Subtract them; with `omega_2*omega_1 = 1/(L*C)`, `1/(omega_1*C) - 1/(omega_2*C) = (omega_2 - omega_1)*L`.'],
+      ['Q_L = omega_0*L/(R + Z_0) = 1/(omega_0*C*(R + Z_0))', 'The reactance is zero at `omega_0`, so the best point is f0 and `Q_L = omega_0/(omega_2 - omega_1)`; and `omega_0*L = 1/(omega_0*C)`.'],
+    ],
+  },
+  {
+    id: 'fbw-series-rlc', title: 'Band of a series resonator', text: 'FBW = X_m/(omega_0*L) = X_m/(Q_L*(R + Z_0))', sources: [],
+    derivation: 'From the resonator’s reactance at the limit, as its loaded Q from the reactance at half power.',
+    assumptions: [EJWT, REAL_Z0, 'load R in series with L and C, f0 = 1/(2π√(LC))', 'Γ_m > |R − Z₀|/(R + Z₀)'], engine: 'sweep.bandFigures (atF0, fractional)',
+    steps: [
+      ['X_m^2 = (Gamma_m^2*(R + Z_0)^2 - (R - Z_0)^2)/(1 - Gamma_m^2)', 'The input is `R + j*X`, so `abs(Gamma)^2 = ((R - Z_0)^2 + X^2)/((R + Z_0)^2 + X^2)`, which grows with `X^2`; set it to `Gamma_m^2` and solve for `X^2`.'],
+      ['omega_2 - omega_1 = X_m/L', 'As for the loaded Q of a series resonator, with `X_m` in place of `R + Z_0`.'],
+      ['FBW = X_m/(omega_0*L) = X_m/(Q_L*(R + Z_0))', 'The band over f0 is `(omega_2 - omega_1)/omega_0`, and `omega_0*L = Q_L*(R + Z_0)`.'],
+    ],
+  },
+  {
+    id: 'l-network-slope', title: 'How fast an L network leaves the match', text: 'v_Gamma = Q^2/sqrt(1 + Q^2)', sources: [],
+    derivation: 'Differentiate the input admittance of the L network in δ = (f − f0)/f0 at f0.',
+    assumptions: [EJWT, REAL_Z0, 'resistive load R_L < Z₀, series part next to it'], engine: 'sweep.markerAt (central difference)',
+    symbols: { r: sym('normalised load resistance R_L/Z₀', '', 'load') },
+    steps: [
+      ['r*(1 + Q^2) = 1', 'The Q of an L network, with `R_high = Z_0` and `R_low = R_L`, normalised by `Z_0`.'],
+      ['y_d = j*Q - j*Q*(1 + Q^2)/(1 + j*s*Q)^2', 'The shunt part’s `b` changes by `abs(b) = Q`. The series leg `1/(r + j*x)` changes by `-j*abs(x)/(r + j*x)^2`, as `x` changes by `abs(x) = Q*r` for an inductor and a capacitor alike; with `r + j*x = r*(1 + j*s*Q)` and `r = 1/(1 + Q^2)`.'],
+      ['y_d = -2*s*Q^2/(1 + j*s*Q)', 'Write `1 + Q^2 = (1 + j*s*Q)*(1 - j*s*Q)`, so the fraction is `j*Q*(1 - j*s*Q)/(1 + j*s*Q)`.'],
+      ['v_Gamma = abs(y_d)/2 = Q^2/sqrt(1 + Q^2)', 'Near the centre `Gamma = (1 - y)/(1 + y)` changes by minus half the change of `y`, and `abs(1 + j*s*Q) = sqrt(1 + Q^2)`.'],
+    ],
+  },
+  {
+    id: 'quarter-wave-bandwidth', title: 'Band of a λ/4 transformer',
+    text: 'FBW = 2 - 4/pi*arccos(2*Gamma_m*sqrt(Z_0*R_L)/(abs(R_L - Z_0)*sqrt(1 - Gamma_m^2)))', sources: [],
+    derivation: 'notes-M7.1.md; the textbook result (Pozar) was not opened.',
+    assumptions: [LOSSLESS, EJWT, 'resistive load, Z_t = √(Z₀·R_L)'], engine: 'sweep.bandFigures (fractional)',
+    steps: [
+      ['Z_in = Z_t*(R_L + j*Z_t*tan(theta))/(Z_t + j*R_L*tan(theta))', 'The input impedance of a line of `Z_t`, `theta` long at f, on `R_L`.'],
+      ['abs(Gamma)^2 = (R_L - Z_0)^2/((R_L - Z_0)^2 + 4*Z_0*R_L*(1 + tan(theta)^2))', 'With `Z_t^2 = Z_0*R_L`, `Z_in - Z_0` is in proportion to `Z_t*(R_L - Z_0)` and `Z_in + Z_0` to `Z_t*(R_L + Z_0) + 2*j*tan(theta)*Z_0*R_L`; and `(R_L + Z_0)^2 = (R_L - Z_0)^2 + 4*Z_0*R_L`.'],
+      ['cos(theta_m)^2 = 4*Gamma_m^2*Z_0*R_L/((R_L - Z_0)^2*(1 - Gamma_m^2))', 'Set `abs(Gamma) = Gamma_m` at the band’s lower edge `theta_m`, and use `1 + tan(theta)^2 = 1/cos(theta)^2`.'],
+      ['FBW = 2 - 4*theta_m/pi', 'As `theta` grows in proportion to f, f0 is at `pi/2`, and `tan(theta)^2` is symmetric about it: the band runs from `theta_m` to `pi - theta_m`, f from `2*theta_m/pi*f_0` to `(2 - 2*theta_m/pi)*f_0`.'],
+      ['FBW = 2 - 4*theta_m/pi = 2 - 4/pi*arccos(2*Gamma_m*sqrt(Z_0*R_L)/(abs(R_L - Z_0)*sqrt(1 - Gamma_m^2)))', 'The edge `theta_m` is the arccos of the root of the line before, between 0 and `pi/2`.'],
     ],
   },
   // Stubs (eqs. 21–23).

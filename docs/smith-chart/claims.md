@@ -243,7 +243,7 @@ checked in notes-M7.4a.md "Checks" (and by ui-theory once on the page). New regi
 | 252 | D | `q-l-network` with R_m = √(R_low·R_high) (equal Q per step), engine (node Q 1.112, 0, 1.112) |
 | 253 | D | 250, 252 (engine) |
 | 254 | D | `line-rotation`, `line-theta`; 175 |
-| 255 | D | engine; line 0.1619 λ from the angles of Γ = −0.2 ± j0.4 (the load on g = 1, 123) |
+| 255 | D | engine; line 0.3238 λ (233.1°/720°) from the angles of Γ = −0.2 ± j0.4 (the load on g = 1, 123), corrected in M7.4b from 0.1619 λ |
 | 256 | D | `stub-open-b` (d tan/dθ = sec²(π/4) = 2, θ = π/4 per δ), `b-shunt-c`; engine |
 | 257 | D | `quarter-wave-bandwidth` (notes-M7.1.md; the textbook result is in Pozar, not opened) |
 | 258 | D | engine = the formula (0.36700, 0.14337) |

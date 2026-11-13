@@ -1,6 +1,6 @@
 # Backlog
 
-Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL63**). When a row is
+Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL66**). When a row is
 scheduled it moves into the tool's plan (for the PCB viewer: [pcb-viewer/plan.md](pcb-viewer/plan.md); for the resistor
 lookup: [resistor/plan.md](resistor/plan.md); for the Smith chart: [smith-chart/plan.md](smith-chart/plan.md)) and the move is noted here; when it is done the row is removed and that is
 noted here too.
@@ -24,6 +24,7 @@ point; `searchGrid` starts Newton on the ridge of a line's Zc or a λ/4's Zt fro
 
 | id | tool | what | why / trigger |
 |---|---|---|---|
+| BL65 | Smith chart | ui-edit.mjs's "one finger draws" at 320 × 844 px drags without scrolling the chart into view, so one more line of text above the chart (M7.4b tried a longer status note) moves the drag's end below the viewport and the check fails with 6 moves: scroll the chart into view, or take a taller viewport | M7.4b, 2026-11-13 (notes-M7.4b.md) |
 | BL64 | Smith chart | A faster sweep kernel: per-kind loops over all frequencies with the node in local variables and each lumped part's ω factor hoisted, checked against `inputGamma` to 1e-12 by check-sweep.mjs | 2026-11-13, M7.1: a 10,000-point sweep of 10 parts takes 2.8 ms (Node) and 3.6 ms / 15.7 ms (Edge 1× / 4×), about 25 ns per part and frequency, inside the 4 ms budget at 1× only (notes-M7.1.md, Timings). Trigger: M7.2a cannot keep a 10,000-point trace live while dragging with fewer points or a worker |
 | BL62 | QR code reader | More inputs and memory: read codes in a video file or a screen share (`getDisplayMedia`), keep a history of read codes in the browser, and open a read code in the generator with its settings | 2026-11-13: left out of the first version, which reads the camera, images, PDFs and pasted pictures and keeps results only while the page is open. Trigger: the owner wants one of them |
 | BL61 | QR code reader, QR code generator | QR Code Model 1 from version 7 up: ZXing-C++ reads the generator's Model 1 symbols of versions 1 to 6 but not 7 to 14 (`scripts/harness/qr-reader/check.mjs` reports which). Either the generator's Model 1 layout from version 7 (extension patterns, codeword placement) or ZXing-C++'s Model 1 reader is off; find out from the 1994 JIS X 0510 / AIM ITS/97-001 text or a Model 1 symbol from another encoder, then fix the side that is wrong | 2026-11-13: found by the reader's round trips; Model 1 is obsolete, so it was noted on the reader's status note and left. Trigger: the owner wants large Model 1 symbols |

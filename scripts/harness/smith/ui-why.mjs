@@ -56,7 +56,7 @@ const ok = (condition, what) => { if (condition) passed++; else if (failed++ < 6
 const frame = (page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 
 const TOPICS = ['how-to-use', 'gamma-z-y', 'reading-the-chart', 'moving-on-the-chart', 'transmission-lines', 'how-good-is-a-match', 'matching-with-two-parts',
-  'two-one-or-none', 'one-value-and-a-point', 'realisable-values'];
+  'two-one-or-none', 'one-value-and-a-point', 'realisable-values', 'q-and-bandwidth', 'reading-a-trace'];
 const KEYS = Object.keys(WHYS);
 const KIND_KEYS = KEYS.filter((k) => k.startsWith('kind-'));
 // Every kind once, so the card can show each kind's line.

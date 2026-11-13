@@ -15,6 +15,7 @@ import * as importedNetwork from '../../../lib/smith/network.ts';
 import * as importedConvert from '../../../lib/smith/convert.ts';
 import * as importedGeometry from '../../../lib/smith/geometry.ts';
 import * as importedGoal from '../../../lib/smith/goal.ts';
+import * as importedSweep from '../../../lib/smith/sweep.ts';
 import { retried } from './timing.mjs';
 
 const katex = createRequire(import.meta.url)('../../../node_modules/katex');
@@ -24,6 +25,7 @@ const N = importedNetwork.default ?? importedNetwork;
 const cv = importedConvert.default ?? importedConvert;
 const G = importedGeometry.default ?? importedGeometry;
 const { goalMismatch } = importedGoal.default ?? importedGoal;
+const SW = importedSweep.default ?? importedSweep;
 const { EQUATIONS, PARSE_MS, parse, toText, tex, valueTex, compile, bind, symbolOf, nameTex } = Q;
 const { SERIES_R, SERIES_L, SERIES_C, SHUNT_R, SHUNT_L, SHUNT_C, LINE, STUB_OPEN, STUB_SHORT, QUARTER, packParts, added, valueFor, partMatrix, turnsFromMetres, metresFromTurns, C0 } = P;
 const { evaluate, applyPart, nodeMetrics, inputGamma, M_ZR, M_ZI, M_YR, M_YI, M_GR, M_GI } = N;
@@ -35,10 +37,49 @@ const POINTS = 200;
 const TOL = 1e-12;
 // Looser only with a reason: the centre of a line's circle, (B − 1/B)/(1 − |BΓ_c|²) + 1/B, subtracts two terms of
 // size 1/|B| to give a centre of size ≤ 1, so it keeps about 1e-16/|B|² of relative accuracy (|B| ≥ 0.05 here).
-const TOLS = { 'line-circle-centre': 1e-11 };
+const TOLS = {
+  'line-circle-centre': 1e-11,
+  // M7.4b: bindings from the sweep's band figures, whose edges are bracketed to 1e-12 of f (sweep.ts EDGE_TOL): a
+  // difference of two edges keeps 1e-12/FBW of relative accuracy, and an edge's reactance ωL − 1/(ωC) about Q·1e-12.
+  // (Measured worst: 1.2e-11, 8.3e-11, 2.0e-11; the definitions fractional-bandwidth and q-loaded hold exactly.)
+  'q-series-rlc': 1e-10, 'fbw-series-rlc': 1e-9, 'quarter-wave-bandwidth': 1e-10,
+  // A Richardson-extrapolated central difference of the engine (h = 1e-3 and 5e-4 in δ): worst 2.4e-10.
+  'l-network-slope': 1e-9,
+};
 let mismatchSeed = 0x4d3c5;
 let matchSeed = 0x2b9e1;
 let vswrSeed = 0x5a17e;
+// M7.4b: the band entries' own stream, so the shared one (and every later check's random problems) stays as it was.
+let bandSeed = 0x3c6ef;
+function bandRandom() {
+  bandSeed = (bandSeed + 0x6d2b79f5) | 0;
+  let t = Math.imul(bandSeed ^ (bandSeed >>> 15), 1 | bandSeed);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+const bnd = (a, b) => a + (b - a) * bandRandom();
+const BAND_F0 = 1e8, BAND_W0 = 2 * Math.PI * BAND_F0;
+const bandTrace = new SW.Trace(4096);
+// The example circuits of notes-M7.4a.md, all Z0 = 50 Ω, f0 = 100 MHz.
+function seriesRlc(R, x) {
+  const L = (x * 50) / BAND_W0, C = 1 / (BAND_W0 * BAND_W0 * L);
+  return { L, C, c: { z0: 50, f0: BAND_F0, loadR: R, loadX: 0, parts: [{ kind: SERIES_L, value: L }, { kind: SERIES_C, value: C }] } };
+}
+// The L network of Q = √(Z0/R_L − 1) for R_L < Z0, its series part next to the load: s = +1 a series L, −1 a series C.
+function lNetwork(RL, s) {
+  const Q = Math.sqrt(50 / RL - 1);
+  const parts = s > 0
+    ? [{ kind: SERIES_L, value: (Q * RL) / BAND_W0 }, { kind: SHUNT_C, value: Q / (50 * BAND_W0) }]
+    : [{ kind: SERIES_C, value: 1 / (BAND_W0 * Q * RL) }, { kind: SHUNT_L, value: 50 / (BAND_W0 * Q) }];
+  return { Q, c: { z0: 50, f0: BAND_F0, loadR: RL, loadX: 0, parts } };
+}
+const quarterWave = (RL) => ({ z0: 50, f0: BAND_F0, loadR: RL, loadX: 0, parts: [{ kind: QUARTER, value: Math.sqrt(50 * RL) }] });
+function bandFiguresOf(c, band, threshold) {
+  const sc = SW.sweepCircuit(c);
+  SW.runSweep(bandTrace, band, sc);
+  return { sc, fig: SW.bandFigures(bandTrace, sc, threshold) };
+}
+const WIDE_LOG = { start: BAND_F0 / 1000, stop: BAND_F0 * 1000, points: 2001, log: true };
 
 export function runEquationChecks({ section, ok, random }) {
   const rnd = (a, b) => a + (b - a) * random();
@@ -223,6 +264,70 @@ export function runEquationChecks({ section, ok, random }) {
         inputGamma(out, 0, packParts([{ kind: QUARTER, value: b.Z_t }]), 1, b.R_L, 0, b.Z_0, 1e9, 1e9);
         return Math.hypot(out[0], out[1]) <= 1e-12 ? null : `|Γ_in| = ${Math.hypot(out[0], out[1])}`;
       },
+    },
+    // M7.4b: the band of a match (notes-M7.4a.md "New registry entries"), from the sweep's band figures.
+    'fractional-bandwidth': () => {
+      for (;;) {
+        const kind = Math.floor(bandRandom() * 3);
+        const c = kind === 0 ? seriesRlc(bnd(5, 200), bnd(0.5, 20)).c : kind === 1 ? lNetwork(bnd(1, 49), bandRandom() < 0.5 ? 1 : -1).c : quarterWave(bandRandom() < 0.5 ? bnd(1, 41) : bnd(60, 960));
+        const band = { start: BAND_F0 * bnd(0.2, 0.9), stop: BAND_F0 * bnd(1.1, 1.8), points: 401, log: false };
+        const first = bandFiguresOf(c, band, 0.5);
+        const g0 = SW.markerAt(first.sc, BAND_F0).mag, worst = first.fig.worst.mag;
+        if (!(worst > g0)) continue;
+        const { fig } = bandFiguresOf(c, band, g0 + (worst - g0) * bnd(0.1, 0.9));
+        if (fig.atF0) return { FBW: fig.fractional, f_hi: fig.atF0.hi, f_lo: fig.atF0.lo, f_0: BAND_F0 };
+      }
+    },
+    'q-loaded': () => {
+      for (;;) {
+        const c = bandRandom() < 0.5 ? seriesRlc(bnd(5, 200), bnd(0.5, 20)).c : lNetwork(bnd(1, 49), bandRandom() < 0.5 ? 1 : -1).c;
+        const { fig } = bandFiguresOf(c, WIDE_LOG, 0.1);
+        const q = fig.q;
+        if (q && !q.openLo && !q.openHi) return { Q_L: q.q, f_m: q.f, f_2: q.hi, f_1: q.lo };
+      }
+    },
+    'q-series-rlc': () => {
+      for (;;) {
+        const R = bnd(5, 200), { L, C, c } = seriesRlc(R, bnd(0.5, 20));
+        const q = bandFiguresOf(c, WIDE_LOG, 0.1).fig.q;
+        if (q && !q.openLo && !q.openHi) return { Q_L: q.q, omega_0: BAND_W0, L, C, R, Z_0: 50, omega_1: TAU * q.lo, omega_2: TAU * q.hi };
+      }
+    },
+    'fbw-series-rlc': () => {
+      for (;;) {
+        const R = bnd(5, 200), { L, C, c } = seriesRlc(R, bnd(0.5, 20));
+        const floor = Math.abs(R - 50) / (R + 50), Gm = floor + (0.9 - floor) * bnd(0.05, 0.95);
+        const { sc, fig } = bandFiguresOf(c, WIDE_LOG, Gm);
+        const a = fig.atF0, q = fig.q;
+        if (!a || a.openLo || a.openHi || !q || q.openLo || q.openHi) continue;
+        return {
+          FBW: fig.fractional, X_m: SW.markerAt(sc, a.hi).zi, Gamma_m: Gm, R, Z_0: 50, L, C, omega_0: BAND_W0, Q_L: q.q,
+          omega_1: TAU * a.lo, omega_2: TAU * a.hi,
+        };
+      }
+    },
+    'l-network-slope': () => {
+      const RL = bnd(1, 49), s = bandRandom() < 0.5 ? 1 : -1, { Q, c } = lNetwork(RL, s), sc = SW.sweepCircuit(c);
+      // dΓ/dδ and dy/dδ at f0: central differences at h and h/2, Richardson-extrapolated.
+      const at = (d) => { const m = SW.markerAt(sc, BAND_F0 * (1 + d)); const y = cdivp([1 - m.gr, -m.gi], [1 + m.gr, m.gi]); return { g: [m.gr, m.gi], y }; };
+      const diff = (h, k) => { const a = at(h)[k], b = at(-h)[k]; return [(a[0] - b[0]) / (2 * h), (a[1] - b[1]) / (2 * h)]; };
+      const rich = (k) => { const d1 = diff(1e-3, k), d2 = diff(5e-4, k); return [(4 * d2[0] - d1[0]) / 3, (4 * d2[1] - d1[1]) / 3]; };
+      const dg = rich('g');
+      return { r: RL / 50, Q, s, y_d: rich('y'), v_Gamma: Math.hypot(dg[0], dg[1]) };
+    },
+    'quarter-wave-bandwidth': () => {
+      for (;;) {
+        const RL = bandRandom() < 0.5 ? bnd(1, 41) : bnd(60, 960), c = quarterWave(RL);
+        const Gm = (Math.abs(RL - 50) / (RL + 50)) * bnd(0.05, 0.95);
+        const { sc, fig } = bandFiguresOf(c, { start: BAND_F0 * 0.001, stop: BAND_F0 * 1.999, points: 801, log: false }, Gm);
+        const a = fig.atF0;
+        if (!a || a.openLo || a.openHi) continue;
+        const theta = bnd(0.1, 3.1), m = SW.markerAt(sc, (theta / (Math.PI / 2)) * BAND_F0);
+        return {
+          FBW: fig.fractional, Gamma_m: Gm, Z_0: 50, R_L: RL, Z_t: Math.sqrt(50 * RL), theta_m: (Math.PI / 2) * (a.lo / BAND_F0),
+          f_0: BAND_F0, theta, Z_in: [m.zr, m.zi], Gamma: [m.gr, m.gi],
+        };
+      }
     },
     'stub-short-z': () => stubZ(0),
     'stub-open-z': () => stubZ(Infinity),

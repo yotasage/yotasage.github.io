@@ -23,6 +23,7 @@ import type { ChartView } from './chartView';
 import MarkerTable from './MarkerTable';
 import { nodeName } from './pathLayer';
 import type { PlotView } from './plotView';
+import { SCALE_ROOM_PX } from './gridSvg';
 import { complexText, gammaPolarText } from './readout';
 import { Figures } from './SweepPlot';
 import type { TraceLayer } from './traceLayer';
@@ -69,8 +70,8 @@ export function reportNodeTexts(c: Circuit, d: number): string[][] {
 const NODE_HEADS = ['z', 'Z', 'Γ', 'VSWR', 'Return loss'];
 /** The plot's print size in px (its viewBox): about the width of A4 or Letter inside the margins. */
 const PLOT_W = 680, PLOT_H = 240;
-/** Room kept around the chart's disc for the rim's scales and labels (box px). */
-const RIM_PX = 44;
+/** Room kept around the chart's disc for the rim's scales and labels (box px): the grid's own, and a little more. */
+const RIM_PX = SCALE_ROOM_PX + 4;
 /** The printed chart's width: 150 mm in CSS px (rc.chartFrame's width). */
 const CHART_PRINT_PX = (150 * 96) / 25.4;
 /** What of the chart's box is not printed: handles, their keys, snapping, the draw tool, the read point, the cursor. */
@@ -78,8 +79,17 @@ const DROP = '[data-handle],[data-layer="handle-keys"],[data-snap],[data-snap-la
 
 /** The chart as shown, cut to its disc (and the box), in a frame whose CSS scales it to the paper; null without a view. */
 function chartCopy(v: ChartView): HTMLElement | null {
-  const x0 = Math.max(0, v.screenX(-1) - RIM_PX), x1 = Math.min(v.w, v.screenX(1) + RIM_PX);
-  const y0 = Math.max(0, v.screenY(1) - RIM_PX), y1 = Math.min(v.h, v.screenY(-1) + RIM_PX);
+  // M7.4b: the disc and the grid's scale room, within the box, grown to every perimeter label drawn at the box's edge
+  // (at a narrow width the side labels reach a few px past it, and the copy shows them whole: overflow visible below).
+  let x0 = Math.max(0, v.screenX(-1) - RIM_PX), x1 = Math.min(v.w, v.screenX(1) + RIM_PX);
+  let y0 = Math.max(0, v.screenY(1) - RIM_PX), y1 = Math.min(v.h, v.screenY(-1) + RIM_PX);
+  const b = v.box.getBoundingClientRect();
+  for (const t of v.box.querySelectorAll('[data-kind="scale"]')) {
+    const r = t.getBoundingClientRect();
+    const l = r.left - b.left, rt = r.right - b.left, tp = r.top - b.top, bt = r.bottom - b.top;
+    if (!(r.width > 0) || rt < 0 || l > v.w || bt < 0 || tp > v.h) continue;
+    x0 = Math.min(x0, l - 2); x1 = Math.max(x1, rt + 2); y0 = Math.min(y0, tp - 2); y1 = Math.max(y1, bt + 2);
+  }
   const cw = x1 - x0, ch = y1 - y0;
   if (!(cw > 1 && ch > 1)) return null;
   const copy = v.box.cloneNode(true) as HTMLElement;
@@ -90,7 +100,8 @@ function chartCopy(v: ChartView): HTMLElement | null {
   copy.removeAttribute('data-chart');
   copy.setAttribute('data-print-chart', '');
   // The copy keeps its px and is scaled to the frame's 150 mm.
-  copy.style.cssText = `position:absolute;left:0;top:0;width:${v.w}px;height:${v.h}px;border:0;border-radius:0;transform-origin:0 0;`
+  for (const svg of copy.querySelectorAll('svg')) svg.style.overflow = 'visible';
+  copy.style.cssText = `position:absolute;left:0;top:0;width:${v.w}px;height:${v.h}px;border:0;border-radius:0;overflow:visible;transform-origin:0 0;`
     + `transform:scale(${CHART_PRINT_PX / cw}) translate(${-x0}px, ${-y0}px)`;
   const frame = document.createElement('div');
   frame.className = rc.chartFrame;

@@ -25,6 +25,9 @@ import * as importedQuantity from '../../../lib/quantity.ts';
 import * as importedReadout from '../../../components/Smith/readout.ts';
 import * as importedSolve from '../../../lib/smith/solve.ts';
 import * as importedValues from '../../../lib/smith/values.ts';
+import * as importedSweep from '../../../lib/smith/sweep.ts';
+import * as importedBandText from '../../../components/Smith/bandText.ts';
+import { exampleTexts } from './sweep-examples.mjs';
 
 const S = importedState.default ?? importedState;
 const N = importedNetwork.default ?? importedNetwork;
@@ -34,6 +37,8 @@ const Q = importedQuantity.default ?? importedQuantity;
 const R = importedReadout.default ?? importedReadout;
 const SV = importedSolve.default ?? importedSolve;
 const V = importedValues.default ?? importedValues;
+const SW = importedSweep.default ?? importedSweep;
+const B = importedBandText.default ?? importedBandText;
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '../../..');
 const shots = process.env.SMITH_SHOTS || (process.argv[2] && process.argv[2] !== '-' ? process.argv[2] : null);
@@ -72,7 +77,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // ---------- what theory.md §1–7 asks for ----------
 
 const TOPICS = ['how-to-use', 'gamma-z-y', 'reading-the-chart', 'moving-on-the-chart', 'transmission-lines', 'how-good-is-a-match', 'matching-with-two-parts',
-  'two-one-or-none', 'one-value-and-a-point', 'realisable-values'];
+  'two-one-or-none', 'one-value-and-a-point', 'realisable-values', 'q-and-bandwidth', 'reading-a-trace'];
 const EQUATIONS = {
   'how-to-use': [],
   'gamma-z-y': ['z-norm', 'y-norm', 'gamma-z', 'z-gamma', 'gamma-y', 'y-gamma'],
@@ -85,8 +90,12 @@ const EQUATIONS = {
   'two-one-or-none': ['series-adds-z', 'shunt-adds-y', 'circle-r', 'circle-g', 'mobius', 'x-series-c', 'b-shunt-c', 'b-shunt-l'],
   'one-value-and-a-point': ['gamma-z', 'circle-r', 'mismatch-to-target', 'x-series-c', 'gamma-vswr'],
   'realisable-values': ['x-series-l', 'x-series-c', 'b-shunt-l', 'b-shunt-c', 'quarter-wave', 'line-rotation', 'line-theta', 'beta', 'vswr', 'return-loss'],
+  // M7.4b: theory-sweep.md §12–§13.
+  'q-and-bandwidth': ['fractional-bandwidth', 'q-loaded', 'q-series-rlc', 'fbw-series-rlc', 'q-l-network', 'l-network-slope', 'q-node', 'line-theta',
+    'line-rotation', 'quarter-wave-match', 'quarter-wave-bandwidth'],
+  'reading-a-trace': ['x-series-l', 'x-series-c', 'b-shunt-c', 'b-shunt-l', 'line-theta', 'return-loss', 'vswr', 'gamma-vswr', 'power-delivered'],
 };
-const CITED = ['Ellingson2018', 'WikiSmith', 'SteerVol2', 'SteerVol3', 'WikiMobius', 'WikiE', 'JohansonHighQ', 'WurthWEKI'];
+const CITED = ['Ellingson2018', 'WikiSmith', 'SteerVol2', 'SteerVol3', 'WikiMobius', 'WikiE', 'JohansonHighQ', 'WurthWEKI', 'WikiQ'];
 const GOAL_VSWR = 1.5;
 
 // ---------- the engine's side: every live number by name ----------
@@ -98,7 +107,7 @@ const cx = (re, im, unit = '') => R.complexText(re, im, unit);
 const { M_GR, M_GI, M_MAG, M_ANGLE, M_VSWR, M_RL, M_ML, M_Q, M_ZR, M_ZI, M_YR, M_YI, METRIC_STRIDE } = N;
 const TURNING = [P.SERIES_L, P.SERIES_C, P.SHUNT_L, P.SHUNT_C, P.STUB_OPEN, P.STUB_SHORT];
 
-function expected(c) {
+function expected(c, sw = null) {
   const out = new Map();
   const put = (key, text) => out.set(key, text);
   const { metrics } = N.evaluateCircuit(c);
@@ -179,7 +188,52 @@ function expected(c) {
   put('start-c', amt(st.parts[0].value, 'F')); put('start-l', amt(st.parts[1].value, 'H'));
   put('start-shunt-c', amt(1 / (w * st.z0), 'F')); put('start-q', num(Math.abs(s(0, M_ZI)) / s(0, M_ZR)));
   for (const [key, text] of solverExpected(c)) put(key, text);
+  for (const [key, text] of sweepExpected(c, sw)) put(key, text);
   return out;
+}
+
+// ---------- M7.4b: the sweep's topics (theory-sweep.md §12–§13), from sweep.ts ----------
+
+// The visitor's sweep (the band, limit and markers of the link) on the circuit, or with the sweep off the start circuit
+// over defaultBand at 10 dB with markers at 90 and 110 MHz; the figures swept and refined here, as the page's worker does.
+function sweepExpected(c, sw) {
+  const out = [], put = (k, t) => out.push([k, t]);
+  const cc = sw ? c : S.defaultCircuit();
+  const s = sw ?? { band: SW.defaultBand(cc.f0), markers: [9e7, 1.1e8], limit: S.SWEEP_LIMIT_DB };
+  const limit = s.limit ?? S.SWEEP_LIMIT_DB, th = cv.magFromReturnLoss(limit);
+  const sc = SW.sweepCircuit(cc), tr = new SW.Trace(1024);
+  SW.runSweep(tr, s.band, sc);
+  const fig = SW.bandFigures(tr, sc, th), t = B.figureTexts(fig, cc.f0, limit, 4);
+  const b = s.band, bandText = `${B.hzText(b.start, 4)} – ${B.hzText(b.stop, 4)}, ${b.points} points, ${b.log ? 'logarithmic' : 'linear'}`;
+  const db = (v) => Q.formatReturnLoss(v, 4);
+  put('qb-band', bandText); put('qb-limit', Q.formatAmount(limit, 'dB', 4, true)); put('qb-limit-mag', num(th));
+  put('qb-f0', `${t.f0[0]} ${t.f0[1]}`); put('qb-q', t.q[1] ? `${t.q[0]}, ${t.q[1]}` : t.q[0]);
+  if (fig.q) put('qb-q-span', B.spanText(fig.q, 4));
+  const { metrics } = N.evaluateCircuit(cc), n = cc.parts.length;
+  let kMax = 0;
+  for (let k = 0; k <= n; k++) {
+    put(`qb-node-${k}`, num(metrics[k * METRIC_STRIDE + M_Q]));
+    if (metrics[k * METRIC_STRIDE + M_Q] > metrics[kMax * METRIC_STRIDE + M_Q]) kMax = k;
+  }
+  put('qb-qmax', kMax === 0 ? 'the load' : kMax === n ? 'the input' : `node ${kMax}`);
+  put('rt-band', bandText);
+  [b.start, b.stop].forEach((f, i) => {
+    const m = SW.markerAt(sc, f);
+    put(`rt-end${i}-f`, B.hzText(f, 4)); put(`rt-end${i}-gamma`, cx(m.gr, m.gi)); put(`rt-end${i}-mag`, num(m.mag)); put(`rt-end${i}-rl`, db(m.rl));
+  });
+  put('rt-limit-mag', num(th)); put('rt-limit-vswr', num(cv.vswr(th))); put('rt-intervals', t.intervals.join('; '));
+  put('rt-worst', `${t.worst[0]} ${t.worst[1]}`); put('rt-vswr', t.vswr[0]); put('rt-best', `${t.best[0]} ${t.best[1]}`);
+  s.markers.forEach((f, i) => { const m = SW.markerAt(sc, f); put(`rt-m${i}`, `${B.hzText(f, 4)}: Γ = ${cx(m.gr, m.gi)}, |Γ| = ${num(m.mag)}, ${db(m.rl)}`); });
+  return out;
+}
+const EXAMPLE_TEXTS = exampleTexts();
+// Every worked example's number (data-ex) against the example circuits swept here; each one at least once.
+async function checkExamples(page, what) {
+  const got = await page.$$eval('[data-ex]', (els) => els.map((e) => [e.getAttribute('data-ex'), e.textContent]));
+  for (const [key, text] of got) ok(EXAMPLE_TEXTS.get(key) === text, () => `${what}: example ${key} shows "${text}", the engine gives "${EXAMPLE_TEXTS.get(key)}"`);
+  const seen = new Set(got.map(([k]) => k));
+  for (const key of EXAMPLE_TEXTS.keys()) ok(seen.has(key), `${what}: example ${key} is on the page`);
+  return got.length;
 }
 
 // ---------- M4.3c: the solver's topics (theory-solver.md §9–§11), from solve.ts and values.ts ----------
@@ -293,12 +347,12 @@ function solverExpected(c) {
 
 // ---------- the page's side ----------
 
-async function open(context, c, hash = '') {
+async function open(context, c, hash = '', sw = null) {
   const page = await context.newPage();
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
   page.on('console', (msg) => { if (msg.type() === 'error') page.errors.push(msg.text()); });
-  await page.goto(`${base}/smith-chart/main${c ? `?${S.encodeCircuit(c)}` : ''}${hash}`, { waitUntil: 'networkidle' });
+  await page.goto(`${base}/smith-chart/main${c ? `?${S.encodeCircuit(c)}${S.sweepParams(sw)}` : ''}${hash}`, { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-theory]');
   await page.waitForFunction(() => window.location.search.includes('v=1'));
   await frame(page);
@@ -307,9 +361,9 @@ async function open(context, c, hash = '') {
 const linked = async (page) => S.decodeCircuit(new URL(page.url()).search).circuit;
 const lives = (page) => page.$$eval('[data-live]', (els) => els.map((e) => [e.getAttribute('data-live'), e.textContent]));
 
-async function checkLive(page, c, what) {
+async function checkLive(page, c, what, sw = null) {
   // The theory renders deferred (and its solver topics after the Solve panel's outcome): wait up to 3 s for it to agree.
-  const want = expected(c), same = (g) => g.length === want.size && g.every(([k, t]) => want.get(k) === t);
+  const want = expected(c, sw), same = (g) => g.length === want.size && g.every(([k, t]) => want.get(k) === t);
   let got = await lives(page);
   for (let i = 0; i < 30 && !same(got); i++) { await sleep(100); got = await lives(page); }
   const seen = new Set();
@@ -375,7 +429,14 @@ try {
   ok(S.sameCircuit(await linked(p0), S.defaultCircuit()), 'a fresh visit shows the start circuit');
   counts.live = await checkLive(p0, S.defaultCircuit(), 'start');
   counts.lines = await checkEquations(p0, 'start');
-  ok(JSON.stringify(await p0.$$eval('[data-topic]', (els) => els.map((e) => e.id))) === JSON.stringify(TOPICS), 'the ten topics in the order of theory.md and theory-solver.md');
+  ok(JSON.stringify(await p0.$$eval('[data-topic]', (els) => els.map((e) => e.id))) === JSON.stringify(TOPICS), 'the twelve topics in the order of theory.md, theory-solver.md and theory-sweep.md');
+  counts.examples = await checkExamples(p0, 'start');
+  // The figures' traces are drawn when they come near the view (and only then).
+  ok(await p0.evaluate(() => [...document.querySelectorAll('#q-and-bandwidth figure path')].every((e) => (e.getAttribute('d') ?? '').length < 2000)), 'the sweep figures wait for the view');
+  await p0.evaluate(() => document.querySelector('#q-and-bandwidth figure').scrollIntoView());
+  await frame(p0);
+  await p0.evaluate(() => document.querySelector('#reading-a-trace figure').scrollIntoView());
+  await p0.waitForFunction(() => [...document.querySelectorAll('#q-and-bandwidth figure path, #reading-a-trace figure path')].filter((e) => (e.getAttribute('d') ?? '').length > 2000).length >= 8, null, { timeout: 5000 }).then(() => ok(true, ''), () => ok(false, 'the sweep figures draw their eight traces and plots'));
   ok((await openState(p0)).every(Boolean), 'at 1280 px every topic starts open');
   const contents = await p0.$$eval('[data-theory] ol a[href^="#"]', (els) => els.map((e) => e.getAttribute('href')));
   ok(JSON.stringify(contents.slice(0, TOPICS.length)) === JSON.stringify(TOPICS.map((t) => `#${t}`)), 'the contents link every topic id');
@@ -434,6 +495,22 @@ try {
       await checkLive(p, await linked(p), 'C1 after an undo');
       ok((await linked(p)).loadX === -60, 'C1: the undo took the reactance back');
     }
+    await p.close();
+  }
+
+  // ---------- M7.4b: the sweep's boxes follow the visitor's sweep: the default band and two others ----------
+  const SWEEPS = [
+    ['start, default band', S.defaultCircuit(), { band: SW.defaultBand(1e8), markers: [], limit: 10 }],
+    ['C3, 10 MHz – 1 GHz log at 15 dB', C3, { band: { start: 1e7, stop: 1e9, points: 801, log: true }, markers: [8e7, 1.2e8, 3e8], limit: 15 }],
+    ['C1, 1.8 – 3 GHz at 6 dB', C1, { band: { start: 1.8e9, stop: 3e9, points: 2001, log: false }, markers: [2.4e9], limit: 6 }],
+  ];
+  counts.sweeps = 0;
+  for (const [name, c, sw] of SWEEPS) {
+    const p = await open(desk, c, '', sw);
+    await p.waitForSelector('[data-sweep-box="q"]');
+    counts.sweeps += await checkLive(p, c, `sweep ${name}`, sw);
+    ok((await p.$eval('[data-sweep-box="q"]', (e) => e.textContent)).startsWith('Your circuit'), `sweep ${name}: the box is headed Your circuit`);
+    ok(p.errors.length === 0, () => `sweep ${name}: no errors in the console (${p.errors.join(' | ')})`);
     await p.close();
   }
 
@@ -549,6 +626,6 @@ try {
 await browser.close();
 stopServer();
 for (const failure of failures) console.log(`FAIL ${failure}`);
-console.log(`theory: ${counts.live} live numbers, ${counts.lines} equation lines with live numbers, ${counts.cites} citations and ${counts.anchors} #links on the start circuit`);
+console.log(`theory: ${counts.live} live numbers, ${counts.lines} equation lines with live numbers, ${counts.examples} worked-example numbers, ${counts.cites} citations and ${counts.anchors} #links on the start circuit; ${counts.sweeps} live numbers over three visitor sweeps`);
 console.log(`theory: ${passed} of ${passed + failed} checks passed`);
 process.exitCode = failed ? 1 : 0;
