@@ -91,8 +91,9 @@ const GOAL_VSWR = 1.5;
 
 // ---------- the engine's side: every live number by name ----------
 
-const num = (v) => Q.formatAmount(v, '', 4, true);
-const amt = (v, unit) => Q.formatAmount(v, unit, 4, true);
+// Residuals at rounding level as the bound of plan.md D20 (the page's rule in lib/quantity.ts).
+const num = (v) => Q.formatResidual(v, '', 4);
+const amt = (v, unit) => Q.formatResidual(v, unit, 4);
 const cx = (re, im, unit = '') => R.complexText(re, im, unit);
 const { M_GR, M_GI, M_MAG, M_ANGLE, M_VSWR, M_RL, M_ML, M_Q, M_ZR, M_ZI, M_YR, M_YI, METRIC_STRIDE } = N;
 const TURNING = [P.SERIES_L, P.SERIES_C, P.SHUNT_L, P.SHUNT_C, P.STUB_OPEN, P.STUB_SHORT];
@@ -153,7 +154,7 @@ function expected(c) {
   for (const [k, key] of [[0, 'load'], [n, 'input']]) {
     const mag = m(k, M_MAG), s = (1 + mag) / (1 - mag);
     put(`m-${key}-mag`, num(mag)); put(`m-${key}-vswr`, num(m(k, M_VSWR)));
-    put(`m-${key}-rl`, amt(-20 * Math.log10(mag), 'dB')); put(`m-${key}-ml`, amt(-10 * Math.log10(1 - mag * mag), 'dB'));
+    put(`m-${key}-rl`, Q.formatReturnLoss(-20 * Math.log10(mag), 4)); put(`m-${key}-ml`, amt(-10 * Math.log10(1 - mag * mag), 'dB'));
     put(`m-${key}-ref`, num(mag * mag * 100)); put(`m-${key}-del`, num((1 - mag * mag) * 100));
     put(`m-${key}-zmax`, amt(z0 * s, 'Ω')); put(`m-${key}-zmin`, amt(z0 / s, 'Ω'));
   }
@@ -186,7 +187,7 @@ function expected(c) {
 const KIND_WORDS = ['series R', 'series L', 'series C', 'shunt R', 'shunt L', 'shunt C', 'line', 'open stub', 'short stub', 'λ/4 transformer'];
 const unitValue = (k, v) => (k === P.SERIES_R || k === P.SHUNT_R || k === P.QUARTER ? amt(v, 'Ω') : k === P.SERIES_L || k === P.SHUNT_L ? amt(v, 'H')
   : k === P.SERIES_C || k === P.SHUNT_C ? amt(v, 'F') : `${num(v)} λ`);
-const gammaWords = (g) => (g < 1e-12 ? '0' : num(g));
+const gammaWords = (g) => num(g);
 function valueWords(c, v) {
   if (v.param === 'f0') return `f0 ${amt(v.value, 'Hz')}`;
   if (v.param === 'zc') return `part ${v.part + 1}’s Zc ${amt(v.value, 'Ω')}`;

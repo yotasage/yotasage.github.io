@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
-import { formatAmount } from '../../lib/quantity';
+import { formatAmount, formatResidual, formatReturnLoss } from '../../lib/quantity';
 import { goalMag, goalNode, goalPole, goalValue, isWithin } from '../../lib/smith/goal';
 import { GOAL_MAG, GOAL_VSWR, goalGamma, goalPoint, goalStanding } from '../../lib/smith/goalView';
 import { M_ANGLE, M_MAG, M_RL, M_VSWR, M_ZI, M_ZR, METRIC_STRIDE, evaluateCircuit } from '../../lib/smith/network';
@@ -9,7 +9,7 @@ import type { Circuit } from '../../lib/smith/state';
 import { toDegrees } from '../../lib/smith/convert';
 import styles from '../../styles/Smith.module.css';
 import { nodeLabel, nodeName } from './pathLayer';
-import { READOUT_DIGITS, complexText } from './readout';
+import { complexText, gammaPolarText, shownDigits } from './readout';
 import { Why } from './Why';
 
 // The table of the path's nodes (step M3.2): for every node from the load to the input its z, Γ, VSWR and return
@@ -24,11 +24,13 @@ export interface NodesProps {
   onSelect: (k: number) => void;
   /** Hover or focus on a row (−1 when it ends): the chart highlights the node's marker. */
   onHover: (k: number) => void;
+  /** The digits setting (readout.ts shownDigits; a prop so that a change re-renders the table). */
+  digits: number;
 }
 
-const num = (v: number, unit = ''): string => formatAmount(v, unit, READOUT_DIGITS, true);
-/** A goal's figure as typed (no trailing zeros). */
-const fig = (v: number, unit = ''): string => formatAmount(v, unit, READOUT_DIGITS);
+// The digits setting's digits (readout.ts), with their zeros; a goal's figure as typed (no trailing zeros).
+const num = (v: number, unit = ''): string => formatAmount(v, unit, shownDigits(), true);
+const fig = (v: number, unit = ''): string => formatAmount(v, unit, shownDigits());
 
 export interface NodeTexts { z: string; gamma: string; vswr: string; rl: string }
 
@@ -39,9 +41,9 @@ export function nodeTexts(c: Circuit): NodeTexts[] {
   for (let k = 0, m = 0; k <= c.parts.length; k++, m += METRIC_STRIDE) {
     out.push({
       z: complexText(metrics[m + M_ZR], metrics[m + M_ZI], ''),
-      gamma: `${num(metrics[m + M_MAG])} ∠ ${num(toDegrees(metrics[m + M_ANGLE]))}°`,
+      gamma: gammaPolarText(metrics[m + M_MAG], toDegrees(metrics[m + M_ANGLE])),
       vswr: num(metrics[m + M_VSWR]),
-      rl: num(metrics[m + M_RL], 'dB'),
+      rl: formatReturnLoss(metrics[m + M_RL], shownDigits()),
     });
   }
   return out;
@@ -54,7 +56,7 @@ export function goalLine(c: Circuit): { distance: string; word: string; met: boo
   const goal = askOf(c).goal;
   goalGamma(gg, 0, c, goal);
   const s = goalStanding(goal, gg[0], gg[1], c.z0);
-  return { distance: num(s.distance), met: s.met, word: s.mode === 'circle' ? (s.met ? 'on it' : 'off it') : s.met ? 'inside' : 'outside' };
+  return { distance: formatResidual(s.distance, '', shownDigits()), met: s.met, word: s.mode === 'circle' ? (s.met ? 'on it' : 'off it') : s.met ? 'inside' : 'outside' };
 }
 
 const FIG: Record<string, string> = { r: 'r', g: 'g', x: 'x', b: 'b' };
@@ -85,11 +87,11 @@ function goalWords(c: Circuit): { what: string; who: string; how: string } {
   return { what: `the circle ${figure}${at} (dashed).${poleText}`, who, how: 'from it in Γ' };
 }
 
-export default function Nodes({ circuit, selected, onSelect, onHover }: NodesProps) {
+export default function Nodes({ circuit, selected, onSelect, onHover, digits }: NodesProps) {
   const n = circuit.parts.length;
-  const rows = useMemo(() => nodeTexts(circuit), [circuit]);
-  const line = useMemo(() => goalLine(circuit), [circuit]);
-  const words = useMemo(() => goalWords(circuit), [circuit]);
+  const rows = useMemo(() => nodeTexts(circuit), [circuit, digits]);
+  const line = useMemo(() => goalLine(circuit), [circuit, digits]);
+  const words = useMemo(() => goalWords(circuit), [circuit, digits]);
   // Open beside the chart, closed on phones (read after mount, so the static page and the first render agree).
   const [open, setOpen] = useState(true);
   useEffect(() => { if (window.matchMedia('(max-width: 599px)').matches) setOpen(false); }, []);

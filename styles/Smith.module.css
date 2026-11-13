@@ -1165,3 +1165,26 @@
     linear-gradient(-45deg, transparent 45%, var(--accent) 45% 55%, transparent 55%);
   background-color: var(--chart-bg);
 }
+
+/* ---- M5.1: the digits setting in the readout's title ---- */
+.digits {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.root .digits select {
+  min-height: 28px;
+  padding: 1px 4px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 6px;
+  background: var(--field);
+  color: var(--ink);
+  font: inherit;
+  font-family: var(--font-num);
+  font-size: 12.5px;
+}

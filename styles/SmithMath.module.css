@@ -1,0 +1,103 @@
+/* The equation panel of the Smith chart (step M5.1, components/Smith/MathPanel.tsx). The theme's variables
+   (--ink, --part-n, --accent, …) come from .root in Smith.module.css. */
+
+.box > summary { cursor: pointer; list-style: none; }
+.box > summary::-webkit-details-marker { display: none; }
+.summary > span:first-child::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 0 0 2px 8px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform var(--quick);
+}
+.box[open] .summary > span:first-child::after { transform: rotate(45deg); }
+
+.follow {
+  display: inline-flex;
+  margin: 10px 0 2px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.follow button {
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.follow button + button { border-left: 1px solid var(--rule-strong); }
+.follow button:hover { color: var(--ink); }
+.follow button[aria-pressed='true'] { background: var(--accent-soft); color: var(--accent); font-weight: 650; }
+.follow button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.empty { display: none; margin: 10px 0 0; font-size: 13px; color: var(--ink-3); }
+[data-empty] .empty { display: block; }
+[data-empty] .live { display: none; }
+
+.rows { margin: 6px 0 0; padding: 0; list-style: none; }
+
+/* The panel's MathML is laid out on its own: the side panel's texts that change in a drag frame (the node table, the
+   readout) do not lay it out again, and rows out of view are not rendered at all. */
+.box { contain: layout style; }
+
+.row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 150px;
+  padding: 8px 0 8px 10px;
+  border-left: 2px solid var(--rule-strong);
+  margin: 8px 0;
+  min-width: 0;
+}
+
+/* Aligned on "=": the symbol, then its equation and every line with numbers in the second column. The row scrolls
+   sideways inside itself when a line is wider than the panel; the page never does. */
+.grid {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: start;
+  align-items: baseline;
+  overflow-x: auto;
+  overflow-y: hidden;
+  row-gap: 6px;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+.grid math { math-style: normal; }
+.lhs { justify-self: end; }
+.live { display: contents; }
+.line { grid-column: 2; color: var(--ink-2); font-size: 14px; white-space: nowrap; }
+.result { color: var(--ink); }
+
+.raw {
+  grid-column: 2;
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+.title { display: block; color: var(--ink-3); font-size: 12px; line-height: 1.4; }
+
+/* The chart's colours: the eight part colours and the readout's point. */
+.p1 { color: var(--part-1); }
+.p2 { color: var(--part-2); }
+.p3 { color: var(--part-3); }
+.p4 { color: var(--part-4); }
+.p5 { color: var(--part-5); }
+.p6 { color: var(--part-6); }
+.p7 { color: var(--part-7); }
+.p8 { color: var(--part-8); }
+.pt { color: var(--accent); }

@@ -82,7 +82,17 @@ async function checkReadout(page, what) {
 const tileKinds = (page) => page.evaluate(() => [...document.querySelectorAll('[data-tile]')]
   .sort((a, b) => Number(a.dataset.tile) - Number(b.dataset.tile)).map((e) => e.dataset.kind));
 const kindsOf = (c) => c.parts.map((p) => S.KIND_CODES[p.kind]);
+// Waits (up to 3 s, frame by frame) until test(value) holds for what read gives; the last value either way. The page
+// renders a step and moves the focus in its own frames: a fixed delay made the keyboard checks fail about 1 run in 4.
+async function settle(page, read, test, ms = 3000) {
+  const until = Date.now() + ms;
+  let v = await read();
+  while (!test(v) && Date.now() < until) { await frame(page); v = await read(); }
+  return v;
+}
 async function checkStrip(page, wantKinds, what) {
+  const want = JSON.stringify(wantKinds);
+  await settle(page, async () => JSON.stringify(kindsOf(await linked(page))) + JSON.stringify(await tileKinds(page)), (v) => v === want + want);
   const c = await checkReadout(page, what);
   const k = kindsOf(c), t = await tileKinds(page);
   ok(JSON.stringify(k) === JSON.stringify(wantKinds), `${what}: link has ${k.join(' ')}, wanted ${wantKinds.join(' ')}`);
@@ -90,8 +100,10 @@ async function checkStrip(page, wantKinds, what) {
 }
 const focused = (page) => page.evaluate(() => {
   const a = document.activeElement;
-  return a ? { tile: a.dataset.tile ?? null, addKind: a.hasAttribute('data-add-kind') } : {};
+  return a ? { tile: a.dataset.tile ?? null, addKind: a.hasAttribute('data-add-kind'), what: `${a.tagName} ${a.className}`.slice(0, 60) } : {};
 });
+/** The focus once it holds test (or after 3 s). */
+const focusedWhen = (page, test) => settle(page, () => focused(page), test);
 
 try {
   // ---------- start state, mouse ----------
@@ -154,30 +166,31 @@ try {
     kinds = [...kinds, S.KIND_CODES[kind]];
     await checkStrip(page, kinds, `keys: add ${S.KIND_NAMES[kind]}`);
     const n = kinds.length;
-    ok((await focused(page)).tile === String(n - 1), `keys: the new ${S.KIND_NAMES[kind]} has the focus`);
+    ok((await focusedWhen(page, (f) => f.tile === String(n - 1))).tile === String(n - 1), `keys: the new ${S.KIND_NAMES[kind]} has the focus`);
     if (n > 1) {
       await page.keyboard.press('Alt+ArrowRight');
       const moved = kinds.slice(); [moved[n - 2], moved[n - 1]] = [moved[n - 1], moved[n - 2]];
       await checkStrip(page, moved, `keys: Alt+→ moves ${S.KIND_NAMES[kind]} towards the load`);
-      ok((await focused(page)).tile === String(n - 2), 'keys: the moved part keeps the focus');
+      ok((await focusedWhen(page, (f) => f.tile === String(n - 2))).tile === String(n - 2), `keys: the moved part keeps the focus (${JSON.stringify(await focused(page))})`);
       await page.keyboard.press('Alt+ArrowLeft');
       await checkStrip(page, kinds, `keys: Alt+← moves it back`);
+      await focusedWhen(page, (f) => f.tile === String(n - 1));
     }
   }
   // Arrows walk the strip; Delete removes the focused part until none is left.
   await page.keyboard.press('ArrowRight');
-  ok((await focused(page)).tile === String(kinds.length - 2), 'keys: → goes to the next part towards the load');
+  ok((await focusedWhen(page, (f) => f.tile === String(kinds.length - 2))).tile === String(kinds.length - 2), 'keys: → goes to the next part towards the load');
   await page.keyboard.press('End');
-  ok((await focused(page)).tile === '0', 'keys: End goes to the part at the load');
+  ok((await focusedWhen(page, (f) => f.tile === '0')).tile === '0', 'keys: End goes to the part at the load');
   while (kinds.length) {
-    const f = await focused(page);
+    const f = await focusedWhen(page, (x) => x.tile !== null);
     const i = Number(f.tile);
     ok(f.tile !== null && i >= 0, `keys: a part has the focus with ${kinds.length} left`);
     await page.keyboard.press('Delete');
     kinds = kinds.filter((_, j) => j !== i);
     await checkStrip(page, kinds, `keys: Delete removes part ${i + 1}`);
   }
-  ok((await focused(page)).addKind, 'keys: with the last part gone the focus is on the kind list');
+  ok((await focusedWhen(page, (f) => f.addKind)).addKind, 'keys: with the last part gone the focus is on the kind list');
   ok(page.errors.length === 0, `no page errors (${page.errors.slice(0, 3).join(' | ')})`);
   await page.close();
 

@@ -384,6 +384,33 @@ section('quantity: writing');
   ok(back, 'formatAmount then readAmount gives the value back in every unit');
 }
 
+section('quantity: rounding level (D20)');
+{
+  const { formatResidual, formatReturnLoss, belowFloor, ROUNDING_FLOOR, RL_CEILING } = quantity;
+  eq(ROUNDING_FLOOR, 1e-12, 'the floor');
+  near(-20 * Math.log10(ROUNDING_FLOOR), RL_CEILING, 'RL_CEILING is the return loss of |Γ| at the floor', 1e-12);
+  for (const [v, unit, digits, floor, want] of [
+    [7.2e-17, '', 4, undefined, '< 1e−12'], [-3e-13, '', 4, undefined, '< 1e−12'], [0, '', 4, undefined, '0'],
+    [1e-12, '', 4, undefined, '1.000e−12'], [0.0123, '', 4, undefined, '0.01230'], [0.0123, '', 3, undefined, '0.0123'],
+    [2e-15, 'Ω', 4, 50e-12, '< 50 pΩ'], [2e-10, 'Ω', 4, 50e-12, '200.0 pΩ'], [4e-20, 'dB', 4, undefined, '< 1e−12 dB'],
+    [NaN, '', 4, undefined, '–'], [Infinity, '', 4, undefined, '∞'],
+  ]) eq(formatResidual(v, unit, digits, true, floor), want, `formatResidual(${v}, "${unit}", ${digits}, ${floor})`);
+  for (const [rl, want] of [[320.4, '> 240 dB'], [240.0001, '> 240 dB'], [240, '240.0 dB'], [13.98, '13.98 dB'], [Infinity, '∞ dB'], [0, '0 dB']])
+    eq(formatReturnLoss(rl, 4, true), want, `formatReturnLoss(${rl})`);
+  ok(belowFloor(1e-13) && belowFloor(-1e-13) && !belowFloor(0) && !belowFloor(NaN) && !belowFloor(1e-12), 'belowFloor: nonzero and under 1e-12 only');
+  // Every residual from 1e-30 to 1e-12 is the bound; from the floor up no text has an exponent of −12 or below.
+  // Its own sequence, so the shared random() of the later sections is not shifted.
+  let fine = true, seed = 7;
+  for (let k = 0; k < 400; k++) {
+    seed = (seed * 16807) % 2147483647;
+    const v = 10 ** (-30 + 24 * (seed / 2147483647));
+    const t = formatResidual(v, '', 2 + (k % 5));
+    const e = /e−(\d+)/.exec(t);
+    if ((v < 1e-12) !== (t === '< 1e−12') || (e && +e[1] > 12)) { fine = false; ok(false, `formatResidual(${v}) = ${t}`); }
+  }
+  ok(fine, 'formatResidual: the bound exactly under the floor, no exponent below −12 above it');
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // Parts and network (M1.2): check-network.mjs, with the same counters.
 runNetworkChecks({ section, ok, near, printed, random });

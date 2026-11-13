@@ -116,6 +116,36 @@ export function formatAmount(value: number, unit: string, digits = 4, keepZeros 
   return `${sign}${keepZeros ? withZeros(mantissa, digits) : mantissa} ${STEP_PREFIXES[i]}${unit}`;
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// Values at rounding level (Smith chart plan.md D20): a computed residual whose size is below the floor (an exact
+// match leaves |Γ| ≈ 1e-16, which "7.2e−17" would show as if it were a real number) is shown as a bound, never as
+// noise in scientific notation and never as a bare "0", which would hide that it was computed. Exact zeros stay "0".
+
+/** The rounding floor of D20: a residual (|Γ|, a mismatch, a Γ component) below it is shown as "< 1e−12". */
+export const ROUNDING_FLOOR = 1e-12;
+/** The floor as the bound writes it. */
+export const FLOOR_TEXT = '1e−12';
+/** The return loss of |Γ| at the floor (−20·log10(1e-12)), the bound "> 240 dB". */
+export const RL_CEILING = 240;
+
+/** Whether v is a computed residual under the floor (not an exact 0, not NaN). */
+export const belowFloor = (v: number, floor = ROUNDING_FLOOR): boolean => v !== 0 && Math.abs(v) < floor;
+
+/**
+ * A residual by the rule of D20: under the floor "< 1e−12" (with a floor other than ROUNDING_FLOOR, e.g. 1e-12·Z0 for
+ * a component in ohms, the bound in that unit: "< 50 pΩ"), else formatAmount with its digits and zeros.
+ */
+export function formatResidual(v: number, unit = '', digits = 4, keepZeros = true, floor = ROUNDING_FLOOR): string {
+  if (!belowFloor(v, floor)) return formatAmount(v, unit, digits, keepZeros);
+  if (floor === ROUNDING_FLOOR) return unit ? `< ${FLOOR_TEXT} ${unit}` : `< ${FLOOR_TEXT}`;
+  return `< ${formatAmount(floor, unit, digits)}`;
+}
+
+/** A return loss by the rule of D20: above RL_CEILING (|Γ| under the floor) "> 240 dB"; an exact match stays "∞ dB". */
+export function formatReturnLoss(rl: number, digits = 4, keepZeros = true): string {
+  return rl > RL_CEILING && rl !== Infinity ? `> ${RL_CEILING} dB` : formatAmount(rl, 'dB', digits, keepZeros);
+}
+
 // abs (> 0, finite) with `digits` significant digits and its trailing zeros, without an exponent down to 1e-7
 // ("0.0000001230"); integers with more digits than that are written whole ("12350").
 function withZeros(abs: number, digits: number): string {

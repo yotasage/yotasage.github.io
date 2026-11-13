@@ -10,7 +10,7 @@
 
 import React from 'react';
 
-import { formatAmount } from '../../lib/quantity';
+import { belowFloor, formatResidual } from '../../lib/quantity';
 import { magFromVswr, returnLoss, vswr } from '../../lib/smith/convert';
 import type { TexPiece } from '../../lib/smith/equations';
 import { valueTex } from '../../lib/smith/equations';
@@ -54,16 +54,19 @@ export interface SolverCtx {
 
 // ---- Texts (four significant digits with their zeros, as the rest of the theory) ----
 
-const num = (v: number): string => formatAmount(v, '', 4, true);
-const amt = (v: number, unit: string): string => formatAmount(v, unit, 4, true);
+// Rounding-level residuals as the bound of plan.md D20 (lib/quantity.ts formatResidual), never as 1e−17.
+const num = (v: number): string => formatResidual(v, '', 4);
+const amt = (v: number, unit: string): string => formatResidual(v, unit, 4);
 const fin = (...v: number[]): boolean => v.every((n) => Number.isFinite(n));
-const tv = (re: number, im = 0, unit = ''): TexPiece | undefined => (fin(re, im) ? valueTex(re, im, unit) : undefined);
+/** A value of TeX at rounding level (D20, lib/quantity.ts): a residual part under the floor is put in as 0. */
+const fl = (v: number): number => (belowFloor(v) ? 0 : v);
+const tv = (re: number, im = 0, unit = ''): TexPiece | undefined => (fin(re, im) ? valueTex(unit && unit !== 'dB' ? re : fl(re), unit && unit !== 'dB' ? im : fl(im), unit) : undefined);
 const omegaTex = (f0: number): TexPiece | undefined => {
   const f = tv(f0, 0, 'Hz');
   return f && { s: `2\\pi \\cdot ${f.s}`, p: 2, digit: true };
 };
-/** |Γ| as the topics write it: 0 below rounding (an exact match evaluates to about 1e-16). */
-const gammaText = (v: number): string => (v < 1e-12 ? '0' : num(v));
+/** |Γ| as the topics write it: the bound of D20 below rounding (an exact match evaluates to about 1e-16). */
+const gammaText = (v: number): string => num(v);
 const lower = (s: string): string => `${s[0].toLowerCase()}${s.slice(1)}`;
 const nodeText = (c: Circuit, k: number): string => (k === c.parts.length ? 'the input' : k === 0 ? 'the load' : `node ${k}`);
 
@@ -105,7 +108,7 @@ function circleOf(k: Float64Array, o: number): { cx: number; cy: number; r: numb
 }
 export const circleText = (k: Float64Array, o: number): string => {
   const q = circleOf(k, o);
-  return q ? `centre ${complexText(q.cx, q.cy, '')}, radius ${num(q.r)}` : 'a straight line';
+  return q ? `centre ${complexText(q.cx, q.cy, '', 4)}, radius ${num(q.r)}` : 'a straight line';
 };
 /** How two circles lie: they cross twice, touch or miss (relative 1e-9), from d against the sum and the difference of the radii. */
 function caseText(k: Float64Array): { d: number; sum: number; diff: number; text: string } | null {

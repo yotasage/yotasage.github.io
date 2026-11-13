@@ -348,6 +348,34 @@ export function tex(n: Node, options: TexOptions = {}): string {
   return bare(n, options);
 }
 
+/** A side that starts with a minus sign, braced so that "{}= -x" does not read as a binary minus. */
+const signed = (s: string): string => (s.startsWith('-') ? `{${s}}` : s);
+
+/**
+ * The substitution lines of an equation whose left side is one symbol with a value (x = X/Z0 = −1/(ωCZ0)), as the
+ * Theory section (M3.5c) and the equation panel (M5.1) print them: each member on the right with the values put in,
+ * one per line, then the left side's value; members without a symbol (nothing to put in) and repeats are left out.
+ * `lhs` and `rhs` are the symbolic sides (decorated by `variable`, e.g. with colours). Null when the left side is not
+ * a single symbol with a value.
+ */
+export function substitutions(
+  tree: Node, values: Readonly<Record<string, TexPiece | undefined>>, variable?: TexOptions['variable'],
+): { lhs: string; rhs: string; lines: string[] } | null {
+  if (tree.t !== 'eq' || tree.xs[0].t !== 'id') return null;
+  const result = values[tree.xs[0].v];
+  if (!result) return null;
+  const value = { value: (name: string) => values[name] };
+  const lines: string[] = [];
+  for (const x of tree.xs.slice(1)) {
+    const s = signed(tex(x, value));
+    if (s !== signed(tex(x)) && s !== lines[lines.length - 1]) lines.push(s);
+  }
+  const last = signed(result.s);
+  if (lines[lines.length - 1] !== last) lines.push(last);
+  const deco = { variable };
+  return { lhs: tex(tree.xs[0], deco), rhs: tree.xs.slice(1).map((x) => signed(tex(x, deco))).join(' = '), lines };
+}
+
 function unitTex(u: string): string {
   let s = '', run = '';
   const flush = (): void => { if (run) { s += `\\mathrm{${run}}`; run = ''; } };

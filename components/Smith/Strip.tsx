@@ -5,6 +5,7 @@ import {
   Circuit, f0Problem, Form, formsOf, formValue, insertPart, KIND_CODES, KIND_NAMES, KIND_ORDER, KIND_SHORT,
   askOf, circuitInputGamma, loadRProblem, loadXProblem, MAX_PARTS, movePart, newPart, Part, PartKind, readForm, removePart,
   sameUnknown, toggleUnknown, Unknown, unknownName, VALUE_NAMES, withForm, withFree, withPart, z0Problem,
+  sameCircuit,
 } from '../../lib/smith/state';
 import {
   LINE, QUARTER, SERIES_C, SERIES_L, SERIES_R, SHUNT_C, SHUNT_L, SHUNT_R, STUB_OPEN, STUB_SHORT,
@@ -38,6 +39,8 @@ export interface StripProps {
   onSelect?: (index: number) => void;
   /** Hover or focus on a tile (−1 when it ends): the chart highlights the part's arc. */
   onHover?: (index: number) => void;
+  /** The digits setting (readout.ts shownDigits): the circuit input's texts are written again when it changes. */
+  digits?: number;
 }
 
 /** The colour of the part at an index (counted from the load): the eight `--part-n` of notes-M2.3.md in turn. */
@@ -133,7 +136,7 @@ const UNIT_WORD: Record<string, string> = { Ω: 'ohms', S: 'siemens', H: 'henrie
 const INPUT_SHOWN = [[0, 'z', 'normalised'], [1, 'Z', 'in Ω'], [4, 'Γ', 'polar'], [6, 'VSWR', ''], [7, 'Return loss', '']] as const;
 const INPUT_KEYS = ['z', 'Z', 'y', 'Y', 'gamma', 'gammaRect', 'vswr', 'rl', 'note'];
 
-export default function Strip({ circuit, onChange, issues, selected: chosen, onSelect, onHover, revision, drawKind = -1, onDraw }: StripProps) {
+export default function Strip({ circuit, onChange, issues, selected: chosen, onSelect, onHover, revision, drawKind = -1, onDraw, digits }: StripProps) {
   const c = circuit;
   const n = c.parts.length;
   // Stable keys for the parts across reorders (the circuit itself has no ids).
@@ -150,10 +153,15 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
   const focusTile = useRef(-1);
   const addSelect = useRef<HTMLSelectElement>(null);
 
+  // The circuit the action makes: the focus moves in the first render that shows it (or an equal one: the page drops a
+  // commit that changes nothing, such as swapping two equal parts), not in a render before it arrives (the page's
+  // selection can render the strip first; the old tile then kept the focus and the next key went nowhere).
+  const focusFor = useRef<Circuit | null>(null);
   useEffect(() => {
     const i = focusTile.current;
-    if (i < 0) return;
+    if (i < 0 || (focusFor.current && c !== focusFor.current && !sameCircuit(c, focusFor.current))) return;
     focusTile.current = -1;
+    focusFor.current = null;
     if (i < n) tiles.current[i]?.focus();
     else addSelect.current?.focus();
   });
@@ -161,25 +169,31 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
   const add = () => {
     const at = addAt < 0 || addAt > n ? n : addAt;
     ids.current.splice(at, 0, nextId.current++);
-    onChange(insertPart(c, at, newPart(addKind, c)));
+    const next = insertPart(c, at, newPart(addKind, c));
+    onChange(next);
     setSel(at);
     focusTile.current = at;
+    focusFor.current = next;
   };
   const remove = (i: number) => {
     ids.current.splice(i, 1);
-    onChange(removePart(c, i));
+    const after = removePart(c, i);
+    onChange(after);
     const next = Math.min(i, n - 2);
     setSel(next);
     focusTile.current = next < 0 ? n : next;
+    focusFor.current = after;
     if (addAt >= n - 1) setAddAt(-1);
   };
   const move = (i: number, to: number) => {
     if (to < 0 || to >= n || to === i) return;
     const [id] = ids.current.splice(i, 1);
     ids.current.splice(to, 0, id);
-    onChange(movePart(c, i, to));
+    const next = movePart(c, i, to);
+    onChange(next);
     setSel(to);
     focusTile.current = to;
+    focusFor.current = next;
   };
   const tileKey = (i: number) => (e: React.KeyboardEvent) => {
     // Visual order: the source on the left, so the left arrow goes towards the source (a higher index).
@@ -198,7 +212,7 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
     circuitInputGamma(g, 0, c);
     readoutTexts(g[0], g[1], c.z0, out);
     return out;
-  }, [c]);
+  }, [c, digits]);
 
   const param = (name: string, label: string, unit: string, value: number, problem: (v: number) => string, set: (v: number) => Circuit, infinite = false, why = '') => (
     <Field name={name} label={label} why={why || undefined} revision={revision} shown={formatAmount(value, unit, DIGITS)} edit={(t) => {

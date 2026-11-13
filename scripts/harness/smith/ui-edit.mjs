@@ -209,7 +209,11 @@ function target(vs, c, i, v, off = 5) {
 /** A draw of `kind` from the input to the point of value `to`, by mouse; returns the replayed and committed values. */
 async function mouseDraw(page, kind, to, hold = null) {
   const c = await linked(page);
+  // The whole chart in view: a draw starts at the input's node, which can lie below the fold when the page above the
+  // chart grows (M5.1: a longer status note put sequence 81's start at y = 903 of 900).
   await arm(page, kind);
+  // After arming: the click on Draw scrolls its button into view.
+  await page.$eval('[data-chart]', (e) => e.scrollIntoView({ block: 'nearest' }));
   const ca = appended(c, kind), n = c.parts.length, vs = await viewState(page);
   const h = client(vs, engine(c).gamma[n]), from = [h[0] + 3, h[1] - 2];
   const { rec, held } = await mouseDrag(page, from, steps(from, target(vs, ca, n, to)), hold);

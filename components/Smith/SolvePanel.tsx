@@ -1,6 +1,6 @@
 import React, { memo, useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'react';
 
-import { formatAmount, readAmount } from '../../lib/quantity';
+import { belowFloor, formatAmount, formatResidual, readAmount } from '../../lib/quantity';
 import { goalNode, goalProblem, goalValue, isWithin } from '../../lib/smith/goal';
 import type { Goal, GoalKind } from '../../lib/smith/goal';
 import { LINE, QUARTER, SERIES_C, SERIES_L, SERIES_R, SHUNT_C, SHUNT_L, SHUNT_R, STUB_OPEN, STUB_SHORT } from '../../lib/smith/parts';
@@ -122,11 +122,11 @@ function amount(kind: number, param: string, v: number): string {
   if (param === 'f0') return formatAmount(v, 'Hz', DIGITS);
   if (param === 'zc') return formatAmount(v, 'Ω', DIGITS);
   const unit = UNIT[kind];
-  return unit ? formatAmount(v, unit, DIGITS) : `${formatAmount(v, '', DIGITS)} λ`;
+  return unit ? formatAmount(v, unit, DIGITS) : `${formatResidual(v, '', DIGITS, false)} λ`;
 }
 const symbolOf = (kind: number, param: string): string => (param === 'f0' ? 'f0' : param === 'zc' ? 'Zc' : VALUE_SYMBOL[kind]);
-/** A small number: plain to three digits, else in e-notation. */
-const small = (v: number): string => (v === 0 ? '0' : v >= 1e-3 ? formatAmount(v, '', 3) : v.toExponential(1).replace('-', '−'));
+/** A small number: plain to three digits, else in e-notation; a residual at rounding level the bound of plan.md D20. */
+const small = (v: number): string => (v === 0 ? '0' : belowFloor(v) ? formatResidual(v) : v >= 1e-3 ? formatAmount(v, '', 3) : v.toExponential(1).replace('-', '−'));
 /** A kind's name inside a sentence ("series C"). */
 const kindName = (k: number): string => `${KIND_NAMES[k][0].toLowerCase()}${KIND_NAMES[k].slice(1)}`;
 const sentence = (s: string): string => (s ? `${s[0].toUpperCase()}${s.slice(1)}${/[.!?]$/.test(s) ? '' : '.'}` : '');

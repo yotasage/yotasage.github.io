@@ -7,6 +7,9 @@ import Bibliography from '../../components/Bibliography';
 import HomeIcon from '../../components/icons/home';
 import { MoonIcon, SunIcon } from '../../components/Resistor/parts';
 import Chart from '../../components/Smith/Chart';
+import MathPanel, { MathLive } from '../../components/Smith/MathPanel';
+import type { Subject } from '../../components/Smith/mathRows';
+import { DIGIT_CHOICES, READOUT_DIGITS, setShownDigits } from '../../components/Smith/readout';
 import Nodes from '../../components/Smith/Nodes';
 import SolvePanel from '../../components/Smith/SolvePanel';
 import { Status } from '../../components/Smith/Status';
@@ -67,6 +70,8 @@ type Theme = 'light' | 'dark';
 const THEME_KEY = 'smith.theme';
 /** The value lists per kind (D17), values.ts's text form; the link's vl wins over it. */
 const LISTS_KEY = 'smith.lists';
+/** The digits setting (M5.1), read after mount. */
+const DIGITS_KEY = 'smith.digits';
 // What lies outside the tool's own element in the two themes (page background and the site footer of _app.tsx).
 /** Steps kept for undo, and the longest pause between a handle's arrow keys that still makes one step. */
 const HISTORY = 200;
@@ -186,6 +191,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     preview: (c: Circuit | null, shape?: CircleShape | null, base?: Circuit | null) => solveLayer.current?.setPreview(c, shape, base),
     lists: (next: ValueChoice) => setListsRef.current(next),
   }));
+  const [stableRead] = useState(() => (gr: number, gi: number) => mathLive.point(gr, gi));
   const setListsRef = useRef(setLists);
   setListsRef.current = setLists;
   const travel = (back: boolean) => {
@@ -214,6 +220,23 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   };
   const [snap, setSnap] = useState(true);
   const [drawKind, setDrawKind] = useState(-1);
+  // The digits setting (M5.1): readout.ts holds it for the frame loops, this state re-renders what shows it. Kept in
+  // localStorage, read after mount (the static page has the default).
+  const [digits, setDigitsState] = useState(READOUT_DIGITS);
+  const setDigits = (d: number) => {
+    setShownDigits(d);
+    setDigitsState(d);
+    try {
+      if (d === READOUT_DIGITS) window.localStorage.removeItem(DIGITS_KEY); else window.localStorage.setItem(DIGITS_KEY, String(d));
+    } catch { /* The setting still holds for this visit. */ }
+  };
+  useEffect(() => {
+    let d = NaN;
+    try { d = Number(window.localStorage.getItem(DIGITS_KEY)); } catch { /* Storage can be blocked. */ }
+    if (DIGIT_CHOICES.includes(d)) { setShownDigits(d); setDigitsState(d); }
+  }, []);
+  // The equation panel's lines with numbers, written outside React in the drag's and the readout's frames.
+  const [mathLive] = useState(() => new MathLive());
   const stopDraw = () => { path.current?.cancelDraw(); setDrawKind(-1); };
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
@@ -252,7 +275,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     layer.onCommit = commit;
     layer.onDraw = (i) => { setDrawKind(-1); if (i >= 0) selectPart(i); };
     // Scoped to the tool: a query over the whole document would walk the theory's MathML every drag frame.
-    layer.onLive = (c, i, half) => writeLive(tool.current ?? document, c, i, half);
+    layer.onLive = (c, i, half) => { writeLive(tool.current ?? document, c, i, half); mathLive.live(c); };
     (v.box as HTMLElement & { smithPath?: PathLayer }).smithPath = layer;
     path.current = layer;
     // The solver's circles, the goal's ring and the preview of a solution (M4.3b), under the path.
@@ -275,13 +298,17 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     <>
       <Strip circuit={circuit} onChange={commit} issues={issues} selected={part} onSelect={selectPart}
         revision={revision} drawKind={drawKind} onDraw={setDrawKind}
-        onHover={(i) => path.current?.hover(SEL_PART, i)} />
+        onHover={(i) => path.current?.hover(SEL_PART, i)} digits={digits} />
       <SolvePanel circuit={circuit} onChange={stable.commit} revision={revision} busy={stable.busy} onResult={stable.result}
         onPreview={stable.preview} lists={lists} onLists={stable.lists} />
       <Nodes circuit={circuit} selected={node} onSelect={(k) => setNodeSel(k === node ? -1 : k)}
-        onHover={(k) => path.current?.hover(SEL_NODE, k)} />
+        onHover={(k) => path.current?.hover(SEL_NODE, k)} digits={digits} />
     </>
   );
+  // The equation panel (M5.1) under the readout: the selected node, else the selected (or last) part, else the load.
+  // The same object while the selection stays, so the memoised panel skips the page's other renders.
+  const subject = useMemo<Subject>(() => (node >= 0 ? { t: 'node', k: node } : part >= 0 ? { t: 'part', i: part } : { t: 'node', k: 0 }), [node, part]);
+  const math = <MathPanel circuit={circuit} subject={subject} digits={digits} live={mathLive} />;
   // The same element while the theory's circuit stays, so the page's renders during a drag (a pick, a selection) skip
   // the sections and the reference list entirely.
   const sections = useMemo(() => (
@@ -422,7 +449,8 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
       <main>
         <Status />
         <div id="tool" ref={tool} className={`${styles.layout} ${theoryCss.tool}`}>
-          <Chart mode={mode} tools={modes} z0={circuit.z0} side={side} onView={onView} />
+          <Chart mode={mode} tools={modes} z0={circuit.z0} side={side} onView={onView} after={math}
+            onReadout={stableRead} digits={digits} onDigits={setDigits} />
         </div>
         {sections}
       </main>

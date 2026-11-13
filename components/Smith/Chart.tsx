@@ -2,7 +2,7 @@ import React, { ReactNode, useEffect, useLayoutEffect, useRef } from 'react';
 
 import styles from '../../styles/Smith.module.css';
 import { ChartView } from './chartView';
-import { READOUT_FIELDS, writeReadout } from './readout';
+import { DIGIT_CHOICES, READOUT_FIELDS, writeReadout } from './readout';
 import { Why } from './Why';
 
 export interface ChartProps {
@@ -15,6 +15,13 @@ export interface ChartProps {
   side?: ReactNode;
   /** Receives the controller once it exists (M3 adds its layers and handles through it). */
   onView?: (view: ChartView) => void;
+  /** The side panel's content below the readout (M5.1: the equation panel). */
+  after?: ReactNode;
+  /** The readout's point in each of its frames (NaN when there is none; M5.1: the equation panel follows it). */
+  onReadout?: (gr: number, gi: number) => void;
+  /** The digits setting (readout.ts shownDigits, already set by the page) and its change. */
+  digits?: number;
+  onDigits?: (digits: number) => void;
 }
 
 const LABELS: Record<(typeof READOUT_FIELDS)[number], string> = {
@@ -29,7 +36,7 @@ const HINTS: Partial<Record<(typeof READOUT_FIELDS)[number], string>> = {
  * top <svg>, the gesture hint, and the side panel with the readout (beside the chart on wide screens, below it on
  * phones). Everything that changes with the pointer is written by ChartView in its frame loop; React renders this once.
  */
-export default function Chart({ mode, z0 = 50, tools, side, onView }: ChartProps) {
+export default function Chart({ mode, z0 = 50, tools, side, onView, after, onReadout, digits, onDigits }: ChartProps) {
   const box = useRef<HTMLDivElement>(null);
   const gridSvg = useRef<SVGSVGElement>(null);
   const top = useRef<SVGSVGElement>(null);
@@ -38,6 +45,8 @@ export default function Chart({ mode, z0 = 50, tools, side, onView }: ChartProps
   const values = useRef<(HTMLElement | null)[]>([]);
   const view = useRef<ChartView | null>(null);
   const z0Ref = useRef(z0);
+  const readRef = useRef(onReadout);
+  readRef.current = onReadout;
 
   useLayoutEffect(() => {
     const v = new ChartView(box.current, gridSvg.current, top.current);
@@ -47,6 +56,7 @@ export default function Chart({ mode, z0 = 50, tools, side, onView }: ChartProps
     v.onReadout = (gr, gi) => {
       writeReadout(values.current, gr, gi, z0Ref.current);
       frame.current?.toggleAttribute('data-read', gr === gr);
+      readRef.current?.(gr, gi);
     };
     let shown = '';
     v.onFrame = () => {
@@ -63,7 +73,7 @@ export default function Chart({ mode, z0 = 50, tools, side, onView }: ChartProps
     z0Ref.current = z0;
     const v = view.current;
     if (v) v.onReadout?.(v.readX, v.readY);
-  }, [z0]);
+  }, [z0, digits]);
 
   return (
     <div className={styles.work} ref={frame}>
@@ -95,7 +105,18 @@ export default function Chart({ mode, z0 = 50, tools, side, onView }: ChartProps
       <aside className={styles.side}>
         {side}
         <section className={styles.panel} aria-labelledby="smith-readout">
-          <h2 className={styles.panelTitle} id="smith-readout">Readout <span className={styles.panelNote}>Z0 = {z0} Ω</span></h2>
+          <h2 className={styles.panelTitle} id="smith-readout">
+            <span>Readout</span>
+            {onDigits && (
+              <label className={styles.digits} title="Significant digits of the readout, the node table, the circuit input and the equations">
+                <span>Digits</span>
+                <select value={digits} data-digits="" onChange={(e) => onDigits(Number(e.currentTarget.value))}>
+                  {DIGIT_CHOICES.map((d) => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </label>
+            )}
+            <span className={styles.panelNote}>Z0 = {z0} Ω</span>
+          </h2>
           <dl className={styles.readout}>
             {READOUT_FIELDS.map((f, i) => f !== 'note' && (
               <div key={f} className={styles.readRow}>
@@ -107,6 +128,7 @@ export default function Chart({ mode, z0 = 50, tools, side, onView }: ChartProps
           <p className={styles.readNote} data-field="note" ref={(el) => { values.current[READOUT_FIELDS.indexOf('note')] = el; }} />
           <p className={styles.readEmpty}>Hover, tap or use the arrow keys on the chart to read a point.</p>
         </section>
+        {after}
       </aside>
     </div>
   );

@@ -7,9 +7,9 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 
-import { formatAmount } from '../../lib/quantity';
+import { belowFloor, formatResidual, formatReturnLoss } from '../../lib/quantity';
 import { gammaFromImpedance, magFromVswr, mismatchLoss, reflectedPower, deliveredPower, returnLoss, toDegrees } from '../../lib/smith/convert';
-import { EQUATION_BY_ID, Node, TexPiece, tex, valueTex } from '../../lib/smith/equations';
+import { EQUATION_BY_ID, TexPiece, substitutions, tex, valueTex } from '../../lib/smith/equations';
 import { partMobius } from '../../lib/smith/geometry';
 import {
   M_ANGLE, M_GI, M_GR, M_MAG, M_ML, M_Q, M_RL, M_VSWR, M_YI, M_YR, M_ZI, M_ZR, METRIC_STRIDE, applyPart, evaluateCircuit,
@@ -53,12 +53,15 @@ const TAU = 2 * Math.PI;
 const PHONE = '(max-width: 720px)';
 
 // The texts of live numbers: four significant digits with their zeros, as the readout and the node table.
-const num = (v: number): string => formatAmount(v, '', 4, true);
-const amt = (v: number, unit: string): string => formatAmount(v, unit, 4, true);
-const cx = (re: number, im: number, unit = ''): string => complexText(re, im, unit);
+// Rounding-level residuals as the bound of plan.md D20 (lib/quantity.ts formatResidual), never as 1e−17.
+const num = (v: number): string => formatResidual(v, '', 4);
+const amt = (v: number, unit: string): string => formatResidual(v, unit, 4);
+const cx = (re: number, im: number, unit = ''): string => complexText(re, im, unit, 4);
 const fin = (...v: number[]): boolean => v.every((n) => Number.isFinite(n));
 /** A live value for the TeX printer, or undefined (the symbol stays) when it is not a finite number. */
-const tv = (re: number, im = 0, unit = ''): TexPiece | undefined => (fin(re, im) ? valueTex(re, im, unit) : undefined);
+/** A value of TeX at rounding level (D20, lib/quantity.ts): a residual part under the floor is put in as 0. */
+const fl = (v: number): number => (belowFloor(v) ? 0 : v);
+const tv = (re: number, im = 0, unit = ''): TexPiece | undefined => (fin(re, im) ? valueTex(unit && unit !== 'dB' ? re : fl(re), unit && unit !== 'dB' ? im : fl(im), unit) : undefined);
 type Values = Readonly<Record<string, TexPiece | undefined>>;
 
 /** What a part's value is shown as: ohms, henries, farads, wavelengths at f0, or Zt for a λ/4 transformer. */
@@ -91,28 +94,6 @@ const omegaTex = (f0: number): TexPiece | undefined => {
   const f = tv(f0, 0, 'Hz');
   return f && { s: `2\\pi \\cdot ${f.s}`, p: 2, digit: true };
 };
-
-/**
- * The substitution lines of an equation whose left side is one symbol with a value (x = X/Z0 = −1/(ωCZ0)): each member
- * on the right with the values put in, one per line, then the left side's value; members without a symbol (nothing to
- * put in) and repeats are left out. Null when the left side is not a single symbol with a value.
- */
-const signed = (s: string): string => (s.startsWith('-') ? `{${s}}` : s);
-
-function substitutions(tree: Node, values: Values): { lhs: string; rhs: string; lines: string[] } | null {
-  if (tree.t !== 'eq' || tree.xs[0].t !== 'id') return null;
-  const result = values[tree.xs[0].v];
-  if (!result) return null;
-  const value = { value: (name: string) => values[name] };
-  const lines: string[] = [];
-  for (const x of tree.xs.slice(1)) {
-    const s = signed(tex(x, value));
-    if (s !== signed(tex(x)) && s !== lines[lines.length - 1]) lines.push(s);
-  }
-  const last = signed(result.s);
-  if (lines[lines.length - 1] !== last) lines.push(last);
-  return { lhs: tex(tree.xs[0]), rhs: tree.xs.slice(1).map((x) => signed(tex(x))).join(' = '), lines };
-}
 
 function Eq({ id, values, note }: { id: string; values?: Values; note?: string }) {
   const eq = EQUATION_BY_ID.get(id);
@@ -317,7 +298,7 @@ function Theory({ bib, circuit: c, outcome, lists }: Props) {
     return [
       ['|Γ|', L(`m-${key}-mag`, num(mag))],
       ['VSWR', L(`m-${key}-vswr`, num(s))],
-      ['Return loss', L(`m-${key}-rl`, amt(m(k, M_RL), 'dB'))],
+      ['Return loss', L(`m-${key}-rl`, formatReturnLoss(m(k, M_RL)))],
       ['Mismatch loss', L(`m-${key}-ml`, amt(m(k, M_ML), 'dB'))],
       ['Power reflected', <>{L(`m-${key}-ref`, num(reflectedPower(mag) * 100))} %</>],
       ['Power delivered', <>{L(`m-${key}-del`, num(deliveredPower(mag) * 100))} %</>],
