@@ -17,6 +17,8 @@ import { fileURLToPath } from 'node:url';
 
 import { chromium } from 'playwright-core';
 
+import { budgetFor, buildOf } from './timing.mjs';
+
 import * as importedState from '../../../lib/smith/state.ts';
 import * as importedNetwork from '../../../lib/smith/network.ts';
 import * as importedGeometry from '../../../lib/smith/geometry.ts';
@@ -224,6 +226,7 @@ function target(vs, c, v, off = 5, along = 0) {
 }
 
 const timesOut = [];
+let build = 'development';
 try {
   // ---------- mouse, 1280 px ----------
   const desk = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: 'light' });
@@ -450,6 +453,7 @@ try {
       lost: iv.reduce((a, t) => a + Math.max(0, Math.round(t / (1000 / 60)) - 1), 0), p50: q(ws, 0.5), p95: q(ws, 0.95), main: ((t1 - t0) * 1000) / res.stamps.length };
   }
   const pt = await open(desk);
+  build = await buildOf(pt);
   for (const rate of [1, 4]) timesOut.push(await timed(async () => {
     const runs = [], checks = [];
     for (let i = 0; i < 3; i++) runs.push(await timing(pt, rate));
@@ -459,10 +463,10 @@ try {
     checks.push([t.layerFrames > 0.8 * t.ticks, `CPU ${rate}×: the drag was drawn in ${t.layerFrames} of ${t.ticks} frames`]);
     checks.push([t.lost <= t.builds + (rate === 1 ? 0 : 1), `CPU ${rate}×: ${t.lost} frames lost while dragging (${t.builds} grid rebuilds)`]);
     checks.push([t.p95 <= (rate === 1 ? 1 : 4), `CPU ${rate}×: drag script p95 ${t.p95.toFixed(2)} ms`]);
-    // engine.md §9: 16 ms a frame at 4×, of which the chart 6 ms and the equation slice (not yet on the page) ~6 ms;
-    // the side panel and the readout take turns per frame (pathLayer.ts writeLive). With the theory on the page since
-    // the fix after M3.5b: 9.0–9.3 ms here, 7.3–8.7 ms on a page that ran nothing before (notes-M3.5-fix.md).
-    checks.push([rate === 1 || t.main <= 10, `CPU ${rate}×: main thread ${t.main.toFixed(2)} ms per drag frame`]);
+    // engine.md §9: the frame fits 16 ms at 4×; timing.mjs's guard below it is for a production build, × devFactor on
+    // a dev server (M9.3: 9.9–11.5 ms on production, 12.0–12.7 on a fresh dev server; notes-M9.3.md).
+    const lim = budgetFor(build, 'drag', rate).main;
+    checks.push([rate === 1 || t.main <= lim, `CPU ${rate}×: main thread ${t.main.toFixed(2)} ms per drag frame (${build} build, at most ${lim.toFixed(1)})`]);
     return { t, checks };
   }));
   const tc = (await linked(pt)).parts[2].value;
@@ -538,5 +542,6 @@ for (const t of timesOut) {
   console.log(`drag 2 s with 10 parts at CPU ${t.rate}× (headless): ${t.events} moves, ${t.ticks} frames, drawn in ${t.layerFrames}, ${t.lost} lost, ${t.builds} grid rebuilds; `
     + `drag script p50 ${t.p50.toFixed(3)} / p95 ${t.p95.toFixed(3)} ms; main thread ${t.main.toFixed(2)} ms per frame (runs ${t.allRuns}${t.attempts > 1 ? `; ${t.attempts} attempts` : ''})`);
 }
+console.log(`timed on a ${build} build`);
 console.log(`dragging: ${passed} of ${passed + failed} checks passed`);
 process.exitCode = failed ? 1 : 0;

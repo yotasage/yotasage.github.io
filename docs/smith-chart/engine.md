@@ -145,6 +145,20 @@ The owner does not read code; performance is never traded for readability.
   main thread. The solver: under 1 ms for the closed forms; the fallback search under 50 ms, else a
   worker (pattern: `lib/resistor/combine.worker.ts`). The page's script size is compared with the resistor page's and
   not exceeded without a reason noted.
+- **How the budgets are measured (M9.3, notes-M9.3.md):** on a **production build** (`npm run ui` in
+  `scripts/harness/smith`: `next build`, then `next start` on port 3021), what visitors run; on a dev server the
+  main-thread guards are × 1.1 (dev/production 1.07–1.08 for a drag, ~1.0 for a zoom). The guards below the 16 ms frame
+  (`timing.mjs` `BUDGET`): a 4× drag of the 10-part circuit ≤ 12 ms of main thread per frame (M9.3: 9.9–11.5 ms; 8.0–8.9
+  for the M3.5 page today: the page's growth since, ~2 ms, is M5's panels and M7.3–M8's report and export, each step
+  within its 0.5 ms A/B), a 4× zoom ≤ 7 ms (5.2–6.6 ms), at 1× no frame lost, at 4× at most one more than grid
+  rebuilds; the drag layer's script p95 ≤ 1 ms at 1× and ≤ 4 ms at 4×, the chart's script p50 ≤ 0.5 ms in a zoom. This
+  machine varies by ±1–1.5 ms per 4× frame between minutes (CPU load 4–12 % before each run), so a step is judged by
+  an interleaved A/B with `ui-perf.mjs` against the previous build, the absolute guards only catch drift.
+- **Script size (M9.3, `size.mjs`):** first load of /smith-chart/main ≤ 430 kB gzip (M9.3: 423.1 kB, 1,318 kB raw;
+  the resistor page 278.6 kB with the same KaTeX and app chunks), chunks loaded later (the workers) ≤ 45 kB gzip
+  (36.3 kB).
+- **Memory (M9.3, `ui-memory.mjs`):** a 10-minute session of drags, zooms and undos must not grow the heap after GC
+  beyond max(2 MB, 10 %), nor the DOM nodes, listeners or detached DOM nodes beyond a few.
 - **Zooming at 4× (BL51, after M3.2):** script is < 0.5 ms a frame; the cost is Chromium's Layerize, run on every
   frame of the grid's stretch and ~8 µs per hinted turned label, so turned labels use `geometricPrecision` (3.7–4.3 ms
   a frame, was 5.3–6.3). Grid rebuilds (~32 ms at 4×, 5 per 2 s zoom) each drop a frame; a hidden page

@@ -77,7 +77,9 @@ async function open(context, c = null, hash = '', extra = '') {
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
   page.on('console', (msg) => { if (msg.type() === 'error') page.errors.push(msg.text()); });
-  await page.goto(`${base}/smith-chart/main${c ? `?${S.encodeCircuit(c)}${extra}` : ''}${hash}`, { waitUntil: 'networkidle' });
+  // 'load', not 'networkidle' (M9.3): on a production build the suggestion worker's script request of a challenge
+  // link never reports as finished to Playwright, so the network never idles; the link's v=1 below waits for hydration.
+  await page.goto(`${base}/smith-chart/main${c ? `?${S.encodeCircuit(c)}${extra}` : ''}${hash}`, { waitUntil: 'load' });
   await page.waitForSelector('[data-theory]');
   await page.waitForFunction(() => window.location.search.includes('v=1'));
   await frame(page);

@@ -482,7 +482,9 @@ try {
       await load(p, BASE);
       await setSnap(p, false);
       await arm(p, s.kind);
-      await p.evaluate(() => window.scrollTo(0, 0));
+      // BL65 (M9.3): the chart in the middle of the screen, so the drag's end stays in the viewport whatever the text
+      // above the chart (a longer status note moved it below the screen at 320 px).
+      await p.evaluate(() => document.querySelector('[data-chart]').scrollIntoView({ block: 'center', behavior: 'instant' }));
       await frame(p);
       const ca = appended(BASE, s.kind), vs = await viewState(p), h = client(vs, engine(BASE).gamma[1]);
       const from = [Math.round(h[0]) + 2, Math.round(h[1]) - 1];

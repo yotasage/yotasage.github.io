@@ -14,6 +14,8 @@ import { fileURLToPath } from 'node:url';
 
 import { chromium } from 'playwright-core';
 
+import { budgetFor, buildOf } from './timing.mjs';
+
 import * as importedConvert from '../../../lib/smith/convert.ts';
 
 const cv = importedConvert.default ?? importedConvert;
@@ -292,6 +294,7 @@ async function timed(measure) {
 }
 // On a fresh page (the one above has run 300 checks in dev mode), three runs at each rate; the median run counts.
 const pt = await open(light);
+const build = await buildOf(pt);
 const times = [];
 for (const rate of [1, 4]) times.push(await timed(async () => {
   const runs = [], checks = [];
@@ -307,7 +310,9 @@ for (const rate of [1, 4]) times.push(await timed(async () => {
   else checks.push([t.lost <= t.builds + 1, `CPU ${rate}×: ${t.lost} frames lost with ${t.builds} grid rebuilds`]);
   // engine.md §9 splits the 4× frame as chart ≤ 6 ms (3.7–4.3 here with the start circuit since the fix of BL51:
   // notes-M3.2.md, "Fix after M3.2"); dropped frames are checked above.
-  checks.push([rate === 1 || t.mainPerFrame <= 6, `CPU ${rate}×: main thread ${t.mainPerFrame.toFixed(2)} ms per frame`]);
+  // M9.3: 5.2–6.6 ms on production; timing.mjs's guard, × devFactor on a dev server (notes-M9.3.md).
+  const lim = budgetFor(build, 'zoom', rate).main;
+  checks.push([rate === 1 || t.mainPerFrame <= lim, `CPU ${rate}×: main thread ${t.mainPerFrame.toFixed(2)} ms per frame (${build} build, at most ${lim.toFixed(1)})`]);
   return { t, checks };
 }));
 ok(pt.errors.length === 0, `no errors while zooming: ${pt.errors.join(' | ')}`);

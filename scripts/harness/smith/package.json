@@ -5,7 +5,11 @@
   "type": "module",
   "scripts": {
     "check": "tsx check.mjs",
-    "ui": "node ui.mjs"
+    "ui": "node ui.mjs --prod",
+    "ui:dev": "node ui.mjs",
+    "perf": "tsx ui-perf.mjs",
+    "memory": "tsx ui-memory.mjs",
+    "size": "node size.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.50.0",

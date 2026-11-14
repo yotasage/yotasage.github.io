@@ -9,7 +9,9 @@
 // the circuit, the sweep or the solve changes; the circuit changes on a commit only, never in a drag's frames, and a
 // build asked for during a drag waits for its release. "Current view" follows the chart's view while the section is on
 // screen by reading five numbers every POLL_MS and building when the view has stood still for one tick. The options
-// are kept in localStorage (`smith.export`, read after mount) and in the project file.
+// are kept in localStorage (`smith.export`, read after mount) and in the project file. Away from the screen the built
+// preview is skipped (`content-visibility: hidden`; its frame keeps its size): left in the page it cost a 4× drag frame
+// 0.9 ms of paint and Layerize on a production build (M9.3, ui-export's A/B).
 //
 // M8.3b: the data files (CSV of the nodes, the trace or the markers in the page's digits or every digit; Touchstone
 // .s1p of S11 over the sweep), the project file (save; open from a file picker here, or by a drop anywhere on the
@@ -658,7 +660,7 @@ function ExportPanel({ circuit, sweep, outcome, chart, busy, search, lists, digi
               style={info ? { width: fitted ? `${room}px` : `${info.width}mm`, height: fitted ? `${(room * info.height) / info.width}px` : `${info.height}mm` } : undefined}>
               <div ref={preview} className={css.preview} data-export-preview="" role="img"
                 aria-label={info ? `Preview of the figure, ${mmText(info.width)} wide` : 'Preview of the figure'}
-                style={fitted ? { transform: `scale(${scale})` } : undefined} />
+                style={fitted || !visible ? { transform: fitted ? `scale(${scale})` : undefined, contentVisibility: visible ? undefined : 'hidden' } : undefined} />
             </div>
           </div>
         </div>

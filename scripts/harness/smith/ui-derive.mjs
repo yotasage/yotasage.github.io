@@ -340,7 +340,9 @@ try {
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !document.querySelector('dialog[data-derive]').open);
     ok(await page.evaluate(() => document.activeElement?.getAttribute('data-math-eq') === 'line-zin'), 'keys: Escape closes it and the focus is back on the row');
-    ok(await page.evaluate(() => document.querySelectorAll('#tool [data-lit]').length === 0), 'keys: nothing stays lit');
+    // Cleared by the close's effects, a frame or so after the dialog closes (on a production build the check came first
+    // now and then, M9.3): it must be gone within a second.
+    ok(await page.waitForFunction(() => document.querySelectorAll('#tool [data-lit]').length === 0, null, { timeout: 1000 }).then(() => true, () => false), 'keys: nothing stays lit');
     ok(page.errors.length === 0, () => `keys: no errors (${page.errors.join(' | ')})`);
     await page.close();
   }

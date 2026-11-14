@@ -72,7 +72,9 @@ async function open(context, search = '') {
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
   page.on('console', (m) => { if (m.type() === 'error') page.errors.push(m.text()); });
-  await page.goto(`${base}/smith-chart/main${search ? `?${search}` : ''}`, { waitUntil: 'networkidle' });
+  // 'load', not 'networkidle' (M9.3): on a production build the suggestion worker's script request of a challenge
+  // link never reports as finished to Playwright, so the network never idles; the link's v=1 below waits for hydration.
+  await page.goto(`${base}/smith-chart/main${search ? `?${search}` : ''}`, { waitUntil: 'load' });
   await page.waitForSelector('[data-chart]');
   await page.waitForFunction(() => window.location.search.includes('v=1'));
   await frame(page);
@@ -216,7 +218,7 @@ try {
     prog = await progress(p);
     ok(prog.two.solved === 1 && prog.two.fewest === win.parts.length && prog.two.tried === 3, () => `two: solved once with ${win.parts.length} parts (${JSON.stringify(prog.two)})`);
     // The progress after a reload, on the page.
-    await p.reload({ waitUntil: 'networkidle' });
+    await p.reload({ waitUntil: 'load' });
     await p.waitForSelector('[data-progress="two"]');
     await frame(p);
     const shown = await text(p, '[data-progress="two"]');
