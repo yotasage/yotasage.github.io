@@ -113,6 +113,15 @@ export const WHYS: Readonly<Record<string, Why>> = {
   // M7.3: the report and its printed link.
   report: w('the report', 'how-to-use', 'The circuit and its figures at f0 and across the band, to print or keep.'),
   'report-link': w('the link', 'how-to-use', 'Opens this circuit, band, markers and limit again, as printed here.'),
+  // M8.3a: the figure export.
+  export: w('the export', 'how-to-use', 'The chart as a figure for a report, made on this device.'),
+  'export-area': w('what is shown', 'how-to-use', 'The whole chart, or the window the chart shows now, zoom included.'),
+  'export-size': w('the width', 'how-to-use', 'The width on paper; grid lines thin out so they stay apart.'),
+  'export-detail': w('the detail', 'how-to-use', 'What is drawn: a preset, or each item on its own.'),
+  'export-colour': w('the colour mode', 'how-to-use', 'Greyscale and black and white tell lines apart by dashes and marks.'),
+  'export-preview': w('the preview', 'how-to-use', 'At its size in CSS millimetres, text at its point size.'),
+  'export-tikz': w('TikZ', 'how-to-use', 'Plain TikZ: paste the picture, or compile the standalone document.'),
+  'export-image': w('SVG and PNG', 'how-to-use', 'SVG keeps the vectors; PNG is pixels at 96 dpi times the scale.'),
 };
 
 /** The key of a value field's line by its form (state.ts FormId). */

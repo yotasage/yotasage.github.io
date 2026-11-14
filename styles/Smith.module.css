@@ -997,6 +997,8 @@
 /* ---- undo and redo, the draw tool, keyboard handles (M3.3b) ---- */
 
 .history { display: inline-flex; gap: 6px; }
+/* M8.3a: the toolbar's link to the Export section, drawn as its buttons. */
+.root .toolLink { display: inline-flex; align-items: center; text-decoration: none; }
 
 .chart[data-draw-armed] { cursor: crosshair; }
 .chart[data-draw-armed][data-handle-hot] { cursor: grab; }

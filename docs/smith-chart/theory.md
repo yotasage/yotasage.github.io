@@ -497,6 +497,14 @@ At most about 12 words, after the control or under the readout row, followed by 
 | Marker table (`sweep-table`) | Each marker's input point at its frequency, in the digits you chose. | `reading-a-trace` |
 | Report (`report`) | The circuit and its figures at f0 and across the band, to print or keep. | `how-to-use` |
 | The report's link (`report-link`) | Opens this circuit, band, markers and limit again, as printed here. | `how-to-use` |
+| Export (`export`, M8.3a) | The chart as a figure for a report, made on this device. | `how-to-use` |
+| What is shown (`export-area`) | The whole chart, or the window the chart shows now, zoom included. | `how-to-use` |
+| Width (`export-size`) | The width on paper; grid lines thin out so they stay apart. | `how-to-use` |
+| Detail (`export-detail`) | What is drawn: a preset, or each item on its own. | `how-to-use` |
+| Colour mode (`export-colour`) | Greyscale and black and white tell lines apart by dashes and marks. | `how-to-use` |
+| Preview (`export-preview`) | At its size in CSS millimetres, text at its point size. | `how-to-use` |
+| TikZ (`export-tikz`) | Plain TikZ: paste the picture, or compile the standalone document. | `how-to-use` |
+| SVG and PNG (`export-image`) | SVG keeps the vectors; PNG is pixels at 96 dpi times the scale. | `how-to-use` |
 
 Facts in the short lines repeat claims of the topics they link to (Series L: claims 48, 56; Line: 61, 84; stubs: 95,
 97; λ/4: 89, 91; Z/Y/ZY: 38; VSWR: 101, 102; return loss: 104, 105; goal: 110, 14; the solver's lines: claims.md);

@@ -274,6 +274,19 @@ checked in notes-M7.4a.md "Checks" (and by ui-theory once on the page). New regi
 **Count:** 45 claims (237–281): 3 sourced or partly sourced (241, 244, 247), 33 derived, 2 definitions (264, 275),
 7 describing the tool (239, 240, 265, 277, 280, 281, and 242 with its derivation). All: 281 claims.
 
+## The figure export (M8.3a)
+
+282 T: the Export section draws the chart as a figure from one model (figure.ts) for the preview, the SVG, the PNG and the
+TikZ; the model equals the chart on the screen in the same view (grid circles, the path's arcs, the nodes, to 1e-9 of the
+radius), the preview's frame is the chosen width in CSS mm, and the saved and copied files equal the model's writers
+(ExportPanel.tsx; ui-export.mjs). Greyscale and black and white tell roles apart by dash, width and mark (check-figure.mjs,
+notes-M8.1a.md); grid lines keep a least distance in mm on paper, so a narrower figure has fewer (notes-M8.1a.md).
+
+283 T: the files are made on the device (a Blob and a download link) and nothing is sent; the PNG is the same SVG drawn on a
+canvas of the figure's mm at 96 px per inch times the chosen factor (ui-export.mjs reads its size at 1×, 2× and 8×).
+
+**Count:** 2 claims (282, 283), describing the tool. All: 283 claims.
+
 ## Sentences the page added (M3.5b, M3.5c)
 
 | Where | Sentence | Kind |
@@ -372,6 +385,14 @@ Each repeats claims of the topic it links to; the tool's own behaviour is T. Key
 | sweep-table | Each marker's input point at its frequency, in the digits you chose. | T 235 |
 | report | The circuit and its figures at f0 and across the band, to print or keep. | T 236 |
 | report-link | Opens this circuit, band, markers and limit again, as printed here. | T 236 |
+| export | The chart as a figure for a report, made on this device. | T 282, 283 |
+| export-area | The whole chart, or the window the chart shows now, zoom included. | T 282 |
+| export-size | The width on paper; grid lines thin out so they stay apart. | T 282 |
+| export-detail | What is drawn: a preset, or each item on its own. | T 282 |
+| export-colour | Greyscale and black and white tell lines apart by dashes and marks. | T 282 |
+| export-preview | At its size in CSS millimetres, text at its point size. | T 282 (CSS: 1 mm = 96/25.4 px) |
+| export-tikz | Plain TikZ: paste the picture, or compile the standalone document. | T 282 (check-tikz.mjs compiles both) |
+| export-image | SVG keeps the vectors; PNG is pixels at 96 dpi times the scale. | T 283 |
 
 ## Deliberately left out (not sourced)
 

@@ -8,6 +8,7 @@ import HomeIcon from '../../components/icons/home';
 import { MoonIcon, SunIcon } from '../../components/Resistor/parts';
 import Chart from '../../components/Smith/Chart';
 import Derivation from '../../components/Smith/Derivation';
+import ExportPanel from '../../components/Smith/ExportPanel';
 import { ChallengePanel, NO_PROGRESS, PROGRESS_KEY, addProgress, readProgress } from '../../components/Smith/Challenge';
 import type { Progress, ProgressEvent } from '../../components/Smith/Challenge';
 import { Guide, LearnSection } from '../../components/Smith/Learn';
@@ -586,6 +587,9 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
             : 'Back to the start circuit (Z0 = 50 Ω, load 25 + j25 Ω, f0 = 100 MHz, two parts); Undo brings this circuit back'}>Start over</button>
         <Why k="history" />
       </span>
+      {/* Not while the draw tool is armed: its button takes this place, so the toolbar keeps its rows and the chart does
+          not move under the pointer. */}
+      {!noRead && drawKind < 0 && <a className={`${styles.button} ${styles.toolLink}`} href="#export" data-export-link="" title="The chart as a figure: TikZ for LaTeX, SVG or PNG">Export</a>}
       {drawKind >= 0 && (
         <button type="button" className={`${styles.button} ${styles.toggle}`} aria-pressed="true" data-draw-stop="" onClick={stopDraw}
           title="Drag from the input (In) on the chart to add the part at the source end; this button or Escape stops">Drawing {KIND_SHORT[drawKind]} ×</button>
@@ -681,6 +685,9 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
         </div>
         {/* M7.3: outside #tool, so a drag's live writes (scoped to #tool) never walk it; off screen it is not laid out. */}
         {!noRead && <Report circuit={circuit} sweep={sweep} digits={digits} search={search} layer={getTrace} chart={getChart} />}
+        {/* M8.3a: the figure export; reached from the toolbar's Export link (the nav keeps its four tabs). Builds nothing
+            until it is near the screen, never in a drag. Not in a "read this point" challenge (it would show the answer). */}
+        {!noRead && <ExportPanel circuit={circuit} sweep={sweep} outcome={outcome} chart={getChart} busy={stable.busy} />}
         <LearnSection open={guide?.id ?? ''} onLoad={stable.load} challenges={challengesProps} maker={makerProps} />
         {sections}
       </main>
