@@ -169,7 +169,7 @@ function Report({ circuit, sweep, digits, search, layer, chart }: ReportProps) {
   const link = `${where}?${search}`;
 
   return (
-    <section className={rc.report} aria-labelledby="smith-report" data-report="">
+    <section className={rc.report} aria-label="Report" data-report="">
       <h2 className={`${styles.panelTitle} ${rc.title}`} id="smith-report">
         <span className={rc.head}><span className={rc.screen}>Report</span><span className={rc.print}>Smith chart report</span> <Why k="report" /></span>
         <span className={rc.print} ref={stamp} data-report-stamp="" />

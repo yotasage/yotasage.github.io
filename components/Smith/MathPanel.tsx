@@ -340,7 +340,7 @@ function MathPanel({ circuit, subject: selected, digits, live }: MathPanelProps)
           onClick={(e) => { if (!(e.target as Element).closest('button')) mathLink.point('pin', tokensAt(e.target)); }}>
           {rows.map((r, j) => (
             <li key={`${key}:${j}`} className={css.row} data-math-eq={r.id} data-math-t={r.target} tabIndex={0}
-              aria-describedby="smith-math-keys" onKeyDown={onKey(j)}
+              aria-label={r.title} aria-describedby="smith-math-keys" onKeyDown={onKey(j)}
               onFocus={(e) => { if (e.target === e.currentTarget) { stop.current = -1; mathLink.point('focus', r.target); } }}
               onBlur={(e) => { if (e.target === e.currentTarget) mathLink.point('focus', ''); }}>
               <div className={css.grid}>

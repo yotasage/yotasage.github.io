@@ -113,8 +113,8 @@ const NONE_FIXED: readonly boolean[] = [];
 const LESSON_WHY = 'locked by the lesson’s link (Leave the lesson unlocks it).';
 const CHALLENGE_WHY = 'fixed by the challenge (Close it to change).';
 
-const LIGHT = { bg: '#f6f4ee', rule: '#e3dfd5', quiet: '#736f67', link: '#55524b', ink: '#1d1c19' };
-const DARK = { bg: '#2b2b2b', rule: '#3a3a38', quiet: '#8f8c83', link: '#b7b4ab', ink: '#edebe5' };
+const LIGHT = { bg: '#f6f4ee', rule: '#e3dfd5', quiet: '#6c6861', link: '#55524b', ink: '#1d1c19' };
+const DARK = { bg: '#2b2b2b', rule: '#3a3a38', quiet: '#a6a49c', link: '#b7b4ab', ink: '#edebe5' };
 
 export default function SmithChart({ references }: { references: BibEntry[] }) {
   // One list of sources for the whole page, numbered by first citation (components/Bibliography.tsx).
@@ -601,12 +601,12 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   const theorySweep = useDeferredValue(noRead ? null : sweep);
   const sections = useMemo(() => (
     <div className={theoryCss.sections}>
-      <section id="theory" className={theoryCss.section} aria-labelledby="theory-title">
+      <section id="theory" className={theoryCss.section} aria-label="Theory">
         <h2 className={theoryCss.sectionHead} id="theory-title">Theory</h2>
         <Theory bib={bib} circuit={noRead ? START : theoryCircuit} outcome={theoryOutcome} lists={lists} sweep={theorySweep} layer={getTrace} />
       </section>
       {/* After the last citation: the list is numbered while the page above it is drawn. */}
-      <section id="references" className={theoryCss.section} aria-labelledby="references-title">
+      <section id="references" className={theoryCss.section} aria-label="References">
         <h2 className={theoryCss.sectionHead} id="references-title">References</h2>
         <div className={theoryCss.refs} data-references="">
           <p className={theoryCss.lead}>The sources of the theory on this page, in the order they are first cited.</p>

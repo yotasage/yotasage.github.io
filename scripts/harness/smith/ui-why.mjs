@@ -176,6 +176,9 @@ try {
   for (const k of chKeys) followAll.push([-4, k]);
   for (const [i, k] of followAll) {
     const p = i === -1 ? pf : i === -2 ? ps : i === -3 ? pg : i === -4 ? pc : page0;
+    // M9.1: a page behind the context's newest gets no animation frames in this Edge, and Playwright's "stable" wait
+    // (scrollIntoViewIfNeeded, click) then never ends: the page in use is brought to the front.
+    await p.bringToFront();
     if (i >= 0 && await p.getAttribute(`[data-tile="${i}"]`, 'aria-pressed') !== 'true') { await p.click(`[data-tile="${i}"]`); await frame(p); }
     done.add(k);
     const sel = `button[data-why="${k}"]`;

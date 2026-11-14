@@ -9,13 +9,14 @@ Part of [plan.md](plan.md). Completes M2. `/smith-chart/main` is in the site's f
 | `--bg` page | `#f6f4ee` | `#2b2b2b` (the site's dark) |
 | `--field` panels, chart (`--chart-bg`) | `#fffefb` | `#313130` |
 | `--raise` hover | `#ece9e0` | `#3a3a38` |
-| `--ink` / `--ink-2` / `--ink-3` | `#1d1c19` / `#55524b` / `#736f67` | `#edebe5` / `#bdbab1` / `#9a978e` |
+| `--ink` / `--ink-2` / `--ink-3` | `#1d1c19` / `#55524b` / `#6c6861` (M9.1; was `#736f67`) | `#edebe5` / `#bdbab1` / `#a6a49c` (M9.1; was `#9a978e`) |
 | `--rule` / `--rule-strong` | `#e3dfd5` / `#cbc6ba` | `#3d3d3a` / `#54544f` |
+| `--edge` form-field edges (M9.1) | `#968b73` | `#7b7b73` |
 | `--accent` (Y grid, read marker, focus) | `#0b6a5f` | `#72d1c0` |
 | `--warn` (readout note) | `#8a4b08` | `#f0b26b` |
-| grid Z major / minor | ink at 0.44 / 0.14 | ink at 0.42 / 0.13 |
-| grid Y major / minor | accent at 0.55 / 0.18 | accent at 0.52 / 0.17 |
-| `--part-1…8` (M3) | `#1971c2` `#d9480f` `#c2255c` `#2b8a3e` `#7048e8` `#9c7a00` `#0c8599` `#c92a2a` | `#74c0fc` `#ffa94d` `#f783ac` `#8ce99a` `#b197fc` `#ffd43b` `#66d9e8` `#ff8787` |
+| grid Z major / minor | ink at 0.48 (M9.1; was 0.44) / 0.14 | ink at 0.42 / 0.13 |
+| grid Y major / minor | accent at 0.65 (M9.1; was 0.55) / 0.18 | accent at 0.52 / 0.17 |
+| `--part-1…8` (M3) | `#186ab7` `#ba3e0d` `#c2255c` `#257736` `#7048e8` `#816500` `#0a7384` `#c72a2a` (M9.1, darker for 4.5:1) | `#74c0fc` `#ffa94d` `#f783ac` `#8ce99a` `#b197fc` `#ffd43b` `#66d9e8` `#ff8787` |
 
 Part colours: blue, orange, raspberry, green, violet, ochre, cyan, red, in the order parts take them (neighbours
 differ most). Cyan (7) is near the Y grid's teal: M3 should draw arcs at 2 px over the 1 px grid. Outside `.root`

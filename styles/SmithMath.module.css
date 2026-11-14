@@ -31,7 +31,7 @@
   background: none;
   color: var(--ink-2);
   font: inherit;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   cursor: pointer;
 }
 
@@ -40,7 +40,7 @@
 .follow button[aria-pressed='true'] { background: var(--accent-soft); color: var(--accent); font-weight: 650; }
 .follow button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
-.empty { display: none; margin: 10px 0 0; font-size: 13px; color: var(--ink-3); }
+.empty { display: none; margin: 10px 0 0; font-size: 0.8125rem; color: var(--ink-3); }
 [data-empty] .empty { display: block; }
 [data-empty] .live { display: none; }
 
@@ -70,7 +70,7 @@
   overflow-x: auto;
   overflow-y: hidden;
   row-gap: 6px;
-  font-size: 15px;
+  font-size: 0.9375rem;
   line-height: 1.4;
   color: var(--ink);
 }
@@ -78,19 +78,19 @@
 .grid math { math-style: normal; }
 .lhs { justify-self: end; }
 .live { display: contents; }
-.line { grid-column: 2; color: var(--ink-2); font-size: 14px; white-space: nowrap; }
+.line { grid-column: 2; color: var(--ink-2); font-size: 0.875rem; white-space: nowrap; }
 .result { color: var(--ink); }
 
 .raw {
   grid-column: 2;
   font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.5;
   color: var(--ink-3);
 }
 
-.title { display: block; color: var(--ink-3); font-size: 12px; line-height: 1.4; }
+.title { display: block; color: var(--ink-3); font-size: 0.75rem; line-height: 1.4; }
 
 /* The chart's colours: the eight part colours and the readout's point. */
 .p1 { color: var(--part-1); }
@@ -114,7 +114,7 @@
 /* Wider than the panel: it scrolls sideways and takes a Tab stop (components/Smith/wide.ts). */
 .grid[data-wide]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 2px; }
 .row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
-.keys { margin: 8px 0 0; font-size: 12px; line-height: 1.4; color: var(--ink-3); }
+.keys { margin: 8px 0 0; font-size: 0.75rem; line-height: 1.4; color: var(--ink-3); }
 
 .rows .back {
   display: inline-block;
@@ -126,7 +126,7 @@
   background: var(--accent-soft);
   color: var(--accent);
   font: inherit;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   font-weight: 650;
   cursor: pointer;
 }
@@ -143,7 +143,7 @@
   background: var(--accent-soft);
   color: var(--accent);
   font: inherit;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 650;
   cursor: pointer;
 }

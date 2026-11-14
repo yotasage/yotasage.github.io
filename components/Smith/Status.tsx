@@ -22,7 +22,9 @@ export const STATUS_CHECKED =
 export const STATUS_ASSUMES = 'It assumes ideal parts, lossless lines and a real Z0; the values are worked out at f0, and a sweep ' +
   'evaluates the same ideal parts at each frequency.';
 export const STATUS_COMING =
-  'Every planned feature is in; polish comes next.';
+  'Every planned feature is in. Every task works by keyboard alone, every control has a name for screen readers, text ' +
+  'and lines meet WCAG AA contrast in both themes, and the page follows reduced motion and twice the text size; checks ' +
+  'in other browsers, by touch and of speed come next.';
 
 export function Status() {
   return (

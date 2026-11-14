@@ -8,33 +8,34 @@
   --raise: #ece9e0;
   --ink: #1d1c19;
   --ink-2: #55524b;
-  --ink-3: #736f67;
+  --ink-3: #6c6861;
   --rule: #e3dfd5;
   --rule-strong: #cbc6ba;
+  --edge: #968b73;
   --accent: #0b6a5f;
   --accent-soft: rgba(11, 106, 95, 0.1);
   --warn: #8a4b08;
 
   --chart-bg: var(--field);
   --grid-axis: #6e6a61;
-  --grid-z-major: rgba(29, 28, 25, 0.44);
+  --grid-z-major: rgba(29, 28, 25, 0.48);
   --grid-z-minor: rgba(29, 28, 25, 0.14);
-  --grid-y-major: rgba(11, 106, 95, 0.55);
+  --grid-y-major: rgba(11, 106, 95, 0.65);
   --grid-y-minor: rgba(11, 106, 95, 0.18);
-  --grid-scale: #9a958a;
+  --grid-scale: #979287;
   --grid-label: #4a4741;
   --grid-y-ink: #0b6a5f;
-  --grid-scale-ink: #7a766d;
+  --grid-scale-ink: #6c6860;
 
   /* Part colours for M3 (arcs, strip, equations), in the order parts take them. */
-  --part-1: #1971c2;
-  --part-2: #d9480f;
+  --part-1: #186ab7;
+  --part-2: #ba3e0d;
   --part-3: #c2255c;
-  --part-4: #2b8a3e;
+  --part-4: #257736;
   --part-5: #7048e8;
-  --part-6: #9c7a00;
-  --part-7: #0c8599;
-  --part-8: #c92a2a;
+  --part-6: #816500;
+  --part-7: #0a7384;
+  --part-8: #c72a2a;
 
   --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-num: ui-monospace, 'Cascadia Mono', 'Cascadia Code', 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
@@ -50,7 +51,7 @@
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-ui);
-  font-size: 15px;
+  font-size: 0.9375rem;
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
@@ -63,9 +64,10 @@
     --raise: #3a3a38;
     --ink: #edebe5;
     --ink-2: #bdbab1;
-    --ink-3: #9a978e;
+    --ink-3: #a6a49c;
     --rule: #3d3d3a;
     --rule-strong: #54544f;
+    --edge: #7b7b73;
     --accent: #72d1c0;
     --accent-soft: rgba(114, 209, 192, 0.13);
     --warn: #f0b26b;
@@ -74,10 +76,10 @@
     --grid-z-minor: rgba(237, 235, 229, 0.13);
     --grid-y-major: rgba(114, 209, 192, 0.52);
     --grid-y-minor: rgba(114, 209, 192, 0.17);
-    --grid-scale: #77746c;
+    --grid-scale: #7e7b72;
     --grid-label: #cfccc3;
     --grid-y-ink: #72d1c0;
-    --grid-scale-ink: #9a978e;
+    --grid-scale-ink: #a6a49c;
     --part-1: #74c0fc;
     --part-2: #ffa94d;
     --part-3: #f783ac;
@@ -96,9 +98,10 @@
   --raise: #3a3a38;
   --ink: #edebe5;
   --ink-2: #bdbab1;
-  --ink-3: #9a978e;
+  --ink-3: #a6a49c;
   --rule: #3d3d3a;
   --rule-strong: #54544f;
+    --edge: #7b7b73;
   --accent: #72d1c0;
   --accent-soft: rgba(114, 209, 192, 0.13);
   --warn: #f0b26b;
@@ -107,10 +110,10 @@
   --grid-z-minor: rgba(237, 235, 229, 0.13);
   --grid-y-major: rgba(114, 209, 192, 0.52);
   --grid-y-minor: rgba(114, 209, 192, 0.17);
-  --grid-scale: #77746c;
+  --grid-scale: #7e7b72;
   --grid-label: #cfccc3;
   --grid-y-ink: #72d1c0;
-  --grid-scale-ink: #9a978e;
+  --grid-scale-ink: #a6a49c;
   --part-1: #74c0fc;
   --part-2: #ffa94d;
   --part-3: #f783ac;
@@ -136,6 +139,18 @@
 .root :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* M9.1: with reduced motion nothing moves by itself: no transitions (hover and toggle fades, the chevrons' turns), no
+   highlight animations (a #link's topic or reference); the Explain marker's run is skipped in pathLayer.trace. */
+@media (prefers-reduced-motion: reduce) {
+  .root *,
+  .root *::before,
+  .root *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ---- the bar ---- */
@@ -176,7 +191,7 @@
 
 .title {
   margin: 0;
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 650;
   letter-spacing: -0.005em;
   white-space: nowrap;
@@ -243,7 +258,7 @@
   border-radius: var(--radius);
   background: var(--accent-soft);
   color: var(--ink-2);
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
@@ -293,7 +308,7 @@
   gap: 8px 12px;
   min-height: 34px;
   margin-bottom: 10px;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .toolSpace { flex: 1; }
@@ -353,7 +368,7 @@
   text-align: right;
   font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--ink-2);
 }
 
@@ -392,7 +407,7 @@
 
 .hint {
   margin: 8px 2px 0;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--ink-3);
 }
 
@@ -422,7 +437,7 @@
   margin: 0;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--rule-strong);
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 650;
   letter-spacing: 0.02em;
   color: var(--ink-2);
@@ -431,7 +446,7 @@
 .panelNote {
   font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 400;
   letter-spacing: 0;
   color: var(--ink-3);
@@ -442,7 +457,7 @@
   grid-template-columns: minmax(0, 1fr);
   gap: 0 28px;
   margin: 0;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .readRow {
@@ -461,17 +476,17 @@
   margin: 0;
   font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
-  font-size: 13.5px;
+  font-size: 0.84375rem;
   color: var(--ink);
   text-align: right;
   overflow-wrap: anywhere;
 }
 
-.readHint { color: var(--ink-3); font-size: 12px; }
+.readHint { color: var(--ink-3); font-size: 0.75rem; }
 
 .readNote {
   margin: 10px 0 0;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--warn);
 }
 
@@ -479,7 +494,7 @@
 
 .readEmpty {
   margin: 10px 0 0;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--ink-3);
 }
 
@@ -596,7 +611,7 @@
   flex-direction: column;
   gap: 3px;
   min-width: 0;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--ink-2);
 }
 
@@ -605,11 +620,11 @@
 .input {
   width: 100%;
   min-width: 0;
-  font: 13.5px var(--font-num);
+  font: 0.84375rem var(--font-num);
   font-variant-numeric: tabular-nums;
   color: var(--ink);
   background: var(--field);
-  border: 1px solid var(--rule-strong);
+  border: 1px solid var(--edge);
   border-radius: 7px;
   padding: 5px 8px;
 }
@@ -618,7 +633,7 @@
 .input[aria-invalid] { border-color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn); }
 
 .fieldError {
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.3;
   color: var(--warn);
 }
@@ -637,11 +652,11 @@
 .stripEnd, .stripArrow, .stripEmpty {
   align-self: center;
   flex: none;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--ink-3);
 }
 
-.stripArrow { font-size: 15px; margin-right: 2px; }
+.stripArrow { font-size: 0.9375rem; margin-right: 2px; }
 .stripEmpty { padding: 0 8px; font-style: italic; }
 
 .root .tile {
@@ -663,8 +678,8 @@
 .symbol { display: block; fill: none; stroke: currentColor; stroke-width: 1.6px; stroke-linecap: round; stroke-linejoin: round; }
 .symbol text { fill: currentColor; stroke: none; font: 600 8px var(--font-ui); }
 
-.tileName { font-size: 11.5px; font-weight: 650; line-height: 1.2; }
-.tileValue { font: 11px var(--font-num); font-variant-numeric: tabular-nums; color: var(--ink-2); white-space: nowrap; }
+.tileName { font-size: 0.71875rem; font-weight: 650; line-height: 1.2; }
+.tileValue { font: 0.6875rem var(--font-num); font-variant-numeric: tabular-nums; color: var(--ink-2); white-space: nowrap; }
 
 .card {
   margin-top: 10px;
@@ -684,7 +699,7 @@
   margin-bottom: 8px;
 }
 
-.cardName { font-size: 13.5px; font-weight: 650; color: var(--card); }
+.cardName { font-size: 0.84375rem; font-weight: 650; color: var(--card); }
 .cardActions { display: flex; gap: 6px; }
 .root .cardActions .button { padding: 3px 10px; }
 .root .button:disabled { opacity: 0.45; cursor: default; background: var(--field); }
@@ -703,7 +718,7 @@
   padding: 8px 12px;
   border: 1px dashed var(--rule-strong);
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.45;
   color: var(--ink-2);
 }
@@ -719,10 +734,10 @@
   flex: 1 1 130px;
   min-width: 0;
   font: inherit;
-  font-size: 13.5px;
+  font-size: 0.84375rem;
   color: var(--ink);
   background: var(--field);
-  border: 1px solid var(--rule-strong);
+  border: 1px solid var(--edge);
   border-radius: 7px;
   padding: 5px 6px;
 }
@@ -734,14 +749,14 @@
   margin: 14px 0 0;
   padding-bottom: 6px;
   border-bottom: 1px solid var(--rule-strong);
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 650;
   color: var(--ink-2);
 }
 
 .linkIssues {
   margin: 10px 0 0;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--warn);
 }
 
@@ -956,7 +971,7 @@
 .nodeChip[data-end='input'] { background: var(--ink); color: var(--chart-bg); }
 .nodeRow[aria-pressed='true'] .nodeChip { border-color: var(--accent); box-shadow: 0 0 0 1.5px var(--accent); }
 
-.nodeName { font-size: 12.5px; color: var(--ink-2); }
+.nodeName { font-size: 0.78125rem; color: var(--ink-2); }
 
 .nodeVals {
   display: grid;
@@ -964,11 +979,11 @@
   gap: 1px 12px;
   font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 
 .nodeVals > span { display: flex; gap: 6px; min-width: 0; white-space: nowrap; }
-.nodeVals i { font-style: normal; color: var(--ink-3); font-family: var(--font-ui); font-size: 12px; }
+.nodeVals i { font-style: normal; color: var(--ink-3); font-family: var(--font-ui); font-size: 0.75rem; }
 .nodeVals b { font-weight: 400; }
 
 @media (max-width: 400px) {
@@ -977,7 +992,7 @@
 
 .goalText {
   margin: 10px 0 0;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   line-height: 1.5;
   color: var(--ink-2);
 }
@@ -1115,7 +1130,7 @@
 .root .whyLabelled {
   position: relative;
   color: var(--ink-3);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   font-weight: 400;
   letter-spacing: 0;
 }
@@ -1138,7 +1153,7 @@
   background: var(--field);
   box-shadow: 0 6px 22px rgba(0, 0, 0, 0.16);
   color: var(--ink);
-  font: 400 13px/1.45 var(--font-ui);
+  font: 400 0.8125rem/1.45 var(--font-ui);
   letter-spacing: 0;
   text-align: left;
   text-transform: none;
@@ -1155,7 +1170,7 @@
 
 .whyLine {
   margin: -2px 0 9px;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   line-height: 1.4;
   color: var(--ink-2);
 }
@@ -1172,7 +1187,7 @@
   margin: 8px 2px 0;
 }
 .hintRow .hint { margin: 0; }
-.hintWhys { display: inline-flex; gap: 14px; font-size: 12.5px; }
+.hintWhys { display: inline-flex; gap: 14px; font-size: 0.78125rem; }
 
 .nodesSummary > .why { margin-right: auto; margin-left: -6px; }
 .addGroup { display: inline-flex; align-items: center; gap: 2px; margin-right: 4px; }
@@ -1188,12 +1203,12 @@
   align-items: center;
   gap: 6px 8px;
   margin: 2px 0 10px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--ink-2);
 }
 .solveLabel { white-space: nowrap; }
 .solveFree { display: inline-flex; align-items: center; gap: 5px; min-height: 30px; }
-.solveNote { flex-basis: 100%; font-size: 12.5px; color: var(--warn); }
+.solveNote { flex-basis: 100%; font-size: 0.78125rem; color: var(--warn); }
 .root .tile[data-unknown] { position: relative; }
 .root .tile[data-unknown]::after {
   content: '?';
@@ -1266,7 +1281,7 @@
   align-items: baseline;
   gap: 6px;
   margin-left: auto;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 400;
   color: var(--ink-3);
 }
@@ -1274,13 +1289,13 @@
 .root .digits select {
   min-height: 28px;
   padding: 1px 4px;
-  border: 1px solid var(--rule-strong);
+  border: 1px solid var(--edge);
   border-radius: 6px;
   background: var(--field);
   color: var(--ink);
   font: inherit;
   font-family: var(--font-num);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 
 /* M5.2: "show equation" (ShowEq.tsx), a small "=" beside a readout row, the circuit input, a node row and the part
@@ -1378,30 +1393,31 @@
     --raise: #ece9e0;
     --ink: #1d1c19;
     --ink-2: #55524b;
-    --ink-3: #736f67;
+    --ink-3: #6c6861;
     --rule: #e3dfd5;
     --rule-strong: #cbc6ba;
+  --edge: #968b73;
     --accent: #0b6a5f;
     --accent-soft: rgba(11, 106, 95, 0.1);
     --warn: #8a4b08;
     --chart-bg: #fff;
     --grid-axis: #6e6a61;
-    --grid-z-major: rgba(29, 28, 25, 0.44);
+    --grid-z-major: rgba(29, 28, 25, 0.48);
     --grid-z-minor: rgba(29, 28, 25, 0.14);
-    --grid-y-major: rgba(11, 106, 95, 0.55);
+    --grid-y-major: rgba(11, 106, 95, 0.65);
     --grid-y-minor: rgba(11, 106, 95, 0.18);
-    --grid-scale: #9a958a;
+    --grid-scale: #979287;
     --grid-label: #4a4741;
     --grid-y-ink: #0b6a5f;
-    --grid-scale-ink: #7a766d;
-    --part-1: #1971c2;
-    --part-2: #d9480f;
+    --grid-scale-ink: #6c6860;
+    --part-1: #186ab7;
+    --part-2: #ba3e0d;
     --part-3: #c2255c;
-    --part-4: #2b8a3e;
+    --part-4: #257736;
     --part-5: #7048e8;
-    --part-6: #9c7a00;
-    --part-7: #0c8599;
-    --part-8: #c92a2a;
+    --part-6: #816500;
+    --part-7: #0a7384;
+    --part-8: #c72a2a;
     color-scheme: light;
     min-height: 0;
     background: #fff;
@@ -1423,7 +1439,7 @@
   border-radius: 10px;
   background: color-mix(in srgb, var(--bg) 82%, transparent);
   color: var(--accent);
-  font: 600 16px/1.4 var(--font-ui);
+  font: 600 1rem/1.4 var(--font-ui);
   text-align: center;
   pointer-events: none;
 }
@@ -1445,7 +1461,7 @@
   background: var(--field);
   color: var(--ink);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
-  font: 13.5px/1.45 var(--font-ui);
+  font: 0.84375rem/1.45 var(--font-ui);
   overflow-wrap: anywhere;
 }
 

@@ -49,16 +49,16 @@ export interface Stroke {
 }
 
 /** The page's light-theme part colours (styles/Smith.module.css --part-1 … --part-8). */
-export const PART_COLOURS: readonly string[] = ['#1971c2', '#d9480f', '#c2255c', '#2b8a3e', '#7048e8', '#9c7a00', '#0c8599', '#c92a2a'];
+export const PART_COLOURS: readonly string[] = ['#186ab7', '#ba3e0d', '#c2255c', '#257736', '#7048e8', '#816500', '#0a7384', '#c72a2a'];
 export const PART_STYLES = PART_COLOURS.length;
 
-// Mixed over white: rgba(29, 28, 25, 0.44) and 0.14, rgba(11, 106, 95, 0.55) and 0.18, --ink at 0.72.
+// Mixed over white: rgba(29, 28, 25, 0.48) and 0.14, rgba(11, 106, 95, 0.65) and 0.18, --ink at 0.72.
 const INK = '#1d1c19';
-const INK_3 = '#736f67';
+const INK_3 = '#6c6861';
 const ACCENT = '#0b6a5f';
-const C_GRID: readonly string[] = ['#6e6a61', '#9c9b9a', '#dfdfdf', '#79ada7', '#d3e4e2'];
+const C_GRID: readonly string[] = ['#6e6a61', '#939291', '#dfdfdf', '#609e97', '#d3e4e2'];
 const C_TRACE = '#555452';
-const C_SCALE = '#9a958a';
+const C_SCALE = '#979287';
 const C_MARKER = '#c2255c';
 
 // b&w dash patterns of the parts: all different, none equal to another role's.
@@ -111,7 +111,7 @@ function table(mode: ColourMode) {
     ink: {
       grid: bw ? '#000000' : gr ? grey(0.25) : '#4a4741',
       gridY: bw ? '#000000' : gr ? grey(0.25) : ACCENT,
-      scale: bw ? '#000000' : gr ? grey(0.4) : '#7a766d',
+      scale: bw ? '#000000' : gr ? grey(0.4) : '#6c6860',
       text: k,
     },
   };

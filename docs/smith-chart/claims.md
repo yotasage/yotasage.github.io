@@ -302,6 +302,19 @@ the same link as one undo step; a link saved as text (version 0) is read too, a 
 
 **Count:** 2 claims (284, 285), describing the tool. All: 285 claims.
 
+## Access (M9.1)
+
+286 T: the status note's "every task works by keyboard alone, every control has a name for screen readers, text and lines
+meet WCAG AA contrast in both themes, and the page follows reduced motion and twice the text size": ui-a11y.mjs walks the
+tasks by Tab, Enter, Space, arrows and typing only, reads the accessibility tree in 15 states (no unnamed control),
+computes 146 token pairs and every visible text and field edge on three pages in both themes (WCAG 2.2 AA: 4.5:1 text,
+3:1 lines, part colours, field edges and the focus ring; the minor grid lines and the dividers are left out as
+decoration), finds no animation or transition under `prefers-reduced-motion: reduce`, and lays the page out at 200 %
+browser zoom and with a 2× root font size at 320, 390 and 1440 px without horizontal scroll or cut text (notes-M9.1.md).
+Not tried with a real screen reader.
+
+**Count:** 1 claim (286), describing the tool. All: 286 claims.
+
 ## Sentences the page added (M3.5b, M3.5c)
 
 | Where | Sentence | Kind |

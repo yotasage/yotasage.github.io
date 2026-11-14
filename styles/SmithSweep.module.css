@@ -11,16 +11,16 @@
   margin-top: 10px;
 }
 
-.check { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; font-size: 13px; color: var(--ink-2); }
+.check { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; font-size: 0.8125rem; color: var(--ink-2); }
 .check input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
 
 .label { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
 
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
 
-.btn.btn.btn { padding: 4px 10px; font-size: 13px; }
+.btn.btn.btn { padding: 4px 10px; font-size: 0.8125rem; }
 
-.hint { margin: 8px 0 0; font-size: 12.5px; line-height: 1.4; color: var(--ink-3); }
+.hint { margin: 8px 0 0; font-size: 0.78125rem; line-height: 1.4; color: var(--ink-3); }
 
 .markers {
   display: flex;
@@ -40,13 +40,13 @@
   border: 1px solid var(--rule-strong);
   border-radius: 7px;
   background: var(--field);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .markerName { font-weight: 650; color: var(--ink-2); }
 .markerF { font-family: var(--font-num); font-variant-numeric: tabular-nums; color: var(--ink); }
 
-.remove.remove.remove { padding: 0 8px; min-height: 26px; border: none; background: transparent; font-size: 16px; line-height: 1; color: var(--ink-3); }
+.remove.remove.remove { padding: 0 8px; min-height: 26px; border: none; background: transparent; font-size: 1rem; line-height: 1; color: var(--ink-3); }
 .remove.remove.remove:hover { color: var(--warn); background: var(--raise); }
 
 @media (pointer: coarse) {
@@ -62,7 +62,7 @@
 .plotHead h2 { margin: 0 auto 0 0; }
 .limit { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 4px 8px; }
 .limit > div { width: 9.5em; }
-.at { font-size: 12.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.at { font-size: 0.78125rem; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 
 .plot {
   position: relative;
@@ -114,9 +114,9 @@
   transition: opacity var(--quick);
 }
 .results[data-state='coarse'] .under { opacity: 0.55; }
-.sub { display: flex; align-items: center; gap: 4px; margin: 0 0 6px; font-size: 13px; font-weight: 650; color: var(--ink-2); }
+.sub { display: flex; align-items: center; gap: 4px; margin: 0 0 6px; font-size: 0.8125rem; font-weight: 650; color: var(--ink-2); }
 
-.figures { display: grid; gap: 4px; margin: 0; font-size: 13px; }
+.figures { display: grid; gap: 4px; margin: 0; font-size: 0.8125rem; }
 .figures > div { display: grid; grid-template-columns: 10.5em minmax(0, 1fr); gap: 8px; align-items: baseline; }
 .figures dt { display: flex; align-items: center; gap: 2px; color: var(--ink-2); }
 .figures dd { margin: 0; font-family: var(--font-num); font-variant-numeric: tabular-nums; color: var(--ink); overflow-wrap: anywhere; }
@@ -124,7 +124,7 @@
 
 .tableWrap { overflow-x: auto; max-width: 100%; border: 1px solid var(--rule); border-radius: 8px; }
 .tableWrap:focus-visible { outline: 2px solid var(--accent); }
-.table { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.table { border-collapse: collapse; width: 100%; font-size: 0.78125rem; font-variant-numeric: tabular-nums; }
 .table th, .table td { padding: 4px 8px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--rule); }
 .table thead th { font-weight: 650; color: var(--ink-2); background: var(--raise); }
 .table tbody th { text-align: left; font-weight: 650; color: var(--ink-2); }

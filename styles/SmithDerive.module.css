@@ -30,7 +30,7 @@
   padding: 10px 16px;
   border-bottom: 1px solid var(--rule);
 }
-.title { flex: 1; min-width: 0; margin: 0; font-size: 15.5px; font-weight: 650; line-height: 1.3; }
+.title { flex: 1; min-width: 0; margin: 0; font-size: 0.96875rem; font-weight: 650; line-height: 1.3; }
 
 .body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 8px 16px 16px; }
 
@@ -40,9 +40,9 @@
 .eqn { display: flex; flex-wrap: wrap; align-items: baseline; min-width: 0; line-height: 1.5; }
 .line { min-width: 0; max-width: 100%; overflow-x: auto; overflow-y: hidden; padding-bottom: 1px; }
 .line:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 2px; }
-.goal { padding: 6px 0; font-size: 16px; }
+.goal { padding: 6px 0; font-size: 1rem; }
 .goal math, .math math { math-style: normal; }
-.meta { margin: 4px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--ink-3); }
+.meta { margin: 4px 0 0; font-size: 0.78125rem; line-height: 1.45; color: var(--ink-3); }
 
 .steps { margin: 10px 0 0; padding: 0; list-style: none; }
 .step {
@@ -54,12 +54,12 @@
 }
 .step > :not(.no) { grid-column: 2; }
 .step:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
-.no { grid-row: 1 / span 3; padding-top: 2px; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--ink-3); }
-.step .math { font-size: 15px; }
-.why { margin: 4px 0 0; font-size: 13.5px; line-height: 1.45; color: var(--ink-2); }
+.no { grid-row: 1 / span 3; padding-top: 2px; font-size: 0.8125rem; font-variant-numeric: tabular-nums; color: var(--ink-3); }
+.step .math { font-size: 0.9375rem; }
+.why { margin: 4px 0 0; font-size: 0.84375rem; line-height: 1.45; color: var(--ink-2); }
 .nums { margin-top: 6px; padding-left: 8px; border-left: 2px solid var(--rule-strong); color: var(--ink-2); }
-.nums .math { font-size: 14px; }
-.numsLabel { display: block; font-size: 11.5px; color: var(--ink-3); }
+.nums .math { font-size: 0.875rem; }
+.numsLabel { display: block; font-size: 0.71875rem; color: var(--ink-3); }
 
 /* M5.2's links: lit by hover, a tap or the arrow keys. */
 .body [data-mt] { cursor: pointer; }
@@ -77,7 +77,7 @@
   padding: 10px 16px;
   border-top: 1px solid var(--rule);
 }
-.count { margin-left: auto; font-size: 12.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.count { margin-left: auto; font-size: 0.78125rem; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 
 .controls button, .close {
   min-height: 36px;
@@ -87,7 +87,7 @@
   background: var(--raise);
   color: var(--ink);
   font: inherit;
-  font-size: 13.5px;
+  font-size: 0.84375rem;
   font-weight: 600;
   cursor: pointer;
 }
