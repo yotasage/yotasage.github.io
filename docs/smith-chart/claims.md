@@ -12,7 +12,7 @@ without a source says "derived" on the page through its equation, or describes t
 
 **Checks.** `ui-theory.mjs`: every citation on the page resolves to an entry of the reference list, numbered by first
 citation; every #link of the page (contents, citations, nav, short lines) has its target; every live number equals
-the engine's. `ui-why.mjs`: all short lines with their text (39 in M3.5, 44 after M4.3a, 53 after M4.3c, 54 after M4.4b, 56 after M5.2, 57 after M5.3), and every one's link opens a topic that exists.
+the engine's. `ui-why.mjs`: all short lines with their text (39 in M3.5, 44 after M4.3a, 53 after M4.3c, 54 after M4.4b, 56 after M5.2, 57 after M5.3, 99 at the end of the plan in M9.4), and every one's link opens a topic that exists.
 
 ## The theory, by topic (theory.md §1–7)
 

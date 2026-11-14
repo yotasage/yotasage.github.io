@@ -100,10 +100,41 @@ const centre = (page, sel) => page.evaluate((s) => {
 
 /** A press of `sel`: a mouse click or a tap. */
 async function press(page, how, sel) {
-  const el = page.locator(sel).first();
-  await el.scrollIntoViewIfNeeded();
-  if (how === 'touch') await el.tap(); else await el.click();
+  await hit(page, how, page.locator(sel).first());
   await frame(page);
+}
+
+/**
+ * A click or tap on `el` at its centre, after scrolling it to the middle of the screen ourselves and checking that
+ * nothing covers it and it is enabled. Not Playwright's `click()`/`tap()`: their own scroll-into-view runs again inside
+ * the action, and in WebKit it lands by a wrong amount on this page (the Theory, Report and Equations parts are
+ * `content-visibility: auto` with placeholder heights, which change as they enter the screen, and WebKit has no
+ * scroll anchoring): the press then hit the chart or <main> and the Learn example or an export button got nothing
+ * (one WebKit failure in about every run, at a different place each time; M9.4).
+ */
+async function hit(page, how, el) {
+  await el.waitFor({ state: 'visible', timeout: 15000 });
+  const until = Date.now() + 15000;
+  let last = null;
+  while (Date.now() < until) {
+    await el.evaluate((e) => e.scrollIntoView({ block: 'center', inline: 'nearest' }));
+    await frame(page);
+    const a = await el.boundingBox();
+    await frame(page);
+    last = await el.evaluate((e) => {
+      const b = e.getBoundingClientRect(), x = b.left + b.width / 2, y = b.top + b.height / 2;
+      const t = document.elementFromPoint(x, y);
+      const covered = !t || !(t === e || e.contains(t) || [...(e.labels ?? [])].some((l) => l.contains(t)));
+      return { x, y, top: b.top, covered, disabled: e.disabled === true, inView: y > 0 && y < window.innerHeight && x > 0 && x < window.innerWidth };
+    });
+    // Still for two frames (a lazily rendered part above it did not move it), in view, uncovered and enabled.
+    if (a && Math.abs(a.y - last.top) < 0.5 && last.inView && !last.covered && !last.disabled) {
+      if (how === 'touch') await page.touchscreen.tap(last.x, last.y); else await page.mouse.click(last.x, last.y);
+      return;
+    }
+    await sleep(100);
+  }
+  throw new Error(`could not press ${el}: ${JSON.stringify(last)}`);
 }
 
 /** MathML inside `sel`: present, every visible <math> laid out with a size, a fraction stacked, no error node. */
@@ -187,7 +218,7 @@ async function walk(name, ctx, how, cdpFor) {
       const text = await input.inputValue();
       const m = text.match(/^([\d.]+)\s*(.*)$/);
       q = await query(page);
-      if (how === 'touch') await input.tap(); else await input.click();
+      await hit(page, how, input);
       await input.fill(m ? `${Number(m[1]) * 2} ${m[2]}` : '2');
       await input.press('Enter');
       ok(await changed(page, q), `a typed value (${text} → ×2) changes the circuit`);
@@ -372,7 +403,9 @@ async function walk(name, ctx, how, cdpFor) {
     let downloads = 0;
     const names = [];
     page.on('download', (d) => { downloads++; names.push(d.suggestedFilename()); });
-    await page.waitForFunction(() => document.querySelector('[data-export]')?.smithExport?.builds > 0, null, { timeout: 8000 }).catch(() => {});
+    // The figure is built only when the section comes near the screen (its buttons are disabled until then).
+    await page.evaluate(() => document.querySelector('[data-export]')?.scrollIntoView({ block: 'start' }));
+    ok(await page.waitForFunction(() => document.querySelector('[data-export]')?.smithExport?.builds > 0, null, { timeout: 8000 }).then(() => true, () => false), 'the export figure is built near the screen');
     const files = ['[data-export-svg]', '[data-export-png]', '[data-export-tex-save]', '[data-export-csv="nodes"]', '[data-export-csv="trace"]', '[data-export-csv="markers"]', '[data-export-s1p]', '[data-export-project]'];
     for (const sel of files) {
       const n = downloads;
@@ -399,16 +432,14 @@ async function walk(name, ctx, how, cdpFor) {
       if (s.reach) {
         const T = S.decodeCircuit(s.reach).circuit;
         const f = page.locator('[data-name="loadR"] input');
-        await f.scrollIntoViewIfNeeded();
-        if (how === 'touch') await f.tap(); else await f.click();
+        await hit(page, how, f);
         await f.fill(String(T.loadR));
         await f.press('Enter');
         await frame(page);
       }
       if (ans) {
         const f = page.locator('#smith-guide-answer');
-        await f.scrollIntoViewIfNeeded();
-        if (how === 'touch') await f.tap(); else await f.click();
+        await hit(page, how, f);
         await f.fill(String(ans.value));
         await press(page, how, '[data-guide-check]');
       }
@@ -426,8 +457,7 @@ async function walk(name, ctx, how, cdpFor) {
     ok(await page.evaluate(([i, o]) => document.getElementById(i).open !== o, [id0, open0]), `a topic folds or opens (${id0})`);
     if (!(await page.evaluate((i) => document.getElementById(i).open, id0))) await press(page, how, sum);
     const cite = page.locator(`[id="${id0}"] a[href^="#ref-"]:visible`).first();
-    await cite.scrollIntoViewIfNeeded();
-    if (how === 'touch') await cite.tap(); else await cite.click();
+    await hit(page, how, cite);
     await sleep(200);
     ok((await page.evaluate(() => window.location.hash)).startsWith('#ref'), 'a citation goes to its reference');
     ok(page.errors.length === 0, () => `no errors: ${page.errors.slice(0, 3).join(' | ')}`);
@@ -500,7 +530,9 @@ async function gestures(browser) {
   await ctx.close();
 }
 
-const BROWSERS = [['chromium', chromium], ['firefox', firefox], ['webkit', webkit]];
+// SMITH_BROWSERS=webkit (or a comma list) runs only those browsers, for chasing one browser's failure.
+const only = process.env.SMITH_BROWSERS?.split(',').map((s) => s.trim()).filter(Boolean);
+const BROWSERS = [['chromium', chromium], ['firefox', firefox], ['webkit', webkit]].filter(([n]) => !only?.length || only.includes(n));
 try {
   for (const [name, type] of BROWSERS) {
     let browser = null;

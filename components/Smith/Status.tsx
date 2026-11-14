@@ -23,8 +23,8 @@ export const STATUS_ASSUMES = 'It assumes ideal parts, lossless lines and a real
   'evaluates the same ideal parts at each frequency.';
 export const STATUS_COMING =
   'Every planned feature is in. Every task works by keyboard alone, every control has a name for screen readers, text ' +
-  'and lines meet WCAG AA contrast in both themes, and the page follows reduced motion and twice the text size; checks ' +
-  'in other browsers, by touch and of speed come next.';
+  'and lines meet WCAG AA contrast in both themes, and the page follows reduced motion and twice the text size; it is ' +
+  'checked in Edge, Firefox and Safari’s engine, by touch, and for speed.';
 
 export function Status() {
   return (

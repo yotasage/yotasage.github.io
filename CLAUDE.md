@@ -135,16 +135,15 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   Model 1 symbols from version 7 up are not read by ZXing-C++ (BL61). Real eSIM codes to test with are in
   `C:UsersJonatDownloadseSIM` (`check.mjs` reads them where they are and never prints their content): the
   owner's own, never to be copied into the repo or uploaded anywhere.
-- Smith chart: built in steps by [docs/smith-chart/plan.md](docs/smith-chart/plan.md) (decisions, milestones and status;
-  the module map in `modules.md` (lib) with `modules-page.md` and `modules-harness.md`; `notes-<step>.md` per step). Framework-free logic in `lib/smith/` (engine, network, geometry, grid, the
-  circuit and its link in `state.ts`, the solver in `goal.ts`, `solve.ts`, `search.ts`, value lists in `values.ts`), the page in `components/Smith/` (chart, path layer and drag outside React in
-  `chartView.ts`, `pathLayer.ts`, `live.ts`; the circuit panel `Strip.tsx`; the Theory section `Theory.tsx` with `TheoryFigures.tsx` and the solver's topics in `TheorySolver.tsx` (content in
-  `docs/smith-chart/theory.md` and `theory-solver.md`), equations by id from
-  `lib/smith/equations.ts`, citations from `references.bib` loaded in `getStaticProps` of the page, styles in
-  `styles/SmithTheory.module.css`; the short line and "→ theory" link beside every control in `Why.tsx` with the texts
-  in `whys.ts`; every claim's source in `docs/smith-chart/claims.md`), state and undo history in
-  `pages/smith-chart/main.tsx`, styles in `styles/Smith.module.css`, checks in `scripts/harness/smith/` (`npm run check`
-  for the engine, `npm run ui` drives the page in Edge or Chrome and starts the dev server if none runs).
+- Smith chart (plan finished with M9.4): [docs/smith-chart/plan.md](docs/smith-chart/plan.md) (decisions, status,
+  "State at the end of the plan"), `howto.md` for visitors. **Where code lives: the module map**, `modules.md` (`lib/smith/`:
+  engine, solver, sweep, teaching, export), `modules-page.md` (`components/Smith/`, `pages/smith-chart/main.tsx` with the
+  state and undo history, `styles/Smith*.module.css`) and `modules-harness.md` (checks); read the part you need rather
+  than the code. Engine and drag stay outside React (`chartView.ts`, `pathLayer.ts`, `live.ts`); the status note is
+  `Status.tsx`, the short lines `whys.ts`, every claim's source `claims.md`, citations from `references.bib` in
+  `getStaticProps`. Checks in `scripts/harness/smith/`: `npm run check` (engine and TikZ compiles), `npm run ui` (next
+  build, then every browser script against `next start` on 3021), `npm run recheck` (both, plus the resistor harness,
+  as one table of every milestone's "done when"; about 25 minutes).
 - `tsconfig` uses `"module": "node16"`, so our own files count as CommonJS and the ES-module-only add-ons of three.js
   (`three/examples/jsm/...`) can only be loaded with `await import(...)`, or imported as types with
   `import type ... with { 'resolution-mode': 'import' }`. A dynamic import of one of our own files needs
@@ -190,9 +189,9 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   status, how a step is run and verified), `test-files.md`, `architecture.md`, `model.md`, and `s1.md`–`s9.md` (each
   step's scope and the notes it left for later steps).
 - [docs/smith-chart/](docs/smith-chart/plan.md): Smith chart plan (built in steps on the branch `smith-chart`), in
-  parts: `plan.md` (index: goal, decisions, milestones and status, how a step is run), `modules.md` (module map, index and lib; the page in
-  `modules-page.md`, the checks in `modules-harness.md`), `engine.md`,
-  `solver.md`, `learning.md`, `milestones.md`, and the `notes-<step>.md` each step leaves.
+  parts: `plan.md` (index: goal, decisions, milestones and status, how a step is run), `howto.md` (for visitors),
+  `modules.md` (module map, index and lib; the page in `modules-page.md`, the checks in `modules-harness.md`),
+  `engine.md`, `solver.md`, `learning.md`, `milestones.md`, and the `notes-<step>.md` each step leaves.
 - [docs/agent-workflow.md](docs/agent-workflow.md): how to run large work with Claude agents cheaply and safely, with
   the measured cost of the PCB viewer build.
 - [docs/BACKLOG.md](docs/BACKLOG.md): wanted but not scheduled, for every tool (ids `BL<n>`, never reused). Work left out
