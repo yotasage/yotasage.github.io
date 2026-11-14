@@ -1,9 +1,9 @@
 // The frequency sweep on the chart (step M7.2a): the input's Γ(f) over the band as one polyline (D3) in the top layer's
 // world group, and the markers on it. Framework-free, like pathLayer.ts, whose hooks on the ChartView it chains.
 //
-// Drawing. The polyline is one `d` of whole numbers: Γ × 1e9 rounded (5e-10 at most from the engine's value, inside the
-// harness's 1e-9; sweep.ts pathData), in a group whose transform maps them into the world frame. Whole numbers print
-// about twice as fast as doubles (0.57 against 1.0–1.3 ms for 10,000 points in Node) and give a shorter string to
+// Drawing. The polyline is one `d` of whole numbers: Γ × TRACE_SCALE (4e6) rounded (1.25e-7 at most from the engine's
+// value, under Firefox's 2^24 limit on path coordinates; sweep.ts pathData), in a group whose transform maps them into
+// the world frame. Whole numbers print about twice as fast as doubles (0.57 against 1.0–1.3 ms for 10,000 points in Node) and give a shorter string to
 // parse; the transform is set again only on a reframe, so neither a zoom frame nor a reframe rewrites the `d`.
 //
 // Budget (engine.md §9, notes-M7.2a.md). A refined 10,000-point sweep of 10 parts costs 3.6 ms at 1× and 15.7 ms at 4×

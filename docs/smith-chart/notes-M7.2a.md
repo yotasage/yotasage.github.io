@@ -23,7 +23,7 @@ Done 2026-11-13. `components/Smith/traceLayer.ts`, `components/Smith/SweepPanel.
 ## Drawing and the drag (the hard part)
 
 - **`d` in whole numbers.** `pathData` writes "M x y x y …" (pairs after M are lines; no L letters) of
-  `Math.round(Γ × 1e9)`, inside `<g transform="matrix(fk/1e9 0 0 −fk/1e9 −fx·fk fy·fk)">`, the world frame's map. Whole
+  `Math.round(Γ × 1e9)` (4e6 since M9.2: Firefox clamps path coordinates at 2^24), inside `<g transform="matrix(fk/1e9 0 0 −fk/1e9 −fx·fk fy·fk)">`, the world frame's map. Whole
   numbers print about twice as fast as doubles in V8 (Node, 10,000 points: 0.57 ms against 1.0–1.3 ms; `(x+0.5)|0`
   0.43–0.57 ms but rounds negatives wrongly) and the string is 45 % shorter (208 kB against 378 kB) to parse. The
   points are within 5e-10 of the engine's (the harness's bar is 1e-9). The transform is set again only on a reframe,

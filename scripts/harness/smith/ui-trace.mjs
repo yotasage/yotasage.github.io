@@ -1,6 +1,6 @@
 // Drives /smith-chart/main in the installed Edge (or Chrome) and checks the frequency sweep on the chart (step M7.2a):
-// the trace read back from the DOM (its `d`, whole numbers of Γ × 1e9) equals sweep.ts's refined sweep of the linked
-// circuit to 1e-9 for five circuits and bands (linear and log), and its frequencies equal it to the bit; markers are
+// the trace read back from the DOM (its `d`, whole numbers of Γ × TRACE_SCALE) equals sweep.ts's refined sweep of the linked
+// circuit to the `d`'s rounding and 1e-9 for five circuits and bands (linear and log), and its frequencies equal it to the bit; markers are
 // added by a click and a tap on the trace and by the panel's button, dragged along the trace, stepped by keys (to the
 // next trace point above or below, ten with Shift, Home and End to the band's ends) and removed by Delete and by the
 // panel, and come back from the link; during a handle's drag the trace is the coarse sweep of the live circuit (every
@@ -78,7 +78,7 @@ function expectedCoarse(c, band, n) {
   SW.sweepBand(tr, { ...band, points: n }, sc);
   return { n: tr.n, gamma: tr.gamma.slice(0, 2 * tr.n) };
 }
-/** The points of a `d` written by traceLayer.ts: "M x y x y …" in Γ × 1e9, subpaths where a point was not finite. */
+/** The points of a `d` written by traceLayer.ts: "M x y x y …" in Γ × TRACE_SCALE, subpaths where a point was not finite. */
 function parseD(d) {
   const out = [];
   for (const sub of d.split('M')) {
@@ -88,12 +88,12 @@ function parseD(d) {
   }
   return out;
 }
-const SCALE = 1e9;
+const SCALE = SW.TRACE_SCALE;
 function compare(got, want) {
   let worst = 0;
   if (got.length !== want.length) return { same: false, worst: Infinity, n: got.length / 2 };
   for (let i = 0; i < got.length; i++) worst = Math.max(worst, Math.abs(got[i] - want[i]));
-  return { same: worst <= TOL, worst, n: got.length / 2 };
+  return { same: worst <= 0.5 / SCALE + TOL, worst, n: got.length / 2 };
 }
 
 async function open(context, search) {

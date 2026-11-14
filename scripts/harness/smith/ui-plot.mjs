@@ -64,7 +64,7 @@ let passed = 0, failed = 0;
 const failures = [];
 const ok = (condition, what) => { if (condition) passed++; else if (failed++ < 60) failures.push(typeof what === 'function' ? what() : what); };
 const frame = (page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-/** Plot values: the frame's whole numbers are within 5e-7 of the value; Node and the browser may differ by an ulp. */
+/** Plot values: x within 5e-7 of the band, y within the frame's rounding (0.5 / PLOT_Y); Node and the browser may differ by an ulp. */
 const TOL = 1e-6;
 const rel = (a, b, t = 1e-9) => Object.is(a, b) || Math.abs(a - b) <= t * Math.max(Math.abs(a), Math.abs(b), 1e-300);
 
@@ -94,7 +94,7 @@ function parseD(d) {
 function compare(got, want) {
   let worst = 0;
   if (got.length !== want.length) return { same: false, worst: Infinity, n: got.length / 2 };
-  for (let i = 0; i < got.length; i++) worst = Math.max(worst, Math.abs(got[i] - want[i]) / (i % 2 ? Math.max(1, Math.abs(want[i])) : 1));
+  for (let i = 0; i < got.length; i++) worst = Math.max(worst, Math.abs(got[i] - want[i]) / (i % 2 ? Math.max(1, Math.abs(want[i])) : 1) - (i % 2 ? 0.5 / PL.PLOT_Y : 0));
   return { same: worst <= TOL, worst, n: got.length / 2 };
 }
 /** Differences between two BandFigures (empty when equal to `t` relative). */

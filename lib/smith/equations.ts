@@ -841,7 +841,7 @@ const src = (key: string, at: string): Source => ({ key, at });
 const EJWT = 'time dependence e^{jωt}';
 const REAL_Z0 = 'real reference impedance Z₀';
 const LOSSLESS = 'lossless line';
-const OUT_OF_PORT_2 = 'I_2 flows out of port 2 into the load';
+const OUT_OF_PORT_2 = 'I₂ flows out of port 2 into the load';
 
 interface Def {
   id: string;
@@ -1252,8 +1252,8 @@ const DEFS: Def[] = [
     ],
   },
   // ABCD (eqs. 25–28).
-  { id: 'abcd', title: 'ABCD matrix of a two-port', text: '[V_1; I_1] = [A, B; C, D]*[V_2; I_2]', sources: [src(S3, '§2.2.6')], assumptions: ['I_2 flows out of port 2'], engine: 'parts.partMatrix, network.applyPart', symbols: ABCD_SYMBOLS },
-  { id: 'abcd-cascade', title: 'Parts in cascade', text: '[A, B; C, D] = [A_1, B_1; C_1, D_1]*[A_2, B_2; C_2, D_2]', sources: [src(S3, '§2.2.6')], assumptions: ['I_2 flows out of port 2'], engine: 'network.applyPart twice', symbols: ABCD_SYMBOLS },
+  { id: 'abcd', title: 'ABCD matrix of a two-port', text: '[V_1; I_1] = [A, B; C, D]*[V_2; I_2]', sources: [src(S3, '§2.2.6')], assumptions: ['I₂ flows out of port 2'], engine: 'parts.partMatrix, network.applyPart', symbols: ABCD_SYMBOLS },
+  { id: 'abcd-cascade', title: 'Parts in cascade', text: '[A, B; C, D] = [A_1, B_1; C_1, D_1]*[A_2, B_2; C_2, D_2]', sources: [src(S3, '§2.2.6')], assumptions: ['I₂ flows out of port 2'], engine: 'network.applyPart twice', symbols: ABCD_SYMBOLS },
   { id: 'abcd-reciprocal', title: 'A reciprocal two-port', text: 'A*D - B*C = 1', sources: [src(S3, '§2.2.6')], assumptions: ['reciprocal two-port'], engine: 'parts.partMatrix', symbols: ABCD_SYMBOLS },
   { id: 'abcd-series', title: 'ABCD of a series impedance', text: '[A, B; C, D] = [1, Z; 0, 1]', sources: [src(S3, 'Table 2.2.6.1')], assumptions: [], engine: 'parts.partMatrix (series parts)', symbols: ABCD_SYMBOLS },
   { id: 'abcd-shunt', title: 'ABCD of a shunt admittance', text: '[A, B; C, D] = [1, 0; Y, 1]', sources: [src(S3, 'Table 2.2.6.1')], assumptions: [], engine: 'parts.partMatrix (shunt parts)', symbols: ABCD_SYMBOLS },
@@ -1265,7 +1265,7 @@ const DEFS: Def[] = [
   { id: 'abcd-stub-open', title: 'ABCD of an open shunt stub', text: '[A, B; C, D] = [1, 0; j*tan(theta)/Z_c, 1]', sources: [src(S3, 'Table 2.2.6.1')], assumptions: [LOSSLESS], engine: 'parts.partMatrix (STUB_OPEN)', symbols: ABCD_SYMBOLS },
   {
     id: 'abcd-zin', title: 'Input impedance of a two-port', text: 'Z_in = (A*Z_L + B)/(C*Z_L + D)', sources: [],
-    derivation: 'Put V_2 = Z_L I_2 into the ABCD matrix (facts.md eq. 27); [S3] does not print it.', assumptions: ['I_2 flows out of port 2'], engine: 'network.evaluate (one part)', symbols: ABCD_SYMBOLS,
+    derivation: 'Put V_2 = Z_L I_2 into the ABCD matrix (facts.md eq. 27); [S3] does not print it.', assumptions: ['I₂ flows out of port 2'], engine: 'network.evaluate (one part)', symbols: ABCD_SYMBOLS,
     steps: [
       ['V_1 = A*V_2 + B*I_2 = (A*Z_L + B)*I_2', 'The first row with `V_2 = Z_L*I_2`.'],
       ['I_1 = C*V_2 + D*I_2 = (C*Z_L + D)*I_2', 'The second row.'],

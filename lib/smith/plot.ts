@@ -8,13 +8,16 @@ import { returnLoss, vswr } from './convert';
 
 /** Plot-frame units per band (x: 0 at the start, PLOT_X at the stop). */
 export const PLOT_X = 1e6;
-/** Plot-frame units per dB or per unit of VSWR. */
-export const PLOT_Y = 1e6;
+/**
+ * Plot-frame units per dB or per unit of VSWR. Every coordinate stays under 2^24 (Firefox clamps SVG path coordinates there:
+ * notes-M9.2.md): 300 dB is 1.2e7, while 2.5e-5 dB or VSWR units is far under a pixel.
+ */
+export const PLOT_Y = 4e4;
 /** Return loss is drawn clipped to RL_MIN … RL_MAX dB (a perfect match is +∞ dB; |Γ| > 1 gives a negative return loss). */
 export const RL_MIN = -100;
 export const RL_MAX = 300;
-/** VSWR is drawn clipped to 1 … VSWR_MAX (∞ from |Γ| = 1 on). */
-export const VSWR_MAX = 1e4;
+/** VSWR is drawn clipped to 1 … VSWR_MAX (∞ from |Γ| = 1 on): ten times the highest axis (vswrAxis). */
+export const VSWR_MAX = 100;
 
 /** The value the plot draws for |Γ| = mag: return loss in dB, or VSWR, clipped as above. */
 export function plotValue(mag: number, isVswr: boolean): number {
@@ -36,7 +39,7 @@ export const bandFreq = (u: number, start: number, stop: number, log: boolean): 
 
 /**
  * The plot's `d` of the first n points of a trace: "M x y x y …" in whole plot-frame units (x within 5e-7 of the band's
- * width, y within 5e-7 dB or 5e-7 of VSWR). A point that is not finite breaks the line.
+ * width, y within 1.25e-5 dB or 1.25e-5 of VSWR). A point that is not finite breaks the line.
  */
 export function plotPath(freqs: ArrayLike<number>, gamma: ArrayLike<number>, n: number, start: number, stop: number, log: boolean, isVswr: boolean): string {
   let d = '', pen = false;

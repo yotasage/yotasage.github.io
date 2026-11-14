@@ -290,12 +290,15 @@ export function refine(trace: Trace, sc: SweepCircuit, options: Readonly<RefineO
 // ---------------------------------------------------------------------------------------------------------------
 // The page's drawing of a trace (M7.2a) and the worker's reply
 
-/** Path units per unit of Γ in pathData. */
-export const TRACE_SCALE = 1e9;
+/**
+ * Path units per unit of Γ in pathData. Firefox clamps SVG path coordinates to 2^24 (notes-M9.2.md), so |Γ| up to 4.19 is
+ * drawn; a unit is 2.5e-7 of Γ, 0.05 px at the chart's 1024× zoom.
+ */
+export const TRACE_SCALE = 4e6;
 
 /**
  * An SVG path's `d` of the first n points of gamma (interleaved re, im): "M x y x y …" (pairs after M are lines) in whole
- * numbers of Γ × TRACE_SCALE, so a point is within 5e-10 of the engine's; a point that is not finite breaks the line.
+ * numbers of Γ × TRACE_SCALE, so a point is within 1.25e-7 of the engine's; a point that is not finite breaks the line.
  * Whole numbers print about twice as fast as doubles and give a shorter string to parse (notes-M7.2a.md).
  */
 export function pathData(g: Vec, n: number): string {
