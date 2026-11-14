@@ -9,7 +9,12 @@
 // the circuit, the sweep or the solve changes; the circuit changes on a commit only, never in a drag's frames, and a
 // build asked for during a drag waits for its release. "Current view" follows the chart's view while the section is on
 // screen by reading five numbers every POLL_MS and building when the view has stood still for one tick. The options
-// are kept in localStorage (`smith.export`, read after mount); M8.3b puts them in the project file.
+// are kept in localStorage (`smith.export`, read after mount) and in the project file.
+//
+// M8.3b: the data files (CSV of the nodes, the trace or the markers in the page's digits or every digit; Touchstone
+// .s1p of S11 over the sweep), the project file (save; open from a file picker here, or by a drop anywhere on the
+// page, both read by the page with `onOpen`, on the device only) and Copy link. An opened project's export settings
+// arrive as `opened` and become the options here (and the chart's view when it holds a window).
 
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 
@@ -23,13 +28,22 @@ import type { ColourMode } from '../../lib/smith/figureStyle';
 import { figureSvg } from '../../lib/smith/figureSvg';
 import { figureTikz } from '../../lib/smith/figureTikz';
 import type { GridWindow } from '../../lib/smith/grid';
+import { CSV_DIGITS_MAX, markersCsv, nodesCsv, traceCsv } from '../../lib/smith/export/csv';
+import type { CsvOptions, NumberForm } from '../../lib/smith/export/csv';
+import { MAX_PT, PROJECT_EXTENSION, projectJson } from '../../lib/smith/export/project';
+import type { ExportSettings } from '../../lib/smith/export/project';
+import { TOUCHSTONE_FORMATS, touchstone } from '../../lib/smith/export/touchstone';
+import type { TouchstoneFormat } from '../../lib/smith/export/touchstone';
 import { sameCircuit } from '../../lib/smith/state';
 import type { Circuit, SweepSetting } from '../../lib/smith/state';
 import { Trace, markersAt, runSweep, sweepCircuit } from '../../lib/smith/sweep';
+import type { MarkerPoint } from '../../lib/smith/sweep';
+import type { ValueChoice } from '../../lib/smith/values';
 import styles from '../../styles/Smith.module.css';
 import css from '../../styles/SmithExport.module.css';
 import type { ChartView } from './chartView';
 import type { Outcome } from './SolvePanel';
+import { shownDigits } from './readout';
 import { Why } from './Why';
 
 export const EXPORT_KEY = 'smith.export';
@@ -59,10 +73,16 @@ export interface ExportPrefs {
   tex: Tex;
   png: number;
   fit: boolean;
+  /** CSV: every digit (else the digits the page shows), plain or engineering numbers. */
+  csvAll: boolean;
+  csvForm: NumberForm;
+  /** Touchstone's number format. */
+  ts: TouchstoneFormat;
 }
 
 export const DEFAULT_PREFS: Readonly<ExportPrefs> = {
   area: 'whole', size: 'column', other: '\\linewidth', detail: 'standard', colour: 'colour', fontPt: DEFAULT_PT, tex: 'picture', png: 2, fit: true,
+  csvAll: false, csvForm: 'plain', ts: 'RI',
 };
 
 const SIZES: readonly { id: Size; label: string; title: string }[] = [
@@ -109,10 +129,14 @@ export function readPrefs(text: string | null): ExportPrefs {
     out.detail = presetOf(d) ?? d;
   }
   if (COLOUR_MODES.includes(v.colour as ColourMode)) out.colour = v.colour as ColourMode;
-  if (TEXT_SIZES.includes(v.fontPt as number)) out.fontPt = v.fontPt as number;
+  // A project may set any size the figure takes; the list shows it as an extra choice.
+  if (typeof v.fontPt === 'number' && v.fontPt >= MIN_PT && v.fontPt <= MAX_PT) out.fontPt = v.fontPt;
   if (v.tex === 'picture' || v.tex === 'document') out.tex = v.tex;
   if ((PNG_FACTORS as readonly number[]).includes(v.png as number)) out.png = v.png as number;
   if (typeof v.fit === 'boolean') out.fit = v.fit;
+  if (typeof v.csvAll === 'boolean') out.csvAll = v.csvAll;
+  if (v.csvForm === 'plain' || v.csvForm === 'eng') out.csvForm = v.csvForm;
+  if (TOUCHSTONE_FORMATS.includes(v.ts as TouchstoneFormat)) out.ts = v.ts as TouchstoneFormat;
   return out;
 }
 
@@ -126,6 +150,25 @@ export function chartWindow(v: ChartView): GridWindow | null {
   if (!(v.k > 0 && v.w > 0 && v.h > 0)) return null;
   const hw = v.w / (2 * v.k), hh = v.h / (2 * v.k);
   return { x0: v.cx - hw, y0: v.cy - hh, x1: v.cx + hw, y1: v.cy + hh };
+}
+
+/** The project's export settings of the prefs (the figure's width, the chart's window for "current view"). */
+export function settingsOf(p: Readonly<ExportPrefs>, view: GridWindow | null, digits: number): ExportSettings {
+  const w = widthOf(p) ?? { mm: SIZE_PRESETS.column, linewidth: false };
+  return {
+    width: w.mm, linewidth: w.linewidth, view: p.area === 'view' ? view : null, detail: p.detail, colour: p.colour,
+    fontPt: p.fontPt, digits: p.csvAll ? 0 : Math.min(CSV_DIGITS_MAX, Math.max(1, digits)), form: p.csvForm, touchstone: p.ts,
+  };
+}
+
+/** The prefs an opened project's settings ask for (what the project does not hold stays as it is). */
+export function prefsOf(e: Readonly<ExportSettings>, p: Readonly<ExportPrefs>): ExportPrefs {
+  const preset = e.linewidth ? null : (Object.keys(SIZE_PRESETS) as SizePreset[]).find((k) => SIZE_PRESETS[k] === e.width);
+  return {
+    ...p, area: e.view ? 'view' : 'whole', size: preset ?? 'other', other: e.linewidth ? '\linewidth' : preset ? p.other : `${e.width} mm`,
+    detail: typeof e.detail === 'string' ? e.detail : presetOf(e.detail) ?? e.detail, colour: e.colour, fontPt: e.fontPt,
+    csvAll: e.digits === 0, csvForm: e.form, ts: e.touchstone,
+  };
 }
 
 /** The PNG's size in px at a factor: the figure's mm at 96 dpi times the factor. */
@@ -194,6 +237,16 @@ export interface ExportPanelProps {
   chart: () => ChartView | null;
   /** Whether a handle is being dragged (a build waits for the release). */
   busy: () => boolean;
+  /** The page's link (the query after "?"), for Copy link and the .s1p's comment. */
+  search: string;
+  /** The visitor's value lists, kept in the project. */
+  lists: ValueChoice;
+  /** The page's digits setting ("as shown" in the CSV). */
+  digits: number;
+  /** The export settings of the project opened last (a new `seq` applies them). */
+  opened: { exports: ExportSettings; seq: number } | null;
+  /** Opens a project file or a link saved as text (read by the page, on the device). */
+  onOpen: (file: File) => void;
 }
 
 /** What the harness reads (`[data-export]`.smithExport). */
@@ -207,7 +260,7 @@ export interface ExportProbe {
 
 interface Info { width: number; height: number; linewidth: boolean; whole: boolean; ms: number; dropped: number }
 
-function ExportPanel({ circuit, sweep, outcome, chart, busy }: ExportPanelProps) {
+function ExportPanel({ circuit, sweep, outcome, chart, busy, search, lists, digits, opened, onOpen }: ExportPanelProps) {
   const root = useRef<HTMLElement>(null);
   const frameWrap = useRef<HTMLDivElement>(null);
   const preview = useRef<HTMLDivElement>(null);
@@ -219,7 +272,8 @@ function ExportPanel({ circuit, sweep, outcome, chart, busy }: ExportPanelProps)
   const probe = useRef<ExportProbe>({ fig: null, options: null, input: null, builds: 0, buildMs: 0 });
   const built = useRef<{ view: GridWindow | null }>({ view: null });
   // The trace of the sweep, kept while the circuit and the band stay (a 10,000-point sweep takes about 3 ms).
-  const traceCache = useRef<{ circuit: Circuit | null; sweep: SweepSetting | null; input: FigureInput | null }>({ circuit: null, sweep: null, input: null });
+  const traceCache = useRef<{ circuit: Circuit | null; sweep: SweepSetting | null; input: FigureInput | null; trace: Trace | null; markers: MarkerPoint[] | null }>(
+    { circuit: null, sweep: null, input: null, trace: null, markers: null });
 
   // Read after mount (the static page has the defaults).
   useEffect(() => {
@@ -227,13 +281,23 @@ function ExportPanel({ circuit, sweep, outcome, chart, busy }: ExportPanelProps)
     try { text = window.localStorage.getItem(EXPORT_KEY); } catch { /* Storage can be blocked. */ }
     if (text) setPrefsState(readPrefs(text));
   }, []);
-  const setPrefs = useCallback((change: Partial<ExportPrefs>) => {
+  const setPrefs = useCallback((change: Partial<ExportPrefs> | ((p: ExportPrefs) => ExportPrefs)) => {
     setPrefsState((p) => {
-      const next = { ...p, ...change };
+      const next = typeof change === 'function' ? change(p) : { ...p, ...change };
       try { window.localStorage.setItem(EXPORT_KEY, JSON.stringify(next)); } catch { /* Kept for this visit. */ }
       return next;
     });
   }, []);
+  // An opened project's settings (after the stored ones above): the options, and the chart's view when it has a window.
+  const openedSeq = useRef(0);
+  useEffect(() => {
+    if (!opened || opened.seq === openedSeq.current) return;
+    openedSeq.current = opened.seq;
+    const e = opened.exports;
+    setPrefs((p) => prefsOf(e, p));
+    const v = chart(), w = e.view;
+    if (v && w && v.w > 0 && v.h > 0) v.setView((w.x0 + w.x1) / 2, (w.y0 + w.y1) / 2, Math.min(v.w / (w.x1 - w.x0), v.h / (w.y1 - w.y0)));
+  }, [opened, chart, setPrefs]);
 
   // Near the screen or not.
   useEffect(() => {
@@ -259,7 +323,7 @@ function ExportPanel({ circuit, sweep, outcome, chart, busy }: ExportPanelProps)
     const t = traceCache.current;
     const solve = outcome?.result && (outcome.circuit === circuit || sameCircuit(outcome.circuit, circuit)) ? outcome.result : null;
     if (t.circuit !== circuit || t.sweep !== sweep || !t.input) {
-      let trace: FigureInput['trace'] = null, markers: FigureInput['markers'] = null;
+      let trace: Trace | null = null, markers: MarkerPoint[] | null = null;
       if (sweep) {
         const sc = sweepCircuit(circuit), tr = new Trace(1024);
         runSweep(tr, sweep.band, sc);
@@ -269,6 +333,8 @@ function ExportPanel({ circuit, sweep, outcome, chart, busy }: ExportPanelProps)
       t.circuit = circuit;
       t.sweep = sweep;
       t.input = { circuit, solve: null, trace, markers };
+      t.trace = trace;
+      t.markers = markers;
     }
     return { ...t.input, solve };
   };
@@ -319,6 +385,34 @@ function ExportPanel({ circuit, sweep, outcome, chart, busy }: ExportPanelProps)
 
   const fig = (): Figure | null => probe.current.fig;
   const stem = 'smith-chart';
+  const link = (): string => `${window.location.origin}${window.location.pathname}?${search}`;
+  const csvOptions = (): CsvOptions => ({ digits: prefs.csvAll ? 0 : shownDigits(), form: prefs.csvForm });
+  const saveText = (text: string, type: string, name: string) => {
+    save(new Blob([text], { type }), name);
+    setNote(`Saved ${name} (${kB(new TextEncoder().encode(text).length)}).`);
+  };
+  const onNodes = () => saveText(nodesCsv(circuit, csvOptions()), 'text/csv;charset=utf-8', `${stem}-nodes.csv`);
+  const onTrace = () => {
+    const t = sweep && (inputFor(), traceCache.current.trace);
+    if (t) saveText(traceCsv(t, circuit.z0, csvOptions()), 'text/csv;charset=utf-8', `${stem}-trace.csv`);
+  };
+  const onMarkers = () => {
+    const m = sweep && (inputFor(), traceCache.current.markers);
+    if (m && m.length) saveText(markersCsv(m, csvOptions()), 'text/csv;charset=utf-8', `${stem}-markers.csv`);
+  };
+  const onS1p = () => {
+    const t = sweep && (inputFor(), traceCache.current.trace);
+    if (t) saveText(touchstone({ freqs: t.freqs, gamma: t.gamma, n: t.n, z0: circuit.z0, link: link(), format: prefs.ts }), 'text/plain;charset=utf-8', `${stem}.s1p`);
+  };
+  const onProject = () => {
+    const v = chart();
+    const exports = settingsOf(prefs, prefs.area === 'view' && v ? chartWindow(v) : null, shownDigits());
+    saveText(projectJson({ circuit, sweep, lists, exports }), 'application/json', `${stem}${PROJECT_EXTENSION}`);
+  };
+  const onCopyLink = async () => {
+    const ok = await copyText(link());
+    setNote(ok ? 'Copied the link: it opens this circuit, its lists and its sweep.' : 'The browser did not allow copying; copy the address bar instead.');
+  };
   const onCopy = async () => {
     const f = fig();
     if (!f) return;
@@ -375,7 +469,7 @@ function ExportPanel({ circuit, sweep, outcome, chart, busy }: ExportPanelProps)
     <section id="export" ref={root} className={css.export} aria-labelledby="smith-export" data-export="">
       <h2 className={`${styles.panelTitle} ${css.title}`} id="smith-export">
         <span className={css.head}>Export <Why k="export" /></span>
-        <span className={styles.panelNote}>TikZ · SVG · PNG, made on this device</span>
+        <span className={styles.panelNote}>figures, data and projects, made on this device</span>
       </h2>
 
       <div className={css.layout}>
@@ -463,7 +557,7 @@ function ExportPanel({ circuit, sweep, outcome, chart, busy }: ExportPanelProps)
           <label className={`${styles.field} ${css.narrow}`}>
             <span className={styles.fieldLabel}>Text size (grid labels)</span>
             <select className={styles.select} data-export-pt="" value={prefs.fontPt} onChange={(e) => setPrefs({ fontPt: Number(e.currentTarget.value) })}>
-              {TEXT_SIZES.map((s) => <option key={s} value={s}>{s} pt{s === DEFAULT_PT ? ' (default)' : s === MIN_PT ? ' (least)' : ''}</option>)}
+              {(TEXT_SIZES.includes(prefs.fontPt) ? TEXT_SIZES : [...TEXT_SIZES, prefs.fontPt].sort((a, b) => a - b)).map((s) => <option key={s} value={s}>{s} pt{s === DEFAULT_PT ? ' (default)' : s === MIN_PT ? ' (least)' : ''}</option>)}
             </select>
           </label>
 
@@ -494,6 +588,53 @@ function ExportPanel({ circuit, sweep, outcome, chart, busy }: ExportPanelProps)
               </label>
               <button type="button" className={`${styles.button} ${css.btn}`} data-export-png="" disabled={!info || !pngPx || !pngFits(pngPx[0], pngPx[1])} onClick={onPng}>Save PNG</button>
             </div>
+            <h3 className={css.sub}>Data <Why k="export-data" /></h3>
+            <div className={css.selects}>
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>CSV digits</span>
+                <select className={styles.select} data-export-csv-digits="" value={prefs.csvAll ? 'all' : 'shown'} onChange={(e) => setPrefs({ csvAll: e.currentTarget.value === 'all' })}>
+                  <option value="shown">As shown ({digits})</option>
+                  <option value="all">Every digit</option>
+                </select>
+              </label>
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>Numbers</span>
+                <select className={styles.select} data-export-csv-form="" value={prefs.csvForm} onChange={(e) => setPrefs({ csvForm: e.currentTarget.value as NumberForm })}>
+                  <option value="plain">Plain (0.000031)</option>
+                  <option value="eng">Engineering (31e-6)</option>
+                </select>
+              </label>
+            </div>
+            <div className={css.three} role="group" aria-label="Save CSV">
+              <button type="button" className={`${styles.button} ${css.btn}`} data-export-csv="nodes" onClick={onNodes} title="Every node at f0: z, y, Γ, VSWR, return loss, Q">Nodes CSV</button>
+              <button type="button" className={`${styles.button} ${css.btn}`} data-export-csv="trace" disabled={!sweep} onClick={onTrace} title="Γ, return loss, VSWR and Z at every frequency of the sweep">Trace CSV</button>
+              <button type="button" className={`${styles.button} ${css.btn}`} data-export-csv="markers" disabled={!sweep || !sweep.markers.length} onClick={onMarkers} title="The markers' rows of the marker table">Markers CSV</button>
+            </div>
+            <div className={css.row}>
+              <label className={css.inline}>
+                <select className={`${styles.select} ${css.factor}`} data-export-ts="" value={prefs.ts} aria-label="Touchstone numbers"
+                  onChange={(e) => setPrefs({ ts: e.currentTarget.value as TouchstoneFormat })}>
+                  <option value="RI">RI (re, im)</option>
+                  <option value="MA">MA (|Γ|, angle)</option>
+                  <option value="DB">DB (dB, angle)</option>
+                </select>
+              </label>
+              <button type="button" className={`${styles.button} ${css.btn}`} data-export-s1p="" disabled={!sweep} onClick={onS1p}>Save .s1p</button>
+              <Why k="export-s1p" />
+            </div>
+            {!sweep && <p className={css.hint} data-export-no-sweep="">The trace, markers and .s1p need a sweep: switch on Sweep in the tool.</p>}
+            <h3 className={css.sub}>Project <Why k="export-project" /> and link <Why k="export-link" /></h3>
+            <div className={css.three}>
+              <button type="button" className={`${styles.button} ${css.btn}`} data-export-project="" onClick={onProject}
+                title="The circuit, its unknowns and goal, the sweep, your value lists and these settings">Save project</button>
+              <label className={`${styles.button} ${css.btn} ${css.file}`} title="Open a saved project (.smith.json) or a link saved as text">
+                Open project
+                <input type="file" className={css.fileInput} data-export-open="" accept=".json,.txt,application/json,text/plain"
+                  onChange={(e) => { const f = e.currentTarget.files?.[0]; e.currentTarget.value = ''; if (f) onOpen(f); }} />
+              </label>
+              <button type="button" className={`${styles.button} ${css.btn}`} data-export-link-copy="" onClick={onCopyLink}>Copy link</button>
+            </div>
+            <p className={css.hint}>Or drop a project file on the page. Files are read on this device; nothing is uploaded.</p>
             <p className={css.hint} aria-live="polite" data-export-note="">{note}</p>
           </div>
         </div>

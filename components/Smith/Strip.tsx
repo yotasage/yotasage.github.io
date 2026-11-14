@@ -40,6 +40,8 @@ export interface StripProps {
   onDraw?: (kind: number) => void;
   /** What was wrong with the link the page was opened with (decodeCircuit's issues). */
   issues?: readonly string[];
+  /** What the issues are of (M8.3b: "link", or "project file" after one was opened). */
+  issuesOf?: string;
   /** The selected part (index from the load), held by the page so the chart's path shows it (M3.2); −1: the last. */
   selected?: number;
   onSelect?: (index: number) => void;
@@ -172,7 +174,7 @@ const UNIT_WORD: Record<string, string> = { Ω: 'ohms', S: 'siemens', H: 'henrie
 const INPUT_SHOWN = [[0, 'z', 'normalised'], [1, 'Z', 'in Ω'], [4, 'Γ', 'polar'], [6, 'VSWR', ''], [7, 'Return loss', '']] as const;
 const INPUT_KEYS = ['z', 'Z', 'y', 'Y', 'gamma', 'gammaRect', 'vswr', 'rl', 'note'];
 
-export default function Strip({ circuit, onChange, issues, selected: chosen, onSelect, onHover, revision, drawKind = -1, onDraw, digits, bib, lock, noSolve, noRead }: StripProps) {
+export default function Strip({ circuit, onChange, issues, issuesOf = 'link', selected: chosen, onSelect, onHover, revision, drawKind = -1, onDraw, digits, bib, lock, noSolve, noRead }: StripProps) {
   const c = circuit;
   const n = c.parts.length;
   // M6.3b: the locks. A kind-locked part cannot be removed or moved, nor another moved onto its place; with the parts'
@@ -357,7 +359,7 @@ export default function Strip({ circuit, onChange, issues, selected: chosen, onS
       <h2 className={styles.panelTitle} id="smith-circuit">Circuit <span className={styles.panelNote}>ideal parts, lossless lines</span></h2>
       {issues && issues.length > 0 && (
         <div className={styles.linkIssues} role="status">
-          <strong>The link could not be read in full:</strong>
+          <strong>The {issuesOf} could not be read in full:</strong>
           <ul>{issues.map((t, i) => <li key={i}>{t}</li>)}</ul>
         </div>
       )}

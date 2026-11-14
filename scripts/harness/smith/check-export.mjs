@@ -57,7 +57,7 @@ const median = (a) => { const s = a.slice().sort((x, y) => x - y); return s[s.le
 const UNITS = { hz: 1, khz: 1e3, mhz: 1e6, ghz: 1e9 };
 const NUM = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/;
 
-function readTouchstone(text) {
+export function readTouchstone(text) {
   if (typeof text !== 'string') throw new Error('not text');
   const lines = text.split(/\r\n|\r|\n/);
   let v2 = false, seen = false, option = null, ports = null, nfreq = null, inData = false, ended = false, refR = null, wantRef = false;

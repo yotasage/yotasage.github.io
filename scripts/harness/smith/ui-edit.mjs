@@ -540,6 +540,9 @@ try {
     await home.goto(`${base}/`, { waitUntil: 'networkidle' });
     const card = await home.$('li:has(a[href="/smith-chart/main"])');
     ok(card !== null && /Smith chart/.test(await card.textContent()) && /Electronics/.test(await card.textContent()), 'the main page has the Smith chart card');
+    // M8.3b: the card lists the exports that work.
+    ok(card !== null && /TikZ, SVG or PNG/.test(await card.textContent()) && /CSV or Touchstone/.test(await card.textContent()) && /project as a file/.test(await card.textContent()),
+      'the card lists the exports (TikZ, SVG, PNG, CSV, Touchstone, project file)');
     const icon = card && await card.$('svg');
     const box = icon && await icon.boundingBox();
     ok(box && box.width >= 24 && box.height >= 24 && (await icon.$$('circle')).length === 3 && (await icon.$$('path')).length === 2,
@@ -573,7 +576,7 @@ try {
           await frame(q);
           const more = await q.evaluate(() => ({ open: document.querySelector('#status details').open, text: document.getElementById('status').innerText,
             s: document.documentElement.scrollWidth, c: document.documentElement.clientWidth }));
-          ok(more.open && /ideal parts, lossless lines and a real Z0/.test(more.text) && /real Z0/.test(more.text) && /Still to come/.test(more.text),
+          ok(more.open && /ideal parts, lossless lines and a real Z0/.test(more.text) && /real Z0/.test(more.text) && /Every planned feature is in/.test(more.text),
             () => `${width} px, ${path}: More shows the assumptions and what is coming: ${more.text}`);
           ok(more.s <= more.c, `${width} px, ${path}: no horizontal scroll with More open (${more.s} > ${more.c})`);
         }

@@ -45,6 +45,8 @@ import type { Lesson, Lock } from '../../lib/smith/lesson';
 import { MODE_Y, MODE_Z, MODE_ZY } from '../../lib/smith/grid';
 import { Circuit, KIND_SHORT, decodeCircuit, defaultCircuit, sameCircuit, sameNetwork, sweepParams } from '../../lib/smith/state';
 import type { SweepSetting } from '../../lib/smith/state';
+import { PROJECT_MAX_BYTES, TOO_LARGE, openProject } from '../../lib/smith/export/project';
+import type { ExportSettings, Opened } from '../../lib/smith/export/project';
 import { choiceFromText, choiceToText, defaultChoice } from '../../lib/smith/values';
 import type { ValueChoice } from '../../lib/smith/values';
 import useReplayHighlight from '../../lib/useReplayHighlight';
@@ -143,6 +145,12 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   const hist = useRef<History>({ past: [], future: [], dropped: [], group: '', t: 0 });
   const [revision, setRevision] = useState(0);
   const [issues, setIssues] = useState<string[]>([]);
+  // M8.3b: what the issues are of, the message of the last file opened, a file dragged over the page, and the export
+  // settings of the project opened last (for the Export section).
+  const [issuesOf, setIssuesOf] = useState('link');
+  const [fileNote, setFileNote] = useState<{ ok: boolean; text: string; seq: number } | null>(null);
+  const [dropping, setDropping] = useState(false);
+  const [opened, setOpened] = useState<{ exports: ExportSettings; seq: number } | null>(null);
   const [linked, setLinked] = useState(false);
   // The value lists of D17 (M4.3b): what dragging snaps to and the solutions' standard values. Not part of the circuit
   // (no undo step): kept in the link (vl) and in localStorage, the link first; both read after mount, as the theme is.
@@ -350,6 +358,73 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   };
   const startRef = useRef(startChallenge);
   startRef.current = startChallenge;
+  // M8.3b: a project file (or a link saved as text), from the Export section's picker or dropped on the page, read on
+  // the device. Its circuit is one undo step; the sweep and the value lists (not in the history) follow; a running
+  // challenge, a lesson and a guide are closed, as a new circuit leaves them behind.
+  const applyOpened = (o: Opened, name: string) => {
+    const n = ++seq.current;
+    if (!o.project) { setFileNote({ ok: false, text: `${name}: ${o.message}`, seq: n }); return; }
+    if (path.current && path.current.dragPart >= 0) return;
+    const p = o.project;
+    stopDraw();
+    if (running.current) stable.closeChallenge();
+    if (lessonOn.current) stable.leave();
+    setGuide(null);
+    commit(p.circuit);
+    hist.current.group = '';
+    setRevision((r) => r + 1);
+    setPartSel(-1);
+    setNodeSel(-1);
+    setSweep(p.sweep);
+    setLists(p.lists);
+    setIssues(o.issues);
+    setIssuesOf(o.version === 0 ? 'link in the file' : 'project file');
+    setOpened({ exports: p.exports, seq: n });
+    const what = o.version === 0 ? 'the link in' : 'the project';
+    const left = o.issues.length ? `; ${o.issues.length === 1 ? 'one thing' : `${o.issues.length} things`} could not be used (listed under Circuit)` : '';
+    setFileNote({ ok: true, seq: n, text: `Opened ${what} ${name}${left}. Undo takes the circuit back.` });
+  };
+  const openFile = async (file: File) => {
+    if (file.size > PROJECT_MAX_BYTES) { applyOpened({ project: null, issues: [], version: null, message: TOO_LARGE }, file.name); return; }
+    let text: string;
+    try { text = await file.text(); } catch { applyOpened({ project: null, issues: [], version: null, message: 'The file could not be read.' }, file.name); return; }
+    applyOpened(openProject(text), file.name);
+  };
+  const openRef = useRef(openFile);
+  openRef.current = openFile;
+  const [openStable] = useState(() => (file: File) => { void openRef.current(file); });
+  // A file dragged over the page shows where it goes; dropped, it is opened. Only drags that carry files.
+  useEffect(() => {
+    let depth = 0;
+    const files = (e: DragEvent) => !!e.dataTransfer && Array.prototype.includes.call(e.dataTransfer.types, 'Files');
+    const enter = (e: DragEvent) => { if (!files(e)) return; e.preventDefault(); if (depth++ === 0) setDropping(true); };
+    const over = (e: DragEvent) => { if (!files(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; };
+    const leave = (e: DragEvent) => { if (!files(e)) return; if (--depth <= 0) { depth = 0; setDropping(false); } };
+    const drop = (e: DragEvent) => {
+      if (!files(e)) return;
+      e.preventDefault();
+      depth = 0;
+      setDropping(false);
+      const f = e.dataTransfer.files[0];
+      if (f) void openRef.current(f);
+    };
+    window.addEventListener('dragenter', enter);
+    window.addEventListener('dragover', over);
+    window.addEventListener('dragleave', leave);
+    window.addEventListener('drop', drop);
+    return () => {
+      window.removeEventListener('dragenter', enter);
+      window.removeEventListener('dragover', over);
+      window.removeEventListener('dragleave', leave);
+      window.removeEventListener('drop', drop);
+    };
+  }, []);
+  // The message of an opened file goes after 12 s; a refusal stays until it is closed or the next file comes.
+  useEffect(() => {
+    if (!fileNote?.ok) return undefined;
+    const id = window.setTimeout(() => setFileNote((f) => (f && f.seq === fileNote.seq ? null : f)), 12000);
+    return () => window.clearTimeout(id);
+  }, [fileNote]);
   // A revealed circuit, as one undo step.
   const applyRef = useRef((c: Circuit) => {
     if (path.current && path.current.dragPart >= 0) return;
@@ -494,7 +569,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
           fixed={!!lesson?.lesson.locks.length} onApply={stable.apply} onNew={stable.start} onClose={stable.closeChallenge}
           onCircles={stable.circles} onProgress={stable.progress} />
         : guide && <Guide key={guide.seq} id={guide.id} circuit={circuit} grid={grid} digits={digits} onLoad={stable.load} onClose={stable.closeGuide} />}
-      <Strip circuit={circuit} onChange={commit} issues={issues} selected={part} onSelect={selectPart}
+      <Strip circuit={circuit} onChange={commit} issues={issues} issuesOf={issuesOf} selected={part} onSelect={selectPart}
         revision={revision} drawKind={drawKind} onDraw={setDrawKind}
         onHover={(i) => { path.current?.hover(SEL_PART, i); mathLink.fromPage(SEL_PART, i); }} digits={digits} bib={bib}
         lock={lock} noSolve={noSolve} noRead={noRead} />
@@ -589,7 +664,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
       </span>
       {/* Not while the draw tool is armed: its button takes this place, so the toolbar keeps its rows and the chart does
           not move under the pointer. */}
-      {!noRead && drawKind < 0 && <a className={`${styles.button} ${styles.toolLink}`} href="#export" data-export-link="" title="The chart as a figure: TikZ for LaTeX, SVG or PNG">Export</a>}
+      {!noRead && drawKind < 0 && <a className={`${styles.button} ${styles.toolLink}`} href="#export" data-export-link="" title="The chart as a figure (TikZ, SVG, PNG), the data (CSV, Touchstone), the project file and the link">Export</a>}
       {drawKind >= 0 && (
         <button type="button" className={`${styles.button} ${styles.toggle}`} aria-pressed="true" data-draw-stop="" onClick={stopDraw}
           title="Drag from the input (In) on the chart to add the part at the source end; this button or Escape stops">Drawing {KIND_SHORT[drawKind]} ×</button>
@@ -687,10 +762,19 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
         {!noRead && <Report circuit={circuit} sweep={sweep} digits={digits} search={search} layer={getTrace} chart={getChart} />}
         {/* M8.3a: the figure export; reached from the toolbar's Export link (the nav keeps its four tabs). Builds nothing
             until it is near the screen, never in a drag. Not in a "read this point" challenge (it would show the answer). */}
-        {!noRead && <ExportPanel circuit={circuit} sweep={sweep} outcome={outcome} chart={getChart} busy={stable.busy} />}
+        {!noRead && <ExportPanel circuit={circuit} sweep={sweep} outcome={outcome} chart={getChart} busy={stable.busy}
+          search={search} lists={lists} digits={digits} opened={opened} onOpen={openStable} />}
         <LearnSection open={guide?.id ?? ''} onLoad={stable.load} challenges={challengesProps} maker={makerProps} />
         {sections}
       </main>
+      {/* M8.3b: a file dragged over the page, and the message of the last file opened (wherever the visitor is). */}
+      {dropping && <div className={styles.dropZone} aria-hidden="true" data-drop-zone="">Drop a project file (.smith.json) or a saved link to open it</div>}
+      {fileNote && (
+        <div className={styles.fileNote} role={fileNote.ok ? 'status' : 'alert'} data-file-note={fileNote.ok ? 'opened' : 'refused'}>
+          <span>{fileNote.text}</span>
+          <button type="button" className={styles.iconButton} aria-label="Close this message" data-file-note-close="" onClick={() => setFileNote(null)}>×</button>
+        </div>
+      )}
     </div>
   );
 }

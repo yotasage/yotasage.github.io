@@ -287,6 +287,21 @@ canvas of the figure's mm at 96 px per inch times the chosen factor (ui-export.m
 
 **Count:** 2 claims (282, 283), describing the tool. All: 283 claims.
 
+## The data files, the project and the link (M8.3b)
+
+284 T: the CSVs (nodes at f0, the sweep's trace, the markers) and the Touchstone .s1p (S11 at the input over the sweep, RI,
+MA or DB, `# Hz S <fmt> R <Z0>`) are the writers' output (csv.ts, touchstone.ts) for the page's state; the .s1p is read back
+by a reader written from the Touchstone 1.1 and 2.0 specifications to 1e-12 and the CSVs to their shown digits
+(check-export.mjs, ui-files.mjs). Excel keeps 15 significant digits (notes-M8.2.md), so "every digit" may lose one or two
+there.
+
+285 T: the project file holds the circuit with its unknowns and goal, the sweep, the value lists and the export settings;
+it is read by the page on the device (file picker or drop; nothing is requested while saving or opening) and restores
+the same link as one undo step; a link saved as text (version 0) is read too, a newer version is refused with a message
+(project.ts, ui-files.mjs). The page's link holds the circuit, the value lists and the sweep (state.ts; Copy link copies it).
+
+**Count:** 2 claims (284, 285), describing the tool. All: 285 claims.
+
 ## Sentences the page added (M3.5b, M3.5c)
 
 | Where | Sentence | Kind |
@@ -385,7 +400,7 @@ Each repeats claims of the topic it links to; the tool's own behaviour is T. Key
 | sweep-table | Each marker's input point at its frequency, in the digits you chose. | T 235 |
 | report | The circuit and its figures at f0 and across the band, to print or keep. | T 236 |
 | report-link | Opens this circuit, band, markers and limit again, as printed here. | T 236 |
-| export | The chart as a figure for a report, made on this device. | T 282, 283 |
+| export | The chart as a figure, its data and the project, made on this device. | T 282, 283, 284, 285 |
 | export-area | The whole chart, or the window the chart shows now, zoom included. | T 282 |
 | export-size | The width on paper; grid lines thin out so they stay apart. | T 282 |
 | export-detail | What is drawn: a preset, or each item on its own. | T 282 |
@@ -393,6 +408,10 @@ Each repeats claims of the topic it links to; the tool's own behaviour is T. Key
 | export-preview | At its size in CSS millimetres, text at its point size. | T 282 (CSS: 1 mm = 96/25.4 px) |
 | export-tikz | Plain TikZ: paste the picture, or compile the standalone document. | T 282 (check-tikz.mjs compiles both) |
 | export-image | SVG keeps the vectors; PNG is pixels at 96 dpi times the scale. | T 283 |
+| export-data | Tables for a spreadsheet; every digit may exceed what Excel keeps (15). | T 284 |
+| export-s1p | Touchstone S11 at the input over the sweep, for circuit simulators. | T 284 |
+| export-project | Circuit, goal, sweep, value lists and these settings; opened here only. | T 285 |
+| export-link | The address holds the circuit, value lists and sweep; send it to share. | T 285 |
 
 ## Deliberately left out (not sourced)
 

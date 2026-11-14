@@ -114,7 +114,7 @@ export const WHYS: Readonly<Record<string, Why>> = {
   report: w('the report', 'how-to-use', 'The circuit and its figures at f0 and across the band, to print or keep.'),
   'report-link': w('the link', 'how-to-use', 'Opens this circuit, band, markers and limit again, as printed here.'),
   // M8.3a: the figure export.
-  export: w('the export', 'how-to-use', 'The chart as a figure for a report, made on this device.'),
+  export: w('the export', 'how-to-use', 'The chart as a figure, its data and the project, made on this device.'),
   'export-area': w('what is shown', 'how-to-use', 'The whole chart, or the window the chart shows now, zoom included.'),
   'export-size': w('the width', 'how-to-use', 'The width on paper; grid lines thin out so they stay apart.'),
   'export-detail': w('the detail', 'how-to-use', 'What is drawn: a preset, or each item on its own.'),
@@ -122,6 +122,11 @@ export const WHYS: Readonly<Record<string, Why>> = {
   'export-preview': w('the preview', 'how-to-use', 'At its size in CSS millimetres, text at its point size.'),
   'export-tikz': w('TikZ', 'how-to-use', 'Plain TikZ: paste the picture, or compile the standalone document.'),
   'export-image': w('SVG and PNG', 'how-to-use', 'SVG keeps the vectors; PNG is pixels at 96 dpi times the scale.'),
+  // M8.3b: the data files, the project and the link.
+  'export-data': w('the CSV files', 'how-to-use', 'Tables for a spreadsheet; every digit may exceed what Excel keeps (15).'),
+  'export-s1p': w('the .s1p file', 'how-to-use', 'Touchstone S11 at the input over the sweep, for circuit simulators.'),
+  'export-project': w('the project file', 'how-to-use', 'Circuit, goal, sweep, value lists and these settings; opened here only.'),
+  'export-link': w('the link', 'how-to-use', 'The address holds the circuit, value lists and sweep; send it to share.'),
 };
 
 /** The key of a value field's line by its form (state.ts FormId). */

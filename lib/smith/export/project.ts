@@ -168,6 +168,8 @@ export interface Opened {
 
 const refuse = (message: string, version: number | null = null): Opened => ({ project: null, issues: [], version, message });
 const NOT_PROJECT = 'This file is not a Smith chart project or link.';
+/** The refusal of a file over PROJECT_MAX_BYTES (the page says it without reading the file). */
+export const TOO_LARGE = 'This file is too large to be a Smith chart project (over 1 MB).';
 const quote = (s: string): string => `“${s.length > 40 ? `${s.slice(0, 40)}…` : s}”`;
 const show = (v: unknown): string => {
   try { return quote(typeof v === 'string' ? v : String(JSON.stringify(v))); } catch { return '“?”'; }
@@ -185,7 +187,7 @@ export function openProject(input: string): Opened {
 }
 
 function openText(raw: string): Opened {
-  if (raw.length > PROJECT_MAX_BYTES) return refuse('This file is too large to be a Smith chart project (over 1 MB).');
+  if (raw.length > PROJECT_MAX_BYTES) return refuse(TOO_LARGE);
   const text = raw.replace(/^﻿/, '').trim();
   if (!text) return refuse('The file is empty.');
   if (text[0] === '{' || text[0] === '[' || text[0] === '"') {

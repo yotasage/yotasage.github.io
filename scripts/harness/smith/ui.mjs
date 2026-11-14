@@ -7,7 +7,7 @@ import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const SCRIPTS = ['ui-grid.mjs', 'ui-chart.mjs', 'ui-strip.mjs', 'ui-path.mjs', 'ui-drag.mjs', 'ui-trace.mjs', 'ui-plot.mjs', 'ui-report.mjs', 'ui-export.mjs', 'ui-edit.mjs', 'ui-theory.mjs', 'ui-why.mjs', 'ui-solve.mjs', 'ui-math.mjs', 'ui-math-link.mjs', 'ui-derive.mjs', 'ui-explain.mjs', 'ui-learn.mjs', 'ui-challenge.mjs'];
+const SCRIPTS = ['ui-grid.mjs', 'ui-chart.mjs', 'ui-strip.mjs', 'ui-path.mjs', 'ui-drag.mjs', 'ui-trace.mjs', 'ui-plot.mjs', 'ui-report.mjs', 'ui-export.mjs', 'ui-files.mjs', 'ui-edit.mjs', 'ui-theory.mjs', 'ui-why.mjs', 'ui-solve.mjs', 'ui-math.mjs', 'ui-math-link.mjs', 'ui-derive.mjs', 'ui-explain.mjs', 'ui-learn.mjs', 'ui-challenge.mjs'];
 // ui-grid and ui-strip take a screenshot folder as their first argument; '-' means none.
 const args = process.argv.slice(2);
 const failed = [];

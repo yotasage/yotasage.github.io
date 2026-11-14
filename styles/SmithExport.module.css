@@ -47,6 +47,10 @@
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .inline { display: inline-flex; min-width: 0; }
 .factor.factor { flex: 0 1 auto; max-width: 100%; }
+.file { position: relative; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.file:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Over the whole button, invisible: a click, a tap or Enter on it opens the picker. */
+.fileInput { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 0; }
 .hint { margin: 0; min-height: 1.4em; font-size: 12.5px; line-height: 1.4; color: var(--ink-3); overflow-wrap: anywhere; }
 
 .previewCol { display: grid; gap: 6px; min-width: 0; align-content: start; }
