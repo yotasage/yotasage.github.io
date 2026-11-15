@@ -42,5 +42,7 @@ yarn-error.log*
 
 
 TODO.md
+.local
+
 # Resistor harness (scripts/harness/resistor): its own packages
 /scripts/harness/*/node_modules/
