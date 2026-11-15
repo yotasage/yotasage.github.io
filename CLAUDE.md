@@ -144,6 +144,11 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   `getStaticProps`. Checks in `scripts/harness/smith/`: `npm run check` (engine and TikZ compiles), `npm run ui` (next
   build, then every browser script against `next start` on 3021), `npm run recheck` (both, plus the resistor harness,
   as one table of every milestone's "done when"; about 25 minutes).
+- EM simulation (planned, branch `em-sim`, not on `main` before its step M2.5): [docs/em-sim/plan.md](docs/em-sim/plan.md)
+  (decisions, steps, status), `milestones.md` (every step's scope and "done when"), `engine.md` (the model and each
+  solver's contract: 2D boundary elements, axisymmetric pads, the via model, FDTD on WebGPU), `later.md` (phase 2,
+  unscheduled). Route `/em-sim/main`, code `lib/emsim/`, `components/EmSim/`, harness `scripts/harness/emsim/`; openEMS
+  on the owner's PC is for the harness's reference fixtures only.
 - `tsconfig` uses `"module": "node16"`, so our own files count as CommonJS and the ES-module-only add-ons of three.js
   (`three/examples/jsm/...`) can only be loaded with `await import(...)`, or imported as types with
   `import type ... with { 'resolution-mode': 'import' }`. A dynamic import of one of our own files needs
@@ -203,6 +208,8 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   parts: `plan.md` (index: goal, decisions, milestones and status, how a step is run), `howto.md` (for visitors),
   `modules.md` (module map, index and lib; the page in `modules-page.md`, the checks in `modules-harness.md`),
   `engine.md`, `solver.md`, `learning.md`, `milestones.md`, and the `notes-<step>.md` each step leaves.
+- [docs/em-sim/](docs/em-sim/plan.md): EM simulation plan (branch `em-sim`): `plan.md`, `milestones.md`, `engine.md`,
+  `later.md`, and the `notes-<step>.md` each step leaves.
 - [docs/agent-workflow.md](docs/agent-workflow.md): how to run large work with Claude agents cheaply and safely, with
   the measured cost of the PCB viewer build.
 - [docs/BACKLOG.md](docs/BACKLOG.md): wanted but not scheduled, for every tool (ids `BL<n>`, never reused). Work left out
