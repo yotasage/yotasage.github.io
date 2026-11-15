@@ -16,6 +16,9 @@ The v2 draft reviewed against the site and the owner's answers; this plan writte
 
 ### M0.2 – Facts, cases and sources (content) · M
 
+**Split** (main session, 2026-11-16) into **M0.2a** (theory, definitions, exact and closed-form formulas, via formulas,
+exact cases, sources) and **M0.2b** (JLCPCB, KiCad fields, the owner's cases and JLCPCB's numbers, the validation table).
+
 **Scope.** Everything the engine and the theory will rely on, with a source or a derivation, in three files:
 
 - `facts.md`: frames and sign conventions (engine.md §1); quasi-TEM and when it holds on PCBs; Z0, εeff, delay; the
