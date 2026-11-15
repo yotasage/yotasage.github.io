@@ -155,6 +155,17 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   `@testing-library/*`, `@types/jest`, and Tailwind/PostCSS/autoprefixer (no PostCSS config, so Tailwind is not
   active). Don't take them as a sign that a server or Tailwind is in use.
 
+## Waiting on
+
+- **Breadboard tool, waiting for Fritzing's answer.** Built on the local branch `breadboard` (steps B0–B6 done, not
+  pushed). Fritzing's FAQ asks other software not to use its part graphics, so on 2026-11-15 the owner emailed
+  support@fritzing.org (Fritzing GmbH) asking for permission; the letter is in
+  `.local/Breadboard/letter-to-fritzing.md`. **Push nothing of `breadboard` until they answer.** At the start of a
+  session, remind the owner to check for a reply if none is recorded here, and ask whether to send a polite reminder
+  after about two weeks (2026-11-29). When they answer: their conditions decide whether to merge and publish, keep
+  it private, or draw our own part pictures (options in `docs/breadboard/notes.md` on the branch, "Licences in plain
+  words"; the GPL audit in `docs/breadboard/code-provenance.md`). Then update or remove this note.
+
 ## Working with Claude
 
 - **The owner does not review code or diffs.** Write the code the best way possible and never trade performance for
