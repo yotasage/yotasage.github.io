@@ -71,4 +71,4 @@ exact); asymmetric stripline or coplanar variant; F.Cu to B.Cu transition with a
 
 1. JLCPCB's online calculator and Saturn: if M0.2's agent cannot run them, it lists the inputs; the owner may type the
    results in when convenient.
-2. At checkpoint 2: TikZ export of the drawings (M8.1a), as the Smith chart has.
+2. ~~TikZ export of the drawings~~: yes, decided by the owner on 2026-11-16 (plan.md D16, M8.1a).

@@ -355,7 +355,7 @@ full-wave simulation and what the animation shows (content and page, with claims
 
 One figure model for the stackup, the cross-section and the via views (and field maps as images) that makes the SVG,
 the PNG and **TikZ** as the Smith chart's D18 does (sizes, colour modes, `\linewidth`); compiled by the harness with
-TeX Live. The owner confirms TikZ at checkpoint 2; without it the step is SVG and PNG only.
+TeX Live. TikZ confirmed by the owner (2026-11-16, D16).
 
 ### M8.1b – Export section (page) · M (page)
 

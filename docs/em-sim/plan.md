@@ -57,7 +57,7 @@ What phase 1 lets a person do:
 
 ## Decisions
 
-Settled with the owner on 2026-11-16 (D1, D6, D7, D10) or in the review (M0.1). Changing one needs the owner.
+Settled with the owner on 2026-11-16 (D1, D6, D7, D10, D16) or in the review (M0.1). Changing one needs the owner.
 
 | # | Decision | Why |
 |---|---|---|
@@ -76,6 +76,7 @@ Settled with the owner on 2026-11-16 (D1, D6, D7, D10) or in the review (M0.1). 
 | D13 | **Names:** route, docs, branch `em-sim` (`/em-sim/main`, `docs/em-sim/`); code `emsim` (`lib/emsim/`, `components/EmSim/`, `styles/EmSim*.module.css`, `scripts/harness/emsim/`). Home card "EM simulation" in the category "Electronics". | Kebab-case route folders as the site's other tools; a code name without a hyphen for imports. |
 | D14 | **Released early** (the Smith chart's D19): the tool goes to `main` with its card when M2 is done (trace impedance and fields), with a status note on the page that says what works, what is checked and how, and what is not done yet. Every later step keeps the note true and is merged when its checks pass, as the main session decides. Owner checkpoints are not gates, except that phase 2 waits for the owner. | The owner's time; a released tool stays honest. |
 | D15 | **Touch and phone width from the start** for the editors, the field views and the players; the 3D view and full-wave runs work on a phone within its limits, which the estimator states. | The owner tests on a phone. |
+| D16 | **TikZ export** of the stackup, cross-section and via drawings (field maps as embedded images), from one figure model that also makes the SVG, the PNG and the preview, as the Smith chart's D18 (sizes, colour modes, `\linewidth`), compiled by the harness (M8.1a). | Owner, 2026-11-16: "I do want TikZ export. No doubt." The owner writes reports in LaTeX. |
 
 ## Ground rules
 
