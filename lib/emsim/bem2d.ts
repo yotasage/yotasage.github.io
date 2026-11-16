@@ -4,7 +4,9 @@
 //
 // One level M: panels (panels.ts), one assembly (kernels.ts), one LU of the dielectric matrix and one of its
 // conductor block (the vacuum problem: the same potentials), one right-hand side per signal (V = 1 on it, 0 on all
-// others and on ground). The result is level M; levels M/2 and M/4 (when M/4 ≥ 1/2) give the estimate.
+// others and on ground). The result is level M; levels M/2 and M/4 (when M/4 ≥ 1/2) give the estimate. A section
+// that is its own mirror image is solved as even and odd halves (symmetry.ts; 4× less LU, 2× less assembly, the odd
+// half skipped when every signal is its own mirror), with the same charges on the whole boundary.
 //
 // The estimate (`estimateOf`): e = max(|X(M) − X(M/2)|, floor·|X|), floor 10⁻⁵. With three levels the two
 // differences must shrink at an order between 1 and 4 (ratio 2…16, same sign), else the status is 'irregular' and
@@ -18,6 +20,7 @@ import type { Panels } from './kernels';
 import { invert, luFactor, luSolve, symmetrize, toRows } from './linalg';
 import { meshBoundary, sectionBoundary, validLevel } from './panels';
 import type { Boundary } from './panels';
+import { assembleMirror, findMirror, vacuumMirror } from './symmetry';
 
 export const EPS0 = 8.8541878188e-12; // F/m, CODATA 2022
 export const C0 = 299792458; // m/s
@@ -35,7 +38,8 @@ export interface Level {
   C0: Float64Array;
   L: Float64Array; // H/m
   asym: number; // largest relative asymmetry removed from C or C0
-  pivot: number; // smallest/largest LU pivot of the dielectric matrix
+  pivot: number; // smallest/largest LU pivot of the dielectric matrix (the worse of the two halves)
+  mirror: boolean; // solved as even and odd halves (symmetry.ts)
   mesh: Panels;
   q: Float64Array; // dielectric solve: q[s·N + j] = total charge density σ/ε0 on panel j for V = 1 on signal s + 1
   q0: Float64Array; // vacuum solve: q0[s·nc + j]
@@ -66,49 +70,122 @@ export interface BemResult {
   ms: number;
 }
 
-export interface BemOptions { M?: number; estimate?: boolean; floor?: number }
+// M: the level (default 2); estimate: false solves level M alone (no estimate, status unchecked: the fast path for
+// sweeps, Monte Carlo and the inverse solve); floor: the estimate's floor; mirror: false forces the full solve.
+export interface BemOptions { M?: number; estimate?: boolean; floor?: number; mirror?: boolean }
 
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
-// One level. Returns a reason instead when the matrix is singular.
-export function solveLevel(b: Boundary, M: number): Level | string {
+// One level. Returns a reason instead when the matrix is singular. mirror (default true): a mirror-symmetric
+// section is solved as its even and odd halves (symmetry.ts); the charges are those of the whole boundary either way.
+export function solveLevel(b: Boundary, M: number, mirror = true): Level | string {
   const t0 = now();
   const mesh = meshBoundary(b, M);
   const N = mesh.n;
   const nc = mesh.nc;
   const ns = b.signals;
   if (nc === 0) return 'The structure has no conductor surface.';
-  const free = b.kernel.kind === 'free';
-  const n = N + (free ? 1 : 0);
+  const sym = mirror ? findMirror(mesh, ns) : null;
   const t1 = now();
-  const A = new Float64Array(n * n);
-  assemble(b.kernel, mesh, A, n);
-  const { A0, n0 } = vacuumMatrix(b.kernel, mesh, A, n);
-  const t2 = now();
-  const piv = new Int32Array(n);
-  const pivot = luFactor(A, n, piv);
-  const t3 = now();
-  const piv0 = new Int32Array(n0);
-  const pivot0 = luFactor(A0, n0, piv0);
-  const t4 = now();
-  if (!(pivot > 1e-15) || !(pivot0 > 1e-15)) return 'The solver\'s matrix is singular (conductors overlapping or too thin for the mesh).';
-  const B = new Float64Array(ns * n);
-  const B0 = new Float64Array(ns * n0);
-  for (let s = 0; s < ns; s++) for (let i = 0; i < nc; i++) if (mesh.cond[i] === s + 1) { B[s * n + i] = 1; B0[s * n0 + i] = 1; }
-  luSolve(A, n, piv, B, ns);
-  luSolve(A0, n0, piv0, B0, ns);
+  const B = new Float64Array(ns * N); // the charges, filled below
+  const B0 = new Float64Array(ns * nc);
+  let pivot: number;
+  let pivot0: number;
+  let t2: number;
+  let t3: number;
+  let t4: number;
+  const cond = mesh.cond;
+  if (sym) {
+    const withOdd = sym.oddNeeded && sym.no > 0;
+    const { Ae, Ao, nE, nO } = assembleMirror(b.kernel, mesh, sym, withOdd);
+    const ve = vacuumMirror(b.kernel, mesh, sym, Ae, nE, false);
+    const vo = Ao && sym.nco > 0 ? vacuumMirror(b.kernel, mesh, sym, Ao, nO, true) : null;
+    t2 = now();
+    const pivE = new Int32Array(nE);
+    pivot = luFactor(Ae, nE, pivE);
+    const pivO = Ao ? new Int32Array(nO) : null;
+    if (Ao) pivot = Math.min(pivot, luFactor(Ao, nO, pivO));
+    t3 = now();
+    const piv0E = new Int32Array(ve.n0);
+    pivot0 = luFactor(ve.A0, ve.n0, piv0E);
+    const piv0O = vo ? new Int32Array(vo.n0) : null;
+    if (vo) pivot0 = Math.min(pivot0, luFactor(vo.A0, vo.n0, piv0O));
+    t4 = now();
+    if (!(pivot > 1e-15) || !(pivot0 > 1e-15)) return 'The solver\'s matrix is singular (conductors overlapping or too thin for the mesh).';
+    // excitations: V = 1 on signal s + 1, split into even and odd parts on the representatives
+    const n0e = ve.n0;
+    const n0o = vo ? vo.n0 : 0;
+    const Be = new Float64Array(ns * nE);
+    const B0e = new Float64Array(ns * n0e);
+    const Bo = Ao ? new Float64Array(ns * nO) : null;
+    const B0o = vo ? new Float64Array(ns * n0o) : null;
+    for (let s = 0; s < ns; s++) {
+      for (let a = 0; a < sym.nce; a++) {
+        const r = sym.reps[a];
+        const o = sym.mate[r];
+        const vr = cond[r] === s + 1 ? 1 : 0;
+        const vm = cond[o] === s + 1 ? 1 : 0;
+        const e = o === r ? vr : 0.5 * (vr + vm);
+        Be[s * nE + a] = e;
+        B0e[s * n0e + a] = e;
+        if (o !== r) {
+          const d = 0.5 * (vr - vm);
+          if (Bo) Bo[s * nO + sym.odd[r]] = d;
+          if (B0o) B0o[s * n0o + sym.odd[r]] = d;
+        }
+      }
+    }
+    luSolve(Ae, nE, pivE, Be, ns);
+    luSolve(ve.A0, n0e, piv0E, B0e, ns);
+    if (Bo) luSolve(Ao, nO, pivO, Bo, ns);
+    if (B0o) luSolve(vo.A0, n0o, piv0O, B0o, ns);
+    const even = sym.even;
+    const odd = sym.odd;
+    const sign = sym.sign;
+    for (let s = 0; s < ns; s++) {
+      for (let j = 0; j < N; j++) {
+        let v = Be[s * nE + even[j]];
+        if (Bo && odd[j] >= 0) v += sign[j] * Bo[s * nO + odd[j]];
+        B[s * N + j] = v;
+      }
+      for (let j = 0; j < nc; j++) {
+        let v = B0e[s * n0e + even[j]];
+        if (B0o && odd[j] >= 0) v += sign[j] * B0o[s * n0o + odd[j]];
+        B0[s * nc + j] = v;
+      }
+    }
+  } else {
+    const free = b.kernel.kind === 'free';
+    const n = N + (free ? 1 : 0);
+    const A = new Float64Array(n * n);
+    assemble(b.kernel, mesh, A, n);
+    const { A0, n0 } = vacuumMatrix(b.kernel, mesh, A, n);
+    t2 = now();
+    const piv = new Int32Array(n);
+    pivot = luFactor(A, n, piv);
+    t3 = now();
+    const piv0 = new Int32Array(n0);
+    pivot0 = luFactor(A0, n0, piv0);
+    t4 = now();
+    if (!(pivot > 1e-15) || !(pivot0 > 1e-15)) return 'The solver\'s matrix is singular (conductors overlapping or too thin for the mesh).';
+    const X = new Float64Array(ns * n);
+    const X0 = new Float64Array(ns * n0);
+    for (let s = 0; s < ns; s++) for (let i = 0; i < nc; i++) if (cond[i] === s + 1) { X[s * n + i] = 1; X0[s * n0 + i] = 1; }
+    luSolve(A, n, piv, X, ns);
+    luSolve(A0, n0, piv0, X0, ns);
+    for (let s = 0; s < ns; s++) {
+      B.set(X.subarray(s * n, s * n + N), s * N);
+      B0.set(X0.subarray(s * n0, s * n0 + nc), s * nc);
+    }
+  }
   const C = new Float64Array(ns * ns);
   const Cv = new Float64Array(ns * ns);
-  const q = new Float64Array(ns * N);
-  const q0 = new Float64Array(ns * nc);
   for (let s = 0; s < ns; s++) {
-    q.set(B.subarray(s * n, s * n + N), s * N);
-    q0.set(B0.subarray(s * n0, s * n0 + nc), s * nc);
     for (let j = 0; j < nc; j++) {
-      const c = mesh.cond[j];
+      const c = cond[j];
       if (c < 1) continue;
-      C[(c - 1) * ns + s] += EPS0 * mesh.epsC[j] * B[s * n + j] * mesh.len[j];
-      Cv[(c - 1) * ns + s] += EPS0 * B0[s * n0 + j] * mesh.len[j];
+      C[(c - 1) * ns + s] += EPS0 * mesh.epsC[j] * B[s * N + j] * mesh.len[j];
+      Cv[(c - 1) * ns + s] += EPS0 * B0[s * nc + j] * mesh.len[j];
     }
   }
   const asym = Math.max(symmetrize(C, ns), symmetrize(Cv, ns));
@@ -119,7 +196,7 @@ export function solveLevel(b: Boundary, M: number): Level | string {
   symmetrize(L, ns);
   const t5 = now();
   return {
-    M, panels: N, nc, C, C0: Cv, L, asym, pivot, mesh, q, q0,
+    M, panels: N, nc, C, C0: Cv, L, asym, pivot, mirror: !!sym, mesh, q: B, q0: B0,
     ms: { mesh: t1 - t0, assemble: t2 - t1, lu: t3 - t2, lu0: t4 - t3, solve: t5 - t4, total: t5 - t0 },
   };
 }
@@ -166,7 +243,7 @@ export function solveBoundary(b: Boundary | ((M: number) => Boundary), opt: BemO
   let bd: Boundary | null = null;
   for (const m of Ms) {
     bd = typeof b === 'function' ? b(m) : b;
-    const lv = solveLevel(bd, m);
+    const lv = solveLevel(bd, m, opt.mirror !== false);
     if (typeof lv === 'string') return failed(lv, levels, bd);
     levels.push(lv);
   }

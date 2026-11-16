@@ -90,7 +90,11 @@ slab (its nearest singularity is at least b away).
 apart) was measured on the microstrip with mask at 364 panels: η = 10 and 6 change Z0 by 3 × 10⁻⁹ and 4 × 10⁻⁹,
 η = 3 by 3.4 × 10⁻⁷, η = 2 by 1.1 × 10⁻⁶, and saved at most 20 % of the assembly (the LU dominates from 300 panels).
 With η = 3 the finest levels of the coupled pair also drifted, which spoils the error estimate. M1.2 uses the closed
-form on every pair; η = 6 is allowed later only if profiling asks and the harness shows no change above 10⁻⁷.
+form on every pair; η = 6 is allowed later only if profiling asks and the harness shows no change above 10⁻⁷. M1.2b keeps
+the exact integral but evaluates it, for panels whose midpoint is more than 8 lengths away, as the convergent series of
+the closed form in ζ = τ·(L/2)/w (kernels.ts; truncated below 3 × 10⁻¹⁷ of the leading term, so not an approximation
+at double precision): one logarithm for the potential and none for the field instead of two and an arctangent; C, C0
+change by at most 6 × 10⁻¹⁴ (relative).
 
 ### 2.4 Infinite interfaces and planes: truncation
 
@@ -297,3 +301,19 @@ with a mirrored kernel: LU 4× and assembly 2× cheaper, the pair ≈ 20 ms with
 edge (the pair's 442 panels include long coplanar ground rays that carry little charge); (3) while dragging, level M
 only and the estimate after release; Monte Carlo at level M without estimates. Asymmetric pairs and three conductors
 stay near 45–60 ms; a blocked LU or a WebAssembly kernel would gain at most 2× (D5 leaves WebAssembly to phase 2).
+
+**Measured after M1.2b** ([notes-M1.2b.md](notes-M1.2b.md); `npm run check` prints this table with each budget's pass or
+fail; Node, Ryzen 9 7950X, median of 7 after warm-up; the panel counts of M1.2a's base mesh, results unchanged to
+6 × 10⁻¹⁴). Blocked LU 8.5 GFlop/s (was 2.5), assembly 1.8× faster (far panels by series, no boxed doubles), and
+mirror-symmetric sections solved as even and odd halves:
+
+| Case (M = 2) | Panels | With estimate (budget) | Single level (≤ 15 ms for M1.3) |
+|---|---|---|---|
+| microstrip + mask (default setup), halves | 192 | **1.1 ms** (20: met) | 0.8 ms |
+| pair + mask + coplanar ground, halves | 620 | **15.6 ms** (40: met) | **12.3 ms** |
+| the same pair solved whole (as an asymmetric pair would be) | 620 | 39.8 ms | 36 ms |
+
+What follows for a symmetric pair at level M alone: Monte Carlo of 1000 ≈ 12 s (20), sweep of 100 ≈ 1.2 s (2),
+inverse of 10–20 solves ≈ 0.12–0.25 s (0.3): **met**. An asymmetric pair (or three conductors) still takes ≈ 36 ms
+a solve: Monte Carlo ≈ 36 s, sweep ≈ 3.6 s, inverse ≈ 0.4–0.7 s, **over** those three budgets (the owner's call: a
+coarser base mesh per edge, M = 1, or a worker per core).

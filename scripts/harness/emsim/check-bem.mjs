@@ -1,6 +1,7 @@
 // The 2D boundary-element solver (M1.2a): every exact case of facts-cases.md it can represent, with the error per
 // level and the measured order; symmetry, invariance under translation and mirroring, homogeneous identities; the
-// owner's C39 against the M0.3 spike; the weight of the mask side-wall convention; timing of the main cases.
+// owner's C39 against the M0.3 spike; the weight of the mask side-wall convention; the mirror-symmetric solve against
+// the full one (M1.2b); timing of the main cases against the budgets.
 // Prints one compact table per part as notes. Circles are inscribed polygons refined with the level (32·M and 64·M
 // vertices); sheets (zero thickness) are single conductor edges.
 
@@ -291,17 +292,71 @@ function owner(t) {
   t.note(lines.join('\n'));
 }
 
-function timing(t) {
-  const lines = ['Timing (ms, median of 3; per level: mesh / assembly / LU / LU vacuum / solves):'];
+// M1.2b: the mirror-symmetric solve (even and odd halves) against the full solve of the same panels, and the sections
+// that must not take it.
+function mirror(t) {
+  const lines = ['Mirror symmetry (M1.2b): halves against the full solve at M = 2, largest relative difference of C, C0, L and of the charges:'];
   const su = SU.defaultSetup();
-  for (const [what, sec] of [['microstrip + mask (default setup)', G.section(su.stackup, su.trace)], ['pair + mask + coplanar ground', pairSection()]]) {
+  const hs = S.cloneStackup(su.stackup);
+  const strip = ST.presetStructure('stripline', hs, 0.12);
+  const cases = [
+    ['C39 microstrip with mask', c39Section(), true],
+    ['default microstrip (trapezoid)', G.section(su.stackup, su.trace), true],
+    ['pair + mask + coplanar ground', pairSection(), true],
+    ['pair without mask, translated 0.25', moved(pairSection(false), 0.25, false, false), true],
+    ['stripline (parallel plates)', G.section(hs, strip), true],
+    ['coax (free kernel, V0)', coax(0.5, 2, 0, 2.2), true],
+    ['eccentric coax', coax(0.5, 2, 0.4, 2.2), false],
+    ['half-filled coax (free kernel, interfaces)', coaxHalf(0.5, 2, 4.3), true],
+  ];
+  for (const [what, sec, sym] of cases) {
+    const solve = (mirror) => (typeof sec === 'function' ? B.solveBoundary(sec, { M: 2, mirror }) : B.solveSection(sec, { M: 2, mirror }));
+    const a = solve(true);
+    const f = solve(false);
+    t.ok(a.ok && f.ok, `${what} solves`);
+    const fin = a.levels[a.levels.length - 1];
+    t.ok(fin.mirror === sym && !f.levels[f.levels.length - 1].mirror, `${what}: mirror used ${fin.mirror}, expected ${sym}`);
+    const dm = Math.max(maxRel(a.C, f.C), maxRel(a.C0, f.C0), maxRel(a.L, f.L));
+    const qa = fin.q, qf = f.levels[f.levels.length - 1].q;
+    let qm = 0, dq = 0;
+    for (let i = 0; i < qf.length; i++) { qm = Math.max(qm, Math.abs(qf[i])); dq = Math.max(dq, Math.abs(qa[i] - qf[i])); }
+    dq /= qm;
+    t.ok(dm <= 1e-11, `${what}: halves vs full ${dm.toExponential(2)}`);
+    t.ok(dq <= 1e-9, `${what}: charges halves vs full ${dq.toExponential(2)}`);
+    t.ok(a.status === f.status, `${what}: estimate status ${a.status} vs ${f.status}`);
+    lines.push(`  ${what.padEnd(36)} ${sym ? 'halves' : 'full  '} C ${dm.toExponential(1)}, charges ${dq.toExponential(1)}`);
+  }
+  t.note(lines.join('\n'));
+}
+
+// Timing against the budgets of engine.md §10 (with the estimate) and the single-level solve M1.3 builds on
+// (sweeps, Monte Carlo, the inverse solve): median of 7 after 3 warm-up runs.
+function timing(t) {
+  const lines = ['Timing (ms, median of 7 after warm-up; last level: panels, mesh / assembly / LU / LU vacuum / solves):'];
+  const su = SU.defaultSetup();
+  const rows = [
+    ['microstrip + mask (default setup)', G.section(su.stackup, su.trace), {}, 20, true],
+    ['microstrip + mask, single level', G.section(su.stackup, su.trace), { estimate: false }, 15, true],
+    ['pair + mask + coplanar ground', pairSection(), {}, 40, true],
+    ['pair + mask + coplanar ground, single level', pairSection(), { estimate: false }, 15, true],
+    ['pair, full solve (as an asymmetric pair)', pairSection(), { mirror: false }, 0, false],
+    ['pair, full solve, single level', pairSection(), { mirror: false, estimate: false }, 0, false],
+  ];
+  for (const [what, sec, opt, budget, isBudget] of rows) {
+    for (let k = 0; k < 3; k++) B.solveSection(sec, { M: 2, ...opt });
     const runs = [];
-    for (let k = 0; k < 3; k++) runs.push(B.solveSection(sec, { M: 2 }));
+    for (let k = 0; k < 7; k++) runs.push(B.solveSection(sec, { M: 2, ...opt }));
     runs.sort((a, b) => a.ms - b.ms);
-    const r = runs[1];
+    const r = runs[3];
     t.ok(r.ok, `${what} solves`);
-    const lv = r.levels.map((l) => `M${l.M} n${l.panels}: ${[l.ms.mesh, l.ms.assemble, l.ms.lu, l.ms.lu0, l.ms.solve].map((x) => x.toFixed(1)).join('/')}`);
-    lines.push(`  ${what}: ${r.ms.toFixed(1)} ms with estimate; ${lv.join('; ')}`);
+    const l = r.levels[r.levels.length - 1];
+    const parts = [l.ms.mesh, l.ms.assemble, l.ms.lu, l.ms.lu0, l.ms.solve].map((x) => x.toFixed(1)).join(' / ');
+    let verdict = '(information)';
+    if (isBudget) {
+      t.ok(r.ms <= budget, `${what}: ${r.ms.toFixed(1)} ms over the budget ${budget} ms`);
+      verdict = `budget ${budget}: ${r.ms <= budget ? 'pass' : 'FAIL'}`;
+    }
+    lines.push(`  ${what.padEnd(45)} ${r.ms.toFixed(1).padStart(6)} ms  ${verdict.padEnd(17)} n ${l.panels}${l.mirror ? ' (halves)' : ''}: ${parts}`);
   }
   t.note(lines.join('\n'));
 }
@@ -309,6 +364,7 @@ function timing(t) {
 export function run(t) {
   exactCases(t);
   invariance(t);
+  mirror(t);
   owner(t);
   timing(t);
 }
