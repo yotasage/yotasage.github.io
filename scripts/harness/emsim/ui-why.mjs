@@ -3,7 +3,8 @@
 // states that show it (the default microstrip with the picker, the fields and all four tools open; a pair with the
 // field drive on one line; the pair as a general structure, unequal, then three traces, with the Calculators; a
 // broadside pair; a coplanar line with ground; a stripline pair, whose modes are not resolved; a link with an unknown
-// unit and a mask εr under 1; a plane above below the trace; the owner's KiCad board and project where they are), and
+// unit and a mask εr under 1; a plane above below the trace; the Via section's default via and pair (M3.1a); the
+// owner's KiCad board and project where they are), and
 // no key is left unseen. The links: one of every topic followed by mouse (the theory loads, the topic is the target, in
 // view and highlighted; a second click replays the highlight), the Calculators panel's links likewise, by keyboard
 // (Tab reaches a link, Enter follows it) and by touch at 390 px. The bar's switch hides and shows every line and is
@@ -41,7 +42,7 @@ const pairSetup = () => { const s = withTrace('pair-microstrip', 0.11); s.trace 
 
 // ---- the data ----
 const keys = Object.keys(WHYS);
-check(keys.length === 114, `${keys.length} short lines (113 of theory-lines.md and the switch's own)`);
+check(keys.length === 150, `${keys.length} short lines (149 of theory-lines.md and the switch's own)`);
 check(keys.every((k) => WHYS[k].text && WHYS[k].label && (WHYS[k].topic === null || TOPIC_TITLE[WHYS[k].topic])), 'every line has a label, a text and a known topic or none');
 check(keys.every((k) => WHYS[k].text.split(/\s+/).length <= 22), 'every line at most about 20 words');
 const fullText = (k) => `${WHYS[k].text}${WHYS[k].topic ? ' → theory' : ''}`;
@@ -132,6 +133,17 @@ try {
   const above = SU.defaultSetup();
   above.trace = { ...above.trace, above: above.trace.below };
   await one(above, 'plane above below the trace', ['structure-issues']);
+  // ---- 4: the Via section (M3.1a): the default via with its issues, then the pair ----
+  const vp = await open(`${URL0}#via`);
+  await vp.waitForSelector('[data-via-results][data-state="done"]:not([data-stale="true"])', { timeout: 60000 });
+  await state(vp, 'default via', ['via-kind', 'via-preset', 'via-use-trace', 'via-barrel', 'via-signal', 'via-drill', 'via-plating', 'via-layer-table',
+    'via-pad', 'via-plane', 'via-antipad', 'via-shape', 'via-antipad-all', 'via-returns', 'via-return-add', 'via-return-remove', 'via-return-planes',
+    'via-backdrill', 'via-feeds', 'via-side', 'via-top', 'via-issues', 'via-solve', 'via-barrel-z', 'via-section-z', 'via-delay', 'via-lc',
+    'via-segments', 'via-crossings', 'via-stubs', 'via-feed-z', 'via-valid', 'via-flags', 'via-assumptions', 'via-next']);
+  await vp.click('[data-via-preset="pair"]');
+  await vp.waitForSelector('[data-via-results][data-n="2"]:not([data-stale="true"])', { timeout: 60000 });
+  await state(vp, 'via pair', ['via-pitch']);
+  await vp.close();
   let kicadSeen = false;
   if (CARRIER.every(existsSync)) {
     const p = await open(URL0);

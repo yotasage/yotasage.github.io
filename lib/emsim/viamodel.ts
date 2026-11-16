@@ -258,7 +258,7 @@ export interface ViaModelResult {
   n: number;
   tr: number; f3: number; band: number; z0: number;
   wall: { kind: 'equivalent' | 'rule'; Req: number; Rw: number };
-  barrel: { zVac: number; zVacErr: number; zdiffVac: number; zcmVac: number; k12: number };
+  barrel: { zVac: number; zVacErr: number; zdiffVac: number; zcmVac: number; zdiffVacErr: number; zcmVacErr: number; k12: number };
   nodes: ViaNode[];
   pieces: ViaPiece[];
   stubs: ViaStub[];
@@ -506,7 +506,7 @@ export function buildVia(s: Stackup, v: ViaStructure, trace: Structure | null, o
   const r: ViaModelResult = {
     ok: true, reason: '', version: VIAMODEL_VERSION, n, tr, f3, band, z0,
     wall: { kind: wallKind, Req, Rw: axi.Rw },
-    barrel: { zVac: cut.vac.z, zVacErr: cut.err.z.e, zdiffVac: cut.vac.zdiff, zcmVac: cut.vac.zcm, k12 },
+    barrel: { zVac: cut.vac.z, zVacErr: cut.err.z.e, zdiffVac: cut.vac.zdiff, zcmVac: cut.vac.zcm, zdiffVacErr: cut.err.zdiff.e, zcmVacErr: cut.err.zcm.e, k12 },
     nodes, pieces, stubs, feeds, lumped, valid: { fMax: fValid, reason: validWhy }, axiTotal: axi.total, axiTotalErr: axi.totalErr.e,
     elements: [...before, ...through, ...after], span,
     nport: null, mixed: null, tdr: null, tdrCommon: null, flags, assumptions, axiCached: axi.cached,

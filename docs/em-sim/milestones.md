@@ -324,6 +324,13 @@ vias), the results (segment impedances, pad capacitances, stub resonance, flags 
 **Done when:** the owner's LVDS via pair opens from facts-cases.md's values; every drag updates within budget; touch and
 keys; both themes and widths.
 
+**Split** (main session, 2026-11-16, two jobs, as M2.1): **M3.1a** (the Via section: the via typed in a form (layers,
+drill, plating, pads, antipads with their shapes, planes, return vias as rows, pair pitch, backdrill, feeds), the side
+and top views drawn to scale without handles, the results through the worker's `via` job with the stale state, the
+flags with their numbers, the presets C44 and C45 and the link) and **M3.1b** (drag handles in both views: pad, antipad,
+drill, pitch, backdrill depth; add, move and remove return vias by mouse, touch and keys; pan and zoom with
+`panZoom.ts`; the drag budget at 1× and 4×).
+
 ### M3.2 – Via plots, fields, target · M (page)
 
 TDR/TDT plot with the rise-time control, S11/S21 (and mixed-mode for pairs) in dB against frequency, the feed traces'

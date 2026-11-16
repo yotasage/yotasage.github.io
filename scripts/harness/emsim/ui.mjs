@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '../../..');
-const SCRIPTS = ['ui-stackup.mjs', 'ui-trace.mjs', 'ui-jlcpcb.mjs', 'ui-drag.mjs', 'ui-general.mjs', 'ui-fields.mjs', 'ui-tools.mjs', 'ui-calc.mjs', 'ui-theory.mjs', 'ui-why.mjs', 'ui-release.mjs'];
+const SCRIPTS = ['ui-stackup.mjs', 'ui-trace.mjs', 'ui-jlcpcb.mjs', 'ui-drag.mjs', 'ui-general.mjs', 'ui-fields.mjs', 'ui-tools.mjs', 'ui-calc.mjs', 'ui-theory.mjs', 'ui-via.mjs', 'ui-why.mjs', 'ui-release.mjs'];
 const PORT = 3022;
 const argv = process.argv.slice(2);
 const noBuild = argv.includes('--no-build');

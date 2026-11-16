@@ -230,7 +230,8 @@
 /* Narrow phones: the section links go to a second row of the bar. */
 @media (max-width: 480px) {
   .barInner { flex-wrap: wrap; row-gap: 0; padding-bottom: 4px; }
-  .nav { order: 10; flex-basis: 100%; margin: 0 0 0 -10px; }
+  .nav { order: 10; flex-basis: 100%; margin: 0 0 0 -6px; overflow-x: auto; scrollbar-width: none; }
+  .nav a { padding: 6px 6px; white-space: nowrap; }
   .title { line-height: 52px; }
 }
 

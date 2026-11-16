@@ -1,0 +1,57 @@
+/* The EM simulation page's Via section (step M3.1a; in the Via chunk): the two views, the layer, return-via and feed
+   rows, the results' tables. The layout, fields, results panel and drawing frame come from EmSimTrace and EmSimStackup. */
+
+.views { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+.view {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--air);
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+}
+
+.view svg { display: block; max-width: 100%; height: auto; }
+
+.rows { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+
+.row {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 8px 10px 10px;
+  min-width: 0;
+}
+
+.row[data-in-barrel='false'] { opacity: 0.75; }
+
+.rowHead { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 0.875rem; }
+
+.tag {
+  font-size: 0.75rem;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.dim { font-size: 0.75rem; color: var(--ink-3); }
+
+.check { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; font-size: 0.875rem; cursor: pointer; }
+.check input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
+
+.remove { margin-left: auto; min-height: 32px; }
+
+.h4 { margin: 14px 0 4px; font-size: 0.875rem; font-weight: 650; }
+
+.tableScroll { overflow-x: auto; max-width: 100%; }
+
+.table { border-collapse: collapse; font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+.table th { text-align: left; font-weight: 600; color: var(--ink-2); padding: 3px 12px 3px 0; white-space: nowrap; }
+.table td { padding: 3px 12px 3px 0; border-top: 1px solid var(--rule); white-space: nowrap; font-family: var(--font-num); }
+.table td:first-child { font-family: var(--font-ui); }
+
+.list { margin: 4px 0 0; padding-left: 1.1em; font-size: 0.875rem; line-height: 1.45; }
+.list li { margin: 2px 0; }
+
+.whyRow { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }

@@ -16,7 +16,7 @@ the page remembers your choice."). A new control gets its line here and in whys.
 | Where | Line | → | Claim |
 |---|---|---|---|
 | Home (`aria-label="Home"`) | Back to all the tools on this site. | – | – |
-| Sections nav | Jump to Stackup, Trace or Theory. | – | – |
+| Sections nav | Jump to Stackup, Trace, Via or Theory. | – | – |
 | Undo / Redo (`data-undo`, `data-redo`) | Step back or forward through every change; Ctrl+Z and Ctrl+Shift+Z too. | `how-to-use` | 11 |
 | Theme (`data-theme-toggle`) | Light or dark; the page remembers your choice on this device. | – | 127 |
 | Status line | What the page does so far and what comes next. | `how-to-use` | – |
@@ -148,3 +148,47 @@ the page remembers your choice."). A new control gets its line here and in whys.
 | Kirschning–Jansen note (`data-calc-kj`) | Zero-thickness strips: thick copper lowers Zdiff by many ohms. | `copper-thickness` | 84, 90 |
 | Neglect sentences | Why the formulas sit above a masked or thick trace. | `closed-forms` | 77, 93 |
 | No formula (`data-calc-none`) | No closed formula covers this structure; the field value stands alone. | `closed-forms` | – |
+
+## Via (step M3.1a)
+
+Placed in `whys.ts` with the keys in brackets. The via theory is M4.1; until then the links go to the line and solver
+topics. Lines without a claim describe what the control does.
+
+| Where | Line | → | Claim |
+|---|---|---|---|
+| Single · Pair (`data-via-kind`, via-kind) | One via, or a differential pair whose second via sits one pitch away. | `pairs` | – |
+| Presets (`data-via-preset`, via-preset) | A 0.6/0.3 via and an LVDS pair from real boards; each replaces the whole via. | – | – |
+| Entry on the trace's layer (`data-via-use-trace`, via-use-trace) | Puts the via's entry on the Trace section's signal layer. | – | – |
+| Barrel from, to (via-barrel) | Where the plated hole starts and ends: through, blind or buried. | – | – |
+| Entry, exit (via-signal) | The layers the feed traces join; barrel beyond them is a stub. | – | – |
+| Drill (via-drill) | The drilled hole; the model takes the barrel as solid copper of this diameter. | – | – |
+| Plating (via-plating) | Copper on the hole's wall; the finished hole is the drill less twice this. | – | – |
+| Pitch (via-pitch) | Centre to centre between the pair's two vias; closer couples them more. | `pair-definitions` | – |
+| Layers (`data-via-layers`, via-layer-table) | Each copper layer: its pad, and whether it is a plane the barrel passes. | `structures` | – |
+| Pad (via-pad) | Copper ring around the barrel; empty means removed. Every pad adds capacitance. | `field-solver` | – |
+| Plane (`data-via-plane`, via-plane) | A reference plane: the barrel passes it through an antipad, return vias join it. | – | – |
+| Antipad Ø (via-antipad) | The opening in the plane: wider means less capacitance and a higher impedance. | `field-solver` | – |
+| Antipad shape (`data-via-shape`, via-shape) | Round per via, oblong around both, or two rounds joined by a bridge. | – | – |
+| All antipads (via-antipad-all) | Sets one antipad size on every plane at once. | – | – |
+| Return vias (via-returns) | Ground vias beside the barrel carry its return current; positions from the via's centre. | `transmission-lines` | – |
+| Add return via (via-return-add) | Places one more at a free spot around the via. | – | – |
+| Remove (via-return-remove) | Takes that return via away. | – | – |
+| Joins (via-return-planes) | The planes this return via connects. | – | – |
+| Backdrill (via-backdrill) | Drills out unused barrel from one side, so the stub gets shorter. | – | – |
+| Feeds (via-feeds) | The traces into and out of the via: the Trace section's line, length and direction. | `transmission-lines` | – |
+| Side view (via-side) | The board cut along the dashed line of the top view, to scale. | – | – |
+| Top view (via-top) | Looking down at a plane: pads, antipads, return vias and feeds, to scale. | – | – |
+| About this via (via-issues) | What makes the via impossible or doubtful, and why. | – | – |
+| Solving (via-solve) | Old numbers stay dimmed until the new ones arrive. | `field-solver` | – |
+| Barrel (via-barrel-z) | The barrel and its returns as a line, from a 2D cut through the core. | `field-solver` | – |
+| Via section (via-section-z) | The whole via as one element, √(L/C): the barrel with every pad's capacitance. | `transmission-lines` | – |
+| Delay through (via-delay) | The time an edge takes from the top pad to the bottom one. | `transmission-lines` | – |
+| L and C (via-lc) | The via's total inductance and capacitance, pads and planes included. | – | – |
+| Piece by piece (via-segments) | Each length of barrel between layer boundaries: its impedance and delay. | `field-solver` | – |
+| Pads and planes (via-crossings) | The extra capacitance where the barrel meets a pad or passes a plane. | `field-solver` | – |
+| Stubs (via-stubs) | Unused barrel is an open line; it notches the signal near its quarter-wave frequency. | – | – |
+| Feed traces (via-feed-z) | The feeds' impedance and εeff, solved as in the Trace section. | `field-solver` | – |
+| Valid to (via-valid) | Each lumped part is short against the wavelength up to here (λ/8). | – | – |
+| Flags (via-flags) | Where the model is stretched, each with its numbers. | – | – |
+| Assumptions (via-assumptions) | What the via model takes as given. | `field-solver` | – |
+| Next (via-next) | TDR and S-parameter plots, fields and handles come in the next steps. | – | – |
