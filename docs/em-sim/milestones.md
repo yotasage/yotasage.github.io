@@ -125,6 +125,11 @@ invariants (no overlap, mask thickness rules, layers in order); link and project
 
 ### M1.2 – 2D boundary-element core · L
 
+**Split** (main session, 2026-11-16, after M1.1 overran its context budget) into **M1.2a** (correctness: panels from
+the geometry, kernels, assembly, LU, C/C0/L/Z0/εeff, the error estimate; every accuracy, symmetry, invariance and
+identity item below) and **M1.2b** (speed: the budgets of engine.md §10 in Node, by mirror symmetry, reuse between the
+refinements and between dielectric and vacuum solves, a faster LU, and per-corner grading if it pays).
+
 The solver of solver.md for any number of conductors: C, C0, L, Z0, εeff for one conductor, the matrices for several,
 the error estimate by refinement, dense linear algebra in `lib/emsim/linalg.ts`. Starts from the M0.3 spike.
 
