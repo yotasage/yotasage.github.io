@@ -6,7 +6,7 @@
 // Reading never throws: unknown or bad parts give issues and defaults.
 
 import { fromPlain, sameSetup, toPlain } from './setup';
-import type { Plain, Setup } from './setup';
+import type { Plain, Setup, StackupResolver } from './setup';
 import { issue } from './stackup';
 import type { Issue } from './stackup';
 
@@ -113,9 +113,10 @@ function escapePart(s: string): string {
 
 // --- Encode and decode ---
 
-// The query string (without "?"): "v=1" alone for the default setup.
-export function encodeLink(x: Setup): string {
-  const p: Plain = toPlain(x, true);
+// The query string (without "?"): "v=1" alone for the default setup. With `resolve`, an unedited JLCPCB list stackup
+// is written as its key.
+export function encodeLink(x: Setup, resolve?: StackupResolver): string {
+  const p: Plain = toPlain(x, true, resolve);
   const parts = [`v=${LINK_VERSION}`];
   for (const k of PARAMS) {
     if (k === 'v') continue;
@@ -132,8 +133,8 @@ export interface Decoded {
   version: number;
 }
 
-// Reads a query string, a "?…" or a whole URL. Never throws.
-export function decodeLink(text: string): Decoded {
+// Reads a query string, a "?…" or a whole URL. Never throws. `resolve` reads JLCPCB list keys (setup.ts).
+export function decodeLink(text: string, resolve?: StackupResolver): Decoded {
   const issues: Issue[] = [];
   let q = String(text ?? '');
   const hash = q.indexOf('#');
@@ -172,12 +173,12 @@ export function decodeLink(text: string): Decoded {
   }
   if (linked && version === 0) version = LINK_VERSION;
   if (version > LINK_VERSION) issues.push(issue('warn', 'link', 'v', `The link was made by a newer version of this tool (${version}); it is read as version ${LINK_VERSION}, and parts it cannot read are defaults.`));
-  const r = fromPlain(plain);
+  const r = fromPlain(plain, resolve);
   return { setup: r.setup, issues: [...issues, ...r.issues], linked, version };
 }
 
 // Whether a setup survives its link unchanged (the harness's round trip, and a guard before a link is shared).
-export function linkRoundTrips(x: Setup): boolean {
-  const d = decodeLink(encodeLink(x));
+export function linkRoundTrips(x: Setup, resolve?: StackupResolver): boolean {
+  const d = decodeLink(encodeLink(x, resolve), resolve);
   return d.issues.length === 0 && sameSetup(d.setup, x);
 }

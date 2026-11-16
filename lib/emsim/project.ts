@@ -4,7 +4,7 @@
 
 import { decodeLink, encodeLink } from './link';
 import { fromPlain, toPlain } from './setup';
-import type { Setup } from './setup';
+import type { Setup, StackupResolver } from './setup';
 import type { Issue } from './stackup';
 
 export const PROJECT_FORMAT = 'yotasage-emsim';
@@ -12,8 +12,9 @@ export const PROJECT_VERSION = 1;
 export const PROJECT_EXTENSION = '.emsim.json';
 export const PROJECT_MAX_BYTES = 4_000_000;
 
-export function projectJson(x: Setup, date = new Date().toISOString().slice(0, 10)): string {
-  const file = { format: PROJECT_FORMAT, version: PROJECT_VERSION, saved: date, link: encodeLink(x), setup: toPlain(x, false) };
+// `resolve`: a JLCPCB list stackup is written as its key when unedited (setup.ts), as in the link.
+export function projectJson(x: Setup, date = new Date().toISOString().slice(0, 10), resolve?: StackupResolver): string {
+  const file = { format: PROJECT_FORMAT, version: PROJECT_VERSION, saved: date, link: encodeLink(x, resolve), setup: toPlain(x, false, resolve) };
   return `${JSON.stringify(file, null, 1)}\n`;
 }
 
@@ -24,14 +25,14 @@ export interface Opened {
   message: string; // why it was refused ('' when read)
 }
 
-export function openProject(text: string): Opened {
+export function openProject(text: string, resolve?: StackupResolver): Opened {
   const t = String(text ?? '');
   if (t.length > PROJECT_MAX_BYTES) return { setup: null, issues: [], version: 0, message: 'The file is too large to be a project of this tool.' };
   const trimmed = t.trim();
   if (!trimmed) return { setup: null, issues: [], version: 0, message: 'The file is empty.' };
   if (trimmed[0] !== '{') {
     if (/(^|[?&])v=\d/.test(trimmed)) {
-      const d = decodeLink(trimmed);
+      const d = decodeLink(trimmed, resolve);
       return { setup: d.setup, issues: d.issues, version: 0, message: '' };
     }
     return { setup: null, issues: [], version: 0, message: 'This is neither a project file of this tool nor a link to it.' };
@@ -46,6 +47,6 @@ export function openProject(text: string): Opened {
   const version = Number(j.version);
   if (!Number.isInteger(version) || version < 1) return { setup: null, issues: [], version: 0, message: 'The project’s version cannot be read.' };
   if (version > PROJECT_VERSION) return { setup: null, issues: [], version, message: `The project was saved by a newer version of this tool (file version ${version}); this page reads up to version ${PROJECT_VERSION}.` };
-  const r = fromPlain(j.setup);
+  const r = fromPlain(j.setup, resolve);
   return { setup: r.setup, issues: r.issues, version, message: '' };
 }

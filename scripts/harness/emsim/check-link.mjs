@@ -1,5 +1,6 @@
 // Link and project file: exact round trips (presets, KiCad stackups, ≥ 200 randomised setups with a fixed seed whose
-// texts hold every awkward character), the short form of defaults, and reading of broken input that never throws.
+// texts hold every awkward character), the short form of defaults, and reading of broken input that never throws;
+// JLCPCB list stackups (M1.8c) by their key through a resolver, an unknown key, an edited one as layers.
 
 import { existsSync, readFileSync } from 'node:fs';
 import * as S0 from '../../../lib/emsim/stackup.ts';
@@ -10,6 +11,7 @@ import * as K0 from '../../../lib/emsim/kicad.ts';
 import * as E0 from '../../../lib/emsim/setup.ts';
 import * as L0 from '../../../lib/emsim/link.ts';
 import * as J0 from '../../../lib/emsim/project.ts';
+import * as G0 from '../../../lib/emsim/jlcpcb.ts';
 import { mulberry32 } from './check-geometry.mjs';
 
 const S = S0.default ?? S0;
@@ -20,6 +22,7 @@ const K = K0.default ?? K0;
 const E = E0.default ?? E0;
 const L = L0.default ?? L0;
 const J = J0.default ?? J0;
+const G = G0.default ?? G0;
 
 const SEED = 20261116;
 const RANDOM_SETUPS = 250;
@@ -179,4 +182,38 @@ export function run(t) {
   t.ok(J.openProject(`https://yotasage.github.io/em-sim/main?${edLink}`).version === 0 && E.sameSetup(J.openProject(edLink).setup, ed), 'a pasted link opens as version 0');
   const pj = J.projectJson(ed, '2026-11-16');
   t.ok(JSON.parse(pj).link === edLink && pj.endsWith('\n'), 'the project file carries the link');
+  // JLCPCB list stackups: by key with a resolver, as the page does once the list is loaded (M1.8c).
+  const data = JSON.parse(readFileSync(new URL('../../../lib/emsim/jlcpcbStackups.json', import.meta.url), 'utf8'));
+  const resolve = (key) => { const e = G.jlcFind(data, key); return e ? G.jlcStackup(e, data) : null; };
+  const hand = new Set(Object.values(P.PRESET_KEYS));
+  const picks = [data.stackups.find((e) => e.layers === 2 && !hand.has(G.jlcKey(e))), data.stackups.find((e) => e.layers === 8 && !hand.has(G.jlcKey(e))),
+    data.stackups.find((e) => e.layers >= 16)].filter(Boolean);
+  t.eq(picks.length, 3, 'list stackups to check: 2, 8 and 16+ layers');
+  t.ok(!P.PRESET_IDS.some((id) => G.isJlcKey(id)) && data.stackups.every((e) => G.isJlcKey(G.jlcKey(e))), 'every list key looks like a key, no hand id does');
+  for (const e of picks) {
+    const key = G.jlcKey(e);
+    const s = G.jlcStackup(e, data);
+    const x = { stackup: s, trace: T.presetStructure('microstrip', s, 0.15), via: V.presetVia('single', s) };
+    const link = L.encodeLink(x, resolve);
+    t.ok(link.includes(`s=${key}&`) && !link.includes('src='), () => `${key}: written as its key (${link.slice(0, 160)})`);
+    const back = L.decodeLink(link, resolve);
+    t.ok(back.issues.length === 0 && E.sameSetup(back.setup, x) && L.encodeLink(back.setup, resolve) === link, () => `${key}: key round trip (${JSON.stringify(back.issues)})`);
+    const pj2 = J.projectJson(x, '2026-11-16', resolve);
+    const o = J.openProject(pj2, resolve);
+    t.ok(o.setup && o.issues.length === 0 && E.sameSetup(o.setup, x) && JSON.parse(pj2).setup.s === key, `${key}: project round trip by key`);
+    const plain = L.encodeLink(x);
+    t.ok(!plain.includes(`s=${key}&`) && E.sameSetup(L.decodeLink(plain).setup, x), `${key}: without a resolver written as layers, read back the same`);
+    const noList = L.decodeLink(link);
+    t.ok(noList.issues.some((i) => i.where === 's' && /not loaded/.test(i.message)) && S.sameStackup(noList.setup.stackup, d.stackup), `${key}: read without the list gives an issue and the default stackup`);
+    const ed2 = { ...x, stackup: S.cloneStackup(s) };
+    ed2.stackup.layers[1].t = { v: 0.2, tol: null, src: { kind: 'typed' } };
+    const el = L.encodeLink(ed2, resolve);
+    const eb = L.decodeLink(el, resolve);
+    t.ok(!el.includes(`s=${key}&`) && eb.issues.length === 0 && E.sameSetup(eb.setup, ed2), `${key}: edited, written as layers and read back exactly`);
+  }
+  const unknown = L.decodeLink('v=1&s=rigid_JLC9999_1.6_1_1', resolve);
+  t.ok(unknown.issues.some((i) => i.where === 's' && /not in JLCPCB/.test(i.message)) && E.sameSetup(unknown.setup, d), 'an unknown key gives an issue and the default');
+  const failing = L.decodeLink(`v=1&s=${G.jlcKey(picks[1])}`, () => { throw new Error('offline'); });
+  t.ok(failing.issues.some((i) => /offline/.test(i.message)) && E.sameSetup(failing.setup, d), 'a list that fails to load gives its reason and the default');
+  t.ok(L.decodeLink('v=1&s=JLC-2L-1.6', resolve).issues.length === 0 && L.encodeLink(d, resolve) === 'v=1', 'hand presets and the default link are unchanged with a resolver');
 }

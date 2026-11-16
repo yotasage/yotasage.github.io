@@ -14,12 +14,14 @@ import type { BibEntry } from '../../lib/bibtex';
 import { decodeLink, encodeLink } from '../../lib/emsim/link';
 import { defaultSetup, sameSetup } from '../../lib/emsim/setup';
 import type { Setup } from '../../lib/emsim/setup';
+import type { Decoded } from '../../lib/emsim/link';
 import { issue } from '../../lib/emsim/stackup';
 import type { Issue } from '../../lib/emsim/stackup';
 import { UNIT_TEXT } from '../../lib/emsim/units';
 import styles from '../../styles/EmSim.module.css';
 import HomeIcon from '../icons/home';
 import { DEFAULT_DIGITS, DIGIT_CHOICES, SHOWN_UNITS } from './format';
+import { errorText, jlcLoaded, jlcResolve, loadJlc } from './jlcData';
 import type { ShownUnit } from './format';
 import StackupSection, { IssueList, NO_KICAD } from './StackupSection';
 import type { Commit, KicadState } from './StackupSection';
@@ -117,22 +119,34 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
     const d = Number(storedDigits);
     if (DIGIT_CHOICES.includes(d)) setDigits(d);
     const q = splitQuery(window.location.search);
-    const issues = [...q.issues];
-    if (q.setupPart) {
-      const r = decodeLink(q.setupPart);
-      if (r.linked) { now.current = r.setup; setSetup(r.setup); }
-      issues.push(...r.issues);
-    }
     setUnit(q.unit ?? ((SHOWN_UNITS as readonly string[]).includes(storedUnit) ? (storedUnit as ShownUnit) : 'mm'));
-    setLinkIssues(issues);
-    setReady(true);
+    const done = (r: Decoded | null) => {
+      if (r?.linked) { now.current = r.setup; setSetup(r.setup); }
+      setLinkIssues([...q.issues, ...(r?.issues ?? [])]);
+      setReady(true);
+    };
+    if (!q.setupPart) { done(null); return; }
+    // A JLCPCB list stackup in the link (its key) needs the list: loaded first, then the link is read again; when it
+    // cannot be loaded, the stackup is the default with the reason as an issue.
+    let asked = false;
+    const r = decodeLink(q.setupPart, (key) => { asked = true; return jlcResolve(key); });
+    if (!asked || jlcLoaded()) { done(r); return; }
+    let live = true;
+    loadJlc().then(
+      () => { if (live) done(decodeLink(q.setupPart, jlcResolve)); },
+      (e) => {
+        const why = errorText(e);
+        if (live) done(decodeLink(q.setupPart, () => { throw new Error(`JLCPCB’s stackup list could not be loaded: ${why}`); }));
+      },
+    );
+    return () => { live = false; };
   }, []);
   useEffect(() => { onTheme?.(theme); }, [theme, onTheme]);
 
   // The setup goes back into the link without a new history entry; not before the router is ready (Next.js gives a
   // static page its query after hydration with a replaceState of the link as loaded, which would undo a first write).
   const router = useRouter();
-  const search = useMemo(() => `${encodeLink(setup)}${unit !== 'mm' ? `&${UNIT_PARAM}=${unit}` : ''}`, [setup, unit]);
+  const search = useMemo(() => `${encodeLink(setup, jlcResolve)}${unit !== 'mm' ? `&${UNIT_PARAM}=${unit}` : ''}`, [setup, unit]);
   useEffect(() => {
     if (!ready || !router.isReady) return;
     const url = `${window.location.pathname}?${search}${window.location.hash}`;

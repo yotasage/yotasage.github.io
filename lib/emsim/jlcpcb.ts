@@ -56,6 +56,11 @@ export function jlcKey(e: JlcEntry): string {
   return e.inner === null ? `${e.board}_${e.id}_${e.thickness}_${e.outer}` : `${e.board}_${e.id}_${e.thickness}_${e.outer}_${e.inner}`;
 }
 
+// Whether an id has the form of a key (hand preset ids have no '_'; KiCad stackups have no id).
+export function isJlcKey(id: string): boolean {
+  return /^[a-z]+_[A-Za-z0-9.-]+_\d+(\.\d+)?_\d+(\.\d+)?(_\d+(\.\d+)?)?$/.test(id);
+}
+
 export function jlcFind(data: JlcData, key: string): JlcEntry | null {
   for (const e of data.stackups) if (jlcKey(e) === key) return e;
   return null;
@@ -91,6 +96,20 @@ export function jlcStackup(e: JlcEntry, data: JlcData): Stackup {
 }
 
 // --- Lists for the picker ---
+
+// The sum of the pressed thicknesses (mm), without mask.
+export function jlcPressed(e: JlcEntry): number {
+  let sum = 0;
+  for (const l of e.stack) sum += l[1];
+  return sum;
+}
+
+// The thickness JLCPCB states (finished, or the nominal when none) and its tolerance in mm (±10 % when none).
+export function jlcTarget(e: JlcEntry): { t: number; tol: number; stated: boolean } {
+  const t = e.finished ?? e.thickness;
+  const tol = e.tol ? ('rel' in e.tol ? e.tol.rel * t : e.tol.abs) : 0.1 * t;
+  return { t, tol, stated: e.finished !== undefined };
+}
 
 export interface JlcFilter {
   board?: string;

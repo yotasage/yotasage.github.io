@@ -1,10 +1,12 @@
-// The Stackup section of the EM simulation page (M2.1a): presets, KiCad files (.kicad_pcb: the stackup, .kicad_pro: the
+// The Stackup section of the EM simulation page (M2.1a): presets (M1.8c: and every JLCPCB template, JlcPicker.tsx), KiCad files (.kicad_pcb: the stackup, .kicad_pro: the
 // net classes; read on the device with File.text(), the reader loaded by import() when a file is opened), the drawing,
 // the layer table with every value's source and tolerance (plan.md D8, D9), the stackup's issues and the sources.
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { PRESET_IDS, REFS, presetStackup } from '../../lib/emsim/presets';
+import { isJlcKey, jlcKey, jlcStackup } from '../../lib/emsim/jlcpcb';
+import type { JlcData, JlcEntry } from '../../lib/emsim/jlcpcb';
+import { PRESET_IDS, PRESET_KEYS, REFS, presetStackup } from '../../lib/emsim/presets';
 import { DEFAULT_TRACE_W } from '../../lib/emsim/setup';
 import type { Setup } from '../../lib/emsim/setup';
 import { cloneStackup, copperIds, sameStackup, stackupIssues, stackupVals, totalThickness } from '../../lib/emsim/stackup';
@@ -15,6 +17,7 @@ import type { KicadBoard, KicadProject, NetClass } from '../../lib/emsim/kicad';
 import type { LengthUnit } from '../../lib/emsim/units';
 import base from '../../styles/EmSim.module.css';
 import css from '../../styles/EmSimStackup.module.css';
+import { jlcLoaded, jlcResolve, loadJlc } from './jlcData';
 import StackupDrawing from './StackupDrawing';
 import ValField from './ValField';
 import { withKind } from './trace';
@@ -31,6 +34,11 @@ export interface KicadState {
 export const NO_KICAD: KicadState = { board: null, project: null };
 
 const PRESET_NAMES = new Map(PRESET_IDS.map((id) => [id, presetStackup(id)?.name ?? id]));
+// A list entry that is a hand preset is chosen as the preset (its short id in the link, the quick select shows it).
+const HAND_OF_KEY = new Map(Object.entries(PRESET_KEYS).map(([id, key]) => [key, id]));
+// The picker is a chunk of its own, loaded when it is first opened (the list's data is another, jlcData.ts).
+// @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
+const JlcPicker = lazy(() => import('./JlcPicker'));
 
 // A new stackup in a setup: the trace and via keep their layers when the copper layers are the same ids. When they are
 // not, the trace keeps its kind and dimensions on the new stackup's layers (M2.1b; a microstrip of the same width when
@@ -235,8 +243,29 @@ export default function StackupSection({ setup, commit, unit, digits, kicad, set
   const [fileError, setFileError] = useState('');
   const input = useRef<HTMLInputElement>(null);
 
-  const isPreset = PRESET_NAMES.has(s.id);
-  const edited = useMemo(() => isPreset && !sameStackup(s, presetStackup(s.id)), [s, isPreset]);
+  const [picker, setPicker] = useState(false);
+  const [jlc, setJlc] = useState<JlcData | null>(jlcLoaded());
+  const opener = useRef<HTMLButtonElement>(null);
+
+  // A list stackup (its id is a key) counts as a preset: unedited while equal to jlcStackup of its entry, which needs
+  // the list; it is loaded here when such a stackup comes from a link of layers or the history.
+  const isHand = PRESET_NAMES.has(s.id);
+  const isList = !isHand && isJlcKey(s.id);
+  const isPreset = isHand || isList;
+  useEffect(() => {
+    if (isList && !jlc) loadJlc().then(setJlc, () => { /* shown as not edited; the picker says why when opened */ });
+  }, [isList, jlc]);
+  const edited = useMemo(() => {
+    const pristine = isHand ? presetStackup(s.id) : isList && jlc ? jlcResolve(s.id) : null;
+    return !!pristine && !sameStackup(s, pristine);
+  }, [s, isHand, isList, jlc]);
+  const closePicker = useCallback(() => { setPicker(false); opener.current?.focus(); }, []);
+  const pick = (e: JlcEntry, data: JlcData) => {
+    const hand = HAND_OF_KEY.get(jlcKey(e));
+    const next = (hand && presetStackup(hand)) || jlcStackup(e, data);
+    commit((cur) => withStackup(cur, next));
+    closePicker();
+  };
   const issues = useMemo(() => stackupIssues(s), [s]);
   const total = totalThickness(s);
   const copper = s.layers.filter((l) => l.kind === 'copper').length;
@@ -275,7 +304,7 @@ export default function StackupSection({ setup, commit, unit, digits, kicad, set
     }
   };
 
-  const presetValue = isPreset ? s.id : '';
+  const presetValue = isHand ? s.id : '';
   return (
     <section id="stackup" className={base.section} aria-labelledby="stackup-h">
       <h2 id="stackup-h" className={base.h2}>Stackup</h2>
@@ -293,10 +322,21 @@ export default function StackupSection({ setup, commit, unit, digits, kicad, set
             value={presetValue}
             onChange={(e) => { const p = presetStackup(e.target.value); if (p) commit((cur) => withStackup(cur, p)); }}
           >
-            {!isPreset && <option value="">{fromKicad ? `From ${kicad.board?.file ?? 'a KiCad file'}` : s.name || 'Custom stackup'}</option>}
+            {!isHand && <option value="">{isList ? s.name : fromKicad ? `From ${kicad.board?.file ?? 'a KiCad file'}` : s.name || 'Custom stackup'}</option>}
             {PRESET_IDS.map((id) => <option key={id} value={id}>{PRESET_NAMES.get(id)}</option>)}
           </select>
         </label>
+        <button
+          ref={opener}
+          type="button"
+          className={base.button}
+          aria-expanded={picker}
+          aria-controls="jlc-picker"
+          data-jlc-open
+          onClick={() => (picker ? closePicker() : setPicker(true))}
+        >
+          All JLCPCB stackups…
+        </button>
         <div
           className={css.drop}
           data-over={over}
@@ -320,8 +360,15 @@ export default function StackupSection({ setup, commit, unit, digits, kicad, set
         </div>
       </div>
       {fileError && <p className={css.reason} role="alert">{fileError}</p>}
+      {picker && (
+        <div id="jlc-picker">
+          <Suspense fallback={<p className={`${base.notice} ${css.layerNote}`} role="status" data-jlc-loading>Loading the list…</p>}>
+            <JlcPicker current={PRESET_KEYS[s.id] ?? s.id} unit={unit} digits={digits} onPick={pick} onClose={closePicker} onLoaded={setJlc} />
+          </Suspense>
+        </div>
+      )}
 
-      <p className={css.summary} data-stackup-summary data-layers={s.layers.length} data-copper={copper} data-total={total} data-preset-id={isPreset ? s.id : ''} data-edited={edited} data-source={fromKicad ? 'kicad' : isPreset ? 'preset' : 'typed'}>
+      <p className={css.summary} data-stackup-summary data-layers={s.layers.length} data-copper={copper} data-total={total} data-preset-id={isPreset ? s.id : ''} data-edited={edited} data-list={isList} data-source={fromKicad ? 'kicad' : isPreset ? 'preset' : 'typed'}>
         <b>{s.name || (fromKicad ? kicad.board?.file : 'Stackup')}</b>
         {edited && <span className={css.edited}>edited</span>}
         {' '}· {s.layers.length} layers, {copper} copper · total <b>{lenText(total, unit, digits)}</b>

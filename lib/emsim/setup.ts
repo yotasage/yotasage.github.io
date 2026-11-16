@@ -4,6 +4,7 @@
 // make no sense are kept as they are (stackupIssues, structureIssues and viaIssues report them), so writing and
 // reading round-trip exactly.
 
+import { isJlcKey } from './jlcpcb';
 import { DEFAULT_PRESET, READ_DATE, presetStackup, refUrl } from './presets';
 import { issue, sameSource, sameStackup, sameVal, val } from './stackup';
 import type { CopperLayer, DielectricLayer, Etch, Issue, Layer, MaskLayer, Source, Stackup, Tol, Val } from './stackup';
@@ -97,9 +98,15 @@ function plainLayer(l: Layer, S: Sources): Record<string, unknown> {
   return o;
 }
 
-export function plainStackup(s: Stackup, S: Sources): unknown {
+// Finds a JLCPCB list stackup (jlcpcb.ts) by its key: the page's, once the list is loaded. Null for a key not in the
+// list; it may throw to say why there is no list (the reason becomes the issue's).
+export type StackupResolver = (key: string) => Stackup | null;
+
+// An unedited preset is its id; an unedited list stackup its key when a resolver knows it; anything else its layers.
+export function plainStackup(s: Stackup, S: Sources, resolve?: StackupResolver): unknown {
   if (s.id) {
-    const p = presetStackup(s.id);
+    let p: Stackup | null = presetStackup(s.id);
+    if (!p && resolve && isJlcKey(s.id)) { try { p = resolve(s.id); } catch { p = null; } }
     if (p && sameStackup(p, s)) return s.id;
   }
   const o: Record<string, unknown> = {};
@@ -141,11 +148,11 @@ function plainVia(v: ViaStructure, S: Sources): unknown {
 }
 
 // The plain form; with `omitDefaults` a part equal to the default setup's is left out (the link's short form).
-export function toPlain(x: Setup, omitDefaults = false): Plain {
+export function toPlain(x: Setup, omitDefaults = false, resolve?: StackupResolver): Plain {
   const S = new Sources();
   const d = omitDefaults ? defaultSetup() : null;
   const out: Plain = {};
-  if (!d || !sameStackup(d.stackup, x.stackup)) out.s = plainStackup(x.stackup, S);
+  if (!d || !sameStackup(d.stackup, x.stackup)) out.s = plainStackup(x.stackup, S, resolve);
   if (!d || !sameStructure(d.trace, x.trace)) out.t = plainStructure(x.trace, S);
   if (!d || !sameVia(d.via, x.via)) out.via = plainVia(x.via, S);
   if (S.plain.length) out.src = S.plain;
@@ -250,8 +257,14 @@ function readLayer(o: any, src: Source[], k: number): Layer {
   return bad(`layer ${k + 1} is of no known kind`);
 }
 
-function readStackup(x: unknown, src: Source[]): Stackup {
-  if (typeof x === 'string') return presetStackup(x) ?? bad(`"${x}" is not a preset`);
+function readStackup(x: unknown, src: Source[], resolve?: StackupResolver): Stackup {
+  if (typeof x === 'string') {
+    const p = presetStackup(x);
+    if (p) return p;
+    if (!isJlcKey(x)) return bad(`"${x}" is not a preset`);
+    if (!resolve) return bad(`"${x}" is a JLCPCB stackup and the list of them is not loaded`);
+    return resolve(x) ?? bad(`"${x}" is not in JLCPCB's stackup list`);
+  }
   if (!isObj(x)) return bad('the stackup is not an object');
   if (!Array.isArray(x.l)) bad('the stackup has no layers');
   return {
@@ -313,7 +326,8 @@ function readVia(x: unknown, src: Source[]): ViaStructure {
 }
 
 // Reads a plain form: missing parts are the default setup's, unreadable parts too (with an issue).
-export function fromPlain(raw: unknown): { setup: Setup; issues: Issue[] } {
+// `resolve` reads a JLCPCB list stackup's key (without it, a key is an issue).
+export function fromPlain(raw: unknown, resolve?: StackupResolver): { setup: Setup; issues: Issue[] } {
   const issues: Issue[] = [];
   const d = defaultSetup();
   if (!isObj(raw)) return { setup: d, issues: [issue('warn', 'link', 'setup', 'The setup cannot be read; the default is used.')] };
@@ -329,7 +343,7 @@ export function fromPlain(raw: unknown): { setup: Setup; issues: Issue[] } {
       return fallback();
     }
   };
-  const stackup = part('s', 'stackup', () => readStackup(raw.s, src), d.stackup, () => d.stackup);
+  const stackup = part('s', 'stackup', () => readStackup(raw.s, src, resolve), d.stackup, () => d.stackup);
   const fitted = stackup !== d.stackup;
   const trace = part('t', 'trace structure', () => readStructure(raw.t, src), d.trace,
     () => (fitted ? presetStructure('microstrip', stackup, DEFAULT_TRACE_W) : null) ?? d.trace);
