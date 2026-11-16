@@ -1,0 +1,349 @@
+/* The Stackup section of the EM simulation page (M2.1a): tools, the drawing, the layer table, sources, net classes.
+   Colours are the tokens of EmSim.module.css's .root. */
+
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.toolLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8125rem;
+  color: var(--ink-2);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.drop {
+  flex: 1 1 280px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-height: 52px;
+  padding: 8px 12px;
+  border: 1.5px dashed var(--rule-strong);
+  border-radius: var(--radius);
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  transition: border-color var(--quick), background var(--quick);
+}
+
+.drop[data-over='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.summary {
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+  color: var(--ink-2);
+}
+
+.summary b { color: var(--ink); font-weight: 600; }
+
+.edited {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--raise);
+  font-size: 0.75rem;
+  color: var(--ink-2);
+}
+
+.layout {
+  display: grid;
+  gap: 20px;
+}
+
+@media (min-width: 960px) {
+  .layout {
+    grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+    align-items: start;
+    gap: 32px;
+  }
+
+  .figure {
+    position: sticky;
+    top: calc(var(--bar-h) + 16px);
+  }
+}
+
+/* ---- the drawing ---- */
+
+.figure { margin: 0; min-width: 0; }
+
+.drawing {
+  display: grid;
+  grid-template-columns: minmax(72px, 36%) 18px minmax(0, 1fr);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--field);
+  overflow: hidden;
+}
+
+.bands {
+  position: relative;
+  border-right: 1px solid var(--rule);
+}
+
+.bands svg,
+.leaders svg { display: block; width: 100%; }
+
+.airLabel {
+  position: absolute;
+  left: 6px;
+  font-size: 0.6875rem;
+  line-height: 1;
+  color: var(--air-ink);
+  letter-spacing: 0.04em;
+}
+
+.labels { position: relative; }
+
+.label {
+  position: absolute;
+  left: 0;
+  right: 8px;
+  transform: translateY(-50%);
+  font-size: 0.71875rem;
+  line-height: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ink-2);
+}
+
+.label b { color: var(--ink); font-weight: 600; margin-right: 0.4em; }
+.label[data-active='true'] b { color: var(--accent); }
+
+.figTools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin-top: 8px;
+  font-size: 0.8125rem;
+  color: var(--ink-2);
+}
+
+.scale { display: inline-flex; align-items: center; gap: 6px; }
+
+.scaleBar {
+  display: inline-block;
+  height: 6px;
+  border: 1.5px solid var(--ink-2);
+  border-top: 0;
+}
+
+.caption {
+  margin-top: 6px;
+  font-size: 0.75rem;
+  color: var(--ink-3);
+}
+
+.key {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin: 0 3px 0 8px;
+  border-radius: 2px;
+  vertical-align: -1px;
+  border: 1px solid var(--rule-strong);
+}
+
+.key:first-child { margin-left: 0; }
+
+/* ---- the layer table ---- */
+
+.layers {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--rule);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 6px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 8px 12px 0;
+  border-bottom: 1px solid var(--rule);
+  transition: background var(--quick);
+}
+
+.row[data-active='true'] { background: var(--accent-soft); }
+
+.swatch { border-radius: 3px; }
+
+/* Wide: name on the left, the fields beside it. */
+@media (min-width: 720px) {
+  .row { grid-template-columns: 6px 8.5rem minmax(0, 1fr); padding: 8px 8px 8px 0; }
+  .rowHead { flex-direction: column; gap: 0; padding-top: 2px; }
+  .rowBody { display: contents; }
+  .swatch { grid-row: span 2; }
+  .fields { margin-top: 0; }
+  .layerNote { grid-column: 3; margin-top: 0; }
+}
+
+.rowHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+}
+
+.layerName { font-weight: 600; }
+
+.layerKind {
+  font-size: 0.8125rem;
+  color: var(--ink-2);
+}
+
+.layerNote {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: var(--ink-3);
+}
+
+.fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin-top: 8px;
+}
+
+.field {
+  width: 8.5rem;
+  min-width: 0;
+}
+
+@media (max-width: 400px) {
+  .field { width: calc(50% - 7px); }
+}
+
+.fieldLabel {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 0.75rem;
+  color: var(--ink-2);
+}
+
+.valueRow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.unit {
+  flex: none;
+  min-width: 1.9em;
+  font-size: 0.8125rem;
+  color: var(--ink-3);
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.tol {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 30px;
+  padding: 2px 6px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-2);
+  font-family: var(--font-num);
+  font-size: 0.75rem;
+}
+
+.tol::placeholder { color: var(--ink-3); }
+.tol[aria-invalid='true'] { border-color: var(--error); }
+
+.src {
+  flex: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: var(--raise);
+  font-size: 0.6875rem;
+  color: var(--ink-2);
+}
+
+.src[data-kind='warn'] { color: var(--warn); }
+.src[data-kind='typed'] { background: var(--accent-soft); color: var(--accent); }
+
+.reason {
+  margin: 3px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.3;
+  color: var(--error);
+}
+
+/* ---- sources and net classes ---- */
+
+.sources {
+  margin: 16px 0 0;
+  font-size: 0.8125rem;
+  color: var(--ink-2);
+}
+
+.sources dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 12px;
+  margin: 0;
+}
+
+.sources dt { font-weight: 600; color: var(--ink); }
+.sources dd { margin: 0; overflow-wrap: anywhere; }
+
+.classes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.classCard {
+  padding: 10px 12px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--field);
+}
+
+.className { margin: 0 0 6px; font-weight: 650; overflow-wrap: anywhere; }
+
+.classCard dl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 10px;
+  margin: 0;
+  font-size: 0.8125rem;
+}
+
+.classCard dt { color: var(--ink-2); }
+.classCard dd { margin: 0; text-align: right; font-family: var(--font-num); font-size: 0.78125rem; }
+.fromDefault { color: var(--ink-3); }

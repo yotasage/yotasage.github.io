@@ -40,6 +40,11 @@ table. Agents find their way by it instead of reading the code. Split into parts
 | `lib/emsim/static.worker.ts` | M1.5: the worker; wires `createStaticHandler` to its scope (transfers a result's buffers) |
 | `lib/emsim/staticClient.ts` | M1.5: `StaticClient` (`run(channel, job, progress)` → `{ result, cached, where }` or null when overtaken or cancelled, `cancel(channel)`, `cached(job)`, `stop()`, `where`, `stats`): newest job per channel wins, results cached by hash (64 MB, 64 entries), fallback to the handler on the page |
 
+## The page
+
+The page's files (`pages/em-sim/`, `components/EmSim/`, `styles/EmSim*.module.css`) and its browser checks (`ui.mjs`,
+`size.mjs`, `ui-*.mjs`) are in [modules-page.md](modules-page.md).
+
 ## `scripts/harness/emsim/`
 
 | File | What |

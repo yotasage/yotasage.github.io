@@ -8,7 +8,9 @@
     "check:fd": "tsx fd/fuzz.mts",
     "spike": "tsx spikes/run.mts",
     "spike:fdtd": "tsx spikes/fdtd.mts",
-    "openems": "node openems/run.mjs"
+    "openems": "node openems/run.mjs",
+    "ui": "node ui.mjs",
+    "size": "node size.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.65.1",
