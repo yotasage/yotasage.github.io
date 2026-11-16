@@ -10,7 +10,9 @@
     "spike:fdtd": "tsx spikes/fdtd.mts",
     "openems": "node openems/run.mjs",
     "ui": "node ui.mjs",
-    "size": "node size.mjs"
+    "size": "node size.mjs",
+    "jlcpcb:fetch": "node jlcpcb/fetch.mjs",
+    "jlcpcb:convert": "node jlcpcb/convert.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.65.1",
