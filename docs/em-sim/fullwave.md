@@ -324,5 +324,84 @@ adapter** (not a fallback adapter). M6.3's checks use the same runner with the p
 
 ## 14. openEMS (M0.4b)
 
-Written by step M0.4b: the openEMS installation (path, version), its interface, the fixture format and the first two
-fixtures (a microstrip line and a through via).
+Written by step M0.4b (2026-11-16). openEMS is GPL and lives only on the owner's PC, for the harness's reference
+fixtures (plan.md D10); nothing of it is shipped or loaded by the site.
+
+### 14.1 Installation and interface
+- **openEMS v0.37.0** (released 2026-10-09), the official Windows package `openEMS_x64_v0.37.0_msvc.zip` from
+  `github.com/thliebig/openEMS-Project/releases` (SHA-256 `e4f14fd6…cda5a`), extracted to **`C:\Users\Jonat\opt\openEMS`**
+  (no installer, no admin rights, nothing added to PATH). It holds `openEMS.exe`, CSXCAD, the MATLAB/Octave interface
+  and Python wheels for CPython 3.13 and 3.14.
+- **Interface: Python**, because the release ships wheels for the installed Python 3.14 (no build, no MATLAB in the
+  loop). Venv **`C:\Users\Jonat\opt\openEMS-venv`** (Python 3.14): numpy 2.5.5, h5py 3.16.0 and matplotlib from PyPI,
+  then `openEMS` 0.37.0 and `CSXCAD` 0.7.0 with `pip install --no-index --find-links <openEMS>\python openEMS`.
+  `CSXCAD_INSTALL_PATH` must name the openEMS folder; the runner sets it per run.
+- **Run:** `npm run openems [microstrip|via] [--coarse] [--threads=N] [--maxtime_ps=T]` in `scripts/harness/emsim`
+  (`openems/run.mjs`; `OPENEMS_DIR` and `OPENEMS_PYTHON` override the two paths). openEMS's output goes to
+  `%TEMP%\emsim-openems\<name>.log`, its probe files to `%TEMP%\emsim-openems\<fixture id>\`; the runner prints the
+  `RESULT` line. Both fixtures: 5–7 min. `--coarse` writes `<id>-coarse.json` (git-ignored) for the refinement.
+
+### 14.2 Fixture format (`scripts/harness/emsim/openems/fixtures/<id>.json`, `formatVersion` 1)
+| Field | Content |
+|---|---|
+| `format`, `formatVersion`, `id`, `description`, `case` | `emsim-openems-fixture`, 1, file name, one sentence, facts-cases.md case |
+| `structure` | `kind` (`trace` or `via`), `units` mm, `frame` (how x, y, z map to engine.md §1), `stackup` (engine.md §2 kinds, top to bottom, with z or thickness, εr, tanδ), the signals; for a via `via` (drill, pads, antipads, stub), `returnVias`, `feeds`, `domain` |
+| `openems` | version, package and URL, path, interface, engine |
+| `mesh` | `cells` (x, y, z, total), `smallestCell_mm`, `largestCell_mm`, `largestNeighbourRatio`, `pml`, `pmlThickness_mm` (the outer 8 cells per side; meaningless on a PEC side), `barrels` (how round barrels are meshed), `notes`, `timestep_s`, `probeSampling_s` |
+| `excitation` | Gaussian, `f0_Hz` 0 (baseband, for the TDR), `fc_minus20dB_Hz` 40 GHz, which port, the source |
+| `run` | `endCriterion_dB`, `maxTime_s` (the real end, §14.3), `probeTailRelative` (largest probe voltage in the last 10 % of the record against its peak: the truncation), `steps`, `simulatedTime_s`, `openemsStats` |
+| `ports` | per port: lumped R and position, the probe plane = reference plane (`referencePlane_x`), excited or not |
+| `results.sParameters` | `zRef_ohm` 50, reference planes, `f_Hz` 0–40 GHz every 100 MHz, `s11`, `s21` as `{re, im}`, `how` |
+| `results.tdr` | port, `riseTime_s` 35 ps, the Gaussian 10–90 % edge of §7.2, `zRef_ohm`, `t_s` (round trip, 0 = the edge's 50 % at the reference plane, 2 ps steps), `z_ohm` |
+| `results.line` (trace) | `z0_ohm`, `eeff` over 1–10 GHz, each route's value, `vsFrequency` |
+| `results.feeds`, `results.viaDeembedded` (via) | the feeds' own Z and εeff (for de-embedding); the via section's Z = √(B/C), delay, L, C |
+| `sanity` | the numbers it was checked against (§14.5) |
+| `provenance` | `script`, `gitCommit` (HEAD when run), `scriptsChangedSinceCommit`, `date`, `runTime_s`, `threads`, `machine` |
+
+Lengths in mm, everything else SI. Each file is about 50 kB.
+
+### 14.3 How the fixtures are made (conventions M6.4 needs)
+- **Ports** as §6: a 50 Ω `LumpedPort` across the trace's end (z edges from plane to trace over the width; the
+  source is a soft E term in the same edges, so a resistive voltage source), 3 mm beyond the **probe plane**, which is
+  the reference plane. The probe plane copies openEMS's `MSLPort`: voltages plane to trace on three x lines, currents
+  on the two dual lines between them, Z = √(E·dE/(H·dH)) and β from the same numbers. Unlike `MSLPort`, the current
+  loop encloses the **whole copper section** (`MSLPort` loops around a zero-thickness sheet at the trace's lower face,
+  which misses part of a 35 µm trace's current). Waves a = (V + 50·I)/2, b = V − a.
+- **S from one excitation:** both structures are symmetric and reciprocal, so S11 = S22 and S21 = S12 are solved from
+  b1 = S11·a1 + S21·a2, b2 = S21·a1 + S11·a2 (`common.sym_s`); the end ports' mismatch against the line's own Z0
+  (the wave that comes back, a2) drops out.
+- **TDR** exactly as §7.2 from S11 (DFT grid 50 MHz to 40 GHz, window 20 ns).
+- **End of a run:** with a baseband Gaussian, openEMS's energy measure falls to about −31 dB and then crawls (a slowly
+  draining static field near the ports and in the PML; the probes are quiet by then), so its −50 dB criterion is
+  never met. Runs stop at **0.8 ns**; the probes' tail is then 2·10⁻⁶ (microstrip) and 3·10⁻⁵ (via) of the peak. A
+  line run into the PML instead of into a resistor keeps a static charge and never settles: use resistive ports.
+- **Barrels** are **staircased** (openEMS's default; no conformal option used): lines on the drill's edges, 6 cells per
+  drill at 50 µm (3 with `--coarse`); pads, antipads and the off-grid return vias are staircased too.
+- **Trace edges:** the microstrip has lines on the copper edges and on the mask faces (cells of 7.6–15 µm beside the
+  edge); the via's feeds use openEMS's **thirds rule** (lines d/3 inside and 2d/3 outside each edge, d = 30 µm): with a
+  line on the edge and 31 µm cells beside it the feed came out at 49.8 Ω and εeff 3.07, the strip acting wider.
+- **Threads:** 8 is fastest at 0.3–1 M cells (64–130 Mcells/s; 16 and 32 threads are slower).
+
+### 14.4 The two fixtures
+| Fixture | Structure | Mesh | Run |
+|---|---|---|---|
+| `msl-c39.json` | C39 `50R_SE` on F.Cu over In1: w 0.1377, t 0.035, h 0.092 (εr 4.1), JLCPCB mask εr 3.8, 30.5 µm on laminate, 15.2 µm on copper and sides (the BEM case of solver.md), lossless, In1 as the PEC floor; line from x = −8 to 8, reference planes at ±5 (10 mm apart) | 222 × 64 × 32 = 0.45 M cells, smallest 4.5 µm (z: mask over laminate against the copper top), Δt 16.3 fs | 49 152 steps, 187–264 s |
+| `via-th-0p3.json` | Through via F.Cu → B.Cu in the C38 stackup without mask (copper span 1.637, εr 4.3 everywhere, outer copper in air): drill 0.3, pads 0.6 on all six layers, antipads 1.8 on In1–In4 (C44), four return vias (drill 0.3) on a 1.2 mm circle at 45°…315°, `50R_SE` feeds (w 0.1377) over In1 and In4, 3 mm from the via axis to each reference plane, ports at 4.5 | 148 × 100 × 75 = 1.11 M cells, 50 µm over ±1.4 mm in x and y, smallest 25.6 µm (y, thirds lines), Δt 62.6 fs | 12 740 steps, 122–144 s |
+
+### 14.5 Sanity checks
+- **Microstrip:** Z0 **49.794 Ω** (ports 49.792 / 49.796, TDR plateau 49.772, ABCD √(B/C) 49.783), εeff **3.2950**
+  (from the S21 phase; the ports' β 3.2945 / 3.2963). Against the BEM spike's 50.526 Ω and 3.2918: **−1.45 % and
+  +0.10 %**. The coarse mesh (cells beside the edge and across the strip doubled) gave 49.463 Ω (−2.10 %) and 3.2972,
+  so Z0 converges from below at about first order (Richardson with order 1: 50.13 Ω, −0.8 %); the rest is the edge
+  singularity of a rectangular trace with lines on its edges (a slightly wide strip, as the via's feeds showed) and the
+  4.5 µm mask step. εeff hardly depends on the mesh. Moving the PML from 0.4 to 1.2 mm away changed the coarse mesh's Z0 by 0.01 Ω.
+- **Via:** the de-embedded via section (feeds removed with their own Z and β to the axis) has **Z = √(B/C) 78.8 Ω,
+  delay 12.0 ps, L 0.948 nH, C 0.153 pF**; the TDR (35 ps) peaks at **64.0 Ω** between 54.5 Ω feeds. Formulas
+  (facts-formulas.md §7): coax in the antipad 51.8 Ω, quasi-coax with the four returns **65.1 Ω**, barrel delay
+  1.637·√4.3/c0 = **11.3 ps** (L 0.738 nH, C 0.174 pF over the barrel). The delay agrees within 6 %; the section is
+  21 % higher in Z than the quasi-coax barrel (28 % more L, 12 % less C). Expected: the section is more than the
+  barrel between planes. The barrel crosses four 1.8 mm antipads, and above In1 and below In4 it runs to its outer pad
+  with only the trace's plane near, both inductive; the thin-wire formula ignores the 0.6 mm pads. Staircasing: 3 cells
+  per drill gave 75.9 Ω and 12.8 ps (6 cells: 78.8 Ω, 12.0 ps), about 4 % between those meshes; §4's 23 % at 6 cells
+  is for a much tighter coax (0.3 in 0.7), where the barrel's surface matters more. The feeds: 53.94 Ω and εeff
+  3.007 against Hammerstad–Jensen's 52.98 Ω and 2.9805 (εr 4.3, t 0.035): +1.8 % and +0.9 %.

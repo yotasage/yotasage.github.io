@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "spike": "tsx spikes/run.mts",
-    "spike:fdtd": "tsx spikes/fdtd.mts"
+    "spike:fdtd": "tsx spikes/fdtd.mts",
+    "openems": "node openems/run.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.65.1",

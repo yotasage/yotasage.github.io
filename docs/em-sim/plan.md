@@ -112,7 +112,7 @@ One agent per step, one at a time, each started and checked by the main session 
 
 | M | Name | Steps | Result | Status |
 |---|---|---|---|---|
-| M0 | Research and set-up | M0.1–M0.5 | Plan reviewed; facts, cases and sources; solver formulations decided with spikes; full-wave decided and openEMS installed; shared site modules decided | M0.1 done 2026-11-16, notes in [notes-M0.1.md](notes-M0.1.md); M0.2a done 2026-11-16, [notes-M0.2a.md](notes-M0.2a.md); M0.2b done 2026-11-16, [notes-M0.2b.md](notes-M0.2b.md); M0.3 done 2026-11-16, [notes-M0.3.md](notes-M0.3.md); M0.2c (formulas checked against the original papers) done 2026-11-16, [notes-M0.2c.md](notes-M0.2c.md); M0.2d (literature pointers) done 2026-11-16, [notes-M0.2d.md](notes-M0.2d.md); M0.4a done 2026-11-16, [notes-M0.4a.md](notes-M0.4a.md); M0.2e (literature findings) done 2026-11-16, [notes-M0.2e.md](notes-M0.2e.md) |
+| M0 | Research and set-up | M0.1–M0.5 | Plan reviewed; facts, cases and sources; solver formulations decided with spikes; full-wave decided and openEMS installed; shared site modules decided | M0.1 done 2026-11-16, notes in [notes-M0.1.md](notes-M0.1.md); M0.2a done 2026-11-16, [notes-M0.2a.md](notes-M0.2a.md); M0.2b done 2026-11-16, [notes-M0.2b.md](notes-M0.2b.md); M0.3 done 2026-11-16, [notes-M0.3.md](notes-M0.3.md); M0.2c (formulas checked against the original papers) done 2026-11-16, [notes-M0.2c.md](notes-M0.2c.md); M0.2d (literature pointers) done 2026-11-16, [notes-M0.2d.md](notes-M0.2d.md); M0.4a done 2026-11-16, [notes-M0.4a.md](notes-M0.4a.md); M0.2e (literature findings) done 2026-11-16, [notes-M0.2e.md](notes-M0.2e.md); M0.4b done 2026-11-16, [notes-M0.4b.md](notes-M0.4b.md) |
 | M1 | Static engine (harness only) | M1.1–M1.7 | Stackup and structures, KiCad reader, 2D solver, modes, inverse and tolerance, independent checks, fields, via model | |
 | M2 | Trace page, **release** | M2.1a–M2.5 | First usable tool: stackup editor, cross-section editor, results, fields, target and tolerance, calculator comparison, first theory; card on the main page | |
 | M3 | Vias on the page | M3.1–M3.2 | Via editor with side and top views, results, TDR and S-parameter plots, fields, target | |
@@ -146,7 +146,8 @@ updates it. Agents find their way by it instead of reading the code.
   1440 px wide, both themes, downscaled to about 1,000 px, into the session's scratch folder, never the repo.
 - **Reference tools on the owner's PC** (2026-11-16): Python 3.12 and 3.14 (`py`), MATLAB R2023a (no RF, PCB or PDE
   toolbox), KiCad 10 (`C:\Program Files\KiCad\10.0\bin\kicad-cli.exe`), Saturn PCB Toolkit (in `Program Files (x86)`,
-  GUI only: the owner may give numbers from it), openEMS after M0.4.
+  GUI only: the owner may give numbers from it), openEMS v0.37.0 in `C:\Users\Jonat\opt\openEMS` with its Python
+  interface in the venv `C:\Users\Jonat\opt\openEMS-venv` (fullwave.md §14).
 - **Done means:** the harness passes, `npx tsc --noEmit` and `npm run build` pass (then `git checkout --
   next-env.d.ts`), the code was read against the static-export constraints, page steps were looked at in both themes at
   both widths, and the step's `notes-<step>.md`, this file's status and `modules.md` are updated; from M2.5 also the
