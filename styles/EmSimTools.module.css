@@ -99,3 +99,18 @@
 @media (min-width: 600px) {
   .rankList li { grid-template-columns: minmax(0, 1fr) 6.5rem minmax(0, 12rem); grid-template-areas: 'name d share'; align-items: center; }
 }
+
+/* ---- the calculators (M2.3b) ---- */
+.calcList { margin: 6px 0 0; padding-left: 1.2em; max-width: 72ch; }
+.calcList li { margin: 2px 0 0; }
+.calcTable { margin-top: 6px; border-collapse: collapse; font-size: 0.875rem; max-width: 100%; }
+.calcTable th { text-align: left; font-weight: 400; color: var(--ink-2); padding: 3px 14px 3px 0; overflow-wrap: anywhere; }
+.calcTable td { text-align: right; padding: 3px 0; white-space: nowrap; }
+.calcTable tr:last-child th, .calcTable tr:last-child td { border-top: 1px solid var(--rule); font-weight: 600; color: var(--ink); }
+.cfList { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); gap: 10px 16px; margin-top: 8px; }
+.cf { border: 1px solid var(--rule); border-radius: 6px; padding: 8px 10px; min-width: 0; }
+.cfName { margin: 0; font-size: 0.875rem; font-weight: 600; }
+.cfVals { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 6px 0 0; }
+.cfVals dt { font-size: 0.75rem; color: var(--ink-2); }
+.cfVals dd { margin: 0; font-size: 0.9375rem; }
+.cfOut { color: var(--warn); }

@@ -20,6 +20,7 @@ import { MC_SAMPLES, MC_SEED, inputsOf } from '../../lib/emsim/vary';
 import type { CornersResult, McResult, SweepPoint, SweepResult } from '../../lib/emsim/vary';
 import base from '../../styles/EmSim.module.css';
 import css from '../../styles/EmSimTools.module.css';
+import CalcTool from './CalcTool';
 import Plot from './Plot';
 import type { PlotSeries } from './Plot';
 import type { Commit } from './StackupSection';
@@ -27,7 +28,7 @@ import { FLOOR, qText } from './trace';
 import { PLACEHOLDER, SWEEP_MAX, SWEEP_POINTS, TARGET_DEFAULT, defaultRange, linesOf, mainKeyOf, outputsOf, readTarget, shares, targetChoices, withPlaceholders } from './tools';
 import type { Quantity } from './tools';
 
-export type ToolName = 'target' | 'sweep' | 'tolerance';
+export type ToolName = 'target' | 'sweep' | 'tolerance' | 'calc';
 type GetClient = () => Promise<StaticClient>;
 
 interface Props {
@@ -53,6 +54,7 @@ export default function TraceTools({ tool, ...p }: Props) {
       {seen.has('target') && <div hidden={tool !== 'target'}><TargetTool {...p} /></div>}
       {seen.has('sweep') && <div hidden={tool !== 'sweep'}><SweepTool {...p} /></div>}
       {seen.has('tolerance') && <div hidden={tool !== 'tolerance'}><ToleranceTool {...p} /></div>}
+      {seen.has('calc') && <div hidden={tool !== 'calc'}><CalcTool {...p} active={tool === 'calc'} /></div>}
     </div>
   );
 }
