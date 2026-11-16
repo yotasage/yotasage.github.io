@@ -161,8 +161,17 @@ branches 6.0, 7.0, 8.0, 9.0, 10.0 and master downloaded and searched (GPL source
 for:** the board file version of each release, the stackup writer's tokens per version, KiCad's default εr 4.5 /
 tanδ 0.02 / mask εr 3.3 / 1 GHz (master), the net-class fields and schema versions.
 
+### `JLCPCBCalc`: JLCPCB, online impedance calculator (reached in M1.4c, entry added in M2.4a)
+https://jlcpcb.com/pcb-impedance-calculator, read 2026-11-16 in M1.4c: the inputs the page posts to its calculation
+service for a stack-up and the values that come back (notes-M1.4c.md; facts-cases.md "Differences explained"). The
+same source as `presets.ts` ref S. **Cite for:** that it computes with Polar Si9000 (its error text names it); the
+inputs it sends for JLC061611-3313A, L1 ref L2, outer 1 oz (εr 4.3 for the prepreg, T1 1.6 mil, top 0.5 mil narrower,
+mask 1.0 / 0.6 / 1.0 mil at εr 3.8); its stated widths (50 Ω at 5.42 mil, 100 Ω at 4.36 / 8 mil) and Si9000's values
+there (49.958 Ω, 99.951 Ω); its width search to ±0.5 % of the target. **Not for:** Polar's algorithm, other stackups'
+inputs beyond the ones requested in M1.4c.
+
 ### Not reached
-JLCPCB's online calculator (JavaScript app); any JLCPCB page with JLC061611-3313G; JLCPCB's engineers' tables in the
+JLCPCB's online calculator before M1.4c (JavaScript app; reached then, entry above); any JLCPCB page with JLC061611-3313G; JLCPCB's engineers' tables in the
 order emails (images on JLCPCB's server under order-specific addresses, deliberately not fetched); the NP-155F
 datasheet (εr against frequency), left for M1.1 or phase 2.
 
