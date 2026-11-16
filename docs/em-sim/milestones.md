@@ -155,9 +155,9 @@ Monte Carlo deterministic; budgets met.
 structures, by an agent that reads no solver code or solver notes) and **M1.4b** (`closedform.ts`, the closed forms
 against the field solver, the validation table and the explanation of every difference).
 **M1.4c** (added 2026-11-16 from the owner's numbers): reconcile the tool with JLCPCB. JLCPCB's online calculator gives
-50 Ω at 5.42 mil and 100 Ω at 4.36/8 mil, its engineers' tool 5.40 mil and 4.33/7.87 mil; this tool reads about 3 %
+50 Ω at 5.42 mil and 100 Ω at 4.36/8 mil, its engineers kept the drawn widths within rounding (5.4 mil, 4.33/7.87 mil); this tool reads about 3 %
 higher on both. Find which assumptions (mask model, εr, etch, copper thickness, definition) reproduce JLCPCB's numbers,
-from JLCPCB's published parameters and the owner's screenshots of both calculators when given; record it in
+from JLCPCB's published parameters and the owner's screenshot of the online calculator (JLCPCB's confirmation form shows no εr, mask or etch); record it in
 facts-cases.md and in what M2.3's calculator comparison says. Runs when the screenshots are in, or before M2.3.
 
 A fresh agent that **does not read** `lib/emsim/` solver files (only engine.md §3–§4, facts.md, solver.md's design of
