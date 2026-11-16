@@ -23,6 +23,7 @@ import css from '../../styles/EmSimTools.module.css';
 import type { Commit } from './StackupSection';
 import { FLOOR, qText } from './trace';
 import { linesOf } from './tools';
+import { feedTheory } from './theoryFeed';
 
 interface Props {
   setup: Setup;
@@ -85,6 +86,7 @@ export default function CalcTool({ setup, invalid, commit, unit, client, active 
           parts.push({ part: p, d: main(x, n)!.v - jv });
         }
         r.parts = parts;
+        feedTheory({ calc: { setup, stackup: main(r.field, n)!.v, calculator: jv, parts: Object.fromEntries(parts.map((x) => [x.part, x.d])) } }); // M2.4c
       }
       r.done = true; show();
     })();

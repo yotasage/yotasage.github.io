@@ -41,12 +41,13 @@ import TraceResults from './TraceResults';
 import type { ToolName } from './TraceTools';
 import type { RunState } from './TraceResults';
 import ValField from './ValField';
+import { feedTheory } from './theoryFeed';
 import { KINDS, coppersOf, etchOf, isCoplanar, isPair, withKind, withSignalLayer } from './trace';
 import type { GenSel } from './trace';
 
 // One client for the page, made when the first solve is asked for.
 let clientP: Promise<StaticClient> | null = null;
-function getClient(): Promise<StaticClient> {
+export function getClient(): Promise<StaticClient> {
   if (!clientP) {
     clientP = (async () => {
       // @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
@@ -184,6 +185,11 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
     // The via does not change the trace's solve.
   }, [s, st, sec, quick]);
   useEffect(() => { if (dragging) lastArrival.current = performance.now(); }, [dragging]);
+  // M2.4c: the theory's live numbers: a full result for the shown setup, not during a drag (its frames stay cheap).
+  useEffect(() => {
+    if (res && res.ok && !stale && !quickShown && !dragging) feedTheory({ result: { setup: { stackup: s, trace: st, via: setup.via }, r: res } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [res, stale, quickShown, dragging]);
   // M2.2: the field jobs use the solve's options (the fast path too), so the worker's solve cache serves them.
   const fieldEnv = useMemo(() => ({ client: getClient, via: setup.via, ...(quick ? { opt: QUICK } : {}) }), [setup.via, quick]);
 

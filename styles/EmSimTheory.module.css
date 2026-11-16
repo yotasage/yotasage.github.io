@@ -1,0 +1,288 @@
+/* The EM simulation page's Theory and References sections (step M2.4c), on the tokens of EmSim.module.css's .root. */
+
+.theory {
+  max-width: 78ch;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+.theory p,
+.theory li {
+  overflow-wrap: break-word;
+}
+
+.lead {
+  color: var(--ink-2);
+  margin: 0 0 12px;
+}
+
+.theory a,
+.refs a {
+  color: var(--accent);
+}
+
+.contents {
+  margin: 0 0 8px;
+  padding: 10px 14px;
+  background: var(--raise);
+  border-radius: var(--radius);
+  font-size: 0.9375rem;
+}
+
+.contents ol {
+  margin: 0;
+  padding-left: 1.4em;
+}
+
+.contents ol > li:first-child {
+  list-style-type: '0. ';
+}
+
+.contents ul {
+  margin: 2px 0 4px;
+  padding-left: 1.1em;
+  list-style: '– ';
+  font-size: 0.875rem;
+}
+
+.topic,
+.sub {
+  scroll-margin-top: calc(var(--bar-h) + 8px);
+}
+
+.topic {
+  margin-top: 28px;
+}
+
+.topicHead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 8px;
+  font-size: 1.0625rem;
+  font-weight: 650;
+}
+
+.topicNo {
+  flex: none;
+  min-width: 1.6em;
+  padding: 0 6px;
+  border-radius: 5px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--font-num);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.sub {
+  margin-top: 18px;
+}
+
+.subHead {
+  margin: 0 0 4px;
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+
+.steps {
+  padding-left: 1.4em;
+}
+
+.steps li {
+  margin: 4px 0;
+}
+
+.now {
+  padding: 8px 12px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 0 6px 6px 0;
+}
+
+.n {
+  font-family: var(--font-num);
+  font-weight: 600;
+}
+
+.foot {
+  margin-top: 28px;
+  color: var(--ink-3);
+  font-size: 0.875rem;
+}
+
+/* An equation: scrolls inside its own box when wider than the column. */
+.eq {
+  margin: 10px 0 14px;
+  padding: 8px 12px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--field);
+}
+
+.eqScroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 0;
+}
+
+.eqRows {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  column-gap: 0.3em;
+  row-gap: 6px;
+  align-items: baseline;
+}
+
+.eqRowsPlain {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.eqLhs {
+  text-align: right;
+}
+
+.eqRhs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.eqWide {
+  grid-column: 1 / -1;
+}
+
+.eqLive {
+  color: var(--accent);
+}
+
+.eqExtra {
+  display: block;
+  margin-top: 6px;
+  color: var(--ink-2);
+}
+
+.eqTitle {
+  margin-top: 4px;
+  color: var(--ink-3);
+  font-size: 0.8125rem;
+}
+
+.eqNeed {
+  font-style: italic;
+}
+
+/* Figures */
+.figure {
+  margin: 14px 0 18px;
+}
+
+.figure figcaption {
+  margin-top: 6px;
+  color: var(--ink-2);
+  font-size: 0.875rem;
+}
+
+.figTwo {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 600px) {
+  .figTwo {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.figPart {
+  min-width: 0;
+}
+
+.figLabel {
+  margin-bottom: 4px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 560px;
+}
+
+.svgText {
+  fill: var(--ink-2);
+  font-size: 12px;
+}
+
+.svgNum {
+  fill: var(--ink-2);
+  font-size: 12px;
+  font-family: var(--font-num);
+}
+
+.svgLine {
+  fill: none;
+  stroke: var(--ink-2);
+  stroke-width: 1.5;
+}
+
+.svgAxis {
+  fill: none;
+  stroke: var(--ink-3);
+  stroke-width: 1;
+}
+
+.barPos {
+  fill: var(--accent);
+}
+
+.barNeg {
+  fill: var(--warn);
+}
+
+.barSum {
+  fill: var(--ink-3);
+}
+
+.bandWide {
+  fill: var(--warn);
+  opacity: 0.45;
+}
+
+.bandNarrow {
+  fill: var(--accent);
+  opacity: 0.7;
+}
+
+/* References */
+.refs {
+  max-width: 78ch;
+  font-size: 0.9375rem;
+  overflow-wrap: anywhere;
+}
+
+.placeholder {
+  color: var(--ink-3);
+}
+
+/* A topic or sub-anchor a link jumped to lights up and fades (lib/useReplayHighlight.ts replays it). */
+@keyframes jumped {
+  from {
+    background: var(--accent-soft);
+  }
+  to {
+    background: transparent;
+  }
+}
+
+.topic:target,
+.sub:target {
+  animation: jumped 3s ease-out;
+  border-radius: var(--radius);
+}

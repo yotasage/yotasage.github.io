@@ -74,11 +74,12 @@ interface Props {
   onSelect?: (sel: GenSel | null) => void; // and a tap on a conductor selects it
   fields?: FieldSettings; // M2.2: the field view
   fieldEnv?: FieldEnv;
+  still?: boolean; // M2.4c: a figure of the theory: no handles
 }
 
 interface Drag { key: HandleKey; def: HandleDef; Z: (y: number) => number; px: number; py: number; raf: number; last: number }
 
-function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit, sel = null, onSelect, fields, fieldEnv }: Props) {
+function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit, sel = null, onSelect, fields, fieldEnv, still = false }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const content = useRef<SVGGElement>(null);
   const pzRef = useRef<PanZoom | null>(null);
@@ -183,7 +184,7 @@ function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit, sel = nul
   // A drawn view: the gesture's transform is no longer needed.
   useLayoutEffect(() => { content.current?.removeAttribute('transform'); }, [view]);
 
-  const defs = useMemo(() => (sec ? traceHandles(s, st) : []), [s, st, sec]);
+  const defs = useMemo(() => (sec && !still ? traceHandles(s, st) : []), [s, st, sec, still]);
   const defsRef = useRef(defs);
   defsRef.current = defs;
 

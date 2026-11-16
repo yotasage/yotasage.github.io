@@ -11,6 +11,7 @@ import { useRouter } from 'next/router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { BibEntry } from '../../lib/bibtex';
+import type Bibliography from '../Bibliography';
 import { decodeLink, encodeLink } from '../../lib/emsim/link';
 import { defaultSetup, sameSetup } from '../../lib/emsim/setup';
 import type { Setup } from '../../lib/emsim/setup';
@@ -20,6 +21,7 @@ import type { Issue } from '../../lib/emsim/stackup';
 import { UNIT_TEXT } from '../../lib/emsim/units';
 import styles from '../../styles/EmSim.module.css';
 import HomeIcon from '../icons/home';
+import useReplayHighlight from '../../lib/useReplayHighlight';
 import { DEFAULT_DIGITS, DIGIT_CHOICES, SHOWN_UNITS } from './format';
 import { errorText, jlcLoaded, jlcResolve, loadJlc } from './jlcData';
 import type { ShownUnit } from './format';
@@ -37,7 +39,13 @@ const HISTORY = 200;
 const GROUP_MS = 1500;
 
 // The sections that exist (plan.md: Stackup · Trace · Via · Waves · Theory · Examples · Report · Export · References).
-const SECTIONS: readonly { id: string; label: string }[] = [{ id: 'stackup', label: 'Stackup' }, { id: 'trace', label: 'Trace' }];
+const SECTIONS: readonly { id: string; label: string }[] = [{ id: 'stackup', label: 'Stackup' }, { id: 'trace', label: 'Trace' }, { id: 'theory', label: 'Theory' }, { id: 'references', label: 'References' }];
+
+// M2.4c: the Theory and References (Theory.tsx with KaTeX and the equations) load when they come within LOAD_MARGIN of
+// the window or a link points at an id outside the tool's sections; until then the sections are empty frames.
+type TheoryMod = typeof import('./Theory');
+const LOAD_MARGIN = '400px 0px';
+const TOOL_IDS = new Set(['', 'stackup', 'trace']);
 
 // The page's own parameters taken out of a query; the rest is the setup's.
 function splitQuery(search: string): { setupPart: string; unit: ShownUnit | null; issues: Issue[] } {
@@ -66,7 +74,40 @@ const SunIcon = () => <Svg><circle cx={8} cy={8} r={2.8} /><path d="M8 1.5v1.6M8
 const MoonIcon = () => <Svg><path d="M13.2 9.6A5.6 5.6 0 0 1 6.4 2.8a5.6 5.6 0 1 0 6.8 6.8z" /></Svg>;
 
 export default function EmSimTool({ references, onTheme }: { references: BibEntry[]; onTheme?: (t: Theme | null) => void }) {
-  void references; // cited from M2.4 on (one Bibliography for the page)
+  // ---- the theory, loaded when needed; one Bibliography for the page, numbered in the order of its citations ----
+  useReplayHighlight();
+  const [th, setTh] = useState<TheoryMod | null>(null);
+  const thBox = useRef<HTMLElement>(null), refBox = useRef<HTMLElement>(null);
+  const jumpTo = useRef('');
+  useEffect(() => {
+    let asked = false;
+    const load = () => {
+      if (asked) return;
+      asked = true;
+      // @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
+      void import('./Theory').then((m: TheoryMod) => setTh(() => m), () => { asked = false; });
+    };
+    const fromHash = () => {
+      const id = decodeURIComponent(window.location.hash.slice(1));
+      if (TOOL_IDS.has(id)) return;
+      if (!document.getElementById(id)) jumpTo.current = id;
+      load();
+    };
+    fromHash();
+    window.addEventListener('hashchange', fromHash);
+    const io = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) load(); }, { rootMargin: LOAD_MARGIN });
+    if (!io) load();
+    for (const el of [thBox.current, refBox.current]) if (el && io) io.observe(el);
+    return () => { window.removeEventListener('hashchange', fromHash); io?.disconnect(); };
+  }, []);
+  const bib = useMemo<Bibliography | null>(() => (th ? th.bibOf(references) : null), [th, references]);
+  // A link into the theory that arrived before it was loaded: shown once it is there.
+  useEffect(() => {
+    const id = jumpTo.current;
+    if (!th || !id) return;
+    jumpTo.current = '';
+    window.requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView());
+  }, [th]);
 
   // ---- the setup and its history ----
   const [setup, setSetup] = useState<Setup>(defaultSetup);
@@ -205,7 +246,7 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
       </header>
 
       <main className={styles.main}>
-        <p className={styles.status}>Work in progress: the stackup, the trace with its impedance, dragging in the drawing and the fields of the cross-section are here so far; targets, tolerances and vias come next.</p>
+        <p className={styles.status} data-status>Work in progress: the stackup (with every JLCPCB stackup), the trace with its impedance, dragging in the drawing, the fields of the cross-section, Target, Sweep, Tolerance, Calculators and the theory are here so far; vias come next.</p>
         <div className={styles.prefs}>
           <div className={styles.pref} role="group" aria-label="Units">
             Units
@@ -233,6 +274,14 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
         )}
         <StackupSection setup={setup} commit={commit} unit={unit} digits={digits} kicad={kicad} setKicad={setKicad} />
         <TraceSection setup={setup} commit={commit} unit={unit} digits={digits} kicad={kicad} />
+        <section id="theory" ref={thBox} className={styles.section} aria-labelledby="theory-h" data-loaded={th ? 'true' : 'false'}>
+          <h2 id="theory-h" className={styles.h2}>Theory</h2>
+          {th && bib ? <th.default bib={bib} unit={unit} digits={digits} /> : <p className={styles.lede}>The theory loads as you come near it.</p>}
+        </section>
+        <section id="references" ref={refBox} className={styles.section} aria-labelledby="references-h">
+          <h2 id="references-h" className={styles.h2}>References</h2>
+          {th && bib ? <th.References bib={bib} /> : <p className={styles.lede}>The sources the theory cites, listed once it has loaded.</p>}
+        </section>
       </main>
     </div>
   );

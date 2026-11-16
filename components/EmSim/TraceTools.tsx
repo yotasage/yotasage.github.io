@@ -27,6 +27,7 @@ import type { Commit } from './StackupSection';
 import { FLOOR, qText } from './trace';
 import { PLACEHOLDER, SWEEP_MAX, SWEEP_POINTS, TARGET_DEFAULT, defaultRange, linesOf, mainKeyOf, outputsOf, readTarget, shares, targetChoices, withPlaceholders } from './tools';
 import type { Quantity } from './tools';
+import { feedTheory } from './theoryFeed';
 
 export type ToolName = 'target' | 'sweep' | 'tolerance' | 'calc';
 type GetClient = () => Promise<StaticClient>;
@@ -405,6 +406,7 @@ function ToleranceTool({ setup, invalid, unit, digits, client }: ToolProps) {
     void client().then((c) => c.run<CornersResult>('corners', { kind: 'corners', setup: ph.setup })).then((rr) => {
       if (!on || !rr) return;
       setCr({ r: rr.result, ms: now() - t0, setup });
+      feedTheory({ corners: { setup, r: rr.result } }); // M2.4c: the theory's tolerance numbers
       setCBusy(false);
     });
     return () => { on = false; };
@@ -418,7 +420,7 @@ function ToleranceTool({ setup, invalid, unit, digits, client }: ToolProps) {
     const c = await client();
     const rr = await c.run<McResult>('mc', { kind: 'montecarlo', setup: ph.setup, opt: { samples: MC_SAMPLES, seed: MC_SEED, keys: [key] } }, (d) => setProg(d));
     setMcBusy(false);
-    if (rr) setMc({ r: rr.result, ms: now() - t0, setup });
+    if (rr) { setMc({ r: rr.result, ms: now() - t0, setup }); feedTheory({ mc: { setup, r: rr.result } }); }
   };
   const cancelMc = () => { void client().then((c) => c.cancel('mc')); setMcBusy(false); };
 

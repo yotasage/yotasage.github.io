@@ -103,12 +103,16 @@ export function hashOf(s: string): string {
 const stripped = (r: LineResults | null): LineResults | null => (r ? { ...r, bem: null } : r);
 
 /** M2.1b: a solve job's result: the line results without the solver's levels, with the per-unit-length matrices. */
-export interface Matrices { C: number[][]; C0: number[][]; L: number[][]; errC: number[][]; errC0: number[][]; errL: number[][] }
+export interface Matrices {
+  C: number[][]; C0: number[][]; L: number[][]; errC: number[][]; errC0: number[][]; errL: number[][];
+  /** M2.4c: each level's C, C0 and L, coarse to fine (the theory's error and order, eqvalues.levelSeries). */
+  levels: { C: Float64Array; C0: Float64Array; L: Float64Array }[];
+}
 export type SolveResult = LineResults & { matrices: Matrices | null };
 const withMatrices = (r: LineResults | null): SolveResult | null => {
   if (!r) return null;
   const b = r.bem;
-  const matrices = b && b.ok ? { C: b.C, C0: b.C0, L: b.L, errC: b.errC, errC0: b.errC0, errL: b.errL } : null;
+  const matrices = b && b.ok ? { C: b.C, C0: b.C0, L: b.L, errC: b.errC, errC0: b.errC0, errL: b.errL, levels: b.levels.map((lv) => ({ C: lv.C.slice(), C0: lv.C0.slice(), L: lv.L.slice() })) /* copies: the worker transfers what it sends, and the cached solve keeps its own */ } : null;
   return { ...r, bem: null, matrices };
 };
 

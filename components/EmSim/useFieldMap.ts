@@ -25,7 +25,7 @@ import { driveOf, isMagnetic } from './fieldTypes';
 import type { View } from './panZoom';
 import type { WorldMap } from './traceGeom';
 
-export interface FieldEnv { client: () => Promise<StaticClient>; via: ViaStructure; opt?: SolveOptions }
+export interface FieldEnv { client: () => Promise<StaticClient>; via: ViaStructure; opt?: SolveOptions; channel?: string } // channel: the theory's figures each have their own (M2.4c)
 export type FieldMod = typeof import('./fieldPaint');
 export type FieldState = 'off' | 'loading' | 'partial' | 'done' | 'error';
 
@@ -130,7 +130,7 @@ export function useFieldMap(f: FieldSettings | undefined, env: FieldEnv | undefi
         const sx = stat();
         if (sx) { sx.paints.push({ kind, ms: performance.now() - t0, at: performance.now(), drag: dragging, nx: gv.nx, cached }); if (sx.paints.length > 4000) sx.paints.shift(); }
       };
-      void env.client().then((c) => c.run<FieldResult>('field', job, (_d, _t, partial) => {
+      void env.client().then((c) => c.run<FieldResult>(env.channel ?? 'field', job, (_d, _t, partial) => {
         if (!onRef.current || inflight.current !== id || !partial || surfaceOnly || dragging) return; // a drag's map is drawn when done
         store.set({ painted: mod.prepare(partial as FieldResult['grid'] & object, qty, scaleKind), state: 'partial' });
         record('partial', false);
