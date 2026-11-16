@@ -165,3 +165,11 @@ tanδ 0.02 / mask εr 3.3 / 1 GHz (master), the net-class fields and schema vers
 JLCPCB's online calculator (JavaScript app); any JLCPCB page with JLC061611-3313G; JLCPCB's engineers' tables in the
 order emails (images on JLCPCB's server under order-specific addresses, deliberately not fetched); the NP-155F
 datasheet (εr against frequency), left for M1.1 or phase 2.
+
+## Literature, abstracts only (M0.2d)
+
+[literature.md](literature.md) lists 57 papers on the 2D field solver, pair impedance definitions, calculators against
+field solvers and measurements, and via models, with the step each one is for. Each was checked on Crossref by its
+DOI (title, authors and year); **none was opened**. They may be cited on the page only for what their abstract says
+until someone opens them; then they move to a section above with what was read. Keys in `references.bib` from
+`Wang1994` to `RimoloDonadio2009b`, under the comment "step M0.2d".
