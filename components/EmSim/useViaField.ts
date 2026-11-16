@@ -16,9 +16,10 @@ import type { ViaFieldResult } from '../../lib/emsim/viafield';
 import type { FieldScale } from './fieldTypes';
 import type { View } from './panZoom';
 import { getClient } from './TraceSection';
+import { feedExport } from './exportFeed';
 import { FieldStore } from './useFieldMap';
 import type { FieldMod } from './useFieldMap';
-import type { Box } from './viaGeom';
+import type { Box } from '../../lib/emsim/viaGeom';
 
 export type ViaFieldQty = 'phi' | 'E' | 'lines';
 export type ViaFieldDrive = 'differential' | 'common' | 'one';
@@ -61,6 +62,14 @@ export function useViaField(which: 'side' | 'top', f: ViaFieldSettings | undefin
   const [store] = useState(() => new ViaFieldStore());
   const onRef = useRef(on);
   onRef.current = on;
+  // The finished map for the Export section (M8.1b).
+  useEffect(() => {
+    const key = which === 'side' ? 'viaSide' : 'viaTop';
+    const give = () => feedExport({ [key]: store.state === 'done' ? store.painted : null });
+    give();
+    const off = store.sub(give);
+    return () => { off(); feedExport({ [key]: null }); };
+  }, [store, which]);
   useEffect(() => {
     if (!on || mod) return;
     let live = true;

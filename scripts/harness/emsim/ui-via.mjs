@@ -20,7 +20,7 @@ import * as importedSetup from '../../../lib/emsim/setup.ts';
 import * as importedStackup from '../../../lib/emsim/stackup.ts';
 import * as importedVia from '../../../lib/emsim/via.ts';
 import * as importedModel from '../../../lib/emsim/viamodel.ts';
-import * as importedGeom from '../../../components/EmSim/viaGeom.ts';
+import * as importedGeom from '../../../lib/emsim/viaGeom.ts';
 
 const d = (m) => m.default ?? m;
 const LK = d(importedLink), SU = d(importedSetup), S = d(importedStackup), V = d(importedVia), VM = d(importedModel), G = d(importedGeom);

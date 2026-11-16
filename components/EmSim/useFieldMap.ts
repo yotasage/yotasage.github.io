@@ -19,6 +19,7 @@ import type { Stackup } from '../../lib/emsim/stackup';
 import type { StaticClient } from '../../lib/emsim/staticClient';
 import type { Structure } from '../../lib/emsim/structure';
 import type { ViaStructure } from '../../lib/emsim/via';
+import { feedExport } from './exportFeed';
 import type { Painted } from './fieldPaint';
 import type { FieldSettings } from './fieldTypes';
 import { driveOf, isMagnetic } from './fieldTypes';
@@ -71,6 +72,15 @@ export function useFieldMap(f: FieldSettings | undefined, env: FieldEnv | undefi
   const [store] = useState(() => new FieldStore());
   const onRef = useRef(on);
   onRef.current = on;
+  // The Trace drawing's finished map for the Export section (M8.1b); the theory's figures have a channel and keep theirs.
+  const channel = env?.channel;
+  useEffect(() => {
+    if (channel) return;
+    const give = () => feedExport({ traceMap: store.state === 'done' ? store.painted : null });
+    give();
+    const off = store.sub(give);
+    return () => { off(); feedExport({ traceMap: null }); };
+  }, [store, channel]);
   useEffect(() => {
     if (!on || mod) return;
     let live = true;

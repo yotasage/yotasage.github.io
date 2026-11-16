@@ -8,10 +8,10 @@
 // The antipad shapes are tests (`insideAntipad`); the cut's openings are found on the section line by sampling and
 // bisection, so a new shape needs only its test.
 
-import { layerIndex, stackZ } from '../../lib/emsim/stackup';
-import type { Stackup } from '../../lib/emsim/stackup';
-import { viaStubs } from '../../lib/emsim/via';
-import type { Antipad, ViaStructure } from '../../lib/emsim/via';
+import { layerIndex, stackZ } from './stackup';
+import type { Stackup } from './stackup';
+import { viaStubs } from './via';
+import type { Antipad, ViaStructure } from './via';
 
 export interface Pt { x: number; y: number }
 export interface Box { x0: number; x1: number; y0: number; y1: number }

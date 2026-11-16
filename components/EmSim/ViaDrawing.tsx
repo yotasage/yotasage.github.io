@@ -1,7 +1,7 @@
 // The Via section's two drawings to scale (step M3.1a): the side view (the stackup cut along the section line, with
 // copper, laminate and mask, the barrel, pads, the antipads cut into the planes, the stub or backdrill, the feeds and
 // the return vias behind the cut) and the top view (pads, antipad shapes, the pair's pitch, return vias numbered as
-// their rows, the feeds' directions and the section line). Geometry from viaGeom.ts in mm, one scale per view.
+// their rows, the feeds' directions and the section line). Geometry from lib/emsim/viaGeom.ts in mm, one scale per view.
 //
 // M3.1b: both views pan and zoom (panZoom.ts, as the Trace section's cross-section: during a gesture the last picture
 // is moved by one transform and drawn again when it settles) and have drag handles (viaHandles.ts) by mouse, touch and
@@ -27,8 +27,8 @@ import { lenText } from './format';
 import { PanZoom, frameTransform } from './panZoom';
 import type { Rect, View } from './panZoom';
 import { MAX_K, niceStep, roundTo } from './traceGeom';
-import { fitK, sideGeom, topGeom } from './viaGeom';
-import type { Box, SideGeom, TopGeom } from './viaGeom';
+import { fitK, sideGeom, topGeom } from '../../lib/emsim/viaGeom';
+import type { Box, SideGeom, TopGeom } from '../../lib/emsim/viaGeom';
 import { sideHandles, topHandles } from './viaHandles';
 import type { ViaHandle, ViaHandleKey } from './viaHandles';
 import { Why, Whys } from './Why';

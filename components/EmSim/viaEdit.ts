@@ -8,7 +8,7 @@ import type { Stackup, Val } from '../../lib/emsim/stackup';
 import type { Structure } from '../../lib/emsim/structure';
 import type { Antipad, Backdrill, ReturnVia, ViaStructure } from '../../lib/emsim/via';
 import { stackZ } from '../../lib/emsim/stackup';
-import { barrelsOf } from './viaGeom';
+import { barrelsOf } from '../../lib/emsim/viaGeom';
 
 const typed = (x: number): Val => val(+x.toPrecision(6));
 

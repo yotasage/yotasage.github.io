@@ -1,7 +1,7 @@
 // The Via section (step M3.1a; a chunk of its own, loaded by EmSimTool when the section comes near): a single via or
 // a differential pair typed in a form (lib/emsim/via.ts ViaStructure: barrel and signal layers, drill and plating, the
 // pitch, per copper layer its pad and whether it is a plane with an antipad of a shape, return vias as rows,
-// backdrill, feeds), drawn to scale from the side and from the top (ViaDrawing, geometry in viaGeom.ts), and solved by
+// backdrill, feeds), drawn to scale from the side and from the top (ViaDrawing, geometry in lib/emsim/viaGeom.ts), and solved by
 // the via model in the static worker on channel `via` (the newest edit wins; the old values stay dimmed until the new
 // ones arrive). Edits go through viaEdit.ts and `commit`, one undo step each (typing in one field is one step); a via
 // that makes no sense is kept as typed and viaIssues says why, as the Trace section does. The via is in the setup's

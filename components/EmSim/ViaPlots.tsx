@@ -6,9 +6,9 @@
 // one cursor, the two frequency plots another (a time and a frequency are not the same reading). The plots draw only
 // the full solves that ViaSolve hands them (never a drag's coarse frames), dimmed while a newer one is on its way.
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
-import { DB_FLOOR, dbOf, phaseOf, readAt, timeScale } from '../../lib/emsim/plot';
+import { DB_FLOOR, dbOf, extent, niceAxis, phaseOf, readAt, timeScale } from '../../lib/emsim/plot';
 import { KIND_INFO } from '../../lib/emsim/structure';
 import type { Structure } from '../../lib/emsim/structure';
 import { readPlain, readTime } from '../../lib/emsim/units';
@@ -19,6 +19,7 @@ import css from '../../styles/EmSimTrace.module.css';
 import vcss from '../../styles/EmSimVia.module.css';
 import Plot from './Plot';
 import type { PlotSeries } from './Plot';
+import { feedExport } from './exportFeed';
 import { FLOOR, qText } from './trace';
 import { NumInput } from './ValField';
 import { Why } from './Why';
@@ -135,6 +136,27 @@ function ViaPlots({ r, stale, trace, tr, onTr, z0, onZ0 }: Props) {
     const mag = db <= DB_FLOOR ? `below ${DB_FLOOR} dB` : `${db.toFixed(2)} dB ∠ ${phaseOf(re, im).toFixed(1)}°`;
     return `${f.toFixed(2)} GHz: ${names[q]} ${mag}${f > fValid ? ' (beyond the model’s range)' : ''}`.replace(/-/g, '−');
   };
+
+  // The plots as shown, for the Export section (M8.1b); none while the result is stale.
+  useEffect(() => {
+    if (stale) { feedExport({ via: [] }); return; }
+    const mode = modeName ? ` (${modeName})` : '', zName = pair ? (tdrMode === 'diff' ? 'Zdiff' : 'Zcm') : 'Z';
+    const tAx = { min: tDomain[0], max: tDomain[1], label: `t (${tScale.unit})`, k: tScale.k };
+    const zAx = niceAxis(...extent(zSeries[0].ys, lines.map((l) => l.y)), 6);
+    const dAx = niceAxis(...extent(tdtSeries[0].ys, [0, 1]), 6);
+    const sAx = niceAxis(...extent(S.parts[0].db, S.parts[1].db), 6);
+    const fMax = fDomain[1];
+    feedExport({
+      via: [
+        { id: 'via-tdr', label: `Via: TDR${mode}`, spec: { name: 'via-tdr', what: `TDR of the via${mode}`, x: tAx, y: { ...zAx, label: `${zName} (Ω)` }, series: [{ xs: ts, ys: zSeries[0].ys }], refs: lines.map((l) => ({ y: l.y, label: l.name })) } },
+        { id: 'via-tdt', label: `Via: TDT${mode}`, spec: { name: 'via-tdt', what: `TDT of the via${mode}`, x: tAx, y: { ...dAx, label: 'Step through' }, series: [{ xs: ts, ys: tdtSeries[0].ys }] } },
+        { id: 'via-s', label: `Via: |${names[0]}| and |${names[1]}|`, spec: { name: 'via-s-params', what: `|${names[0]}| and |${names[1]}| of the via`, x: { min: 0, max: fMax, label: 'f (GHz)' }, y: { ...sAx, label: '|S| (dB)' }, series: [{ xs: S.fs, ys: S.parts[0].db, label: `|${names[0]}|` }, { xs: S.fs, ys: S.parts[1].db, label: `|${names[1]}|` }], refs: fValid < fMax ? [{ x: fValid, label: 'lumped model' }] : [] } },
+      ],
+    });
+    // names follow S
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stale, ts, zSeries, tdtSeries, lines, S, tDomain, tScale, fDomain, fValid, pair, tdrMode]);
+  useEffect(() => () => feedExport({ via: [] }), []);
 
   const portShown = pair ? 2 * z0 : z0;
   return (

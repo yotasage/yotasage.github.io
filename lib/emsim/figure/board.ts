@@ -2,7 +2,7 @@
 // mm for a width on paper. Built downwards from y = 0 (the top) and shifted at the end so the box is [0, W] × [0, H].
 // The geometry is the page's: the stackup's sketch as components/EmSim/StackupDrawing.tsx draws it (in mm instead of
 // px), the cross-section from lib/emsim/geometry.ts's Section at true scale, the via views from
-// components/EmSim/viaGeom.ts (framework-free) at true scale. `fig.world` maps world mm (x, z up; the top view's
+// lib/emsim/viaGeom.ts (framework-free) at true scale. `fig.world` maps world mm (x, z up; the top view's
 // board y up) to paper, so field.ts can lay a map under the copper.
 
 import { layerIndex, stackThickness, stackZ } from '../stackup';
@@ -12,11 +12,11 @@ import type { Structure } from '../structure';
 import type { ViaStructure } from '../via';
 import { addMap, mapFooter } from './field';
 import type { MapInput } from './field';
-import { sideGeom, topGeom } from '../../../components/EmSim/viaGeom';
+import { sideGeom, topGeom } from '../viaGeom';
 import {
   L_BACK, L_COPPER, L_NOTE, addClip, barLength, emMm, mmText, newFigure, shift, text, textBox, textWidth, wrapText,
 } from './model';
-import type { Figure, FigureOptions } from './model';
+import type { Figure, FigureOptions, TextPrim } from './model';
 import type { Role } from './style';
 import { paintOf } from './style';
 
@@ -33,6 +33,13 @@ function rect(fig: Figure, x0: number, y0: number, x1: number, y1: number, role:
   fig.prims.push({ t: 'rect', x: x0, y: y0, w: x1 - x0, h: y1 - y0, role, layer, clip });
 }
 
+/** A label over the drawing on a white box (M8.1b), so hatching, fills and maps never run under its letters. */
+function knock(fig: Figure, t: TextPrim): TextPrim {
+  const b = textBox(t), i = fig.prims.indexOf(t), em = emMm(t.pt), px = 0.4 + 0.1 * em, py = 0.25 + 0.3 * em; // descenders and accents too
+  fig.prims.splice(i < 0 ? fig.prims.length : i, 0, { t: 'rect', x: b.x0 - px, y: b.y0 - py, w: b.x1 - b.x0 + 2 * px, h: b.y1 - b.y0 + 2 * py, role: 'paper', layer: t.layer, clip: t.clip });
+  return t;
+}
+
 function poly(fig: Figure, pts: number[], closed: boolean, role: Role, layer: number, clip?: number): void {
   if (pts.length >= 4) fig.prims.push({ t: 'poly', pts, closed, role, layer, clip });
 }
@@ -42,6 +49,11 @@ function finish(fig: Figure, bottom: number, top = 0): Figure {
   shift(fig, 0, -bottom);
   fig.height = top - bottom;
   fig.box = { x0: 0, y0: 0, x1: fig.width, y1: fig.height };
+  for (const p of fig.prims) { // labels' white boxes kept inside the figure
+    if (p.t !== 'rect' || p.role !== 'paper' || p.layer !== L_NOTE) continue;
+    const x0 = Math.max(0, p.x), y0 = Math.max(0, p.y), x1 = Math.min(fig.width, p.x + p.w), y1 = Math.min(fig.height, p.y + p.h);
+    p.x = x0; p.y = y0; p.w = Math.max(0, x1 - x0); p.h = Math.max(0, y1 - y0);
+  }
   return fig;
 }
 
@@ -273,14 +285,14 @@ export function sectionFigure(s: Stackup, st: Structure, sec: Section, o: Sectio
     const yd1 = yTop + 1.8, yd2 = yd1 + 1.2 * dem + 1.4;
     const dimText = (x: number, yy: number, label: string) => {
       const tw = textWidth(label, dpt);
-      text(fig, Math.min(W - tw / 2 - 0.3, Math.max(tw / 2 + 0.3, x)), yy + 0.9 + 0.35 * dem, label, dpt, 'middle');
+      knock(fig, text(fig, Math.min(W - tw / 2 - 0.3, Math.max(tw / 2 + 0.3, x)), yy + 0.9 + 0.35 * dem, label, dpt, 'middle'));
     };
     fig.prims.push({ t: 'segs', s: [wx(a.u0), yd1, wx(a.u1), yd1, wx(a.u0), yd1 - tk, wx(a.u0), yd1 + tk, wx(a.u1), yd1 - tk, wx(a.u1), yd1 + tk], role: 'dim', layer: L_NOTE });
     const b = sig[1];
     // w: above its line, or for a pair beside it, away from the gap's dimension
     const wl = `w ${len(a.u1 - a.u0)}`, ww = textWidth(wl, dpt);
-    if (b && b.u0 > a.u1 && wx(a.u0) - 1.2 - ww >= 0) text(fig, wx(a.u0) - 1.2, yd1, wl, dpt, 'end');
-    else if (b && b.u1 < a.u0 && wx(a.u1) + 1.2 + ww <= W) text(fig, wx(a.u1) + 1.2, yd1, wl, dpt, 'start');
+    if (b && b.u0 > a.u1 && wx(a.u0) - 1.2 - ww >= 0) knock(fig, text(fig, wx(a.u0) - 1.2, yd1, wl, dpt, 'end'));
+    else if (b && b.u1 < a.u0 && wx(a.u1) + 1.2 + ww <= W) knock(fig, text(fig, wx(a.u1) + 1.2, yd1, wl, dpt, 'start'));
     else dimText((wx(a.u0) + wx(a.u1)) / 2, yd1, wl);
     if (b && Math.abs(b.zb - a.zb) < 1e-9 && st.kind !== 'general') {
       const lo = a.u1 < b.u0 ? a : b, hi = a.u1 < b.u0 ? b : a;
@@ -297,7 +309,7 @@ export function sectionFigure(s: Stackup, st: Structure, sec: Section, o: Sectio
       if (!left && wx(a.u1) + 2.5 + 0.8 + tw > W) left = true;
       const xh = left ? wx(a.u0) - 2.5 : wx(a.u1) + 2.5, y0 = wy(sec.planeBelow), y1 = wy(a.zb);
       fig.prims.push({ t: 'segs', s: [xh, y0, xh, y1, xh - tk, y0, xh + tk, y0, xh - tk, y1, xh + tk, y1], role: 'dim', layer: L_NOTE });
-      text(fig, left ? xh - 0.8 : xh + 0.8, (y0 + y1) / 2, label, dpt, left ? 'end' : 'start');
+      knock(fig, text(fig, left ? xh - 0.8 : xh + 0.8, (y0 + y1) / 2, label, dpt, left ? 'end' : 'start'));
     }
   }
   const y = footer(fig, Hd, sc, len, o, ['copper', 'core', 'prepreg', 'mask', 'air']);
@@ -359,7 +371,7 @@ export function viaSideFigure(s: Stackup, v: ViaStructure, traceW: number, o: Bo
   };
   for (const r of g.returns) barrel(r.s, r.d, r.y0, r.y1, r.inCut, wall);
   for (const b of g.barrels) barrel(b.s, b.d, b.y0, b.y1, b.inCut, b.wall);
-  for (const b of g.barrels) if (b.name) text(fig, X(b.s), Y(y0 + g.air / 2), b.name, pt, 'middle');
+  for (const b of g.barrels) if (b.name) knock(fig, text(fig, X(b.s), Y(y0 + g.air / 2), b.name, pt, 'middle'));
   if (o.map) addMap(fig, o.map);
   const y = footer(fig, Hd, sc, len, o, ['copper', 'core', 'prepreg', 'mask', 'air', 'hole', 'faded']);
   fig.note = `via side view along its section line, true scale${v.pitch ? ' (a pair)' : ''}` + fig.note;
@@ -425,7 +437,7 @@ export function viaTopFigure(s: Stackup, v: ViaStructure, traceW: number, o: Boa
   for (const r of g.returns) via(r.x, -r.y, r.pad, r.drill);
   for (const b of g.barrels) via(b.x, -b.y, b.pad, b.drill);
   poly(fig, [X(g.cut.x0), Y(-g.cut.y0), X(g.cut.x1), Y(-g.cut.y1)], false, 'cut', L_NOTE, clip);
-  for (const b of g.barrels) if (b.name) text(fig, X(b.x) + (b.pad / 2) * sc + 1.2, Y(-b.y), b.name, pt, 'start', 'ink', L_NOTE);
+  for (const b of g.barrels) if (b.name) knock(fig, text(fig, X(b.x) + (b.pad / 2) * sc + 1.2, Y(-b.y), b.name, pt, 'start', 'ink', L_NOTE));
   if (o.map) addMap(fig, o.map);
   const y = footer(fig, Hd, sc, len, o, ['copper', 'core', 'prepreg', 'hole'], 'dashed: the side view’s line');
   fig.note = `via top view between the planes${v.pitch ? ' (a pair)' : ''}, true scale` + fig.note;

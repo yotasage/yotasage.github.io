@@ -120,7 +120,7 @@ One agent per step, one at a time, each started and checked by the main session 
 | M5 | 3D view | M5.1 | The via structure and trace in 3D with fields on cut planes | |
 | M6 | Full-wave engine (harness only) | M6.1–M6.4 | Mesh, CPU and WebGPU FDTD, ports, S-parameters, TDR, snapshots; checked against analytic cases, the 2D solver and openEMS | |
 | M7 | Waves on the page | M7.1–M7.2 | Full-wave runs with estimator, animation in 2D and 3D, full-wave against quasi-static | |
-| M8 | Export and report | M8.1a–M8.2 | Figures (SVG, PNG, TikZ), data (CSV, Touchstone, project file), printable report | M8.1a done 2026-11-16, [notes-M8.1a.md](notes-M8.1a.md) |
+| M8 | Export and report | M8.1a–M8.2 | Figures (SVG, PNG, TikZ), data (CSV, Touchstone, project file), printable report | M8.1a done 2026-11-16, [notes-M8.1a.md](notes-M8.1a.md); M8.1b done 2026-11-16, [notes-M8.1b.md](notes-M8.1b.md) |
 | M9 | Polish and re-checks | M9.1–M9.3 | Access, browsers and WebGPU support, performance and size, how-to, `npm run recheck` | |
 
 **Owner checkpoints:** 1 after M2 (released: trace impedance and fields), 2 after M3 (vias; the owner may reorder M4–M8

@@ -27,6 +27,7 @@ import type { Commit } from './StackupSection';
 import { FLOOR, qText } from './trace';
 import { PLACEHOLDER, SWEEP_MAX, SWEEP_POINTS, TARGET_DEFAULT, defaultRange, linesOf, mainKeyOf, outputsOf, readTarget, shares, targetChoices, withPlaceholders } from './tools';
 import type { Quantity } from './tools';
+import { feedExport } from './exportFeed';
 import { feedTheory } from './theoryFeed';
 import { Why, Whys } from './Why';
 
@@ -287,6 +288,29 @@ function SweepTool({ setup, invalid, unit, client }: ToolProps) {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run, outs, picked, perIn]);
+  // The finished run's plots for the Export section (M8.1b), only while they are for the shown setup.
+  useEffect(() => {
+    if (!run || run.state !== 'done' || run.setup !== setup || !xsShown.length) { feedExport({ sweep: [] }); return; }
+    const x = { min: xsShown[0], max: xsShown[xsShown.length - 1], label: `${run.label}${xUnit ? ` (${xUnit})` : ''}` };
+    feedExport({
+      sweep: plots.map(({ o, series }) => {
+        const u = unitOf(o.q);
+        return {
+          id: `sweep-${o.id}`,
+          label: `Sweep: ${o.label} against ${run.label}`,
+          spec: {
+            name: `sweep-${o.id}`, what: `${o.label} against ${run.label}`, x,
+            y: { ...niceAxis(...extent(...series.map((q) => q.ys)), 6), label: `${o.label}${u ? ` (${u})` : ''}` },
+            series: series.map((q) => ({ xs: xsShown, ys: q.ys, ...(series.length > 1 ? { label: q.name } : {}) })),
+            refs: [{ x: shownOf(run.nominal, run.kind), label: 'now' }],
+          },
+        };
+      }),
+    });
+    // unitOf follows unit
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [run, setup, plots, xsShown, xUnit]);
+  useEffect(() => () => feedExport({ sweep: [] }), []);
   const done = run ? run.points.filter(Boolean).length : 0;
   const xText = (x: number) => (run?.kind === 'er' ? x.toFixed(3) : `${Number(x.toPrecision(4))} ${xUnit}`);
 

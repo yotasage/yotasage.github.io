@@ -42,15 +42,42 @@ const HISTORY = 200;
 const GROUP_MS = 1500;
 
 // The sections that exist (plan.md: Stackup · Trace · Via · Waves · Theory · Examples · Report · Export · References).
-const SECTIONS: readonly { id: string; label: string }[] = [{ id: 'stackup', label: 'Stackup' }, { id: 'trace', label: 'Trace' }, { id: 'via', label: 'Via' }, { id: 'theory', label: 'Theory' }, { id: 'references', label: 'References' }];
+const SECTIONS: readonly { id: string; label: string }[] = [{ id: 'stackup', label: 'Stackup' }, { id: 'trace', label: 'Trace' }, { id: 'via', label: 'Via' }, { id: 'export', label: 'Export' }, { id: 'theory', label: 'Theory' }, { id: 'references', label: 'References' }];
 
 // M2.4c: the Theory and References (Theory.tsx with KaTeX and the equations) load when they come within LOAD_MARGIN of
 // the window or a link points at an id outside the tool's sections; until then the sections are empty frames.
 type TheoryMod = typeof import('./Theory');
 const LOAD_MARGIN = '400px 0px';
-const TOOL_IDS = new Set(['', 'stackup', 'trace', 'via']);
+const TOOL_IDS = new Set(['', 'stackup', 'trace', 'via', 'export']);
 // M3.1a: the Via section (ViaSection.tsx, its drawings and results) loads the same way: near, or by the link #via.
 type ViaMod = typeof import('./ViaSection');
+// M8.1b: the Export section (ExportSection.tsx with the figure model and fflate) the same way: near, or by #export.
+type ExportMod = typeof import('./ExportSection');
+
+/** Loads a section's chunk when its box comes within LOAD_MARGIN or the link's fragment is its id. */
+function useNearLoad<M>(id: string, get: () => Promise<M>): [M | null, React.RefObject<HTMLElement | null>] {
+  const [mod, setMod] = useState<M | null>(null);
+  const box = useRef<HTMLElement>(null);
+  useEffect(() => {
+    let asked = false;
+    let io: IntersectionObserver | null = null;
+    const load = () => {
+      if (asked) return;
+      asked = true;
+      void get().then((m) => { setMod(() => m); io?.disconnect(); }, () => { asked = false; });
+    };
+    const fromHash = () => { if (decodeURIComponent(window.location.hash.slice(1)) === id) load(); };
+    fromHash();
+    window.addEventListener('hashchange', fromHash);
+    io = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) load(); }, { rootMargin: LOAD_MARGIN });
+    if (!io) load();
+    else if (box.current) io.observe(box.current);
+    return () => { window.removeEventListener('hashchange', fromHash); io?.disconnect(); };
+    // get is a constant import
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+  return [mod, box];
+}
 
 // The page's own parameters taken out of a query; the rest is the setup's.
 function splitQuery(search: string): { setupPart: string; unit: ShownUnit | null; issues: Issue[] } {
@@ -126,6 +153,8 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
     else if (viaBox.current) io.observe(viaBox.current);
     return () => { window.removeEventListener('hashchange', fromHash); io?.disconnect(); };
   }, []);
+  // @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
+  const [xm, exportBox] = useNearLoad<ExportMod>('export', () => import('./ExportSection'));
   const bib = useMemo<Bibliography | null>(() => (th ? th.bibOf(references) : null), [th, references]);
   // A link into the theory that arrived before it was loaded: shown once it is there, by the same fragment navigation
   // again (no hashchange, no history entry), so the topic also becomes the :target and gets its highlight (M2.4d).
@@ -315,6 +344,10 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
         <section id="via" ref={viaBox} className={styles.section} aria-labelledby="via-h" data-loaded={vm ? 'true' : 'false'}>
           <h2 id="via-h" className={styles.h2}>Via</h2>
           {vm ? <vm.default setup={setup} commit={commit} unit={unit} digits={digits} /> : <p className={styles.lede}>The via editor loads as you come near it.</p>}
+        </section>
+        <section id="export" ref={exportBox} className={styles.section} aria-labelledby="export-h" data-loaded={xm ? 'true' : 'false'}>
+          <h2 id="export-h" className={styles.h2}>Export</h2>
+          {xm ? <xm.default setup={setup} unit={unit} /> : <p className={styles.lede}>The export loads as you come near it.</p>}
         </section>
         <section id="theory" ref={thBox} className={th ? `${styles.section} ${styles.offscreen}` : styles.section} aria-labelledby="theory-h" data-loaded={th ? 'true' : 'false'}>
           <h2 id="theory-h" className={styles.h2}>Theory</h2>

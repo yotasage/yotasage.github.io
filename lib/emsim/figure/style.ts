@@ -1,7 +1,7 @@
 // The figures' paint per role and colour mode (step M8.1a). Colour: the page's light theme (styles/EmSim.module.css:
 // --copper, --core, --prepreg, --mask, --air, --accent). Greyscale: greys only, the materials told apart by lightness
 // (copper darkest, then mask, core, prepreg, air). Black and white: #000000 and #ffffff only; copper solid black,
-// core and prepreg hatched at 45° and 135°, mask outlined, air white; contours dashed, plot series by dash pattern.
+// core and prepreg hatched at 45° and 135°, mask outlined and hatched upright, air white; contours dashed, plot series by dash pattern.
 // Widths and dashes are in mm and the same in every mode except where a mode needs a line the others draw as a fill.
 
 import type { ColourMode } from './model';
@@ -78,7 +78,7 @@ const BW: Record<Exclude<Role, 'series'>, Paint> = {
   air: P('#ffffff'),
   core: P('#ffffff', null, 0, null, HB(45)),
   prepreg: P('#ffffff', null, 0, null, HB(135)),
-  mask: P('#ffffff', '#000000', 0.12),
+  mask: P('#ffffff', '#000000', 0.12, null, { angle: 90, gap: 0.45, width: 0.08, colour: '#000000' }), // upright lines: not white like the air (M8.1b)
   copper: P('#000000', '#000000', 0.1),
   plane: P('#000000'),
   hole: P('#ffffff'),

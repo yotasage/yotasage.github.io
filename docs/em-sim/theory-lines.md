@@ -16,7 +16,7 @@ the page remembers your choice."). A new control gets its line here and in whys.
 | Where | Line | → | Claim |
 |---|---|---|---|
 | Home (`aria-label="Home"`) | Back to all the tools on this site. | – | – |
-| Sections nav | Jump to Stackup, Trace, Via or Theory. | – | – |
+| Sections nav | Jump to Stackup, Trace, Via, Export or Theory. | – | – |
 | Undo / Redo (`data-undo`, `data-redo`) | Step back or forward through every change; Ctrl+Z and Ctrl+Shift+Z too. | `how-to-use` | 11 |
 | Theme (`data-theme-toggle`) | Light or dark; the page remembers your choice on this device. | – | 127 |
 | Status line | What the page does so far and what comes next. | `how-to-use` | – |
@@ -195,7 +195,7 @@ topics. Lines without a claim describe what the control does.
 | Valid to (via-valid) | Each lumped part is short against the wavelength up to here (λ/8). | – | – |
 | Flags (via-flags) | Where the model is stretched, each with its numbers. | – | – |
 | Assumptions (via-assumptions) | What the via model takes as given. | `field-solver` | – |
-| Next (via-next) | A 3D view of the via, full-wave waves and export come in later steps. | – | – |
+| Next (via-next) | A 3D view of the via and full-wave waves come in later steps. | – | – |
 | TDR (via-tdr, M3.2a) | The impedance a step from the port meets, there and back: feeds, pads, barrel and stubs in turn. | `transmission-lines` | – |
 | Rise time (`data-field="via.tr"`, via-tr) | The edge's 10–90 % time; a faster edge shows finer detail and reaches higher frequencies. | – | – |
 | Port (`data-field="via.port"`, via-port) | The instrument's impedance at both ends; a pair's is the differential one, twice each line's. | – | – |
@@ -215,3 +215,12 @@ topics. Lines without a claim describe what the control does.
 | Target (`data-field="via.target"`, via-target) | The impedance the via section should have; the antipad or the return vias are found for it. | – | – |
 | By changing (`data-via-target-vary`, via-target-vary) | Every plane's antipad diameter, or how far the return vias are from the barrel. | – | – |
 | Use this (`data-via-target-use`, via-target-use) | Puts the size found into the via, as one undo step. | – | – |
+| Figure (`data-export-figure`, export-figure, M8.1b) | What to draw: the stackup, the cross-section, the via, a field map once drawn, or a plot the page has made. | – | – |
+| Width (`data-export-size`, export-size) | The figure's width on paper: a column, the text width, a page, LaTeX's \linewidth or any width. | – | – |
+| Colours (`data-export-colour`, export-colour) | Colour, greys only, or pure black and white with hatched materials and dashed lines for print. | – | – |
+| Format (`data-export-format`, export-format) | TikZ for LaTeX (needs only \usepackage{tikz}), SVG for vector editors, PNG for slides and documents. | – | – |
+| PNG scale (`data-export-scale`, export-scale) | Pixels per millimetre: 1× is 96 per inch, 4× about 384 per inch for print. | – | – |
+| File name (`data-export-name`, export-name) | The name of the saved file; empty uses the figure's own name. | – | – |
+| Copy (`data-export-copy`, export-copy) | Puts the TikZ picture, the SVG text or the PNG on the clipboard. | – | – |
+| Save (`data-export-save`, export-save) | Downloads the file; TikZ with a field map comes as a ZIP with its PNG files beside the .tex. | – | – |
+| Preview (`data-export-preview`, export-preview) | The figure at its true size on paper; text never smaller than 6 pt. | – | – |

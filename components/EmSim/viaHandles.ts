@@ -1,5 +1,5 @@
 // The Via section's drag handles (step M3.1b), framework-free like traceGeom's: where each handle sits in the world of
-// its view (viaGeom.ts: side view x along the section line, y down from the board's top; top view board (x, −y)), the
+// its view (lib/emsim/viaGeom.ts: side view x along the section line, y down from the board's top; top view board (x, −y)), the
 // value it edits (mm), and the via with a new value, or why it cannot take it.
 //   Side view: each pad on its layer and each antipad on its plane at the right-hand barrel's right edge (a pair's via
 //   B), the drill at the barrel's middle, the backdrill's depth at the drilled hole's edge.
@@ -13,7 +13,7 @@ import { TYPED, layerIndex } from '../../lib/emsim/stackup';
 import type { Stackup, Val } from '../../lib/emsim/stackup';
 import { viaIssues } from '../../lib/emsim/via';
 import type { ReturnVia, ViaStructure } from '../../lib/emsim/via';
-import type { SideGeom, TopGeom } from './viaGeom';
+import type { SideGeom, TopGeom } from '../../lib/emsim/viaGeom';
 
 export type ViaHandleKey = string; // pad:<layer> | ap:<layer> | drill | bd | top-pad | top-ap | top-apl | top-br | pitch | ret:<k>
 

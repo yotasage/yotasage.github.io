@@ -18,7 +18,7 @@ import vcss from '../../styles/EmSimVia.module.css';
 import { lenText } from './format';
 import { FLOOR, qText } from './trace';
 import type { RunState } from './TraceResults';
-import { realStubs } from './viaGeom';
+import { realStubs } from '../../lib/emsim/viaGeom';
 import type { ViaStructure } from '../../lib/emsim/via';
 import { Why } from './Why';
 

@@ -38,7 +38,7 @@ import * as VM0 from '../../../lib/emsim/viamodel.ts';
 import * as VA0 from '../../../lib/emsim/vary.ts';
 import * as CM0 from '../../../lib/emsim/colormap.ts';
 import * as PL0 from '../../../lib/emsim/plot.ts';
-import * as VG0 from '../../../components/EmSim/viaGeom.ts';
+import * as VG0 from '../../../lib/emsim/viaGeom.ts';
 
 const d = (m) => m.default ?? m;
 const M = d(M0), B = d(B0), FF = d(FF0), PF = d(PF0), SV = d(SV0), TZ = d(TZ0), PN = d(PN0), STY = d(ST0), SU = d(SU0), SR = d(SR0), V = d(V0);
@@ -280,6 +280,16 @@ function checkFigure(fig, name, bad, stats) {
       }
     }
   }
+  // M8.1b: the mask is told from the air in every mode (b&w: its own hatch), and every label over the drawing (dimensions,
+  // via names) has a white box right under it
+  const mp = STY.paintOf(fig.colour, 'mask'), ap = STY.paintOf(fig.colour, 'air');
+  if (fig.prims.some((p) => p.role === 'mask') && mp.fill === ap.fill && !mp.hatch) bad.push(`mask and air alike in ${fig.colour}`);
+  fig.prims.forEach((p, i) => {
+    if (p.t !== 'text' || !/^(w|s|h) |^[A-Z]\d?$|^Via|^Return/.test(p.text) || fig.kind === 'plot' || fig.kind === 'stackup') return;
+    const k = fig.prims[i - 1], t0 = M.textBox(p), b = { x0: Math.max(0, t0.x0), y0: Math.max(0, t0.y0), x1: Math.min(fig.width, t0.x1), y1: Math.min(fig.height, t0.y1) }; // a box is kept inside the figure
+    if (!k || k.t !== 'rect' || k.role !== 'paper' || k.x > b.x0 + 0.05 || k.y > b.y0 + 0.05 || k.x + k.w < b.x1 - 0.05 || k.y + k.h < b.y1 - 0.05) bad.push(`label "${p.text}" without its white box`);
+    else stats.knocks = (stats.knocks ?? 0) + 1;
+  });
   const rs = checkSvg(fig, svg, bad, stats);
   const rt = checkTikz(fig, tz, bad, stats);
   for (const [what, set] of [['svg', rs.colours], ['tikz', rt.colours]]) {
@@ -381,6 +391,7 @@ export async function run(t) {
     best = Math.min(best, performance.now() - a);
     bigKb = { svg: svg.length / 1024, tex: tz.picture.length / 1024, png: tz.files.reduce((n, f) => n + f.bytes.length, 0) / 1024 };
   }
+  t.ok(stats.knocks > 0, `labels over the drawing on their white boxes: ${stats.knocks}`);
   t.ok(best < 500, `the 180 mm field map built and written in ${best.toFixed(1)} ms`);
   t.note(`figures: ${builders.length} figures × ${SIZES.length} sizes × 3 colour modes = ${stats.sets} sets, ${stats.prims} primitives read back from SVG (worst ${stats.svgWorst.toExponential(1)} mm) and TikZ (worst ${stats.tikzWorst.toExponential(1)} mm), ${stats.texts} TikZ texts (smallest ${stats.minPt} pt), ${stats.hatches} hatches, ${stats.plotPts} plot points inside their frames; inputs ${tIn.toFixed(0)} ms; biggest figure (section field map, 180 mm, ${bigFig.prims.length} primitives, map ${mapC39.view.nx} × ${mapC39.view.ny}): ${best.toFixed(1)} ms, SVG ${bigKb.svg.toFixed(0)} kB, TikZ ${bigKb.tex.toFixed(0)} kB + PNG ${bigKb.png.toFixed(0)} kB`);
   // compile
