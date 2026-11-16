@@ -1,0 +1,101 @@
+/* The Trace section's tools (M2.3a): the bar of the three tools, the target, sweeps with their plots, the tolerance band.
+   Colours are the page's variables (EmSim.module.css .root), so both themes follow. Phone width first. */
+
+.toolsArea { margin-top: 16px; border-top: 1px solid var(--rule); padding-top: 12px; min-width: 0; }
+.toolsHead { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.toolsHead h3 { margin: 0; }
+.toolTabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tools { min-width: 0; }
+.tool { margin-top: 10px; min-width: 0; }
+
+.row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; }
+.ctl { display: flex; flex-direction: column; gap: 4px; font-size: 0.8125rem; color: var(--ink-2); min-width: 0; max-width: 100%; }
+.ctl select { max-width: 100%; }
+.ctl input { width: 7.5rem; max-width: 100%; }
+.buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.row .buttons { margin-top: 0; }
+
+.outs { display: flex; flex-wrap: wrap; gap: 0 16px; border: 0; margin: 8px 0 0; padding: 0; min-width: 0; }
+.outs legend { float: left; margin-right: 12px; padding: 0; font-size: 0.8125rem; color: var(--ink-2); line-height: 36px; }
+.check { display: flex; align-items: center; gap: 8px; min-height: 36px; font-size: 0.875rem; cursor: pointer; }
+.check input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
+
+.small { margin: 8px 0 0; font-size: 0.8125rem; line-height: 1.45; color: var(--ink-2); max-width: 72ch; }
+.note {
+  margin: 8px 0 0; padding: 8px 10px; font-size: 0.8125rem; line-height: 1.45; color: var(--ink-2);
+  background: var(--accent-soft); border-radius: 6px; max-width: 72ch;
+}
+.reason { margin: 8px 0 0; font-size: 0.875rem; color: var(--error); max-width: 72ch; }
+.old { margin: 8px 0 0; font-size: 0.8125rem; color: var(--warn); }
+.busy { margin: 6px 0 0; min-height: 1.2em; font-size: 0.8125rem; color: var(--accent); display: flex; align-items: center; gap: 8px; }
+.progress { width: min(240px, 60%); height: 8px; accent-color: var(--accent); }
+.result { margin-top: 6px; min-width: 0; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.err { font-family: var(--font-num); color: var(--ink-2); font-size: 0.875rem; }
+.h4 { margin: 14px 0 0; font-size: 0.9375rem; font-weight: 600; }
+.tag {
+  margin-left: 6px; padding: 0 6px; font-size: 0.75rem; border-radius: 999px;
+  border: 1px solid var(--rule-strong); color: var(--ink-2); white-space: nowrap;
+}
+
+.pairs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr)); gap: 8px 16px; margin: 8px 0 0; }
+.pairs dt { font-size: 0.8125rem; color: var(--ink-2); }
+.pairs dd { margin: 0; font-size: 1.0625rem; }
+
+/* ---- plots ---- */
+.plot { margin: 12px 0 0; min-width: 0; }
+.plotTitle { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; font-size: 0.875rem; font-weight: 600; }
+.legend { display: inline-flex; flex-wrap: wrap; gap: 4px 12px; font-weight: 400; color: var(--ink-2); font-size: 0.8125rem; }
+.legendItem { display: inline-flex; align-items: center; gap: 5px; }
+.legendItem i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
+.plotBox { width: 100%; min-width: 0; margin-top: 4px; border-radius: 6px; outline: none; }
+.plotBox:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+.plotSvg { display: block; touch-action: pan-y; cursor: crosshair; user-select: none; -webkit-user-select: none; }
+.grid { stroke: var(--rule); stroke-width: 1; }
+.frame { fill: none; stroke: var(--rule-strong); stroke-width: 1; }
+.tickY, .tickX { fill: var(--ink-2); font-size: 11px; font-family: var(--font-num); }
+.tickY { text-anchor: end; dominant-baseline: middle; }
+.tickX { text-anchor: middle; }
+.line { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.band { fill-opacity: 0.22; stroke: none; }
+.marker { stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 4 3; }
+.cursor { stroke: var(--ink); stroke-width: 1; }
+.dot { stroke: var(--field); stroke-width: 1.5; }
+.xLabel { margin: 2px 0 0; font-size: 0.8125rem; color: var(--ink-2); }
+.readout { margin: 4px 0 0; font-size: 0.8125rem; font-family: var(--font-num); overflow-wrap: anywhere; min-height: 1.2em; }
+
+.table { margin-top: 10px; font-size: 0.8125rem; }
+.table summary { cursor: pointer; min-height: 32px; line-height: 32px; color: var(--ink-2); }
+.tableScroll { max-height: 260px; overflow: auto; max-width: 100%; }
+.tableScroll table { border-collapse: collapse; font-family: var(--font-num); }
+.tableScroll th, .tableScroll td { padding: 2px 10px 2px 0; text-align: right; white-space: nowrap; }
+.tableScroll th { position: sticky; top: 0; background: var(--bg); font-family: var(--font-ui); font-weight: 600; }
+
+/* ---- the tolerance band ---- */
+.strip { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; max-width: 640px; }
+.stripRow { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); align-items: center; gap: 8px; }
+.stripName { font-size: 0.8125rem; color: var(--ink-2); }
+.stripTrack { position: relative; height: 14px; background: var(--raise); border-radius: 3px; }
+.stripBar { position: absolute; top: 2px; bottom: 2px; background: var(--accent); opacity: 0.55; border-radius: 2px; }
+.stripNominal, .stripMedian { position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; }
+.stripNominal { background: var(--ink); }
+.stripMedian { background: var(--copper); }
+.stripAxis { position: relative; height: 16px; font-size: 11px; font-family: var(--font-num); color: var(--ink-2); }
+.stripAxis span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.stripAxis span:first-child { transform: none; }
+.stripAxis span:last-child { transform: translateX(-100%); }
+
+.rank { margin-top: 8px; }
+.rankList { list-style: none; margin: 8px 0 0; padding: 0 2px 0 0; display: flex; flex-direction: column; gap: 6px; max-width: 720px; }
+.rankList li {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'name d' 'share share';
+  gap: 2px 12px; font-size: 0.875rem; padding-bottom: 6px; border-bottom: 1px solid var(--rule);
+}
+.rankName { grid-area: name; min-width: 0; overflow-wrap: anywhere; }
+.rankList li > .num { grid-area: d; text-align: right; }
+.share { grid-area: share; display: flex; align-items: center; gap: 8px; }
+.share i { display: block; height: 6px; background: var(--accent); border-radius: 3px; min-width: 1px; }
+.share b { font-weight: 400; font-size: 0.8125rem; color: var(--ink-2); }
+@media (min-width: 600px) {
+  .rankList li { grid-template-columns: minmax(0, 1fr) 6.5rem minmax(0, 12rem); grid-template-areas: 'name d share'; align-items: center; }
+}

@@ -12,7 +12,7 @@
 // M2.1d: the general arrangement, offered in the kind select and by "Edit as general" (`toGeneral`), edited by
 // GeneralEditor.tsx; the selected trace or ground (`GenSel`) is shared with the drawing.
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 
 import { section } from '../../lib/emsim/geometry';
 import type { SolveResult, StaticJob } from '../../lib/emsim/jobs';
@@ -26,6 +26,7 @@ import type { LengthUnit } from '../../lib/emsim/units';
 import base from '../../styles/EmSim.module.css';
 import stk from '../../styles/EmSimStackup.module.css';
 import css from '../../styles/EmSimTrace.module.css';
+import tcss from '../../styles/EmSimTools.module.css';
 import { lenText, sourceTag } from './format';
 import GeneralEditor from './GeneralEditor';
 import type { Commit, KicadState } from './StackupSection';
@@ -37,6 +38,7 @@ import TraceDrawing from './TraceDrawing';
 import type { HandleEdit } from './TraceDrawing';
 import { applyHandle } from './traceGeom';
 import TraceResults from './TraceResults';
+import type { ToolName } from './TraceTools';
 import type { RunState } from './TraceResults';
 import ValField from './ValField';
 import { KINDS, coppersOf, etchOf, isCoplanar, isPair, withKind, withSignalLayer } from './trace';
@@ -54,6 +56,11 @@ function getClient(): Promise<StaticClient> {
   }
   return clientP;
 }
+
+// M2.3a: the target, sweeps and the tolerance band, loaded when a tool is first opened.
+// @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
+const TraceTools = lazy(() => import('./TraceTools'));
+const TOOLS: [ToolName, string][] = [['target', 'Target'], ['sweep', 'Sweep'], ['tolerance', 'Tolerance']];
 
 const QUICK_ABOVE_MS = 30; // a full solve slower than about two frames: the drag uses the fast path
 const STARVED_MS = 100;
@@ -111,6 +118,8 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
   const [widen, setWiden] = useState(false);
   const [sel, setSel] = useState<GenSel | null>(null);
   const [fieldSet, setFieldSet] = useState<FieldSettings>(FIELD_DEFAULT);
+  const [tool, setTool] = useState<ToolName | null>(null);
+  const [toolsOpened, setToolsOpened] = useState(false);
   const coppers = useMemo(() => coppersOf(s), [s]);
   const stackErr = useMemo(() => stackupIssues(s).find((i) => i.level === 'error') ?? null, [s]);
   const issues = useMemo(() => structureIssues(s, st), [s, st]);
@@ -324,6 +333,21 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
 
         <div className={css.resultArea} data-solves={solves} data-quick={quickShown} data-dragging={dragging}>
           <TraceResults r={res} state={state} stale={stale} quick={quickShown} message={message} where={where} unit={unit} />
+          <div className={tcss.toolsArea} data-tools>
+            <div className={tcss.toolsHead}>
+              <h3 className={base.h3}>Target · Sweep · Tolerance</h3>
+              <div className={tcss.toolTabs} role="group" aria-label="Tools">
+                {TOOLS.map(([k, label]) => (
+                  <button key={k} type="button" className={base.button} aria-pressed={tool === k} data-tool-tab={k} onClick={() => { setToolsOpened(true); setTool((t) => (t === k ? null : k)); }}>{label}</button>
+                ))}
+              </div>
+            </div>
+            {toolsOpened && (
+              <Suspense fallback={<p className={css.small}>Loading the tools…</p>}>
+                <TraceTools tool={tool} setup={setup} invalid={sec ? '' : reason} commit={commit} unit={unit} digits={digits} client={getClient} />
+              </Suspense>
+            )}
+          </div>
         </div>
       </div>
     </section>

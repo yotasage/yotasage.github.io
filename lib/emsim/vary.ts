@@ -173,8 +173,9 @@ export function fastValues(a: Anchor, setup: Setup): Record<string, number> | st
 export interface SweepPoint { x: number; ok: boolean; reason: string; values: Record<string, number>; err: Record<string, number>; anchor: boolean }
 export interface SweepResult { ok: boolean; reason: string; input: string; points: SweepPoint[]; solves: { fine: number; coarse: number }; ms: number }
 
-// A sweep of one input (inputsOf(setup, true)'s id) over the values xs. Yields after each point.
-export function* sweep(setup: Setup, id: string, xs: number[], opt: EvalOptions = {}): Generator<number, SweepResult> {
+// A sweep of one input (inputsOf(setup, true)'s id) over the values xs. Yields after each point; `sink` gets each point
+// as it is made (M2.3a: the worker sends them on, so the page draws the sweep as it goes).
+export function* sweep(setup: Setup, id: string, xs: number[], opt: EvalOptions = {}, sink?: (p: SweepPoint) => void): Generator<number, SweepResult> {
   const t0 = performance.now();
   const input = inputsOf(setup, true).find((i) => i.id === id);
   const res: SweepResult = { ok: false, reason: '', input: id, points: [], solves: { fine: 0, coarse: 0 }, ms: 0 };
@@ -234,6 +235,7 @@ export function* sweep(setup: Setup, id: string, xs: number[], opt: EvalOptions 
       pt = { x, ok: r.ok, reason: r.reason, values, err: errors, anchor: false };
     }
     res.points.push(pt);
+    sink?.(pt);
     yield i + 1;
   }
   res.ok = res.points.some((p) => p.ok);

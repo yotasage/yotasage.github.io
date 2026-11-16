@@ -271,6 +271,14 @@ that explains it.
 **Done when:** the owner's two cases show their target width, tolerance band and the comparison with each difference
 explained; sweeps draw as they go and cancel; touch and keys.
 
+**Split** (main session, 2026-11-16, two jobs): **M2.3a** (the target: width, or width and gap, for Z0, Zdiff or Zcm
+with "use this width"; sweeps of any input with the new framework-free `lib/emsim/plot.ts` of M0.5, drawn as they go
+and cancellable; the tolerance band by corners and Monte Carlo with the sensitivity ranking) and **M2.3b** (the
+calculator comparison: closed forms with their range, JLCPCB's number for the owner's cases, each difference explained
+from facts.md and notes-M1.4c.md; the **"as JLCPCB's calculator"** setting: εr 4.3 for every prepreg, 1.6 mil outer
+copper, a top 0.5 mil narrower than the base, mask 1.0/0.6/1.0 mil at εr 3.8, applied to the current stackup as a
+named, reversible variant; the preset keeps JLCPCB's published guide values, main session 2026-11-16).
+
 ### M2.4a – First theory (content) · M
 
 `theory.md` topics: the transmission line and quasi-TEM; how the field solver works and what its error means;

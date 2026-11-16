@@ -25,6 +25,7 @@ const MODULES = [
   ['Axisymmetric solver (M1.6)', './check-axisym.mjs'],
   ['Via cut (M1.6)', './check-viacut.mjs'],
   ['Via model (M1.7)', './check-viamodel.mjs'],
+  ['Plot (M2.3a)', './check-plot.mjs'],
 ];
 
 const failures = [];

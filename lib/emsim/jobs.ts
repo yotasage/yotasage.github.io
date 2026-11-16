@@ -12,7 +12,7 @@
 import type { Setup } from './setup';
 import type { LineResults, SolveOptions } from './lines';
 import { setupSection, solveSetup } from './lines';
-import type { EvalOptions, McOptions } from './vary';
+import type { EvalOptions, McOptions, SweepPoint } from './vary';
 import { corners, monteCarlo, sweep, MC_SAMPLES } from './vary';
 import type { InverseKey, InverseOptions, InverseVary } from './inverse';
 import { inverse } from './inverse';
@@ -25,6 +25,10 @@ import { viaModel, viaTarget } from './viamodel';
 
 export const JOBS_VERSION = 1;
 export const SLICE_MS = 40;
+export const PARTIAL_MS = 50; // M2.3a: a sweep's new points go out at most this often
+
+/** A sweep job's partial (M2.3a): the points from index `from` on, made since the last partial. */
+export interface SweepPartial { from: number; points: SweepPoint[] }
 
 export type DriveSpec = { values: number[] } | { name: DriveName; line?: number } | { mode: number };
 
@@ -176,8 +180,20 @@ export function* runJob(job: StaticJob, cache: SolveCache = new SolveCache()): G
     case 'solve':
       return withMatrices(cache.get(job.setup, job.opt ?? {}));
     case 'sweep': {
-      const g = sweep(job.setup, job.input, job.xs, job.opt ?? {});
-      for (;;) { const s = g.next(); if (s.done) return s.value; yield { done: s.value as number, total: job.xs.length }; }
+      // M2.3a: the points made since the last partial go out at most every PARTIAL_MS (the first at once), as
+      // { from, points }, so the page draws the sweep as it goes.
+      const pts: SweepPoint[] = [];
+      let sent = 0, last = -Infinity;
+      const g = sweep(job.setup, job.input, job.xs, job.opt ?? {}, (p) => { pts.push(p); });
+      for (;;) {
+        const s = g.next();
+        if (s.done) return s.value;
+        const t = now();
+        if (pts.length > sent && t - last >= PARTIAL_MS) {
+          yield { done: s.value as number, total: job.xs.length, partial: { from: sent, points: pts.slice(sent) } as SweepPartial };
+          sent = pts.length; last = t;
+        } else yield { done: s.value as number, total: job.xs.length };
+      }
     }
     case 'corners': {
       const g = corners(job.setup, job.opt ?? {});
