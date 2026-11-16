@@ -192,6 +192,8 @@ value's source and tolerance, the stackup drawn to scale with an exaggeration sw
 **Done when:** the owner's board opens and shows its stackup and net classes; the link restores everything; 320, 390
 and 1440 px in both themes look right; first-load size within M0.5's budget.
 
+M0.5: copies the base theme tokens into `styles/EmSim.module.css` and adds `scripts/harness/emsim/size.mjs` (first-load budget) to `npm run ui`.
+
 ### M2.1b – Cross-section editor and results · L (page)
 
 The Trace section: structure presets and the general editor (add traces, grounds, planes), the cross-section drawn to
@@ -202,6 +204,8 @@ worker with the stale state.
 **Done when:** a drag updates the result within engine.md §10's budget at 1× and 4×; every preset opens with sensible
 start values; the owner's `50R_SE` and `LVDS_100R` open from their board as structures; keyboard and touch do every
 task; screenshots in both themes at both widths.
+
+M0.5: writes the pan-zoom controller `components/EmSim/panZoom.ts`, reused by M2.2 and M3.1.
 
 ### M2.2 – Field view · M (page)
 
@@ -238,6 +242,8 @@ move here.
 
 **Done when:** every short line links to its topic; live numbers follow the editor; `/em-sim/main` builds as a static
 page; the Smith chart's `npm run recheck` passes if shared modules moved.
+
+M0.5: moves the generic equation engine to `lib/equations/` and `lib/smith/complex.ts` to `lib/complex.ts` (old files re-export); the Smith subset to run is in notes-M0.5.md.
 
 ### M2.5 – Release · S
 
@@ -281,6 +287,8 @@ check that every equation equals the engine on random inputs, the examples as da
 
 **Done when:** every equation evaluates equal to the engine within 1e-9; every derivation step checks.
 
+M0.5: the registry is `lib/emsim/equations.ts` on `lib/equations/` (moved in M2.4b).
+
 ### M4.3 – Equation layer on the page · L (page)
 
 The equation panel beside the results with the live numbers, the derivation dialog, the Examples section with its
@@ -288,6 +296,8 @@ links, the via theory on the page.
 
 **Done when:** every number in the results has an equation one click away; examples open their states; keyboard,
 touch, both themes.
+
+M0.5: moves the derivation dialog's shell, `mathHtml` and `wide.ts` to `components/Equations/`; Smith `npm run check` and `npm run ui` pass.
 
 ## M5 – 3D view
 
@@ -326,6 +336,8 @@ snapshot readback), the calibration run of the estimator, the fallback to the CP
 
 **Done when:** WebGPU and CPU agree on M6.2's cases within the f32 bar of fullwave.md; the 2 M-cell via run's time is
 within 2× of the estimate; a lost device or missing adapter falls back with a message.
+
+M0.5: no `@webgpu/types`; lib.dom types the API, the flag constants are declared in the GPU module.
 
 ### M6.4 – Verification against openEMS and the via model's range · M
 
