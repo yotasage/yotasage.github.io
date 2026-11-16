@@ -6,7 +6,9 @@
 // Out: { type: 'progress', id, done, total, partial? } (a field job's partial is a whole grid, coarse first),
 //      { type: 'done', id, result }, { type: 'error', id, message }, { type: 'cancelled', id }.
 // Jobs run one at a time in slices of SLICE_MS; between slices the handler lets messages in (`schedule`), so a cancel
-// stops a running job at its next yield. Solves are kept by the hash of (setup, options) for the field jobs (the four
+// stops a running job at its next yield. A job that has shown a picture (posted a partial) and is refining runs in
+// slices of REFINE_SLICE_MS and gives way at its next yield to any queued job that has not shown one yet, so a new map
+// or solve does not wait for another map's refinement. Solves are kept by the hash of (setup, options) for the field jobs (the four
 // newest), so a field map after a solve of the same input does not solve again.
 
 import type { Setup } from './setup';
@@ -27,6 +29,7 @@ import { viaFieldJob } from './viafield';
 
 export const JOBS_VERSION = 1;
 export const SLICE_MS = 40;
+export const REFINE_SLICE_MS = 4; // a refining job's slice (after its first picture), so new requests get in soon
 export const PARTIAL_MS = 50; // M2.3a: a sweep's new points go out at most this often
 
 /** A sweep job's partial (M2.3a): the points from index `from` on, made since the last partial. */
@@ -247,24 +250,43 @@ export function buffersOf(x: unknown, out: Set<ArrayBuffer> = new Set(), depth =
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
 /**
+ * A scheduler for createStaticHandler that runs the next slice as soon as the messages waiting before it are in: a
+ * MessageChannel task, which is not held back like nested setTimeout(0) (4 ms each after five levels), so the short
+ * slices of refining jobs cost next to nothing. setTimeout where there is no MessageChannel.
+ */
+export function messageScheduler(): (fn: () => void) => void {
+  if (typeof MessageChannel === 'undefined') return (fn) => { setTimeout(fn, 0); };
+  const ch = new MessageChannel();
+  const fns: (() => void)[] = [];
+  // Node: a port with a listener keeps the process alive, so it is held (ref) only while a slice waits
+  const port = ch.port1 as MessagePort & { ref?: () => void; unref?: () => void };
+  port.onmessage = () => { const f = fns.shift(); if (!fns.length) port.unref?.(); if (f) f(); };
+  port.unref?.();
+  return (fn) => { fns.push(fn); port.ref?.(); ch.port2.postMessage(0); };
+}
+
+/**
  * The message handler: call it with each request; it answers through post (with the buffers to transfer for a
  * result) and continues its work through schedule (setTimeout in a worker, so that messages get in between slices).
  */
 export function createStaticHandler(post: (msg: StaticReply, transfer?: ArrayBuffer[]) => void, schedule: (fn: () => void) => void, sliceMs = SLICE_MS): (req: StaticRequest) => void {
-  const queue: { id: number; job: StaticJob; gen?: Generator<JobProgress, unknown> }[] = [];
+  // shown: the job has posted a partial (a picture); jobs that have not are run first
+  const queue: { id: number; job: StaticJob; gen?: Generator<JobProgress, unknown>; shown?: boolean }[] = [];
   const cancelled = new Set<number>();
   const cache = new SolveCache();
-  let current: { id: number; gen: Generator<JobProgress, unknown> } | null = null;
+  let current: { id: number; gen: Generator<JobProgress, unknown>; shown: boolean } | null = null;
   let scheduled = false;
   const kick = () => { if (!scheduled) { scheduled = true; schedule(pump); } };
+  const unshown = () => { for (let k = 0; k < queue.length; k++) if (!queue[k].shown) return k; return -1; };
   function pump(): void {
     scheduled = false;
     const t0 = now();
-    while (now() - t0 < sliceMs) {
+    while (now() - t0 < (current && current.shown ? Math.min(sliceMs, REFINE_SLICE_MS) : sliceMs)) {
       if (!current) {
-        const next = queue.shift();
-        if (!next) return;
-        current = { id: next.id, gen: next.gen ?? runJob(next.job, cache) };
+        if (!queue.length) return;
+        const k = unshown();
+        const next = queue.splice(k >= 0 ? k : 0, 1)[0];
+        current = { id: next.id, gen: next.gen ?? runJob(next.job, cache), shown: !!next.shown };
       }
       const id = current.id;
       if (cancelled.has(id)) { cancelled.delete(id); current = null; post({ type: 'cancelled', id }); continue; }
@@ -286,9 +308,12 @@ export function createStaticHandler(post: (msg: StaticReply, transfer?: ArrayBuf
       if (p.partial !== undefined) {
         // let the picture go out; a job waiting behind gets its turn first (M3.2b: the via's two maps both show their
         // first picture before either refines)
-        if (queue.length) { queue.push({ id, job: null, gen: current.gen }); current = null; }
+        current.shown = true;
+        if (queue.length) { queue.push({ id, job: null, gen: current.gen, shown: true }); current = null; }
         break;
       }
+      // a refining job gives way to a job that has not shown its first picture yet
+      if (current.shown && unshown() >= 0) { queue.push({ id, job: null, gen: current.gen, shown: true }); current = null; }
     }
     if (current || queue.length) kick();
   }

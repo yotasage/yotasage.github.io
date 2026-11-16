@@ -4,7 +4,7 @@
 // costs nothing. Without a worker (none here, or it fails) the same handler runs on the page, a slice per timer tick.
 
 import type { StaticJob, StaticReply, StaticRequest } from './jobs';
-import { buffersOf, canonical, createStaticHandler, hashOf } from './jobs';
+import { buffersOf, canonical, createStaticHandler, hashOf, messageScheduler } from './jobs';
 
 export type Place = 'worker' | 'page';
 
@@ -88,7 +88,7 @@ export class StaticClient {
   private send(req: StaticRequest): void {
     const w = this.getWorker();
     if (w) { this.where = 'worker'; w.postMessage(req); return; }
-    if (!this.page) this.page = createStaticHandler((msg) => this.onReply(msg), (fn) => { setTimeout(fn, 0); });
+    if (!this.page) this.page = createStaticHandler((msg) => this.onReply(msg), messageScheduler());
     this.where = 'page';
     this.page(req);
   }

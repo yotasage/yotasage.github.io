@@ -66,3 +66,19 @@
   board coordinates; the scale bar's ticks from `Scale.ticks`.
 - Left: BL121 (the model's jump), BL122 (2 px side maps by faster ring kernels), BL123 (field and target settings in
   the link).
+
+## Fix after M3.2b – the top map's first picture
+
+- **Cause:** scheduling, not the top job's work (in Node its cut solve is about 1 ms, `topSource` 0.1 ms, the first
+  lattice 10 ms). The harness's zoom and pan steps send the side map, then the top map a few ms later; by then the side
+  map had shown its first picture and was refining in 40 ms slices with a plain yield only every 1500 points (about
+  45 ms on C44), and the rotation at pictures only happened at the side's next picture. In a Node model of the worker,
+  a top job arriving 15 to 60 ms after the side job waited 45 to 105 ms for its first picture.
+- **Fix:** (jobs.ts) a job that has shown a picture refines in slices of `REFINE_SLICE_MS` (4 ms) and, at any yield,
+  gives way to a queued job that has not shown one (picked first from the queue); the worker and the page fallback
+  schedule slices with `messageScheduler()`, a MessageChannel task, as nested `setTimeout(0)` waits 4 ms each after
+  five levels (in Node the port is held only while a slice waits, or check-worker's client keeps the process alive); (viafield.ts) the side grid yields every 120 points (about 4 ms). No value changes (the coarse lattice
+  stays 8: 16 would save about 5 ms but changes the adaptive grid's values by up to 2.4 mV).
+- **Times** (production build, 1440 px, ui-viafields' five maps, three runs): top first picture before 39, 38, 60, 43,
+  50 and 33, 55, 32, 41, 40 ms; after 29, 30, 24, 34, 30 / 28, 29, 24, 34, 29 / 29, 28, 29, 36, 30 ms. Side first 11 to
+  15 ms as before; full pictures side 154 to 207 ms, top 161 to 228 ms (within 300).

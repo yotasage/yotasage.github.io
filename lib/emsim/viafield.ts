@@ -80,7 +80,7 @@ export function snapSide(view: View): View {
 
 const PHI_TOL = 0.05; // V (of the via's 1 V): a cell whose corners differ by more is refined
 const E_TOL = 0.25; // the same for |E|, relative to the corners' largest
-const YIELD_POINTS = 1500; // direct evaluations between plain yields (the worker's slices can cancel in between)
+const YIELD_POINTS = 120; // direct evaluations between plain yields (about 4 ms on C44: the worker lets new requests in between)
 
 /**
  * The side view's field on the (snapped) view, progressive. Yields `FieldGrid`s (each stage) and `null` (a pause
