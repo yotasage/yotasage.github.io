@@ -1,6 +1,6 @@
 # Backlog
 
-Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL76**). When a row is
+Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL78**). When a row is
 scheduled it moves into the tool's plan (for the PCB viewer: [pcb-viewer/plan.md](pcb-viewer/plan.md); for the resistor
 lookup: [resistor/plan.md](resistor/plan.md); for the Smith chart: [smith-chart/plan.md](smith-chart/plan.md); for the EM simulation: [em-sim/plan.md](em-sim/plan.md)) and the move is noted here; when it is done the row is removed and that is
 noted here too.
@@ -29,6 +29,8 @@ them; none is scheduled.
 
 | id | tool | what | why / trigger |
 |---|---|---|---|
+| BL77 | EM simulation | Shorter links for edited JLCPCB presets: cite a preset number's note by its preset and reference instead of writing the text (an edited 6-layer preset's link is about 2.2 kB, mostly the notes and layer names) | 2026-11-16, step M1.1 (`lib/emsim/setup.ts` writes every source note). Trigger: a link is too long to paste somewhere the owner needs |
+| BL76 | EM simulation | Net classes of KiCad 5 boards: the `(net_class …)` items of a `.kicad_pcb` older than KiCad 6 (`lib/emsim/kicad.ts` refuses KiCad 5 boards, which have no stackup, and `.pro` files) | 2026-11-16, step M1.1. Trigger: the owner opens a KiCad 5 board |
 | BL75 | EM simulation | Other levels and speed-ups: quasi-static 3D extraction (3D capacitance and PEEC partial inductance), WebAssembly SIMD kernels for the FDTD's CPU path, the opt-in multi-thread mode (service worker adding COOP/COEP under the tool's path), four-port de-embedding of full-wave pairs ([em-sim/later.md](em-sim/later.md) P2.7) | 2026-11-16, plan review M0.1 (from the v2 draft). Trigger: phase 1's full-wave runs are too slow for a question the owner has |
 | BL74 | EM simulation | Planes, return path and PDN: plane-pair cavity solver with losses, several plane pairs coupled through stitching vias, return-current maps, PDN Z(f) with decoupling capacitors ([em-sim/later.md](em-sim/later.md) P2.6) | 2026-11-16, plan review M0.1. Trigger: the owner asks after phase 1 |
 | BL73 | EM simulation | Measurement import: Touchstone and CSV overlaid on the simulation, TDR/TDT from S-parameters, mixed-mode conversion, comparison report; shares a reader with BL37 ([em-sim/later.md](em-sim/later.md) P2.5) | 2026-11-16, plan review M0.1. Trigger: the owner has a TDR or VNA measurement or a fab coupon report |

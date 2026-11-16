@@ -40,6 +40,12 @@ A stackup is an ordered list of layers from top to bottom; each layer has an id,
   using `lib/pcb/kicad/sexpr.ts`; M0.2 records which KiCad versions write which fields.
 - **Roles:** in phase 1 the visitor says which copper layers are solid reference planes for a structure (the editor
   proposes the nearest copper above and below); per-region roles from zones are phase 2.
+- **Positions (M1.1, `lib/emsim/stackup.ts`):** a dielectric's thickness is the distance between the copper faces on
+  either side; the stack sum counts a mask with its thickness on laminate, so z = 0 is the bottom mask's outside on
+  laminate (mask over bottom copper may reach below 0). A copper trapezoid's base is on the side it was etched from:
+  the adjacent core on an inner layer, the laminate on an outer one; the gaps of an inner layer are filled by the
+  dielectric on the narrow side (usually the prepreg). JLCPCB's etch is an offset per side (0.35 mil); KiCad states
+  none. A preset's εr frequency and tanδ are stored as "not stated" (null), never as 1 GHz values.
 
 ## 3. Structures
 
@@ -50,7 +56,14 @@ A stackup is an ordered list of layers from top to bottom; each layer has an id,
   confirms this matches JLCPCB's sheet and Polar's S1).
 - **Reference conductors:** solid planes on copper layers (full width), coplanar ground on the signal layer (gap to
   the trace, width or "to the edge"), and optional side walls (an ideal fence, flagged as such).
-- **Mask** follows the copper as D8 describes; **air** above the top mask and below the bottom one.
+- **Mask** follows the copper as D8 describes; **air** above the top mask and below the bottom one. **Side walls
+  (decided in M1.1):** the over-copper thickness, measured across (in u) from the copper's sloped side and continued
+  to the over-copper height; the mask's outer surface is the upper envelope of the laminate level (on laminate, or
+  "between" in a gap between two features of the layer), the side coats and the top coats, so coats that meet in a
+  narrow gap merge and nothing is clamped. Why: JLCPCB states three thicknesses (C1, C2, C3, the names of Polar's coated models)
+  and none for side walls; the wall is a copper surface as the top is, so it takes the over-copper figure; it keeps the
+  mask continuous at the top corners; it is what M0.3's spike used (C39 50.53 Ω stays valid). Flagged as an
+  assumption; its effect is measured in M1.2 (notes-M1.1.md).
 - **Presets** are named arrangements of the above: microstrip, embedded microstrip, stripline, asymmetric (dual)
   stripline, coplanar waveguide with and without bottom ground, edge-coupled microstrip, stripline and coplanar pairs,
   broadside-coupled stripline. The solver sees only the general form, so a new preset needs no solver code.

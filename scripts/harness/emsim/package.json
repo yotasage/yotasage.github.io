@@ -4,6 +4,7 @@
   "description": "Checks and research spikes of lib/emsim for the EM simulation tool. Not part of the site.",
   "type": "module",
   "scripts": {
+    "check": "tsx check.mjs",
     "spike": "tsx spikes/run.mts",
     "spike:fdtd": "tsx spikes/fdtd.mts",
     "openems": "node openems/run.mjs"
