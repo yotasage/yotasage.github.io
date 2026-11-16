@@ -42,7 +42,7 @@ const pairSetup = () => { const s = withTrace('pair-microstrip', 0.11); s.trace 
 
 // ---- the data ----
 const keys = Object.keys(WHYS);
-check(keys.length === 190, `${keys.length} short lines (189 of theory-lines.md and the switch's own)`);
+check(keys.length === 193, `${keys.length} short lines (192 of theory-lines.md and the switch's own)`);
 check(keys.every((k) => WHYS[k].text && WHYS[k].label && (WHYS[k].topic === null || TOPIC_TITLE[WHYS[k].topic])), 'every line has a label, a text and a known topic or none');
 check(keys.every((k) => WHYS[k].text.split(/\s+/).length <= 22), 'every line at most about 20 words');
 const fullText = (k) => `${WHYS[k].text}${WHYS[k].topic ? ' → theory' : ''}`;

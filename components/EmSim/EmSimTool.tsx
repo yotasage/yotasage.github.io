@@ -387,7 +387,7 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
         </section>
         <section id="export" ref={exportBox} className={styles.section} aria-labelledby="export-h" data-loaded={xm ? 'true' : 'false'}>
           <h2 id="export-h" className={styles.h2}>Export</h2>
-          {xm ? <xm.default setup={setup} unit={unit} opened={opened} openText={openText} /> : <p className={styles.lede}>The export loads as you come near it.</p>}
+          {xm ? <xm.default setup={setup} unit={unit} digits={digits} opened={opened} openText={openText} /> : <p className={styles.lede}>The export loads as you come near it.</p>}
         </section>
         <section id="theory" ref={thBox} className={th ? `${styles.section} ${styles.offscreen}` : styles.section} aria-labelledby="theory-h" data-loaded={th ? 'true' : 'false'}>
           <h2 id="theory-h" className={styles.h2}>Theory</h2>

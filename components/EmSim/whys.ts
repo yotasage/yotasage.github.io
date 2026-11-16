@@ -238,4 +238,7 @@ export const WHYS: Readonly<Record<string, Why>> = {
   'project-save': w('Save project', null, 'Downloads the whole setup as a .emsim.json file to open here again later.'),
   'project-open': w('Open project', null, 'Reads a project file and puts its setup in place as one undo step; dropping it works too.'),
   'project-link': w('Copy link', null, 'Copies the page’s address, which holds the whole setup.'),
+  'report-paper': w('Paper', null, 'The page size the report is laid out for: A4 or US Letter.'),
+  'report-parts': w('Include', null, 'What the report holds; field maps, plots and calculators once the page has them.'),
+  'report-print': w('Print report', null, 'Opens the browser’s print dialog with the report alone, light; “Save as PDF” there gives a file.'),
 };

@@ -23,6 +23,7 @@ import css from '../../styles/EmSimTools.module.css';
 import type { Commit } from './StackupSection';
 import { FLOOR, qText } from './trace';
 import { linesOf } from './tools';
+import { feedExport } from './exportFeed';
 import { feedTheory } from './theoryFeed';
 import { Whys } from './Why';
 
@@ -108,6 +109,20 @@ export default function CalcTool({ setup, invalid, commit, unit, client, active 
   const state = invalid ? 'invalid' : cur?.failed ? 'failed' : cur?.done ? 'done' : 'running';
   const apply = () => commit((c) => asJlcpcbCalculator(c).setup);
   const together = fq && jq && !already ? fq.v - jq.v : 0;
+  // M8.2b: the finished comparison for the report (Export section); none while it runs or after it failed.
+  useEffect(() => {
+    if (!cur || !cur.done || !fq) { feedExport({ calc: null }); return; }
+    const mk: CfKey = n === 2 ? 'zdiff' : 'z0';
+    feedExport({
+      calc: {
+        setup, name: qName, field: fq, jlc: jq, stated: stated ? { target: stated.target, at: stated.at } : null,
+        forms: cf.results.map((r) => ({ name: r.name, v: r.values[mk] ?? null, inside: r.validity.inside, range: r.validity.range, accuracy: r.validity.accuracy && !/^not stated/.test(r.validity.accuracy) ? r.validity.accuracy : 'not stated' })),
+      },
+    });
+    // qName and n follow setup
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cur, fq, jq, stated, cf, setup]);
+  useEffect(() => () => feedExport({ calc: null }), []);
 
   return (
     <section className={css.tool} data-tool="calc" aria-label="Calculators" data-state={state}>

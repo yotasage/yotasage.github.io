@@ -5,7 +5,8 @@
 // figure model of lib/emsim/figure/ (M8.1a): the SVG is the preview and the PNG's source (drawn into a canvas at
 // 96 px per inch times the scale), TikZ is saved as the `.tex` document alone or, when the figure has a map, as a ZIP
 // with its PNG files (fflate). Downloads go through Blob URLs; nothing leaves the device.
-// Below the figures, the Data group (DataExport.tsx, M8.2a): CSV, Touchstone, the project file and Copy link.
+// Below the figures, the Data group (DataExport.tsx, M8.2a): CSV, Touchstone, the project file and Copy link; then the
+// Report group (Report.tsx, M8.2b): the printable report.
 //   The root element carries `emsimExport.args()` for the harness (ui-export.mjs): the inputs of the shown figure in
 // plain form, so it can build the same figure in Node and compare the files byte for byte.
 
@@ -24,6 +25,7 @@ import type { Setup } from '../../lib/emsim/setup';
 import base from '../../styles/EmSim.module.css';
 import css from '../../styles/EmSimExport.module.css';
 import DataExport, { download } from './DataExport';
+import Report from './Report';
 import { useExportFeed } from './exportFeed';
 import type { FedPlot, OpenText, OpenedNote } from './exportFeed';
 import type { Painted } from './fieldPaint';
@@ -82,7 +84,7 @@ async function pngOf(svg: string, wMm: number, hMm: number, scale: number): Prom
   }
 }
 
-export default function ExportSection({ setup, unit, opened, openText }: { setup: Setup; unit: ShownUnit; opened: OpenedNote | null; openText: OpenText }) {
+export default function ExportSection({ setup, unit, digits, opened, openText }: { setup: Setup; unit: ShownUnit; digits: number; opened: OpenedNote | null; openText: OpenText }) {
   const feed = useExportFeed();
   const [pick, setPick] = useState('section');
   const [size, setSize] = useState<SizeId>('column');
@@ -257,6 +259,7 @@ export default function ExportSection({ setup, unit, opened, openText }: { setup
       )}
       <Whys ks="export-preview" />
       <DataExport setup={setup} opened={opened} openText={openText} />
+      <Report setup={setup} unit={unit} digits={digits} />
     </div>
   );
 }

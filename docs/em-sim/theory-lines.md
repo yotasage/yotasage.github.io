@@ -232,3 +232,6 @@ topics. Lines without a claim describe what the control does.
 | Save project (`data-project-save`, project-save) | Downloads the whole setup as a .emsim.json file to open here again later. | – | – |
 | Open project (`data-project-open`, project-open) | Reads a project file and puts its setup in place as one undo step; dropping it works too. | – | – |
 | Copy link (`data-project-link`, project-link) | Copies the page's address, which holds the whole setup. | – | – |
+| Paper (`data-report-paper`, report-paper) | The page size the report is laid out for: A4 or US Letter. | – | – |
+| Include (`data-report-part`, report-parts) | What the report holds; field maps, plots and calculators once the page has them. | – | – |
+| Print report (`data-report-print`, report-print) | Opens the browser's print dialog with the report alone, light; "Save as PDF" there gives a file. | – | – |

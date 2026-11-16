@@ -9,12 +9,16 @@
 //   trace     the Trace section's line results of the shown setup (not while stale, quick or dragging)
 //   sweepRun  the Sweep tool's finished run for the shown setup
 //   viaRun    the Via section's full via model result while not stale
+// M8.2b: what the report adds:
+//   calc      the Calculators tool's finished comparison, for the setup it was run on
 
 import { useSyncExternalStore } from 'react';
 
 import type { SweepRun } from '../../lib/emsim/export/csv';
 import type { PlotSpec } from '../../lib/emsim/figure/plot';
 import type { SolveResult } from '../../lib/emsim/jobs';
+import type { Q } from '../../lib/emsim/lines';
+import type { Setup } from '../../lib/emsim/setup';
 import type { Issue } from '../../lib/emsim/stackup';
 import type { ViaModelResult } from '../../lib/emsim/viamodel';
 import type { Painted } from './fieldPaint';
@@ -22,6 +26,16 @@ import type { Painted } from './fieldPaint';
 /** M8.2a: what opening a project file (picker or drop, EmSimTool's openText) came to, shown in the Data group. */
 export interface OpenedNote { name: string; ok: boolean; message: string; issues: Issue[]; at: number }
 export type OpenText = (text: string, name: string, dropped?: boolean) => void;
+
+/** M8.2b: the Calculators tool's comparison as the report shows it (for `setup`; the report ignores another setup's). */
+export interface FedCalc {
+  setup: Setup;
+  name: string; // the compared quantity: Z0, Zdiff or "Z0 of line 1"
+  field: Q | null; // this tool's value
+  jlc: Q | null; // the same structure with JLCPCB's calculator inputs
+  stated: { target: number; at: string } | null; // what JLCPCB's calculator says, for its own cases
+  forms: { name: string; v: number | null; inside: boolean; range: string; accuracy: string }[]; // closed forms, Ω
+}
 
 export interface FedPlot { id: string; label: string; spec: PlotSpec }
 export interface ExportFeed {
@@ -33,9 +47,10 @@ export interface ExportFeed {
   trace: SolveResult | null;
   sweepRun: SweepRun | null;
   viaRun: ViaModelResult | null;
+  calc: FedCalc | null;
 }
 
-let feed: ExportFeed = { traceMap: null, viaSide: null, viaTop: null, sweep: [], via: [], trace: null, sweepRun: null, viaRun: null };
+let feed: ExportFeed = { traceMap: null, viaSide: null, viaTop: null, sweep: [], via: [], trace: null, sweepRun: null, viaRun: null, calc: null };
 const subs = new Set<() => void>();
 
 export function feedExport(part: Partial<ExportFeed>): void {
@@ -48,7 +63,7 @@ export function feedExport(part: Partial<ExportFeed>): void {
 
 const sub = (f: () => void) => { subs.add(f); return () => { subs.delete(f); }; };
 const snap = () => feed;
-const EMPTY: ExportFeed = { traceMap: null, viaSide: null, viaTop: null, sweep: [], via: [], trace: null, sweepRun: null, viaRun: null };
+const EMPTY: ExportFeed = { traceMap: null, viaSide: null, viaTop: null, sweep: [], via: [], trace: null, sweepRun: null, viaRun: null, calc: null };
 
 export function useExportFeed(): ExportFeed {
   return useSyncExternalStore(sub, snap, () => EMPTY);

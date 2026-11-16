@@ -1,0 +1,87 @@
+/* The EM simulation page's Report (step M8.2b, components/EmSim/Report.tsx): the group's controls in the Export
+   section (page theme), and the printed report (a portal under <body>, never shown on screen, light whatever the
+   theme: its own colours, not the page's variables). Report.tsx's <style> sets @page and hides #__next in print. */
+
+.group {
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px solid var(--rule);
+}
+
+.parts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.parts legend { float: left; width: 100%; padding: 0; }
+
+.pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  font-size: 0.875rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.pick input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
+.pick:has(input:disabled) { color: var(--ink-3); cursor: not-allowed; }
+
+/* ---- the report ---- */
+
+.sheet { display: none; }
+
+@media print {
+  .sheet {
+    display: block;
+    color: #1d1c19;
+    background: #fff;
+    color-scheme: light;
+    font: 9.5pt/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+.head { margin: 0 0 4mm; padding-bottom: 3mm; border-bottom: 0.4mm solid #0b6a5f; }
+.h1 { margin: 0; font-size: 16pt; font-weight: 650; }
+.meta { margin: 1mm 0 0; color: #55524b; }
+.link { margin: 1mm 0 0; font-size: 8pt; color: #55524b; word-break: break-all; }
+.about { margin: 2mm 0 0; color: #1d1c19; }
+
+.part { margin-top: 6mm; }
+.h2 { margin: 0 0 2mm; padding-bottom: 1mm; font-size: 12.5pt; font-weight: 650; color: #0b6a5f; border-bottom: 0.2mm solid #cbc6ba; break-after: avoid; }
+.h3 { margin: 4mm 0 1.5mm; font-size: 10.5pt; font-weight: 650; break-after: avoid; }
+.p { margin: 0 0 2mm; }
+.small { margin: 2mm 0 0; font-size: 8.5pt; color: #55524b; }
+
+.table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin: 1mm 0 2mm; }
+.table thead { display: table-header-group; }
+.table th, .table td { padding: 0.8mm 1.6mm; text-align: left; vertical-align: top; border-bottom: 0.15mm solid #e3dfd5; }
+.table thead th { font-weight: 600; color: #55524b; background: #f3f1ec; border-bottom: 0.25mm solid #cbc6ba; }
+.table tbody th { font-weight: 500; }
+.table tr { break-inside: avoid; }
+.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.note { color: #55524b; font-size: 8pt; }
+.url { word-break: break-all; }
+
+.mats { display: flex; flex-wrap: wrap; gap: 2mm 6mm; align-items: flex-start; }
+.mat { width: auto; break-inside: avoid; }
+/* The via's two tables one under the other: a flex row would move one to the next page and leave a hole. */
+.cols > .table { margin-top: 3mm; }
+.matCap { caption-side: top; text-align: left; font-weight: 600; font-size: 8.5pt; padding-bottom: 0.8mm; }
+
+.list { margin: 1mm 0 2mm; padding-left: 5mm; font-size: 8.5pt; }
+.list li { margin: 0.6mm 0; break-inside: avoid; }
+
+/* A figure keeps its caption; the SVG has its own size in mm (narrowed by Report.tsx when it would be too tall). */
+.fig { margin: 3mm 0; break-inside: avoid; page-break-inside: avoid; }
+.svg svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+.cap { margin-top: 1.2mm; font-size: 8.5pt; color: #55524b; text-align: center; }

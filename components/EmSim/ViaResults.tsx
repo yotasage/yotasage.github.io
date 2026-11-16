@@ -52,7 +52,7 @@ function V({ name, label, v, e, floor, unit, scale = 1, big, note }: { name: str
 }
 
 // Adjacent pieces of one dielectric with the same line merged, each named by the layers it spans.
-function pieceRows(s: Stackup, pieces: ViaPiece[]): { names: string; len: number; er: number; z: number; zdiff: number; zcm: number; delay: number; part: string }[] {
+export function pieceRows(s: Stackup, pieces: ViaPiece[]): { names: string; len: number; er: number; z: number; zdiff: number; zcm: number; delay: number; part: string }[] {
   const z = stackZ(s);
   const nameAt = (zz: number) => { for (let i = 0; i < s.layers.length; i++) if (zz <= z[i] + 1e-12 && zz >= z[i + 1] - 1e-12) return s.layers[i].name || s.layers[i].id; return '?'; };
   const out: ReturnType<typeof pieceRows> = [];
