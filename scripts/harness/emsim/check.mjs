@@ -21,6 +21,8 @@ const MODULES = [
   ['Closed forms (M1.4b)', './check-closedform.mjs'],
   ['Fields (M1.5)', './check-fields.mjs'],
   ['Static worker (M1.5)', './check-worker.mjs'],
+  ['Axisymmetric solver (M1.6)', './check-axisym.mjs'],
+  ['Via cut (M1.6)', './check-viacut.mjs'],
 ];
 
 const failures = [];
