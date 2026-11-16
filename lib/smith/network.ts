@@ -14,8 +14,8 @@
 // k the input of part k (counted from the load); parts are packed by parts.ts (PART_STRIDE per part). The hot paths
 // (evaluate, inputGamma, sweep) allocate nothing.
 
-import { cdiv } from './complex';
-import type { Vec } from './complex';
+import { cdiv } from '../complex';
+import type { Vec } from '../complex';
 import { gammaAngle, gammaMag, mismatchLoss, qFromGamma, returnLoss, vswr } from './convert';
 import * as P from './parts';
 import { LINE, PART_STRIDE, QUARTER, SERIES_C, packParts, sincosTurns } from './parts';

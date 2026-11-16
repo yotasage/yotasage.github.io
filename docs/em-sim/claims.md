@@ -176,7 +176,7 @@ JI = `JLCPCBImpedance`, JK = `JLCPCBCapabilities`; D/P = the default microstrip 
 | 122 | Def | |
 | 123 | T | `vary.ts` `monteCarlo` (`MC_SAMPLES` 1000, `MC_SEED`, σ = limit/3, redrawn beyond); check-vary.mjs |
 | 124 | D | `mc-normal`; engine (median 51.44, 2.5 % / 97.5 % 49.06 / 54.24, sd 1.313 Ω) |
-| 125 | D | `rss-sigma` (1.311 Ω from 118) |
+| 125 | D | `rss-sigma` (1.310 Ω from 118) |
 | 126 | T + Def | `vary.ts` (independent draws) |
 
 ## Short lines (theory-lines.md)

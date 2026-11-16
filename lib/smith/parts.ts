@@ -10,7 +10,7 @@
 // Hot paths use plain numbers: a circuit's parts are packed into a Float64Array of PART_STRIDE numbers per part
 // (kind, value, zc) by packParts, and nothing here allocates except packParts itself.
 
-import type { Vec } from './complex';
+import type { Vec } from '../complex';
 
 // Part kinds. Numbers, so a packed circuit is one Float64Array and the evaluation is a switch on small integers.
 export const SERIES_R = 0;

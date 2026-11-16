@@ -16,8 +16,8 @@
 // the locus. A line rotates Γo = (Γ − B)/(1 − BΓ), B = (zc − 1)/(zc + 1), by −4π·turns (clockwise) about the centre of
 // its own chart; its locus is the image of |Γo| = ρ.
 
-import { cdiv, csqrt } from './complex';
-import type { Vec } from './complex';
+import { cdiv, csqrt } from '../complex';
+import type { Vec } from '../complex';
 import { nodeGamma, NODE_STRIDE } from './network';
 import * as P from './parts';
 import {

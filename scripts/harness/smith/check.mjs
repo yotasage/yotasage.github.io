@@ -3,7 +3,7 @@
 // Cases C1–C11 are those of docs/smith-chart/facts-cases.md: "ours" to 1e-9, the source to the digits it prints.
 
 import * as importedQuantity from '../../../lib/quantity.ts';
-import * as importedComplex from '../../../lib/smith/complex.ts';
+import * as importedComplex from '../../../lib/complex.ts';
 import * as importedConvert from '../../../lib/smith/convert.ts';
 import { runNetworkChecks } from './check-network.mjs';
 import { runGeometryChecks } from './check-geometry.mjs';

@@ -18,7 +18,7 @@
 // Everything is deterministic: the same circuit, band and options give the same arrays and figures to the bit.
 // sweepBand and refine allocate nothing once the Trace has its capacity; bandFigures allocates only its result.
 
-import type { Vec } from './complex';
+import type { Vec } from '../complex';
 import { returnLoss, vswr, zFromGamma } from './convert';
 import { inputGamma, sweep as sweepNetwork } from './network';
 import type { Circuit } from './network';

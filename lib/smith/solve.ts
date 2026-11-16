@@ -41,7 +41,7 @@
 // then by value; deterministic. Everything is at f0, except an f0 unknown: the frequency at which the goal holds, with
 // lengths kept physically (in wavelengths at the circuit's f0; `atFrequency` rewrites a circuit for a new f0).
 
-import type { Vec } from './complex';
+import type { Vec } from '../complex';
 import {
   CROSS_SAME, LOCUS_FIXED, LOCUS_LINE, LOCUS_MOBIUS, LOCUS_STRIDE, L_A, L_MODE, MOB_STRIDE,
   circleImage, circleResidual, circleIntersect, locusParam, locusValue, mobApply, mobCompose, mobInvert, partLocus, partMobius,

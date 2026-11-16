@@ -299,6 +299,14 @@ page; the Smith chart's `npm run recheck` passes if shared modules moved.
 
 M0.5: moves the generic equation engine to `lib/equations/` and `lib/smith/complex.ts` to `lib/complex.ts` (old files re-export); the Smith subset to run is in notes-M0.5.md.
 
+**Split** (main session, 2026-11-16, three jobs; M2.4a wrote 33 equations, 7 topics and 113 short lines): **M2.4b**
+(harness only: the shared equation engine moved as notes-M0.5.md item 1a says, with the Smith checks it lists;
+`lib/emsim/equations.ts` with the 33 equations of notes-M2.4a.md bound to engine values, and the new values they need;
+a check group that every equation evaluates to the engine's number), **M2.4c** (page: the Theory and References
+sections with live numbers, citations through `getStaticProps` and `Bibliography`, the figures, the status line) and
+**M2.4d** (page: the 113 short lines beside the controls and readouts with their "→ theory" links, the Calculators
+panel's links, the short-line harness).
+
 ### M2.5 – Release · S
 
 The card on the main page (`TOOLS` in `pages/index.tsx`, an icon in `components/Home/ToolIcon.tsx`), README, CLAUDE.md

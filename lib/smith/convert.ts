@@ -8,8 +8,8 @@
 // Precision: the quotients are formed so that 1 − Γ and 1 + Γ are exact near Γ = ±1 (Sterbenz), so a round trip
 // Γ → z → Γ keeps Γ to a few ulp even at |Γ| = 1 − 1e-15, and y is taken from Γ directly, not as 1/z.
 
-import { cabs, cdiv, cinv } from './complex';
-import type { Vec } from './complex';
+import { cabs, cdiv, cinv } from '../complex';
+import type { Vec } from '../complex';
 
 // Beyond this |a|, a − 1 and a + 1 are a and the quotient is formed as 1 − 2/(a + 1) instead (no Inf/Inf).
 const BIG = 1e150;

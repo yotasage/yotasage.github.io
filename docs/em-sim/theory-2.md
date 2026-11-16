@@ -173,7 +173,7 @@ the tool takes them as independent. ⟨126⟩
 | `sens` | `d_i = \tfrac12\big(Z(x_i + t_i) - Z(x_i - t_i)\big)` | `corners(setup).inputs[i].d[key]` [D: 2.871, −2.421, −0.976 Ω, …] |
 | `share` | `s_i = d_i^2 \big/ \textstyle\sum_j d_j^2` | `shares` of components/EmSim/tools.ts [D: 0.533, 0.379, 0.062] |
 | `corners` | `Z_\mathrm{hi} = Z\big(x_i + \operatorname{sign}(d_i)\,t_i\big),\ Z_\mathrm{lo} = Z\big(x_i - \operatorname{sign}(d_i)\,t_i\big)` | `corners(setup).corners[0]` `lo`, `hi` [44.54, 59.37 Ω] |
-| `rss-sigma` | `\sigma \approx \tfrac13\sqrt{\textstyle\sum_i d_i^2}` | from the ranking [1.311 Ω]; against `monteCarlo(setup).stats[key].sd` [1.313 Ω] |
+| `rss-sigma` | `\sigma \approx \tfrac13\sqrt{\textstyle\sum_i d_i^2}` | from the ranking [1.310 Ω]; against `monteCarlo(setup).stats[key].sd` [1.313 Ω] |
 | `mc-normal` | `x_i \sim \mathcal N(x_i, (t_i/3)^2),\ \lvert x_i - \bar x_i\rvert \le t_i` | `monteCarlo(setup).stats[key].p` at `MC_P` [47.91, 49.06, 51.44, 54.24, 55.43 Ω] |
 
 These live numbers come from the Tolerance tool's own runs (`withPlaceholders(setup)` then `corners`, `monteCarlo`):

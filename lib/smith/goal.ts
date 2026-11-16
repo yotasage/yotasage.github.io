@@ -12,7 +12,7 @@
 // |Γ| for the centre and, for a real target R, |Γ| referred to R (the best value of one unknown minimises it).
 
 import { gammaFromImpedance, magFromReturnLoss, magFromVswr } from './convert';
-import type { Vec } from './complex';
+import type { Vec } from '../complex';
 import { circleResidual, pointCircle } from './geometry';
 
 export type GoalKind = 'point' | 'mag' | 'vswr' | 'rl' | 'r' | 'g' | 'x' | 'b';

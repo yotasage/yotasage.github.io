@@ -27,6 +27,7 @@ const MODULES = [
   ['Via model (M1.7)', './check-viamodel.mjs'],
   ['Plot (M2.3a)', './check-plot.mjs'],
   ['JLCPCB calculator (M2.3b)', './check-jlccalc.mjs'],
+  ['Equations (M2.4b)', './check-equations.mjs'],
 ];
 
 const failures = [];

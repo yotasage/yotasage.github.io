@@ -7,7 +7,7 @@
 // (network.evaluateCircuit, parts.added); the sense comes from the rules of the theory, and the harness
 // (scripts/harness/smith/check-explain.mjs) holds both the sense and the circle against geometry.ts.
 
-import { cabs } from './complex';
+import { cabs } from '../complex';
 import { LOCUS_STRIDE, locusPoint, partLocus } from './geometry';
 import { METRIC_STRIDE, M_GI, M_GR, M_YI, M_YR, M_ZI, M_ZR, evaluateCircuit } from './network';
 import type { Circuit } from './network';
