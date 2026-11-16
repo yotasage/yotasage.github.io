@@ -25,6 +25,7 @@ import { Eq, N, Sub, Topic, citeWith } from './theoryKit';
 import type { Live } from './theoryKit';
 import { useTheoryFeed } from './theoryFeed';
 import Theory2 from './Theory2';
+import TheoryVias, { VIA_TOPICS } from './TheoryVias';
 
 export const bibOf = (references: BibEntry[]): Bibliography => new Bibliography(references);
 
@@ -36,6 +37,7 @@ export const TOPICS: readonly { id: string; title: string; subs?: [string, strin
   { id: 'structures', title: 'Microstrip, stripline and the solder mask', subs: [['trapezoid', 'The trapezoid'], ['solder-mask', 'Solder mask'], ['coplanar-ground', 'Coplanar ground'], ['copper-thickness', 'Copper thickness']] },
   { id: 'calculators', title: 'Why calculators and fabs disagree', subs: [['closed-forms', 'Closed forms and their ranges'], ['jlcpcb-calculator', 'JLCPCB’s calculator']] },
   { id: 'tolerances', title: 'Tolerances and what matters most' },
+  ...VIA_TOPICS,
 ];
 export const subTitle = (id: string): string => TOPICS.flatMap((t) => t.subs ?? []).find(([s]) => s === id)?.[1] ?? '';
 
@@ -81,7 +83,7 @@ export default function Theory({ bib, unit, digits }: Props) {
     <div className={css.theory} data-theory="">
       <p className={css.lead}>
         What the numbers above mean and where they come from. Equations with numbers in them follow the structure in the
-        Trace section as you change it; numbers in the text are the default examples. Numbers in brackets lead to
+        Trace section (topics 7–13: the via in the Via section) as you change it; numbers in the text are the default examples. Numbers in brackets lead to
         the <a href="#references">sources</a>.
       </p>
       <nav className={css.contents} aria-label="Theory contents" data-theory-contents="">
@@ -297,8 +299,9 @@ export default function Theory({ bib, unit, digits }: Props) {
       </Topic>
 
       <Theory2 live={live} cite={cite} E={E} />
+      <TheoryVias live={live} cite={cite} />
       <p className={css.foot}>
-        The derivations, the via and the waves on a line follow in later versions.
+        The waves on a line and through a via, from a full-wave run, follow in later versions.
       </p>
     </div>
   );

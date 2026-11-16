@@ -53,7 +53,7 @@ const lhsOf = (t: { t: string; xs?: { t: string; v?: unknown }[] }): string | nu
  * symbol carries `data-sym` and `data-v` (SI) for the harness. Otherwise it is printed without numbers and `need`
  * (or a default) says what gives them.
  */
-export function Eq({ id, live, cite, need }: { id: string; live: Live; cite: Cite; need?: string }) {
+export function Eq({ id, live, cite, need, via = false }: { id: string; live: Live; cite: Cite; need?: string; via?: boolean }) {
   const eq = EM_EQUATION_BY_ID.get(id);
   if (!eq) throw new Error(`Unknown equation "${id}" in the EM theory.`);
   const fits = eq.applies === 'any' || (eq.applies === 'line' ? live.n === 1 : live.n === 2);
@@ -70,7 +70,7 @@ export function Eq({ id, live, cite, need }: { id: string; live: Live; cite: Cit
           if (!sub) return <KatexSpan key={i} className={css.eqWide} text={`\\displaystyle ${emTex(t)}`} />;
           return (
             <React.Fragment key={i}>
-              <KatexSpan className={css.eqLhs} text={`\\displaystyle ${sub.lhs}`} data-sym={sym ?? undefined} data-v={sym ? live.b[sym] : undefined} />
+              <KatexSpan className={css.eqLhs} text={`\\displaystyle ${sub.lhs}`} data-sym={sym ?? undefined} data-v={sym && typeof live.b[sym] === 'number' ? live.b[sym] : undefined} />
               <span className={css.eqRhs}>
                 <KatexSpan text={`\\displaystyle {}= ${sub.rhs}`} />
                 {sub.lines.map((s, j) => <KatexSpan key={j} className={css.eqLive} text={`\\displaystyle {}= ${s}`} />)}
@@ -85,12 +85,14 @@ export function Eq({ id, live, cite, need }: { id: string; live: Live; cite: Cit
   }
   let note = '';
   if (!bound && eq.live) {
-    if (!fits && eq.applies === 'pair') note = 'With numbers when the Trace section shows a pair.';
-    else if (!fits && eq.applies === 'line') note = 'With numbers when the Trace section shows a single trace.';
-    else note = live.n ? need ?? 'Not filled in for this structure.' : 'With numbers once the Trace section has solved.';
+    // M4.3b: the via topics' equations take their numbers from the Via section's result.
+    const sec = via ? 'the Via section' : 'the Trace section';
+    if (!fits && eq.applies === 'pair') note = `With numbers when ${sec} shows a pair.`;
+    else if (!fits && eq.applies === 'line') note = `With numbers when ${sec} shows a single ${via ? 'via' : 'trace'}.`;
+    else note = live.n ? need ?? `Not filled in for this ${via ? 'via' : 'structure'}.` : `With numbers once ${sec} has solved.`;
   }
   return (
-    <div className={css.eq} data-eq={id} data-live={bound ? 'true' : 'false'}>
+    <div className={css.eq} data-eq={id} data-live={bound ? 'true' : 'false'} data-scope={via ? 'via' : undefined}>
       <div className={css.eqScroll}>
         {body}
         {eq.extra && <KatexSpan className={css.eqExtra} text={`\\displaystyle ${eq.extra}`} />}

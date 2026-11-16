@@ -32,7 +32,7 @@ const P: Setup = { ...D, trace: { ...presetStructure('pair-microstrip', D.stacku
 export const FIGURE_SETUPS = { D, D_BARE, P };
 
 /** Mounts its children once the box comes within a screen of the window. */
-function Near({ children, minH }: { children: React.ReactNode; minH: number }) {
+export function Near({ children, minH }: { children: React.ReactNode; minH: number }) {
   const box = useRef<HTMLDivElement>(null);
   const [on, setOn] = useState(false);
   useEffect(() => {

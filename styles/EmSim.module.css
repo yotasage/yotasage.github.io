@@ -368,7 +368,7 @@
    `auto` keeps the real one. */
 .offscreen {
   content-visibility: auto;
-  contain-intrinsic-size: auto 14000px;
+  contain-intrinsic-size: auto 22000px;
 }
 
 .offscreen[id='references'] {

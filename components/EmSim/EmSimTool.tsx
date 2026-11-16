@@ -46,20 +46,24 @@ const HISTORY = 200;
 const GROUP_MS = 1500;
 
 // The sections that exist (plan.md: Stackup · Trace · Via · Waves · Theory · Examples · Report · Export · References).
-const SECTIONS: readonly { id: string; label: string }[] = [{ id: 'stackup', label: 'Stackup' }, { id: 'trace', label: 'Trace' }, { id: 'via', label: 'Via' }, { id: 'export', label: 'Export' }, { id: 'theory', label: 'Theory' }, { id: 'references', label: 'References' }];
+const SECTIONS: readonly { id: string; label: string }[] = [{ id: 'stackup', label: 'Stackup' }, { id: 'trace', label: 'Trace' }, { id: 'via', label: 'Via' }, { id: 'export', label: 'Export' }, { id: 'examples', label: 'Examples' }, { id: 'theory', label: 'Theory' }, { id: 'references', label: 'References' }];
 
 // M2.4c: the Theory and References (Theory.tsx with KaTeX and the equations) load when they come within LOAD_MARGIN of
 // the window or a link points at an id outside the tool's sections; until then the sections are empty frames.
 type TheoryMod = typeof import('./Theory');
 const LOAD_MARGIN = '400px 0px';
-const TOOL_IDS = new Set(['', 'stackup', 'trace', 'via', 'export']);
+const TOOL_IDS = new Set(['', 'stackup', 'trace', 'via', 'export', 'examples']);
+// M4.3b: the worked examples' anchors (ex-…) belong to the Examples chunk, not the theory.
+const notTheory = (id: string) => TOOL_IDS.has(id) || id.startsWith('ex-');
 // M3.1a: the Via section (ViaSection.tsx, its drawings and results) loads the same way: near, or by the link #via.
 type ViaMod = typeof import('./ViaSection');
 // M8.1b: the Export section (ExportSection.tsx with the figure model and fflate) the same way: near, or by #export.
 type ExportMod = typeof import('./ExportSection');
+// M4.3b: the Examples section (Examples.tsx with lib/emsim/examples.ts) the same way: near, by #examples or an example's id.
+type ExamplesMod = typeof import('./Examples');
 
 /** Loads a section's chunk when its box comes within LOAD_MARGIN or the link's fragment is its id. */
-function useNearLoad<M>(id: string, get: () => Promise<M>): [M | null, React.RefObject<HTMLElement | null>] {
+function useNearLoad<M>(id: string, get: () => Promise<M>, prefix = ''): [M | null, React.RefObject<HTMLElement | null>] {
   const [mod, setMod] = useState<M | null>(null);
   const box = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -70,7 +74,7 @@ function useNearLoad<M>(id: string, get: () => Promise<M>): [M | null, React.Ref
       asked = true;
       void get().then((m) => { setMod(() => m); io?.disconnect(); }, () => { asked = false; });
     };
-    const fromHash = () => { if (decodeURIComponent(window.location.hash.slice(1)) === id) load(); };
+    const fromHash = () => { const h = decodeURIComponent(window.location.hash.slice(1)); if (h === id || (prefix && h.startsWith(prefix))) load(); };
     fromHash();
     window.addEventListener('hashchange', fromHash);
     io = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) load(); }, { rootMargin: LOAD_MARGIN });
@@ -79,7 +83,7 @@ function useNearLoad<M>(id: string, get: () => Promise<M>): [M | null, React.Ref
     return () => { window.removeEventListener('hashchange', fromHash); io?.disconnect(); };
     // get is a constant import
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, prefix]);
   return [mod, box];
 }
 
@@ -127,7 +131,7 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
     };
     const fromHash = () => {
       const id = decodeURIComponent(window.location.hash.slice(1));
-      if (TOOL_IDS.has(id)) return;
+      if (notTheory(id)) return;
       if (!document.getElementById(id)) jumpTo.current = id;
       load();
     };
@@ -159,6 +163,8 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
   }, []);
   // @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
   const [xm, exportBox] = useNearLoad<ExportMod>('export', () => import('./ExportSection'));
+  // @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
+  const [em, examplesBox] = useNearLoad<ExamplesMod>('examples', () => import('./Examples'), 'ex-');
   const bib = useMemo<Bibliography | null>(() => (th ? th.bibOf(references) : null), [th, references]);
   // M4.3a: what the equation panel cites from (eqLinks.tsx).
   const eqEnv = useMemo(() => ({ references, bib }), [references, bib]);
@@ -309,6 +315,24 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
       (e) => { const why = errorText(e); finish(openProject(text, () => { throw new Error(`JLCPCB’s stackup list could not be loaded: ${why}`); })); },
     );
   }, [commit]);
+  // ---- M4.3b: an example's link applied in place: read as the page reads its own link (a JLCPCB list key loads the
+  // list first), committed as one undo step (the address follows), with its issues shown as the link's ----
+  const applyLink = useCallback((query: string, then: () => void) => {
+    const q = splitQuery(query);
+    const finish = (r: Decoded) => {
+      commit(r.setup);
+      setLinkIssues([...q.issues, ...r.issues]);
+      if (q.unit) setUnit(q.unit);
+      then();
+    };
+    let asked = false;
+    const r = decodeLink(q.setupPart, (key) => { asked = true; return jlcResolve(key); });
+    if (!asked || jlcLoaded()) { finish(r); return; }
+    loadJlc().then(
+      () => finish(decodeLink(q.setupPart, jlcResolve)),
+      (e) => { const why = errorText(e); finish(decodeLink(q.setupPart, () => { throw new Error(`JLCPCB’s stackup list could not be loaded: ${why}`); })); },
+    );
+  }, [commit]);
   useEffect(() => {
     const files = (e: DragEvent) => !!e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files');
     const over = (e: DragEvent) => { if (!e.defaultPrevented && files(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } };
@@ -392,6 +416,10 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
         <section id="export" ref={exportBox} className={styles.section} aria-labelledby="export-h" data-loaded={xm ? 'true' : 'false'}>
           <h2 id="export-h" className={styles.h2}>Export</h2>
           {xm ? <xm.default setup={setup} unit={unit} digits={digits} opened={opened} openText={openText} /> : <p className={styles.lede}>The export loads as you come near it.</p>}
+        </section>
+        <section id="examples" ref={examplesBox} className={styles.section} aria-labelledby="examples-h" data-loaded={em ? 'true' : 'false'}>
+          <h2 id="examples-h" className={styles.h2}>Examples</h2>
+          {em ? <em.default apply={applyLink} /> : <p className={styles.lede}>The worked examples load as you come near them.</p>}
         </section>
         <section id="theory" ref={thBox} className={th ? `${styles.section} ${styles.offscreen}` : styles.section} aria-labelledby="theory-h" data-loaded={th ? 'true' : 'false'}>
           <h2 id="theory-h" className={styles.h2}>Theory</h2>

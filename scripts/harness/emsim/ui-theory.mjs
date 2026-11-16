@@ -5,7 +5,9 @@
 // lib/emsim/eqvalues.ts's emBinding in Node for the linked setup on the default microstrip and the default pair (at
 // least 10 numbers from different equations each); a typed width updates the live numbers; the field figures draw;
 // no horizontal scroll at 320/390/1440 in both themes; screenshots `emsim-theory-*` of two topics with equations and
-// a figure at 390 and 1440 in both themes.
+// a figure at 390 and 1440 in both themes. M4.3b: the via topics 7–13 (anchors in the contents, their sources cited and
+// numbered with the rest), their equations' numbers equal lib/emsim/eqvaluesVia.ts viaBinding in Node for the default
+// (C44) via once the Via section has solved it, their figures drawn; screenshots `emsim-theory-via-*`.
 //   tsx ui-theory.mjs [screenshot folder | -] [base URL]      (part of npm run ui)
 
 import { writeFileSync } from 'node:fs';
@@ -21,10 +23,12 @@ import * as importedStackup from '../../../lib/emsim/stackup.ts';
 import * as importedStructure from '../../../lib/emsim/structure.ts';
 import * as importedCf from '../../../lib/emsim/closedform.ts';
 import * as importedEv from '../../../lib/emsim/eqvalues.ts';
+import * as importedEvVia from '../../../lib/emsim/eqvaluesVia.ts';
+import * as importedVm from '../../../lib/emsim/viamodel.ts';
 
 const d = (m) => m.default ?? m;
 const LN = d(importedLines), LK = d(importedLink), SU = d(importedSetup), S = d(importedStackup), ST = d(importedStructure);
-const CF = d(importedCf), EV = d(importedEv);
+const CF = d(importedCf), EV = d(importedEv), EVV = d(importedEvVia), VM = d(importedVm);
 
 const shots = process.argv[2] && process.argv[2] !== '-' ? process.argv[2] : null;
 const base = process.argv[3] ?? 'http://localhost:3022';
@@ -32,7 +36,11 @@ const URL0 = `${base}/em-sim/main`;
 
 const ANCHORS = ['how-to-use', 'transmission-lines', 'field-solver', 'pairs', 'pair-definitions', 'coupling', 'two-speeds',
   'structures', 'trapezoid', 'solder-mask', 'coplanar-ground', 'copper-thickness', 'calculators', 'closed-forms',
-  'jlcpcb-calculator', 'tolerances', 'references'];
+  'jlcpcb-calculator', 'tolerances', 'via-line', 'via-pads', 'via-return', 'via-stubs', 'via-tdr', 'via-sparams', 'via-limits',
+  'references'];
+const VIA_KEYS = ['WikiCapacitance', 'Fan2014', 'Kok1993', 'Vardapetyan2020', 'Chada2009', 'Archambeault2004', 'RimoloDonadio2009b',
+  'Miller2004', 'SteerVol2', 'Ellingson2018', 'Huddar2021', 'Zhang2020', 'Park2017', 'BockelmanEisenstadt1995', 'Cartier2007', 'Duan2014'];
+const VIA_FIGURES = ['via-side', 'via-cut', 'via-pads', 'via-return', 'via-stub-s21', 'via-backdrill', 'via-tdr', 'via-s', 'via-mixed'];
 
 let pass = 0;
 const fails = [];
@@ -105,11 +113,14 @@ try {
   check(cites.every((c) => c.href === `#ref-${c.key}` && refs.includes(`ref-${c.key}`)), 'every citation links to its References entry');
   check(cites.every((c) => c.n === order.indexOf(c.key) + 1), 'citations numbered by first citation');
   check(refs.length === order.length && refs.every((id, i) => id === `ref-${order[i]}`), `References lists the ${refs.length} cited sources in that order`);
+  const viaCites = await page.$$eval('[data-theory-vias] [data-cite]', (as) => as.map((a) => a.getAttribute('data-cite')));
+  check(VIA_KEYS.every((k) => viaCites.includes(k)), `the via topics cite their ${VIA_KEYS.length} sources (${VIA_KEYS.filter((k) => !viaCites.includes(k)).join(', ')})`);
+  check((await page.locator('[data-theory-vias] [data-eq][data-scope="via"]').count()) >= 25, 'the via topics show their equations');
 
   // ---- live numbers against Node ----
   const liveCheck = async (what, s, want) => {
     const b = nodeBinding(s);
-    const got = await page.$$eval('[data-eq][data-live="true"] [data-sym][data-v]', (es) => es.map((e) => ({ id: e.closest('[data-eq]').getAttribute('data-eq'), sym: e.getAttribute('data-sym'), v: Number(e.getAttribute('data-v')) })));
+    const got = await page.$$eval('[data-eq][data-live="true"]:not([data-scope="via"]) [data-sym][data-v]', (es) => es.map((e) => ({ id: e.closest('[data-eq]').getAttribute('data-eq'), sym: e.getAttribute('data-sym'), v: Number(e.getAttribute('data-v')) })));
     const ids = new Set(got.map((g) => g.id));
     let worst = 0, bad = [];
     for (const g of got) { const x = Math.abs(g.v - b[g.sym]) < 1e-12 ? 0 : rel(g.v, b[g.sym]); worst = Math.max(worst, x); if (!(x <= 1e-9)) bad.push(`${g.id}:${g.sym} ${g.v} vs ${b[g.sym]}`); }
@@ -162,6 +173,41 @@ try {
   for (const f of ['ladder', 'parts', 'ranking']) check(await page.locator(`[data-figure="${f}"] svg`).count() >= 1, `figure ${f} present`);
   check((await page.locator('[data-figure="parts"] [data-bar]').count()) === 5, 'the parts figure has four parts and the sum');
 
+  // ---- M4.3b: the via topics' numbers against Node on the default (C44) via, their figures ----
+  await page.goto(`${URL0}#via`);
+  await page.waitForSelector('[data-via-results][data-state="done"]:not([data-stale="true"])', { timeout: 60000 });
+  await page.evaluate(() => { window.location.hash = 'via-line'; });
+  await page.waitForSelector('[data-eq="via-section-z"][data-scope="via"][data-live="true"]', { timeout: 60000 });
+  {
+    const s = linked(page);
+    const model = VM.viaModel(s.stackup, s.via, s.trace, { tr: VM.VIA_TR, z0: VM.VIA_Z0, nf: 401 });
+    const b = EVV.viaBinding({ model, via: s.via });
+    const got = await page.$$eval('[data-eq][data-scope="via"][data-live="true"] [data-sym][data-v]', (es) => es.map((e) => ({ id: e.closest('[data-eq]').getAttribute('data-eq'), sym: e.getAttribute('data-sym'), v: Number(e.getAttribute('data-v')) })));
+    const ids = new Set(got.map((g) => g.id));
+    let worst = 0;
+    const bad = [];
+    for (const g of got) { const x = Math.abs(g.v - b[g.sym]) < 1e-12 ? 0 : rel(g.v, b[g.sym]); worst = Math.max(worst, x); if (!(x <= 1e-9)) bad.push(`${g.id}:${g.sym} ${g.v} vs ${b[g.sym]}`); }
+    check(got.length > 0 && bad.length === 0, `default via: ${got.length} live numbers of ${ids.size} via equations equal viaBinding in Node (worst ${worst.toExponential(1)}) ${bad.slice(0, 4).join('; ')}`);
+    for (const id of ['via-barrel-z', 'via-barrel-delay', 'via-coax', 'via-req', 'via-section-l', 'via-section-c', 'via-section-z', 'via-section-delay', 'via-dc', 'edge-f3', 'edge-band', 'tdr-z', 'lambda8', 'stub-quarter']) check(ids.has(id), `default via: ${id} is live, its result equal to Node`);
+    for (const id of ['abcd-line', 's-abcd', 's-db']) check((await page.locator(`[data-eq="${id}"]`).getAttribute('data-live')) === 'true', `default via: ${id} is live (complex values)`);
+    for (const id of ['via-section-pair', 'via-pad-coupling', 'via-target']) check((await page.locator(`[data-eq="${id}"]`).getAttribute('data-live')) === 'false', `default via: ${id} printed without numbers, with a note`);
+  }
+  for (const f of VIA_FIGURES) {
+    await page.locator(`[data-figure="${f}"]`).scrollIntoViewIfNeeded();
+    let done = 'false';
+    for (let i = 0; i < 240 && done !== 'true'; i++) { done = await page.locator(`[data-figure="${f}"] [data-figure-done]`).getAttribute('data-figure-done', { timeout: 1000 }).catch(() => 'false'); if (done !== 'true') await page.waitForTimeout(250); }
+    const drawn = await page.locator(`[data-figure="${f}"] svg`).count();
+    check(done === 'true' && drawn >= 1, `via figure ${f} drawn (${done}, ${drawn} svg)`);
+  }
+  check((await page.locator('[data-figure="via-pads"] [data-bar]').count()) === 6, 'the pads figure has a bar per layer of the 0.6/0.3 via');
+  check((await page.locator('[data-figure="via-backdrill"] [data-backdrill]').count()) === 1, 'the backdrill figure draws the drilled part');
+  {
+    const req = Number(await page.locator('[data-figure="via-cut"] [data-req]').getAttribute('data-req'));
+    const s = SU.defaultSetup();
+    const m = VM.viaModel(s.stackup, s.via, s.trace, { tr: VM.VIA_TR, z0: VM.VIA_Z0, nf: 401 });
+    check(rel(req, m.wall.Req) < 1e-12, `the cut's R_eq ${req} equals the model's`);
+  }
+
   // ---- widths and themes ----
   const shrink = async (buf) => {
     const p = await ctx.newPage();
@@ -207,6 +253,7 @@ try {
         await shoot(page, 'transmission-lines', width, scheme);
         await pp.setViewportSize({ width, height: 900 });
         await shoot(pp, 'pair-definitions', width, scheme);
+        await shoot(page, 'via-tdr', width, scheme);
       }
     }
   }

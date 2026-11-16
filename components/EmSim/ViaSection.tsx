@@ -26,6 +26,7 @@ import vcss from '../../styles/EmSimVia.module.css';
 import type { Commit } from './StackupSection';
 import { IssueList } from './StackupSection';
 import { getClient } from './TraceSection';
+import { feedTheory } from './theoryFeed';
 import type { RunState } from './TraceResults';
 import ValField, { NumInput } from './ValField';
 import ViaDrawing, { LiveVia, useLive } from './ViaDrawing';
@@ -387,6 +388,9 @@ function ViaSolve({ s, t, v: v0, store, unit, digits }: { s: Setup['stackup']; t
   const eqReq = useEqRequest();
   const eqHere = eqReq?.section === 'via' ? eqReq : null;
   const eqVia = useMemo(() => (res && res.r.ok ? { r: res.r, v: res.v } : null), [res]);
+  // M4.3b: the via theory's equations print the last full solve (the plots' result: never a drag's coarse frame).
+  const bad = errors.length > 0;
+  useEffect(() => { feedTheory({ via: !bad && plotRes && plotRes.r.ok ? plotRes : null }); }, [plotRes, bad]);
   return (
     <div className={css.resultArea} data-via-solves={solves} data-quick={quickShown} data-dragging={dragging}>
       {/* The result with the via it was solved for: a drag frame without a new result does not draw the panel again. */}

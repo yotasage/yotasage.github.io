@@ -286,3 +286,18 @@
   animation: jumped 3s ease-out;
   border-radius: var(--radius);
 }
+
+/* M4.3b: a via figure while its fixed via is solved. */
+.figWait {
+  margin: 0;
+  padding: 24px 0;
+  color: var(--ink-3);
+  font-size: 0.875rem;
+}
+
+/* M4.3b: a via figure's caption (inside the box that mounts the figure when it comes near). */
+.caption {
+  margin: 6px 0 0;
+  color: var(--ink-2);
+  font-size: 0.875rem;
+}
