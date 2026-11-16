@@ -424,7 +424,17 @@
   urldate      = {2026-11-16},
 }
 
-% Not opened in M0.2a (paywalled); its formulas are cited from LearnEMCPCB.
+% The original edition (April 1996), opened in M0.2c: its unbalanced-line equations (section 4.2) are in
+% docs/em-sim/facts-formulas.md section 1.
+@techreport{IPC2141,
+  organization = {IPC},
+  title        = {Controlled Impedance Circuit Boards and High Speed Logic Design},
+  type         = {Standard},
+  number       = {IPC-2141},
+  date         = {1996-04},
+}
+
+% Not opened (paywalled); IPC2141 (1996) is the edition opened.
 @techreport{IPC2141A,
   organization = {IPC},
   title        = {Design Guide for High-Speed Controlled Impedance Circuit Boards},
@@ -478,7 +488,7 @@
   year    = {1982},
 }
 
-% Not opened in M0.2a; cited from QucsTech.
+% Opened in M0.2c with its corrections (KirschningJansen1985corr), which override it where they apply.
 @article{KirschningJansen1984,
   author  = {Kirschning, Manfred and Jansen, Rolf H.},
   title   = {Accurate Wide-Range Design Equations for the Frequency-Dependent Characteristic of Parallel Coupled Microstrip Lines},
@@ -486,8 +496,19 @@
   volume  = {32},
   number  = {1},
   pages   = {83--90},
-  year    = {1984},
+  date    = {1984-01},
   note    = {Corrections in vol. 33, no. 3, p. 288, 1985},
+}
+
+% Opened in M0.2c: four misprints of KirschningJansen1984 (eqs. 3, 4, 9 and 10).
+@article{KirschningJansen1985corr,
+  author  = {Kirschning, Manfred and Jansen, Rolf H.},
+  title   = {Corrections to "Accurate Wide-Range Design Equations for the Frequency-Dependent Characteristics of Parallel Coupled Microstrip Lines"},
+  journal = {IEEE Transactions on Microwave Theory and Techniques},
+  volume  = {33},
+  number  = {3},
+  pages   = {288},
+  date    = {1985-03},
 }
 
 % Not opened in M0.2a; the results are checked by the limits derived in docs/em-sim/facts.md section 8.
@@ -512,7 +533,7 @@
   year    = {1955},
 }
 
-% Not opened in M0.2a.
+% Opened in M0.2c: the thick-strip formulas (eqs. 3-5, 21, 22) are in docs/em-sim/facts-formulas.md section 5.
 @article{Cohn1955problems,
   author  = {Cohn, Seymour B.},
   title   = {Problems in Strip Transmission Lines},

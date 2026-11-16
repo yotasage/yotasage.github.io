@@ -13,12 +13,12 @@ carries the statement (facts.md names it on every row). Do not quote equation nu
 ### `QucsTech`: Qucs Technical Papers
 The Qucs project's technical documentation, https://qucs.sourceforge.net/tech/technical.html (HTML nodes 75 single
 microstrip, 77 coupled microstrip, 86 coplanar waveguide). Licence: GNU FDL/GPL documentation (cite, do not copy).
-Opened 2026-11-16 through a page-reading tool that cut off parts of several long equations (marked in
-facts-formulas.md §3–4 as completed from memory). **Cite for:** Hammerstad–Jensen's single microstrip (Z01, εeff, their
+Opened 2026-11-16 through a page-reading tool that cut off parts of several long equations (completed in M0.2a and
+checked against the papers in M0.2c, facts-formulas.md §3–4). **Cite for:** Hammerstad–Jensen's single microstrip (Z01, εeff, their
 stated accuracy 0.01 %/0.03 % and 0.2 %, the thickness correction), Getsinger's and Kirschning–Jansen's dispersion
 models with ranges, Kirschning–Jansen's static coupled-microstrip model with its range (0.1 ≤ u ≤ 10, 0.1 ≤ g ≤ 10,
 1 ≤ εr ≤ 18) and stated 0.6 %, the coplanar waveguide (moduli k1, k2, k3, εeff, Z0, Hilberg's K/K′ with 10⁻⁵ /
-3 × 10⁻⁶, Gupta's thickness Δ). **Not for:** the cut-off pieces (check against the papers or the Qucs source first);
+3 × 10⁻⁶, Gupta's thickness Δ). **Not for:** the coupled-line thickness widths (not from Kirschning–Jansen, partly cut off);
 the Qucs page's reference list was not read.
 
 ### `WikiCapacitance`: "Capacitance", Wikipedia
@@ -61,28 +61,54 @@ https://learnemc.com/ext/calculators/pcb-tl/microstrip.html (and `embedded.html`
 images `pics/Equations-microstrip.png`, `…-embedded-microstrip.png`, `…-stripline.png`, viewed). The site attributes
 them to "Design Guide for Electronic Packaging Utilizing High-Speed Techniques" (IPC-2251, 4th working draft, February
 2001). **Cite for:** the IPC-style formulas of facts-formulas.md §1 and their ranges as the pages state them. **Not
-for:** IPC-2141A's own wording or accuracy (not opened).
+for:** IPC-2141A's own wording or accuracy (not opened); the embedded factor (1 − (h1 − t − h)/0.1), which is not in
+IPC-2141 (1996).
+
+## Opened in M0.2c (the original papers, 2026-11-16)
+
+The originals of three sources that M0.2a carried through secondaries, and the corrections of one. Equation numbers
+from them may be quoted; what was checked and changed is in [notes-M0.2c.md](notes-M0.2c.md).
+
+### `IPC2141`: IPC-2141, "Controlled Impedance Circuit Boards and High Speed Logic Design", April 1996
+The original edition (not IPC-2141A). Opened: §4.1–4.4 (unbalanced line configurations and equations, balanced lines).
+**Cite for:** the surface microstrip, embedded microstrip (with εr′, its sign as printed), symmetric and dual stripline
+formulas of facts-formulas.md §1; that the edition states no ranges or accuracy (it points to IPC-D-317) and gives no
+differential formulas. **Not for:** the embedded C0 (malformed in print); anything of IPC-2141A (2004).
+
+### `KirschningJansen1984`: M. Kirschning, R. H. Jansen, IEEE T-MTT 32(1), 83–90, January 1984
+Opened: §II with eqs. 1–11 (the end-effect eqs. 12–13 skimmed only). **Cite for:** the static coupled-microstrip model
+(eqs. 1, 3, 4, 8, 9) with its range and stated accuracy (εeff,e 0.7 %, εeff,o 0.5 %, impedances 0.6 %), the restated
+single-line dispersion terms P1–P4 and fn (eqs. 2, 6), the coupled dispersion's limits (fn ≤ 25 with 1.4 %, impedances
+fn ≤ 20 with 2.5 %), the power–current impedance, and the advice against Hammerstad–Jensen's coupled width correction.
+Always together with `KirschningJansen1985corr`.
+
+### `KirschningJansen1985corr`: Corrections, IEEE T-MTT 33(3), 288, March 1985
+Opened (one page). **Cite for:** the four misprints of the 1984 paper (eq. 3 exponent, eq. 4 sign of εeff(0), eq. 9 Q10
+parenthesis, eq. 10 εeff(0)^Ce); facts-formulas.md §4 applies them.
+
+### `Cohn1955problems`: S. B. Cohn, "Problems in Strip Transmission Lines", IRE T-MTT 3(2), 119–126, 1955
+Opened: pp. 119–120 (eqs. 1–5 and their accuracy) and p. 122 (eqs. 21–23). **Cite for:** the thick-stripline formulas
+of facts-formulas.md §5 (eqs. 3–5, 21), their ranges and the −1.24 % at the crossover; eq. 22 as the check that fixes
+the printed form of eq. 21. **Not for:** the attenuation formulas (not needed in phase 1).
 
 ## Not opened (cited for what an opened secondary or a derivation carries)
 
 | Key | What it is | Why not opened | Use |
 |---|---|---|---|
-| `IPC2141A` | IPC-2141A, Design Guide for High-Speed Controlled Impedance Circuit Boards (March 2004) | paywalled; only its table of contents is public | name the standard behind the IPC formulas, beside `LearnEMCPCB` |
+| `IPC2141A` | IPC-2141A, Design Guide for High-Speed Controlled Impedance Circuit Boards (March 2004) | paywalled; only its table of contents is public | name the current standard, beside `IPC2141` (1996, opened) and `LearnEMCPCB`; its forms may differ from 1996 |
 | `Wheeler1977` | H. A. Wheeler, IEEE T-MTT 25(8), 631–647, 1977 | IEEE paywall | beside `Ellingson2018` / `WikiMicrostrip` |
 | `HammerstadJensen1980` | E. Hammerstad, Ø. Jensen, MTT-S IMS Digest 1980, 407–409 | IEEE paywall | beside `QucsTech` |
 | `Getsinger1973` | W. J. Getsinger, "Microstrip dispersion model", T-MTT 21(1), 1973 | IEEE paywall | beside `QucsTech` |
 | `KirschningJansen1982` | Microstrip dispersion, Electronics Letters 18(6), 1982 | IET paywall | beside `QucsTech` |
-| `KirschningJansen1984` | Coupled microstrip, T-MTT 32(1), 1984 (corrections 1985) | IEEE paywall | beside `QucsTech` |
 | `Cohn1954` | Zero-thickness stripline, IRE T-MTT 2(2), 1954 | IEEE paywall | beside the derivation checks of facts.md §8 (wide and narrow limits) |
 | `Cohn1955coupled` | Edge-coupled stripline, IRE T-MTT 3(5), 1955 | IEEE paywall | beside the checks of facts.md §8 (s → ∞, s = 0 by Landen) |
-| `Cohn1955problems` | Thick stripline corrections, IRE T-MTT 3(2), 1955 | IEEE paywall | formulas of facts-formulas.md §5, flagged; the t = 0 check |
 | `Wen1969` | Coplanar waveguide, T-MTT 17(12), 1969 | IEEE paywall | beside `QucsTech` and the derivation of εeff = (εr + 1)/2 |
 | `Tripathi1975` | Asymmetric coupled lines, T-MTT 23(9), 1975 | IEEE paywall | modal impedances; carried by the derivation of facts.md §4 |
 | `BockelmanEisenstadt1995` | Mixed-mode S-parameters, T-MTT 43(7), 1995 | IEEE paywall | the mixed-mode variables; carried by facts.md §5 and `PolarAP157` |
 | `Rosa1908` | Partial self-inductance of straight conductors, Bull. Bureau of Standards 4(2), 1908 | not tried (free scans exist at NIST; a later step may open it) | facts-formulas.md §7's partial inductance |
 | `Pozar2012` | D. M. Pozar, *Microwave Engineering*, 4th ed., Wiley 2012 | book | general background only (TEM, Table 2.1 lines, couplers); every statement also derived |
 | `Paul2008` | C. R. Paul, *Analysis of Multiconductor Transmission Lines*, 2nd ed., Wiley-IEEE 2008 | book | L = μ0ε0·C0⁻¹, modes, crosstalk; every statement also derived in facts.md §4–7 |
-| `Wadell1991` | B. C. Wadell, *Transmission Line Design Handbook*, Artech House 1991 | book | where to check Cohn's thick-strip constants (facts-formulas.md §5) |
+| `Wadell1991` | B. C. Wadell, *Transmission Line Design Handbook*, Artech House 1991 | book | general background; Cohn's constants are now checked against `Cohn1955problems` |
 | `JohnsonGraham1993` | H. W. Johnson, M. Graham, *High-Speed Digital Design*, Prentice Hall 1993 | book | the via C and L estimates "as commonly quoted"; 0.35/tr (derived anyway) |
 | `Bogatin2018` | E. Bogatin, *Signal and Power Integrity – Simplified*, 3rd ed., 2018 | book | NEXT/FEXT coefficients (derived anyway, facts.md §6) |
 
