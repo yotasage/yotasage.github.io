@@ -281,3 +281,33 @@ export function sameStructure(a: Structure, b: Structure): boolean {
   }
   return true;
 }
+
+// The preset as the equivalent general arrangement (M2.1d): the same features with the same numbers (a pair's centres
+// ±(w + s)/2, a broadside pair's second trace at the offset, coplanar grounds from the gap to the ground width or the
+// edge), so the solver sees the same arrangement; the width keeps its tolerance and source, the derived positions and
+// edges are typed. The preset's own fields stay for a later change back. null when a layer is not in the stackup.
+export function toGeneral(s: Stackup, st: Structure): Structure | null {
+  if (st.kind === 'general') return st;
+  const info = KIND_INFO[st.kind];
+  if (!info || layerIndex(s, st.layer) < 0 || (st.kind === 'broadside' && layerIndex(s, st.layer2) < 0)) return null;
+  const w = st.w.v;
+  const at = (v: number): Val => val(v);
+  const signals: GenSignal[] = [];
+  const grounds: GenGround[] = [];
+  if (st.kind === 'broadside') {
+    signals.push({ layer: st.layer, w: st.w, u: at(0) }, { layer: st.layer2, w: st.w, u: { ...st.s } });
+  } else if (info.signals === 2) {
+    const h = (w + st.s.v) / 2;
+    signals.push({ layer: st.layer, w: st.w, u: at(-h) }, { layer: st.layer, w: st.w, u: at(h) });
+  } else signals.push({ layer: st.layer, w: st.w, u: at(0) });
+  if (info.coplanar) {
+    const edge = info.signals === 2 ? w + st.s.v / 2 : w / 2;
+    const in0 = edge + st.g.v;
+    const out0 = st.gw ? in0 + st.gw.v : Infinity;
+    grounds.push(
+      { layer: st.layer, a: Number.isFinite(out0) ? at(-out0) : null, b: at(-in0) },
+      { layer: st.layer, a: at(in0), b: Number.isFinite(out0) ? at(out0) : null },
+    );
+  }
+  return { ...st, kind: 'general', layer2: '', signals, grounds };
+}

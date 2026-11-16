@@ -15,6 +15,7 @@ import { flushSync } from 'react-dom';
 import type { Section } from '../../lib/emsim/geometry';
 import { layerIndex, stackZ } from '../../lib/emsim/stackup';
 import type { DielectricLayer, Stackup } from '../../lib/emsim/stackup';
+import { arrangement } from '../../lib/emsim/structure';
 import type { Structure } from '../../lib/emsim/structure';
 import type { LengthUnit } from '../../lib/emsim/units';
 import { fromMm } from '../../lib/emsim/units';
@@ -22,7 +23,8 @@ import css from '../../styles/EmSimTrace.module.css';
 import { lenText } from './format';
 import { PanZoom, frameTransform } from './panZoom';
 import type { View } from './panZoom';
-import { MAX_K, niceStep, roundTo, traceFit, traceHandles, worldMap } from './traceGeom';
+import type { GenSel } from './trace';
+import { MAX_K, labelSpot, niceStep, roundTo, traceFit, traceHandles, worldMap } from './traceGeom';
 import type { HandleDef, HandleKey, TraceFit } from './traceGeom';
 
 const W0 = 640; // px: the width before the first measurement (the static page)
@@ -56,11 +58,13 @@ interface Props {
   digits: number;
   widen: boolean;
   edit: HandleEdit;
+  sel?: GenSel | null; // M2.1d: the general editor's selected feature, outlined
+  onSelect?: (sel: GenSel | null) => void; // and a tap on a conductor selects it
 }
 
 interface Drag { key: HandleKey; def: HandleDef; Z: (y: number) => number; px: number; py: number; raf: number; last: number }
 
-function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit }: Props) {
+function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit, sel = null, onSelect }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const content = useRef<SVGGElement>(null);
   const pzRef = useRef<PanZoom | null>(null);
@@ -147,6 +151,18 @@ function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit }: Props) 
   useEffect(() => {
     const pz = pzRef.current;
     if (!pz) return;
+    // A tap on (or within 6 px of) a conductor of a general structure selects it.
+    pz.onTap = st.kind !== 'general' || !onSelect || !sec ? null : (px, py) => {
+      const u = pz.worldX(px), zz = map.Z(pz.worldY(py)), tol = 6 / pz.view.k;
+      const zs = stackZ(s), arr = arrangement(s, st);
+      let best: GenSel | null = null, bestD = Infinity;
+      arr.features.forEach((f, i) => {
+        const du = Math.max(f.a - u, u - f.b, 0), dz = Math.max(zs[f.layer + 1] - zz, zz - zs[f.layer], 0);
+        const d = Math.hypot(du, dz);
+        if (d <= tol && d < bestD) { bestD = d; best = i < arr.signals ? `sig.${i}` : `gnd.${i - arr.signals}`; }
+      });
+      if (best) onSelect(best);
+    };
     pz.handles = {
       hit: (_x, _y, target) => {
         hitKey.current = ((target as Element | null)?.closest?.('[data-handle]')?.getAttribute('data-handle') ?? null) as HandleKey | null;
@@ -156,6 +172,8 @@ function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit }: Props) 
         const def = defsRef.current.find((d) => d.key === hitKey.current);
         if (!def || !fit) return;
         frozen.current = fit;
+        const gm = /^(sig|gnd)\.(\d+)\./.exec(def.key);
+        if (gm && onSelect) onSelect(`${gm[1] as 'sig' | 'gnd'}.${Number(gm[2])}`);
         drag.current = { key: def.key, def, Z: map.Z, px, py, raf: 0, last: def.value };
         editRef.current.begin();
         setRefused('');
@@ -227,13 +245,19 @@ function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit }: Props) 
       const yy = y(z[i]);
       body.push(<line key={`e${i}`} x1={xl} x2={xr} y1={yy} y2={yy} stroke="var(--laminate-edge)" strokeWidth={1} />);
     }
+    // Plane labels at the right, beside the plane on the structure's side, else on its other side, else moved left:
+    // never under a handle (M2.1d).
+    const hpos = defs.map((d): [number, number] => [d.u === null ? LEFT_HANDLE_PX : x(d.u), y(d.z)]);
     const plane = (id: string, face: number, dir: 1 | -1, what: string) => {
       const i = layerIndex(s, id);
       if (i < 0) return;
       const t = z[i] - z[i + 1];
       const y1 = y(face), y2 = y(face + dir * t);
       body.push(<rect key={`p${id}`} x={xl} width={xr - xl} y={Math.min(y1, y2)} height={r(Math.max(Math.abs(y2 - y1), 1))} fill="var(--copper)" stroke="var(--copper-edge)" strokeWidth={0.75} data-plane={what} />);
-      labels.push(<text key={`l${id}`} x={Wv - 6} y={r(dir < 0 ? Math.min(y1, y2) - 4 : Math.max(y1, y2) + 12)} textAnchor="end">{`${s.layers[i].name} · plane`}</text>);
+      const text = `${s.layers[i].name} · plane`;
+      const near = dir < 0 ? Math.min(y1, y2) - 4 : Math.max(y1, y2) + 12, far = dir < 0 ? Math.max(y1, y2) + 12 : Math.min(y1, y2) - 4;
+      const [lx, ly] = labelSpot(Wv - 6, 6.4 * text.length + 4, [near, far], hpos, Wv, view.h);
+      labels.push(<text key={`l${id}`} x={r(lx)} y={r(ly)} textAnchor="end" data-plane-label={what}>{text}</text>);
     };
     if (sec.planeBelow !== null && st.below) plane(st.below, sec.zLo, -1, 'below');
     if (sec.planeAbove !== null && st.above) plane(st.above, sec.zHi, 1, 'above');
@@ -247,7 +271,16 @@ function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit }: Props) 
         if (sec.signals > 1) labels.push(<text key={`n${c.id}`} x={x((u0 + u1) / 2)} y={r(Math.max(y(zt) - 6, 11))} textAnchor="middle" className={css.sigNum}>{c.id}</text>);
       }
     }
-    const sigLayer = s.layers[layerIndex(s, st.layer)];
+    // The general editor's selection, outlined (a ground to the edge is cut at the drawn view).
+    if (sel && st.kind === 'general') {
+      const arr = arrangement(s, st);
+      const n = Number(sel.slice(4)), f = arr.features[sel.startsWith('sig') ? n : arr.signals + n];
+      if (f && f.layer >= 0) {
+        const xa = Math.max(x(f.a), -4), xb = Math.min(x(f.b), Wv + 4), ya = y(z[f.layer]), yb = y(z[f.layer + 1]);
+        body.push(<rect key="sel" className={css.selOutline} x={r(xa - 3)} y={r(Math.min(ya, yb) - 3)} width={r(Math.max(xb - xa, 0) + 6)} height={r(Math.abs(yb - ya) + 6)} data-sel-outline={sel} />);
+      }
+    }
+    const sigLayer = s.layers[layerIndex(s, st.kind === 'general' ? (st.signals[0]?.layer ?? st.layer) : st.layer)];
     if (sigLayer && Number.isFinite(sigTop)) labels.push(<text key="sig" x={6} y={14}>{`${sigLayer.name} · signal`}</text>);
     // Handles: a pill along the axis it moves on, a 32 px target, the value shown while dragged or focused.
     const keyStep = lenText(stepOf(k, KEY_PX), unit, 2);
@@ -286,7 +319,7 @@ function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit }: Props) 
   }
   const bar = fit ? barLength(k) : 0;
   return (
-    <figure className={css.figure} data-trace-drawing data-widen={widen} data-px-per-mm={k} data-view-u={Wv / (2 * k)} data-view-cx={view.cx} data-view-cy={view.cy} data-at-fit={atFit} data-conductors={sec ? sec.conductors.length : 0}>
+    <figure className={css.figure} data-trace-drawing data-selected={sel ?? ''} data-box-h={H} data-content-h={fit ? Math.round((fit.content[1] - fit.content[0]) * fit.kRef) : 0} data-widen={widen} data-px-per-mm={k} data-view-u={Wv / (2 * k)} data-view-cx={view.cx} data-view-cy={view.cy} data-at-fit={atFit} data-conductors={sec ? sec.conductors.length : 0}>
       <div
         ref={box}
         className={css.drawing}
@@ -325,6 +358,7 @@ function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit }: Props) 
         <div className={css.caption}>
           <span className={css.scale}><span className={css.scaleBar} style={{ width: Math.round(bar * k) }} />{lenText(bar, unit, Math.max(3, digits - 1))}</span>
           {' '}· {widen ? 'across to scale; thin layers widened top to bottom' : 'to scale both ways'}. Layers beyond the reference planes do not change the result and are not drawn.
+          {st.kind === 'general' && ' Tap a conductor to select it in the list.'}
           {defs.length > 0 && ' Drag the handles (or focus one and use the arrow keys) to change widths, gaps and heights; drag the picture to pan, wheel or pinch to zoom.'}
         </div>
       )}

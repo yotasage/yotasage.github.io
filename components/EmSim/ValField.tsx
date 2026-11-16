@@ -66,19 +66,20 @@ export interface ValFieldProps {
   onChange: (next: Val | null, part: 'v' | 'tol') => void; // part: which input changed (separate undo steps)
   nullable?: boolean; // empty means "not stated"
   zero?: boolean; // a length of 0 is allowed
+  negative?: boolean; // a negative length is allowed (a position across)
   min?: number;
   max?: number;
   onFocus?: () => void;
   placeholder?: string; // shown when empty (nullable): default "not stated"
 }
 
-export default function ValField({ name, label, x, unit, digits, onChange, nullable, zero, min, max, onFocus, placeholder }: ValFieldProps) {
+export default function ValField({ name, label, x, unit, digits, onChange, nullable, zero, negative, min, max, onFocus, placeholder }: ValFieldProps) {
   const id = useId();
   const [reason, setReason] = useState('');
   const [tolReason, setTolReason] = useState('');
   const parse = (t: string): Read<number | null> => {
     if (nullable && !t.trim()) return { ok: true, value: null };
-    return unit ? readLength(t, unit, { zero }) : readPlain(t, { min, max, what: label });
+    return unit ? readLength(t, unit, { zero, negative }) : readPlain(t, { min, max, what: label });
   };
   const parseTol = (t: string): Read<Tol> => (t.trim() ? readTolerance(t, unit ?? 'mm', !unit) : { ok: true, value: null });
   const tag = x ? sourceTag(x.src) : null;

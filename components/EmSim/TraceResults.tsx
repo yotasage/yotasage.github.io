@@ -157,9 +157,26 @@ export default function TraceResults({ r, state, stale, quick = false, message, 
             </>
           )}
           {shown.n > 2 && (
-            <dl className={css.grid}>
-              {shown.lines.map((l, k) => <Val key={k} q={l.z0} name={`z0.${k + 1}`} label={`Z0 of line ${k + 1}`} unit="Ω" floor={FLOOR.ohm} />)}
-            </dl>
+            <>
+              <dl className={css.grid} data-lines>
+                {shown.lines.flatMap((l, k) => [
+                  <Val key={`z${k}`} q={l.z0} name={`z0.${k + 1}`} label={`Z0 of line ${k + 1}`} unit="Ω" floor={FLOOR.ohm} />,
+                  <Val key={`e${k}`} q={l.eeff} name={`eeff.${k + 1}`} label={`εeff of line ${k + 1}`} unit="" floor={FLOOR.ratio} />,
+                ])}
+              </dl>
+              <p className={css.definition} data-definition="lines">
+                Z0 of line k = Zc_kk: its impedance while the other lines carry no current; εeff of line k = C_kk/C0_kk, with the others at 0 V. The {shown.modes.length} modes are below; the matrices C, L and Zc on demand.
+              </p>
+              <details className={css.details} data-modes>
+                <summary>Modes: εeff and delay</summary>
+                <dl className={css.grid}>
+                  {shown.modes.flatMap((m, k) => [
+                    <Val key={`e${k}`} q={m.eeff} name={`mode${k + 1}.eeff`} label={<>εeff {m.label || `mode ${k + 1}`}</>} unit="" floor={FLOOR.ratio} />,
+                    <Val key={`d${k}`} q={m.delay} name={`mode${k + 1}.delay`} label={<>Delay {m.label || `mode ${k + 1}`}</>} unit={dUnit} floor={FLOOR.delay} scale={dScale} />,
+                  ])}
+                </dl>
+              </details>
+            </>
           )}
           {shown.n === 1 && <p className={css.definition} data-definition="single">Z0 = √(L/C) of the line, from the solved C and L per unit length; εeff = C/C0 (C0 with every dielectric replaced by air).</p>}
           {shown.flags.length > 0 && !quick && (
@@ -169,7 +186,7 @@ export default function TraceResults({ r, state, stale, quick = false, message, 
           )}
           <MatrixView r={shown} mx={shown.matrices} quick={quick} />
           <p className={css.small} data-solve-info>
-            Boundary elements, level M = {shown.M}, {shown.panels} panels, {Math.round(shown.ms)} ms{where === 'cache' ? ', from this visit\'s results' : where === 'page' ? ', on the page (no worker)' : ', in the background'}.
+            Boundary elements, level M = {shown.M}, {shown.panels} panels, {Math.round(shown.ms)} ms{where === 'cache' ? ', from this visit\'s results' : where === 'page' ? ', on the page (no worker)' : ', in the background'}.{' '}
             {quick ? 'Solved at one coarse level while you drag, without an error estimate; the full solve with its error follows when you stop.' : "The error is estimated from the solver's coarse and fine levels."}
           </p>
         </div>

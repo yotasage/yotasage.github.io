@@ -6,6 +6,7 @@
 // Handles: widths, gaps, the coplanar gap and ground width on the signal layer's base edges (the base is on fillSide's
 // far side), a broadside pair's offset at the second trace's centre, and the thickness of every dielectric between the
 // signals and their planes on its top face (thickening it moves everything above, so the face follows the pointer).
+// M2.1d: the general structure's handles (`sig.<i>.w|u`, `gnd.<i>.a|b`), a fit that fills a short box, `labelSpot`.
 
 import type { Section } from '../../lib/emsim/geometry';
 import type { Setup } from '../../lib/emsim/setup';
@@ -52,7 +53,7 @@ export function worldMap(s: Stackup, widen: boolean, kRef: number): WorldMap {
   return { Y, Z };
 }
 
-export interface TraceFit { rect: Rect; H: number; kRef: number }
+export interface TraceFit { rect: Rect; H: number; kRef: number; content: [number, number] /* world y of the section's top and bottom */ }
 
 // The view that shows the whole section in a box W px wide (the M2.1b drawing's choice of scale and window).
 export function traceFit(s: Stackup, st: Structure, sec: Section, W: number, widen: boolean): TraceFit {
@@ -80,9 +81,46 @@ export function traceFit(s: Stackup, st: Structure, sec: Section, W: number, wid
   let k = W / (2 * U);
   if (vh * k > MAXH) { k = MAXH / vh; U = W / (2 * k); }
   else if (vh * k < MINH) { const k2 = Math.min(MINH / vh, W / (2 * need)); if (k2 > k) { k = k2; U = W / (2 * k); } }
+  // M2.1d: still short because the width limits the scale (a thin board on a phone): zoom in until the section fills
+  // FILL of the box, as long as the signals stay whole across (wide grounds may be cut at the sides).
+  if (vh * k < FILL * MINH) {
+    let sx = 0;
+    for (const c of sec.conductors) if (c.id > 0) for (let i = 0; i < c.pts.length; i += 2) sx = Math.max(sx, Math.abs(c.pts[i]));
+    const k3 = Math.min(FILL * MINH / vh, W / (2 * Math.max(sx * 1.15, sx + 0.02)));
+    if (k3 > k) { k = k3; U = W / (2 * k); }
+  }
   const m = worldMap(s, widen, k);
-  const y0 = m.Y(zTop), y1 = m.Y(zBottom);
-  return { rect: { x0: -U, x1: U, y0, y1 }, H: Math.max(Math.round((y1 - y0) * k), 60), kRef: k };
+  let y0 = m.Y(zTop), y1 = m.Y(zBottom);
+  // The box is at least MINH px; a section shorter than that gets air or board around it on the open sides.
+  const H = Math.max(Math.round((y1 - y0) * k), MINH);
+  const extra = H / k - (y1 - y0);
+  if (extra > 0) {
+    const up = sec.planeAbove !== null ? (sec.planeBelow !== null ? 0.5 : 0) : sec.planeBelow !== null ? 1 : 0.5;
+    y0 -= extra * up; y1 += extra * (1 - up);
+  }
+  return { rect: { x0: -U, x1: U, y0, y1 }, H, kRef: k, content: [m.Y(zTop), m.Y(zBottom)] };
+}
+
+const FILL = 0.52; // the section fills at least this part of a MINH box when the signals allow it (a little more
+// than half, so the default view still shows a 0.5 mm ground width beside a 50 Ω microstrip at 1440 px)
+
+// Where a layer label (right-aligned at xr, `w` px wide, baseline candidates ys) goes so it covers no handle (circles
+// of radius R px at hs): the first free candidate, else moved left of the handles it meets. Box is W × H px.
+export function labelSpot(xr: number, w: number, ys: number[], hs: [number, number][], W: number, H: number, R = 14): [number, number] {
+  const hits = (x1: number, yb: number) => hs.filter(([hx, hy]) => hx + R > x1 - w && hx - R < x1 && hy + R > yb - 11 && hy - R < yb + 3);
+  const inBox = (yb: number) => yb - 11 >= 0 && yb + 3 <= H;
+  for (const yb of ys) if (inBox(yb) && hits(xr, yb).length === 0) return [xr, yb];
+  for (const yb of ys) {
+    if (!inBox(yb)) continue;
+    let x1 = xr;
+    for (let n = 0; n < 8; n++) {
+      const h = hits(x1, yb);
+      if (!h.length) break;
+      x1 = Math.min(...h.map(([hx]) => hx)) - R - 2;
+    }
+    if (x1 - w >= 0 && hits(x1, yb).length === 0) return [x1, yb];
+  }
+  return [xr, ys.find(inBox) ?? ys[0]];
 }
 
 // A 1-2-5 step of at least `mm`, round in the shown unit.
@@ -98,7 +136,7 @@ export function roundTo(v: number, step: number): number {
   return Number((Math.round(v / step) * step).toPrecision(12));
 }
 
-export type HandleKey = 'w' | 's' | 'g' | 'gw' | `t:${string}`;
+export type HandleKey = 'w' | 's' | 'g' | 'gw' | `t:${string}` | `sig.${number}.${'w' | 'u'}` | `gnd.${number}.${'a' | 'b'}`;
 
 export interface HandleDef {
   key: HandleKey;
@@ -111,17 +149,38 @@ export interface HandleDef {
   from: (p: number) => number; // the value with the pointer at u (axis x) or z (axis z)
 }
 
-// The handles of a preset structure (none for `general`: M2.1d).
+// The handles of a structure. General (M2.1d): each trace's width on its base's right edge (`sig.<i>.w`) and its
+// centre on its top face (`sig.<i>.u`), each ground's finite edges on its base (`gnd.<i>.a`, `gnd.<i>.b`; an edge to
+// the edge of the board has none and stays so).
 export function traceHandles(s: Stackup, st: Structure): HandleDef[] {
   const info = KIND_INFO[st.kind];
-  if (!info || st.kind === 'general') return [];
+  if (!info) return [];
   const z = stackZ(s);
+  const base = (i: number) => (fillSide(s, i) === 'up' ? z[i + 1] : z[i]);
+  const out: HandleDef[] = [];
+  if (st.kind === 'general') {
+    const sig: number[] = [];
+    st.signals.forEach((g, i) => {
+      const Li = layerIndex(s, g.layer);
+      if (Li < 0) return;
+      sig.push(Li);
+      const u = g.u.v, w = g.w.v, top = fillSide(s, Li) === 'up' ? z[Li] : z[Li + 1];
+      out.push({ key: `sig.${i}.w`, axis: 'x', u: u + w / 2, z: base(Li), value: w, name: `Trace ${i + 1} width`, min: 0, from: (p) => 2 * (p - u) });
+      out.push({ key: `sig.${i}.u`, axis: 'x', u, z: top, value: u, name: `Trace ${i + 1} position`, min: -Infinity, from: (p) => p });
+    });
+    st.grounds.forEach((g, i) => {
+      const Li = layerIndex(s, g.layer);
+      if (Li < 0) return;
+      if (g.a) out.push({ key: `gnd.${i}.a`, axis: 'x', u: g.a.v, z: base(Li), value: g.a.v, name: `Ground ${i + 1} left edge`, min: -Infinity, from: (p) => p });
+      if (g.b) out.push({ key: `gnd.${i}.b`, axis: 'x', u: g.b.v, z: base(Li), value: g.b.v, name: `Ground ${i + 1} right edge`, min: -Infinity, from: (p) => p });
+    });
+    if (sig.length) heights(s, st, sig, z, out);
+    return out;
+  }
   const L = layerIndex(s, st.layer);
   if (L < 0) return [];
-  const base = (i: number) => (fillSide(s, i) === 'up' ? z[i + 1] : z[i]);
   const zb = base(L);
   const w = st.w.v, sv = st.s.v;
-  const out: HandleDef[] = [];
   const pair = info.signals === 2 && st.kind !== 'broadside';
   if (st.kind === 'broadside') {
     out.push({ key: 'w', axis: 'x', u: w / 2, z: zb, value: w, name: 'Width', min: 0, from: (u) => 2 * u });
@@ -137,8 +196,12 @@ export function traceHandles(s: Stackup, st: Structure): HandleDef[] {
     out.push({ key: 'g', axis: 'x', u: in0, z: zb, value: g, name: 'Gap to ground', min: 0, from: (u) => u - edge });
     if (st.gw) out.push({ key: 'gw', axis: 'x', u: in0 + st.gw.v, z: zb, value: st.gw.v, name: 'Ground width', min: 0, from: (u) => u - in0 });
   }
-  // Dielectrics between the signals and their planes (or between the two signal layers of a broadside pair).
-  const sig = st.kind === 'broadside' ? [L, layerIndex(s, st.layer2)].filter((i) => i >= 0) : [L];
+  heights(s, st, st.kind === 'broadside' ? [L, layerIndex(s, st.layer2)].filter((i) => i >= 0) : [L], z, out);
+  return out;
+}
+
+// Dielectrics between the signals and their planes (or between the signal layers when they are several).
+function heights(s: Stackup, st: Structure, sig: number[], z: Float64Array | number[], out: HandleDef[]): void {
   const A = st.above ? layerIndex(s, st.above) : -1, Bl = st.below ? layerIndex(s, st.below) : -1;
   const top = A >= 0 ? A : Math.min(...sig), bottom = Bl >= 0 ? Bl : Math.max(...sig);
   for (let j = top + 1; j < bottom; j++) {
@@ -147,7 +210,6 @@ export function traceHandles(s: Stackup, st: Structure): HandleDef[] {
     const t0 = l.t.v, face = z[j];
     out.push({ key: `t:${l.id}`, axis: 'z', u: null, z: face, value: t0, name: `Thickness of ${l.name}`, min: 0, from: (zp) => t0 + zp - face });
   }
-  return out;
 }
 
 const keep = (old: Val | null, v: number): Val => ({ v, tol: old ? old.tol : null, src: TYPED });
@@ -164,6 +226,23 @@ export function applyHandle(x: Setup, key: HandleKey, v: number): { setup: Setup
     l.t = keep(l.t, v);
     const bad = stackupIssues(s).find((q) => q.level === 'error') ?? structureIssues(s, x.trace).find((q) => q.level === 'error');
     return bad ? { reason: bad.message } : { setup: { ...x, stackup: s } };
+  }
+  const gm = /^(sig|gnd)\.(\d+)\.([wuab])$/.exec(key);
+  if (gm) {
+    const i = Number(gm[2]), f = gm[3] as 'w' | 'u' | 'a' | 'b';
+    const t: Structure = { ...x.trace, signals: x.trace.signals.slice(), grounds: x.trace.grounds.slice() };
+    if (gm[1] === 'sig') {
+      const g = t.signals[i];
+      if (!g || (f !== 'w' && f !== 'u')) return { reason: 'That trace is no longer in the structure.' };
+      if (f === 'w' && !(v > 0)) return { reason: `Trace ${i + 1}'s width must be above zero.` };
+      t.signals[i] = { ...g, [f]: keep(g[f], v) };
+    } else {
+      const g = t.grounds[i];
+      if (!g || (f !== 'a' && f !== 'b') || !g[f]) return { reason: 'That ground edge is no longer in the structure.' };
+      t.grounds[i] = { ...g, [f]: keep(g[f], v) };
+    }
+    const bad = structureIssues(x.stackup, t).find((q) => q.level === 'error');
+    return bad ? { reason: bad.message } : { setup: { ...x, trace: t } };
   }
   const k = key as 'w' | 's' | 'g' | 'gw';
   const t: Structure = { ...x.trace, [k]: keep(x.trace[k], v) };
