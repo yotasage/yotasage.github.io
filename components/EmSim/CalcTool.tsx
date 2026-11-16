@@ -49,8 +49,8 @@ const pct = (a: number, b: number) => `${sgn((100 * (a - b)) / b, 1)} %`;
 const KEY_NAME: Partial<Record<CfKey, string>> = { z0: 'Z0', eeff: 'εeff', zdiff: 'Zdiff', zcm: 'Zcm', zodd: 'Zodd', zeven: 'Zeven' };
 
 const NEGLECT: Record<string, string> = {
-  'solder mask': 'No formula has the solder mask. It adds dielectric over the trace and in the gaps and lowers the impedance (on the owner’s boards by about 3.5 Ω for the 50 Ω microstrip and 9 Ω for the 100 Ω pair), so a formula reads high.',
-  'copper thickness': 'Kirschning–Jansen and Cohn’s coupled lines take the copper as infinitely thin. Real copper adds capacitance from its side walls, so they read high: 16 Ω on the owner’s 100 Ω pair from the thickness alone.',
+  'solder mask': 'No formula has the solder mask. It adds dielectric over the trace and in the gaps and lowers the impedance (by about 3.5 Ω for a 50 Ω microstrip and 9 Ω for a 100 Ω pair on JLC061611-3313A), so a formula reads high.',
+  'copper thickness': 'Kirschning–Jansen and Cohn’s coupled lines take the copper as infinitely thin. Real copper adds capacitance from its side walls, so they read high: 16 Ω on a 100 Ω pair of 0.11 mm traces on JLC061611-3313A from the thickness alone.',
   'finite ground width': 'The coplanar formulas take the grounds beside the trace as unbounded; narrower grounds raise the impedance a little.',
 };
 
@@ -132,7 +132,7 @@ export default function CalcTool({ setup, invalid, commit, unit, client, active 
       </p>
       {stated && jq && (
         <p className={css.small} data-calc-stated-note>
-          For this case ({stated.case}) JLCPCB’s calculator asks Si9000 for {stated.target} Ω and stops its width search at {stated.siAt}, where Si9000 gives{' '}
+          For this structure JLCPCB’s calculator asks Si9000 for {stated.target} Ω and stops its width search at {stated.siAt}, where Si9000 gives{' '}
           {stated.si.toFixed(2)} Ω. This tool with the same inputs gives {ohm(jq)} at this width: the two solvers agree, and the difference to this
           stackup’s own values comes from the inputs below.
         </p>
@@ -187,7 +187,7 @@ export default function CalcTool({ setup, invalid, commit, unit, client, active 
           {cf.results.some((r) => r.id === 'kj') && (
             <p className={css.note} data-calc-kj>
               Kirschning–Jansen is a zero-thickness value: it is the impedance of copper with no height, so beside a real pair it reads high by
-              what the copper’s side walls add (16 Ω on the owner’s 100 Ω pair).
+              what the copper’s side walls add (16 Ω on a 100 Ω pair of 0.11 mm traces on JLC061611-3313A).
             </p>
           )}
           <ul className={css.calcList}>
@@ -232,7 +232,7 @@ function Formula({ r, n, field }: { r: CfResult; n: number; field: LineResults |
           <span className={css.cfOut}>Outside its range ({r.validity.range}): {o.map((x) => `${x.input} ${Number(x.value.toPrecision(3))} is ${x.side} ${Number(x.limit.toPrecision(3))}`).join('; ')}.</span>
         )}
         {' '}Published accuracy: {acc}.{r.neglects.length > 0 && <> Leaves out: {r.neglects.join(', ')}.</>}
-        {r.id === 'ipc-microstrip' && ' The crudest of the three: on the owner’s bare 50 Ω trace it reads about 9 % low, so close agreement on a masked board is its error and the missing mask cancelling.'}
+        {r.id === 'ipc-microstrip' && ' The crudest of the three: on a bare 50 Ω trace on JLC061611-3313A it reads about 9 % low, so close agreement on a masked board is its error and the missing mask cancelling.'}
       </p>
     </article>
   );
