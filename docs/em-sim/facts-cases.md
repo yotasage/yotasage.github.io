@@ -110,9 +110,9 @@ v2's form (notes-M0.1.md). Open cells (—) are for the owner (inputs below) or 
 
 | Case | Geometry | Exact or refined reference | JLCPCB | Saturn | Other calculators | This tool | Largest difference | Explanation |
 |---|---|---|---|---|---|---|---|---|
-| C39 | microstrip L1/L2, w 0.1377, h 0.092 (3313), t 0.035, mask | FD reference (M1.4a) for the masked rectangle: 50.527 ± 0.010 Ω, this tool 50.52 there (notes-M1.2c.md) | online calculator: 50 Ω at 5.42 mil; confirmation form: recommended 5.4 mil (= 5.42 rounded) (owner, 2026-11-16) | — | bare rectangle, no mask, εr 4.1: H–J 54.06, Wheeler 54.33, IPC-2141 49.38 Ω; on the preset reduced (mean width 0.1288, mask left out): H–J 55.85, Wheeler 56.16, IPC 51.24 Ω | **51.50 ± 0.05 Ω**, εeff 3.298 (JLC061611-3313A preset: εr 4.1, trapezoid 0.35 mil per side, mask 1.2/0.6/1.2 mil εr 3.8); KiCad stackup as read 51.37; bare rectangle without mask 54.16; 50 Ω needs w 0.1465 (5.77 mil) | +1.50 Ω (+3.0 %) to JLCPCB's target; −4.35 Ω to H–J on the same reduction | mask −3.5 Ω, trapezoid +1.0 Ω, εr ≈ 0.5 Ω per 0.1, copper 1.6 mil −0.5 Ω: "Differences explained" below |
+| C39 | microstrip L1/L2, w 0.1377, h 0.092 (3313), t 0.035, mask | FD reference (M1.4a) for the masked rectangle: 50.527 ± 0.010 Ω, this tool 50.52 there (notes-M1.2c.md) | online calculator: 50 Ω at 5.42 mil; confirmation form: recommended 5.4 mil (= 5.42 rounded) (owner, 2026-11-16). **M1.4c:** the calculator is Polar Si9000 "Coated Microstrip 1B" with H1 3.622, **Er1 4.3, T1 1.6, W2 = W1 − 0.5, C1 1.0, C2 0.6**, CEr 3.8 (mil); its width search (±0.5 %) stops at W1 5.421875 where Si9000 gives **49.958 Ω**, εeff 3.3639 | — | bare rectangle, no mask, εr 4.1: H–J 54.06, Wheeler 54.33, IPC-2141 49.38 Ω; on the preset reduced (mean width 0.1288, mask left out): H–J 55.85, Wheeler 56.16, IPC 51.24 Ω | **51.50 ± 0.05 Ω**, εeff 3.298 (JLC061611-3313A preset: εr 4.1, trapezoid 0.35 mil per side, mask 1.2/0.6/1.2 mil εr 3.8); KiCad stackup as read 51.37; bare rectangle without mask 54.16; 50 Ω needs w 0.1465 (5.77 mil) | +1.50 Ω (+3.0 %) to JLCPCB's target; −4.35 Ω to H–J on the same reduction; **with JLCPCB's inputs 50.06 ± 0.06 Ω, εeff 3.3631: +0.20 % to Si9000** | the 3 % to JLCPCB is its inputs (M1.4c): εr 4.3 −0.94, T 1.6 mil −0.51, trapezoid 0.25 mil per side −0.25, mask 1.0 mil on laminate +0.27 Ω; mask −3.5 Ω, trapezoid +1.0 Ω, εr ≈ 0.5 Ω per 0.1, copper 1.6 mil −0.5 Ω: "Differences explained" below |
 | C40 | as C39 on L6/L5 | = C39 | as C39 | — | as C39 | **51.50 ± 0.05 Ω** (= C39, checked by `check-closedform.mjs`) | 0 | mirror check |
-| C41 | edge-coupled pair L1/L2, w 0.11 (sheet 4.36 mil), s 0.2 (8 mil) | — | online calculator: 100 Ω at 4.36/8 mil; confirmation form: the drawn 4.33/7.87 mil (= 0.11/0.20 mm) kept (owner, 2026-11-16) | — | K–J (zero thickness, no mask): 126.32 Ω on the bare rectangle, 132.25 on the preset reduced (mean width 0.1011, gap 0.2089) | **Zdiff 103.36 ± 0.15 Ω**, Zcm 30.91 (preset); at the sheet's 4.36/8 mil 103.31 ± 0.15; KiCad as read 103.64; bare rectangle without mask 110.03; 100 Ω needs w 0.1191 (4.69 mil) at s 0.2 | +3.4 Ω (+3.4 %) to JLCPCB's 100 Ω; K–J +23 Ω (no thickness, no mask) | mask −9.2 Ω, trapezoid +2.9 Ω, εr 4.3 −1.7 Ω, copper 1.6 mil −1.7 Ω; the copper thickness itself −16.4 Ω against the zero-thickness formula |
+| C41 | edge-coupled pair L1/L2, w 0.11 (sheet 4.36 mil), s 0.2 (8 mil) | — | online calculator: 100 Ω at 4.36/8 mil; confirmation form: the drawn 4.33/7.87 mil (= 0.11/0.20 mm) kept (owner, 2026-11-16). **M1.4c:** Si9000 "Diff Edge-Coupled Coated Microstrip 1B", inputs as C39 plus S1 8, C3 1.0; stops at W1 4.35625 with **Zdiff 99.951 Ω** | — | K–J (zero thickness, no mask): 126.32 Ω on the bare rectangle, 132.25 on the preset reduced (mean width 0.1011, gap 0.2089) | **Zdiff 103.36 ± 0.15 Ω**, Zcm 30.91 (preset); at the sheet's 4.36/8 mil 103.31 ± 0.15; KiCad as read 103.64; bare rectangle without mask 110.03; 100 Ω needs w 0.1191 (4.69 mil) at s 0.2 | +3.4 Ω (+3.4 %) to JLCPCB's 100 Ω; K–J +23 Ω (no thickness, no mask); **with JLCPCB's inputs 100.00 ± 0.52 Ω: +0.05 % to Si9000** | the 3.4 % to JLCPCB is its inputs (M1.4c): εr 4.3 −1.71, T 1.6 mil −1.61, trapezoid −0.72, mask 1.0 mil +0.72 Ω; mask −9.2 Ω, trapezoid +2.9 Ω, εr 4.3 −1.7 Ω, copper 1.6 mil −1.7 Ω; the copper thickness itself −16.4 Ω against the zero-thickness formula |
 | C42 | as C41 on L6/L5 | = C41 | as C41 | — | as C41 | **Zdiff 103.36 ± 0.15 Ω** (= C41, checked) | 0 | mirror check |
 | C43 | pair L1/L2, w 0.2, s 0.25 | — | — (owner) | — | K–J 91.74 Ω (bare), 94.54 (preset reduced) | **Zdiff 80.02 ± 0.32 Ω**, Zcm 22.52 (preset); KiCad as read 79.63; bare 83.58; 100 Ω would need w 0.1268 (4.99 mil) at s 0.25 | K–J +11.7 Ω | informative: an unassigned pair is about 80 Ω, not 100 Ω; copper thickness −8.0 Ω, mask −4.8 Ω |
 | C44 | via 0.6/0.3, antipad Ø1.8 on all layers, GND vias 0.8–1.5 away | — (openEMS, M3) | — | — (via tab) | C36's thin-wire form (two returns at 0.8, εr 4.43): 61.65 Ω | **barrel 60.51 ± 0.08 Ω** (preset: two returns at 0.8, εr 4.43); via section √(L/C) 50.49 Ω, 13.48 ps, C 266.9 fF (pads ΣΔC 89.9), L 0.681 nH; TDR 35 ps between 50 Ω ports at the pads 49.70–51.19 Ω (M1.7) | thin-wire +1.9 % on the barrel | the thin-wire form ignores proximity (returns 0.8 from a 0.3 barrel); the section lies below the barrel's Z because the six pads and four antipads add 90 fF; the returns cut into the antipads (flag `return-in-antipad`); notes-M1.7.md |
@@ -143,10 +143,37 @@ them), switching one cause at a time on the JLC061611-3313A preset (Δ in Ω to 
   this tool gives 51.50 Ω (+3.0 %) and 103.4 Ω (+3.4 %) there, both inside JLCPCB's ±10 %. Its widths for the exact
   targets are 5.77 mil (C39) and 4.69 mil (C41 at the 0.2 mm gap), against JLCPCB's 5.40–5.42 mil and 4.33–4.36 mil
   (the online calculator's, which the engineers kept within rounding; a little over 3 % lower in impedance than this tool, the same direction
-  on both boards: one systematic difference of assumptions, reconciled by step M1.4c). The causes in reach: JLCPCB's calculator uses 1.6 mil outer copper (−0.5 / −1.7 Ω, half of the
-  C41 difference), εr at an unstated frequency (about 0.5 Ω per 0.1 for C39, 0.9 Ω for C41) and its own mask model
-  (the mask is the largest single cause: 7 % of C39, 9 % of C41). Which of these JLCPCB's calculator treats
-  differently is open.
+  on both boards: one systematic difference of assumptions).
+- **JLCPCB's calculator reconstructed (M1.4c, 2026-11-16, notes-M1.4c.md).** The calculator page sends each
+  stack-up's inputs to `jlcpcb.com/api/jlcTools/impedance/calc`, which runs **Polar Si9000** (its error message names
+  "SI9000"; models `W2_CoatedMicrostrip1B` and `W2_DiffEdgeCoupledCoatedMicrostrip1B`). For 3313A, L1 ref L2, outer
+  "1oz" it sends, in mil: **H1 3.622, Er1 4.3, T1 1.6, W2 = W1 − 0.5, C1 1.0, C2 0.6, C3 1.0, CEr 3.8**, and searches
+  W1 to ±0.5 % of the target (`ZoTol` 0.5). The reported width is **W1, the base**. Er1 is 4.3 in every request seen
+  (4- and 6-layer stack-ups with 3313, 1080, 2116 and 7628), not the material's εr that the same page lists (4.1 for
+  3313); T1, the 0.5 mil and C1–C3 come from the page's tables for outer copper of ½ oz base plated to 1 oz (with
+  1 oz base it would be T1 2.2, W1 − W2 1.0). These differ from the user guide's 0.7 mil and 1.2 mil (facts-fab §1.7,
+  §1.8), which the live calculator does not use. With exactly these inputs this tool agrees with Si9000 at the
+  calculator's own end points and out of sample (Si9000 values from 10 requests; Z in Ω):
+
+  | Query | W1 / S1 (mil) | Si9000 | This tool (M = 2) | Δ |
+  |---|---|---|---|---|
+  | 50 Ω (C39) | 5.421875 | 49.958, εeff 3.3639 | 50.056 ± 0.058, εeff 3.3631 | +0.20 % |
+  | 100 Ω (C41) | 4.35625 / 8 | 99.951 | 99.999 ± 0.524 | +0.05 % |
+  | 40 Ω | 8.556640 | 39.559 | 39.608 ± 0.104 | +0.12 % |
+  | 60 Ω | 3.53125 | 59.745 | 59.943 ± 0.100 | +0.33 % |
+  | 50 Ω, Er1 4.1 | 5.59375 | 50.164 | 50.262 ± 0.213 | +0.20 % |
+  | 90 Ω | 5.625684 / 8 | 89.580 | 89.632 ± 0.424 | +0.06 % |
+  | 110 Ω | 3.34375 / 8 | 110.475 | 110.593 ± 0.184 | +0.11 % |
+  | 100 Ω | 3.428125 / 5 | 100.005 | 100.119 ± 0.194 | +0.11 % |
+  | 100 Ω | 4.8625 / 12 | 99.830 | 99.865 ± 0.454 | +0.04 % |
+
+  (75 Ω single-ended was refused: its width is under the calculator's 2 mil minimum.) Mean +0.13 %, largest +0.33 %:
+  the two solvers agree on the same inputs, and **the 3.0 % (C39) and 3.4 % (C41) are JLCPCB's inputs**, one at a time
+  from them to the preset (Ω, C39 / C41 at the calculator's widths): εr 4.1 instead of 4.3 +0.94 / +1.71, copper
+  0.035 mm instead of 1.6 mil +0.51 / +1.61, trapezoid 0.35 instead of 0.25 mil per side +0.25 / +0.72, mask 1.2
+  instead of 1.0 mil on laminate and between −0.27 / −0.72; all together 51.50 / 103.35. Before the requests, εr and
+  copper alone fitted both numbers (εr 4.31 with 1.6 mil: −0.11 % on C41), but so did other pairs (width as the top
+  without mask, εr 4.33: +0.03 %): two numbers could not tell them apart, the requests did.
 - **To the closed forms.** No formula has the mask, so on the preset geometry they are 4–5 Ω (C39) and 23–29 Ω
   (pairs, also without copper thickness) above. On their own terms they hold: Hammerstad–Jensen is within 0.2 % of
   the bare rectangle (54.06 vs 54.16 Ω), and the zero-thickness formulas agree with this tool's zero-thickness
