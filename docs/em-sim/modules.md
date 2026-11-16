@@ -47,7 +47,19 @@ table. Agents find their way by it instead of reading the code. Split into parts
 | `lib/emsim/static.worker.ts` | M1.5: the worker; wires `createStaticHandler` to its scope (transfers a result's buffers) with `messageScheduler()` |
 | `lib/emsim/staticClient.ts` | M1.5: `StaticClient` (`run(channel, job, progress)` → `{ result, cached, where }` or null when overtaken or cancelled, `cancel(channel)`, `cached(job)`, `stop()`, `where`, `stats`): newest job per channel wins, results cached by hash (64 MB, 64 entries), fallback to the handler on the page |
 
-## Shared with the Smith chart
+## `lib/emsim/figure/` (M8.1a, the export's figures; notes-M8.1a.md)
+
+| File | What |
+|---|---|
+| `model.ts` | The figure model in mm on paper, y up: `Figure` (`width`, `height`, `box`, `linewidth`, `colour`, `fontPt`, `prims`, `clips`, `world`, `note`), primitives `rect`, `poly`, `circle`, `segs`, `text` (pt, anchor, rotate, estimated `w`×`h`), `image` (PNG bytes, file name) with `role`, `layer` (`L_BACK`, `L_MAP`, `L_OVER`, `L_COPPER`, `L_NOTE`) and `clip`; `readWidth`, `SIZE_PRESETS`, `MIN_PT` 6, `MIN_WIDTH` 40, `LINEWIDTH_MM` 160, `PT_MM`; `newFigure`, `text`, `textWidth` (Computer Modern widths), `textBox`, `wrapText`, `hatchLines`, `clipSeg`, `clipPolyline`, `primBox`, `barLength`, `mmText`, `shift`, `num` (1e-6 mm), `asciiText` |
+| `style.ts` | `paintOf(mode, role, index)` → `Paint` (fill, stroke, width mm, dash mm, hatch) for colour (the page's light theme), greyscale (greys only) and black and white (#000/#fff, hatches 45°/135°, dashes); `SERIES_COLOURS`, `SERIES_DASH`, `isGrey` |
+| `board.ts` | `stackupFigure(s, { widen })`, `sectionFigure(s, st, sec, { dims })` (true scale, cropped as the page), `viaSideFigure` and `viaTopFigure(s, v, traceW)` (components/EmSim/viaGeom.ts, BL124); options `width`, `colour`, `fontPt`, `len`, `num`, `legend`, `map`; `legendRow`, `scaleBar` |
+| `field.ts` | `MapInput`; `addMap` (the image at grid size under the copper, contours with halos, field lines), `mapFooter` (colour bar or the b&w note), `mapPixels` (colormap.ts or a grey ramp), `siText` |
+| `plot.ts` | `plotFigure(PlotSpec, { height })`: frame, plot.ts ticks and labels, grid, axis labels, reference lines, series cut to the frame, legend row |
+| `png.ts` | `encodePng(rgba, w, h, { alpha, grey })` (fflate `zlibSync`), `base64`, `pngDataUri` |
+| `svg.ts` | `figureSvg(fig, { id, background })`: standalone SVG in mm, y negated, `sans-serif`, attributes only, images as data URIs, hatches as clipped paths; `data-i`/`data-h` per element; `drawOrder`, `shapePath` |
+| `tikz.ts` | `figureTikz(fig, { text })` → `{ picture, document, files }`: plain TikZ (`x=1mm` or `x=\linewidth/160`), `\definecolor{emRRGGBB}`, clip scopes, `%p<i>` per statement, `\includegraphics` of the map files; `texText`, `POLY_CHUNK` |
+
 
 | File | What |
 | --- | --- |
