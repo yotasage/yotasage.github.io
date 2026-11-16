@@ -333,7 +333,7 @@ function mirror(t) {
 // Triple points (M1.4a-fix): copper on a high-εr slab, where copper, laminate and air meet. The finite-difference
 // reference (fd/, levels 4) gives C11 (and C12); the BEM at M = 2 must hold it within its own estimate. With the old
 // grading (q = 2 everywhere) the strip was 1.2 % low, irregular, with an estimate of 2.1 %, and #42 of the fuzz (a pair
-// like the third) was outside its estimate by 7 ×.
+// like the third) was outside its estimate by 7 ×. M1.2c grades every corner from its exponent ν (panels.ts).
 function stripsOnSlab(strips, t, h, er, inset = 0) {
   const ext = 3, top = h + 2;
   const air = [-ext, h];
@@ -354,18 +354,39 @@ function triple(t) {
     ['the same etched (top 0.024 narrower)', stripsOnSlab([[-0.038, 0.038]], 0.048, 0.079, 8.1, 0.012), 1.4965718611473977e-10, null],
     ['pair 0.26/0.1 on 0.35 of εr 9.9', stripsOnSlab([[-0.31, -0.05], [0.05, 0.31]], 0.038, 0.35, 9.9), 1.730231642933542e-10, -5.0444034172806636e-11],
   ];
+  // M1.2c: the corner exponents (closed forms, and the slab corner of solver.md §2.5), and per structure the order of
+  // C11 over levels 1, 2, 4, 8 (from the first and last of the three differences) and the estimate / true error at
+  // M = 2 (the FD's error is ≤ 10⁻⁴ relative). Measured at M1.2c: orders 1.34, 1.29, 1.69 (not 2: notes-M1.2c.md);
+  // estimate / true 2.4, 4.7, 3.1. The bars guard against a regression to the order ≈ 1 of M1.4a.
+  const PI = Math.PI;
+  const nuChecks = [
+    ['right-angled copper corner in one dielectric', [{ s: 0, w: PI / 2, er: 0 }, { s: PI / 2, w: 1.5 * PI, er: 4 }], 2 / 3],
+    ['the same on a slab of εr 8 (tan(νπ/2)·εr = −tan νπ)', [{ s: 0, w: PI / 2, er: 0 }, { s: PI / 2, w: PI / 2, er: 1 }, { s: PI, w: PI, er: 8 }], 0.5354409456],
+    ['copper face on a straight line (no corner)', [{ s: 0, w: PI, er: 0 }, { s: PI, w: PI, er: 3 }], 1],
+    ['dielectric right-angled wedge, εr → ∞ (as copper)', [{ s: 0, w: PI / 2, er: 1e9 }, { s: PI / 2, w: 1.5 * PI, er: 1 }], 2 / 3],
+  ];
+  for (const [what, sc, nu] of nuChecks) {
+    const v = P.cornerExponent(sc);
+    t.ok(Math.abs(v - nu) <= 1e-6, `corner exponent, ${what}: ${v} instead of ${nu}`);
+  }
+  lines.push(`  corner exponents: ${nuChecks.length} closed forms to 10⁻⁶`);
   for (const [what, sec, c11, c12] of cases) {
     const r = B.solveSection(sec, { M: 2 });
     if (!t.ok(r.ok, `${what}: ${r.reason}`)) continue;
     const d11 = Math.abs(r.C[0][0] - c11);
     t.ok(d11 <= r.errC[0][0], `${what}: C11 ${r.C[0][0]} differs from the FD ${c11} by ${d11.toExponential(2)}, over the estimate ${r.errC[0][0].toExponential(2)}`);
+    const ratio = r.errC[0][0] / d11;
+    t.ok(ratio >= 1 && ratio <= 5, `${what}: estimate / true error of C11 ${ratio.toFixed(2)}, outside 1…5`);
+    const v = [1, 2, 4, 8].map((M) => B.solveSection(sec, { M, estimate: false }).C[0][0]);
+    const order = Math.log2(Math.abs((v[1] - v[0]) / (v[3] - v[2]))) / 2;
+    t.ok(order >= 1.2, `${what}: order of C11 ${order.toFixed(2)} over levels 1…8, below 1.2`);
     let more = '';
     if (c12 !== null) {
       const d12 = Math.abs(r.C[0][1] - c12);
       t.ok(d12 <= r.errC[0][1], `${what}: C12 ${r.C[0][1]} differs from the FD ${c12} by ${d12.toExponential(2)}, over the estimate ${r.errC[0][1].toExponential(2)}`);
       more = `, C12 ${(d12 / Math.abs(c12)).toExponential(1)} (estimate ${(r.errC[0][1] / Math.abs(c12)).toExponential(1)})`;
     }
-    lines.push(`  ${what.padEnd(40)} C11 error ${(d11 / c11).toExponential(1)} (estimate ${(r.errC[0][0] / c11).toExponential(1)}, ${r.status})${more}`);
+    lines.push(`  ${what.padEnd(40)} C11 error ${(d11 / c11).toExponential(1)} (estimate × ${ratio.toFixed(1)}, ${r.status}), order ${order.toFixed(2)}${more}`);
   }
   t.note(lines.join('\n'));
 }

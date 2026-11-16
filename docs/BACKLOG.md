@@ -1,6 +1,6 @@
 # Backlog
 
-Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL84**). When a row is
+Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL85**). When a row is
 scheduled it moves into the tool's plan (for the PCB viewer: [pcb-viewer/plan.md](pcb-viewer/plan.md); for the resistor
 lookup: [resistor/plan.md](resistor/plan.md); for the Smith chart: [smith-chart/plan.md](smith-chart/plan.md); for the EM simulation: [em-sim/plan.md](em-sim/plan.md)) and the move is noted here; when it is done the row is removed and that is
 noted here too.
@@ -25,15 +25,15 @@ went below the screen), done 2026-11-14 by step M9.3 (the chart is scrolled to t
 [smith-chart/notes-M9.3.md](smith-chart/notes-M9.3.md)). BL46 (Smith chart: the chart as TikZ for LaTeX), done
 2026-11-14 by steps M8.1b and M8.3a (`lib/smith/figureTikz.ts` and the Export section; the schematic and the plot stay
 as BL60). The Smith chart plan ended with M9.4 (2026-11-14): its open rows below each name the trigger that would start
-them; none is scheduled.
+them; none is scheduled. BL79 (EM simulation: per-corner grading from the wedge exponent), done 2026-11-16 by step M1.2c (`panels.ts` `cornerExponent`; notes in [em-sim/notes-M1.2c.md](em-sim/notes-M1.2c.md); what it did not reach is BL84).
 
 | id | tool | what | why / trigger |
 |---|---|---|---|
 | BL83 | EM simulation | Target for the general arrangement and for two targets at once (Zdiff and Zcm by width and gap together, or a pair at a fixed pitch); M1.3's inverse varies one of width, gap, or both scaled, for the preset structures | 2026-11-16, step M1.3 (notes-M1.3.md). Trigger: the owner asks for it on the page (M2.3) |
+| BL84 | EM simulation | 2D solver: the mask's short interfaces (15–40 µm side walls and steps beside the copper corners) converge at order ≈ 1.3 at every level up to 8, with any corner grading up to 4/ν: a near-singular effect of the copper corner 15 µm away. A grading of those edges towards the point nearest the copper corner, or panels there of the size of the mask thickness / several, would bring order 2 and estimates of 1–2 × the true error on masked structures | 2026-11-16, step M1.2c (notes-M1.2c.md). Trigger: digits shown on masked structures, or the budgets allowing more panels |
 | BL82 | EM simulation | Pair quantities (Zdiff, Zcm, kb, kf) for a chosen pair among three or more lines (a pair with guard traces or a neighbour); M1.3 gives them for n = 2 only, and Z0, εeff, modes and Zc for any n | 2026-11-16, step M1.3. Trigger: the general arrangement on the page (M2) |
 | BL81 | EM simulation | Default tolerances for the presets (thickness, εr, width, gap, mask), each with a source: no JLCPCB page read so far states them (only the impedance ±10 %), so presets carry none and the band needs the visitor's tolerances; the harness uses its own (±10 %, εr ±0.2, mask ±30 %) | 2026-11-16, step M1.3. Trigger: M2.3 (the tolerance band on the page) |
 | BL80 | EM simulation | 2D solver: the exact cases C12/C13 (parallel plates without fringing), C04 (two-layer coax with a curved interface) and C25 (touching strips, Zodd = 0) are not run: the first need magnetic side walls, the second curved panels (solver.md §2.1), the third is degenerate. **C25 runs since M1.3** through the modal path (`check-modes.mjs`: Zeven 0.0036 % at M = 8, Zodd falling towards 0 by level), so C12/C13 and C04 are left | 2026-11-16, step M1.2a; C25 done 2026-11-16, step M1.3. Trigger: magnetic walls or curved interfaces enter the model |
-| BL79 | EM simulation | 2D solver: per-corner grading from the wedge exponent (Zhechev2026, literature.md) in place of one q = 2, to remove the slow pre-asymptotic drift on masked structures (C39: +1.3 × 10⁻³ Ω from 390 to 780 panels; the pair's Zdiff +0.03 Ω from 620 to 1238, flagged "irregular" by the estimate) and to need fewer panels | 2026-11-16, step M1.2a (notes-M1.2a.md). Trigger: M1.2b's budgets or a page result shown as irregular |
 | BL78 | EM simulation | Mask side-wall thickness of JLCPCB: the convention (over-copper thickness on the walls) moves C39's Z0 by −0.21 Ω against no side-wall mask (0.42 %), and C1 on the walls by another −0.20 Ω; ask JLCPCB or measure a cross-section | 2026-11-16, step M1.2a measured it (notes-M1.2a.md). Trigger: the owner gets JLCPCB's answer or a microsection |
 | BL77 | EM simulation | Shorter links for edited JLCPCB presets: cite a preset number's note by its preset and reference instead of writing the text (an edited 6-layer preset's link is about 2.2 kB, mostly the notes and layer names) | 2026-11-16, step M1.1 (`lib/emsim/setup.ts` writes every source note). Trigger: a link is too long to paste somewhere the owner needs |
 | BL76 | EM simulation | Net classes of KiCad 5 boards: the `(net_class …)` items of a `.kicad_pcb` older than KiCad 6 (`lib/emsim/kicad.ts` refuses KiCad 5 boards, which have no stackup, and `.pro` files) | 2026-11-16, step M1.1. Trigger: the owner opens a KiCad 5 board |

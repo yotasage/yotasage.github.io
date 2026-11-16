@@ -9,7 +9,7 @@
 // half skipped when every signal is its own mirror), with the same charges on the whole boundary.
 //
 // The estimate (`estimateOf`, since M1.4a-fix): with three levels, 1.5 × the last difference (at least a quarter of
-// the coarser one when the ratio of the differences is over 8, the geometric tail when it is under 2, their sum when
+// the coarser one when the ratio of the differences is over 4, the geometric tail when it is under 2, their sum when
 // they do not shrink), at least floor·|X|, floor 10⁻⁵. The status is 'regular' when the differences shrink at an
 // order between 1 and 4 (ratio 2…16, same sign), else 'irregular': refinement can fail silently (literature.md,
 // Zhechev2026), so the page shows the status with the number. Collocation makes C slightly unsymmetric; it is symmetrised and the removed part
@@ -218,12 +218,12 @@ export function estimateOf(values: number[], floor = ERROR_FLOOR): Estimate {
   const r = d2 / d1;
   if (a1 <= fl && a2 <= 16 * fl && !(r >= 2 && r <= 16)) return { e: fl, order, status: 'converged' };
   // A safety factor of 1.5 on: the last difference; at least a quarter of the coarser one when the differences
-  // shrink by more than 8 (an apparent order above 3 is pre-asymptotic: piecewise-constant panels converge at order 2
-  // at best); the geometric tail a1/(r − 1) when they shrink by less than 2; their sum when they do not shrink or
-  // change sign. Fitted with a margin on the 741 diagonal entries of C in the fuzz of notes-M1.4a-fix.md.
+  // shrink by more than 4 (an apparent order above 2 is pre-asymptotic: piecewise-constant panels converge at order 2
+  // at best; M1.2c, was 8); the geometric tail a1/(r − 1) when they shrink by less than 2; their sum when they do not shrink or
+  // change sign. Fitted with a margin on the 741 diagonal entries of C in the fuzz (notes-M1.4a-fix.md, notes-M1.2c.md).
   const SF = 1.5;
   const status: Status = r >= 2 && r <= 16 ? 'regular' : 'irregular';
-  const e = SF * (r >= 2 ? (r > 8 ? Math.max(a1, a2 / 4) : a1) : r >= 1.25 ? a1 / (r - 1) : a1 + a2);
+  const e = SF * (r >= 2 ? (r > 4 ? Math.max(a1, a2 / 4) : a1) : r >= 1.25 ? a1 / (r - 1) : a1 + a2);
   return { e: Math.max(e, fl), order, status };
 }
 

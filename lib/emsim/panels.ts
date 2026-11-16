@@ -3,9 +3,11 @@
 // panels at a refinement level M.
 //
 // - Grading: an edge of n panels at level 1 (n even, at least 2, ⌈length/h0⌉) gets n·M panels with nodes at
-//   g(k/m), g(s) = s²/(s² + (1 − s)²), towards both ends; every node set is nested in the next level's. At a triple
-//   point (an interface ends on copper) the interface, the copper faces there and a ray's near part are graded as
-//   t³·(2 − t) instead (MESH_DEFAULTS.qTriple; notes-M1.4a-fix.md).
+//   g(k/m), g(s) = s²/(s² + (1 − s)²), towards both ends; every node set is nested in the next level's. Per corner
+//   (M1.2c, solver.md §2.5): the exponent ν of every vertex (cornerExponent) sets the grading of the edge ends there,
+//   h(t) = t^q·(1 + (q − 2)(1 − t)) with q = 2/ν for interfaces and for copper faces at triple points (copper and two
+//   dielectrics, ν < 0.66), at most 5; copper faces at triple points get at least 4 panels at level 1, and a ray
+//   starting at such a corner twice the near panels.
 // - Rays: an interface or conductor face that runs to infinity starts at its inner end, is graded with s² over
 //   dNear (mNear·M panels), then grows geometrically (ratio ρ^(1/M)) to the truncation X. Rays of one side whose
 //   starts lie within dNear/4 of each other share one node set from the earliest start (the mask's rays take the
@@ -53,9 +55,10 @@ export interface Boundary {
   flip: boolean;
 }
 
-// qTriple: the grading exponent at the ends of interfaces and conductor faces that meet at a triple point (copper,
-// two dielectrics); nearTriple: the factor on the near panels of a ray that starts there (notes-M1.4a-fix.md).
-export const MESH_DEFAULTS = { mNear: 4, rho: 1.6, nearPerH0: 7.5, h0PerSize: 1 / 7, xFactor: 100, xMin: 20, ppBeyond: 4, qTriple: 3, nearTriple: 2 };
+// Corner grading (M1.2c): q = kInterface/ν at interface ends, kConductor/ν at copper ends with ν < nuSing (triple
+// points), at most qMax, else 2; nearTriple: the factor on the near panels of a ray that starts at a graded corner;
+// nSing: the least level-1 panel count of a copper face that ends at a triple point (notes-M1.2c.md).
+export const MESH_DEFAULTS = { mNear: 4, rho: 1.6, nearPerH0: 7.5, h0PerSize: 1 / 7, xFactor: 100, xMin: 20, ppBeyond: 4, kInterface: 2, qMax: 5, qCuTriple: 4, dielCorners: false, nearTriple: 2, nSing: 4 };
 
 export function conductorEdge(ax: number, az: number, bx: number, bz: number, cond: number, epsC: number, grade = GRADE_BOTH, n = 2, off = 0): Edge {
   return { ax, az, bx, bz, cond, epsC, epsP: 1, epsM: 1, grade, n, off };
@@ -423,21 +426,116 @@ export function sectionBoundary(sec: Section): SectionBoundary {
       if (!(d < dNear / 4)) { origin = e.ax; e.off = 0; } else e.off = d;
     }
   }
-  // triple points (copper and two dielectrics meet: an interface ends on copper): the charge density there is
-  // singular as r^(ν−1) with ν down to 1/2 (εr → ∞), and the interface's second-kind equation converges only at order
-  // q·ν under s^q grading, so the interfaces and the copper faces that end there are graded with qTriple
-  const qt = MESH_DEFAULTS.qTriple;
-  const key = (u: number, z: number) => `${u},${z}`;
-  const onCu = new Set<string>();
-  idx.forEach((ids, pi) => { if (polys[pi].cond >= 0) for (const k of ids) onCu.add(key(VU[k], VZ[k])); });
-  const triple = new Set<string>();
-  for (const e of edges) if (e.cond < 0) {
-    if (onCu.has(key(e.ax, e.az))) { e.qa = qt; triple.add(key(e.ax, e.az)); }
-    if (e.grade === GRADE_BOTH && onCu.has(key(e.bx, e.bz))) { e.qb = qt; triple.add(key(e.bx, e.bz)); }
+  // corner grading (BL79, solver.md §2.5): every vertex gets the exponent ν of its strongest wedge (cornerExponent),
+  // and each edge end there the grading q = κ/ν (at least 2, at most qMax): the interfaces' second-kind equation
+  // converges at order q·ν, so κ = 2 gives order 2; copper only at triple points (ν < nuSing), where the short side
+  // faces also get at least nSing panels (their charge is large and was the largest error left, notes-M1.2c.md)
+  const V2 = VU.length;
+  const sectors: { s: number; w: number; er: number }[][] = Array.from({ length: V2 }, () => []);
+  const angle = (k: number, j: number) => Math.atan2(VZ[j] - VZ[k], VU[j] - VU[k]);
+  const outOf = new Map<number, number>();
+  for (const at of atoms) outOf.set(at.poly * V2 + at.a, at.b);
+  for (const at of atoms) {
+    const nx = outOf.get(at.poly * V2 + at.b);
+    if (nx === undefined) continue;
+    const k = at.b;
+    const s = angle(k, nx);
+    let w = angle(k, at.a) - s;
+    while (w <= 0) w += 2 * Math.PI;
+    const P = polys[at.poly];
+    sectors[k].push({ s, w, er: P.cond >= 0 ? 0 : P.er });
   }
-  for (const e of edges) if (e.cond >= 0 && e.grade === GRADE_BOTH) {
-    if (triple.has(key(e.ax, e.az))) e.qa = qt;
-    if (triple.has(key(e.bx, e.bz))) e.qb = qt;
+  const nuAt = new Float64Array(V2).fill(1);
+  const kindAt = new Int8Array(V2); // 1: copper in one dielectric, 2: triple point, 3: dielectrics alone
+  for (let k = 0; k < V2; k++) {
+    const sc = sectors[k];
+    if (sc.length < 2) continue;
+    const ers = new Set(sc.filter((x) => x.er > 0).map((x) => x.er));
+    let cover = 0;
+    for (const x of sc) cover += x.w;
+    if (cover < 2 * Math.PI - 1e-9) {
+      // the rest is a reference plane (when the vertex lies on one), else the vertex is on the truncation: skipped
+      if (!onFace(VZ[k]) || Math.abs(cover - Math.PI) > 1e-9) continue;
+      const below = Math.abs(VZ[k]) < tol;
+      sc.push({ s: below ? Math.PI : 0, w: Math.PI, er: 0 });
+    }
+    nuAt[k] = cornerExponent(sc);
+    kindAt[k] = sc.some((x) => x.er === 0) ? (ers.size > 1 ? 2 : 1) : 3;
+  }
+  const vid = new Map<string, number>();
+  for (let k = 0; k < V2; k++) vid.set(`${VU[k]},${VZ[k]}`, k);
+  const at = (u: number, z: number): number => { const k = vid.get(`${u},${z}`); return k === undefined ? -1 : k; };
+  // copper: a fixed q at triple points (the limit 2/ν → 4 of a right-angled corner at a high contrast), so that the
+  // conductor panels, and with them C0 and L, do not depend on the dielectrics (L is the same for any laminate εr)
+  const qOf = (k: number, cond: boolean): number => {
+    if (k < 0) return 2;
+    if (cond) return kindAt[k] === 2 ? MESH_DEFAULTS.qCuTriple : 2;
+    if (kindAt[k] === 3 && !MESH_DEFAULTS.dielCorners) return 2;
+    const q = MESH_DEFAULTS.kInterface / nuAt[k];
+    return q > 2 + 1e-9 ? Math.min(q, MESH_DEFAULTS.qMax) : 2;
+  };
+  for (const e of edges) {
+    const c = e.cond >= 0;
+    const ka = at(e.ax, e.az);
+    const qa = qOf(ka, c);
+    if (qa > 2) e.qa = qa;
+    if (e.grade !== GRADE_BOTH) continue;
+    const kb = at(e.bx, e.bz);
+    const qb = qOf(kb, c);
+    if (qb > 2) e.qb = qb;
+    if (c && (kindAt[ka] === 2 || kindAt[kb] === 2) && e.n < MESH_DEFAULTS.nSing) e.n = MESH_DEFAULTS.nSing;
   }
   return { boundary: { kernel, signals: sec.signals, edges, h0, dNear, mNear: MESH_DEFAULTS.mNear, rho: MESH_DEFAULTS.rho, X, zShift, flip }, reason: '' };
+}
+
+// The exponent ν of the potential r^ν·f(θ) at a vertex (the charge density goes as r^(ν − 1)), from the sectors around
+// it (start angle, width, εr; εr 0 is copper): between two copper faces f = 0 at both, across a dielectric interface
+// f and εr·∂f/∂θ are continuous. Through a sector of width α, (f, εr·f′/ν) is multiplied by [[cos να, sin να/εr],
+// [−εr·sin να, cos να]]; a wedge between copper faces needs the product's upper right entry to vanish, a corner of
+// dielectrics alone a periodic f (trace 2). Returns the smallest root below 1, or 1 (no singularity).
+export function cornerExponent(sectors: { s: number; w: number; er: number }[]): number {
+  const sc = [...sectors].sort((a, b) => a.s - b.s);
+  const m: { w: number; er: number }[] = [];
+  for (const x of sc) {
+    const l = m[m.length - 1];
+    if (l && l.er === x.er) l.w += x.w; else m.push({ w: x.w, er: x.er });
+  }
+  if (m.length > 1 && m[0].er === m[m.length - 1].er) { m[0].w += m[m.length - 1].w; m.pop(); }
+  const prod = (run: { w: number; er: number }[], nu: number): number[] => {
+    let a = 1, b = 0, c = 0, d = 1;
+    for (const x of run) {
+      const cs = Math.cos(nu * x.w), sn = Math.sin(nu * x.w);
+      const p = cs, q = sn / x.er, r = -x.er * sn, t = cs;
+      [a, b, c, d] = [p * a + q * c, p * b + q * d, r * a + t * c, r * b + t * d];
+    }
+    return [a, b, c, d];
+  };
+  const root = (F: (nu: number) => number): number => {
+    let lo = 0.02;
+    let flo = F(lo);
+    for (let hi = 0.04; hi <= 1.0001; hi += 0.02) {
+      const fhi = F(hi);
+      if (flo * fhi < 0) {
+        let x0 = lo, x1 = hi, f0 = flo;
+        for (let it = 0; it < 60; it++) { const xm = 0.5 * (x0 + x1); const fm = F(xm); if (f0 * fm <= 0) x1 = xm; else { x0 = xm; f0 = fm; } }
+        return Math.min(1, 0.5 * (x0 + x1));
+      }
+      lo = hi; flo = fhi;
+    }
+    return 1;
+  };
+  const ci = m.findIndex((x) => x.er === 0);
+  if (ci < 0) {
+    if (m.length < 2) return 1;
+    return root((nu) => { const [a, , , d] = prod(m, nu); return a + d - 2; });
+  }
+  let nu = 1;
+  const rot = [...m.slice(ci), ...m.slice(0, ci)];
+  let run: { w: number; er: number }[] = [];
+  for (const x of [...rot.slice(1), rot[0]]) {
+    if (x.er !== 0) { run.push(x); continue; }
+    if (run.length) nu = Math.min(nu, root((v) => prod(run, v)[1]));
+    run = [];
+  }
+  return nu;
 }

@@ -140,8 +140,22 @@ charge density goes as r^(ν−1) with tan(νπ/2)·εr = −tan(νπ) for a rig
 at 8, → 1/2), and the interfaces' second-kind equation converges only at order ≈ q·ν under s^q grading: order 1 with
 q = 2, from above or below depending on the mix, so the three levels looked `irregular` while C was up to 2.3 % low
 at εr 10 (notes-M1.4a-fix.md). Both the interface and the copper faces meeting there are now graded with **q = 3** at
-that end (h(t) = t³·(2 − t), the same slope where it meets the rest), and a ray that starts on copper has **2 ×** the
-near panels. Other ends keep q = 2 (bit for bit the old nodes).
+that end (h(t) = t³·(2 − t)), and a ray that starts on copper had 2 × the near panels.
+**Per corner (M1.2c, BL79):** `cornerExponent` gives every vertex its ν from the sectors around it (copper, or εr):
+through a sector of width α, (f, εr·f′/ν) is multiplied by [[cos να, sin να/εr], [−εr·sin να, cos να]]; between two
+copper faces the product's upper right entry must vanish, at a corner of dielectrics alone its trace must be 2 (a
+periodic f); the smallest root below 1 is ν. At a **triple point** (copper and two dielectrics) the interfaces
+ending there are graded as h(t) = t^q·(1 + (q − 2)(1 − t)) with **q = 2/ν (at most 5)**: the second-kind equation's
+error near a corner is the charge of the first panel, ∫₀^{h₁} r^(ν−1) dr ∝ h₁^ν = m^(−qν), so qν = 2 gives order 2.
+The copper faces there get a **fixed q = 4** (2/ν for ν → ½, a right-angled corner at a high contrast; fixed so that
+the conductor panels, C0 and L do not depend on the dielectrics) and **at least 4 panels** at level 1: refining edge
+kinds one at a time showed the short side faces (1–2 panels at level 1/2) as the largest error left (#438: C 1.9 % →
+0.30 % at M = 2). Rays starting there keep 2 × the near panels. Copper in one dielectric (first-kind equation: the
+error of C is of second order in the charge's error, so q·ν ≥ 1 suffices) and corners of dielectrics alone keep q = 2:
+grading the latter by 2/ν made C39 and the fuzz slightly worse. **Measured (notes-M1.2c.md): not order 2 everywhere.**
+Over levels 1…8 the pair on εr 9.9 and #42 reach order 2.0, the strip on εr 8.1 1.2–1.5 (q = 2 on its copper gave
+2, but the pair 1.0); masked structures keep an order ≈ 1.3 from the mask's short interfaces beside the copper corners,
+which no grading up to 4/ν changed: a near-singular, not a corner, effect (BL84).
 
 ### 2.6 Accuracy reached and the error estimate
 
@@ -181,9 +195,14 @@ the truncation (< 10⁻⁶) and the drift above. Every impedance, εeff and coup
 way (computed at both levels). The page shows Z(M), not the extrapolated value (the order is not reliable enough on
 masked structures to extrapolate). Default level: **M = 2** of the §2.5 base mesh.
 **Since M1.4a-fix** the estimate of levels M/4, M/2, M (differences a2, a1, r = d2/d1) is 1.5 × (a1; at least a2/4
-when r > 8; a1/(r − 1) when 1.25 ≤ r < 2; a1 + a2 otherwise), and every line quantity gets at least the error that C's
-and C0's diagonal estimates imply (lines.ts), because a derived quantity's levels can agree by chance. Fitted with a
-margin on the fuzz's 741 diagonal entries of C (none outside); C39 now shows 50.519 ± 0.076 Ω (FD 50.527 ± 0.010).
+when r > 4 (8 before M1.2c); a1/(r − 1) when 1.25 ≤ r < 2; a1 + a2 otherwise), and every line quantity gets at least the error that C's
+and C0's diagonal estimates imply (lines.ts), because a derived quantity's levels can agree by chance. **M1.2c:**
+the measured orders at levels 1/2, 1, 2 stay between 1 and 2 (median apparent order 1.5 on the fuzz, was 1.15), so the rule
+cannot assume order 2 and keeps its form, with a quarter of the coarser difference from r > 4 (was 8: an apparent
+order above 2 is pre-asymptotic); and the floor is `CFLOOR` = 0.25 × (ρ + ρ0) for impedances and delays, 0.5 × for
+εeff (was ½ and 1), since ρ and ρ0 are themselves bounds of about 3.5 × the true error. Fuzz: estimate / true error of
+C's diagonal ≥ 1.21, median 3.5; all quantities ≥ 1.05, median 3.9 (before 4.9). C39 now shows 50.5216 ± 0.100 Ω
+(FD 50.527 ± 0.010).
 
 ### 2.7 Layered-media Green's function: not needed
 

@@ -230,7 +230,7 @@ function pairs(t) {
   }
   // a single line: Z0 from Zc is √(L/C) of the solver
   const one = LN.solveSetup(SU.defaultSetup());
-  t.ok(one.ok && rel(one.lines[0].z0.v, one.bem.single.z0) <= 1e-14 && rel(one.lines[0].z0.e, Math.max(one.bem.single.z0Err.e, one.bem.levels[2].asym * one.bem.single.z0, 0.5 * (one.bem.errC[0][0] / one.bem.C[0][0] + one.bem.errC0[0][0] / one.bem.C0[0][0]) * one.bem.single.z0)) <= 1e-12, `single line: Z0 from Zc ${one.lines[0].z0.v} vs ${one.bem.single.z0}`);
+  t.ok(one.ok && rel(one.lines[0].z0.v, one.bem.single.z0) <= 1e-14 && rel(one.lines[0].z0.e, Math.max(one.bem.single.z0Err.e, one.bem.levels[2].asym * one.bem.single.z0, LN.CFLOOR * (one.bem.errC[0][0] / one.bem.C[0][0] + one.bem.errC0[0][0] / one.bem.C0[0][0]) * one.bem.single.z0)) <= 1e-12, `single line: Z0 from Zc ${one.lines[0].z0.v} vs ${one.bem.single.z0}`);
   lines.push(`  C39 default setup: Z0 ${one.lines[0].z0.v.toFixed(3)} ± ${one.lines[0].z0.e.toFixed(3)} Ω (${one.status}), εeff ${one.lines[0].eeff.v.toFixed(4)}, delay ${(one.lines[0].delay.v * 1e9).toFixed(3)} ps/mm`);
   // refusals never throw
   const broken = SU.defaultSetup();

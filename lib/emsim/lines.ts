@@ -27,6 +27,9 @@ import { stackupIssues } from './stackup';
 import { structureIssues } from './structure';
 
 export const LINES_VERSION = 1;
+// The factor on the floor from C's and C0's estimates (linesOf): ½ to first order; 0.35 since M1.2c (notes-M1.2c.md),
+// because those estimates are themselves upper bounds (median 3.6 × the true error of C on the fuzz).
+export const CFLOOR = 0.25;
 export const TDR_COMMON_OHM = 25; // the common-mode source of two 50 Ω sources driving a differential TDR
 
 export interface Q { v: number; e: number; status: Status }
@@ -137,11 +140,11 @@ export function linesOf(bem: BemResult, floor?: number): LineResults {
   // imply to first order (½ for impedances and delays, 1 for εeff).
   const cfloor = (key: string, x: number): number => {
     if (bem.levels.length < 2) return 0;
-    if (/^(z0|zdiff|zcm|zodd|zeven|ztdr|zdiffB|zcmB)/.test(key)) return 0.5 * (rho + rho0) * Math.abs(x);
-    if (/^(eeff|mode\d\.eeff)/.test(key)) return (rho + rho0) * Math.abs(x);
-    if (/^(delay|mode\d\.delay)/.test(key)) return 0.5 * (rho + rho0) * Math.abs(x);
+    if (/^(z0|zdiff|zcm|zodd|zeven|ztdr|zdiffB|zcmB)/.test(key)) return CFLOOR * (rho + rho0) * Math.abs(x);
+    if (/^(eeff|mode\d\.eeff)/.test(key)) return 2 * CFLOOR * (rho + rho0) * Math.abs(x);
+    if (/^(delay|mode\d\.delay)/.test(key)) return CFLOOR * (rho + rho0) * Math.abs(x);
     const m = /^zc(\d)(\d)$/.exec(key);
-    if (m) { const i = +m[1] - 1, j = +m[2] - 1; return 0.5 * (rho + rho0) * Math.sqrt(Math.abs(fin.values[`zc${i + 1}${i + 1}`] * fin.values[`zc${j + 1}${j + 1}`])); }
+    if (m) { const i = +m[1] - 1, j = +m[2] - 1; return CFLOOR * (rho + rho0) * Math.sqrt(Math.abs(fin.values[`zc${i + 1}${i + 1}`] * fin.values[`zc${j + 1}${j + 1}`])); }
     return 0;
   };
   // `scale`: a quantity that is zero by symmetry (Zdc of a symmetric pair, kf in one dielectric) is `converged` with
