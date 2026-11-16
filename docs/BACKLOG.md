@@ -1,6 +1,6 @@
 # Backlog
 
-Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL85**). When a row is
+Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL86**). When a row is
 scheduled it moves into the tool's plan (for the PCB viewer: [pcb-viewer/plan.md](pcb-viewer/plan.md); for the resistor
 lookup: [resistor/plan.md](resistor/plan.md); for the Smith chart: [smith-chart/plan.md](smith-chart/plan.md); for the EM simulation: [em-sim/plan.md](em-sim/plan.md)) and the move is noted here; when it is done the row is removed and that is
 noted here too.
@@ -30,6 +30,7 @@ them; none is scheduled. BL79 (EM simulation: per-corner grading from the wedge 
 | id | tool | what | why / trigger |
 |---|---|---|---|
 | BL83 | EM simulation | Target for the general arrangement and for two targets at once (Zdiff and Zcm by width and gap together, or a pair at a fixed pitch); M1.3's inverse varies one of width, gap, or both scaled, for the preset structures | 2026-11-16, step M1.3 (notes-M1.3.md). Trigger: the owner asks for it on the page (M2.3) |
+| BL85 | EM simulation | Closed forms the calculator comparison lacks (M1.4b): a copper-thickness correction for coupled microstrip from a source opened in full (Kirschning–Jansen has none; at the owner's LVDS pair the thickness alone is 16 Ω of Zdiff, so the page can only show K–J as a zero-thickness value), the εeff thickness correction of Gupta's CPW (cut off on QucsTech's page), and IPC-2141A (2004) for its embedded and dual stripline forms and ranges (the 1996 forms are 8–39 % off and not offered) | M1.4b: notes-M1.4b.md |
 | BL84 | EM simulation | 2D solver: the mask's short interfaces (15–40 µm side walls and steps beside the copper corners) converge at order ≈ 1.3 at every level up to 8, with any corner grading up to 4/ν: a near-singular effect of the copper corner 15 µm away. A grading of those edges towards the point nearest the copper corner, or panels there of the size of the mask thickness / several, would bring order 2 and estimates of 1–2 × the true error on masked structures | 2026-11-16, step M1.2c (notes-M1.2c.md). Trigger: digits shown on masked structures, or the budgets allowing more panels |
 | BL82 | EM simulation | Pair quantities (Zdiff, Zcm, kb, kf) for a chosen pair among three or more lines (a pair with guard traces or a neighbour); M1.3 gives them for n = 2 only, and Z0, εeff, modes and Zc for any n | 2026-11-16, step M1.3. Trigger: the general arrangement on the page (M2) |
 | BL81 | EM simulation | Default tolerances for the presets (thickness, εr, width, gap, mask), each with a source: no JLCPCB page read so far states them (only the impedance ±10 %), so presets carry none and the band needs the visitor's tolerances; the harness uses its own (±10 %, εr ±0.2, mask ±30 %) | 2026-11-16, step M1.3. Trigger: M2.3 (the tolerance band on the page) |

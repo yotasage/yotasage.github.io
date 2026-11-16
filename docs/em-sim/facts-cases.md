@@ -101,16 +101,51 @@ v2's form (notes-M0.1.md). Open cells (—) are for the owner (inputs below) or 
 
 | Case | Geometry | Exact or refined reference | JLCPCB | Saturn | Other calculators | This tool | Largest difference | Explanation |
 |---|---|---|---|---|---|---|---|---|
-| C39 | microstrip L1/L2, w 0.1377, h 0.092 (3313), t 0.035, mask | — | target 50 Ω at 5.42 mil; adjusted width — (owner) | — | H–J 54.06 Ω (no mask, εr 4.1) | — | — | mask and trapezoid (facts.md §9) |
-| C40 | as C39 on L6/L5 | = C39 | as C39 | — | as C39 | — | — | mirror check |
-| C41 | edge-coupled pair L1/L2, w 0.11 (sheet 4.36 mil), s 0.2 (8 mil) | — | 100 Ω at 4.36/8 mil, "unchanged"; calculator — (owner) | — | — | — | — | — |
-| C42 | as C41 on L6/L5 | = C41 | as C41 | — | — | — | — | mirror check |
-| C43 | pair L1/L2, w 0.2, s 0.25 | — | — (owner) | — | — | — | — | informative |
+| C39 | microstrip L1/L2, w 0.1377, h 0.092 (3313), t 0.035, mask | FD reference (M1.4a) for the masked rectangle: 50.527 ± 0.010 Ω, this tool 50.52 there (notes-M1.2c.md) | target 50 Ω at 5.42 mil; adjusted width — (owner) | — | bare rectangle, no mask, εr 4.1: H–J 54.06, Wheeler 54.33, IPC-2141 49.38 Ω; on the preset reduced (mean width 0.1288, mask left out): H–J 55.85, Wheeler 56.16, IPC 51.24 Ω | **51.50 ± 0.05 Ω**, εeff 3.298 (JLC061611-3313A preset: εr 4.1, trapezoid 0.35 mil per side, mask 1.2/0.6/1.2 mil εr 3.8); KiCad stackup as read 51.37; bare rectangle without mask 54.16; 50 Ω needs w 0.1465 (5.77 mil) | +1.50 Ω (+3.0 %) to JLCPCB's target; −4.35 Ω to H–J on the same reduction | mask −3.5 Ω, trapezoid +1.0 Ω, εr ≈ 0.5 Ω per 0.1, copper 1.6 mil −0.5 Ω: "Differences explained" below |
+| C40 | as C39 on L6/L5 | = C39 | as C39 | — | as C39 | **51.50 ± 0.05 Ω** (= C39, checked by `check-closedform.mjs`) | 0 | mirror check |
+| C41 | edge-coupled pair L1/L2, w 0.11 (sheet 4.36 mil), s 0.2 (8 mil) | — | 100 Ω at 4.36/8 mil, "unchanged"; calculator — (owner) | — | K–J (zero thickness, no mask): 126.32 Ω on the bare rectangle, 132.25 on the preset reduced (mean width 0.1011, gap 0.2089) | **Zdiff 103.36 ± 0.15 Ω**, Zcm 30.91 (preset); at the sheet's 4.36/8 mil 103.31 ± 0.15; KiCad as read 103.64; bare rectangle without mask 110.03; 100 Ω needs w 0.1191 (4.69 mil) at s 0.2 | +3.4 Ω (+3.4 %) to JLCPCB's 100 Ω; K–J +23 Ω (no thickness, no mask) | mask −9.2 Ω, trapezoid +2.9 Ω, εr 4.3 −1.7 Ω, copper 1.6 mil −1.7 Ω; the copper thickness itself −16.4 Ω against the zero-thickness formula |
+| C42 | as C41 on L6/L5 | = C41 | as C41 | — | as C41 | **Zdiff 103.36 ± 0.15 Ω** (= C41, checked) | 0 | mirror check |
+| C43 | pair L1/L2, w 0.2, s 0.25 | — | — (owner) | — | K–J 91.74 Ω (bare), 94.54 (preset reduced) | **Zdiff 80.02 ± 0.32 Ω**, Zcm 22.52 (preset); KiCad as read 79.63; bare 83.58; 100 Ω would need w 0.1268 (4.99 mil) at s 0.25 | K–J +11.7 Ω | informative: an unassigned pair is about 80 Ω, not 100 Ω; copper thickness −8.0 Ω, mask −4.8 Ω |
 | C44 | via 0.6/0.3, antipad Ø1.8 on all layers, GND vias 0.8–1.5 away | — (openEMS, M3) | — | — (via tab) | C36's thin-wire form | — | — | — |
 | C45 | via pair Ø0.5/0.22, pitch 0.7, stadium antipad, 6 GND vias | — (openEMS, M3) | — | — | — | — | — | — |
 | C14–C18 | Cohn zero-thickness stripline | exact | — | — | — | — | — | — |
 | C19–C25, C28–C29 | Cohn coupled stripline | exact | — | — | — | — | — | — |
 | C26–C27 | coplanar waveguide | exact | — | — | — | — | — | — |
+
+The via rows C44–C45 are left for M1.7 (the via model) and M3 (openEMS).
+
+### Differences explained (M1.4b)
+
+Every number is this tool's BEM at M = 2 with its estimate (`npm run check`, group "Closed forms (M1.4b)", prints
+them), switching one cause at a time on the JLC061611-3313A preset (Δ in Ω to the preset's value; Zdiff for the pairs):
+
+| Cause | C39 Z0 (51.50 Ω) | C41 Zdiff (103.36 Ω) | C43 Zdiff (80.02 Ω) |
+|---|---|---|---|
+| Solder mask removed (1.2 mil on laminate and between, 0.6 mil over copper, εr 3.8) | +3.48 | +9.15 | +4.76 |
+| Rectangle instead of JLCPCB's trapezoid (top 0.7 mil narrower) | −0.98 | −2.85 | −1.46 |
+| εr 4.3 (KiCad's "FR4") instead of 4.1 (3313) | −0.95 | −1.73 | −1.47 |
+| Copper 1.6 mil (JLCPCB's calculator) instead of 0.035 mm | −0.53 | −1.67 | −0.88 |
+| KiCad stackup as read (εr 4.3, mask 10 µm at KiCad's εr 3.3, rectangle) | −0.13 | +0.27 | −0.39 |
+| Zero thickness (sheets) instead of the bare 0.035 mm rectangle | +5.33 | +16.40 | +8.03 |
+| The closed form on its own terms (H–J / K–J against the sheets) | −0.04 % | −0.09 % | +0.15 % |
+| IPC-2141 against the bare rectangle | −8.8 % | — | — |
+
+- **To JLCPCB's numbers.** JLCPCB states the target (50 Ω, 100 Ω) at the requested widths, not a computed value:
+  this tool gives 51.50 Ω (+3.0 %) and 103.4 Ω (+3.4 %) there, both inside JLCPCB's ±10 %. Its widths for the exact
+  targets are 5.77 mil (C39) and 4.69 mil (C41 at the 0.2 mm gap), to compare with JLCPCB's adjusted widths when the
+  owner has them. The causes in reach: JLCPCB's calculator uses 1.6 mil outer copper (−0.5 / −1.7 Ω, half of the
+  C41 difference), εr at an unstated frequency (about 0.5 Ω per 0.1 for C39, 0.9 Ω for C41) and its own mask model
+  (the mask is the largest single cause: 7 % of C39, 9 % of C41). Which of these JLCPCB's calculator treats
+  differently is open.
+- **To the closed forms.** No formula has the mask, so on the preset geometry they are 4–5 Ω (C39) and 23–29 Ω
+  (pairs, also without copper thickness) above. On their own terms they hold: Hammerstad–Jensen is within 0.2 % of
+  the bare rectangle (54.06 vs 54.16 Ω), and the zero-thickness formulas agree with this tool's zero-thickness
+  solution to 0.04–0.15 %. Kirschning–Jansen leaves out the copper thickness, which at t/h = 0.38 and a gap of
+  2.2 h lowers Zdiff by 16 Ω (13 %): the largest single difference to a coupled-microstrip formula. IPC-2141's
+  microstrip is 8.8 % low on the bare rectangle; on the preset it lands near the field value (51.24 vs 51.50 Ω) only
+  because its own error and the missing mask cancel.
+- **KiCad's stackup against the preset** differs by −0.1 to +0.3 Ω: εr 4.3 (−1 to −1.7 Ω) and the thinner mask at
+  εr 3.3 (about +1 to +2 Ω) nearly cancel the missing trapezoid (+1 to +3 Ω).
 
 ## Inputs for the owner
 
