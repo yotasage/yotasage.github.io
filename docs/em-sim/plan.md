@@ -111,7 +111,7 @@ One agent per step, one at a time, each started and checked by the main session 
 
 | M | Name | Steps | Result | Status |
 |---|---|---|---|---|
-| M0 | Research and set-up | M0.1–M0.5 | Plan reviewed; facts, cases and sources; solver formulations decided with spikes; full-wave decided and openEMS installed; shared site modules decided | M0.1 done 2026-11-16, notes in [notes-M0.1.md](notes-M0.1.md); M0.2a done 2026-11-16, [notes-M0.2a.md](notes-M0.2a.md) |
+| M0 | Research and set-up | M0.1–M0.5 | Plan reviewed; facts, cases and sources; solver formulations decided with spikes; full-wave decided and openEMS installed; shared site modules decided | M0.1 done 2026-11-16, notes in [notes-M0.1.md](notes-M0.1.md); M0.2a done 2026-11-16, [notes-M0.2a.md](notes-M0.2a.md); M0.2b done 2026-11-16, [notes-M0.2b.md](notes-M0.2b.md) |
 | M1 | Static engine (harness only) | M1.1–M1.7 | Stackup and structures, KiCad reader, 2D solver, modes, inverse and tolerance, independent checks, fields, via model | |
 | M2 | Trace page, **release** | M2.1a–M2.5 | First usable tool: stackup editor, cross-section editor, results, fields, target and tolerance, calculator comparison, first theory; card on the main page | |
 | M3 | Vias on the page | M3.1–M3.2 | Via editor with side and top views, results, TDR and S-parameter plots, fields, target | |

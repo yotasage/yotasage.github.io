@@ -9,7 +9,7 @@ the derivation given here or on the opened secondary named beside it.
 
 Sections: 1 conventions · 2 quasi-TEM and its limits · 3 one line · 4 the multiconductor line · 5 pair impedances
 (every definition, the default) · 6 coupling coefficients · 7 fields · 8 exact solutions · 9 why calculators disagree ·
-10 JLCPCB (M0.2b) · 11 KiCad fields (M0.2b).
+10 JLCPCB · 11 KiCad fields (both in [facts-fab.md](facts-fab.md), step M0.2b).
 
 ## 1. Conventions and constants
 
@@ -127,8 +127,9 @@ asymmetric pair, and D is wrong by 15 %.
 **What the calculators report.** Polar SI9000: Zodd, Zeven, Zdiff = 2·Zodd and Zcommon = Zeven/2 for its
 symmetric structures (AP157, opened; the page says Si8000/Si9000 use 2D field solvers to extract both); **Polar's
 definition for asymmetric structures is not documented in any page opened** (AP157 does not discuss them). JLCPCB's
-calculator: **for M0.2b to confirm** (it offers symmetric edge-coupled and coplanar pairs; presumably 2·Zodd from a
-field solver).
+calculator (M0.2b, [facts-fab.md](facts-fab.md) §1.8): its definition and solver are **not documented**, but it offers
+only symmetric edge-coupled and coplanar pairs, for which A, B and D all give 2·Zodd, so the definition does not matter
+for what it reports.
 
 **The tool's default: definition A** (Zdiff = Zdd, Zcm = Zcc of the mixed-mode transform of Zc), with Zdc shown when
 it is not negligible. Why: it equals 2·Zodd and Zeven/2 for symmetric pairs (agrees with Polar, JLCPCB's likely
@@ -225,16 +226,23 @@ mask; it gives **52.04 Ω, εeff 2.95** (its absolute error is about 1–2 %, it
 The largest single causes for the owner's boards are the mask, the dielectric thickness and εr; they add up to about
 ±5 Ω, which is the size of the disagreement usually seen between a fab's sheet and a free calculator.
 
-## 10. JLCPCB (filled by M0.2b)
+With JLCPCB's own numbers for the owner's microstrip (M0.2b: 3313 prepreg h = 0.092 mm, εr 4.1, mask 0.6 mil over
+copper and 1.2 mil on laminate at εr 3.8, top width 0.7 mil narrower; facts-fab.md §1) the εr, mask and trapezoid rows
+above all apply at once: Hammerstad–Jensen gives 54.06 Ω for the bare rectangular 0.1377 mm trace (C39), so the mask
+(about −2.5 Ω) and the trapezoid (about +1 Ω for 0.7 mil) roughly cancel around 52–53 Ω before any field solve.
 
-Placeholder. M0.2b adds here, each number with its date and URL: published stackups and materials with εr and the
-frequency it is given at; copper thickness for 1 oz and 0.5 oz, outer (finished, after plating) and inner; mask
-thickness and εr; how the impedance sheet and the online calculator define W1, W2, S and the trapezoid; the stackup
-JLC061611-3313G; which Zdiff definition the calculator reports (§5).
+## 10. JLCPCB (M0.2b)
 
-## 11. KiCad fields (filled by M0.2b)
+In [facts-fab.md](facts-fab.md) §1 (split off to keep this file under 40 kB): stackup naming, JLC061611-3313A/G (G is
+not published anywhere reachable; the owner's KiCad stackup is 3313A), common 2/4/6-layer stackups, εr per prepreg and
+by core thickness (no frequency stated), copper (0.035 mm outer in the stackup, 1.6 mil in the calculator; inner
+0.0152 / 0.03 mm), mask (1.2 / 0.6 / 1.2 mil, εr 3.8), trapezoid (top = base − 0.7 mil), spacing, sheet form,
+tolerance, and the Zdiff definition (not documented; irrelevant for symmetric pairs). Every number with its URL and the
+date 2026-11-16.
 
-Placeholder. M0.2b adds here: the `(stackup …)` block of `(setup …)` in `.kicad_pcb` (layer types, thickness, material,
-epsilon_r, loss_tangent, mask and paste, `dielectric_constraints`, copper finish, edge plating) and the `.kicad_pro`
-net-class fields (`track_width`, `diff_pair_width`, `diff_pair_gap`, `diff_pair_via_gap`, …), by KiCad version, with
-KiCad's default εr placeholders flagged (engine.md §2).
+## 11. KiCad fields (M0.2b)
+
+In [facts-fab.md](facts-fab.md) §2: board file versions per release (6.0 20211014 … 10.0 20260206), every token of the
+`(stackup …)` block with what changed between versions (`spec_frequency` and `dielectric_model` only in 11.0
+development), KiCad's default εr 4.5 / tanδ 0.02 / mask 3.3 placeholders, and the `.kicad_pro` net-class fields and
+schema versions (2 in 6.0 … 5 in 10.0).
