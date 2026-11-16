@@ -60,6 +60,51 @@
 
 .drawing svg { display: block; }
 
+/* M2.1c: the view pans and zooms (one finger up or down still scrolls the page), handles are dragged. */
+.drawing { position: relative; touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
+.drawing[data-drag] { cursor: grabbing; }
+.drawing:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.handle { cursor: grab; outline: none; }
+.handle[data-axis="x"] { cursor: ew-resize; }
+.handle[data-axis="z"] { cursor: ns-resize; }
+.handleHit { fill: transparent; pointer-events: all; }
+.handleRing { fill: none; stroke: transparent; stroke-width: 2px; }
+.handle:focus-visible .handleRing,
+.handle[data-active="true"] .handleRing { stroke: var(--ink); }
+.handleDot { fill: var(--accent); stroke: var(--accent-ink); stroke-width: 1.5px; }
+.handleText {
+  font-family: var(--font-num);
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--ink);
+  stroke: var(--air);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+  pointer-events: none;
+}
+
+.resetView {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--field);
+  color: var(--ink);
+  cursor: pointer;
+}
+.resetView:disabled { opacity: 0.45; cursor: default; }
+.resetView:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.refused { margin: 6px 0 0; font-size: 0.8125rem; color: var(--error); }
+
 .svgLabels text {
   font-family: var(--font-ui);
   font-size: 11px;

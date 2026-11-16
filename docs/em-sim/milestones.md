@@ -247,6 +247,12 @@ results panel through the static worker with the stale state) and **M2.1c** (dra
 and heights by mouse, touch and keys, `panZoom.ts`, the general editor that adds traces, grounds and planes, the drag
 budget at 1× and 4×).
 
+**M2.1c split again** (main session, 2026-11-16, three jobs): **M2.1c** (`panZoom.ts`; pan and zoom of the
+cross-section; drag handles for the preset structures' widths, gaps, coplanar gap and ground width, and the heights of
+the dielectrics between the signal and its planes, by mouse, touch and keys, one undo step per drag; the drag budget at
+1× and 4× measured by the harness) and **M2.1d** (the general editor: add, remove and move traces, grounds and planes of
+a `general` structure, their handles, a preset turned into a general structure, the link round trip).
+
 ### M2.2 – Field view · M (page)
 
 The field map over the cross-section: quantity (φ, |E|, field lines, H, charge and current on copper), mode (even, odd,

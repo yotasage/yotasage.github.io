@@ -4,6 +4,8 @@
 // and the modes in a details view; the matrices C, L and Zc on demand. Every value with its error, digits never finer
 // than the error and the quantity's floor (engine.md §8), the solver's flags with their messages, the definition named.
 // While a new solve runs the old values stay, dimmed and marked (data-stale).
+// M2.1c: a result of the drag's fast path (one coarse level, no estimate: `quick`) shows its values without an error
+// or a status and says that the full solve follows when the drag stops.
 
 import React from 'react';
 
@@ -26,17 +28,19 @@ const STATUS_TEXT: Record<string, string> = {
 // One value with its error (data-q, data-v, data-e for the harness, in SI units as the engine gives them).
 // The panel's overall status: a value shows its own status only when it differs (the flags explain the overall one).
 const Overall = React.createContext<string>('');
+const QUICK = 'quick';
 
 function Val({ q, name, label, unit, floor, scale = 1, big, note }: { q: Q; name: string; label: React.ReactNode; unit: string; floor: number; scale?: number; big?: boolean; note?: React.ReactNode }) {
   const t = qText(q.v, q.e, floor, scale);
   const overall = React.useContext(Overall);
-  const st = q.status === overall ? '' : STATUS_TEXT[q.status] ?? q.status;
+  const quick = overall === QUICK;
+  const st = quick || q.status === overall ? '' : STATUS_TEXT[q.status] ?? q.status;
   return (
     <div className={big ? css.big : css.val} data-q={name} data-v={q.v} data-e={q.e} data-status={q.status}>
       <dt>{label}</dt>
       <dd>
         <span className={css.num}>{t.v}</span>
-        {t.e && <span className={css.err}> ± {t.e}</span>}
+        {t.e && !quick && <span className={css.err}> ± {t.e}</span>}
         <span className={css.qUnit}> {unit}</span>
         {st && <span className={css.qStatus} data-level={q.status === 'irregular' ? 'warn' : 'note'}>{st}</span>}
         {note && <span className={css.qNote}>{note}</span>}
@@ -67,15 +71,15 @@ function Matrix({ name, title, m, e, unit, scale, floor }: { name: string; title
   );
 }
 
-function MatrixView({ r, mx }: { r: SolveResult; mx: Matrices | null }) {
+function MatrixView({ r, mx, quick }: { r: SolveResult; mx: Matrices | null; quick: boolean }) {
   return (
     <details className={css.details} data-matrices>
       <summary>Matrices per unit length</summary>
       <p className={css.small}>Row and column k are signal k as numbered in the drawing; ground is the reference.</p>
       <div className={css.matrices}>
-        {mx && <Matrix name="C" title="Capacitance C" m={mx.C} e={mx.errC} unit="pF/m" scale={1e12} floor={FLOOR.perM} />}
-        {mx && <Matrix name="L" title="Inductance L" m={mx.L} e={mx.errL} unit="nH/m" scale={1e9} floor={FLOOR.perM} />}
-        <Matrix name="Zc" title="Characteristic impedance Zc" m={r.Zc} e={r.errZc} unit="Ω" scale={1} floor={FLOOR.ohm} />
+        {mx && <Matrix name="C" title="Capacitance C" m={mx.C} e={quick ? null : mx.errC} unit="pF/m" scale={1e12} floor={FLOOR.perM} />}
+        {mx && <Matrix name="L" title="Inductance L" m={mx.L} e={quick ? null : mx.errL} unit="nH/m" scale={1e9} floor={FLOOR.perM} />}
+        <Matrix name="Zc" title="Characteristic impedance Zc" m={r.Zc} e={quick ? null : r.errZc} unit="Ω" scale={1} floor={FLOOR.ohm} />
       </div>
     </details>
   );
@@ -85,28 +89,29 @@ interface Props {
   r: SolveResult | null;
   state: RunState;
   stale: boolean;
+  quick?: boolean;
   message: string;
   where: string;
   unit: LengthUnit;
 }
 
-export default function TraceResults({ r, state, stale, message, where, unit }: Props) {
+export default function TraceResults({ r, state, stale, quick = false, message, where, unit }: Props) {
   const perIn = unit === 'mil';
   const dUnit = perIn ? 'ps/in' : 'ps/mm';
   const dScale = perIn ? 1e9 * 25.4 : 1e9; // s/m → ps per mm or inch
   const shown = r && r.ok ? r : null;
   const pair = shown?.pair ?? null;
   return (
-    <section className={css.results} aria-labelledby="results-h" data-results data-state={state} data-stale={stale} data-where={where} data-n={shown ? shown.n : 0}>
+    <section className={css.results} aria-labelledby="results-h" data-results data-state={state} data-stale={stale} data-where={where} data-quick={quick} data-n={shown ? shown.n : 0}>
       <div className={css.resultsHead}>
         <h3 id="results-h" className={base.h3}>Results</h3>
-        <span className={css.busy} aria-live="polite" data-busy={stale}>{stale ? 'Computing…' : ''}</span>
+        <span className={css.busy} aria-live="polite" data-busy={stale}>{stale ? (quick ? 'Updating…' : 'Computing…') : quick ? 'Coarse while dragging' : ''}</span>
       </div>
       {state === 'invalid' && <p className={css.small} data-results-invalid>{message}</p>}
       {state === 'error' && <p className={css.reasonText} role="alert">{message}</p>}
       {r && !r.ok && state !== 'invalid' && <p className={css.reasonText} data-results-failed>{r.reason}</p>}
       {shown && state !== 'invalid' && (
-        <Overall.Provider value={shown.status}>
+        <Overall.Provider value={quick ? QUICK : shown.status}>
         <div className={css.values}>
           {shown.n === 1 && (
             <dl className={css.grid}>
@@ -157,15 +162,15 @@ export default function TraceResults({ r, state, stale, message, where, unit }: 
             </dl>
           )}
           {shown.n === 1 && <p className={css.definition} data-definition="single">Z0 = √(L/C) of the line, from the solved C and L per unit length; εeff = C/C0 (C0 with every dielectric replaced by air).</p>}
-          {shown.flags.length > 0 && (
+          {shown.flags.length > 0 && !quick && (
             <ul className={base.issues} data-flags>
               {shown.flags.map((f) => <li key={f.code} data-flag={f.code}><span className={base.level} data-level="warn">{f.code}</span>{f.message}</li>)}
             </ul>
           )}
-          <MatrixView r={shown} mx={shown.matrices} />
+          <MatrixView r={shown} mx={shown.matrices} quick={quick} />
           <p className={css.small} data-solve-info>
             Boundary elements, level M = {shown.M}, {shown.panels} panels, {Math.round(shown.ms)} ms{where === 'cache' ? ', from this visit\'s results' : where === 'page' ? ', on the page (no worker)' : ', in the background'}.
-            The error is estimated from the solver's coarse and fine levels.
+            {quick ? 'Solved at one coarse level while you drag, without an error estimate; the full solve with its error follows when you stop.' : "The error is estimated from the solver's coarse and fine levels."}
           </p>
         </div>
         </Overall.Provider>

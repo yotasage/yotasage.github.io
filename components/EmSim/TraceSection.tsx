@@ -2,8 +2,14 @@
 // stackup, the KiCad project's net classes as structures, the typed dimensions and layers, the cross-section drawn to
 // scale from the solver's own polygons, and the results through the static worker (lib/emsim/staticClient.ts, loaded
 // by import() so the solver stays out of the page's first load; the newest job wins, results cached by hash).
+//
+// M2.1c: a handle drag (TraceDrawing) edits a live copy of the setup that only this section sees; every frame's edit
+// starts a solve on the same channel, and the drag is committed once at its end (one undo step). When the full solve
+// with its error estimate cannot keep up (its last round trip took more than QUICK_ABOVE_MS, or no result came for
+// STARVED_MS while dragging) the drag solves one coarse level without an estimate (QUICK) and the full solve follows
+// when the drag pauses for PAUSE_MS or ends; the panel says so instead of showing an error.
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { section } from '../../lib/emsim/geometry';
 import type { SolveResult, StaticJob } from '../../lib/emsim/jobs';
@@ -21,6 +27,8 @@ import { lenText, sourceTag } from './format';
 import type { Commit, KicadState } from './StackupSection';
 import { IssueList } from './StackupSection';
 import TraceDrawing from './TraceDrawing';
+import type { HandleEdit } from './TraceDrawing';
+import { applyHandle } from './traceGeom';
 import TraceResults from './TraceResults';
 import type { RunState } from './TraceResults';
 import ValField from './ValField';
@@ -39,6 +47,11 @@ function getClient(): Promise<StaticClient> {
   return clientP;
 }
 
+const QUICK_ABOVE_MS = 30; // a full solve slower than about two frames: the drag uses the fast path
+const STARVED_MS = 100;
+const PAUSE_MS = 200;
+const QUICK = { M: 1, estimate: false } as const;
+
 interface Props {
   setup: Setup;
   commit: Commit;
@@ -48,7 +61,45 @@ interface Props {
 }
 
 export default function TraceSection({ setup, commit, unit, digits, kicad }: Props) {
-  const s = setup.stackup, st = setup.trace;
+  // ---- a handle drag's live setup ----
+  const [live, setLive] = useState<Setup | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const liveRef = useRef<Setup | null>(null);
+  const setupRef = useRef(setup);
+  setupRef.current = setup;
+  const eff = live ?? setup;
+  const s = eff.stackup, st = eff.trace;
+  useEffect(() => {
+    if (!dragging) return;
+    setPaused(false);
+    const id = window.setTimeout(() => setPaused(true), PAUSE_MS);
+    return () => clearTimeout(id);
+  }, [live, dragging]);
+  // Stable, so the drawing (React.memo) is not drawn again when a result arrives.
+  const edit = useMemo<HandleEdit>(() => ({
+    begin: () => { liveRef.current = null; setDragging(true); setPaused(false); },
+    move: (key, v) => {
+      const r = applyHandle(setupRef.current, key, v);
+      if ('reason' in r) return r.reason;
+      liveRef.current = r.setup;
+      setLive(r.setup);
+      return null;
+    },
+    end: (cancelled) => {
+      const n = liveRef.current;
+      liveRef.current = null;
+      if (n && !cancelled) commit(n);
+      setLive(null);
+      setDragging(false);
+    },
+    key: (key, v) => {
+      const r = applyHandle(setupRef.current, key, v);
+      if ('reason' in r) return r.reason;
+      commit(r.setup, `handle.${key}`);
+      return null;
+    },
+  }), [commit]);
   const [widen, setWiden] = useState(false);
   const coppers = useMemo(() => coppersOf(s), [s]);
   const stackErr = useMemo(() => stackupIssues(s).find((i) => i.level === 'error') ?? null, [s]);
@@ -70,6 +121,13 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
   const [stale, setStale] = useState(true);
   const [message, setMessage] = useState('');
   const [where, setWhere] = useState('');
+  const [quickShown, setQuickShown] = useState(false);
+  const [solves, setSolves] = useState(0);
+  const fullMs = useRef(0); // the last full solve's round trip
+  const lastArrival = useRef(0);
+  const starved = useRef(false);
+  if (!dragging) starved.current = false;
+  const quick = dragging && !paused && (fullMs.current > QUICK_ABOVE_MS || starved.current);
   useEffect(() => {
     if (!sec) {
       setState('invalid');
@@ -78,27 +136,35 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
       if (clientP) void clientP.then((c) => c.cancel('solve'));
       return;
     }
-    let live = true;
+    let on = true;
     setStale(true);
     setState('running');
-    const job: StaticJob = { kind: 'solve', setup: { stackup: s, trace: st, via: setup.via } };
+    const t0 = performance.now();
+    if (dragging && !quick && lastArrival.current && t0 - lastArrival.current > STARVED_MS) starved.current = true;
+    const job: StaticJob = quick ? { kind: 'solve', setup: { stackup: s, trace: st, via: setup.via }, opt: QUICK } : { kind: 'solve', setup: { stackup: s, trace: st, via: setup.via } };
     getClient()
       .then((c) => c.run<SolveResult>('solve', job))
       .then((rr) => {
-        if (!live || !rr) return;
+        if (!on || !rr) return;
+        const t1 = performance.now();
+        if (!quick && !rr.cached) fullMs.current = t1 - t0;
+        lastArrival.current = t1;
         setRes(rr.result);
+        setQuickShown(quick);
+        setSolves((n) => n + 1);
         setWhere(rr.where);
         setState('done');
         setStale(false);
       }, (e) => {
-        if (!live) return;
+        if (!on) return;
         setState('error');
         setMessage(`The solve failed: ${e instanceof Error ? e.message : String(e)}`);
         setStale(false);
       });
-    return () => { live = false; };
+    return () => { on = false; };
     // The via does not change the trace's solve.
-  }, [s, st, sec]);
+  }, [s, st, sec, quick]);
+  useEffect(() => { if (dragging) lastArrival.current = performance.now(); }, [dragging]);
 
   // ---- edits ----
   const setTrace = (f: (t: Structure, cur: Setup) => Structure | null, group = '') =>
@@ -175,7 +241,7 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
 
       <div className={css.layout}>
         <div className={css.drawArea}>
-          <TraceDrawing s={s} st={st} sec={sec} reason={reason} unit={unit} digits={digits} widen={widen} />
+          <TraceDrawing s={s} st={st} sec={sec} reason={reason} unit={unit} digits={digits} widen={widen} edit={edit} />
           <div className={stk.figTools}>
             <button type="button" className={base.button} aria-pressed={widen} data-trace-widen onClick={() => setWiden((w) => !w)}>Widen thin layers</button>
           </div>
@@ -231,8 +297,8 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
           )}
         </div>
 
-        <div className={css.resultArea}>
-          <TraceResults r={res} state={state} stale={stale} message={message} where={where} unit={unit} />
+        <div className={css.resultArea} data-solves={solves} data-quick={quickShown} data-dragging={dragging}>
+          <TraceResults r={res} state={state} stale={stale} quick={quickShown} message={message} where={where} unit={unit} />
         </div>
       </div>
     </section>
