@@ -24,6 +24,7 @@ import type { Commit } from './StackupSection';
 import { FLOOR, qText } from './trace';
 import { linesOf } from './tools';
 import { feedTheory } from './theoryFeed';
+import { Whys } from './Why';
 
 interface Props {
   setup: Setup;
@@ -48,6 +49,9 @@ const ohm = (q: Q | null) => { if (!q) return '–'; const t = qText(q.v, q.e, F
 const sgn = (x: number, dec: number) => `${x < 0 ? '−' : '+'}${Math.abs(x).toFixed(dec)}`;
 const pct = (a: number, b: number) => `${sgn((100 * (a - b)) / b, 1)} %`;
 const KEY_NAME: Partial<Record<CfKey, string>> = { z0: 'Z0', eeff: 'εeff', zdiff: 'Zdiff', zcm: 'Zcm', zodd: 'Zodd', zeven: 'Zeven' };
+
+// The theory topic each neglect sentence links to (notes-M2.3b.md "For M2.4").
+const NEGLECT_TOPIC: Record<string, string> = { 'solder mask': 'solder-mask', 'copper thickness': 'copper-thickness', 'finite ground width': 'coplanar-ground' };
 
 const NEGLECT: Record<string, string> = {
   'solder mask': 'No formula has the solder mask. It adds dielectric over the trace and in the gaps and lowers the impedance (by about 3.5 Ω for a 50 Ω microstrip and 9 Ω for a 100 Ω pair on JLC061611-3313A), so a formula reads high.',
@@ -122,11 +126,14 @@ export default function CalcTool({ setup, invalid, commit, unit, client, active 
           </div>
         )}
       </dl>
+      <Whys ks="calc-field calc-jlc calc-stated calc-use calc-parts" />
       <p className={css.busy} aria-live="polite">{state === 'running' ? 'Solving…' : ''}</p>
       <p className={css.small}>
         JLCPCB’s online calculator uses Polar Si9000 with fixed inputs of its own: εr 4.3 for every prepreg, 1.6 mil outer copper, a top 0.5 mil
         narrower than the base and solder mask 1.0 mil on the board and 0.6 mil on the copper (εr 3.8). With those inputs this tool gives the same
-        impedance as JLCPCB’s calculator to within about 0.3 %.
+        impedance as JLCPCB’s calculator to within about 0.3 %. Why the mask and the narrower top matter:{' '}
+        <a href="#solder-mask" data-calc-link="solder-mask">→&nbsp;solder mask</a>,{' '}
+        <a href="#trapezoid" data-calc-link="trapezoid">→&nbsp;the trapezoid</a>.
         {fq && jq && !already && Math.abs(together) >= 0.005 && (
           <> With this stackup’s own values it gives {sgn(together, 2)} Ω ({pct(fq.v, jq.v)}), so its widths for a target come out a little
             {together > 0 ? ' wider' : ' narrower'} than JLCPCB’s{Math.abs(fq.v - jq.v) < 0.1 * jq.v ? '; both are well inside JLCPCB’s ±10 %' : ''}.</>
@@ -171,6 +178,7 @@ export default function CalcTool({ setup, invalid, commit, unit, client, active 
       )}
 
       <h4 className={css.h4}>Closed-form formulas</h4>
+      <Whys ks={cf.results.length === 0 ? 'calc-none' : 'calc-reduced cf calc-kj calc-neglect'} />
       {cf.results.length === 0 ? (
         <p className={css.small} data-calc-none>{cf.notes[0]}</p>
       ) : (
@@ -180,7 +188,8 @@ export default function CalcTool({ setup, invalid, commit, unit, client, active 
               The formulas see a rectangle of the trapezoid’s mean width {len(cf.reduced.w)}, copper {len(cf.reduced.t)}
               {cf.reduced.s !== null ? `, gap ${len(cf.reduced.s)}` : ''}{cf.reduced.g !== null ? `, gap to ground ${len(cf.reduced.g)}` : ''},
               {cf.reduced.hFar !== null ? ` planes ${len(cf.reduced.h)} and ${len(cf.reduced.hFar)} away` : ` height ${len(cf.reduced.h)}`} and one εr of{' '}
-              {cf.reduced.er.toFixed(3)} for the layers {cf.reduced.hFar !== null ? 'in parallel' : 'in series'}; the field solution takes the trapezoid and every layer as they are.
+              {cf.reduced.er.toFixed(3)} for the layers {cf.reduced.hFar !== null ? 'in parallel' : 'in series'}; the field solution takes the trapezoid and every layer as they are.{' '}
+              <a href="#field-solver" data-calc-link="field-solver">→&nbsp;how the field solver works</a>
             </p>
           )}
           <div className={css.cfList}>
@@ -189,11 +198,12 @@ export default function CalcTool({ setup, invalid, commit, unit, client, active 
           {cf.results.some((r) => r.id === 'kj') && (
             <p className={css.note} data-calc-kj>
               Kirschning–Jansen is a zero-thickness value: it is the impedance of copper with no height, so beside a real pair it reads high by
-              what the copper’s side walls add (16 Ω on a 100 Ω pair of 0.11 mm traces on JLC061611-3313A).
+              what the copper’s side walls add (16 Ω on a 100 Ω pair of 0.11 mm traces on JLC061611-3313A).{' '}
+              <a href="#copper-thickness" data-calc-link="copper-thickness">→&nbsp;copper thickness</a>
             </p>
           )}
           <ul className={css.calcList}>
-            {[...new Set(cf.results.flatMap((r) => r.neglects))].map((k) => <li key={k} className={css.small}>{NEGLECT[k] ?? `Not in the formulas: ${k}.`}</li>)}
+            {[...new Set(cf.results.flatMap((r) => r.neglects))].map((k) => <li key={k} className={css.small}>{NEGLECT[k] ?? `Not in the formulas: ${k}.`}{NEGLECT_TOPIC[k] && <>{' '}<a href={`#${NEGLECT_TOPIC[k]}`} data-calc-link={NEGLECT_TOPIC[k]}>→&nbsp;theory</a></>}</li>)}
             {cf.notes.slice(cf.reduced && cf.reduced.etch > 0 ? 2 : 1).map((x) => <li key={x} className={css.small}>{x}</li>)}
           </ul>
         </>
@@ -235,6 +245,7 @@ function Formula({ r, n, field }: { r: CfResult; n: number; field: LineResults |
         )}
         {' '}Published accuracy: {acc}.{r.neglects.length > 0 && <> Leaves out: {r.neglects.join(', ')}.</>}
         {r.id === 'ipc-microstrip' && ' The crudest of the three: on a bare 50 Ω trace on JLC061611-3313A it reads about 9 % low, so close agreement on a masked board is its error and the missing mask cancelling.'}
+        {' '}<a href="#closed-forms" data-calc-link="closed-forms">→&nbsp;ranges and accuracy</a>
       </p>
     </article>
   );

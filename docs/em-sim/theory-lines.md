@@ -7,6 +7,10 @@ links to; **Claim** is its number in [claims.md](claims.md) when it states a fac
 theory-2.md where the line repeats one; ⟨127⟩ on are the lines' own). A line without a claim describes what the control
 does (claims.md lists those as T in one row).
 
+Placed in step M2.4d as `components/EmSim/whys.ts` (keys there; notes-M2.4d.md): "Reset view" reads "The corner button
+shows the whole cross-section again.", and the bar's switch has its own line ("Show or hide the short lines like this one;
+the page remembers your choice."). A new control gets its line here and in whys.ts.
+
 ## The bar and the page
 
 | Where | Line | → | Claim |

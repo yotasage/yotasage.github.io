@@ -28,6 +28,7 @@ import { FLOOR, qText } from './trace';
 import { PLACEHOLDER, SWEEP_MAX, SWEEP_POINTS, TARGET_DEFAULT, defaultRange, linesOf, mainKeyOf, outputsOf, readTarget, shares, targetChoices, withPlaceholders } from './tools';
 import type { Quantity } from './tools';
 import { feedTheory } from './theoryFeed';
+import { Why, Whys } from './Why';
 
 export type ToolName = 'target' | 'sweep' | 'tolerance' | 'calc';
 type GetClient = () => Promise<StaticClient>;
@@ -167,6 +168,7 @@ function TargetTool({ setup, invalid, commit, unit, client }: ToolProps) {
         </label>
         <button type="submit" className={base.button} data-target-solve disabled={!!invalid}>Solve</button>
       </form>
+      <Whys ks="target-key target-vary target-input target-result target-use" />
       {msg && <p className={css.reason} role="alert">{msg}</p>}
       {invalid && <p className={css.small}>{invalid}</p>}
       <p className={css.busy} aria-live="polite">{busy ? 'Solving…' : ''}</p>
@@ -323,6 +325,7 @@ function SweepTool({ setup, invalid, unit, client }: ToolProps) {
           </label>
         ))}
       </fieldset>
+      <Whys ks="sweep-input sweep-range sweep-outs plot plot-cursor sweep-table cancel" />
       {msg && <p className={css.reason} role="alert">{msg}</p>}
       {invalid && <p className={css.small}>{invalid}</p>}
       {run && (
@@ -441,6 +444,7 @@ function ToleranceTool({ setup, invalid, unit, digits, client }: ToolProps) {
         the band takes ±{PLACEHOLDER.rel * 100} % for widths, gaps and thicknesses, εr ±{PLACEHOLDER.er} and the mask&apos;s
         thicknesses ±{PLACEHOLDER.mask * 100} %. A tolerance typed in a field (Stackup or Trace) is used as it is.
       </p>
+      <Why k="tol-note" bare />
       {invalid && <p className={css.small}>{invalid}</p>}
       <p className={css.busy} aria-live="polite">{cBusy ? 'Computing the corners…' : ''}</p>
       {cr && !cr.r.ok && <p className={css.reason}>{cr.r.reason}</p>}
@@ -466,6 +470,7 @@ function ToleranceTool({ setup, invalid, unit, digits, client }: ToolProps) {
         <button type="button" className={base.button} data-mc-run onClick={() => void runMc()} disabled={!!invalid || mcBusy}>{mc ? 'Run Monte Carlo again' : `Run Monte Carlo (${MC_SAMPLES} samples)`}</button>
         <button type="button" className={base.button} data-mc-cancel onClick={cancelMc} disabled={!mcBusy}>Cancel</button>
       </div>
+      <Whys ks="tol-corners mc mc-stats rank" />
       {mcBusy && (
         <p className={css.busy} aria-live="polite">
           <progress className={css.progress} max={MC_SAMPLES} value={prog} /> {prog} of {MC_SAMPLES} samples

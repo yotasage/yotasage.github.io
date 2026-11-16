@@ -28,12 +28,14 @@ import type { ShownUnit } from './format';
 import StackupSection, { IssueList, NO_KICAD } from './StackupSection';
 import type { Commit, KicadState } from './StackupSection';
 import TraceSection from './TraceSection';
+import { Why, Whys } from './Why';
 
 export type Theme = 'light' | 'dark';
 
 export const THEME_KEY = 'emsim.theme';
 export const UNIT_KEY = 'emsim.units';
 export const DIGITS_KEY = 'emsim.digits';
+export const WHYS_KEY = 'emsim.whys';
 const UNIT_PARAM = 'u';
 const HISTORY = 200;
 const GROUP_MS = 1500;
@@ -71,6 +73,7 @@ const Svg = ({ children }: { children: React.ReactNode }) => (
 const UndoIcon = () => <Svg><path d="M5.5 3.5L2.5 6.5l3 3" /><path d="M2.5 6.5h7a4 4 0 0 1 0 8h-2" /></Svg>;
 const RedoIcon = () => <Svg><path d="M10.5 3.5l3 3-3 3" /><path d="M13.5 6.5h-7a4 4 0 0 0 0 8h2" /></Svg>;
 const SunIcon = () => <Svg><circle cx={8} cy={8} r={2.8} /><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" /></Svg>;
+const WhyIcon = () => <Svg><circle cx={8} cy={8} r={6.2} /><path d="M6.2 6.2a1.8 1.8 0 1 1 2.6 1.6c-.5.3-.8.7-.8 1.3v.4" /><path d="M8 11.6v.1" /></Svg>;
 const MoonIcon = () => <Svg><path d="M13.2 9.6A5.6 5.6 0 0 1 6.4 2.8a5.6 5.6 0 1 0 6.8 6.8z" /></Svg>;
 
 export default function EmSimTool({ references, onTheme }: { references: BibEntry[]; onTheme?: (t: Theme | null) => void }) {
@@ -102,12 +105,17 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
     return () => { window.removeEventListener('hashchange', fromHash); io?.disconnect(); };
   }, []);
   const bib = useMemo<Bibliography | null>(() => (th ? th.bibOf(references) : null), [th, references]);
-  // A link into the theory that arrived before it was loaded: shown once it is there.
+  // A link into the theory that arrived before it was loaded: shown once it is there, by the same fragment navigation
+  // again (no hashchange, no history entry), so the topic also becomes the :target and gets its highlight (M2.4d).
   useEffect(() => {
     const id = jumpTo.current;
     if (!th || !id) return;
     jumpTo.current = '';
-    window.requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView());
+    window.requestAnimationFrame(() => {
+      if (!document.getElementById(id)) return;
+      if (decodeURIComponent(window.location.hash.slice(1)) === id) window.location.replace(`#${encodeURIComponent(id)}`);
+      else document.getElementById(id)?.scrollIntoView();
+    });
   }, [th]);
 
   // ---- the setup and its history ----
@@ -147,17 +155,20 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
   const [theme, setTheme] = useState<Theme | null>(null);
   const [unit, setUnit] = useState<ShownUnit>('mm');
   const [digits, setDigits] = useState(DEFAULT_DIGITS);
+  const [whys, setWhys] = useState(true);
   const [linkIssues, setLinkIssues] = useState<Issue[]>([]);
   const [ready, setReady] = useState(false);
   const [kicad, setKicad] = useState<KicadState>(NO_KICAD);
   useEffect(() => {
-    let storedTheme: string | null = null, storedUnit: string | null = null, storedDigits: string | null = null;
+    let storedTheme: string | null = null, storedUnit: string | null = null, storedDigits: string | null = null, storedWhys: string | null = null;
     try {
       storedTheme = window.localStorage.getItem(THEME_KEY);
       storedUnit = window.localStorage.getItem(UNIT_KEY);
       storedDigits = window.localStorage.getItem(DIGITS_KEY);
+      storedWhys = window.localStorage.getItem(WHYS_KEY);
     } catch { /* Storage can be blocked; the defaults stand. */ }
     if (storedTheme === 'light' || storedTheme === 'dark') setTheme(storedTheme);
+    if (storedWhys === 'off') setWhys(false);
     const d = Number(storedDigits);
     if (DIGIT_CHOICES.includes(d)) setDigits(d);
     const q = splitQuery(window.location.search);
@@ -228,7 +239,7 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
   };
 
   return (
-    <div className={styles.root} data-theme={theme ?? undefined} data-ready={ready}>
+    <div className={styles.root} data-theme={theme ?? undefined} data-ready={ready} data-whys={whys ? 'on' : 'off'}>
       <header className={styles.bar}>
         <div className={styles.barInner}>
           <Link href="/" className={styles.home} aria-label="Home" title="All tools"><HomeIcon width={17} height={19} color="currentColor" /></Link>
@@ -239,6 +250,7 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
           <span className={styles.barSpace} />
           <button type="button" className={styles.iconButton} onClick={() => step(-1)} disabled={!canUndo} aria-label="Undo" title="Undo (Ctrl+Z)" data-undo><UndoIcon /></button>
           <button type="button" className={styles.iconButton} onClick={() => step(1)} disabled={!canRedo} aria-label="Redo" title="Redo (Ctrl+Shift+Z)" data-redo><RedoIcon /></button>
+          <button type="button" className={styles.iconButton} aria-pressed={whys} onClick={() => { const next = !whys; setWhys(next); save(WHYS_KEY, next ? null : 'off'); }} aria-label="Short lines beside the controls" title={whys ? 'Hide the short lines' : 'Show the short lines'} data-whys-toggle><WhyIcon /></button>
           <button type="button" className={styles.iconButton} onClick={toggleTheme} aria-label="Switch between light and dark" title="Light or dark" data-theme-toggle>
             <span className={styles.moon}><MoonIcon /></span>
             <span className={styles.sun}><SunIcon /></span>
@@ -248,6 +260,7 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
 
       <main className={styles.main}>
         <p className={styles.status} data-status>Work in progress: the stackup (with every JLCPCB stackup), the trace with its impedance, dragging in the drawing, the fields of the cross-section, Target, Sweep, Tolerance, Calculators and the theory are here so far; vias come next.</p>
+        <Whys ks="status home nav undo whys theme" />
         <div className={styles.prefs}>
           <div className={styles.pref} role="group" aria-label="Units">
             Units
@@ -267,9 +280,11 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
           </div>
           <button type="button" className={styles.button} onClick={copyLink} data-copy-link>{copied ? 'Link copied' : 'Copy link'}</button>
         </div>
+        <Whys ks="units digits copy-link" />
         {linkIssues.length > 0 && (
           <div className={styles.notice} data-link-issues>
             <h3 className={styles.h3}>The link</h3>
+            <Why k="link-issues" bare />
             <IssueList issues={linkIssues} />
           </div>
         )}

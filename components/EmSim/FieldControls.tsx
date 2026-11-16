@@ -8,6 +8,7 @@ import base from '../../styles/EmSim.module.css';
 import css from '../../styles/EmSimTrace.module.css';
 import type { FieldDrive, FieldQty, FieldSettings } from './fieldTypes';
 import { DRIVE_LABEL, QTY_LABEL } from './fieldTypes';
+import { Why, Whys } from './Why';
 
 interface Props { f: FieldSettings; n: number; set: (f: FieldSettings) => void }
 
@@ -19,6 +20,7 @@ export default function FieldControls({ f, n, set }: Props) {
         <input type="checkbox" checked={f.on} data-field-on onChange={(e) => set({ ...f, on: e.target.checked })} />
         Show the fields
       </label>
+      <Why k="field-on" bare />
       {f.on && (
         <div className={css.selects}>
           <label className={css.ctl}>
@@ -58,6 +60,7 @@ export default function FieldControls({ f, n, set }: Props) {
           </div>
         </div>
       )}
+      {f.on && <Whys ks={`field-qty${n > 1 ? ' field-drive' : ''}${n > 1 && f.drive === 'line' ? ' field-line' : ''} field-scale-kind probe-keys field-scale probe`} />}
     </div>
   );
 }

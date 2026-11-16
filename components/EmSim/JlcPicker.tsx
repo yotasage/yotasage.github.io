@@ -13,6 +13,7 @@ import base from '../../styles/EmSim.module.css';
 import css from '../../styles/EmSimStackup.module.css';
 import { errorText, jlcLoaded, loadJlc } from './jlcData';
 import { lenText } from './format';
+import { Whys } from './Why';
 
 type Menu = 'layers' | 'thickness' | 'outer' | 'inner' | 'offer';
 type Choice = Record<Menu, string> & { withdrawn: boolean };
@@ -151,6 +152,7 @@ export default function JlcPicker({ current, unit, digits, onPick, onClose, onLo
             </label>
             <button type="button" className={base.button} onClick={() => setC(ANY)} disabled={JSON.stringify(c) === JSON.stringify(ANY)} data-jlc-reset>Clear filters</button>
           </div>
+          <Whys ks="jlc-filter jlc-withdrawn jlc-row" />
           <p className={css.layerNote} aria-live="polite" data-jlc-count={list.length}>{list.length} stackup{list.length === 1 ? '' : 's'}</p>
           <ul className={css.jlcList} aria-label="Matching stackups">
             {list.map((e) => <Row key={jlcKey(e)} e={e} current={jlcKey(e) === current} unit={unit} digits={digits} onPick={(x) => onPick(x, data)} />)}

@@ -44,6 +44,7 @@ import ValField from './ValField';
 import { feedTheory } from './theoryFeed';
 import { KINDS, coppersOf, etchOf, isCoplanar, isPair, withKind, withSignalLayer } from './trace';
 import type { GenSel } from './trace';
+import { Why, Whys } from './Why';
 
 // One client for the page, made when the first solve is asked for.
 let clientP: Promise<StaticClient> | null = null;
@@ -275,6 +276,7 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
           )}
         </div>
       </div>
+      <Whys ks={st.kind !== 'general' ? 'structure to-general class-structure' : 'structure class-structure'} />
 
       <div className={css.layout}>
         <div className={css.drawArea}>
@@ -282,6 +284,7 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
           <div className={stk.figTools}>
             <button type="button" className={base.button} aria-pressed={widen} data-trace-widen onClick={() => setWiden((w) => !w)}>Widen thin layers</button>
           </div>
+          <Whys ks="trace-view handles trace-reset trace-widen" />
           <FieldControls f={fieldSet} n={sec ? sec.signals : 1} set={setFieldSet} />
         </div>
 
@@ -306,6 +309,7 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
             {planeSelect('above', 'Plane above')}
             {planeSelect('below', 'Plane below')}
           </div>
+          <Whys ks={`${general ? '' : 'layer '}${broadside ? 'layer2 ' : ''}plane`} />
           {st.kind !== 'general' ? (
             <div className={stk.fields}>
               <ValField name="trace.w" label={pair ? 'Width (each)' : 'Width'} x={st.w} unit={unit} digits={digits} onChange={onVal('w')} />
@@ -313,6 +317,9 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
               {coplanar && <ValField name="trace.g" label="Gap to ground" x={st.g} unit={unit} digits={digits} onChange={onVal('g')} />}
               {coplanar && <ValField name="trace.gw" label="Ground width" x={st.gw} unit={unit} digits={digits} nullable placeholder="to the edge" onChange={onVal('gw')} />}
             </div>
+          ) : null}
+          {st.kind !== 'general' ? (
+            <Whys ks={`width${pair ? (broadside ? ' offset' : ' gap') : ''}${coplanar ? ' ground-gap ground-width' : ''}`} />
           ) : (
             <GeneralEditor s={s} st={st} unit={unit} digits={digits} coppers={coppers} sel={selNow} onSelect={setSel} setTrace={setTrace} />
           )}
@@ -322,6 +329,7 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
               Solder mask over the trace
             </label>
           )}
+          {outer && hasMask && <Why k="masked" bare />}
           <p className={css.small} data-etch={etch ? etch.side : 0}>
             {etch && etch.side > 0
               ? <>Trapezoid from the stackup's etch: the top is {lenText(2 * etch.side, unit, digits)} narrower than the base{etch.src ? <> ({sourceTag(etch.src.src).text})</> : null}. Widths are at the base.</>
@@ -332,6 +340,7 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
           {info && issues.length > 0 && (
             <div className={base.notice} data-trace-issues>
               <h3 className={base.h3}>About this structure</h3>
+              <Why k="structure-issues" bare />
               <IssueList issues={issues} />
             </div>
           )}
@@ -348,6 +357,7 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
                 ))}
               </div>
             </div>
+            <Why k="tools" bare />
             {toolsOpened && (
               <Suspense fallback={<p className={css.small}>Loading the tools…</p>}>
                 <TraceTools tool={tool} setup={setup} invalid={sec ? '' : reason} commit={commit} unit={unit} digits={digits} client={getClient} />

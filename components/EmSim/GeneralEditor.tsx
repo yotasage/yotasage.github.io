@@ -15,6 +15,7 @@ import css from '../../styles/EmSimTrace.module.css';
 import { addGround, addSignal, removeFeature } from './trace';
 import type { CopperChoice, GenSel } from './trace';
 import ValField from './ValField';
+import { Whys } from './Why';
 
 interface Props {
   s: Stackup;
@@ -82,6 +83,7 @@ export default function GeneralEditor({ s, st, unit, digits, coppers, sel, onSel
         <button type="button" className={base.button} data-gen-add="ground" onClick={() => done(addGround(s, st, layer), (t) => `gnd.${t.grounds.length - 1}`)}>Add ground</button>
         <button type="button" className={base.button} data-gen-remove disabled={!sel} onClick={() => sel && done(removeFeature(st, sel), () => null)}>Remove {sel ? (sel.startsWith('sig') ? `trace ${Number(sel.slice(4)) + 1}` : `ground ${Number(sel.slice(4)) + 1}`) : 'selected'}</button>
       </div>
+      <Whys ks="gen-layer gen-add gen-remove" />
       {msg && <p className={css.refused} role="alert" data-gen-refused>{msg}</p>}
       <ol className={css.genList}>
         {st.signals.map((g, i) => row(`sig.${i}`, `Trace ${i + 1}`, (
@@ -99,6 +101,7 @@ export default function GeneralEditor({ s, st, unit, digits, coppers, sel, onSel
           </div>
         )))}
       </ol>
+      <Whys ks="gen-position width gen-edges" />
       <p className={css.small}>
         Positions are the base centres across, 0 in the middle; widths and edges at the base. Grounds are connected to the
         planes; an empty edge runs to the edge of the board. Select a row or tap a conductor in the drawing to highlight it.

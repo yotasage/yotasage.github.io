@@ -20,6 +20,7 @@ import css from '../../styles/EmSimStackup.module.css';
 import { jlcLoaded, jlcResolve, loadJlc } from './jlcData';
 import StackupDrawing from './StackupDrawing';
 import ValField from './ValField';
+import { Why, Whys } from './Why';
 import { withKind } from './trace';
 import { lenText, numText, tolText } from './format';
 
@@ -178,6 +179,7 @@ function Sources({ s }: { s: Stackup }) {
   return (
     <div className={css.sources} data-sources>
       <h3 className={base.h3}>Sources</h3>
+      <Why k="sources" bare />
       <dl>
         {[...refs].map(([ref, r]) => (
           <React.Fragment key={ref}>
@@ -359,6 +361,7 @@ export default function StackupSection({ setup, commit, unit, digits, kicad, set
           />
         </div>
       </div>
+      <Whys ks="preset jlc-open kicad" />
       {fileError && <p className={css.reason} role="alert">{fileError}</p>}
       {picker && (
         <div id="jlc-picker">
@@ -376,6 +379,7 @@ export default function StackupSection({ setup, commit, unit, digits, kicad, set
         {s.finish && <> · finish {s.finish}</>}
         {s.controlled && <> · impedance controlled</>}
       </p>
+      <Why k="summary" bare />
 
       <div className={css.layout}>
         <div className={css.figure}>
@@ -385,6 +389,7 @@ export default function StackupSection({ setup, commit, unit, digits, kicad, set
               Widen thin layers
             </button>
           </div>
+          <Whys ks="stackup-drawing stackup-widen" />
         </div>
         <div>
           <ol className={css.layers} aria-label="Layers, top to bottom">
@@ -392,9 +397,11 @@ export default function StackupSection({ setup, commit, unit, digits, kicad, set
               <LayerRow key={l.id} l={l} i={i} unit={unit} digits={digits} active={i === active} onVal={onVal} onActive={setActive} />
             ))}
           </ol>
+          <Whys ks="diel-t er tand er-freq cu-t calc-t etch mask-laminate mask-copper mask-between mask-er tol src" />
           {issues.length > 0 && (
             <div className={base.notice} data-stackup-issues>
               <h3 className={base.h3}>About this stackup</h3>
+              <Why k="stackup-issues" bare />
               <IssueList issues={issues} />
             </div>
           )}
@@ -402,6 +409,7 @@ export default function StackupSection({ setup, commit, unit, digits, kicad, set
           {kicad.board && (
             <div className={base.notice} data-kicad-board>
               <h3 className={base.h3}>{kicad.board.file}</h3>
+              <Why k="kicad-board" bare />
               <p className={css.layerNote}>
                 {kicad.board.reason ? kicad.board.reason : `Board file format ${kicad.board.version} (${kicad.board.release}).`}
                 {kicad.board.ignored.length > 0 && ` Not used here: ${kicad.board.ignored.join(', ')}.`}
@@ -412,6 +420,7 @@ export default function StackupSection({ setup, commit, unit, digits, kicad, set
           {kicad.project && (
             <div className={base.notice} data-kicad-project>
               <h3 className={base.h3}>Net classes · {kicad.project.file}</h3>
+              <Why k="net-classes" bare />
               {kicad.project.reason
                 ? <p className={css.reason}>{kicad.project.reason}</p>
                 : <p className={css.layerNote}>Each class can be opened as a structure in the Trace section. Values marked (Default) are not set in the class; KiCad takes them from Default.</p>}

@@ -15,6 +15,7 @@ import type { LengthUnit } from '../../lib/emsim/units';
 import base from '../../styles/EmSim.module.css';
 import css from '../../styles/EmSimTrace.module.css';
 import { FLOOR, qText } from './trace';
+import { Why, Whys } from './Why';
 
 export type RunState = 'running' | 'done' | 'invalid' | 'error';
 
@@ -75,6 +76,7 @@ function MatrixView({ r, mx, quick }: { r: SolveResult; mx: Matrices | null; qui
   return (
     <details className={css.details} data-matrices>
       <summary>Matrices per unit length</summary>
+      <Why k="matrices" bare />
       <p className={css.small}>Row and column k are signal k as numbered in the drawing; ground is the reference.</p>
       <div className={css.matrices}>
         {mx && <Matrix name="C" title="Capacitance C" m={mx.C} e={quick ? null : mx.errC} unit="pF/m" scale={1e12} floor={FLOOR.perM} />}
@@ -153,6 +155,7 @@ export default function TraceResults({ r, state, stale, quick = false, message, 
                     <Val key={k} q={l.z0} name={`z0.${k + 1}`} label={`Z0 of line ${k + 1}`} unit="Ω" floor={FLOOR.ohm} note="Zc_kk: with the other line carrying no current (not the trace alone)" />
                   ))}
                 </dl>
+                <Whys ks="zdiff-b ztdr kb kf zc-kk" />
               </details>
             </>
           )}
@@ -175,15 +178,18 @@ export default function TraceResults({ r, state, stale, quick = false, message, 
                     <Val key={`d${k}`} q={m.delay} name={`mode${k + 1}.delay`} label={<>Delay {m.label || `mode ${k + 1}`}</>} unit={dUnit} floor={FLOOR.delay} scale={dScale} />,
                   ])}
                 </dl>
+                <Why k="modes" />
               </details>
             </>
           )}
           {shown.n === 1 && <p className={css.definition} data-definition="single">Z0 = √(L/C) of the line, from the solved C and L per unit length; εeff = C/C0 (C0 with every dielectric replaced by air).</p>}
+          <Whys ks={shown.n === 1 ? 'z0 eeff delay err solve-status quick' : pair ? `zdiff zcm zodd zeven${pair.symmetric ? '' : ' zdc'} modes err solve-status quick` : 'lines-each err solve-status quick'} />
           {shown.flags.length > 0 && !quick && (
             <ul className={base.issues} data-flags>
               {shown.flags.map((f) => <li key={f.code} data-flag={f.code}><span className={base.level} data-level="warn">{f.code}</span>{f.message}</li>)}
             </ul>
           )}
+          {shown.flags.length > 0 && !quick && <Why k="flags" />}
           <MatrixView r={shown} mx={shown.matrices} quick={quick} />
           <p className={css.small} data-solve-info>
             Boundary elements, level M = {shown.M}, {shown.panels} panels, {Math.round(shown.ms)} ms{where === 'cache' ? ', from this visit\'s results' : where === 'page' ? ', on the page (no worker)' : ', in the background'}.{' '}

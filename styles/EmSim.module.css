@@ -411,3 +411,30 @@
 }
 
 .notice .h3 { margin-bottom: 2px; }
+
+/* ---- the short lines (M2.4d, Why.tsx): quiet text under a control; the bar's "?" hides them all ---- */
+.whys {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 6px 0 10px;
+  max-width: 72ch;
+}
+
+.why {
+  display: block;
+  font-size: 0.78rem;
+  line-height: 1.38;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+
+.whyLabel { font-weight: 600; color: var(--ink-2); }
+
+.root a.whyLink { white-space: nowrap; text-decoration: none; }
+.root a.whyLink:hover { text-decoration: underline; }
+
+.root[data-whys='off'] .why,
+.root[data-whys='off'] .whys { display: none; }
+
+.root .iconButton[data-whys-toggle][aria-pressed='true'] { color: var(--accent); }
