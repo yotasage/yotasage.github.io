@@ -76,12 +76,13 @@ A stackup is an ordered list of layers from top to bottom; each layer has an id,
 - the solution itself (panel charges of both solves), so fields (§9) need no second solve;
 - an **error estimate** for each impedance (from successive refinement), the panel count, the time taken.
 
-**Formulation (M0.3 decides the details):** unknown charge density on conductor surfaces and bound charge on dielectric
-interfaces, potentials prescribed on conductors and normal D continuous across interfaces; panels graded towards copper
-corners (or singular basis functions); planes either as image or parallel-plate Green's functions or as wide
-conductors; dielectric interfaces truncated where the error is measured to be below the target; panel integrals in
-closed form. A layered-media Green's function is considered only if M0.3 measures that the plain formulation cannot
-meet the budgets.
+**Formulation (decided by M0.3 in [solver.md](solver.md) §2):** total charge (free plus bound), piecewise constant
+on straight panels, collocation at midpoints; potentials prescribed on conductors and normal D continuous across
+interfaces; panels graded towards both ends of every edge (q = 2); planes never as panels: free space with a
+neutrality row (no plane), one image (one plane) or the closed-form parallel-plate kernel (two planes); infinite
+interfaces as geometric rays truncated at X = max(100 × the structure's size, 20 mm) or 4b beyond the copper between
+planes; panel integrals in closed form on every pair; error estimate |Z(M) − Z(M/2)|. No layered-media Green's
+function (M0.3 measured that the plain formulation meets 0.1 %).
 
 **Inverse and tolerance:** width (or width and gap) for a target Z0 or Zdiff by a bracketed root finder (Brent, or
 Newton on the analytic derivative where the solver gives one); sweeps of any input; tolerance by corners and by Monte
@@ -93,19 +94,22 @@ Carlo (fixed seed) with the result as a band; sensitivity as the change of Z per
 pads as annular disks of copper thickness, planes with round antipads truncated at an outer radius or closed by a
 coaxial wall, dielectric layer boundaries). Output: the capacitance matrix of the conductors, from it the **excess
 capacitance of each pad and antipad** over the barrel's line capacitance, and the solution for the side view's field.
-Kernel: the ring-charge Green's function with complete elliptic integrals K and E (M0.3 decides the integration
-near the singularity and the truncation). Used for one via; a pair or return vias break the symmetry, which the via model
+Kernel: the ring-charge Green's function with complete elliptic integrals K and E; the log singularity subtracted
+in closed form, a grounded coaxial wall at R_w closing the domain, and the excess capacitance per crossing taken by z
+windows ([solver.md](solver.md) §4). Used for one via; a pair or return vias break the symmetry, which the via model
 handles as §6 says.
 
 ## 6. The via model (D4)
 
 1. **Segments.** The via is cut at every reference plane it passes and at its signal layers. Each segment lies in one
-   dielectric layer (or a few with one εr each; M0.3 decides how layered segments are averaged or cascaded).
+   dielectric layer (or a few, each then a cascade of one homogeneous sub-segment per dielectric layer, never an averaged εr:
+[solver.md](solver.md) §5.1).
 2. **Barrel lines.** A segment between planes is a line along z whose cut is the 2D problem of §4 in the (x, y) plane:
    the barrel (or the pair's two barrels) as circles, the return vias as reference circles, homogeneous εr of the
    segment. This gives the segment's Z (single: Z0; pair: Zodd, Zeven, Zdiff, Zcm) and velocity.
 3. **Pads and antipads.** At each plane crossing a shunt capacitance from §5 (for a pair: each via's own, with the
-   coupling between the two pads from M0.3's estimate or the 3D check, flagged).
+   coupling between the two pads estimated as ΔC·(−C12/C11) of the barrel pair's cut, [solver.md](solver.md) §5.2,
+flagged until M6.4 checks it).
 4. **Stubs** are open-ended barrel lines; backdrill shortens them.
 5. **Feed traces** are lines from §4 with their own Z0 and length.
 6. **Cascade** in the frequency domain (ABCD or S, 2-port single-ended, 4-port for a pair with mixed-mode conversion)
@@ -169,7 +173,8 @@ of phase 2 can take any of them.
   device. The page talks to them through clients that cancel stale jobs (the newest input wins) and cache results by the
   input's hash. The page shows a "stale" state while a job runs; the main thread never computes a solve.
 - **Budgets** (on the owner's laptop, production build; × 4 CPU throttle for the phone figures; M0.3 and M0.4 confirm
-  them with spikes, M9 checks them):
+  them with spikes, M9 checks them; M0.3's measurements and the pair rows it could not meet are in
+  [solver.md](solver.md) §6):
 
 | Task | Budget |
 |---|---|

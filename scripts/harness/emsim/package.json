@@ -1,0 +1,12 @@
+{
+  "name": "emsim-harness",
+  "private": true,
+  "description": "Checks and research spikes of lib/emsim for the EM simulation tool. Not part of the site.",
+  "type": "module",
+  "scripts": {
+    "spike": "tsx spikes/run.mts"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
+  }
+}
