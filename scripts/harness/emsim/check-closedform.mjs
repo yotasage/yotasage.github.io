@@ -71,7 +71,7 @@ function published(t) {
 }
 
 // ---- sheets on a substrate, solved with the free charge of each sheet ----
-function sheetBoundary(conds, er, plane, sub = true) {
+export function sheetBoundary(conds, er, plane, sub = true) {
   const h = 1;
   const sizes = [h];
   for (const c of conds) if (Number.isFinite(c.a) && Number.isFinite(c.b)) sizes.push(c.b - c.a);
@@ -97,7 +97,7 @@ function sheetBoundary(conds, er, plane, sub = true) {
 }
 
 // C of one level with each signal sheet's free charge (sheets at z = 1, air above, εr below).
-function sheetC(lv, n, er, image) {
+export function sheetC(lv, n, er, image) {
   const m = lv.mesh, N = m.n, C = new Float64Array(n * n);
   for (let s = 0; s < n; s++) {
     const q = lv.q.subarray(s * N, s * N + N);

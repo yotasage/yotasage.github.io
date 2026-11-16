@@ -16,8 +16,8 @@
 // (`asym`, relative) is reported and added to the estimate of every off-diagonal entry.
 
 import type { Section } from './geometry';
-import { assemble, vacuumMatrix } from './kernels';
-import type { Panels } from './kernels';
+import { assemble, dnRow, vacuumMatrix } from './kernels';
+import type { Kernel, Panels } from './kernels';
 import { invert, luFactor, luSolve, symmetrize, toRows } from './linalg';
 import { meshBoundary, sectionBoundary, validLevel } from './panels';
 import type { Boundary } from './panels';
@@ -181,11 +181,12 @@ export function solveLevel(b: Boundary, M: number, mirror = true): Level | strin
   }
   const C = new Float64Array(ns * ns);
   const Cv = new Float64Array(ns * ns);
+  const free = freeCharges(b.kernel, mesh, B, ns);
   for (let s = 0; s < ns; s++) {
     for (let j = 0; j < nc; j++) {
       const c = cond[j];
       if (c < 1) continue;
-      C[(c - 1) * ns + s] += EPS0 * mesh.epsC[j] * B[s * N + j] * mesh.len[j];
+      C[(c - 1) * ns + s] += EPS0 * free[s * nc + j] * mesh.len[j];
       Cv[(c - 1) * ns + s] += EPS0 * B0[s * nc + j] * mesh.len[j];
     }
   }
@@ -200,6 +201,32 @@ export function solveLevel(b: Boundary, M: number, mirror = true): Level | strin
     M, panels: N, nc, C, C0: Cv, L, asym, pivot, mirror: !!sym, mesh, q: B, q0: B0,
     ms: { mesh: t1 - t0, assemble: t2 - t1, lu: t3 - t2, lu0: t4 - t3, solve: t5 - t4, total: t5 - t0 },
   };
+}
+
+// The free charge density / ε0 on each conductor panel for each signal's solution (q: total charges, q[s·N + j]):
+// εC·s on a conductor that faces one medium; on a sheet (epsP ≠ epsM, panels.ts `sheetEdge`) the free charges of
+// both faces, s·(εP + εM)/2 + (εP − εM)·En, En = −n·∇φ at the midpoint from all other panels (the principal value).
+export function freeCharges(k: Kernel, p: Panels, q: Float64Array, ns: number): Float64Array {
+  const N = p.n;
+  const nc = p.nc;
+  const out = new Float64Array(ns * nc);
+  let row: Float64Array | null = null;
+  for (let j = 0; j < nc; j++) {
+    const eP = p.epsP[j];
+    const eM = p.epsM[j];
+    if (eP === eM) {
+      for (let s = 0; s < ns; s++) out[s * nc + j] = p.epsC[j] * q[s * N + j];
+      continue;
+    }
+    if (!row) row = new Float64Array(N);
+    dnRow(k, p, j, p.mx[j], p.mz[j], p.tz[j], -p.tx[j], 1, row, 0);
+    for (let s = 0; s < ns; s++) {
+      let dn = 0;
+      for (let i = 0; i < N; i++) dn += row[i] * q[s * N + i];
+      out[s * nc + j] = 0.5 * (eP + eM) * q[s * N + j] - (eP - eM) * dn;
+    }
+  }
+  return out;
 }
 
 // The estimate of a quantity from its values at levels coarse to fine (2 or 3 of them; see the head).

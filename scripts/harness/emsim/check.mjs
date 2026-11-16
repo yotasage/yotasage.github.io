@@ -19,6 +19,8 @@ const MODULES = [
   ['Target, sweeps, tolerance', './check-vary.mjs'],
   ['FD reference (M1.4a)', './check-fd.mjs'],
   ['Closed forms (M1.4b)', './check-closedform.mjs'],
+  ['Fields (M1.5)', './check-fields.mjs'],
+  ['Static worker (M1.5)', './check-worker.mjs'],
 ];
 
 const failures = [];

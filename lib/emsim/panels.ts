@@ -64,6 +64,13 @@ export function conductorEdge(ax: number, az: number, bx: number, bz: number, co
   return { ax, az, bx, bz, cond, epsC, epsP: 1, epsM: 1, grade, n, off };
 }
 
+// A zero-thickness conductor (a sheet) between two media: epsP on the normal's side, epsM on the other. The solver
+// takes each sheet panel's free charge as σ·(εP + εM)/2 + (εP − εM)·ε0·En (En the principal-value normal field at its
+// midpoint), right on a dielectric surface; a conductor edge with epsP = epsM (conductorEdge) faces one medium, epsC.
+export function sheetEdge(ax: number, az: number, bx: number, bz: number, cond: number, epsP: number, epsM: number, grade = GRADE_BOTH, n = 2, off = 0): Edge {
+  return { ax, az, bx, bz, cond, epsC: (epsP + epsM) / 2, epsP, epsM, grade, n, off };
+}
+
 export function interfaceEdge(ax: number, az: number, bx: number, bz: number, epsP: number, epsM: number, grade = GRADE_BOTH, n = 2, off = 0): Edge {
   return { ax, az, bx, bz, cond: -1, epsC: 1, epsP, epsM, grade, n, off };
 }
