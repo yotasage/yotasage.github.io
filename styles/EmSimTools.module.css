@@ -48,7 +48,8 @@
 .legend { display: inline-flex; flex-wrap: wrap; gap: 4px 12px; font-weight: 400; color: var(--ink-2); font-size: 0.8125rem; }
 .legendItem { display: inline-flex; align-items: center; gap: 5px; }
 .legendItem i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
-.plotBox { width: 100%; min-width: 0; margin-top: 4px; border-radius: 6px; outline: none; }
+/* contain: inline-size keeps the SVG (drawn at the last measured width) from holding the box wide when the window narrows. */
+.plotBox { width: 100%; min-width: 0; contain: inline-size; margin-top: 4px; border-radius: 6px; outline: none; }
 .plotBox:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
 .plotSvg { display: block; touch-action: pan-y; cursor: crosshair; user-select: none; -webkit-user-select: none; }
 .grid { stroke: var(--rule); stroke-width: 1; }
