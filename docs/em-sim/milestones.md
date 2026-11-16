@@ -154,6 +154,11 @@ Monte Carlo deterministic; budgets met.
 **Split** (main session, 2026-11-16) into **M1.4a** (the finite-difference reference and the fuzz of at least 500
 structures, by an agent that reads no solver code or solver notes) and **M1.4b** (`closedform.ts`, the closed forms
 against the field solver, the validation table and the explanation of every difference).
+**M1.4c** (added 2026-11-16 from the owner's numbers): reconcile the tool with JLCPCB. JLCPCB's online calculator gives
+50 Ω at 5.42 mil and 100 Ω at 4.26/8 mil, its engineers' tool 5.40 mil and 4.33/7.87 mil; this tool reads about 3 %
+higher on both. Find which assumptions (mask model, εr, etch, copper thickness, definition) reproduce JLCPCB's numbers,
+from JLCPCB's published parameters and the owner's screenshots of both calculators when given; record it in
+facts-cases.md and in what M2.3's calculator comparison says. Runs when the screenshots are in, or before M2.3.
 
 A fresh agent that **does not read** `lib/emsim/` solver files (only engine.md §3–§4, facts.md, solver.md's design of
 the reference): writes the finite-difference reference solver in `scripts/harness/emsim/fd/` (non-uniform grid,
