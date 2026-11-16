@@ -20,6 +20,9 @@ Full entries with DOIs are in `references.bib` under the keys below.
 | `AlQedra2013` | Al-Qedra, Okhmatovski, USNC-URSI, 2013 | Electrostatic Green's function of planar layered media computed by higher-order FEM, so only conductor charge is unknown. | M1.2: if interface panels ever dominate the cost. |
 | `SheikhHosseiniLori2017` | Sheikh Hosseini Lori, …, Okhmatovski, IEEE TMTT, 2017 | Higher-order MoM (surface-volume-surface EFIE) for the R and L matrices of lines with complex cross sections over a wide frequency range; checked against canonical currents and FEM. | Phase 2 losses (later.md): frequency-dependent R and L. |
 | `Hwang2006` | Hwang, Given, Phys. Rev. E 74, 2006 | Last-passage Monte Carlo algorithm for mutual capacitance; checked on the circular-disk parallel-plate capacitor. | M1.4: a third, fully independent method, if the FD check ever needs one. |
+| `Park1990` | Park, Ahn, Lee, Ra, IEEE Trans. Magn. 26(2), 1990 | Adaptive BEM refinement driven by local error estimates (difference of adjacent node values; mid-element error from the integral equation), applied to striplines with edge singularities. (M0.2e) | M1.2: error estimate. |
+| `Frenkel1989` | Frenkel, IEEE TAP 37(9), 1989 | Compares how expansions in regular and in square-root-singular edge basis functions converge. (M0.2e) | M1.2: background to solver.md §2.5. |
+| `Niu2023` | Niu, Hu, Guo, He, ICMMT, 2023 | BEM capacitance matrix of cables with a truncated open boundary (zero potential or a third-kind condition): the boundary must be far enough away; the number of elements on it barely matters. (M0.2e) | M1.2: background to solver.md §2.4. |
 
 ## Pair impedance definitions (M1.3)
 
@@ -37,6 +40,12 @@ Full entries with DOIs are in `references.bib` under the keys below.
 | `Arz2000` | Arz, Williams, Walker, …, Grabinski, IEEE MTT-S IMS, 2000 | Asymmetric coupled lines in 0.25 µm CMOS, 50 MHz–26.5 GHz: line parameters from four-port measurements agree with numerical calculation. | M1.3: evidence that the modal (matrix) description fits measurements of asymmetric pairs. |
 | `Koledintseva2016` | Koledintseva, Vincent, IEEE EMC, 2016 | Full-wave study of how weak or strong coupling changes mixed-mode S of slightly length-imbalanced microstrip and stripline pairs. | Phase 2: mode conversion; M1.3 coupling labels. |
 | `Yan2026` | Yan, Nie, Zhang, Qin, IEEE TCPMT, 2026 | Full-wave study of differential-mode non-TEM dispersion in microstrip pairs; a fitted closed form for the dispersion-onset frequency from geometry and coupling; quasi-static results degrade quickly once the Nyquist frequency exceeds it. | M1.3/M1.5: a quantitative validity flag for pairs (engine.md §8). |
+| `Abbosh2009` | Abbosh, IET MAP 3(1), 2009 | Conformal-mapping closed forms for the even and odd impedances of coupled microstrip, also over a slotted ground; within 5 % of HFSS for most cases. (M0.2e) | M1.4. |
+| `Tang2008` | Tang, Yu, Chen, MOTL 50(3), 2008 | CAD formulas for the even/odd capacitances and impedances of asymmetric edge-coupled stripline; average error below 2 % against numerical results. (M0.2e) | M1.3, M1.4. |
+| `Chao1993` | Chao, IEEE EMC, 1993 | Even and odd mode impedances of coupled microstrip from an MoM capacitance matrix agree well with TDR measurements. (M0.2e) | M1.3, validation. |
+| `Hagmann2008` | Hagmann, Dickmann, EMC Europe, 2008 | Mode conversion on differential lines seen two ways: by modal impedance matrices (voltages and currents) and by mixed-mode S-parameters (power waves). (M0.2e) | M1.3. |
+| `PerezEscribano2023` | Pérez-Escribano, Márquez-Segura, IEEE JMW 3(2), 2023 | Even/odd propagation constants of symmetric coupled microstrip from pure-mode four-port measurements; the correct excitation of the modes decides the result; two figures of merit for the transitions. (M0.2e) | Validation. |
+| `Kim2000` | Kim, Swaminathan, Li, EPTC, 2000 | Frequency-dependent Zc from TDR with open-short-load calibration and time windowing, compared with a network analyser. (M0.2e) | Validation, M2.3/M2.4 theory. |
 
 ## Calculators against field solvers and measurements (M1.4, M1.1, M1.3)
 
@@ -58,6 +67,16 @@ Full entries with DOIs are in `references.bib` under the keys below.
 | `HernandezBonilla2024` | Hernandez-Bonilla, …, Schuster, IEEE SPI, 2024 | Measured cross sections of two automotive boards (10 in striplines) in a 2D MoM solver with polynomial chaos: insertion loss uncertainty to 20 GHz depends more on dielectric properties than on dimensions; among dimensions roughness matters most. | M1.3 Monte Carlo: inputs from real cross sections. |
 | `Renbi2011` | Renbi, Carlson, Delsing, IMAPS, 2011 | 3 × 20 boards from three makers, same 50 Ω trace: measured impedance off by 3 %, 10 % and 20 % by maker; 2.6–3.5 % spread within a batch. | M1.3: what the fab tolerance means in practice. |
 | `Kay1989` | Kay, Pomerleau, Steer, IEEE SoutheastCon, 1989 | Empirical statistical analysis of PCB lines from S-parameters (Z0 and γ) for worst-case design. | M1.3: tolerance analysis background. |
+| `Bogatin1990` | Bogatin, IEEE TCHMT 13(2), 1990 | Closed-form R, C, L, G of microstrip; within 5 % of measured reflectivity up to 1 GHz using FR-4 εr 4.9 at 1 MHz with a constant DF 0.022 (Teflon: 2.20, 0.004). (M0.2e) | M1.4, validation. |
+| `Sadiku2007` | Sadiku, Musa, Nelatury, IEEE SoutheastCon, 2007 | Twelve closed-form microstrip capacitance formulas compared with measured values; composite formulas inherit the accuracy of their parents. (M0.2e) | M1.4. |
+| `Gunston1969` | Gunston, Weale, Electron. Lett. 5(26), 1969 | The impedance of single and coupled microstrip varies with strip thickness by too much to ignore in many practical cases. (M0.2e) | M1.4. |
+| `Wang2018` | Wang, Xu, Zhou, …, Hu, Circuit World 44(2), 2018 | Microstrip shape, line/space ratio, reference layer and solder resist against measured insertion loss (numbers in the findings). (M0.2e) | Phase 2 (losses). |
+| `Hsu2017` | Hsu, Su, Ye, Lin, IMPACT, 2017 | A low-dissipation solder mask improves microstrip signal integrity by more than 10 %. (M0.2e) | Phase 2 (losses). |
+| `Takahashi2023` | Takahashi, Hatab, Schlaffer, Paulitsch, Bösch, IEICE ELEX 20(21), 2023 | GCPW made by panel plating and by pattern plating: εeff and attenuation to 43.5 GHz with 95 % intervals, agreeing with full-wave; the processes differ. (M0.2e) | Validation. |
+| `Fang2019` | Fang, Lai, Lu, …, Jiang, ECTC, 2019 | Correcting the fixture's loss in production TDR impedance measurements by a trained model (numbers in the findings). (M0.2e) | Validation. |
+| `Wells2010` | Wells, Melde, EPEPS, 2010 | Debye and Fröhlich models compared for a causal broadband εr of FR-4. (M0.2e) | Phase 2 (dispersion). |
+| `Zhou2025` | Zhou, Cao, He, …, Wang, ICEPT, 2025 | Copper roughness on a semi-additive HDI substrate against the loss and TDR impedance of microstrip and stripline GCPW to 50 GHz, simulated (numbers in the findings). (M0.2e) | Phase 2, validation. |
+| `Sun2023` | Sun, Liu, Liu, Tian, Wu, EITCE, 2023 | Glass weave: traces at 0–15° to the weft, simulated and measured (numbers in the findings). (M0.2e) | Validation (causes). |
 
 ## Vias (M1.6, M1.7)
 
@@ -82,6 +101,15 @@ Full entries with DOIs are in `references.bib` under the keys below.
 | `Simonovich2011` | Simonovich, Bogatin, Cao, IEEE TCPMT 1(5), 2011 | Differential via as a line with analytical Z and εeff, no measured or simulated data needed. | M1.7: the simplest pair model to compare. |
 | `Kushta2003` | Kushta, Narita, Kaneko, …, Tohya, IEEE MWCL 13(5), 2003 | Stub resonance of a through via into a stripline, with ground vias, simulated and measured to 20 GHz. | M1.7: stub check. |
 | `RimoloDonadio2009b` | Rimolo-Donadio, Duan, Brüns, Schuster, IEEE SPI, 2009 | An asymmetric ground via arrangement near a link end raises mode conversion about as much as trace length mismatch. | M1.7/phase 2. |
+| `Fan2014` | Fan, Hardock, Rimolo-Donadio, Müller, Kwark, Schuster, IEEE EMC Mag. 3(1), 2014 | Physics-based via models up to 20 GHz: with a controlled return path a via is a line whose impedance can be matched; stub resonances shifted out of band. (M0.2e) | M1.7. |
+| `Pan2012` | Pan, Fan, IEEE TEMC 54(5), 2012 | Equivalent multiconductor transmission-line model of vias with distributed effects, any number of vias and stubs; validated against full-wave and measurements. (M0.2e) | M1.7. |
+| `Orhanovic1998` | Orhanovic, IEEE EPEP, 1998 | A simple equivalent circuit of a via for picosecond rise times, compared with 3D FDTD. (M0.2e) | M1.7, M6.4. |
+| `Miller2004` | Miller, Novak, IEEE EPEP, 2004 | Plane impedance of an 8 × 8 power/ground via array, measured and full-wave (numbers in the findings). (M0.2e) | M1.7: overlap flag. |
+| `Duan2014` | Duan, Hardock, Ndip, Schuster, Lang, IEEE EMC, 2014 | Microstrip-to-differential-via transition to 100 GHz: shared against separate antipads (numbers in the findings). (M0.2e) | M1.7, M6.4. |
+| `Vardapetyan2020` | Vardapetyan, Ong, EPEPS, 2020 | TDR impedance profiles of through, blind and buried differential vias tuned by drill, pad, antipad and pitch; a quick rule by whether the via is too capacitive or too inductive. (M0.2e) | M1.7: target mode. |
+| `Zhang2020` | Zhang, Bohra, Pham, Paladhi, Becker, Dreps, EPEPS, 2020 | Differential vias whose residual stubs differ by the backdrill tolerance (numbers in the findings). (M0.2e) | M1.7, M2.3/M2.4 theory. |
+| `Huddar2021` | Huddar, ICEP, 2021 | Stub resonance: its frequency is set by the stub length, its amplitude by the stub's structure and return paths, so the stub's impedance controls it. (M0.2e) | M1.7. |
+| `Park2017` | Park, Amleshi, Xie, Brunker, Natarajan, IEEE EMCSI, 2017 | Power-via stub resonances in 25 Gbps+ links and two ways to remove them (numbers in the findings). (M0.2e) | M2.3/M2.4 theory. |
 
 ## Worth opening in full
 
@@ -105,3 +133,85 @@ Open access among the kept: `Zheng2008` and `Marynowski2010` (PIER), `Anusorn202
 Of 84 candidate papers checked on Crossref, 7 were not verified (title, first author or year did not match, or
 Crossref listed no authors) and are not used. 20 verified items were left out after reading their abstracts as off
 topic or redundant. About 150 further cited items were off topic for this tool and were not checked.
+
+## Findings with numbers (M0.2e)
+
+Findings later steps can use, each with its conditions and the paper it comes from. **Confidence:** "abstract states
+it" means the number (or the claim, where no number is given) is in the paper's published abstract, read on OpenAlex by
+its DOI; "summary only, unconfirmed" means the number was reported for that paper but is not in its abstract: do not
+use it until someone opens the paper. Every paper was checked on Crossref (title, authors, year); none was opened.
+Rows marked (M0.2e) in the tables above are the papers this step added. What the findings mean for our decisions is in
+[notes-M0.2e.md](notes-M0.2e.md).
+
+### Via models
+
+| # | Finding (number, unit, conditions) | Key | Confidence | Used by |
+|---|---|---|---|---|
+| V1 | Quasi-static equivalent circuits of plated-through-hole vias lose their usable bandwidth as the structure approaches **λ/8**; full-wave models correlate with measurement from 100 MHz to 20 GHz. No GHz limit is given in the abstract. | `Cartier2007` | abstract states it | M1.7 (flag), M6.4 |
+| V2 | How far a quasi-static via circuit holds depends on the distance between the signal via and its return via; the paper shows the valid frequency range for several distances (values not in the abstract). | `Archambeault2004` | abstract states it (no number) | M1.7 (flag) |
+| V3 | With a controlled return path, physics-based models describe a via as a line whose impedance can be matched, studied **up to 20 GHz**. | `Fan2014` | abstract states it | M1.7 |
+| V4 | Quasi-static via models agree with full-wave up to **20–30 GHz** with impedance errors below 1 Ω, rising to several ohms above 30 GHz. | `Cartier2007` | summary only, unconfirmed (the abstract gives λ/8, not these numbers) | — (do not use) |
+| V5 | In an **8 × 8** power/ground via array the plane impedance and inductance are **4×** higher at the centre than on the perimeter, and the impedance **rises sharply when antipads overlap** (measured and full-wave). This is the plane (PDN) impedance, not a signal via's line impedance. | `Miller2004` | abstract states it | M1.7 (overlap flag) |
+| V6 | A shared antipad of a differential via excites higher-order parasitic modes; separate antipads on the outer planes keep the impedance uniform and improve transmission, mainly at **40–60 GHz** (full-wave, to 100 GHz). | `Duan2014` | abstract states it | M1.7, M6.4 |
+| V7 | Differential vias whose residual stubs differ by the **±10 mil** backdrill tolerance: **9 Ω** variation of the differential impedance, mode conversion above **−40 dB** from **5 GHz**, **2–3 ps** intra-pair skew; a **20 mil** stub asymmetry **doubles** the peak-to-peak jitter at **40 Gbps** (simulated). | `Zhang2020` | abstract states it | M1.7, M2.3/M2.4 theory |
+| V8 | Stub resonance: frequency from the stub length; amplitude from the stub's structure and the return paths, so it is controlled by the stub's impedance. | `Huddar2021` | abstract states it (no number) | M1.7 |
+| V9 | Removing power-via stub resonances in 25 Gbps+ links improves the BER by **seven orders of magnitude** (simulated and measured). | `Park2017` | abstract states it | M2.3/M2.4 theory |
+| V10 | A simple via circuit is valid for picosecond rise times against 3D FDTD (no rise time or error stated). | `Orhanovic1998` | abstract states it (no number) | M6.4 |
+
+### The 2D field solver
+
+| # | Finding | Key | Confidence | Used by |
+|---|---|---|---|---|
+| S1 | Closed-form grading from the wedge exponent (any etch angle, metal–dielectric junctions): at its stopping rule **10⁻⁴** capacitance accuracy on **11 of 12** benchmarks with, at the median, **half the unknowns** of the strongest safeguarded iterative criterion; the iterative criteria give a valid mesh on **at most 10 of 12** and **fail silently** otherwise; the one failure lies at the edge of the method's calibration class. | `Zhechev2026` | abstract states it | M1.2 |
+| S2 | Adaptive BEM refinement from local error estimates (difference of adjacent node values) works on striplines with edge singularities (no accuracy stated). | `Park1990` | abstract states it (no number) | M1.2 |
+| S3 | A truncated open boundary must be far enough away for accuracy; the number of elements on it hardly matters (no distance stated). | `Niu2023` | abstract states it (no number) | M1.2 (background) |
+| S4 | Regular and square-root-singular edge expansions converge differently (compared, no numbers in the abstract). | `Frenkel1989` | abstract states it (no number) | M1.2 (background) |
+
+### Pair impedance definitions and what a TDR measures
+
+| # | Finding | Key | Confidence | Used by |
+|---|---|---|---|---|
+| P1 | The definitions (2·Zodd, modal impedance matrix, mixed-mode S-parameters, TDR) differ by **1–5 Ω (2–5 %)** for asymmetric microstrip pairs. The abstract says only that two modal definitions differ and that modal impedances can be negative for asymmetric lines. | `Carin1989` | summary only, unconfirmed (number) | — (facts.md §5 has our own estimate) |
+| P2 | Even/odd closed forms for **asymmetric edge-coupled stripline**: average error **below 2 %** against numerical results. | `Tang2008` | abstract states it | M1.3, M1.4 |
+| P3 | Even/odd closed forms for coupled microstrip: within **5 %** of HFSS for most cases. | `Abbosh2009` | abstract states it | M1.4 |
+| P4 | The usual single-ended to mixed-mode S conversion is only right when the odd- and even-mode impedances equal 50 Ω. | `Huynh2007` | abstract states it | M1.3, M1.7 (4-port cascade) |
+| P5 | Even and odd mode impedances of coupled microstrip from an MoM capacitance matrix agree well with TDR (no number). | `Chao1993` | abstract states it (no number) | M1.3, validation |
+| P6 | Mode conversion can be described by modal impedance matrices (voltages and currents) or by mixed-mode S-parameters (power waves); the paper combines both views. | `Hagmann2008` | abstract states it (no number) | M1.3 |
+| P7 | Measured even/odd propagation constants depend decisively on exciting pure modes; two figures of merit judge the transitions. | `PerezEscribano2023` | abstract states it (no number) | validation |
+
+### Why calculators disagree
+
+| # | Finding | Key | Confidence | Used by |
+|---|---|---|---|---|
+| C1 | A closed-form R, C, L, G microstrip model agrees with measured reflectivity to **better than 5 % up to 1 GHz** using FR-4 **εr 4.9 at 1 MHz** with a constant **DF 0.022** (Teflon: 2.20 and 0.004). | `Bogatin1990` | abstract states it | M1.4, facts.md §9 |
+| C2 | Solder mask (20–80 µm), trapezoidal etch (5–15°), copper 0.5 → 2 oz and FR-4 εr from 1 MHz to 1 GHz (4.6 → 4.3) each shift a 50 Ω microstrip by **a few ohms, 4–10 %**. None of the verified abstracts cited for it states an impedance change. | `Chen2021`, `Gunston1969`, `Anderson2014` | summary only, unconfirmed | — (facts.md §9 has our own estimates) |
+| C3 | Closed forms agree with field solvers within **±1–10 % (±1–5 Ω)**. The confirmed figures are C1, P2, P3 and `Wan1996`'s 0.4 / 1.2 / 1.8 %. | `Bogatin1990` | summary only, unconfirmed (range) | — |
+| C4 | Strip thickness changes the impedance of single and coupled microstrip too much to ignore in many practical cases. | `Gunston1969` | abstract states it (no number) | M1.4 |
+| C5 | A new solder resist lowers measured insertion loss by **0.163 dB/in at 12.9 GHz** and **0.164 dB/in at 14 GHz** against a traditional one; thinner resist lowers loss. | `Wang2018` | abstract states it | phase 2 (losses) |
+| C6 | A low-dissipation solder mask improves microstrip signal integrity by **more than 10 %**. | `Hsu2017` | abstract states it | phase 2 (losses) |
+| C7 | Twelve closed-form microstrip capacitance formulas compared with measured values; composite formulas inherit their parents' accuracy (no numbers in the abstract). | `Sadiku2007` | abstract states it (no number) | M1.4 |
+
+### Fabricated boards: TDR against 2D field solvers
+
+| # | Finding | Key | Confidence | Used by |
+|---|---|---|---|---|
+| F1 | **3 × 20** boards of the same 50 Ω trace from three makers: the measured impedance is off nominal by **3 %, 10 % and 20 %**; some boards lie **2.6–3.5 %** above their own batch's mean (180 MHz phase measurement). | `Renbi2011` | abstract states it | validation |
+| F2 | Production TDR through a fixture: the fixture's loss gives an impedance error of about **20 %**, below **3 %** after correction. | `Fang2019` | abstract states it | validation |
+| F3 | 3D full-wave and 2D quasi-static models of uniform microstrip agree except in return loss and simulated TDR; the cause is a loose S-parameter convergence setting in 3D; the 2D value is the impedance target. | `Chen2017` | abstract states it (no number) | M6.4 |
+| F4 | Copper roughness, simulated (Groiss model) on a semi-additive HDI substrate: a **3 µm** VLP-2 foil raises the microstrip GCPW loss (S21) by about **7 %** and lowers its TDR to **97 Ω** at 50 GHz; top-surface roughness moves the microstrip GCPW **100 → 96 Ω** and the stripline GCPW **100 → 101 Ω**; reference-surface roughness from **0.18 to 0.52 µm** moves the microstrip GCPW between **95 and 101 Ω**. | `Zhou2025` | abstract states it | validation, phase 2 |
+| F5 | Glass weave: routing at **10–15°** to the weft keeps the periodic resonance above **26 GHz**; mixed angles reduce the resonance dip by about **12.2 dB** on 20-inch traces (simulated); a trace along the weave (90°) shows a strongly oscillating measured impedance. | `Sun2023` | abstract states it | validation (causes) |
+| F6 | GCPW from panel plating and pattern plating differ in εeff and attenuation (to 43.5 GHz, 95 % intervals); both agree with full-wave. | `Takahashi2023` | abstract states it (no number) | validation |
+| F7 | Calibrated TDR (open-short-load, time windowing) gives a frequency-dependent Zc comparable with a network analyser. | `Kim2000` | abstract states it (no number) | validation |
+| F8 | A causal broadband εr for FR-4: Debye and Fröhlich models compared. | `Wells2010` | abstract states it (no number) | phase 2 |
+
+### Dropped in M0.2e
+
+43 candidate papers were searched on Crossref by title: 33 matched in title, authors and year, 10 did not (not used).
+Of the 33, 28 are added above; 5 were left out as off topic or misattributed. 14 numbers were dropped because the
+paper they were attributed to is not verified, is off topic, or does not say it in its abstract: an impedance drop of
+0.4–0.9 Ω per 0.1 mm of stub, eye height up to 700 %, return loss below −45 dB and crosstalk below −40 dB to 50 GHz
+from antipad tuning, uniform meshes giving 2–4 % (the cited abstract is about another method's own error), PML
+absorption parameters and "< 0.1 % with PML" (finite-element scattering, not BEM), "differential TDR matches the
+mixed-mode Zdiff", TDR within ±5 Ω of a 2D solver, FR-4 εr off by up to 10 %, glass weave 2.5 Ω and 4 ps/inch,
+solder mask below 2 Ω, plating loss up to 50–200 %, etching ±2–5 Ω, roughness ±4–5 Ω, and speed-ups of 4000–12000×
+for learned models.
