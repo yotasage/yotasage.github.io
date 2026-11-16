@@ -46,7 +46,7 @@ function sidesAgree(tree, b, scale) {
 }
 
 export async function run(t) {
-  const E = EQ.EM_EQUATIONS;
+  const E = EQ.EM_EQUATIONS.slice(0, 33); // the trace's 33 (M2.4b); the via entries and the target in check-teach.mjs (M4.2)
   t.eq(E.length, 33, 'the registry has the 33 equations of notes-M2.4a.md');
   const ids = ['telegraph', 'z0-lc', 'delay-lc', 'eeff-c', 'l-c0', 'v-eeff', 'lambda-eeff', 'getsinger', 'getsinger-limit',
     'charge-potential', 'error-shown', 'order', 'mixed-mode-vars', 'zodd-sym', 'zeven-sym', 'zdiff-zodd', 'zdd-zc', 'zcc-zc',

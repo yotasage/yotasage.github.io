@@ -258,13 +258,13 @@ export interface ViaModelResult {
   n: number;
   tr: number; f3: number; band: number; z0: number;
   wall: { kind: 'equivalent' | 'rule'; Req: number; Rw: number };
-  barrel: { zVac: number; zVacErr: number; zdiffVac: number; zcmVac: number; zdiffVacErr: number; zcmVacErr: number; k12: number };
+  barrel: { zVac: number; zVacErr: number; zdiffVac: number; zcmVac: number; zdiffVacErr: number; zcmVacErr: number; k12: number; C0: Mat }; // C0: the cut's vacuum C′ (F/m)
   nodes: ViaNode[];
   pieces: ViaPiece[];
   stubs: ViaStub[];
   feeds: ViaFeed[];
   lumped: ViaLumped | null;
-  valid: { fMax: number; reason: string }; // Hz: the lowest λ/8 limit of the lumped parts
+  valid: { fMax: number; reason: string; window: number; er: number }; // Hz: the lowest λ/8 limit of the lumped parts, its window (mm) and εr
   axiTotal: number; axiTotalErr: number; // F, the axisymmetric whole-via capacitance (one via)
   elements: Element[];
   span: number; // s, one-way delay of feeds and through section
@@ -486,11 +486,11 @@ export function buildVia(s: Stackup, v: ViaStructure, trace: Structure | null, o
   }
   // 6. Validity flags that need the solve.
   const slabEr = (zLo: number, zHi: number): number => Math.max(1, ...L.slabs.filter((x) => x.zHi > zLo && x.zLo < zHi).map((x) => x.er));
-  let fValid = Infinity, validWhy = '';
+  let fValid = Infinity, validWhy = '', validWin = NaN, validEr = NaN;
   for (const c of axi.crossings) {
     const len = c.zHi - c.zLo, er = slabEr(c.zLo, c.zHi);
     const f8 = CLIGHT / (LUMPED_FRACTION * len * 1e-3 * Math.sqrt(er));
-    if (f8 < fValid) { fValid = f8; validWhy = `λ/${LUMPED_FRACTION} of the ${len.toFixed(3)} mm window of ${c.layer} (εr ${er}), Cartier2007`; }
+    if (f8 < fValid) { fValid = f8; validWin = len; validEr = er; validWhy = `λ/${LUMPED_FRACTION} of the ${len.toFixed(3)} mm window of ${c.layer} (εr ${er}), Cartier2007`; }
     if (f8 < f3) flags.push({ level: 'warning', code: 'lumped-long', message: `The ${c.layer} crossing's ΔC spans a ${len.toFixed(3)} mm window (εr ${er}), lumped only to ${(f8 / 1e9).toFixed(1)} GHz (λ/${LUMPED_FRACTION}), below the edge's f3 ${(f3 / 1e9).toFixed(1)} GHz (rise time ${(tr * 1e12).toFixed(1)} ps).`, numbers: [len, er, f8, f3] });
   }
   const f8via = 1 / (LUMPED_FRACTION * tauThrough);
@@ -506,8 +506,8 @@ export function buildVia(s: Stackup, v: ViaStructure, trace: Structure | null, o
   const r: ViaModelResult = {
     ok: true, reason: '', version: VIAMODEL_VERSION, n, tr, f3, band, z0,
     wall: { kind: wallKind, Req, Rw: axi.Rw },
-    barrel: { zVac: cut.vac.z, zVacErr: cut.err.z.e, zdiffVac: cut.vac.zdiff, zcmVac: cut.vac.zcm, zdiffVacErr: cut.err.zdiff.e, zcmVacErr: cut.err.zcm.e, k12 },
-    nodes, pieces, stubs, feeds, lumped, valid: { fMax: fValid, reason: validWhy }, axiTotal: axi.total, axiTotalErr: axi.totalErr.e,
+    barrel: { zVac: cut.vac.z, zVacErr: cut.err.z.e, zdiffVac: cut.vac.zdiff, zcmVac: cut.vac.zcm, zdiffVacErr: cut.err.zdiff.e, zcmVacErr: cut.err.zcm.e, k12, C0 },
+    nodes, pieces, stubs, feeds, lumped, valid: { fMax: fValid, reason: validWhy, window: validWin, er: validEr }, axiTotal: axi.total, axiTotalErr: axi.totalErr.e,
     elements: [...before, ...through, ...after], span,
     nport: null, mixed: null, tdr: null, tdrCommon: null, flags, assumptions, axiCached: axi.cached,
     ms: 0, parts: { axi: msAxi, cut: msCut, feeds: msFeeds, cascade: 0, tdr: 0 },

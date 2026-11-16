@@ -135,8 +135,8 @@ is a stub.
    barrel (55.32 Ω) show apart. ⟨237⟩ Target 50 Ω by the antipad: Ø1.758 mm. ⟨238⟩
 3. Open `stub`: the barrel below L3 is a 1.335 mm stub (9.19 ps). Its bare quarter wave is 27.2 GHz; with its pads it
    resonates at 21.8 GHz, where |S21| falls to −48.6 dB, and the page flags it inside the 25.0 GHz band. ⟨239⟩ At
-   10 GHz S21 is already −0.68 dB and S11 −8.4 dB. ⟨240⟩
-4. Open `backdrill`: 0.165 mm of stub is left, resonating near 215 GHz; at 10 GHz S21 is −0.07 dB and S11 −18.0 dB, and
+   10 GHz S21 is already −0.67 dB and S11 −8.4 dB (with the 2 mm feed; E without it: −0.68 dB). ⟨240⟩
+4. Open `backdrill`: 0.165 mm of stub is left, resonating near 215 GHz; at 10 GHz S21 is −0.07 dB and S11 −18.1 dB (−18.0 without the feed), and
    the stub flag is gone. ⟨241⟩
 
 **Topics.** `via-line`, `via-pads`, `via-stubs`, `via-tdr`, `via-sparams`, `via-limits`.

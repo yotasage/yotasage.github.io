@@ -1,8 +1,10 @@
-// The equations the EM simulation's theory shows (step M2.4b; topics, TeX and live fields in docs/em-sim/theory.md
-// and theory-2.md): 33 entries on the shared equation engine of lib/equations/ (the Smith chart has its own registry
+// The equations the EM simulation's theory shows (step M2.4b; topics, TeX and live fields in docs/em-sim/theory.md,
+// theory-2.md and theory-vias.md): 61 entries on the shared equation engine of lib/equations/, written in
+// equationsLines.ts (33, the trace) and equationsVia.ts (28, vias, the TDR, S-parameters, the target; step M4.2), each
+// with its derivation steps (equations-list.md) (the Smith chart has its own registry
 // in lib/smith/equations.ts). Each is written as short text, parsed when this module loads, printed as TeX by the
 // engine's printer (names the engine would print plainly get their TeX from TEX_NAMES) and evaluated on the numbers
-// that lib/emsim/eqvalues.ts takes from the solver's results. The solver never uses these trees: they are for display,
+// that lib/emsim/eqvalues.ts (trace) and eqvaluesVia.ts (via) take from the engine's results. The solver never uses these trees: they are for display,
 // and the harness (scripts/harness/emsim/check-equations.mjs) evaluates every entry against the engine's numbers.
 // Framework-free; no engine import (the page can print an equation without loading the solver).
 
@@ -10,14 +12,15 @@ import { parse, variablesOf } from '../equations/parse';
 import type { Node } from '../equations/parse';
 import { nameTex, substitutions, tex, valueTex } from '../equations/tex';
 import type { TexOptions, TexPiece } from '../equations/tex';
-import type { Binding } from '../equations/compile';
-import type { Equation, Source, SymbolInfo } from '../equations/equation';
+import type { Binding, Value } from '../equations/compile';
+import { parseReason } from '../equations/equation';
+import type { Equation, Step, SymbolInfo } from '../equations/equation';
+import { sym } from './equationsDef';
+import type { Def, EmObject } from './equationsDef';
+import { LINE_DEFS, STEP_SYMBOLS, STEP_TEX_NAMES } from './equationsLines';
+import { VIA_DEFS, VIA_SYMBOLS, VIA_TEX_NAMES } from './equationsVia';
 
-// What a symbol takes its colour from on the page.
-export type EmObject =
-  | 'line' | 'pair' | 'mode' | 'stackup' | 'solver' | 'drive' | 'formula' | 'calculator' | 'tolerance' | 'constant';
-
-const sym = (meaning: string, unit: string, object: EmObject): SymbolInfo<EmObject> => ({ meaning, unit, object });
+export type { EmObject } from './equationsDef';
 
 export const EM_SYMBOLS: Readonly<Record<string, SymbolInfo<EmObject>>> = {
   // one line
@@ -125,6 +128,8 @@ export const EM_SYMBOLS: Readonly<Record<string, SymbolInfo<EmObject>>> = {
   sigma: sym('standard deviation of the result', 'Ω', 'tolerance'),
   sigma_i: sym('standard deviation input i is drawn with', '', 'tolerance'),
   t_i: sym('tolerance of input i', '', 'tolerance'),
+  ...VIA_SYMBOLS,
+  ...STEP_SYMBOLS,
 };
 
 /** TeX for names the engine's `nameTex` would print otherwise (subscripts with commas, arguments, bold vectors). */
@@ -143,6 +148,8 @@ export const TEX_NAMES: Readonly<Record<string, string>> = {
   Z_stackup: 'Z(\\text{stackup})', Z_calc: 'Z(\\text{calculator})',
   Z_plus: 'Z(x_i + t_i)', Z_minus: 'Z(x_i - t_i)',
   Z_hiat: 'Z\\big(x_i + \\operatorname{sign}(d_i)\\,t_i\\big)', Z_loat: 'Z\\big(x_i - \\operatorname{sign}(d_i)\\,t_i\\big)',
+  ...VIA_TEX_NAMES,
+  ...STEP_TEX_NAMES,
 };
 
 /** One more relation printed with an entry ("with …"), in the same text form. */
@@ -159,79 +166,39 @@ export interface EmEquation extends Equation<EmObject> {
   extra?: string;
   /** False for definitions that have no numbers of their own (telegrapher's equations, Q = CV, mixed-mode variables). */
   live: boolean;
+  /** What its numbers come from: the trace's solve (eqvalues.emBinding) or the via model (eqvaluesVia.viaBinding). */
+  on: 'trace' | 'via';
+  /** Free variables of the steps (and their reasons) that the entry itself does not use: numbers only in the harness. */
+  stepVariables: readonly string[];
 }
-
-const src = (key: string, at: string): Source => ({ key, at });
-const QUASI_TEM = 'quasi-TEM: the static C and L of the cross-section';
-const SYM_PAIR = 'symmetric pair (Zc₁₁ = Zc₂₂)';
-
-interface Def {
-  id: string; title: string; topic: string; text: string; where?: string[]; extra?: string;
-  applies?: 'line' | 'pair' | 'any'; live?: boolean;
-  sources?: Source[]; derivation?: string; assumptions?: string[]; engine: string;
-}
-
-const DEFS: Def[] = [
-  // Transmission lines and quasi-TEM (theory.md topic 1).
-  { id: 'telegraph', title: 'Telegrapher’s equations', topic: 'transmission-lines', text: '-dV/dz = L*dI/dt', where: ['-dI/dz = C*dV/dt'], live: false, derivation: 'A short piece of line as a series L and a shunt C per unit length.', assumptions: [QUASI_TEM, 'lossless line'], engine: 'none (a definition)' },
-  { id: 'z0-lc', title: 'Characteristic impedance from L and C', topic: 'transmission-lines', text: 'Z_0 = sqrt(L/C)', applies: 'line', sources: [src('Ellingson2018', '§3.12')], assumptions: [QUASI_TEM, 'lossless line'], engine: 'lines.linesOf: lines[0].z0 against bem.L, bem.C' },
-  { id: 'delay-lc', title: 'Delay per unit length', topic: 'transmission-lines', text: 'tau = sqrt(L*C) = 1/v', applies: 'line', derivation: 'The speed 1/√(LC) of the telegrapher’s equations.', assumptions: [QUASI_TEM], engine: 'lines.linesOf: lines[0].delay' },
-  { id: 'eeff-c', title: 'Effective permittivity', topic: 'transmission-lines', text: 'varepsilon_eff = C/C_0', derivation: 'The definition: the line as if in one uniform material.', assumptions: [QUASI_TEM], engine: 'lines.linesOf: lines[0].eeff = C_kk/C0_kk' },
-  { id: 'l-c0', title: 'Inductance from the vacuum capacitance', topic: 'transmission-lines', text: 'L = mu_0*varepsilon_0/C_0', applies: 'line', sources: [src('Paul2008', '')], assumptions: [QUASI_TEM, 'non-magnetic materials'], engine: 'bem2d.solveBoundary: L = µ₀ε₀·C0⁻¹' },
-  { id: 'v-eeff', title: 'Speed on the line', topic: 'transmission-lines', text: 'v = c_0/sqrt(varepsilon_eff)', sources: [src('Ellingson2018', '§3.11')], assumptions: [QUASI_TEM], engine: 'lines.linesOf: 1/lines[0].delay' },
-  { id: 'lambda-eeff', title: 'Wavelength on the line', topic: 'transmission-lines', text: 'lambda = lambda_0/sqrt(varepsilon_eff)', where: ['lambda_0 = c_0/f'], sources: [src('Ellingson2018', '§3.11')], assumptions: [QUASI_TEM], engine: 'lines.linesOf: v/f' },
-  { id: 'getsinger', title: 'Dispersion of microstrip (Getsinger)', topic: 'transmission-lines', text: 'varepsilon_f = varepsilon_r - (varepsilon_r - varepsilon_eff)/(1 + G*(f/f_p)^2)', where: ['f_p = Z_0/(2*mu_0*h)', 'G = 0.6 + 0.009*Z_ohm'], applies: 'line', sources: [src('QucsTech', '§11.1'), src('Getsinger1973', '')], assumptions: ['microstrip', 'an estimate: the solver is static'], engine: 'eqvalues.getsinger on lines[0] and closedForms(setup).reduced' },
-  { id: 'getsinger-limit', title: 'Where dispersion reaches the solver’s error', topic: 'transmission-lines', text: 'f_lim = f_p*sqrt(x)', where: ['x = delta*varepsilon_eff/(G*(varepsilon_r - varepsilon_eff - delta*varepsilon_eff))', 'delta = e_eff/varepsilon_eff'], extra: '\\text{(the frequency at which the rise equals the error)}', applies: 'line', derivation: 'Getsinger’s εeff(f) − εeff set equal to the error δ·εeff and solved for f.', assumptions: ['microstrip'], engine: 'eqvalues.getsingerLimit; getsinger at f_lim rises by δ' },
-  // The field solver (topic 2).
-  { id: 'charge-potential', title: 'Charge and potential', topic: 'field-solver', text: 'Q_vec = C_mat*V_vec', extra: 'C_{ij} \\le 0\\ (i \\ne j)', live: false, sources: [src('Paul2008', '')], assumptions: ['per unit length', 'Maxwell capacitance matrix'], engine: 'bem2d.solveBoundary: C' },
-  { id: 'error-shown', title: 'The error shown', topic: 'field-solver', text: 'e = 1.5*D_X', extra: '\\text{(differences shrinking at least twofold; the full rule in solver.md, section 2.6)}', derivation: 'Richardson’s estimate with a safety factor of 1.5, at least a quarter of the coarser difference (bem2d.estimateOf).', assumptions: ['the last two differences shrink at least twofold, with one sign'], engine: 'bem2d.estimateOf on eqvalues.levelSeries' },
-  { id: 'order', title: 'Observed order', topic: 'field-solver', text: 'p = ln(abs(X_M2 - X_M4)/abs(X_M - X_M2))/ln(2)', extra: '\\text{regular when } 0.8 \\le p \\le 4', derivation: 'Two differences of three levels halving the panel size (bem2d.estimateOf).', engine: 'bem2d.estimateOf(…).order on eqvalues.levelSeries' },
-  // Pairs (topic 3).
-  { id: 'mixed-mode-vars', title: 'Mixed-mode voltages and currents', topic: 'pairs', text: 'V_d = V_1 - V_2', where: ['I_d = (I_1 - I_2)/2', 'V_c = (V_1 + V_2)/2', 'I_c = I_1 + I_2'], applies: 'pair', live: false, sources: [src('BockelmanEisenstadt1995', '')], engine: 'none (a definition)' },
-  { id: 'zodd-sym', title: 'Odd-mode impedance', topic: 'pairs', text: 'Z_odd = sqrt((L_11 - L_12)/(C_11 - C_12))', applies: 'pair', assumptions: [SYM_PAIR, QUASI_TEM], engine: 'lines.linesOf: pair.zodd = Zdd/2' },
-  { id: 'zeven-sym', title: 'Even-mode impedance', topic: 'pairs', text: 'Z_even = sqrt((L_11 + L_12)/(C_11 + C_12))', applies: 'pair', assumptions: [SYM_PAIR, QUASI_TEM], engine: 'lines.linesOf: pair.zeven = 2·Zcc' },
-  { id: 'zdiff-zodd', title: 'Differential and common-mode impedance', topic: 'pairs', text: 'Z_diff = 2*Z_odd', where: ['Z_cm = Z_even/2'], applies: 'pair', assumptions: [SYM_PAIR], engine: 'lines.linesOf: pair.zdiff, pair.zcm' },
-  { id: 'zdd-zc', title: 'Differential impedance from Zc', topic: 'pairs', text: 'Z_diff = Z_c11 + Z_c22 - 2*Z_c12', applies: 'pair', engine: 'lines.levelValues: zdiff' },
-  { id: 'zcc-zc', title: 'Common-mode impedance from Zc', topic: 'pairs', text: 'Z_cm = (Z_c11 + Z_c22 + 2*Z_c12)/4', applies: 'pair', engine: 'lines.levelValues: zcm' },
-  { id: 'zdc-zc', title: 'Mixed-mode impedance Zdc', topic: 'pairs', text: 'Z_dc = (Z_c11 - Z_c22)/2', applies: 'pair', engine: 'lines.levelValues: zdc' },
-  { id: 'zdiff-b', title: 'Definition B (voltage drive)', topic: 'pairs', text: 'Z_diffB = 4/(Y_c11 + Y_c22 - 2*Y_c12)', where: ['Z_cmB = 1/(Y_c11 + Y_c22 + 2*Y_c12)'], applies: 'pair', engine: 'lines.levelValues: zdiffB, zcmB' },
-  { id: 'ztdr', title: 'What a differential TDR shows', topic: 'pairs', text: 'Z_TDR = Z_dd - Z_dc^2/(Z_cc + R_TDR)', applies: 'pair', derivation: 'notes-M0.2e.md item 2: two 50 Ω sources, 25 Ω in common mode.', engine: 'lines.levelValues: ztdr' },
-  { id: 'kb', title: 'Backward coupling', topic: 'pairs', text: 'k_b = (C_m/C_11 + L_m/L_11)/4', where: ['C_m = -C_12', 'L_m = L_12'], applies: 'pair', sources: [src('Paul2008', ''), src('Bogatin2018', '')], assumptions: [SYM_PAIR, 'weak coupling'], engine: 'lines.levelValues: kb' },
-  { id: 'kf', title: 'Forward coupling', topic: 'pairs', text: 'k_f = (C_m/C_11 - L_m/L_11)/(2*v_c)', where: ['v_c = 1/sqrt(L_11*C_11)'], applies: 'pair', sources: [src('Paul2008', ''), src('Bogatin2018', '')], assumptions: [SYM_PAIR, 'weak coupling'], engine: 'lines.levelValues: kf (s/m)' },
-  { id: 'fext-pulse', title: 'Far-end crosstalk of a step', topic: 'pairs', text: 'V_FEXT = k_f*ell*V_r/t_r', applies: 'pair', assumptions: ['weak coupling', 'a linear ramp of V_r in t_r', 'matched ends'], engine: 'pair.kf with ℓ = 100 mm, 1 V in 100 ps' },
-  { id: 'eeff-mode', title: 'Effective permittivity of a mode', topic: 'pairs', text: 'varepsilon_effm = (c_0/v_m)^2', applies: 'pair', engine: 'lines.linesOf: modes[m].eeff, modes[m].v' },
-  { id: 'mode-skew', title: 'Skew between the modes', topic: 'pairs', text: 'Delta_tau = (tau_even - tau_odd)*ell', applies: 'pair', engine: 'lines.linesOf: modes[m].delay' },
-  // Calculators (topic 5).
-  { id: 'pct-diff', title: 'Difference of a closed form', topic: 'calculators', text: 'Delta = (X_formula - X_field)/X_field', engine: 'closedform.closedForms(setup).results[i].values against lines[0].z0 or pair.zdiff' },
-  { id: 'parts-sum', title: 'The calculator’s inputs by parts', topic: 'calculators', text: 'Delta_Z = Z_stackup - Z_calc', where: ['Delta_sum = Delta_er + Delta_cu + Delta_etch + Delta_mask'], extra: '\\Delta Z \\approx \\textstyle\\sum_\\mathrm{part}\\Delta_\\mathrm{part},\\quad \\Delta_\\mathrm{part} = Z(\\text{calculator, part as stackup}) - Z(\\text{calculator})', derivation: 'Each part changed alone from the calculator’s inputs; the sum leaves out how the parts interact.', engine: 'eqvalues.calculatorParts (jlcCalc.asJlcpcbCalculator, jlcAllBut, solved)' },
-  // Tolerances (topic 6).
-  { id: 'sens', title: 'Sensitivity to one input', topic: 'tolerances', text: 'd_i = (Z_plus - Z_minus)/2', engine: 'vary.corners: inputs[i].d[key]' },
-  { id: 'share', title: 'Share of the spread', topic: 'tolerances', text: 's_i = d_i^2/S_d', extra: 'S_d = \\textstyle\\sum_j d_j^2', engine: 'components/EmSim/tools.shares' },
-  { id: 'corners', title: 'Worst-case corners', topic: 'tolerances', text: 'Z_hi = Z_hiat', where: ['Z_lo = Z_loat'], engine: 'vary.corners: corners[0].lo, hi' },
-  { id: 'rss-sigma', title: 'Spread from the ranking', topic: 'tolerances', text: 'sigma = sqrt(S_d)/3', assumptions: ['independent inputs, each normal with σ = t/3', 'linear response'], engine: 'vary.corners (ranking) against vary.monteCarlo stats sd' },
-  { id: 'mc-normal', title: 'How Monte Carlo draws an input', topic: 'tolerances', text: 'sigma_i = t_i/3', extra: 'x_i \\sim \\mathcal N\\big(\\bar x_i, \\sigma_i^2\\big),\\ \\lvert x_i - \\bar x_i\\rvert \\le t_i', engine: 'vary.monteCarlo (normal, redrawn beyond the limit)' },
-];
 
 function build(d: Def): EmEquation {
   const tree = parse(d.text);
   const where = (d.where ?? []).map((text): Where => ({ text, tree: parse(text) }));
   const variables = variablesOf(tree);
   for (const w of where) variablesOf(w.tree, variables);
+  const steps = (d.steps ?? []).map(([text, why]): Step => ({ text, tree: parse(text), why, reason: parseReason(why) }));
+  const all = [...variables];
+  for (const st of steps) {
+    variablesOf(st.tree, all);
+    for (const r of st.reason) if (typeof r !== 'string') variablesOf(r, all);
+  }
   return {
     id: d.id, title: d.title, text: d.text, tree, sources: d.sources ?? [], derivation: d.derivation,
-    assumptions: d.assumptions ?? [], steps: [], engine: d.engine, variables,
-    topic: d.topic, applies: d.applies ?? 'any', where, extra: d.extra, live: d.live ?? true,
+    assumptions: d.assumptions ?? [], steps, engine: d.engine, variables, symbols: d.symbols,
+    topic: d.topic, applies: d.applies ?? 'any', where, extra: d.extra, live: d.live ?? true, on: d.on ?? 'trace',
+    stepVariables: all.slice(variables.length),
   };
 }
 
 /** Every equation of the EM theory, parsed. */
-export const EM_EQUATIONS: readonly EmEquation[] = DEFS.map(build);
+export const EM_EQUATIONS: readonly EmEquation[] = [...LINE_DEFS, ...VIA_DEFS].map(build);
 
 export const EM_EQUATION_BY_ID: ReadonlyMap<string, EmEquation> = new Map(EM_EQUATIONS.map((e) => [e.id, e]));
 
-/** What a variable means; undefined for an unknown name. */
-export function emSymbolOf(name: string): SymbolInfo<EmObject> | undefined {
-  return EM_SYMBOLS[name];
+/** What a variable means (in an entry when given: its own meanings first); undefined for an unknown name. */
+export function emSymbolOf(name: string, eq?: EmEquation): SymbolInfo<EmObject> | undefined {
+  return eq?.symbols?.[name] ?? EM_SYMBOLS[name];
 }
 
 /** A symbol's TeX: TEX_NAMES first, then the engine's `nameTex`. */
@@ -254,25 +221,32 @@ export function emTex(tree: Node, options: TexOptions = {}): string {
  * The binding an entry evaluates on (shared engine `evaluate`), from the flat numbers of eqvalues.emBinding; null when
  * a variable has no number (the entry is then printed without numbers).
  */
-export function bindingFor(eq: EmEquation, values: Readonly<Record<string, number>>): Binding | null {
+export function bindingFor(eq: EmEquation, values: Readonly<Record<string, Value>>): Binding | null {
   if (!eq.live) return null;
-  const b: Record<string, number> = {};
+  const b: Record<string, Value> = {};
   for (const v of eq.variables) {
     const x = values[v];
-    if (x === undefined || !Number.isFinite(x)) return null;
+    if (!finiteValue(x)) return null;
     b[v] = x;
   }
   return b;
 }
 
 /** Each variable's value as TeX (valueTex with the symbol's unit), for `substitutions` or tex's `value` option. */
-export function valuesTex(eq: EmEquation, values: Readonly<Record<string, number>>, digits = 4): Record<string, TexPiece> {
+export function valuesTex(eq: EmEquation, values: Readonly<Record<string, Value>>, digits = 4): Record<string, TexPiece> {
   const out: Record<string, TexPiece> = {};
   for (const v of eq.variables) {
     const x = values[v];
-    if (x !== undefined && Number.isFinite(x)) out[v] = valueTex(x, 0, EM_SYMBOLS[v]?.unit ?? '', digits);
+    if (!finiteValue(x)) continue;
+    const unit = emSymbolOf(v, eq)?.unit ?? '';
+    out[v] = typeof x === 'number' ? valueTex(x, 0, unit, digits) : valueTex(x[0], x[1], unit, digits);
   }
   return out;
+}
+
+/** A real number or (re, im) pair, every part finite. */
+export function finiteValue(x: Value | undefined): boolean {
+  return typeof x === 'number' ? Number.isFinite(x) : x !== undefined && Number.isFinite(x[0]) && Number.isFinite(x[1]);
 }
 
 /** The substitution lines of a relation (the entry's tree or one of its `where`) with the EM names (see `substitutions`). */

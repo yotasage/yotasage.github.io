@@ -13,6 +13,7 @@ import type { JlcPart } from './jlcCalc';
 import type { Setup } from './setup';
 import type { TraceKind } from './structure';
 import type { CornersResult, McResult } from './vary';
+import type { InverseResult } from './inverse';
 
 /** µ₀ as the engine has it (L = µ₀ε₀·C0⁻¹ with µ₀ε₀ = 1/c0²). */
 export const MU0 = 1 / (EPS0 * C0 * C0);
@@ -82,6 +83,8 @@ export interface EmContext {
   /** The Tolerance tool's results; `input` the ranked input i (default 0). */
   corners?: CornersResult | null; input?: number;
   mc?: McResult | null;
+  /** A Target result (Tools): bound when reached (`target`, step M4.2). */
+  inverse?: InverseResult | null;
 }
 
 /** Every symbol of EM_SYMBOLS that the context gives a number, in SI units (lengths in metres). */
@@ -155,5 +158,7 @@ export function emBinding(ctx: EmContext): Record<string, number> {
     const c = co.corners.find((x) => x.key === k);
     if (c) { b.Z_hi = c.hi; b.Z_lo = c.lo; b.Z_hiat = c.hi; b.Z_loat = c.lo; }
   }
+  const inv = ctx.inverse;
+  if (inv && inv.ok && inv.reached) { b.Z_x = inv.value; b.Z_target = inv.target; }
   return b;
 }
