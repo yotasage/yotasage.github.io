@@ -440,7 +440,7 @@ full-wave simulation and what the animation shows (content and page, with claims
 
 **Done when:** the 3D animation plays at the 2D player's frame rate; the topic's claims are sourced.
 
-## M8 – Export and report
+## M8 – Export and report (next after M3: the owner moved it ahead of M4–M7 on 2026-11-16)
 
 ### M8.1a – Figure model, SVG, PNG, TikZ (harness only) · M
 

@@ -125,7 +125,7 @@ One agent per step, one at a time, each started and checked by the main session 
 
 **Owner checkpoints:** 1 after M2 (released: trace impedance and fields), 2 after M3 (vias; the owner may reorder M4–M8
 or move a part to phase 2), 3 when the owner first uses the tool on a board of their own. None is a gate (D14); phase 2
-is. **Stopping points:** after any finished milestone from M2 on, since the tool is released. Never in the middle of a
+is. **Order after checkpoint 2** (owner, 2026-11-16): **M8 (export) first**, then M4, M5, M6, M7, then M9. **Stopping points:** after any finished milestone from M2 on, since the tool is released. Never in the middle of a
 milestone.
 
 ## Module map
