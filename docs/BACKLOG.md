@@ -1,6 +1,6 @@
 # Backlog
 
-Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL108**). When a row is
+Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL110**). When a row is
 scheduled it moves into the tool's plan (for the PCB viewer: [pcb-viewer/plan.md](pcb-viewer/plan.md); for the resistor
 lookup: [resistor/plan.md](resistor/plan.md); for the Smith chart: [smith-chart/plan.md](smith-chart/plan.md); for the EM simulation: [em-sim/plan.md](em-sim/plan.md)) and the move is noted here; when it is done the row is removed and that is
 noted here too.
@@ -25,7 +25,7 @@ went below the screen), done 2026-11-14 by step M9.3 (the chart is scrolled to t
 [smith-chart/notes-M9.3.md](smith-chart/notes-M9.3.md)). BL46 (Smith chart: the chart as TikZ for LaTeX), done
 2026-11-14 by steps M8.1b and M8.3a (`lib/smith/figureTikz.ts` and the Export section; the schematic and the plot stay
 as BL60). The Smith chart plan ended with M9.4 (2026-11-14): its open rows below each name the trigger that would start
-them; none is scheduled. BL79 (EM simulation: per-corner grading from the wedge exponent), done 2026-11-16 by step M1.2c (`panels.ts` `cornerExponent`; notes in [em-sim/notes-M1.2c.md](em-sim/notes-M1.2c.md); what it did not reach is BL84).
+them; none is scheduled. BL79 (EM simulation: per-corner grading from the wedge exponent), done 2026-11-16 by step M1.2c (`panels.ts` `cornerExponent`; notes in [em-sim/notes-M1.2c.md](em-sim/notes-M1.2c.md); what it did not reach is BL84). BL109 (EM simulation: split `docs/em-sim/modules.md`), done 2026-11-16 by the main session after step M2.4b (the harness rows moved to [em-sim/modules-harness.md](em-sim/modules-harness.md)).
 
 | id | tool | what | why / trigger |
 |---|---|---|---|
@@ -43,7 +43,6 @@ them; none is scheduled. BL79 (EM simulation: per-corner grading from the wedge 
 | BL98 | EM simulation | The JLCPCB stackup picker (M1.8c) filters by menus only: a text search by template id (JLC08161H-…) and a preview of a row's layers (prepreg styles, εr, the pressed sum) before it is chosen would help comparing templates. A link that holds an unedited list stackup as layers (made without the list) is rewritten as the short key only after the next change. |
 | BL107 | EM simulation | The theory's Tolerance figure (M2.4a, theory-2.md §6) would show a histogram of the Monte Carlo samples beside the ranking and the corners; `monteCarlo` (lib/emsim/vary.ts) returns statistics only, so it would have to return the samples (1000 numbers per key) or binned counts. |
 | BL108 | EM simulation | Equations (M2.4b, lib/emsim/eqvalues.ts) not bound to live numbers yet: the solder mask's effect (theory-2.md §4 states 54.98 → 51.50 Ω as text; live would need a second solve with the mask off, in the worker), Getsinger and its limit on a microstrip pair (the odd mode's εeff and Zodd), and on cpw/cpwg (only microstrip and embedded are bound); telegraph, charge-potential and mixed-mode-vars are definitions without numbers. |
-| BL109 | EM simulation | docs/em-sim/modules.md is 38 kB after M2.4b: split it into parts with an index (as docs/smith-chart/modules*.md) before the next step adds rows. |
 | BL106 | EM simulation | The Calculators tool (M2.3b) gives the sizes of the mask and copper-thickness effects behind the closed forms' differences in words, from the owner's cases (mask about 3.5 / 9 Ω, thickness 16 Ω on the pair); solving the setup without mask and with zero-thickness sheets would give them for any setup, at two more solves. |
 | BL105 | EM simulation | "As JLCPCB's calculator" (M2.3b, lib/emsim/jlcCalc.ts) covers what JLCPCB's requests showed: prepregs, outer 1 oz copper, masks. Cores (2-layer boards), inner copper (stripline: the guide says inner 1 oz T 1.2 mil) and other outer weights (1 oz base: T1 2.2, W1 − W2 1.0 mil) are kept as they are and named on the panel; reading the calculator's requests for those would complete it. JLCPCB's stated numbers are shown for the owner's C39 and C41 only. |
 | BL104 | EM simulation | Sweeps of two inputs (a map of Z over width and gap) and a log x axis for a sweep (plot.ts has log axes; the page offers linear only) | 2026-11-16, step M2.3a. Trigger: the owner asks |
