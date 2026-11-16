@@ -129,6 +129,9 @@ invariants (no overlap, mask thickness rules, layers in order); link and project
 the geometry, kernels, assembly, LU, C/C0/L/Z0/εeff, the error estimate; every accuracy, symmetry, invariance and
 identity item below) and **M1.2b** (speed: the budgets of engine.md §10 in Node, by mirror symmetry, reuse between the
 refinements and between dielectric and vacuum solves, a faster LU, and per-corner grading if it pays).
+**M1.2c** (added after M1.4a-fix, 2026-11-16): per-corner grading from each corner's singularity exponent (BL79), so
+triple points converge at second order and the honest error estimates of M1.4a-fix become tight again; the full fuzz
+against the FD reference still clean, budgets kept.
 
 The solver of solver.md for any number of conductors: C, C0, L, Z0, εeff for one conductor, the matrices for several,
 the error estimate by refinement, dense linear algebra in `lib/emsim/linalg.ts`. Starts from the M0.3 spike.
