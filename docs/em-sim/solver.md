@@ -203,6 +203,12 @@ order above 2 is pre-asymptotic); and the floor is `CFLOOR` = 0.25 × (ρ + ρ0)
 εeff (was ½ and 1), since ρ and ρ0 are themselves bounds of about 3.5 × the true error. Fuzz: estimate / true error of
 C's diagonal ≥ 1.21, median 3.5; all quantities ≥ 1.05, median 3.9 (before 4.9). C39 now shows 50.5216 ± 0.100 Ω
 (FD 50.527 ± 0.010).
+**Status (M2.1b-fix):** 'regular' when the three levels shrink with the same sign at an order of 0.8…4 (r = 1.74…16;
+was 2…16, order 1: corners with ν ≈ ½ converge at q·ν ≈ 1, masked C/C0 at 0.9–1.5), else 'irregular'. An entry of C
+whose own levels turn back is judged by its factors C0 (order ≈ 2–3, upwards) and C/C0 (≈ 1.3–1.5, downwards on
+masked structures): the worse of the two; a derived quantity (impedances, εeff, delays) whose own levels turn back
+takes the status of C and C0, its estimate keeping the C floor. The estimates are unchanged. Fuzz: 362 regular
+structures of 500 (was 153), regular quantities' estimate / true ≥ 1.23, median 3.8; notes-M2.1b-fix.md.
 
 ### 2.7 Layered-media Green's function: not needed
 

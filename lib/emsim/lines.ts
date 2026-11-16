@@ -16,7 +16,7 @@
 // estimate of those values (the same rule as the solver's own quantities), at least the level's removed asymmetry
 // times the value. One level (estimate: false) gives status `unchecked` with the floor.
 
-import { C0, estimateOf, solveSection, worse } from './bem2d';
+import { C0, derivedStatus, estimateOf, solveSection, worse } from './bem2d';
 import type { BemOptions, BemResult, Level, Status } from './bem2d';
 import { section } from './geometry';
 import type { Section } from './geometry';
@@ -155,8 +155,9 @@ export function linesOf(bem: BemResult, floor?: number): LineResults {
     if (!vals.every(Number.isFinite)) return { v: x, e: NaN, status: 'irregular' };
     if (scale > 0 && vals.every((y) => Math.abs(y) <= 1e-10 * scale)) return { v: x, e: Math.max(1e-10 * scale, Math.abs(x)), status: 'converged' };
     const est = estimateOf(vals, floor);
-    status = worse(status, est.status);
-    return { v: x, e: Math.max(est.e, asym * Math.abs(x), cfloor(key, x)), status: est.status };
+    const st = derivedStatus(est.status, bem.status);
+    status = worse(status, st);
+    return { v: x, e: Math.max(est.e, asym * Math.abs(x), cfloor(key, x)), status: st };
   };
   const md = fin.modes;
   const lines: LineInfo[] = [];
@@ -175,7 +176,7 @@ export function linesOf(bem: BemResult, floor?: number): LineResults {
       const x = fin.values[key];
       if (!vals.every(Number.isFinite)) return { v: x, e: NaN, status: 'irregular' as Status };
       const est = estimateOf(vals, floor);
-      return { v: x, e: est.e, status: est.status };
+      return { v: x, e: est.e, status: derivedStatus(est.status, bem.status) };
     });
     modes.push({ label, eeff: q(`mode${m + 1}.eeff`), delay: q(`mode${m + 1}.delay`), v: md.v[m], Tv, Ti, z, ratio });
   }

@@ -157,8 +157,9 @@ flagged until M6.4 checks it).
 
 Every result object carries: the input's hash, the solver's name and version, the error estimate, the validity flags
 (code, message, the numbers behind it), the assumptions (a list of fixed ids that the page and the theory turn into
-text), and the time taken. **Digits shown:** never finer than the larger of the error estimate and 0.01 Ω; the
-tolerance band beside the nominal; the raw number in the equation panel (as the Smith chart's D20).
+text), and the time taken. **Digits shown:** never finer than the larger of the error estimate and 0.01 Ω; the error
+itself with one significant digit, two when its leading digit is 1 or 2 (the particle-data convention: 103.64 ± 0.20,
+51.50 ± 0.05), and the value to the error's last digit; the tolerance band beside the nominal; the raw number in the equation panel (as the Smith chart's D20).
 
 Phase 2 readiness: the via model and the full-wave solver return their frequency-domain result as one **N-port type**
 (frequencies, S-matrices, port reference impedances, producer, validity range), v2's `NPort`, so the time-domain engine

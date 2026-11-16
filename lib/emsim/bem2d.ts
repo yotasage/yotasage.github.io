@@ -11,8 +11,9 @@
 // The estimate (`estimateOf`, since M1.4a-fix): with three levels, 1.5 × the last difference (at least a quarter of
 // the coarser one when the ratio of the differences is over 4, the geometric tail when it is under 2, their sum when
 // they do not shrink), at least floor·|X|, floor 10⁻⁵. The status is 'regular' when the differences shrink at an
-// order between 1 and 4 (ratio 2…16, same sign), else 'irregular': refinement can fail silently (literature.md,
-// Zhechev2026), so the page shows the status with the number. Collocation makes C slightly unsymmetric; it is symmetrised and the removed part
+// order between 0.8 and 4 (ratio 1.74…16, same sign), else 'irregular': refinement can fail silently (literature.md,
+// Zhechev2026), so the page shows the status with the number. An entry of C whose own levels turn back is judged by
+// its factors C0 and C/C0, and a derived quantity by C and C0 when its own levels turn back (M2.1b-fix). Collocation makes C slightly unsymmetric; it is symmetrised and the removed part
 // (`asym`, relative) is reported and added to the estimate of every off-diagonal entry.
 
 import type { Section } from './geometry';
@@ -229,6 +230,10 @@ export function freeCharges(k: Kernel, p: Panels, q: Float64Array, ns: number): 
   return out;
 }
 
+// The smallest ratio of differences called regular: order 0.8 (M2.1b-fix; was 2, order 1). Corners whose density goes as
+// r^(ν−1) with ν ≈ ½ converge at order q·ν ≈ 1 (notes-M1.4a-fix.md), masked structures' C/C0 at 0.9–1.5.
+const R_REGULAR = 2 ** 0.8;
+
 // The estimate of a quantity from its values at levels coarse to fine (2 or 3 of them; see the head).
 export function estimateOf(values: number[], floor = ERROR_FLOOR): Estimate {
   const k = values.length;
@@ -243,19 +248,35 @@ export function estimateOf(values: number[], floor = ERROR_FLOOR): Estimate {
   const order = a1 > 0 && a2 > 0 ? Math.log2(a2 / a1) : NaN;
   if (a1 <= fl && a2 <= 4 * fl) return { e: fl, order, status: 'converged' };
   const r = d2 / d1;
-  if (a1 <= fl && a2 <= 16 * fl && !(r >= 2 && r <= 16)) return { e: fl, order, status: 'converged' };
+  const regular = r >= R_REGULAR && r <= 16;
+  if (a1 <= fl && a2 <= 16 * fl && !regular) return { e: fl, order, status: 'converged' };
   // A safety factor of 1.5 on: the last difference; at least a quarter of the coarser one when the differences
   // shrink by more than 4 (an apparent order above 2 is pre-asymptotic: piecewise-constant panels converge at order 2
   // at best; M1.2c, was 8); the geometric tail a1/(r − 1) when they shrink by less than 2; their sum when they do not shrink or
   // change sign. Fitted with a margin on the 741 diagonal entries of C in the fuzz (notes-M1.4a-fix.md, notes-M1.2c.md).
   const SF = 1.5;
-  const status: Status = r >= 2 && r <= 16 ? 'regular' : 'irregular';
+  const status: Status = regular ? 'regular' : 'irregular';
   const e = SF * (r >= 2 ? (r > 4 ? Math.max(a1, a2 / 4) : a1) : r >= 1.25 ? a1 / (r - 1) : a1 + a2);
   return { e: Math.max(e, fl), order, status };
 }
 
 const RANK: Record<Status, number> = { converged: 0, regular: 1, unchecked: 2, irregular: 3 };
 export function worse(a: Status, b: Status): Status { return RANK[b] > RANK[a] ? b : a; }
+
+// The status of C's entry k from its factors C0 and C/C0 (M2.1b-fix): the worse of the two, so 'regular' only when
+// both converge monotonically at an order of 1…4.
+function factorStatus(levels: Level[], k: number, floor: number): Status {
+  return worse(estimateOf(levels.map((lv) => lv.C0[k]), floor).status, estimateOf(levels.map((lv) => lv.C[k] / lv.C0[k]), floor).status);
+}
+
+// The status of a quantity derived from C and C0 (impedances, εeff, delays, couplings; M2.1b-fix): its own levels when
+// they converge regularly, else that of C and C0 (`base`, the solve's status): a smooth function of entries that each
+// converge regularly converges too, and its own levels can turn back where the errors of C and C0 cancel (C39's Z0:
+// 51.625, 51.501, 51.498 Ω, then 51.504, 51.508 at levels 4, 8). Its estimate keeps the floor from C and C0 (lines.ts).
+export function derivedStatus(own: Status, base: Status): Status {
+  if (own !== 'irregular' || base === 'irregular' || base === 'unchecked') return own;
+  return 'regular';
+}
 
 export function z0Of(lv: Level, i = 0): number {
   const n = Math.round(Math.sqrt(lv.C.length));
@@ -285,13 +306,15 @@ export function solveBoundary(b: Boundary | ((M: number) => Boundary), opt: BemO
   const n = bd!.signals;
   const floor = opt.floor ?? ERROR_FLOOR;
   let status: Status = 'converged';
-  const errOf = (pick: (lv: Level) => Float64Array, offAsym: boolean): number[][] => {
+  const errOf = (pick: (lv: Level) => Float64Array, offAsym: boolean, factors = false): number[][] => {
     const out: number[][] = [];
     for (let i = 0; i < n; i++) {
       const row: number[] = [];
       for (let j = 0; j < n; j++) {
         const est = estimateOf(levels.map((lv) => pick(lv)[i * n + j]), floor);
-        status = worse(status, est.status);
+        // C = (C/C0)·C0: when C's own levels are not monotone, its two factors may each converge regularly with
+        // errors of opposite sign (masked structures: C0 at order ≈ 2–3 upwards, C/C0 at ≈ 1.3–1.5 downwards; M2.1b-fix)
+        status = worse(status, factors && est.status === 'irregular' ? factorStatus(levels, i * n + j, floor) : est.status);
         let e = est.e;
         if (offAsym && i !== j) e = Math.max(e, fin.asym * Math.sqrt(Math.abs(pick(fin)[i * n + i] * pick(fin)[j * n + j])));
         row.push(e);
@@ -300,7 +323,7 @@ export function solveBoundary(b: Boundary | ((M: number) => Boundary), opt: BemO
     }
     return out;
   };
-  const errC = errOf((lv) => lv.C, true);
+  const errC = errOf((lv) => lv.C, true, true);
   const errC0 = errOf((lv) => lv.C0, true);
   const errL = errOf((lv) => lv.L, true);
   let single: SingleLine | null = null;
@@ -308,9 +331,10 @@ export function solveBoundary(b: Boundary | ((M: number) => Boundary), opt: BemO
     const zs = levels.map((lv) => z0Of(lv));
     const es = levels.map((lv) => lv.C[0] / lv.C0[0]);
     const ds = es.map((e) => Math.sqrt(e) / C0);
+    const of = (xs: number[]): Estimate => { const e = estimateOf(xs, floor); return { ...e, status: derivedStatus(e.status, status) }; };
     single = {
       z0: zs[zs.length - 1], eeff: es[es.length - 1], delay: ds[ds.length - 1],
-      z0Err: estimateOf(zs, floor), eeffErr: estimateOf(es, floor), delayErr: estimateOf(ds, floor),
+      z0Err: of(zs), eeffErr: of(es), delayErr: of(ds),
     };
     status = worse(worse(single.z0Err.status, single.eeffErr.status), status);
   }
