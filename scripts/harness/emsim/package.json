@@ -4,9 +4,11 @@
   "description": "Checks and research spikes of lib/emsim for the EM simulation tool. Not part of the site.",
   "type": "module",
   "scripts": {
-    "spike": "tsx spikes/run.mts"
+    "spike": "tsx spikes/run.mts",
+    "spike:fdtd": "tsx spikes/fdtd.mts"
   },
   "devDependencies": {
+    "playwright-core": "^1.65.1",
     "tsx": "^4.19.0"
   }
 }

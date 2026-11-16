@@ -75,6 +75,8 @@ decides" of engine.md has an answer.
 
 ### M0.4 – Full-wave: formulation, WebGPU spike, openEMS · L
 
+**Split** (main session, 2026-11-16) into **M0.4a** (FDTD design, the harness's WebGPU runner, Yee spike in WGSL and JavaScript) and **M0.4b** (openEMS installed, fixture format, the first two fixtures).
+
 **Scope.** Decide the FDTD design (engine.md §7: mesh grading, conformal cells or a fine mesh for barrels, CPML
 parameters, lumped ports and feed lines, de-embedding, TDR from the incident and reflected waves, snapshot format,
 f32 strategy, buffer layout, workgroup sizes, dispatch splitting, estimator calibration); **how the harness runs

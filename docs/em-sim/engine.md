@@ -124,15 +124,15 @@ flagged until M6.4 checks it).
 
 - **Scheme:** Yee FDTD on a graded Cartesian mesh built from the structure (fine at copper edges, thin dielectrics and
   barrels; coarse elsewhere; grading ratio at most about 1.3), CPML on the open sides, copper as PEC (sheets for traces
-  and planes of thickness below a cell; volumes otherwise), round barrels by conformal cells or a fine mesh (**M0.4
-  decides**), dielectrics with constant εr and tanδ as a conductivity at the stated frequency (flagged; dispersive media
+  and planes of thickness below a cell; volumes otherwise), round barrels by conformal cells (decided by M0.4a:
+  [fullwave.md](fullwave.md) §4, with every other full-wave decision), dielectrics with constant εr and tanδ as a conductivity at the stated frequency (flagged; dispersive media
   are phase 2).
 - **Ports:** lumped ports with a source resistance at the ends of feed traces long enough to separate incident and
   reflected waves; reference planes de-embedded to the via; single-ended and mixed-mode excitation for pairs.
 - **Outputs:** S-parameters by DFT on a frequency list; TDR/TDT at the chosen rise time (same definition as §6.6);
   **snapshots** of field components on chosen slices every k steps for the animation, kept as compact f32 (or f16)
   frames; energy and stability monitors.
-- **Backends:** WebGPU compute (f32; one storage buffer per field component; adapter limits requested; work split into
+- **Backends:** WebGPU compute (f32; one storage buffer per field, components as blocks, [fullwave.md](fullwave.md) §9; adapter limits requested; work split into
   dispatches so no dispatch is long enough to be stopped by the GPU watchdog) and a JavaScript worker (f32 for runs,
   f64 for the harness's reference). Both share the mesh, the sources and the post-processing.
 - **Estimator before every run:** cells, time steps (Courant limit of the smallest cell), memory, and an expected run
@@ -174,7 +174,7 @@ of phase 2 can take any of them.
   input's hash. The page shows a "stale" state while a job runs; the main thread never computes a solve.
 - **Budgets** (on the owner's laptop, production build; × 4 CPU throttle for the phone figures; M0.3 and M0.4 confirm
   them with spikes, M9 checks them; M0.3's measurements and the pair rows it could not meet are in
-  [solver.md](solver.md) §6):
+  [solver.md](solver.md) §6; M0.4a's full-wave rates and the 2 M-cell via estimate in [fullwave.md](fullwave.md) §9.6, §11.3):
 
 | Task | Budget |
 |---|---|
