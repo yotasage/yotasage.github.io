@@ -234,6 +234,12 @@ task; screenshots in both themes at both widths.
 
 M0.5: writes the pan-zoom controller `components/EmSim/panZoom.ts`, reused by M2.2 and M3.1.
 
+**Split** (main session, 2026-11-16, page steps overrun their budgets) into **M2.1b** (the Trace section: structure
+presets, the owner's net classes as structures, typed dimensions, the cross-section drawn to scale without handles, the
+results panel through the static worker with the stale state) and **M2.1c** (drag handles for widths, gaps, positions
+and heights by mouse, touch and keys, `panZoom.ts`, the general editor that adds traces, grounds and planes, the drag
+budget at 1× and 4×).
+
 ### M2.2 – Field view · M (page)
 
 The field map over the cross-section: quantity (φ, |E|, field lines, H, charge and current on copper), mode (even, odd,
