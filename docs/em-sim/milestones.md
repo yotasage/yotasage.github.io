@@ -148,6 +148,10 @@ Monte Carlo deterministic; budgets met.
 
 ### M1.4 – Independent check and calculator formulas · M
 
+**Split** (main session, 2026-11-16) into **M1.4a** (the finite-difference reference and the fuzz of at least 500
+structures, by an agent that reads no solver code or solver notes) and **M1.4b** (`closedform.ts`, the closed forms
+against the field solver, the validation table and the explanation of every difference).
+
 A fresh agent that **does not read** `lib/emsim/` solver files (only engine.md §3–§4, facts.md, solver.md's design of
 the reference): writes the finite-difference reference solver in `scripts/harness/emsim/fd/` (non-uniform grid,
 Richardson extrapolation, its own error estimate), the closed-form calculator formulas in `lib/emsim/closedform.ts`
