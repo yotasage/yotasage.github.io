@@ -1,0 +1,197 @@
+/* The Trace section of the EM simulation page (M2.1b): tools, the drawing, the controls and the results panel.
+   Tokens from .root of EmSim.module.css (notes-M2.1a.md, design record). */
+
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 20px;
+  margin-bottom: 16px;
+}
+
+.ctl {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8125rem;
+  color: var(--ink-2);
+  min-width: 0;
+}
+
+.ctl select { max-width: 100%; }
+
+.classes { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 260px; }
+.classesLabel { font-size: 0.8125rem; color: var(--ink-2); }
+.classButtons { display: flex; flex-wrap: wrap; gap: 8px; }
+.classDim { font-family: var(--font-num); font-size: 0.8125rem; color: var(--ink-2); }
+.classButtons button[aria-pressed='true'] .classDim { color: inherit; }
+
+/* Phone: drawing, controls, results. From 960 px: the drawing and the results on the left, the controls beside. */
+.layout {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'draw' 'controls' 'results';
+}
+
+@media (min-width: 960px) {
+  .layout {
+    grid-template-columns: minmax(0, 1.65fr) minmax(300px, 1fr);
+    grid-template-areas: 'draw controls' 'results controls';
+    align-items: start;
+  }
+}
+
+.drawArea { grid-area: draw; min-width: 0; }
+.controls { grid-area: controls; min-width: 0; }
+.resultArea { grid-area: results; min-width: 0; }
+
+/* ---- the drawing ---- */
+
+.figure { margin: 0; min-width: 0; }
+
+.drawing {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--air);
+  overflow: hidden;
+  min-height: 120px;
+}
+
+.drawing svg { display: block; }
+
+.svgLabels text {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  fill: var(--ink);
+  stroke: var(--air);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+}
+
+.svgLabels .sigNum { font-family: var(--font-num); font-weight: 650; }
+
+.noDrawing {
+  margin: 0;
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--ink-2);
+  font-size: 0.875rem;
+}
+
+.caption {
+  margin-top: 6px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--ink-3);
+}
+
+.key {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin: 0 3px 0 8px;
+  border-radius: 2px;
+  border: 1px solid var(--rule-strong);
+  vertical-align: -1px;
+}
+
+.key:first-child { margin-left: 0; }
+
+.scale { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
+.scaleBar { display: inline-block; height: 6px; border: 1.5px solid var(--ink-2); border-top: 0; }
+
+/* ---- the controls ---- */
+
+.selects {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  gap: 10px 14px;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  margin-top: 8px;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.check input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
+
+.small {
+  margin: 8px 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--ink-2);
+  max-width: 72ch;
+}
+
+.reasonText { margin: 8px 0 0; font-size: 0.875rem; color: var(--error); }
+
+/* ---- the results ---- */
+
+.results {
+  padding: 12px 14px 14px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--field);
+}
+
+.resultsHead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.busy { font-size: 0.8125rem; color: var(--accent); }
+
+.values { transition: opacity var(--quick); }
+.results[data-stale='true'] .values { opacity: 0.5; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
+  gap: 10px 18px;
+  margin: 10px 0 0;
+}
+
+.grid dt { font-size: 0.8125rem; color: var(--ink-2); }
+.grid dd { margin: 0; }
+
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.big .num { font-size: 1.5rem; font-weight: 650; letter-spacing: -0.01em; }
+.err { font-family: var(--font-num); color: var(--ink-2); font-size: 0.875rem; }
+.qUnit { color: var(--ink-2); font-size: 0.875rem; }
+.qStatus { margin-left: 8px; font-size: 0.75rem; color: var(--ink-3); }
+.qStatus[data-level='warn'] { color: var(--warn); }
+.qNote { display: block; font-size: 0.75rem; line-height: 1.35; color: var(--ink-3); }
+
+.definition {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 0 6px 6px 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.details { margin-top: 12px; border-top: 1px solid var(--rule); padding-top: 8px; }
+.details summary {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+.details summary::before { content: '▸'; margin-right: 6px; }
+.details[open] summary::before { content: '▾'; }
+.details summary::-webkit-details-marker { display: none; }
+
+.matrices { display: flex; flex-wrap: wrap; gap: 14px 24px; margin-top: 6px; }
+.matrix { min-width: 0; max-width: 100%; }
+.matrixTitle { margin: 0 0 4px; font-size: 0.8125rem; font-weight: 600; }
+.matrixScroll { overflow-x: auto; max-width: 100%; }
+.matrix table { border-collapse: collapse; font-family: var(--font-num); font-size: 0.8125rem; }
+.matrix td { padding: 3px 10px 3px 0; white-space: nowrap; border-top: 1px solid var(--rule); }

@@ -69,9 +69,10 @@ export interface ValFieldProps {
   min?: number;
   max?: number;
   onFocus?: () => void;
+  placeholder?: string; // shown when empty (nullable): default "not stated"
 }
 
-export default function ValField({ name, label, x, unit, digits, onChange, nullable, zero, min, max, onFocus }: ValFieldProps) {
+export default function ValField({ name, label, x, unit, digits, onChange, nullable, zero, min, max, onFocus, placeholder }: ValFieldProps) {
   const id = useId();
   const [reason, setReason] = useState('');
   const [tolReason, setTolReason] = useState('');
@@ -89,7 +90,7 @@ export default function ValField({ name, label, x, unit, digits, onChange, nulla
           id={id}
           className={base.input}
           shown={x ? fieldText(x.v, unit, digits) : ''}
-          placeholder={nullable ? 'not stated' : undefined}
+          placeholder={nullable ? (placeholder ?? 'not stated') : undefined}
           aria-invalid={reason ? true : undefined}
           parse={parse}
           onReason={setReason}

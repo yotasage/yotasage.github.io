@@ -98,6 +98,16 @@ export function hashOf(s: string): string {
 
 const stripped = (r: LineResults | null): LineResults | null => (r ? { ...r, bem: null } : r);
 
+/** M2.1b: a solve job's result: the line results without the solver's levels, with the per-unit-length matrices. */
+export interface Matrices { C: number[][]; C0: number[][]; L: number[][]; errC: number[][]; errC0: number[][]; errL: number[][] }
+export type SolveResult = LineResults & { matrices: Matrices | null };
+const withMatrices = (r: LineResults | null): SolveResult | null => {
+  if (!r) return null;
+  const b = r.bem;
+  const matrices = b && b.ok ? { C: b.C, C0: b.C0, L: b.L, errC: b.errC, errC0: b.errC0, errL: b.errL } : null;
+  return { ...r, bem: null, matrices };
+};
+
 /** Solves kept for field jobs: the newest few, by hash. */
 export class SolveCache {
   private map = new Map<string, { key: string; r: LineResults }>();
@@ -164,7 +174,7 @@ function* fieldJob(job: FieldJob, cache: SolveCache): Generator<JobProgress, Fie
 export function* runJob(job: StaticJob, cache: SolveCache = new SolveCache()): Generator<JobProgress, unknown> {
   switch (job.kind) {
     case 'solve':
-      return stripped(cache.get(job.setup, job.opt ?? {}));
+      return withMatrices(cache.get(job.setup, job.opt ?? {}));
     case 'sweep': {
       const g = sweep(job.setup, job.input, job.xs, job.opt ?? {});
       for (;;) { const s = g.next(); if (s.done) return s.value; yield { done: s.value as number, total: job.xs.length }; }

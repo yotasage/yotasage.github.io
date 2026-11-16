@@ -1,0 +1,240 @@
+// The Trace section of the EM simulation page (M2.1b): the structure presets (lib/emsim/structure.ts) on the current
+// stackup, the KiCad project's net classes as structures, the typed dimensions and layers, the cross-section drawn to
+// scale from the solver's own polygons, and the results through the static worker (lib/emsim/staticClient.ts, loaded
+// by import() so the solver stays out of the page's first load; the newest job wins, results cached by hash).
+
+import React, { useEffect, useMemo, useState } from 'react';
+
+import { section } from '../../lib/emsim/geometry';
+import type { SolveResult, StaticJob } from '../../lib/emsim/jobs';
+import type { Setup } from '../../lib/emsim/setup';
+import { isOuter, layerIndex, stackupIssues } from '../../lib/emsim/stackup';
+import type { Val } from '../../lib/emsim/stackup';
+import type { StaticClient } from '../../lib/emsim/staticClient';
+import { KIND_INFO, presetStructure, sameStructure, structureIssues, structuresFromClass } from '../../lib/emsim/structure';
+import type { Structure, TraceKind } from '../../lib/emsim/structure';
+import type { LengthUnit } from '../../lib/emsim/units';
+import base from '../../styles/EmSim.module.css';
+import stk from '../../styles/EmSimStackup.module.css';
+import css from '../../styles/EmSimTrace.module.css';
+import { lenText, sourceTag } from './format';
+import type { Commit, KicadState } from './StackupSection';
+import { IssueList } from './StackupSection';
+import TraceDrawing from './TraceDrawing';
+import TraceResults from './TraceResults';
+import type { RunState } from './TraceResults';
+import ValField from './ValField';
+import { KINDS, coppersOf, etchOf, isCoplanar, isPair, withKind, withSignalLayer } from './trace';
+
+// One client for the page, made when the first solve is asked for.
+let clientP: Promise<StaticClient> | null = null;
+function getClient(): Promise<StaticClient> {
+  if (!clientP) {
+    clientP = (async () => {
+      // @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
+      const m = (await import('../../lib/emsim/staticClient')) as typeof import('../../lib/emsim/staticClient');
+      return new m.StaticClient();
+    })();
+  }
+  return clientP;
+}
+
+interface Props {
+  setup: Setup;
+  commit: Commit;
+  unit: LengthUnit;
+  digits: number;
+  kicad: KicadState;
+}
+
+export default function TraceSection({ setup, commit, unit, digits, kicad }: Props) {
+  const s = setup.stackup, st = setup.trace;
+  const [widen, setWiden] = useState(false);
+  const coppers = useMemo(() => coppersOf(s), [s]);
+  const stackErr = useMemo(() => stackupIssues(s).find((i) => i.level === 'error') ?? null, [s]);
+  const issues = useMemo(() => structureIssues(s, st), [s, st]);
+  const { sec, reason } = useMemo(() => {
+    if (stackErr) return { sec: null, reason: `The stackup has an error to fix first: ${stackErr.message}` };
+    const bad = issues.find((i) => i.level === 'error');
+    if (bad) return { sec: null, reason: bad.message };
+    try {
+      return { sec: section(s, st), reason: '' };
+    } catch (e) {
+      return { sec: null, reason: `The cross-section could not be drawn: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  }, [s, st, issues, stackErr]);
+
+  // ---- the solve: the newest setup wins; the old result stays, marked stale, until the new one arrives ----
+  const [res, setRes] = useState<SolveResult | null>(null);
+  const [state, setState] = useState<RunState>('running');
+  const [stale, setStale] = useState(true);
+  const [message, setMessage] = useState('');
+  const [where, setWhere] = useState('');
+  useEffect(() => {
+    if (!sec) {
+      setState('invalid');
+      setMessage(reason);
+      setStale(false);
+      if (clientP) void clientP.then((c) => c.cancel('solve'));
+      return;
+    }
+    let live = true;
+    setStale(true);
+    setState('running');
+    const job: StaticJob = { kind: 'solve', setup: { stackup: s, trace: st, via: setup.via } };
+    getClient()
+      .then((c) => c.run<SolveResult>('solve', job))
+      .then((rr) => {
+        if (!live || !rr) return;
+        setRes(rr.result);
+        setWhere(rr.where);
+        setState('done');
+        setStale(false);
+      }, (e) => {
+        if (!live) return;
+        setState('error');
+        setMessage(`The solve failed: ${e instanceof Error ? e.message : String(e)}`);
+        setStale(false);
+      });
+    return () => { live = false; };
+    // The via does not change the trace's solve.
+  }, [s, st, sec]);
+
+  // ---- edits ----
+  const setTrace = (f: (t: Structure, cur: Setup) => Structure | null, group = '') =>
+    commit((cur) => { const t = f(cur.trace, cur); return t ? { ...cur, trace: t } : cur; }, group);
+  const onVal = (key: 'w' | 's' | 'g' | 'gw') => (x: Val | null, part: 'v' | 'tol') => {
+    if (!x && key !== 'gw') return;
+    setTrace((t) => ({ ...t, [key]: x }), `trace.${key}.${part}`);
+  };
+  const kinds = useMemo(() => KINDS.map((k) => ({ ...k, ok: !!presetStructure(k.kind, s) })), [s]);
+  const classes = kicad.project && !kicad.project.reason ? kicad.project.classes : [];
+  const fromClasses = useMemo(() => classes.map((c) => ({ c, ...structuresFromClass(s, c) })), [classes, s]);
+  const sigIndex = layerIndex(s, st.layer);
+  const outer = sigIndex >= 0 && isOuter(s, sigIndex);
+  const hasMask = s.layers.some((l) => l.kind === 'mask');
+  const etch = etchOf(s, st.layer);
+  const pair = isPair(st), coplanar = isCoplanar(st), broadside = st.kind === 'broadside';
+  const info = KIND_INFO[st.kind];
+
+  const planeSelect = (which: 'below' | 'above', label: string) => (
+    <label className={css.ctl}>
+      {label}
+      <select className={base.select} data-trace-plane={which} value={st[which]} onChange={(e) => { const v = e.target.value; setTrace((t) => ({ ...t, [which]: v })); }}>
+        <option value="">none</option>
+        {coppers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+      </select>
+    </label>
+  );
+
+  return (
+    <section id="trace" className={base.section} aria-labelledby="trace-h">
+      <h2 id="trace-h" className={base.h2}>Trace</h2>
+      <p className={base.lede}>
+        The line's cross-section on this stackup. Pick a kind of structure or one of your KiCad net classes, then type
+        the widths and gaps; the drawing is what the solver sees, and the results follow every change.
+      </p>
+
+      <div className={css.tools}>
+        <label className={css.ctl}>
+          Structure
+          <select
+            className={base.select}
+            data-trace-kind
+            value={st.kind}
+            onChange={(e) => { const k = e.target.value as TraceKind; setTrace((t, cur) => withKind(t, cur.stackup, k)); }}
+          >
+            {st.kind === 'general' && <option value="general">General arrangement (editor to come)</option>}
+            {kinds.map((k) => <option key={k.kind} value={k.kind} disabled={!k.ok}>{k.name}{k.ok ? '' : ' (needs more copper layers)'}</option>)}
+          </select>
+        </label>
+        <div className={css.classes} data-class-structures>
+          {fromClasses.length > 0 ? (
+            <>
+              <span className={css.classesLabel}>Net classes of {kicad.project.file}</span>
+              <div className={css.classButtons}>
+                {fromClasses.flatMap(({ c, single, pair: p }) => [
+                  single && (
+                    <button key={`${c.name}:single`} type="button" className={base.button} data-class-structure={`${c.name}:single`} aria-pressed={sameStructure(st, single)} onClick={() => commit((cur) => { const x = structuresFromClass(cur.stackup, c).single; return x ? { ...cur, trace: x } : cur; })}>
+                      {c.name} <span className={css.classDim}>trace {lenText(single.w.v, unit, digits)}</span>
+                    </button>
+                  ),
+                  p && (
+                    <button key={`${c.name}:pair`} type="button" className={base.button} data-class-structure={`${c.name}:pair`} aria-pressed={sameStructure(st, p)} onClick={() => commit((cur) => { const x = structuresFromClass(cur.stackup, c).pair; return x ? { ...cur, trace: x } : cur; })}>
+                      {c.name} <span className={css.classDim}>pair {lenText(p.w.v, unit, digits)} / {lenText(p.s.v, unit, digits)}</span>
+                    </button>
+                  ),
+                ].filter(Boolean))}
+              </div>
+            </>
+          ) : (
+            <span className={css.classesLabel}>Open a KiCad project (.kicad_pro) in the Stackup section to make its net classes into structures here.</span>
+          )}
+        </div>
+      </div>
+
+      <div className={css.layout}>
+        <div className={css.drawArea}>
+          <TraceDrawing s={s} st={st} sec={sec} reason={reason} unit={unit} digits={digits} widen={widen} />
+          <div className={stk.figTools}>
+            <button type="button" className={base.button} aria-pressed={widen} data-trace-widen onClick={() => setWiden((w) => !w)}>Widen thin layers</button>
+          </div>
+        </div>
+
+        <div className={css.controls} data-trace-controls data-kind={st.kind}>
+          <div className={css.selects}>
+            <label className={css.ctl}>
+              {broadside ? 'Signal layer 1' : 'Signal layer'}
+              <select className={base.select} data-trace-layer value={st.layer} onChange={(e) => { const v = e.target.value; setTrace((t, cur) => withSignalLayer(t, cur.stackup, v)); }}>
+                {coppers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </label>
+            {broadside && (
+              <label className={css.ctl}>
+                Signal layer 2
+                <select className={base.select} data-trace-layer2 value={st.layer2} onChange={(e) => { const v = e.target.value; setTrace((t) => ({ ...t, layer2: v })); }}>
+                  {coppers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </label>
+            )}
+            {planeSelect('above', 'Plane above')}
+            {planeSelect('below', 'Plane below')}
+          </div>
+          {st.kind !== 'general' ? (
+            <div className={stk.fields}>
+              <ValField name="trace.w" label={pair ? 'Width (each)' : 'Width'} x={st.w} unit={unit} digits={digits} onChange={onVal('w')} />
+              {pair && <ValField name="trace.s" label={broadside ? 'Offset across' : 'Gap'} x={st.s} unit={unit} digits={digits} zero={broadside} onChange={onVal('s')} />}
+              {coplanar && <ValField name="trace.g" label="Gap to ground" x={st.g} unit={unit} digits={digits} onChange={onVal('g')} />}
+              {coplanar && <ValField name="trace.gw" label="Ground width" x={st.gw} unit={unit} digits={digits} nullable placeholder="to the edge" onChange={onVal('gw')} />}
+            </div>
+          ) : (
+            <p className={css.small}>A general arrangement ({st.signals.length} signals, {st.grounds.length} grounds) from the link: it is drawn and solved; its editor comes with the next step.</p>
+          )}
+          {outer && hasMask && (
+            <label className={css.check}>
+              <input type="checkbox" checked={st.masked} data-trace-masked onChange={(e) => { const m = e.target.checked; setTrace((t) => ({ ...t, masked: m })); }} />
+              Solder mask over the trace
+            </label>
+          )}
+          <p className={css.small} data-etch={etch ? etch.side : 0}>
+            {etch && etch.side > 0
+              ? <>Trapezoid from the stackup's etch: the top is {lenText(2 * etch.side, unit, digits)} narrower than the base{etch.src ? <> ({sourceTag(etch.src.src).text})</> : null}. Widths are at the base.</>
+              : <>No etch in the stackup: the copper is a rectangle.</>}
+            {pair && !broadside && ' The gap is edge to edge at the base.'}
+            {coplanar && ' Grounds are on the signal layer, connected to the planes.'}
+          </p>
+          {info && issues.length > 0 && (
+            <div className={base.notice} data-trace-issues>
+              <h3 className={base.h3}>About this structure</h3>
+              <IssueList issues={issues} />
+            </div>
+          )}
+        </div>
+
+        <div className={css.resultArea}>
+          <TraceResults r={res} state={state} stale={stale} message={message} where={where} unit={unit} />
+        </div>
+      </div>
+    </section>
+  );
+}

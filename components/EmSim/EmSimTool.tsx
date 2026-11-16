@@ -23,6 +23,7 @@ import { DEFAULT_DIGITS, DIGIT_CHOICES, SHOWN_UNITS } from './format';
 import type { ShownUnit } from './format';
 import StackupSection, { IssueList, NO_KICAD } from './StackupSection';
 import type { Commit, KicadState } from './StackupSection';
+import TraceSection from './TraceSection';
 
 export type Theme = 'light' | 'dark';
 
@@ -34,7 +35,7 @@ const HISTORY = 200;
 const GROUP_MS = 1500;
 
 // The sections that exist (plan.md: Stackup · Trace · Via · Waves · Theory · Examples · Report · Export · References).
-const SECTIONS: readonly { id: string; label: string }[] = [{ id: 'stackup', label: 'Stackup' }];
+const SECTIONS: readonly { id: string; label: string }[] = [{ id: 'stackup', label: 'Stackup' }, { id: 'trace', label: 'Trace' }];
 
 // The page's own parameters taken out of a query; the rest is the setup's.
 function splitQuery(search: string): { setupPart: string; unit: ShownUnit | null; issues: Issue[] } {
@@ -190,7 +191,7 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
       </header>
 
       <main className={styles.main}>
-        <p className={styles.status}>Work in progress: the stackup is here so far; the trace, its impedance and the fields come next.</p>
+        <p className={styles.status}>Work in progress: the stackup and the trace with its impedance are here so far; dragging in the drawing, the fields, targets and tolerances come next.</p>
         <div className={styles.prefs}>
           <div className={styles.pref} role="group" aria-label="Units">
             Units
@@ -217,6 +218,7 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
           </div>
         )}
         <StackupSection setup={setup} commit={commit} unit={unit} digits={digits} kicad={kicad} setKicad={setKicad} />
+        <TraceSection setup={setup} commit={commit} unit={unit} digits={digits} kicad={kicad} />
       </main>
     </div>
   );

@@ -17,6 +17,7 @@ import base from '../../styles/EmSim.module.css';
 import css from '../../styles/EmSimStackup.module.css';
 import StackupDrawing from './StackupDrawing';
 import ValField from './ValField';
+import { withKind } from './trace';
 import { lenText, numText, tolText } from './format';
 
 export type Commit = (next: Setup | ((cur: Setup) => Setup), group?: string) => void;
@@ -31,11 +32,14 @@ export const NO_KICAD: KicadState = { board: null, project: null };
 
 const PRESET_NAMES = new Map(PRESET_IDS.map((id) => [id, presetStackup(id)?.name ?? id]));
 
-// A new stackup in a setup: the trace and via keep their layers when the copper layers are the same ids, and are
-// placed anew (the default microstrip and via presets) when they are not.
+// A new stackup in a setup: the trace and via keep their layers when the copper layers are the same ids. When they are
+// not, the trace keeps its kind and dimensions on the new stackup's layers (M2.1b; a microstrip of the same width when
+// the kind does not fit), and the via is placed anew.
 export function withStackup(prev: Setup, s: Stackup): Setup {
   if (copperIds(prev.stackup).join('\n') === copperIds(s).join('\n')) return { ...prev, stackup: s };
-  return { stackup: s, trace: presetStructure('microstrip', s, DEFAULT_TRACE_W) ?? prev.trace, via: presetVia('single', s) ?? prev.via };
+  const t = prev.trace;
+  const trace = (t.kind !== 'general' && withKind(t, s, t.kind)) || withKind(t, s, 'microstrip') || presetStructure('microstrip', s, DEFAULT_TRACE_W);
+  return { stackup: s, trace: trace ?? prev.trace, via: presetVia('single', s) ?? prev.via };
 }
 
 // One value of one layer replaced. A copper thickness typed over base + plating drops the split, which no longer adds up.
@@ -363,7 +367,7 @@ export default function StackupSection({ setup, commit, unit, digits, kicad, set
               <h3 className={base.h3}>Net classes · {kicad.project.file}</h3>
               {kicad.project.reason
                 ? <p className={css.reason}>{kicad.project.reason}</p>
-                : <p className={css.layerNote}>For the trace editor (next on this page). Values marked (Default) are not set in the class; KiCad takes them from Default.</p>}
+                : <p className={css.layerNote}>Each class can be opened as a structure in the Trace section. Values marked (Default) are not set in the class; KiCad takes them from Default.</p>}
               <IssueList issues={kicad.project.issues} />
               <div className={css.classes}>
                 {kicad.project.classes.map((c) => <ClassCard key={c.name} c={c} unit={unit} digits={digits} />)}
