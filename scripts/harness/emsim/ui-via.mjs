@@ -24,7 +24,7 @@ import * as importedGeom from '../../../components/EmSim/viaGeom.ts';
 
 const d = (m) => m.default ?? m;
 const LK = d(importedLink), SU = d(importedSetup), S = d(importedStackup), V = d(importedVia), VM = d(importedModel), G = d(importedGeom);
-const OPT = { tdr: false, nf: 2 }; // ViaSection's VIA_OPT
+const OPT = { tdr: false, nf: 2 }; // the values ViaResults shows do not depend on the TDR or the sweep that ViaSection's viaOpt adds (M3.2a)
 
 const shots = process.argv[2] && process.argv[2] !== '-' ? process.argv[2] : null;
 const base = process.argv[3] ?? 'http://localhost:3022';

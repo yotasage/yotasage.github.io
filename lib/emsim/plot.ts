@@ -4,7 +4,8 @@
 // Paths are in frame units: x and y in 0 … PLOT_U over the plot's area (y up, so 0 is the bottom), whole numbers, and
 // clamped to −PLOT_U … 2·PLOT_U, so every coordinate stays far under 2^24 (Firefox's limit for SVG path numbers). The
 // view places them with one transform (translate, scale) and draws strokes with `vector-effect: non-scaling-stroke`.
-// M3.2 adds a time axis and dB scales on top of the same `Axis` (log is here already).
+// M3.2a adds a time axis (seconds in, ps or ns labels: `timeScale`, `tickText`'s scale), dB as a value transform before
+// `linePath` (`dbOf`, `phaseOf`; the axis stays linear in dB) and the cursor shared by plots of the same x.
 
 export const PLOT_U = 100000;
 const LO = -PLOT_U, HI = 2 * PLOT_U;
@@ -79,10 +80,33 @@ export function tickDecimals(t: number[]): number {
   return Math.max(0, -Math.floor(Math.log10(step) + 1e-9));
 }
 
-/** A tick's label (minus as U+2212). */
-export function tickText(v: number, t: number[], log = false): string {
-  const s = log ? String(clean(v)) : v.toFixed(tickDecimals(t));
+/** A tick's label (minus as U+2212), of the value times `k` (a unit's scale: 1e12 for ps). */
+export function tickText(v: number, t: number[], log = false, k = 1): string {
+  const s = log ? String(clean(v * k)) : (v * k).toFixed(tickDecimals(k === 1 ? t : t.map((x) => clean(x * k))));
   return s.replace('-', '−');
+}
+
+/** A unit for an axis: its scale from the axis' own unit and its name. */
+export interface Scale { k: number; unit: string }
+
+/** The time unit of an axis in seconds: ps while both ends are within 1 ns, ns beyond. */
+export function timeScale(a: Axis): Scale {
+  return Math.max(Math.abs(a.min), Math.abs(a.max)) < 1e-9 * (1 - 1e-9) ? { k: 1e12, unit: 'ps' } : { k: 1e9, unit: 'ns' };
+}
+
+/** The lowest level a dB plot shows: smaller magnitudes are drawn and read as this floor. */
+export const DB_FLOOR = -100;
+
+/** 20·log10 of the magnitude of re + j·im, never under `floor` (dB). */
+export function dbOf(re: number, im: number, floor = DB_FLOOR): number {
+  const m = Math.hypot(re, im);
+  if (!Number.isFinite(m)) return NaN;
+  return Math.max(floor, 20 * Math.log10(m));
+}
+
+/** The phase of re + j·im in degrees, −180 … 180 (0 for zero). */
+export function phaseOf(re: number, im: number): number {
+  return re === 0 && im === 0 ? 0 : (Math.atan2(im, re) * 180) / Math.PI;
 }
 
 /** Where v lies along the axis, 0 … 1 (outside for values outside). */

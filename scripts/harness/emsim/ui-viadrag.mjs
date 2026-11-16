@@ -20,7 +20,7 @@ import * as importedModel from '../../../lib/emsim/viamodel.ts';
 
 const d = (m) => m.default ?? m;
 const LK = d(importedLink), V = d(importedVia), VM = d(importedModel);
-const OPT = { tdr: false, nf: 2 }; // ViaSection's VIA_OPT
+const OPT = { tdr: false, nf: 2 }; // the values ViaResults shows do not depend on the TDR or the sweep that ViaSection's viaOpt adds (M3.2a)
 const BUDGET = { 1: 8, 4: 12 }; // ms of main-thread work per drag frame (engine.md §10)
 
 const shots = process.argv[2] && process.argv[2] !== '-' ? process.argv[2] : null;

@@ -67,3 +67,8 @@
 g.hy { cursor: ns-resize; }
 g.hxy { cursor: move; }
 .viewTools { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+
+/* M3.2a: the plots (ViaPlots) */
+.plots { margin-top: 14px; padding-top: 4px; border-top: 1px solid var(--rule); min-width: 0; }
+.plotControls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; margin-top: 8px; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }

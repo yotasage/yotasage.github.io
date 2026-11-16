@@ -1,6 +1,7 @@
 // Checks of the plot module (step M2.3a, lib/emsim/plot.ts): 1-2-5 ticks over many ranges (steps, count, inside the
 // range, exact labels), log ticks, nice axes that hold the data, the mapping and its inverse, whole-number paths under
 // 2^24 with breaks at missing points, bands as closed polygons per run, and the cursor's interpolation and stepping.
+// M3.2a: the time axis (ps or ns, labels that read back over random records), dB with its floor, and the phase.
 
 import * as P0 from '../../../lib/emsim/plot.ts';
 
@@ -87,4 +88,36 @@ export async function run(t) {
   t.eq(P.extent([1, NaN, 3], [0.5, 9]).join(','), '0.5,9', 'extent over several arrays');
   const ls = P.linspace(0.05, 0.25, 41);
   t.ok(ls.length === 41 && ls[0] === 0.05 && ls[40] === 0.25 && Math.abs(ls[20] - 0.15) < 1e-15, 'linspace ends exact');
+
+  // ---- M3.2a: the time axis (seconds in, ps or ns labels), dB and phase ----
+  t.eq(JSON.stringify(P.timeScale({ min: -105e-12, max: 270e-12 })), JSON.stringify({ k: 1e12, unit: 'ps' }), 'a record within 1 ns is labelled in ps');
+  t.eq(JSON.stringify(P.timeScale({ min: -300e-12, max: 1.2e-9 })), JSON.stringify({ k: 1e9, unit: 'ns' }), 'a record past 1 ns is labelled in ns');
+  let badT = 0, nT = 0;
+  for (let k = 0; k < 300; k++) {
+    const lo = -(5 + rnd() * 300) * 1e-12, hi = (20 + rnd() * 3000) * 1e-12, most = 2 + Math.floor(rnd() * 8);
+    const ax = { min: lo, max: hi }, sc = P.timeScale(ax), tk = P.ticks(ax, most);
+    if (tk.length < 2) continue; // one tick: no step to read back against
+    const labels = tk.map((v) => P.tickText(v, tk, false, sc.k));
+    const step = (tk[1] - tk[0]) * sc.k;
+    nT++;
+    // every label reads back to its tick within a thousandth of the step, the labels are distinct, and 0 is "0"
+    const good = labels.every((l, i) => Math.abs(Number(l.replace('−', '-')) - tk[i] * sc.k) <= Math.abs(step) * 1e-3)
+      && new Set(labels).size === labels.length && (!tk.includes(0) || labels[tk.indexOf(0)].replace(/^−/, '') .match(/^0(\.0+)?$/));
+    if (!good) badT++;
+  }
+  t.ok(badT === 0, `time ticks over ${nT} random records: labels in ps or ns read back exactly and are distinct (${badT} bad)`);
+  t.eq(P.tickText(-2e-10, [-2e-10, 0, 2e-10], false, 1e12), '−200', 'a time tick in ps with U+2212');
+  t.eq(P.tickText(5e-10, [0, 5e-10, 1e-9], false, 1e9), '0.5', 'a time tick in ns with its decimal');
+  t.near(P.dbOf(0.1, 0), -20, 'dB of 0.1 is −20');
+  t.near(P.dbOf(0, -1), 0, 'dB of a unit magnitude is 0');
+  t.near(P.dbOf(0.6, 0.8), 0, 'dB uses the complex magnitude');
+  t.eq(P.dbOf(0, 0), P.DB_FLOOR, 'dB of zero is the floor');
+  t.eq(P.dbOf(1e-9, 0), P.DB_FLOOR, 'dB under the floor is the floor');
+  t.ok(Number.isNaN(P.dbOf(NaN, 0)), 'dB of a missing value is NaN (a break in the line)');
+  t.near(P.phaseOf(0, 1), 90, 'phase of j is 90°');
+  t.near(P.phaseOf(-1, -1e-300), -180, 'phase just under the negative axis is −180°');
+  t.eq(P.phaseOf(0, 0), 0, 'phase of zero is 0');
+  const db = [0.5, 0.1, 0.01].map((m) => P.dbOf(m, 0));
+  const dbPath = P.linePath([1, 2, 3], db, { min: 0, max: 4 }, { min: -40, max: 0 });
+  t.eq(dbPath, `M25000 ${Math.round(100000 * (-db[0] / 40))}L50000 50000L75000 100000`, 'a dB series is a linear path on a linear dB axis');
 }

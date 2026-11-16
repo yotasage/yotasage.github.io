@@ -340,6 +340,11 @@ checkpoint 2** (the owner may reorder M4–M8 or move a part to phase 2).
 **Done when:** a via with a feed trace on each side gives a TDR whose flat parts equal the traces' Z0; plots linked by a
 shared cursor; fields legible.
 
+**Split** (main session, 2026-11-16, two jobs): **M3.2a** (the plots: TDR/TDT with the rise-time control and the feed
+traces in the same record, S11/S21 in dB and mixed-mode for pairs, `plot.ts`'s time axis and dB, the cursor shared
+across plots of different x) and **M3.2b** (the side and top field maps of the via in the views' worlds, the probe, and
+the target for antipad diameter or return-via distance). Owner checkpoint 2 after M3.2b.
+
 ## M4 – Teaching layer (D7)
 
 ### M4.1 – Content: vias, equations, examples · M

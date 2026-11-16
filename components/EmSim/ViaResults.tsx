@@ -1,5 +1,5 @@
 // The Via section's results (step M3.1a): what the worker's `via` job gives (lib/emsim/viamodel.ts ViaModelResult,
-// asked for without the frequency sweep and the TDR, which M3.2 plots). The barrel as a line in the core (Z, or Zdiff
+// the TDR and the sweep are drawn by ViaPlots, M3.2a). The barrel as a line in the core (Z, or Zdiff
 // and Zcm for a pair) and the section as one element (√(L/C), its L, C and delay), each piece of barrel, the extra
 // capacitance per crossing, the stubs' resonance with their pads and bare, the feeds, the model's flags with their
 // numbers and its assumptions. Digits follow the error (engine.md §8): the barrel's from the cut's estimate, ΔC's from
@@ -201,7 +201,7 @@ function ViaResults({ r, s, v, state, stale, message, ms, unit, digits, quick = 
             </ul>
           </details>
           <Why k="via-assumptions" bare />
-          <p className={css.small} data-via-next>TDR and S-parameters come next.</p>
+          <p className={css.small} data-via-next>The via’s fields and the target come next.</p>
           <Why k="via-next" bare />
         </div>
       )}

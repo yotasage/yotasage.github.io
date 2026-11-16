@@ -14,6 +14,7 @@ import { layerIndex } from '../../lib/emsim/stackup';
 import type { Val } from '../../lib/emsim/stackup';
 import { VIA_PRESETS, presetVia, viaIssues } from '../../lib/emsim/via';
 import type { ViaPreset, ViaStructure } from '../../lib/emsim/via';
+import { VIA_TR, VIA_Z0 } from '../../lib/emsim/viamodel';
 import type { ViaModelOptions, ViaModelResult } from '../../lib/emsim/viamodel';
 import type { StaticJob } from '../../lib/emsim/jobs';
 import { readPlain } from '../../lib/emsim/units';
@@ -30,6 +31,7 @@ import ValField, { NumInput } from './ValField';
 import ViaDrawing, { LiveVia, useLive } from './ViaDrawing';
 import type { ViaEdit } from './ViaDrawing';
 import { addReturnAt, applyViaHandle } from './viaHandles';
+import ViaPlots from './ViaPlots';
 import ViaResults from './ViaResults';
 import {
   addFeed, addReturn, coppersOf, removeFeed, removeReturn, withAllAntipads, withAntipad, withBackdrill, withBarrel, withFeed, withPad, withPair,
@@ -37,10 +39,12 @@ import {
 } from './viaEdit';
 import { Why, Whys } from './Why';
 
-/** The job's options: no frequency sweep and no TDR until M3.2 draws them (the cascade's elements stay in the result). */
-export const VIA_OPT: ViaModelOptions = { tdr: false, nf: 2 };
-// M3.1b: while a drag cannot keep up, the same model without its error estimates (as the Trace section's fast path).
-const VIA_QUICK: ViaModelOptions = { ...VIA_OPT, estimate: false };
+/**
+ * The job's options (M3.2a): the TDR at the rise time and the sweep of 401 points for the plots, every single-ended
+ * port at z0. M3.1b: while a drag cannot keep up, the same model without its error estimates, its TDR and its sweep
+ * (as the Trace section's fast path); the plots keep the last full solve meanwhile.
+ */
+export const viaOpt = (tr: number, z0: number, quick = false): ViaModelOptions => (quick ? { tr, z0, tdr: false, nf: 2, estimate: false } : { tr, z0, nf: 401 });
 const QUICK_ABOVE_MS = 30;
 const STARVED_MS = 100;
 const PAUSE_MS = 200;
@@ -323,6 +327,12 @@ function ViaSolve({ s, t, v: v0, store, unit, digits }: { s: Setup['stackup']; t
   const [rt, setRt] = useState(0);
   const [solves, setSolves] = useState(0);
   const [quickShown, setQuickShown] = useState(false);
+  // M3.2a: the plots' settings and the last full solve they draw (during a drag only one that follows a pause).
+  const [tr, setTr] = useState(VIA_TR);
+  const [z0, setZ0] = useState(VIA_Z0);
+  const [plotRes, setPlotRes] = useState<{ r: ViaModelResult; v: ViaStructure } | null>(null);
+  const holdPlots = useRef(false);
+  holdPlots.current = dragging && !paused;
   const fullMs = useRef(0);
   const lastArrival = useRef(0);
   const starved = useRef(false);
@@ -341,7 +351,7 @@ function ViaSolve({ s, t, v: v0, store, unit, digits }: { s: Setup['stackup']; t
     setState('running');
     const t0 = performance.now();
     if (dragging && !quick && lastArrival.current && t0 - lastArrival.current > STARVED_MS) starved.current = true;
-    const job: StaticJob = { kind: 'via', setup: { stackup: s, trace: t, via: v }, opt: quick ? VIA_QUICK : VIA_OPT };
+    const job: StaticJob = { kind: 'via', setup: { stackup: s, trace: t, via: v }, opt: viaOpt(tr, z0, quick) };
     getClient()
       .then((c) => c.run<ViaModelResult>('via', job))
       .then((rr) => {
@@ -351,6 +361,7 @@ function ViaSolve({ s, t, v: v0, store, unit, digits }: { s: Setup['stackup']; t
         lastArrival.current = t1;
         setRt(t1 - t0);
         setRes({ r: rr.result, v });
+        if (!quick && rr.result.ok && rr.result.tdr && !holdPlots.current) setPlotRes({ r: rr.result, v });
         setQuickShown(quick);
         setSolves((n) => n + 1);
         setState('done');
@@ -364,12 +375,16 @@ function ViaSolve({ s, t, v: v0, store, unit, digits }: { s: Setup['stackup']; t
     return () => { on = false; };
     // errors follow s and v.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s, v, t, quick]);
+  }, [s, v, t, quick, tr, z0]);
   useEffect(() => { if (dragging) lastArrival.current = performance.now(); }, [dragging]);
   return (
     <div className={css.resultArea} data-via-solves={solves} data-quick={quickShown} data-dragging={dragging}>
       {/* The result with the via it was solved for: a drag frame without a new result does not draw the panel again. */}
       <ViaResults r={res ? res.r : null} s={s} v={res ? res.v : v} state={state} stale={stale} message={message} ms={rt} unit={unit} digits={digits} quick={quickShown} />
+      {plotRes && (
+        <ViaPlots r={plotRes.r} trace={t} tr={tr} onTr={setTr} z0={z0} onZ0={setZ0}
+          stale={plotRes.v !== v || plotRes.r.tr !== tr || plotRes.r.z0 !== z0 || (stale && !quick) || state === 'invalid'} />
+      )}
     </div>
   );
 }

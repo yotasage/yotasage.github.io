@@ -88,6 +88,23 @@ export function readPlain(text: string, opts?: { min?: number; max?: number; wha
   return { ok: true, value: v };
 }
 
+// A time in seconds (M3.2a: the TDR's rise time): "35 ps", "0.1 ns", "35" (a plain number in ps), within min … max (s).
+export function readTime(text: string, opts?: { min?: number; max?: number; what?: string }): Read<number> {
+  const typed = String(text ?? '').trim().replace(/[−–]/g, '-').replace(',', '.');
+  const what = opts?.what ?? 'The time';
+  if (!typed) return { ok: false, reason: 'Nothing typed.' };
+  const m = /^([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)\s*(fs|ps|ns|µs|us|ms|s)?$/.exec(typed);
+  if (!m) return { ok: false, reason: `"${typed}" is not a time (for example 35 ps or 0.1 ns).` };
+  const k: Record<string, number> = { fs: -15, ps: -12, ns: -9, 'µs': -6, us: -6, ms: -3, s: 0 };
+  // "35" ps as the literal 35e-12 (not 35 × 1e-12, which can differ in the last bit)
+  const v = /[eE]/.test(m[1]) ? Number(m[1]) * 10 ** k[m[2] ?? 'ps'] : Number(`${m[1]}e${k[m[2] ?? 'ps']}`);
+  if (!Number.isFinite(v)) return { ok: false, reason: `"${typed}" is too large.` };
+  const ps = (x: number) => `${Number((x * 1e12).toPrecision(6))} ps`;
+  if (opts?.min !== undefined && v < opts.min) return { ok: false, reason: `${what} must be at least ${ps(opts.min)}.` };
+  if (opts?.max !== undefined && v > opts.max) return { ok: false, reason: `${what} must be at most ${ps(opts.max)}.` };
+  return { ok: true, value: v };
+}
+
 // A frequency in Hz: "1 GHz", "100MHz", "1e9". Through lib/quantity's reader (SI prefixes).
 export function readFrequency(text: string): Read<number> {
   const v = readAmount(String(text ?? ''), 'Hz');

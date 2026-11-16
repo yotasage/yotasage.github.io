@@ -195,4 +195,13 @@ topics. Lines without a claim describe what the control does.
 | Valid to (via-valid) | Each lumped part is short against the wavelength up to here (λ/8). | – | – |
 | Flags (via-flags) | Where the model is stretched, each with its numbers. | – | – |
 | Assumptions (via-assumptions) | What the via model takes as given. | `field-solver` | – |
-| Next (via-next) | TDR and S-parameter plots and the fields come in the next step. | – | – |
+| Next (via-next) | The via's fields and the target for its antipad or return vias come in the next step. | – | – |
+| TDR (via-tdr, M3.2a) | The impedance a step from the port meets, there and back: feeds, pads, barrel and stubs in turn. | `transmission-lines` | – |
+| Rise time (`data-field="via.tr"`, via-tr) | The edge's 10–90 % time; a faster edge shows finer detail and reaches higher frequencies. | – | – |
+| Port (`data-field="via.port"`, via-port) | The instrument's impedance at both ends; a pair's is the differential one, twice each line's. | – | – |
+| TDR mode (`data-via-tdr-mode`, via-tdr-mode) | Differential drives the two vias in opposite directions, common drives them together. | `pair-definitions` | – |
+| TDT (via-tdt) | The step that arrives at the far port: its delay and how much its edge has slowed. | – | – |
+| S-parameters (via-s) | Reflection and transmission of a sine wave against frequency, in dB. | – | – |
+| Mixed-mode (`data-via-s-mode`, via-s-mode) | Sdd for the differential signal, Scc for common noise, Scd for differential turned into common. | `pair-definitions` | – |
+| Ports (via-s-ports) | Both ends at the port impedance above, the feeds included; faded where the lumped parts no longer hold. | – | – |
+| Cursor (via-cursor) | The time plots share one cursor, the frequency plots another: point, tap, or the arrow keys (Shift: ten points). | – | – |

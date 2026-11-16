@@ -63,6 +63,11 @@
 .dot { stroke: var(--field); stroke-width: 1.5; }
 .xLabel { margin: 2px 0 0; font-size: 0.8125rem; color: var(--ink-2); }
 .readout { margin: 4px 0 0; font-size: 0.8125rem; font-family: var(--font-num); overflow-wrap: anywhere; min-height: 1.2em; }
+/* M3.2a: reference lines, the faded range beyond the model's validity, a plot whose data is being solved again */
+.refLine { stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 6 4; opacity: 0.8; }
+.refText { fill: var(--ink-2); font-size: 11px; text-anchor: end; font-family: var(--font-num); paint-order: stroke; stroke: var(--field); stroke-width: 3px; }
+.fade { fill: var(--field); fill-opacity: 0.6; }
+.plot[data-stale='true'] .plotBox { opacity: 0.5; transition: opacity var(--quick); }
 
 .table { margin-top: 10px; font-size: 0.8125rem; }
 .table summary { cursor: pointer; min-height: 32px; line-height: 32px; color: var(--ink-2); }

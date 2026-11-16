@@ -4,11 +4,14 @@
 // 320 px. The cursor moves by pointer (hover or tap; touch-action pan-y keeps the page's vertical scroll), and by the
 // arrow keys on the focused plot (a slider for screen readers: Shift moves ten points, Home and End go to the ends);
 // the readout under the plot is text (aria-live polite) and never only on hover.
+// M3.2a: an x axis in another unit than its labels (`xScale`: seconds labelled in ps or ns), dashed reference lines
+// across the plot (`lines`, kept inside the y range), a faded range from `fadeFrom` on (where the model no longer
+// holds), dimmed while `stale`, and the series' exact values at the cursor in the readout's `data-values`.
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { PLOT_U, bandPath, extent, frac, linePath, niceAxis, readAt, stepCursor, tickText, ticks, valueAt } from '../../lib/emsim/plot';
-import type { Axis } from '../../lib/emsim/plot';
+import type { Axis, Scale } from '../../lib/emsim/plot';
 import css from '../../styles/EmSimTools.module.css';
 
 export interface PlotSeries { name: string; ys: number[]; lo?: number[]; hi?: number[] }
@@ -27,11 +30,15 @@ interface Props {
   cursor: number; // shared; NaN for none
   onCursor: (x: number) => void;
   readout: (x: number) => string;
+  xScale?: Scale; // tick labels of x times k (the readout and the label say the unit)
+  lines?: { y: number; name: string }[]; // dashed reference lines, labelled at the right
+  fadeFrom?: number; // x from which the plot is faded
+  stale?: boolean;
 }
 
 const H = 168, ML = 50, MR = 12, MT = 8, MB = 22;
 
-export default function Plot({ name, title, xs, series, xDomain, xLabel, marker, cursor, onCursor, readout }: Props) {
+function Plot({ name, title, xs, series, xDomain, xLabel, marker, cursor, onCursor, readout, xScale, lines, fadeFrom, stale }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(0);
   useEffect(() => {
@@ -46,9 +53,9 @@ export default function Plot({ name, title, xs, series, xDomain, xLabel, marker,
   const ax: Axis = useMemo(() => ({ min: xDomain[0], max: xDomain[1] }), [xDomain]);
   const mostX = Math.max(2, Math.floor(pw / 72)), mostY = Math.max(2, Math.floor(ph / 34));
   const ay = useMemo(() => {
-    const [lo, hi] = extent(...series.flatMap((s) => [s.ys, s.lo, s.hi]));
+    const [lo, hi] = extent(...series.flatMap((s) => [s.ys, s.lo, s.hi]), lines ? lines.map((l) => l.y) : undefined);
     return niceAxis(lo, hi, mostY, { pad: 0.04 });
-  }, [series, mostY]);
+  }, [series, mostY, lines]);
   const xt = useMemo(() => ticks(ax, mostX), [ax, mostX]);
   const yt = useMemo(() => ticks(ay, mostY), [ay, mostY]);
   const paths = useMemo(() => series.map((s) => ({
@@ -75,9 +82,10 @@ export default function Plot({ name, title, xs, series, xDomain, xLabel, marker,
     if (Number.isFinite(x)) onCursor(x);
   };
   const text = readout(cursor);
+  const values = series.map((s) => readAt(xs, s.ys, cursor));
   const t = `translate(${ML} ${MT}) scale(${pw / PLOT_U} ${ph / PLOT_U})`;
   return (
-    <figure className={css.plot} data-plot={name}>
+    <figure className={css.plot} data-plot={name} data-stale={stale ? 'true' : undefined}>
       <figcaption className={css.plotTitle}>
         {title}
         {series.length > 1 && (
@@ -111,15 +119,24 @@ export default function Plot({ name, title, xs, series, xDomain, xLabel, marker,
             {xt.map((v) => (
               <g key={`x${v}`}>
                 <line x1={px(v)} x2={px(v)} y1={MT} y2={MT + ph} className={css.grid} />
-                <text x={px(v)} y={MT + ph + 15} className={css.tickX}>{tickText(v, xt)}</text>
+                <text x={px(v)} y={MT + ph + 15} className={css.tickX}>{tickText(v, xt, false, xScale ? xScale.k : 1)}</text>
               </g>
             ))}
             <rect x={ML} y={MT} width={pw} height={ph} className={css.frame} />
             <g clipPath={`url(#clip-${name})`}>
+              {lines && lines.map((l) => (
+                <g key={l.name} data-ref-line={l.name} data-y={l.y}>
+                  <line x1={ML} x2={ML + pw} y1={py(l.y)} y2={py(l.y)} className={css.refLine} />
+                  <text x={ML + pw - 4} y={py(l.y) - 3} className={css.refText}>{l.name}</text>
+                </g>
+              ))}
               <g transform={t}>
                 {paths.map((p, i) => p.band && <path key={`b${i}`} d={p.band} className={css.band} style={{ fill: SERIES_COLOURS[i % SERIES_COLOURS.length] }} data-band={i} />)}
                 {paths.map((p, i) => <path key={`l${i}`} d={p.line} className={css.line} style={{ stroke: SERIES_COLOURS[i % SERIES_COLOURS.length] }} data-series={i} />)}
               </g>
+              {fadeFrom !== undefined && fadeFrom < ax.max && (
+                <rect x={px(Math.max(ax.min, fadeFrom))} y={MT} width={ML + pw - px(Math.max(ax.min, fadeFrom))} height={ph} className={css.fade} data-fade={fadeFrom} />
+              )}
               {marker !== undefined && inside(marker) && <line x1={px(marker)} x2={px(marker)} y1={MT} y2={MT + ph} className={css.marker} data-marker />}
               {inside(cursor) && (
                 <g data-cursor={cursor}>
@@ -135,7 +152,9 @@ export default function Plot({ name, title, xs, series, xDomain, xLabel, marker,
         )}
       </div>
       <p className={css.xLabel}>{xLabel}</p>
-      <p className={css.readout} aria-live="polite" data-plot-readout>{text}</p>
+      <p className={css.readout} aria-live="polite" data-plot-readout data-cursor={cursor} data-values={values.join(' ')}>{text}</p>
     </figure>
   );
 }
+
+export default React.memo(Plot);
