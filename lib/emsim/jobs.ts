@@ -22,6 +22,8 @@ import type { Contour } from './fieldlines';
 import { contours, fieldLines, levelsBetween } from './fieldlines';
 import type { ViaModelOptions, ViaTargetKey, ViaTargetVary } from './viamodel';
 import { viaModel, viaTarget } from './viamodel';
+import type { ViaFieldSpec } from './viafield';
+import { viaFieldJob } from './viafield';
 
 export const JOBS_VERSION = 1;
 export const SLICE_MS = 40;
@@ -52,6 +54,7 @@ export type StaticJob =
   | { kind: 'inverse'; setup: Setup; key: InverseKey; target: number; vary?: InverseVary; opt?: InverseOptions }
   | { kind: 'via'; setup: Setup; opt?: ViaModelOptions } // M1.7: the via model of the setup's via with its trace as feeds
   | { kind: 'via-target'; setup: Setup; key: ViaTargetKey; target: number; vary: ViaTargetVary; opt?: ViaModelOptions }
+  | ({ kind: 'via-field'; setup: Pick<Setup, 'stackup' | 'via'> } & ViaFieldSpec) // M3.2b: the via's side or top field map (viafield.ts)
   | FieldJob;
 
 export interface FieldResult {
@@ -218,6 +221,14 @@ export function* runJob(job: StaticJob, cache: SolveCache = new SolveCache()): G
       return viaModel(job.setup.stackup, job.setup.via, job.setup.trace, job.opt ?? {});
     case 'via-target':
       return viaTarget(job.setup.stackup, job.setup.via, job.setup.trace, job.key, job.target, job.vary, job.opt ?? {});
+    case 'via-field': {
+      const g = viaFieldJob(job.setup.stackup, job.setup.via, job);
+      for (;;) {
+        const st = g.next();
+        if (st.done) return st.value;
+        yield st.value ? { done: 0, total: 1, partial: st.value } : { done: 0, total: 1 };
+      }
+    }
     default:
       throw new Error(`Unknown job ${(job as { kind: string }).kind}.`);
   }
@@ -240,7 +251,7 @@ const now = () => (typeof performance !== 'undefined' ? performance.now() : Date
  * result) and continues its work through schedule (setTimeout in a worker, so that messages get in between slices).
  */
 export function createStaticHandler(post: (msg: StaticReply, transfer?: ArrayBuffer[]) => void, schedule: (fn: () => void) => void, sliceMs = SLICE_MS): (req: StaticRequest) => void {
-  const queue: { id: number; job: StaticJob }[] = [];
+  const queue: { id: number; job: StaticJob; gen?: Generator<JobProgress, unknown> }[] = [];
   const cancelled = new Set<number>();
   const cache = new SolveCache();
   let current: { id: number; gen: Generator<JobProgress, unknown> } | null = null;
@@ -253,7 +264,7 @@ export function createStaticHandler(post: (msg: StaticReply, transfer?: ArrayBuf
       if (!current) {
         const next = queue.shift();
         if (!next) return;
-        current = { id: next.id, gen: runJob(next.job, cache) };
+        current = { id: next.id, gen: next.gen ?? runJob(next.job, cache) };
       }
       const id = current.id;
       if (cancelled.has(id)) { cancelled.delete(id); current = null; post({ type: 'cancelled', id }); continue; }
@@ -272,7 +283,12 @@ export function createStaticHandler(post: (msg: StaticReply, transfer?: ArrayBuf
       }
       const p = step.value as JobProgress;
       post(p.partial !== undefined ? { type: 'progress', id, done: p.done, total: p.total, partial: p.partial } : { type: 'progress', id, done: p.done, total: p.total });
-      if (p.partial !== undefined) break; // let the picture go out
+      if (p.partial !== undefined) {
+        // let the picture go out; a job waiting behind gets its turn first (M3.2b: the via's two maps both show their
+        // first picture before either refines)
+        if (queue.length) { queue.push({ id, job: null, gen: current.gen }); current = null; }
+        break;
+      }
     }
     if (current || queue.length) kick();
   }

@@ -32,6 +32,11 @@ import type { Box, SideGeom, TopGeom } from './viaGeom';
 import { sideHandles, topHandles } from './viaHandles';
 import type { ViaHandle, ViaHandleKey } from './viaHandles';
 import { Why, Whys } from './Why';
+import { FieldFoot } from './FieldView';
+import { useViaField, VIA_FIELD_DEFAULT, viaDriveText } from './useViaField';
+import type { ViaFieldSettings } from './useViaField';
+import { ViaFieldControls, ViaFieldLayer, ViaFieldProbe } from './ViaFieldView';
+import type { ViaProbeApi } from './ViaFieldView';
 
 const LABEL_W = 58; // px for the side view's layer labels
 const PAD = 8;
@@ -122,9 +127,10 @@ interface ViewProps {
   unit: LengthUnit;
   digits: number;
   edit: ViaEdit;
+  fields?: ViaFieldSettings; // M3.2b: the field maps
 }
 
-function ViaView({ which, s, v, traceW, unit, digits, edit }: ViewProps) {
+function ViaView({ which, s, v, traceW, unit, digits, edit, fields }: ViewProps) {
   const box = useRef<HTMLDivElement>(null);
   const content = useRef<SVGGElement>(null);
   const pzRef = useRef<PanZoom | null>(null);
@@ -181,6 +187,37 @@ function ViaView({ which, s, v, traceW, unit, digits, edit }: ViewProps) {
   }, [fit, W, dragKey, shape]);
   useLayoutEffect(() => { content.current?.removeAttribute('transform'); }, [view]);
 
+  // ---- the field map (M3.2b) and its probe: hover, tap, and the arrow keys when the probe keys are on ----
+  const thick = top ? 0 : (g as SideGeom).thick;
+  const fm = useViaField(which, fields, s, v, view, g.box, thick, dragKey !== null, box);
+  const fieldOn = fm.on;
+  useEffect(() => { box.current?.setAttribute('data-field-state', fieldOn ? fm.store.state : 'off'); return fm.store.sub(() => box.current?.setAttribute('data-field-state', fm.store.state)); }, [fieldOn, fm.store]);
+  const probe = useRef<ViaProbeApi>(null);
+  const zOfY = (y: number) => (top ? -y : thick - y);
+  const probeMode = fieldOn && !!fields?.probe;
+  useEffect(() => {
+    if (probeMode && !probe.current?.get()) { const w = viewRef.current; probe.current?.set({ x: w.cx, z: top ? -w.cy : thick - w.cy }); }
+  }, [probeMode, top, thick]);
+  const probeAtPx = (px: number, py: number) => {
+    const pz = pzRef.current;
+    if (pz) probe.current?.set({ x: pz.worldX(px), z: zOfY(pz.worldY(py)) });
+  };
+  const onProbeKey = (e: React.KeyboardEvent) => {
+    if (!probeMode || e.target !== box.current || e.altKey || e.ctrlKey || e.metaKey) return;
+    const dx = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0, dy = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0;
+    if (!dx && !dy) return;
+    e.preventDefault(); // PanZoom leaves a handled key alone
+    const w = viewRef.current, p = probe.current?.get() ?? { x: w.cx, z: zOfY(w.cy) };
+    const step = (e.shiftKey ? 1 : 8) / w.k;
+    probe.current?.set({ x: p.x + dx * step, z: p.z - dy * step });
+  };
+  const hoverRaf = useRef(0);
+  const onBoxMove = (e: React.PointerEvent) => {
+    if (!fieldOn || e.pointerType !== 'mouse' || e.buttons !== 0 || dragKey) return;
+    const r = box.current!.getBoundingClientRect(), px = e.clientX - r.left - 1, py = e.clientY - r.top - 1;
+    if (!hoverRaf.current) hoverRaf.current = requestAnimationFrame(() => { hoverRaf.current = 0; probeAtPx(px, py); });
+  };
+
   const defs = useMemo(() => (top ? topHandles(s, v, g as TopGeom) : sideHandles(s, v, g as SideGeom)), [top, s, v, g]);
   const defsRef = useRef(defs);
   defsRef.current = defs;
@@ -236,9 +273,9 @@ function ViaView({ which, s, v, traceW, unit, digits, edit }: ViewProps) {
   useEffect(() => {
     const pz = pzRef.current;
     if (!pz) return;
-    pz.onTap = !top ? null : (px, py) => {
+    pz.onTap = !top ? (fieldOn ? probeAtPx : null) : (px, py) => {
       if (addMode) addAt(pz.worldX(px), -pz.worldY(py));
-      else setSelRet(null);
+      else { setSelRet(null); if (fieldOn) probeAtPx(px, py); }
     };
     pz.handles = {
       hit: (_x, _y, target) => {
@@ -323,6 +360,7 @@ function ViaView({ which, s, v, traceW, unit, digits, edit }: ViewProps) {
     // Layers and planes reach a box's width beyond the content, so a pan shows board, not a gap.
     const ext = (x: number) => (x <= b.x0 + 1e-12 ? x - bw : x >= b.x1 - 1e-12 ? x + bw : x);
     body.push(...sg.layers.map((l) => rect({ x0: b.x0 - bw, x1: b.x1 + bw, y0: l.y0, y1: l.y1 }, `l${l.i}`, layerFill(l.kind, l.role))));
+    if (fieldOn && fm.mod) body.push(<ViaFieldLayer key="field" store={fm.store} mod={fm.mod} view={view} which="side" thick={thick} />);
     body.push(...sg.returns.map((rr) => rect({ x0: rr.s - rr.d / 2, x1: rr.s + rr.d / 2, y0: rr.y0, y1: rr.y1 }, `r${rr.k}`, 'var(--copper)', { opacity: rr.inCut ? 1 : 0.38, 'data-via-side-return': rr.k + 1 } as React.SVGProps<SVGRectElement>)));
     body.push(...sg.copper.map((c, i) => rect(c.what === 'plane' ? { ...c, x0: ext(c.x0), x1: ext(c.x1) } : c, `c${i}`, 'var(--copper)', c.what === 'return-pad' ? { opacity: 0.38 } : c.what === 'feed' ? { 'data-via-side-feed': c.layer } as React.SVGProps<SVGRectElement> : {})));
     body.push(...sg.drilled.map((d, i) => rect(d, `d${i}`, 'var(--air)', { stroke: 'var(--ink-3)', strokeDasharray: '3 2', strokeWidth: 1, 'data-via-backdrill': true } as React.SVGProps<SVGRectElement>)));
@@ -359,18 +397,21 @@ function ViaView({ which, s, v, traceW, unit, digits, edit }: ViewProps) {
         <rect x={b.x0 - bw} y={b.y0 - bh} width={3 * bw} height={3 * bh} fill="var(--core)" />
         <rect x={b.x0 - bw} y={b.y0 - bh} width={3 * bw} height={3 * bh} fill="var(--copper)" opacity={tg.antipads.length ? 0.42 : 0} />
         {tg.antipads.map((a) => <path key={a.layer} d={a.d} fill="var(--core)" data-via-antipad={a.layer} />)}
+      </g>,
+      fieldOn && fm.mod ? <ViaFieldLayer key="field" store={fm.store} mod={fm.mod} view={view} which="top" thick={0} /> : null,
+      <g key="world2" transform={`translate(${r2(Wv / 2 - view.cx * k)} ${r2(Hv / 2 - view.cy * k)}) scale(${k})`}>
         {tg.antipads.map((a) => <path key={`o${a.layer}`} d={a.d} fill="none" stroke="var(--copper-edge)" strokeWidth={1} strokeDasharray="4 3" {...hair} />)}
         <line x1={tg.cut.x0} y1={tg.cut.y0} x2={tg.cut.x1} y2={tg.cut.y1} stroke="var(--ink-3)" strokeWidth={1} strokeDasharray="6 4" {...hair} data-via-cut />
         {tg.feeds.map((f, i) => <line key={`f${i}`} x1={f.x0} y1={f.y0} x2={f.x1} y2={f.y1} stroke="var(--copper)" strokeWidth={f.w} strokeLinecap="butt" opacity={f.side === 'entry' ? 1 : 0.6} data-via-feed={f.side} />)}
         {tg.barrels.map((br) => (
           <g key={br.name || 'A'}>
-            <circle cx={br.x} cy={br.y} r={br.pad / 2} fill="var(--copper)" stroke="var(--copper-edge)" strokeWidth={1} {...hair} data-via-pad={br.name || 'A'} />
-            <circle cx={br.x} cy={br.y} r={br.drill / 2} fill="var(--air)" stroke="var(--copper-edge)" strokeWidth={1} {...hair} />
+            <circle cx={br.x} cy={br.y} r={br.pad / 2} fill={fieldOn ? 'none' : 'var(--copper)'} stroke="var(--copper-edge)" strokeWidth={1} {...hair} data-via-pad={br.name || 'A'} />
+            <circle cx={br.x} cy={br.y} r={br.drill / 2} fill={fieldOn ? 'var(--copper)' : 'var(--air)'} stroke="var(--copper-edge)" strokeWidth={1} {...hair} />
           </g>
         ))}
         {tg.returns.map((rr) => (
           <g key={`r${rr.k}`} data-via-return={rr.k + 1}>
-            <circle cx={rr.x} cy={rr.y} r={rr.pad / 2} fill="var(--copper)" stroke="var(--copper-edge)" strokeWidth={1} {...hair} />
+            <circle cx={rr.x} cy={rr.y} r={rr.pad / 2} fill={fieldOn ? 'none' : 'var(--copper)'} stroke="var(--copper-edge)" strokeWidth={1} {...hair} />
             <circle cx={rr.x} cy={rr.y} r={rr.drill / 2} fill="var(--ink-3)" />
           </g>
         ))}
@@ -441,6 +482,8 @@ function ViaView({ which, s, v, traceW, unit, digits, edit }: ViewProps) {
         aria-label={`${name}: drag or arrow keys pan, wheel, pinch or + and − zoom, 0 shows all${top && addMode ? '; Enter adds a return via at a free spot' : ''}`}
         style={{ height: fit ? H + 2 : undefined }}
         onKeyDown={onBoxKey}
+        onKeyDownCapture={onProbeKey}
+        onPointerMove={onBoxMove}
       >
         {!sideOk ? (
           <p className={css.noDrawing}>The via cannot be drawn: its barrel or drill is not set.</p>
@@ -459,6 +502,8 @@ function ViaView({ which, s, v, traceW, unit, digits, edit }: ViewProps) {
           </>
         ) : null}
       </div>
+      {fieldOn && fit && <ViaFieldProbe api={probe} mod={fm.mod} store={fm.store} which={which} thick={thick} view={view} unit={unit} digits={digits} keys={probeMode} />}
+      {fieldOn && fm.mod && <FieldFoot mod={fm.mod} store={fm.store} drive={viaDriveText(which, fields!, !!v.pitch)} />}
       {refused && <p className={css.refused} role="alert" data-via-handle-refused={what}>{refused}</p>}
       {top && (
         <div className={vcss.viewTools}>
@@ -481,19 +526,21 @@ function ViaView({ which, s, v, traceW, unit, digits, edit }: ViewProps) {
 export default React.memo(function ViaDrawing({ s, v: v0, traceW, unit, digits, edit, store }: { s: Stackup; v: ViaStructure; traceW: number; unit: LengthUnit; digits: number; edit: ViaEdit; store: LiveVia }) {
   const live = useLive(store);
   const v = live.via ?? v0;
+  const [fields, setFields] = useState<ViaFieldSettings>(VIA_FIELD_DEFAULT);
   return (
     <div className={vcss.views} data-via-dragging={live.dragging}>
-      <figure className={css.figure}>
-        <ViaView which="side" s={s} v={v} traceW={traceW} unit={unit} digits={digits} edit={edit} />
+      <figure className={css.figure} style={{ position: 'relative' }}>
+        <ViaView which="side" s={s} v={v} traceW={traceW} unit={unit} digits={digits} edit={edit} fields={fields} />
         <Why k="via-side" bare />
       </figure>
-      <figure className={css.figure}>
-        <ViaView which="top" s={s} v={v} traceW={traceW} unit={unit} digits={digits} edit={edit} />
+      <figure className={css.figure} style={{ position: 'relative' }}>
+        <ViaView which="top" s={s} v={v} traceW={traceW} unit={unit} digits={digits} edit={edit} fields={fields} />
         <Why k="via-top" bare />
         <Whys ks="via-add-tap via-remove-sel" />
       </figure>
       <p className={css.caption}>Drag the handles (or focus one and use the arrow keys) to change pads, antipads, the drill, the pitch, the backdrill and where the return vias are; drag a view to pan, wheel or pinch to zoom.</p>
       <Whys ks="via-handles via-reset" />
+      <ViaFieldControls f={fields} set={setFields} pair={!!v.pitch} />
     </div>
   );
 });

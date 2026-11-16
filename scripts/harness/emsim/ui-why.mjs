@@ -42,7 +42,7 @@ const pairSetup = () => { const s = withTrace('pair-microstrip', 0.11); s.trace 
 
 // ---- the data ----
 const keys = Object.keys(WHYS);
-check(keys.length === 163, `${keys.length} short lines (162 of theory-lines.md and the switch's own)`);
+check(keys.length === 173, `${keys.length} short lines (172 of theory-lines.md and the switch's own)`);
 check(keys.every((k) => WHYS[k].text && WHYS[k].label && (WHYS[k].topic === null || TOPIC_TITLE[WHYS[k].topic])), 'every line has a label, a text and a known topic or none');
 check(keys.every((k) => WHYS[k].text.split(/\s+/).length <= 22), 'every line at most about 20 words');
 const fullText = (k) => `${WHYS[k].text}${WHYS[k].topic ? ' → theory' : ''}`;
@@ -140,11 +140,14 @@ try {
     'via-pad', 'via-plane', 'via-antipad', 'via-shape', 'via-antipad-all', 'via-returns', 'via-return-add', 'via-return-remove', 'via-return-planes',
     'via-backdrill', 'via-feeds', 'via-side', 'via-top', 'via-handles', 'via-reset', 'via-add-tap', 'via-remove-sel', 'via-issues', 'via-solve', 'via-barrel-z', 'via-section-z', 'via-delay', 'via-lc',
     'via-segments', 'via-crossings', 'via-stubs', 'via-feed-z', 'via-valid', 'via-flags', 'via-assumptions', 'via-next',
-    'via-tdr', 'via-tr', 'via-port', 'via-tdt', 'via-s', 'via-s-ports', 'via-cursor']);
+    'via-tdr', 'via-tr', 'via-port', 'via-tdt', 'via-s', 'via-s-ports', 'via-cursor', 'via-fields', 'via-target', 'via-target-vary', 'via-target-use']);
   await vp.click('[data-via-preset="pair"]');
   await vp.waitForSelector('[data-via-results][data-n="2"]:not([data-stale="true"])', { timeout: 60000 });
   await vp.waitForSelector('[data-via-plots][data-stale="false"] [data-via-s-mode]', { timeout: 60000 });
   await state(vp, 'via pair', ['via-pitch', 'via-tdr-mode', 'via-s-mode']);
+  await vp.check('[data-viafield-on]');
+  await vp.waitForSelector('[data-viafield-qty]');
+  await state(vp, 'via fields', ['via-field-qty', 'via-field-drive', 'via-field-scale', 'via-field-probe-keys', 'via-field-probe', 'via-field-side']);
   await vp.close();
   let kicadSeen = false;
   if (CARRIER.every(existsSync)) {

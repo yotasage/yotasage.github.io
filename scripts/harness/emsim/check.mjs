@@ -25,6 +25,7 @@ const MODULES = [
   ['Axisymmetric solver (M1.6)', './check-axisym.mjs'],
   ['Via cut (M1.6)', './check-viacut.mjs'],
   ['Via model (M1.7)', './check-viamodel.mjs'],
+  ['Via fields (M3.2b)', './check-viafield.mjs'],
   ['Plot (M2.3a)', './check-plot.mjs'],
   ['JLCPCB calculator (M2.3b)', './check-jlccalc.mjs'],
   ['Equations (M2.4b)', './check-equations.mjs'],

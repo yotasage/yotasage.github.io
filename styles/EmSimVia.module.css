@@ -72,3 +72,7 @@ g.hxy { cursor: move; }
 .plots { margin-top: 14px; padding-top: 4px; border-top: 1px solid var(--rule); min-width: 0; }
 .plotControls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; margin-top: 8px; }
 .presets { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* M3.2b: the via target's result line. */
+.targetResult { margin: 8px 0 0; font-size: 0.875rem; line-height: 1.5; color: var(--ink-2); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.targetResult button { margin-left: 4px; }

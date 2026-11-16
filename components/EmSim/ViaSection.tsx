@@ -33,6 +33,7 @@ import type { ViaEdit } from './ViaDrawing';
 import { addReturnAt, applyViaHandle } from './viaHandles';
 import ViaPlots from './ViaPlots';
 import ViaResults from './ViaResults';
+import ViaTarget from './ViaTarget';
 import {
   addFeed, addReturn, coppersOf, removeFeed, removeReturn, withAllAntipads, withAntipad, withBackdrill, withBarrel, withFeed, withPad, withPair,
   withPlane, withReturn, withSignal, withTraceLayer,
@@ -285,6 +286,7 @@ export default function ViaSection({ setup, commit, unit, digits }: Props) {
         </div>
 
         <ViaSolve s={s} t={t} v={v} store={store} unit={unit} digits={digits} />
+        <ViaTarget s={s} v={v} commit={commit} unit={unit} digits={digits} />
       </div>
     </>
   );

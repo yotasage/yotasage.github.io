@@ -195,7 +195,7 @@ topics. Lines without a claim describe what the control does.
 | Valid to (via-valid) | Each lumped part is short against the wavelength up to here (λ/8). | – | – |
 | Flags (via-flags) | Where the model is stretched, each with its numbers. | – | – |
 | Assumptions (via-assumptions) | What the via model takes as given. | `field-solver` | – |
-| Next (via-next) | The via's fields and the target for its antipad or return vias come in the next step. | – | – |
+| Next (via-next) | A 3D view of the via, full-wave waves and export come in later steps. | – | – |
 | TDR (via-tdr, M3.2a) | The impedance a step from the port meets, there and back: feeds, pads, barrel and stubs in turn. | `transmission-lines` | – |
 | Rise time (`data-field="via.tr"`, via-tr) | The edge's 10–90 % time; a faster edge shows finer detail and reaches higher frequencies. | – | – |
 | Port (`data-field="via.port"`, via-port) | The instrument's impedance at both ends; a pair's is the differential one, twice each line's. | – | – |
@@ -205,3 +205,13 @@ topics. Lines without a claim describe what the control does.
 | Mixed-mode (`data-via-s-mode`, via-s-mode) | Sdd for the differential signal, Scc for common noise, Scd for differential turned into common. | `pair-definitions` | – |
 | Ports (via-s-ports) | Both ends at the port impedance above, the feeds included; faded where the lumped parts no longer hold. | – | – |
 | Cursor (via-cursor) | The time plots share one cursor, the frequency plots another: point, tap, or the arrow keys (Shift: ten points). | – | – |
+| Show the fields (`data-viafield-on`, via-fields, M3.2b) | Draws the via's electric field in both views, under the copper. | `field-solver` | – |
+| Quantity (`data-viafield-qty`, via-field-qty) | The potential, the field's strength, or field lines with equipotentials (lines in the top view). | – | – |
+| Drive (`data-viafield-drive`, via-field-drive) | The two vias' voltages in the top view: opposite, together, or one alone. | `pair-definitions` | – |
+| Colour scale (`data-viafield-scale`, via-field-scale) | Logarithmic shows the weak field far out next to the strong field at the barrel. | – | – |
+| Probe keys (`data-viafield-probe-mode`, via-field-probe-keys) | When on, the arrow keys on the focused view move the probe instead of panning. | – | – |
+| Probe (`data-viafield-probe`, via-field-probe) | The potential and the field where you point, tap or move it, read from the map. | – | – |
+| Side view (via-field-side) | One via alone at 1 V inside its return vias' coaxial wall, as the via model solves it. | `field-solver` | – |
+| Target (`data-field="via.target"`, via-target) | The impedance the via section should have; the antipad or the return vias are found for it. | – | – |
+| By changing (`data-via-target-vary`, via-target-vary) | Every plane's antipad diameter, or how far the return vias are from the barrel. | – | – |
+| Use this (`data-via-target-use`, via-target-use) | Puts the size found into the via, as one undo step. | – | – |
