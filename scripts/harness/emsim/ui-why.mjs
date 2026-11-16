@@ -42,7 +42,7 @@ const pairSetup = () => { const s = withTrace('pair-microstrip', 0.11); s.trace 
 
 // ---- the data ----
 const keys = Object.keys(WHYS);
-check(keys.length === 182, `${keys.length} short lines (181 of theory-lines.md and the switch's own)`);
+check(keys.length === 190, `${keys.length} short lines (189 of theory-lines.md and the switch's own)`);
 check(keys.every((k) => WHYS[k].text && WHYS[k].label && (WHYS[k].topic === null || TOPIC_TITLE[WHYS[k].topic])), 'every line has a label, a text and a known topic or none');
 check(keys.every((k) => WHYS[k].text.split(/\s+/).length <= 22), 'every line at most about 20 words');
 const fullText = (k) => `${WHYS[k].text}${WHYS[k].topic ? ' → theory' : ''}`;
@@ -152,7 +152,7 @@ try {
   // ---- 5: the Export section (M8.1b) ----
   const ep = await open(`${URL0}#export`);
   await ep.waitForSelector('[data-export-ready] [data-export-preview]', { timeout: 30000 });
-  await state(ep, 'export', ['export-figure', 'export-size', 'export-colour', 'export-format', 'export-scale', 'export-name', 'export-copy', 'export-save', 'export-preview']);
+  await state(ep, 'export', ['export-figure', 'export-size', 'export-colour', 'export-format', 'export-scale', 'export-name', 'export-copy', 'export-save', 'export-preview', 'data-set', 'data-format', 'data-numbers', 'data-copy', 'data-save', 'project-save', 'project-open', 'project-link']);
   await ep.close();
   let kicadSeen = false;
   if (CARRIER.every(existsSync)) {

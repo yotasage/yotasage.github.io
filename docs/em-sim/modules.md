@@ -48,6 +48,13 @@ table. Agents find their way by it instead of reading the code. Split into parts
 | `lib/emsim/static.worker.ts` | M1.5: the worker; wires `createStaticHandler` to its scope (transfers a result's buffers) with `messageScheduler()` |
 | `lib/emsim/staticClient.ts` | M1.5: `StaticClient` (`run(channel, job, progress)` → `{ result, cached, where }` or null when overtaken or cancelled, `cancel(channel)`, `cached(job)`, `stop()`, `where`, `stats`): newest job per channel wins, results cached by hash (64 MB, 64 entries), fallback to the handler on the page |
 
+## `lib/emsim/export/` (M8.2a, the data files; notes-M8.2a.md)
+
+| File | What |
+|---|---|
+| `lib/emsim/export/csv.ts` | M8.2a, framework-free: `traceCsv(r, meta)` (every line and pair quantity of `valuesOf` with error, unit and status; `zcij`; the matrices C, C0 (`C0_ij`), L with their errors), `sweepCsv(run: SweepRun, meta)` (the input, each output and its error, a "note" for a failed point; `sweepKeys`), `viaCsv(r, meta)` (tables Summary, Segments of the barrel, Pad and plane crossings, Stubs, Feeds), `tdrCsv(r, meta)` (t, Z, its error bound, rho, TDT; a pair's common beside), `sparamCsv(nport, mixed, meta)` (f, valid, then per entry dB, phase, re, im; `sName`: S21, Sdd21); `DataMeta` { link, date }; `#` comment head (tool, what, date, setup link, units), CRLF, ASCII (`ascii`), shortest round-trip numbers (`csvField`, ∞ "inf", NaN empty); reading back: `readCsv` (tables after blank lines), `csvNumber`; `dbOf`, `degOf`, `DB_FLOOR`, `fullLink`, `unitOfKey`, `quantityOf` |
+| `lib/emsim/export/touchstone.ts` | M8.2a: `touchstone(nport, { format: 'RI'\|'MA'\|'DB', link, date })` → Touchstone 1.1 (`! ` comments: tool, model, date, setup, port names, the model's limit; `# GHZ S RI R <z0>`; a 2-port's S11 S21 S12 S22, a 4-port's matrix one row per line); every computed frequency; `touchstoneExt` (`.s2p`, `.s4p`), `touchstoneRefusal` (mixed-mode, unequal references, none); `readTouchstone(text, ports)` |
+
 ## `lib/emsim/figure/` (M8.1a, the export's figures; notes-M8.1a.md)
 
 | File | What |

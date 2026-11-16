@@ -42,6 +42,7 @@ import type { ToolName } from './TraceTools';
 import type { RunState } from './TraceResults';
 import ValField from './ValField';
 import { feedTheory } from './theoryFeed';
+import { feedExport } from './exportFeed';
 import { KINDS, coppersOf, etchOf, isCoplanar, isPair, withKind, withSignalLayer } from './trace';
 import type { GenSel } from './trace';
 import { Why, Whys } from './Why';
@@ -191,6 +192,9 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
     if (res && res.ok && !stale && !quickShown && !dragging) feedTheory({ result: { setup: { stackup: s, trace: st, via: setup.via }, r: res } });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [res, stale, quickShown, dragging]);
+  // M8.2a: the line results for the Export section's data, only while they are the shown setup's full solve.
+  useEffect(() => { feedExport({ trace: res && res.ok && !stale && !quickShown && !dragging ? res : null }); }, [res, stale, quickShown, dragging]);
+  useEffect(() => () => feedExport({ trace: null }), []);
   // M2.2: the field jobs use the solve's options (the fast path too), so the worker's solve cache serves them.
   const fieldEnv = useMemo(() => ({ client: getClient, via: setup.via, ...(quick ? { opt: QUICK } : {}) }), [setup.via, quick]);
 

@@ -15,7 +15,8 @@ export const STATUS_NOW =
   'resonance, its TDR and TDT at the rise time you choose and its S-parameters in dB (mixed-mode for a pair), its ' +
   'fields from the side and from above with a probe, the antipad or return-via distance for a target impedance, and ' +
   'what to watch out for. Export any of these drawings, field maps and plots as TikZ, SVG or PNG at the width of your ' +
-  'document, in colour, grey or black and white.';
+  'document, in colour, grey or black and white, and the numbers behind the results as CSV, the via’s S-parameters as ' +
+  'Touchstone, and the whole setup as a project file to open again or drop on the page.';
 export const STATUS_CHECKED =
   'Checked by automated tests against exact solutions, against a separate finite-difference solver on hundreds of ' +
   'random structures and against JLCPCB’s own calculator (within about 0.3 %), and the page in the browser. The ' +
@@ -25,5 +26,4 @@ export const STATUS_ASSUMES =
   'It is quasi-static: no losses and no change with frequency; a via is lines and lumped capacitances, right while ' +
   'its parts are short against the wavelength. The tolerances are placeholders until you type the ones of your board house.';
 export const STATUS_COMING =
-  'Not here yet: export of the data (CSV, Touchstone), a project file and a printable report, which come next; then a ' +
-  '3D view and animated waves from a full-wave run.';
+  'Not here yet: a printable report, which comes next; then a 3D view and animated waves from a full-wave run.';

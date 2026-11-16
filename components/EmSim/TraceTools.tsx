@@ -290,9 +290,10 @@ function SweepTool({ setup, invalid, unit, client }: ToolProps) {
   }, [run, outs, picked, perIn]);
   // The finished run's plots for the Export section (M8.1b), only while they are for the shown setup.
   useEffect(() => {
-    if (!run || run.state !== 'done' || run.setup !== setup || !xsShown.length) { feedExport({ sweep: [] }); return; }
+    if (!run || run.state !== 'done' || run.setup !== setup || !xsShown.length) { feedExport({ sweep: [], sweepRun: null }); return; }
     const x = { min: xsShown[0], max: xsShown[xsShown.length - 1], label: `${run.label}${xUnit ? ` (${xUnit})` : ''}` };
     feedExport({
+      sweepRun: { input: run.input, label: run.label, kind: run.kind, xs: run.xs, points: run.points },
       sweep: plots.map(({ o, series }) => {
         const u = unitOf(o.q);
         return {

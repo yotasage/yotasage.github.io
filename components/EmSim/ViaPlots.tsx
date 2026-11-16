@@ -139,7 +139,7 @@ function ViaPlots({ r, stale, trace, tr, onTr, z0, onZ0 }: Props) {
 
   // The plots as shown, for the Export section (M8.1b); none while the result is stale.
   useEffect(() => {
-    if (stale) { feedExport({ via: [] }); return; }
+    if (stale) { feedExport({ via: [], viaRun: null }); return; }
     const mode = modeName ? ` (${modeName})` : '', zName = pair ? (tdrMode === 'diff' ? 'Zdiff' : 'Zcm') : 'Z';
     const tAx = { min: tDomain[0], max: tDomain[1], label: `t (${tScale.unit})`, k: tScale.k };
     const zAx = niceAxis(...extent(zSeries[0].ys, lines.map((l) => l.y)), 6);
@@ -147,6 +147,7 @@ function ViaPlots({ r, stale, trace, tr, onTr, z0, onZ0 }: Props) {
     const sAx = niceAxis(...extent(S.parts[0].db, S.parts[1].db), 6);
     const fMax = fDomain[1];
     feedExport({
+      viaRun: r,
       via: [
         { id: 'via-tdr', label: `Via: TDR${mode}`, spec: { name: 'via-tdr', what: `TDR of the via${mode}`, x: tAx, y: { ...zAx, label: `${zName} (Ω)` }, series: [{ xs: ts, ys: zSeries[0].ys }], refs: lines.map((l) => ({ y: l.y, label: l.name })) } },
         { id: 'via-tdt', label: `Via: TDT${mode}`, spec: { name: 'via-tdt', what: `TDT of the via${mode}`, x: tAx, y: { ...dAx, label: 'Step through' }, series: [{ xs: ts, ys: tdtSeries[0].ys }] } },
@@ -155,8 +156,8 @@ function ViaPlots({ r, stale, trace, tr, onTr, z0, onZ0 }: Props) {
     });
     // names follow S
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stale, ts, zSeries, tdtSeries, lines, S, tDomain, tScale, fDomain, fValid, pair, tdrMode]);
-  useEffect(() => () => feedExport({ via: [] }), []);
+  }, [stale, r, ts, zSeries, tdtSeries, lines, S, tDomain, tScale, fDomain, fValid, pair, tdrMode]);
+  useEffect(() => () => feedExport({ via: [], viaRun: null }), []);
 
   const portShown = pair ? 2 * z0 : z0;
   return (

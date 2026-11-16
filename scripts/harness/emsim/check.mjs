@@ -30,6 +30,7 @@ const MODULES = [
   ['JLCPCB calculator (M2.3b)', './check-jlccalc.mjs'],
   ['Equations (M2.4b)', './check-equations.mjs'],
   ['Figures (M8.1a)', './check-figure.mjs'],
+  ['Data export (M8.2a)', './check-data.mjs'],
 ];
 
 const failures = [];

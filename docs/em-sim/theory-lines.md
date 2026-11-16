@@ -224,3 +224,11 @@ topics. Lines without a claim describe what the control does.
 | Copy (`data-export-copy`, export-copy) | Puts the TikZ picture, the SVG text or the PNG on the clipboard. | – | – |
 | Save (`data-export-save`, export-save) | Downloads the file; TikZ with a field map comes as a ZIP with its PNG files beside the .tex. | – | – |
 | Preview (`data-export-preview`, export-preview) | The figure at its true size on paper; text never smaller than 6 pt. | – | – |
+| Data (`data-data-set`, data-set, M8.2a) | The results to write: the trace's, the last sweep, the via's model, its TDR and TDT, its S-parameters. | – | – |
+| File (`data-data-format`, data-format) | CSV for spreadsheets and scripts; Touchstone (.s2p, .s4p) for circuit simulators, the via's S-parameters only. | – | – |
+| Numbers (`data-data-numbers`, data-numbers) | How Touchstone writes each S: real and imaginary, magnitude and angle, or dB and angle. | – | – |
+| Copy (`data-data-copy`, data-copy) | Puts the CSV or Touchstone text on the clipboard, every digit the solver gave. | – | – |
+| Save (`data-data-save`, data-save) | Downloads the file, with the date and the setup's link in its first lines. | – | – |
+| Save project (`data-project-save`, project-save) | Downloads the whole setup as a .emsim.json file to open here again later. | – | – |
+| Open project (`data-project-open`, project-open) | Reads a project file and puts its setup in place as one undo step; dropping it works too. | – | – |
+| Copy link (`data-project-link`, project-link) | Copies the page's address, which holds the whole setup. | – | – |

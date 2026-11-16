@@ -230,4 +230,12 @@ export const WHYS: Readonly<Record<string, Why>> = {
   'export-copy': w('Copy', null, 'Puts the TikZ picture, the SVG text or the PNG on the clipboard.'),
   'export-save': w('Save', null, 'Downloads the file; TikZ with a field map comes as a ZIP with its PNG files beside the .tex.'),
   'export-preview': w('Preview', null, 'The figure at its true size on paper; text never smaller than 6 pt.'),
+  'data-set': w('Data', null, 'The results to write: the trace’s, the last sweep, the via’s model, its TDR and TDT, its S-parameters.'),
+  'data-format': w('File', null, 'CSV for spreadsheets and scripts; Touchstone (.s2p, .s4p) for circuit simulators, the via’s S-parameters only.'),
+  'data-numbers': w('Numbers', null, 'How Touchstone writes each S: real and imaginary, magnitude and angle, or dB and angle.'),
+  'data-copy': w('Copy', null, 'Puts the CSV or Touchstone text on the clipboard, every digit the solver gave.'),
+  'data-save': w('Save', null, 'Downloads the file, with the date and the setup’s link in its first lines.'),
+  'project-save': w('Save project', null, 'Downloads the whole setup as a .emsim.json file to open here again later.'),
+  'project-open': w('Open project', null, 'Reads a project file and puts its setup in place as one undo step; dropping it works too.'),
+  'project-link': w('Copy link', null, 'Copies the page’s address, which holds the whole setup.'),
 };

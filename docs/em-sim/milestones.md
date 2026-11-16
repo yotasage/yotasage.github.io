@@ -458,6 +458,11 @@ CSV (results, sweeps, TDR), Touchstone (`.s2p`, `.s4p` from the via model and fu
 JSON, open by picker or drop, one undo step), Copy link, and the report with a print layout (A4 and Letter, light
 colours, vectors).
 
+**Split** (main session, 2026-11-16, two jobs): **M8.2a** (data in the Export section: CSV of the results, sweeps,
+TDR/TDT and S-parameters; Touchstone `.s2p`/`.s4p` from the via model; the project file saved and opened by picker or
+drop as one undo step; Copy link) and **M8.2b** (the printable report: the setup, every result with its error, the
+drawings from the figure model, A4 and Letter, light colours, vectors, `@media print`).
+
 ## M9 – Polish and re-checks
 
 ### M9.1 – Access, browsers, touch · M

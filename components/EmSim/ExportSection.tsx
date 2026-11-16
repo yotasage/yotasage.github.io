@@ -5,6 +5,7 @@
 // figure model of lib/emsim/figure/ (M8.1a): the SVG is the preview and the PNG's source (drawn into a canvas at
 // 96 px per inch times the scale), TikZ is saved as the `.tex` document alone or, when the figure has a map, as a ZIP
 // with its PNG files (fflate). Downloads go through Blob URLs; nothing leaves the device.
+// Below the figures, the Data group (DataExport.tsx, M8.2a): CSV, Touchstone, the project file and Copy link.
 //   The root element carries `emsimExport.args()` for the harness (ui-export.mjs): the inputs of the shown figure in
 // plain form, so it can build the same figure in Node and compare the files byte for byte.
 
@@ -22,8 +23,9 @@ import { setupSection } from '../../lib/emsim/lines';
 import type { Setup } from '../../lib/emsim/setup';
 import base from '../../styles/EmSim.module.css';
 import css from '../../styles/EmSimExport.module.css';
+import DataExport, { download } from './DataExport';
 import { useExportFeed } from './exportFeed';
-import type { FedPlot } from './exportFeed';
+import type { FedPlot, OpenText, OpenedNote } from './exportFeed';
 import type { Painted } from './fieldPaint';
 import { lenText, numText } from './format';
 import type { ShownUnit } from './format';
@@ -57,16 +59,6 @@ function plain(x: unknown): unknown {
 
 const safeName = (s: string) => s.trim().replace(/\.(tex|zip|svg|png)$/i, '').replace(/[^\w.-]+/g, '-').replace(/^[-.]+|[-.]+$/g, '').slice(0, 80);
 
-function download(blob: Blob, file: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = file;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 30000);
-}
 
 /** The SVG drawn into a canvas at `scale` × 96 px per inch, as PNG bytes. */
 async function pngOf(svg: string, wMm: number, hMm: number, scale: number): Promise<Blob> {
@@ -90,7 +82,7 @@ async function pngOf(svg: string, wMm: number, hMm: number, scale: number): Prom
   }
 }
 
-export default function ExportSection({ setup, unit }: { setup: Setup; unit: ShownUnit }) {
+export default function ExportSection({ setup, unit, opened, openText }: { setup: Setup; unit: ShownUnit; opened: OpenedNote | null; openText: OpenText }) {
   const feed = useExportFeed();
   const [pick, setPick] = useState('section');
   const [size, setSize] = useState<SizeId>('column');
@@ -264,6 +256,7 @@ export default function ExportSection({ setup, unit }: { setup: Setup; unit: Sho
         </figure>
       )}
       <Whys ks="export-preview" />
+      <DataExport setup={setup} opened={opened} openText={openText} />
     </div>
   );
 }

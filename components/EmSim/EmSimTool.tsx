@@ -13,6 +13,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { BibEntry } from '../../lib/bibtex';
 import type Bibliography from '../Bibliography';
 import { decodeLink, encodeLink } from '../../lib/emsim/link';
+import { PROJECT_MAX_BYTES, openProject } from '../../lib/emsim/project';
+import type { Opened } from '../../lib/emsim/project';
 import { defaultSetup, sameSetup } from '../../lib/emsim/setup';
 import type { Setup } from '../../lib/emsim/setup';
 import type { Decoded } from '../../lib/emsim/link';
@@ -24,6 +26,7 @@ import HomeIcon from '../icons/home';
 import useReplayHighlight from '../../lib/useReplayHighlight';
 import { DEFAULT_DIGITS, DIGIT_CHOICES, SHOWN_UNITS } from './format';
 import { errorText, jlcLoaded, jlcResolve, loadJlc } from './jlcData';
+import type { OpenText, OpenedNote } from './exportFeed';
 import type { ShownUnit } from './format';
 import StackupSection, { IssueList, NO_KICAD } from './StackupSection';
 import { Status } from './Status';
@@ -283,6 +286,43 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
     setTheme(next === system ? null : next);
     save(THEME_KEY, next === system ? null : next);
   };
+  // ---- M8.2a: a project file, opened by the Data group's picker or dropped anywhere on the page ----
+  // The setup arrives as one undo step; a JLCPCB list key in it loads the list first, as the link does. A refused file
+  // or one with issues brings the Data group's note into view when it was dropped.
+  const [opened, setOpened] = useState<OpenedNote | null>(null);
+  const openText: OpenText = useCallback((text, name, dropped = false) => {
+    const finish = (r: Opened) => {
+      if (r.setup) commit(r.setup);
+      setOpened({ name, ok: !!r.setup, message: r.message, issues: r.issues, at: Date.now() });
+      if (dropped && (!r.setup || r.issues.length)) {
+        window.requestAnimationFrame(() => (document.querySelector('[data-project-note]') ?? document.getElementById('export'))?.scrollIntoView({ block: 'center' }));
+      }
+    };
+    let asked = false;
+    const r = openProject(text, (key) => { asked = true; return jlcResolve(key); });
+    if (!asked || jlcLoaded()) { finish(r); return; }
+    loadJlc().then(
+      () => finish(openProject(text, jlcResolve)),
+      (e) => { const why = errorText(e); finish(openProject(text, () => { throw new Error(`JLCPCB’s stackup list could not be loaded: ${why}`); })); },
+    );
+  }, [commit]);
+  useEffect(() => {
+    const files = (e: DragEvent) => !!e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files');
+    const over = (e: DragEvent) => { if (!e.defaultPrevented && files(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } };
+    const drop = (e: DragEvent) => {
+      if (e.defaultPrevented || !files(e)) return; // the stackup's KiCad drop zone takes its own
+      e.preventDefault();
+      const f = e.dataTransfer.files[0];
+      if (!f) return;
+      const no = (message: string) => { setOpened({ name: f.name, ok: false, message, issues: [], at: Date.now() }); document.getElementById('export')?.scrollIntoView(); };
+      if (f.size > PROJECT_MAX_BYTES) { no('The file is too large to be a project of this tool.'); return; }
+      f.text().then((t) => openText(t, f.name, true), () => no('The file could not be read.'));
+    };
+    window.addEventListener('dragover', over);
+    window.addEventListener('drop', drop);
+    return () => { window.removeEventListener('dragover', over); window.removeEventListener('drop', drop); };
+  }, [openText]);
+
   const [copied, setCopied] = useState(false);
   const copyLink = () => {
     const done = () => { setCopied(true); window.setTimeout(() => setCopied(false), 1600); };
@@ -347,7 +387,7 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
         </section>
         <section id="export" ref={exportBox} className={styles.section} aria-labelledby="export-h" data-loaded={xm ? 'true' : 'false'}>
           <h2 id="export-h" className={styles.h2}>Export</h2>
-          {xm ? <xm.default setup={setup} unit={unit} /> : <p className={styles.lede}>The export loads as you come near it.</p>}
+          {xm ? <xm.default setup={setup} unit={unit} opened={opened} openText={openText} /> : <p className={styles.lede}>The export loads as you come near it.</p>}
         </section>
         <section id="theory" ref={thBox} className={th ? `${styles.section} ${styles.offscreen}` : styles.section} aria-labelledby="theory-h" data-loaded={th ? 'true' : 'false'}>
           <h2 id="theory-h" className={styles.h2}>Theory</h2>
