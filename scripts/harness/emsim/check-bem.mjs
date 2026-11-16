@@ -1,7 +1,8 @@
 // The 2D boundary-element solver (M1.2a): every exact case of facts-cases.md it can represent, with the error per
 // level and the measured order; symmetry, invariance under translation and mirroring, homogeneous identities; the
 // owner's C39 against the M0.3 spike; the weight of the mask side-wall convention; the mirror-symmetric solve against
-// the full one (M1.2b); timing of the main cases against the budgets.
+// the full one (M1.2b); copper on a high-εr slab against the FD reference (M1.4a-fix); timing of the main cases
+// against the budgets.
 // Prints one compact table per part as notes. Circles are inscribed polygons refined with the level (32·M and 64·M
 // vertices); sheets (zero thickness) are single conductor edges.
 
@@ -329,6 +330,46 @@ function mirror(t) {
   t.note(lines.join('\n'));
 }
 
+// Triple points (M1.4a-fix): copper on a high-εr slab, where copper, laminate and air meet. The finite-difference
+// reference (fd/, levels 4) gives C11 (and C12); the BEM at M = 2 must hold it within its own estimate. With the old
+// grading (q = 2 everywhere) the strip was 1.2 % low, irregular, with an estimate of 2.1 %, and #42 of the fuzz (a pair
+// like the third) was outside its estimate by 7 ×.
+function stripsOnSlab(strips, t, h, er, inset = 0) {
+  const ext = 3, top = h + 2;
+  const air = [-ext, h];
+  for (const [a, b] of strips) air.push(a, h, a + inset, h + t, b - inset, h + t, b, h);
+  air.push(ext, h, ext, top, -ext, top);
+  return {
+    ext, zLo: 0, zHi: top, planeBelow: 0, planeAbove: null, wall: 0, signals: strips.length,
+    materials: [{ kind: 'air', layer: -1, er: 1, tand: 0 }, { kind: 'dielectric', layer: 2, er, tand: null }],
+    conductors: strips.map(([a, b], k) => ({ id: k + 1, layer: 1, open: 0, pts: Float64Array.from([a, h, b, h, b - inset, h + t, a + inset, h + t]) })),
+    regions: [{ mat: 0, pts: Float64Array.from(air), open: 7 }, { mat: 1, pts: Float64Array.from([-ext, 0, ext, 0, ext, h, -ext, h]), open: 3 }], skins: [],
+  };
+}
+
+function triple(t) {
+  const lines = ['Triple points (copper on a high-εr slab) against the FD reference, M = 2:'];
+  const cases = [
+    ['strip 0.076 × 0.048 on 0.079 of εr 8.1', stripsOnSlab([[-0.038, 0.038]], 0.048, 0.079, 8.1), 1.515931415293012e-10, null],
+    ['the same etched (top 0.024 narrower)', stripsOnSlab([[-0.038, 0.038]], 0.048, 0.079, 8.1, 0.012), 1.4965718611473977e-10, null],
+    ['pair 0.26/0.1 on 0.35 of εr 9.9', stripsOnSlab([[-0.31, -0.05], [0.05, 0.31]], 0.038, 0.35, 9.9), 1.730231642933542e-10, -5.0444034172806636e-11],
+  ];
+  for (const [what, sec, c11, c12] of cases) {
+    const r = B.solveSection(sec, { M: 2 });
+    if (!t.ok(r.ok, `${what}: ${r.reason}`)) continue;
+    const d11 = Math.abs(r.C[0][0] - c11);
+    t.ok(d11 <= r.errC[0][0], `${what}: C11 ${r.C[0][0]} differs from the FD ${c11} by ${d11.toExponential(2)}, over the estimate ${r.errC[0][0].toExponential(2)}`);
+    let more = '';
+    if (c12 !== null) {
+      const d12 = Math.abs(r.C[0][1] - c12);
+      t.ok(d12 <= r.errC[0][1], `${what}: C12 ${r.C[0][1]} differs from the FD ${c12} by ${d12.toExponential(2)}, over the estimate ${r.errC[0][1].toExponential(2)}`);
+      more = `, C12 ${(d12 / Math.abs(c12)).toExponential(1)} (estimate ${(r.errC[0][1] / Math.abs(c12)).toExponential(1)})`;
+    }
+    lines.push(`  ${what.padEnd(40)} C11 error ${(d11 / c11).toExponential(1)} (estimate ${(r.errC[0][0] / c11).toExponential(1)}, ${r.status})${more}`);
+  }
+  t.note(lines.join('\n'));
+}
+
 // Timing against the budgets of engine.md §10 (with the estimate) and the single-level solve M1.3 builds on
 // (sweeps, Monte Carlo, the inverse solve): median of 7 after 3 warm-up runs.
 function timing(t) {
@@ -366,5 +407,6 @@ export function run(t) {
   invariance(t);
   mirror(t);
   owner(t);
+  triple(t);
   timing(t);
 }

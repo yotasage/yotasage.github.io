@@ -10,10 +10,6 @@ const F = F0.default ?? F0;
 const X = X0.default ?? X0;
 const Z = Z0.default ?? Z0;
 
-// Fuzz structures of the default seed where the BEM is outside the combined estimate (notes-M1.4a.md, "Outliers"):
-// reported as notes, not failures, until the BEM is fixed.
-export const KNOWN_OUTLIERS = new Set([7, 42]);
-
 export async function run(t) {
   // Exact cases: within solver-fd.md §6's 2 × 10⁻⁴ and within the FD's own estimate.
   const want = new Set(['C15', 'C19', 'C26', 'C12']);
@@ -50,7 +46,6 @@ export async function run(t) {
     if (!t.ok(!!r.rows, () => `fuzz #${r.i}: ${r.skip}`)) continue;
     for (const x of r.rows) {
       const line = `fuzz #${r.i} ${r.desc}: ${x.q} FD ${x.fd.toPrecision(8)} ± ${x.eF.toExponential(1)}, BEM ${x.bem.toPrecision(8)} ± ${x.eB.toExponential(1)} (ratio ${x.ratio.toFixed(2)})`;
-      if (KNOWN_OUTLIERS.has(r.i)) { if (!(x.ratio <= 1)) t.note(`known outlier ${line}`); continue; }
       t.ok(x.ratio <= 1, line);
     }
   }

@@ -135,6 +135,13 @@ q = 3 is better on an isolated edge but **worse** with a mask: on the owner's mi
 q = 3 move non-monotonically by 0.03 % up to 728 panels (50.514, 50.509, 50.515, 50.523, 50.525 Ω), while q = 2
 settles at 182 panels. q = 2 it is. Base size: h0 = (smallest of trace width, gap, mask step, 4·copper thickness)/7
 (the spike: h0 = 0.02 mm for w = 0.138 mm), at least 2 panels per edge, so the mask's 15 µm steps get 2·M panels.
+**Triple points (M1.4a-fix):** where an interface ends on copper (copper, laminate and air or mask meet), the
+charge density goes as r^(ν−1) with tan(νπ/2)·εr = −tan(νπ) for a right-angled corner on a slab (ν = 2/3 at εr 1, 0.535
+at 8, → 1/2), and the interfaces' second-kind equation converges only at order ≈ q·ν under s^q grading: order 1 with
+q = 2, from above or below depending on the mix, so the three levels looked `irregular` while C was up to 2.3 % low
+at εr 10 (notes-M1.4a-fix.md). Both the interface and the copper faces meeting there are now graded with **q = 3** at
+that end (h(t) = t³·(2 − t), the same slope where it meets the rest), and a ray that starts on copper has **2 ×** the
+near panels. Other ends keep q = 2 (bit for bit the old nodes).
 
 ### 2.6 Accuracy reached and the error estimate
 
@@ -173,6 +180,10 @@ estimate/true error was 0.97–1.15 on C15, C11 and C04b and 9 on C39 at 182 pan
 the truncation (< 10⁻⁶) and the drift above. Every impedance, εeff and coupling coefficient gets its estimate the same
 way (computed at both levels). The page shows Z(M), not the extrapolated value (the order is not reliable enough on
 masked structures to extrapolate). Default level: **M = 2** of the §2.5 base mesh.
+**Since M1.4a-fix** the estimate of levels M/4, M/2, M (differences a2, a1, r = d2/d1) is 1.5 × (a1; at least a2/4
+when r > 8; a1/(r − 1) when 1.25 ≤ r < 2; a1 + a2 otherwise), and every line quantity gets at least the error that C's
+and C0's diagonal estimates imply (lines.ts), because a derived quantity's levels can agree by chance. Fitted with a
+margin on the fuzz's 741 diagonal entries of C (none outside); C39 now shows 50.519 ± 0.076 Ω (FD 50.527 ± 0.010).
 
 ### 2.7 Layered-media Green's function: not needed
 

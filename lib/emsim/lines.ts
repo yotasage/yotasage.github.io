@@ -129,6 +129,21 @@ export function linesOf(bem: BemResult, floor?: number): LineResults {
   if (!fin.modes.ok) return failed(fin.modes.reason, bem);
   const asym = bem.levels[bem.levels.length - 1].asym;
   let status: Status = bem.status;
+  let rho = 0;
+  let rho0 = 0;
+  for (let i = 0; i < n; i++) { rho = Math.max(rho, bem.errC[i][i] / bem.C[i][i]); rho0 = Math.max(rho0, bem.errC0[i][i] / bem.C0[i][i]); }
+  // A quantity's levels can agree by chance (two refinement errors of opposite sign cancel) while C itself still moves:
+  // every impedance, εeff and delay is given at least the error that the relative estimates of C's and C0's diagonal
+  // imply to first order (½ for impedances and delays, 1 for εeff).
+  const cfloor = (key: string, x: number): number => {
+    if (bem.levels.length < 2) return 0;
+    if (/^(z0|zdiff|zcm|zodd|zeven|ztdr|zdiffB|zcmB)/.test(key)) return 0.5 * (rho + rho0) * Math.abs(x);
+    if (/^(eeff|mode\d\.eeff)/.test(key)) return (rho + rho0) * Math.abs(x);
+    if (/^(delay|mode\d\.delay)/.test(key)) return 0.5 * (rho + rho0) * Math.abs(x);
+    const m = /^zc(\d)(\d)$/.exec(key);
+    if (m) { const i = +m[1] - 1, j = +m[2] - 1; return 0.5 * (rho + rho0) * Math.sqrt(Math.abs(fin.values[`zc${i + 1}${i + 1}`] * fin.values[`zc${j + 1}${j + 1}`])); }
+    return 0;
+  };
   // `scale`: a quantity that is zero by symmetry (Zdc of a symmetric pair, kf in one dielectric) is `converged` with
   // the floor of that scale when every level gives less than 10⁻¹⁰ of it (its rounding noise is not a refinement).
   const q = (key: string, scale = 0): Q => {
@@ -138,7 +153,7 @@ export function linesOf(bem: BemResult, floor?: number): LineResults {
     if (scale > 0 && vals.every((y) => Math.abs(y) <= 1e-10 * scale)) return { v: x, e: Math.max(1e-10 * scale, Math.abs(x)), status: 'converged' };
     const est = estimateOf(vals, floor);
     status = worse(status, est.status);
-    return { v: x, e: Math.max(est.e, asym * Math.abs(x)), status: est.status };
+    return { v: x, e: Math.max(est.e, asym * Math.abs(x), cfloor(key, x)), status: est.status };
   };
   const md = fin.modes;
   const lines: LineInfo[] = [];

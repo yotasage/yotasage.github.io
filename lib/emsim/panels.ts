@@ -3,7 +3,9 @@
 // panels at a refinement level M.
 //
 // - Grading: an edge of n panels at level 1 (n even, at least 2, ⌈length/h0⌉) gets n·M panels with nodes at
-//   g(k/m), g(s) = s²/(s² + (1 − s)²), towards both ends; every node set is nested in the next level's.
+//   g(k/m), g(s) = s²/(s² + (1 − s)²), towards both ends; every node set is nested in the next level's. At a triple
+//   point (an interface ends on copper) the interface, the copper faces there and a ray's near part are graded as
+//   t³·(2 − t) instead (MESH_DEFAULTS.qTriple; notes-M1.4a-fix.md).
 // - Rays: an interface or conductor face that runs to infinity starts at its inner end, is graded with s² over
 //   dNear (mNear·M panels), then grows geometrically (ratio ρ^(1/M)) to the truncation X. Rays of one side whose
 //   starts lie within dNear/4 of each other share one node set from the earliest start (the mask's rays take the
@@ -34,6 +36,8 @@ export interface Edge {
   grade: number;
   n: number; // GRADE_BOTH: panels at level 1 (even); GRADE_FIXED: panels at every level
   off: number; // GRADE_RAY: distance from the start of the ray's node set to a
+  qa?: number; // grading exponent at a (GRADE_BOTH, and the start of a ray); 2 when absent
+  qb?: number; // and at b (GRADE_BOTH)
 }
 
 export interface Boundary {
@@ -49,7 +53,9 @@ export interface Boundary {
   flip: boolean;
 }
 
-export const MESH_DEFAULTS = { mNear: 4, rho: 1.6, nearPerH0: 7.5, h0PerSize: 1 / 7, xFactor: 100, xMin: 20, ppBeyond: 4 };
+// qTriple: the grading exponent at the ends of interfaces and conductor faces that meet at a triple point (copper,
+// two dielectrics); nearTriple: the factor on the near panels of a ray that starts there (notes-M1.4a-fix.md).
+export const MESH_DEFAULTS = { mNear: 4, rho: 1.6, nearPerH0: 7.5, h0PerSize: 1 / 7, xFactor: 100, xMin: 20, ppBeyond: 4, qTriple: 3, nearTriple: 2 };
 
 export function conductorEdge(ax: number, az: number, bx: number, bz: number, cond: number, epsC: number, grade = GRADE_BOTH, n = 2, off = 0): Edge {
   return { ax, az, bx, bz, cond, epsC, epsP: 1, epsM: 1, grade, n, off };
@@ -71,6 +77,17 @@ export function bothCount(len: number, h0: number): number {
   return m + (m & 1);
 }
 
+// Grading towards a corner with exponent q: nodes ~ s^q near it. q = 2 is the original s²/(s² + (1 − s)²) towards
+// both ends and s² on a ray; for q ≠ 2, h(t) = t^q·(1 + (q − 2)(1 − t)) keeps the slope 2 where it meets the rest
+// (the middle of an edge, the end of a ray's near part), so only the panels near the corner change.
+const hq = (t: number, q: number): number => Math.pow(t, q) * (1 + (q - 2) * (1 - t));
+// The half of an edge graded towards both ends: s in [0, 1/2] → [0, 1/2].
+function half(s: number, q: number): number {
+  if (q === 2) { const x = s * s; const y = (1 - s) * (1 - s); return x / (x + y); }
+  return 0.5 * hq(2 * s, q);
+}
+const rayNear = (s: number, q: number): number => (q === 2 ? s * s : hq(s, q));
+
 // Node distances from a along the edge (0 first, len last).
 function nodes(e: Edge, len: number, M: number, b: Boundary, out: number[]): void {
   out.length = 0;
@@ -80,11 +97,11 @@ function nodes(e: Edge, len: number, M: number, b: Boundary, out: number[]): voi
   }
   if (e.grade === GRADE_BOTH) {
     const m = Math.round(e.n * M);
+    const qa = e.qa || 2;
+    const qb = e.qb || 2;
     for (let k = 0; k <= m; k++) {
       // from the nearer end, so that a reversed edge gets the same nodes bit for bit
-      if (2 * k <= m) { const s = k / m; const x = s * s; const y = (1 - s) * (1 - s); out.push((len * x) / (x + y)); } else {
-        const s = (m - k) / m; const x = s * s; const y = (1 - s) * (1 - s); out.push(len - (len * x) / (x + y));
-      }
+      if (2 * k <= m) out.push(len * half(k / m, qa)); else out.push(len - len * half((m - k) / m, qb));
     }
     out[m] = len;
     return;
@@ -92,13 +109,14 @@ function nodes(e: Edge, len: number, M: number, b: Boundary, out: number[]): voi
   // ray: graded from its own start over dNear (its start is a corner: copper, or the mask's edge), then the
   // geometric nodes of the group, which start `off` before a
   const d = b.dNear;
-  const mn = Math.round(b.mNear * M);
+  const qr = e.qa || 2;
+  const mn = Math.round(b.mNear * M * (qr > 2 ? MESH_DEFAULTS.nearTriple : 1));
   if (len <= 2 * d) {
-    for (let k = 0; k <= mn; k++) out.push(len * (k / mn) * (k / mn));
+    for (let k = 0; k <= mn; k++) out.push(len * rayNear(k / mn, qr));
     out[mn] = len;
     return;
   }
-  for (let k = 0; k <= mn; k++) out.push(d * (k / mn) * (k / mn));
+  for (let k = 0; k <= mn; k++) out.push(d * rayNear(k / mn, qr));
   const lam = e.off + len;
   const k0 = Math.ceil(Math.log(lam / d) / Math.log(b.rho) - 1e-9);
   const kf = Math.round((k0 + (k0 & 1)) * M);
@@ -404,6 +422,22 @@ export function sectionBoundary(sec: Section): SectionBoundary {
       const d = dir * (e.ax - origin);
       if (!(d < dNear / 4)) { origin = e.ax; e.off = 0; } else e.off = d;
     }
+  }
+  // triple points (copper and two dielectrics meet: an interface ends on copper): the charge density there is
+  // singular as r^(ν−1) with ν down to 1/2 (εr → ∞), and the interface's second-kind equation converges only at order
+  // q·ν under s^q grading, so the interfaces and the copper faces that end there are graded with qTriple
+  const qt = MESH_DEFAULTS.qTriple;
+  const key = (u: number, z: number) => `${u},${z}`;
+  const onCu = new Set<string>();
+  idx.forEach((ids, pi) => { if (polys[pi].cond >= 0) for (const k of ids) onCu.add(key(VU[k], VZ[k])); });
+  const triple = new Set<string>();
+  for (const e of edges) if (e.cond < 0) {
+    if (onCu.has(key(e.ax, e.az))) { e.qa = qt; triple.add(key(e.ax, e.az)); }
+    if (e.grade === GRADE_BOTH && onCu.has(key(e.bx, e.bz))) { e.qb = qt; triple.add(key(e.bx, e.bz)); }
+  }
+  for (const e of edges) if (e.cond >= 0 && e.grade === GRADE_BOTH) {
+    if (triple.has(key(e.ax, e.az))) e.qa = qt;
+    if (triple.has(key(e.bx, e.bz))) e.qb = qt;
   }
   return { boundary: { kernel, signals: sec.signals, edges, h0, dNear, mNear: MESH_DEFAULTS.mNear, rho: MESH_DEFAULTS.rho, X, zShift, flip }, reason: '' };
 }

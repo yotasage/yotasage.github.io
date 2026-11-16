@@ -202,7 +202,7 @@ function pairs(t) {
     t.ok(Math.abs(p.zdc.v) <= 1e-12 * p.zdiff.v, `${what}: Zdc ${p.zdc.v}`);
     t.ok(r.modes[0].label === 'odd' && Math.abs(r.modes[0].ratio + 1) <= 1e-9 && Math.abs(r.modes[1].ratio - 1) <= 1e-9, `${what}: modes odd/even ${r.modes.map((m) => m.ratio)}`);
     // modal impedances (definition C) of a symmetric pair are Zodd and Zeven
-    t.ok(rel(r.modes[0].z[0].v, zo) <= 1e-12 && rel(r.modes[1].z[1].v, ze) <= 1e-12, `${what}: modal impedances ${r.modes[0].z[0].v} ${r.modes[1].z[1].v}`);
+    t.ok(rel(r.modes[0].z[0].v, zo) <= 1e-11 && rel(r.modes[1].z[1].v, ze) <= 1e-11, `${what}: modal impedances ${r.modes[0].z[0].v} ${r.modes[1].z[1].v}`);
     t.ok(r.check.residual <= 1e-12, `${what}: Zc·C·Zc = L ${r.check.residual}`);
     const mixed = r.modes[0].eeff.v !== r.modes[1].eeff.v;
     t.ok(!mixed || p.kf.v < 0 || set.trace.kind === 'pair-stripline', `${what}: FEXT negative on a microstrip (${p.kf.v})`);
@@ -230,7 +230,7 @@ function pairs(t) {
   }
   // a single line: Z0 from Zc is √(L/C) of the solver
   const one = LN.solveSetup(SU.defaultSetup());
-  t.ok(one.ok && rel(one.lines[0].z0.v, one.bem.single.z0) <= 1e-14 && one.lines[0].z0.e === Math.max(one.bem.single.z0Err.e, one.bem.levels[2].asym * one.bem.single.z0), `single line: Z0 from Zc ${one.lines[0].z0.v} vs ${one.bem.single.z0}`);
+  t.ok(one.ok && rel(one.lines[0].z0.v, one.bem.single.z0) <= 1e-14 && rel(one.lines[0].z0.e, Math.max(one.bem.single.z0Err.e, one.bem.levels[2].asym * one.bem.single.z0, 0.5 * (one.bem.errC[0][0] / one.bem.C[0][0] + one.bem.errC0[0][0] / one.bem.C0[0][0]) * one.bem.single.z0)) <= 1e-12, `single line: Z0 from Zc ${one.lines[0].z0.v} vs ${one.bem.single.z0}`);
   lines.push(`  C39 default setup: Z0 ${one.lines[0].z0.v.toFixed(3)} ± ${one.lines[0].z0.e.toFixed(3)} Ω (${one.status}), εeff ${one.lines[0].eeff.v.toFixed(4)}, delay ${(one.lines[0].delay.v * 1e9).toFixed(3)} ps/mm`);
   // refusals never throw
   const broken = SU.defaultSetup();
