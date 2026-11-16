@@ -1,7 +1,7 @@
 # EM simulation – module map: the harness
 
 Part of [modules.md](modules.md) (split off in 2026-11-16 at 38 kB, BL109): the engine checks and scripts in
-`scripts/harness/emsim/`. The browser checks (`ui.mjs`, `size.mjs`, `ui-*.mjs`) are in [modules-page.md](modules-page.md).
+`scripts/harness/emsim/`. The browser checks (`ui.mjs`, `size.mjs`, `ui-*.mjs`) are in [modules-page-checks.md](modules-page-checks.md).
 A step that adds or renames a harness file updates this table.
 
 ## `scripts/harness/emsim/`

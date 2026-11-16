@@ -178,6 +178,10 @@ topics. Lines without a claim describe what the control does.
 | Feeds (via-feeds) | The traces into and out of the via: the Trace section's line, length and direction. | `transmission-lines` | – |
 | Side view (via-side) | The board cut along the dashed line of the top view, to scale. | – | – |
 | Top view (via-top) | Looking down at a plane: pads, antipads, return vias and feeds, to scale. | – | – |
+| Handles (via-handles, M3.1b) | Drag one, or focus it and use the arrow keys (Shift finer); the results follow. | – | – |
+| Show all (`data-via-reset`, via-reset) | The corner button shows the whole view again. | – | – |
+| Add by tap (`data-via-add-mode`, via-add-tap) | The next tap on the top view places a return via there (Enter: at a free spot). | – | – |
+| Remove return via (`data-via-remove-sel`, via-remove-sel) | Takes the selected return via away; Delete on its handle does the same. | – | – |
 | About this via (via-issues) | What makes the via impossible or doubtful, and why. | – | – |
 | Solving (via-solve) | Old numbers stay dimmed until the new ones arrive. | `field-solver` | – |
 | Barrel (via-barrel-z) | The barrel and its returns as a line, from a 2D cut through the core. | `field-solver` | – |
@@ -191,4 +195,4 @@ topics. Lines without a claim describe what the control does.
 | Valid to (via-valid) | Each lumped part is short against the wavelength up to here (λ/8). | – | – |
 | Flags (via-flags) | Where the model is stretched, each with its numbers. | – | – |
 | Assumptions (via-assumptions) | What the via model takes as given. | `field-solver` | – |
-| Next (via-next) | TDR and S-parameter plots, fields and handles come in the next steps. | – | – |
+| Next (via-next) | TDR and S-parameter plots and the fields come in the next step. | – | – |

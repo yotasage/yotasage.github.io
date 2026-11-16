@@ -55,3 +55,15 @@
 .list li { margin: 2px 0; }
 
 .whyRow { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
+
+/* M3.1b: the views pan and zoom (EmSimTrace's .drawing) and have handles; a return via moves both ways. */
+.box {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--air);
+  overflow: hidden;
+}
+.box[data-add-mode='true'] { cursor: crosshair; }
+g.hy { cursor: ns-resize; }
+g.hxy { cursor: move; }
+.viewTools { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }

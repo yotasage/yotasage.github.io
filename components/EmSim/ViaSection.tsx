@@ -7,7 +7,7 @@
 // that makes no sense is kept as typed and viaIssues says why, as the Trace section does. The via is in the setup's
 // plain form, so the link carries it.
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { Setup } from '../../lib/emsim/setup';
 import { layerIndex } from '../../lib/emsim/stackup';
@@ -27,7 +27,9 @@ import { IssueList } from './StackupSection';
 import { getClient } from './TraceSection';
 import type { RunState } from './TraceResults';
 import ValField, { NumInput } from './ValField';
-import ViaDrawing from './ViaDrawing';
+import ViaDrawing, { LiveVia, useLive } from './ViaDrawing';
+import type { ViaEdit } from './ViaDrawing';
+import { addReturnAt, applyViaHandle } from './viaHandles';
 import ViaResults from './ViaResults';
 import {
   addFeed, addReturn, coppersOf, removeFeed, removeReturn, withAllAntipads, withAntipad, withBackdrill, withBarrel, withFeed, withPad, withPair,
@@ -37,6 +39,11 @@ import { Why, Whys } from './Why';
 
 /** The job's options: no frequency sweep and no TDR until M3.2 draws them (the cascade's elements stay in the result). */
 export const VIA_OPT: ViaModelOptions = { tdr: false, nf: 2 };
+// M3.1b: while a drag cannot keep up, the same model without its error estimates (as the Trace section's fast path).
+const VIA_QUICK: ViaModelOptions = { ...VIA_OPT, estimate: false };
+const QUICK_ABOVE_MS = 30;
+const STARVED_MS = 100;
+const PAUSE_MS = 200;
 
 const PRESET_TEXT: Record<ViaPreset, string> = { single: 'Single via 0.6/0.3', pair: 'LVDS pair 0.5/0.22' };
 
@@ -46,48 +53,33 @@ export default function ViaSection({ setup, commit, unit, digits }: Props) {
   const s = setup.stackup, v = setup.via, t = setup.trace;
   const cu = useMemo(() => s.layers.filter((l) => l.kind === 'copper'), [s]);
   const issues = useMemo(() => (v ? viaIssues(s, v) : []), [s, v]);
-  const errors = issues.filter((x) => x.level === 'error');
   const [refused, setRefused] = useState('');
 
-  // ---- the solve: the newest via wins ----
-  const [res, setRes] = useState<ViaModelResult | null>(null);
-  const [state, setState] = useState<RunState>('running');
-  const [stale, setStale] = useState(true);
-  const [message, setMessage] = useState('');
-  const [rt, setRt] = useState(0);
-  const [solves, setSolves] = useState(0);
-  useEffect(() => {
-    if (!v || errors.length) {
-      setState('invalid');
-      setMessage(!v ? 'The stackup has too few copper layers for a via.' : `Not solved: ${errors[0].message}`);
-      setStale(false);
-      void getClient().then((c) => c.cancel('via'));
-      return;
-    }
-    let on = true;
-    setStale(true);
-    setState('running');
-    const t0 = performance.now();
-    const job: StaticJob = { kind: 'via', setup: { stackup: s, trace: t, via: v }, opt: VIA_OPT };
-    getClient()
-      .then((c) => c.run<ViaModelResult>('via', job))
-      .then((rr) => {
-        if (!on || !rr) return;
-        setRt(performance.now() - t0);
-        setRes(rr.result);
-        setSolves((n) => n + 1);
-        setState('done');
-        setStale(false);
-      }, (e) => {
-        if (!on) return;
-        setState('error');
-        setMessage(`The via model failed: ${e instanceof Error ? e.message : String(e)}`);
-        setStale(false);
-      });
-    return () => { on = false; };
-    // errors follow s and v.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s, v, t]);
+  // ---- handle drags (M3.1b): a live via only the drawings and the results see, committed once at the end ----
+  const store = useMemo(() => new LiveVia(), []);
+  const setupRef = useRef(setup);
+  setupRef.current = setup;
+  const edit = useMemo<ViaEdit>(() => {
+    const on = <T,>(f: (cur: Setup, via: ViaStructure) => { via: ViaStructure } | { reason: string }, then: (cur: Setup, via: ViaStructure) => T): T | string => {
+      const cur = setupRef.current;
+      if (!cur.via) return 'There is no via.';
+      const r = f(cur, cur.via);
+      return 'reason' in r ? r.reason : then(cur, r.via);
+    };
+    const why = (x: unknown) => (typeof x === 'string' ? x : null);
+    return {
+      begin: () => store.set(null, true),
+      move: (key, a, b) => why(on((cur, via) => applyViaHandle(cur.stackup, via, key, a, b), (_c, n) => { store.set(n, true); return true; })),
+      end: (cancelled) => {
+        const n = store.snap.via;
+        if (n && !cancelled) commit((cur) => ({ ...cur, via: n }));
+        store.set(null, false);
+      },
+      key: (key, a, b) => why(on((cur, via) => applyViaHandle(cur.stackup, via, key, a, b), (cur, n) => { commit({ ...cur, via: n }, `handle.via.${key}`); return true; })),
+      add: (x, y) => why(on((cur, via) => (Number.isFinite(x) ? addReturnAt(cur.stackup, via, x, y) : { via: addReturn(via) }), (cur, n) => { commit({ ...cur, via: n }); return true; })),
+      remove: (k) => commit((cur) => (cur.via ? { ...cur, via: removeReturn(cur.via, k) } : cur)),
+    };
+  }, [commit, store]);
 
   // ---- edits ----
   const setVia = (f: (via: ViaStructure, cur: Setup) => ViaStructure, group = '') => {
@@ -141,7 +133,7 @@ export default function ViaSection({ setup, commit, unit, digits }: Props) {
 
       <div className={css.layout}>
         <div className={css.drawArea}>
-          <ViaDrawing s={s} v={v} traceW={traceW} unit={unit} digits={digits} />
+          <ViaDrawing s={s} v={v} traceW={traceW} unit={unit} digits={digits} edit={edit} store={store} />
         </div>
 
         <div className={css.controls} data-via-form>
@@ -288,9 +280,7 @@ export default function ViaSection({ setup, commit, unit, digits }: Props) {
           )}
         </div>
 
-        <div className={css.resultArea} data-via-solves={solves}>
-          <ViaResults r={res} s={s} v={v} state={state} stale={stale} message={message} ms={rt} unit={unit} digits={digits} />
-        </div>
+        <ViaSolve s={s} t={t} v={v} store={store} unit={unit} digits={digits} />
       </div>
     </>
   );
@@ -306,6 +296,80 @@ function AngleField({ k, angle, onAngle }: { k: number; angle: number; onAngle: 
         <span className={stk.unit}>°</span>
       </div>
       {reason && <p className={stk.reason} role="alert">{reason}</p>}
+    </div>
+  );
+}
+
+// The via's solve and results (M3.1b: a component of its own, so a drag's live via re-renders only this and the
+// drawings). Every edit starts the job on channel `via` (the newest wins). While dragging, when the last full solve's
+// round trip took over QUICK_ABOVE_MS or no result came for STARVED_MS, the drag solves without error estimates and
+// the panel says so; the full solve follows a pause of PAUSE_MS and the drag's end.
+function ViaSolve({ s, t, v: v0, store, unit, digits }: { s: Setup['stackup']; t: Setup['trace']; v: ViaStructure; store: LiveVia; unit: LengthUnit; digits: number }) {
+  const live = useLive(store);
+  const v = live.via ?? v0;
+  const dragging = live.dragging;
+  const errors = useMemo(() => viaIssues(s, v).filter((x) => x.level === 'error'), [s, v]);
+  const [paused, setPaused] = useState(false);
+  useEffect(() => {
+    if (!dragging) return;
+    setPaused(false);
+    const id = window.setTimeout(() => setPaused(true), PAUSE_MS);
+    return () => clearTimeout(id);
+  }, [live.via, dragging]);
+  const [res, setRes] = useState<{ r: ViaModelResult; v: ViaStructure } | null>(null);
+  const [state, setState] = useState<RunState>('running');
+  const [stale, setStale] = useState(true);
+  const [message, setMessage] = useState('');
+  const [rt, setRt] = useState(0);
+  const [solves, setSolves] = useState(0);
+  const [quickShown, setQuickShown] = useState(false);
+  const fullMs = useRef(0);
+  const lastArrival = useRef(0);
+  const starved = useRef(false);
+  if (!dragging) starved.current = false;
+  const quick = dragging && !paused && (fullMs.current > QUICK_ABOVE_MS || starved.current);
+  useEffect(() => {
+    if (errors.length) {
+      setState('invalid');
+      setMessage(`Not solved: ${errors[0].message}`);
+      setStale(false);
+      void getClient().then((c) => c.cancel('via'));
+      return;
+    }
+    let on = true;
+    setStale(true);
+    setState('running');
+    const t0 = performance.now();
+    if (dragging && !quick && lastArrival.current && t0 - lastArrival.current > STARVED_MS) starved.current = true;
+    const job: StaticJob = { kind: 'via', setup: { stackup: s, trace: t, via: v }, opt: quick ? VIA_QUICK : VIA_OPT };
+    getClient()
+      .then((c) => c.run<ViaModelResult>('via', job))
+      .then((rr) => {
+        if (!on || !rr) return;
+        const t1 = performance.now();
+        if (!quick && !rr.cached) fullMs.current = t1 - t0;
+        lastArrival.current = t1;
+        setRt(t1 - t0);
+        setRes({ r: rr.result, v });
+        setQuickShown(quick);
+        setSolves((n) => n + 1);
+        setState('done');
+        setStale(false);
+      }, (e) => {
+        if (!on) return;
+        setState('error');
+        setMessage(`The via model failed: ${e instanceof Error ? e.message : String(e)}`);
+        setStale(false);
+      });
+    return () => { on = false; };
+    // errors follow s and v.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s, v, t, quick]);
+  useEffect(() => { if (dragging) lastArrival.current = performance.now(); }, [dragging]);
+  return (
+    <div className={css.resultArea} data-via-solves={solves} data-quick={quickShown} data-dragging={dragging}>
+      {/* The result with the via it was solved for: a drag frame without a new result does not draw the panel again. */}
+      <ViaResults r={res ? res.r : null} s={s} v={res ? res.v : v} state={state} stale={stale} message={message} ms={rt} unit={unit} digits={digits} quick={quickShown} />
     </div>
   );
 }

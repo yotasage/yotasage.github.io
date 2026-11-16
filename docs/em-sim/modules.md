@@ -59,7 +59,7 @@ table. Agents find their way by it instead of reading the code. Split into parts
 ## The page
 
 The page's files (`pages/em-sim/`, `components/EmSim/`, `styles/EmSim*.module.css`) and its browser checks (`ui.mjs`,
-`size.mjs`, `ui-*.mjs`) are in [modules-page.md](modules-page.md).
+`size.mjs`, `ui-*.mjs`) are in [modules-page-checks.md](modules-page-checks.md).
 
 ## `scripts/harness/emsim/`
 

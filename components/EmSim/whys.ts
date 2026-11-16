@@ -183,6 +183,10 @@ export const WHYS: Readonly<Record<string, Why>> = {
   'via-feeds': w('Feeds', 'transmission-lines', 'The traces into and out of the via: the Trace section’s line, length and direction.'),
   'via-side': w('Side view', null, 'The board cut along the dashed line of the top view, to scale.'),
   'via-top': w('Top view', null, 'Looking down at a plane: pads, antipads, return vias and feeds, to scale.'),
+  'via-handles': w('Handles', null, 'Drag one, or focus it and use the arrow keys (Shift finer); the results follow.'),
+  'via-reset': w('Show all', null, 'The corner button shows the whole view again.'),
+  'via-add-tap': w('Add by tap', null, 'The next tap on the top view places a return via there (Enter: at a free spot).'),
+  'via-remove-sel': w('Remove return via', null, 'Takes the selected return via away; Delete on its handle does the same.'),
   'via-issues': w('About this via', null, 'What makes the via impossible or doubtful, and why.'),
   'via-solve': w('Solving', 'field-solver', 'Old numbers stay dimmed until the new ones arrive.'),
   'via-barrel-z': w('Barrel', 'field-solver', 'The barrel and its returns as a line, from a 2D cut through the core.'),
@@ -196,5 +200,5 @@ export const WHYS: Readonly<Record<string, Why>> = {
   'via-valid': w('Valid to', null, 'Each lumped part is short against the wavelength up to here (λ/8).'),
   'via-flags': w('Flags', null, 'Where the model is stretched, each with its numbers.'),
   'via-assumptions': w('Assumptions', 'field-solver', 'What the via model takes as given.'),
-  'via-next': w('Next', null, 'TDR and S-parameter plots, fields and handles come in the next steps.'),
+  'via-next': w('Next', null, 'TDR and S-parameter plots and the fields come in the next step.'),
 };

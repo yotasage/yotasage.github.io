@@ -70,16 +70,18 @@ function pieceRows(s: Stackup, pieces: ViaPiece[]): { names: string; len: number
   return out;
 }
 
-export default function ViaResults({ r, s, v, state, stale, message, ms, unit, digits }: { r: ViaModelResult | null; s: Stackup; v: ViaStructure; state: RunState; stale: boolean; message: string; ms: number; unit: LengthUnit; digits: number }) {
+// M3.1b: `quick` (a drag's fast path, without error estimates): the values without their errors, and a note.
+function ViaResults({ r, s, v, state, stale, message, ms, unit, digits, quick = false }: { r: ViaModelResult | null; s: Stackup; v: ViaStructure; state: RunState; stale: boolean; message: string; ms: number; unit: LengthUnit; digits: number; quick?: boolean }) {
+  const z = quick ? 0 : 1;
   const ok = r && r.ok;
   const pair = ok && r.n === 2;
   const core = ok ? (r.pieces.filter((p) => p.part === 'through').sort((a, b) => b.zTop - b.zBot - (a.zTop - a.zBot))[0] ?? r.pieces[0]) : null;
   // Relative errors: the cut's (the lines) and the section's.
-  const rel = ok ? Math.abs(r.barrel.zVacErr / r.barrel.zVac) || 0 : 0;
-  const relD = pair ? Math.abs(r.barrel.zdiffVacErr / r.barrel.zdiffVac) || 0 : 0;
-  const relC = pair ? Math.abs(r.barrel.zcmVacErr / r.barrel.zcmVac) || 0 : 0;
+  const rel = ok ? z * Math.abs(r.barrel.zVacErr / r.barrel.zVac) || 0 : 0;
+  const relD = pair ? z * Math.abs(r.barrel.zdiffVacErr / r.barrel.zdiffVac) || 0 : 0;
+  const relC = pair ? z * Math.abs(r.barrel.zcmVacErr / r.barrel.zcmVac) || 0 : 0;
   const L = ok ? r.lumped : null;
-  const dCe = ok ? r.nodes.reduce((a, n) => a + Math.abs(n.dCErr), 0) / r.n : 0;
+  const dCe = ok ? z * r.nodes.reduce((a, n) => a + Math.abs(n.dCErr), 0) / r.n : 0;
   const Ctot = L ? L.C[0][0] : NaN;
   const relSec = L ? 0.5 * (rel + (L.lineC * rel + dCe) / Ctot) : 0;
   const nodes = ok ? r.nodes.filter((n) => n.layer) : [];
@@ -88,7 +90,7 @@ export default function ViaResults({ r, s, v, state, stale, message, ms, unit, d
     <div className={css.results} data-via-results data-state={state} data-stale={stale} data-n={ok ? r.n : 0} data-ms={ok ? r.ms.toFixed(2) : ''} data-rt={ms.toFixed(1)}>
       <div className={css.resultsHead}>
         <h3 className={base.h3}>Results</h3>
-        {state === 'running' && <span className={css.busy} role="status">Solving…</span>}
+        {state === 'running' ? <span className={css.busy} role="status">Solving…</span> : quick && <span className={css.busy} data-via-quick>Coarse while dragging</span>}
       </div>
       <Why k="via-solve" bare />
       {state === 'invalid' && <p className={css.reasonText} data-via-invalid>{message}</p>}
@@ -141,7 +143,7 @@ export default function ViaResults({ r, s, v, state, stale, message, ms, unit, d
               <thead><tr><th>Layer</th><th>ΔC{pair ? ' (each via)' : ''}</th></tr></thead>
               <tbody>
                 {nodes.map((n, i) => {
-                  const t = qText(n.dC * 1e15, n.dCErr * 1e15, 0.01);
+                  const t = qText(n.dC * 1e15, z * n.dCErr * 1e15, 0.01);
                   return <tr key={i} data-via-node={n.layer} data-v={n.dC} data-e={n.dCErr}><td>{n.layer}</td><td>{t.v}{t.e && <span className={css.err}> ± {t.e}</span>} fF</td></tr>;
                 })}
               </tbody>
@@ -211,3 +213,5 @@ export default function ViaResults({ r, s, v, state, stale, message, ms, unit, d
     </div>
   );
 }
+
+export default React.memo(ViaResults);
