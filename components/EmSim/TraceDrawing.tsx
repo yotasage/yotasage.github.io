@@ -8,6 +8,12 @@
 // handles (mouse, touch, keys): each frame of a drag is one edit through `edit.move` (rendered at once with flushSync,
 // so a frame's work is measurable: box.emsimDrag), the drag ends with `edit.end` (one undo step), a value the
 // structure cannot take is refused with its reason. While a drag runs the fit (box height and widening scale) stays.
+//
+// M2.2: the field view (useFieldMap.ts, fieldPaint.ts): a canvas behind the SVG holds the map of the view's part of the
+// section (moved with the SVG's content during a gesture, drawn again from the last grid at once when the view
+// settles, then from the new job's grids); with the map shown the materials are outlines only and contours, field
+// lines and the surface strips are paths under the copper. The probe (FieldView.tsx) follows hover and taps, and the
+// arrow keys when the probe mode is on (the keys then do not pan).
 
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
@@ -26,6 +32,12 @@ import type { View } from './panZoom';
 import type { GenSel } from './trace';
 import { MAX_K, labelSpot, niceStep, roundTo, traceFit, traceHandles, worldMap } from './traceGeom';
 import type { HandleDef, HandleKey, TraceFit } from './traceGeom';
+import { FieldFoot, FieldOverlay, FieldProbe } from './FieldView';
+import type { ProbeApi } from './FieldView';
+import type { FieldSettings } from './fieldTypes';
+import { driveText } from './fieldTypes';
+import { useFieldMap } from './useFieldMap';
+import type { FieldEnv } from './useFieldMap';
 
 const W0 = 640; // px: the width before the first measurement (the static page)
 const KEY_PX = 4; // px: an arrow key moves a handle by a round step of at least this (Shift: a tenth)
@@ -60,11 +72,13 @@ interface Props {
   edit: HandleEdit;
   sel?: GenSel | null; // M2.1d: the general editor's selected feature, outlined
   onSelect?: (sel: GenSel | null) => void; // and a tap on a conductor selects it
+  fields?: FieldSettings; // M2.2: the field view
+  fieldEnv?: FieldEnv;
 }
 
 interface Drag { key: HandleKey; def: HandleDef; Z: (y: number) => number; px: number; py: number; raf: number; last: number }
 
-function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit, sel = null, onSelect }: Props) {
+function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit, sel = null, onSelect, fields, fieldEnv }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const content = useRef<SVGGElement>(null);
   const pzRef = useRef<PanZoom | null>(null);
@@ -84,6 +98,50 @@ function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit, sel = nul
   const viewRef = useRef(view);
   viewRef.current = view;
 
+  // ---- the field view (M2.2) ----
+  const fm = useFieldMap(fields, fieldEnv, s, st, sec, view, map, dragKey !== null, box);
+  const fieldOn = fm.on;
+  const mapShown = fieldOn && fields!.qty !== 'charge' && fields!.qty !== 'current';
+  const drawRef = useRef<() => void>(() => {});
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const probe = useRef<ProbeApi>(null);
+  const dpr = typeof window !== 'undefined' ? Math.min(2, window.devicePixelRatio || 1) : 1;
+  // The canvas in the drawn view, from the store's newest map: drawn when the view changes and when a map arrives.
+  drawRef.current = () => {
+    const c = canvas.current;
+    box.current?.setAttribute('data-field-state', fieldOn ? fm.store.state : 'off');
+    if (!c || !fm.mod) return;
+    c.style.transform = '';
+    const ctx = c.getContext('2d');
+    if (ctx) fm.mod.drawMap(ctx, mapShown ? fm.store.painted : null, viewRef.current, map.Y, widen ? Array.from(stackZ(s)) : [], dpr);
+  };
+  useLayoutEffect(() => drawRef.current(), [fieldOn, mapShown, view, map, widen, s, dpr]);
+  useEffect(() => fm.store.sub(() => drawRef.current()), [fm.store]);
+  const probeMode = fieldOn && !!fields?.probe;
+  // The probe at the view's centre when its keys are turned on.
+  useEffect(() => {
+    if (probeMode && !probe.current?.get()) { const v = viewRef.current; probe.current?.set({ x: v.cx, z: map.Z(v.cy) }); }
+  }, [probeMode, map]);
+  const probeAtPx = (px: number, py: number) => {
+    const pz = pzRef.current;
+    if (pz) probe.current?.set({ x: pz.worldX(px), z: map.Z(pz.worldY(py)) });
+  };
+  const onBoxKey = (e: React.KeyboardEvent) => {
+    if (!probeMode || e.target !== box.current || e.altKey || e.ctrlKey || e.metaKey) return;
+    const dx = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0, dy = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0;
+    if (!dx && !dy) return;
+    e.preventDefault(); // PanZoom leaves a handled key alone
+    const v = viewRef.current, p = probe.current?.get() ?? { x: v.cx, z: map.Z(v.cy) };
+    const step = (e.shiftKey ? 1 : 8) / v.k;
+    probe.current?.set({ x: p.x + dx * step, z: map.Z(map.Y(p.z) + dy * step) });
+  };
+  const hoverRaf = useRef(0);
+  const onBoxMove = (e: React.PointerEvent) => {
+    if (!fieldOn || e.pointerType !== 'mouse' || e.buttons !== 0 || dragKey) return;
+    const r = box.current!.getBoundingClientRect(), px = e.clientX - r.left - 1, py = e.clientY - r.top - 1;
+    if (!hoverRaf.current) hoverRaf.current = requestAnimationFrame(() => { hoverRaf.current = 0; probeAtPx(px, py); });
+  };
+
   // ---- the controller (made before the fit's layout effect reads it) ----
   useLayoutEffect(() => {
     const el = box.current;
@@ -93,6 +151,11 @@ function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit, sel = nul
     pz.onFrame = (v, gesture) => {
       const g = content.current;
       if (g && gesture) g.setAttribute('transform', frameTransform(viewRef.current, v));
+      const c = canvas.current;
+      if (c && gesture) {
+        const a = viewRef.current, f = v.k / a.k;
+        c.style.transform = `translate(${v.w / 2 + (a.cx - v.cx) * v.k - (a.w / 2) * f}px, ${v.h / 2 + (a.cy - v.cy) * v.k - (a.h / 2) * f}px) scale(${f})`;
+      }
     };
     pz.onSettle = (v) => { setView(v); setAtFit(pz.atFit); };
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => { const w = Math.floor(el.clientWidth); if (w > 0) setW(w); }) : null;
@@ -151,8 +214,11 @@ function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit, sel = nul
   useEffect(() => {
     const pz = pzRef.current;
     if (!pz) return;
-    // A tap on (or within 6 px of) a conductor of a general structure selects it.
-    pz.onTap = st.kind !== 'general' || !onSelect || !sec ? null : (px, py) => {
+    // A tap on (or within 6 px of) a conductor of a general structure selects it; with the field view on it also
+    // moves the probe there.
+    const tapProbe = fieldOn ? (px: number, py: number) => probeAtPx(px, py) : null;
+    pz.onTap = st.kind !== 'general' || !onSelect || !sec ? tapProbe : (px, py) => {
+      tapProbe?.(px, py);
       const u = pz.worldX(px), zz = map.Z(pz.worldY(py)), tol = 6 / pz.view.k;
       const zs = stackZ(s), arr = arrangement(s, st);
       let best: GenSel | null = null, bestD = Infinity;
@@ -235,7 +301,8 @@ function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit, sel = nul
       const m = sec.materials[g.mat];
       if (!m || m.kind === 'air') return; // the background is air
       const fill = m.kind === 'mask' ? 'var(--mask)' : (s.layers[m.layer] as DielectricLayer)?.role === 'core' ? 'var(--core)' : 'var(--prepreg)';
-      body.push(<polygon key={`r${i}`} points={pts(g.pts)} fill={fill} stroke={m.kind === 'mask' ? 'var(--mask-edge)' : fill} strokeWidth={m.kind === 'mask' ? 0.75 : 0.5} strokeLinejoin="round" />);
+      if (mapShown) body.push(<polygon key={`r${i}`} points={pts(g.pts)} fill="none" stroke={m.kind === 'mask' ? 'var(--mask-edge)' : 'var(--field-edge)'} strokeWidth={m.kind === 'mask' ? 1 : 0.75} strokeLinejoin="round" />);
+      else body.push(<polygon key={`r${i}`} points={pts(g.pts)} fill={fill} stroke={m.kind === 'mask' ? 'var(--mask-edge)' : fill} strokeWidth={m.kind === 'mask' ? 0.75 : 0.5} strokeLinejoin="round" />);
     });
     // Boundaries between two dielectric layers.
     const z = stackZ(s);
@@ -243,8 +310,10 @@ function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit, sel = nul
     for (let i = 1; i < s.layers.length; i++) {
       if (s.layers[i].kind !== 'dielectric' || s.layers[i - 1].kind !== 'dielectric') continue;
       const yy = y(z[i]);
-      body.push(<line key={`e${i}`} x1={xl} x2={xr} y1={yy} y2={yy} stroke="var(--laminate-edge)" strokeWidth={1} />);
+      body.push(<line key={`e${i}`} x1={xl} x2={xr} y1={yy} y2={yy} stroke={mapShown ? 'var(--field-edge)' : 'var(--laminate-edge)'} strokeWidth={1} />);
     }
+    // The field's contours, lines and surface strips, under the copper.
+    if (fieldOn && fm.mod) body.push(<FieldOverlay key="field" store={fm.store} mod={fm.mod} view={view} map={map} />);
     // Plane labels at the right, beside the plane on the structure's side, else on its other side, else moved left:
     // never under a handle (M2.1d).
     const hpos = defs.map((d): [number, number] => [d.u === null ? LEFT_HANDLE_PX : x(d.u), y(d.z)]);
@@ -319,19 +388,22 @@ function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit, sel = nul
   }
   const bar = fit ? barLength(k) : 0;
   return (
-    <figure className={css.figure} data-trace-drawing data-selected={sel ?? ''} data-box-h={H} data-content-h={fit ? Math.round((fit.content[1] - fit.content[0]) * fit.kRef) : 0} data-widen={widen} data-px-per-mm={k} data-view-u={Wv / (2 * k)} data-view-cx={view.cx} data-view-cy={view.cy} data-at-fit={atFit} data-conductors={sec ? sec.conductors.length : 0}>
+    <figure className={css.figure} style={fieldOn ? { position: 'relative' } : undefined} data-trace-drawing data-selected={sel ?? ''} data-box-h={H} data-content-h={fit ? Math.round((fit.content[1] - fit.content[0]) * fit.kRef) : 0} data-widen={widen} data-px-per-mm={k} data-view-u={Wv / (2 * k)} data-view-cx={view.cx} data-view-cy={view.cy} data-at-fit={atFit} data-conductors={sec ? sec.conductors.length : 0}>
       <div
         ref={box}
         className={css.drawing}
         data-trace-view
         tabIndex={sec ? 0 : -1}
-        aria-label="Cross-section view: drag or arrow keys pan, wheel, pinch or + and − zoom, 0 shows all"
+        aria-label={probeMode ? 'Cross-section view: arrow keys move the probe (Shift finer), wheel, pinch or + and − zoom, 0 shows all' : 'Cross-section view: drag or arrow keys pan, wheel, pinch or + and − zoom, 0 shows all'}
         style={{ height: sec && fit ? H + 2 : undefined }}
+        onKeyDownCapture={onBoxKey}
+        onPointerMove={onBoxMove}
       >
         {sec && fit ? (
           <>
-            <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="group" aria-label={`Cross-section of the ${st.kind} as the solver sees it${widen ? ', thin layers widened' : ', to scale'}`}>
-              <rect x={0} y={0} width={W} height={H} fill="var(--air)" />
+            {fieldOn && <canvas ref={canvas} className={css.fieldCanvas} width={Math.round(W * dpr)} height={Math.round(H * dpr)} style={{ width: W, height: H }} data-field-canvas aria-hidden="true" />}
+            <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className={fieldOn ? css.overField : undefined} role="group" aria-label={`Cross-section of the ${st.kind} as the solver sees it${widen ? ', thin layers widened' : ', to scale'}`}>
+              {!mapShown && <rect x={0} y={0} width={W} height={H} fill="var(--air)" />}
               <g ref={content}>
                 {body}
                 <g className={css.svgLabels}>{labels}</g>
@@ -346,14 +418,16 @@ function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit, sel = nul
           <p className={css.noDrawing} data-no-drawing>{reason || 'Nothing to draw.'}</p>
         )}
       </div>
+      {fieldOn && sec && fit && <FieldProbe api={probe} mod={fm.mod} store={fm.store} sec={sec} s={s} view={view} map={map} unit={unit} digits={digits} keys={probeMode} />}
       {refused && <p className={css.refused} role="alert" data-handle-refused>{refused}</p>}
-      <div className={css.caption}>
+      {fieldOn && fm.mod && <FieldFoot mod={fm.mod} store={fm.store} drive={driveText(fields!, sec ? sec.signals : 1)} />}
+      {!mapShown && <div className={css.caption}>
         <span className={css.key} style={{ background: 'var(--copper)' }} />copper
         <span className={css.key} style={{ background: 'var(--core)' }} />core
         <span className={css.key} style={{ background: 'var(--prepreg)' }} />prepreg
         <span className={css.key} style={{ background: 'var(--mask)' }} />mask
         <span className={css.key} style={{ background: 'var(--air)' }} />air
-      </div>
+      </div>}
       {fit && (
         <div className={css.caption}>
           <span className={css.scale}><span className={css.scaleBar} style={{ width: Math.round(bar * k) }} />{lenText(bar, unit, Math.max(3, digits - 1))}</span>

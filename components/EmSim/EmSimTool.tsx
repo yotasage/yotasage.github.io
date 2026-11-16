@@ -205,7 +205,7 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
       </header>
 
       <main className={styles.main}>
-        <p className={styles.status}>Work in progress: the stackup and the trace with its impedance are here so far; dragging in the drawing, the fields, targets and tolerances come next.</p>
+        <p className={styles.status}>Work in progress: the stackup, the trace with its impedance, dragging in the drawing and the fields of the cross-section are here so far; targets, tolerances and vias come next.</p>
         <div className={styles.prefs}>
           <div className={styles.pref} role="group" aria-label="Units">
             Units

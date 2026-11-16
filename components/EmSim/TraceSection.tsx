@@ -30,6 +30,9 @@ import { lenText, sourceTag } from './format';
 import GeneralEditor from './GeneralEditor';
 import type { Commit, KicadState } from './StackupSection';
 import { IssueList } from './StackupSection';
+import FieldControls from './FieldControls';
+import { FIELD_DEFAULT } from './fieldTypes';
+import type { FieldSettings } from './fieldTypes';
 import TraceDrawing from './TraceDrawing';
 import type { HandleEdit } from './TraceDrawing';
 import { applyHandle } from './traceGeom';
@@ -107,6 +110,7 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
   }), [commit]);
   const [widen, setWiden] = useState(false);
   const [sel, setSel] = useState<GenSel | null>(null);
+  const [fieldSet, setFieldSet] = useState<FieldSettings>(FIELD_DEFAULT);
   const coppers = useMemo(() => coppersOf(s), [s]);
   const stackErr = useMemo(() => stackupIssues(s).find((i) => i.level === 'error') ?? null, [s]);
   const issues = useMemo(() => structureIssues(s, st), [s, st]);
@@ -171,6 +175,8 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
     // The via does not change the trace's solve.
   }, [s, st, sec, quick]);
   useEffect(() => { if (dragging) lastArrival.current = performance.now(); }, [dragging]);
+  // M2.2: the field jobs use the solve's options (the fast path too), so the worker's solve cache serves them.
+  const fieldEnv = useMemo(() => ({ client: getClient, via: setup.via, ...(quick ? { opt: QUICK } : {}) }), [setup.via, quick]);
 
   // ---- edits ----
   const setTrace = (f: (t: Structure, cur: Setup) => Structure | null, group = '') =>
@@ -257,10 +263,11 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
 
       <div className={css.layout}>
         <div className={css.drawArea}>
-          <TraceDrawing s={s} st={st} sec={sec} reason={reason} unit={unit} digits={digits} widen={widen} edit={edit} sel={selNow} onSelect={setSel} />
+          <TraceDrawing s={s} st={st} sec={sec} reason={reason} unit={unit} digits={digits} widen={widen} edit={edit} sel={selNow} onSelect={setSel} fields={fieldSet} fieldEnv={fieldEnv} />
           <div className={stk.figTools}>
             <button type="button" className={base.button} aria-pressed={widen} data-trace-widen onClick={() => setWiden((w) => !w)}>Widen thin layers</button>
           </div>
+          <FieldControls f={fieldSet} n={sec ? sec.signals : 1} set={setFieldSet} />
         </div>
 
         <div className={css.controls} data-trace-controls data-kind={st.kind}>

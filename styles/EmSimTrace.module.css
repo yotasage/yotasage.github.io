@@ -269,3 +269,34 @@
 .lineTable { border-collapse: collapse; font-size: 0.875rem; margin-top: 4px; }
 .lineTable th, .lineTable td { padding: 4px 10px 4px 0; text-align: left; font-weight: normal; }
 .lineTable th { color: var(--ink-2); font-size: 0.8125rem; }
+
+/* M2.2: the field view. The map is a canvas behind the SVG (same box, moved with the SVG's content during a gesture);
+   its colours are the same in both themes, so the lines over it are two-tone (a dark halo under a light stroke). */
+.fieldCanvas { position: absolute; top: 0; left: 0; transform-origin: 0 0; pointer-events: none; }
+.overField { position: relative; }
+.drawing { --field-edge: rgba(255, 255, 255, 0.55); }
+.fieldOverlay path { fill: none; stroke-linejoin: round; stroke-linecap: round; pointer-events: none; }
+.contourHalo { stroke: rgba(0, 0, 0, 0.45); stroke-width: 2.4px; }
+.contour { stroke: rgba(255, 255, 255, 0.9); stroke-width: 1px; stroke-dasharray: 4 3; }
+.lineHalo { stroke: rgba(0, 0, 0, 0.5); stroke-width: 2.8px; }
+.fieldLine { stroke: rgba(255, 255, 255, 0.95); stroke-width: 1.3px; }
+.fieldOverlay .strip { stroke-width: 5px; stroke-linecap: butt; }
+.probeMark {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1.5px #000;
+  pointer-events: none;
+}
+.fieldProbe { margin: 6px 0 0; font-size: 0.8125rem; line-height: 1.45; color: var(--ink-2); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.fieldScale { margin-top: 8px; font-size: 0.75rem; color: var(--ink-2); min-width: 0; }
+.fieldScaleHead { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; }
+.fieldBar { height: 12px; margin-top: 4px; border: 1px solid var(--rule); border-radius: 3px; background-size: 100% 100%; image-rendering: auto; }
+.fieldTicks { position: relative; height: 1.4em; margin-top: 2px; overflow: hidden; font-variant-numeric: tabular-nums; }
+.fieldTicks span { position: absolute; top: 0; white-space: nowrap; }
+.fieldNote { margin-top: 2px; color: var(--ink-3); }
+.fieldControls { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+@media (max-width: 600px) { .fieldTicks .tickOdd { display: none; } }
