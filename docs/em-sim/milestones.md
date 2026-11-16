@@ -171,6 +171,16 @@ Differences beyond the bar are reported, not fixed: the main session briefs a fi
 **Done when:** the fuzz agrees within the two solvers' combined error estimates (outliers explained); closed forms agree
 with the field solver within their published accuracy inside their stated ranges; the validation table is filled.
 
+### M1.8 – All of JLCPCB's stackups (added 2026-11-16, owner) · S + a long fetch
+
+The owner asked for every JLCPCB stackup as presets, fetched by our own harness script from the data behind JLCPCB's
+impedance calculator (not copied from the unlicensed GitHub snapshot of 2025-05-09 that M0.2b used), **slowly: 2–3
+requests a minute, 2–4 hours at least**, resumable, on the owner's PC only. **M1.8a:** find the requests, write the
+fetcher (`scripts/harness/emsim/jlcpcb/`, cache in the ignored `.cache/`) and the converter to one dated data file in
+`lib/emsim/`, test on a handful of requests. **The fetch** runs in the background (main session), in parallel with
+other steps (owner, 2026-11-16). **M1.8b** (after the fetch, between page steps): convert, check every stackup's
+invariants, load the list with `await import` only when the preset list opens, keep the first-load budget.
+
 ### M1.5 – Fields and the static worker · M
 
 Fields of engine.md §9 from the stored solution (φ, E, D, H, charge and current density, mode combinations), on grids
