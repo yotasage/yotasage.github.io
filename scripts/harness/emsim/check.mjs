@@ -15,6 +15,8 @@ const MODULES = [
   ['KiCad reader', './check-kicad.mjs'],
   ['Link and project', './check-link.mjs'],
   ['2D solver (BEM)', './check-bem.mjs'],
+  ['Modes and impedances', './check-modes.mjs'],
+  ['Target, sweeps, tolerance', './check-vary.mjs'],
 ];
 
 const failures = [];
