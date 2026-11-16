@@ -10,11 +10,13 @@ import * as P0 from '../../../lib/emsim/presets.ts';
 const S = S0.default ?? S0;
 const P = P0.default ?? P0;
 
-// JLCPCB's compressionThickness (pressed, without mask) from its API data (GsuberlandStackups raw_json, 2025-05-09).
+// JLCPCB's pressed thickness (without mask): the sum of its API's layers (fetched 2026-11-16, M1.8b). Before M1.8b
+// (GsuberlandStackups, 2025-05-09) the 6-layer ½ oz ones were 0.0076 mm thicker (centre prepreg) and the 2-layer board
+// a 1.53 mm core with 0.035 mm copper (1.6).
 const PRESSED = {
   'JLC061611-3313A': 1.637, 'JLC04161H-7628': 1.5862, 'JLC04161H-3313': 1.5642, 'JLC04161H-1080': 1.5182,
-  'JLC04161H-2116': 1.5982, 'JLC06161H-3313A': 1.546, 'JLC06161H-7628': 1.562, 'JLC06161H-1080': 1.594,
-  'JLC06161H-2116A': 1.5564, 'JLC-2L-1.6': 1.6,
+  'JLC04161H-2116': 1.5982, 'JLC06161H-3313A': 1.5384, 'JLC06161H-7628': 1.5544, 'JLC06161H-1080': 1.5864,
+  'JLC06161H-2116A': 1.5564, 'JLC-2L-1.6': 1.49,
 };
 
 export function run(t) {
@@ -57,7 +59,7 @@ export function run(t) {
       if (l.kind === 'copper') {
         t.ok(l.etch.kind === 'offset' && Math.abs(l.etch.side.v - 0.35 * MIL) < 1e-15, `${id} ${l.id}: etch 0.35 mil per side`);
         const outer = S.isOuter(s, L.indexOf(l));
-        if (outer) { t.eq(l.t.v, 0.035, `${id} ${l.id}: outer copper 0.035`); t.near(l.calc.v, 1.6 * MIL, `${id} ${l.id}: calculator 1.6 mil`); }
+        if (outer) { t.eq(l.t.v, id === 'JLC-2L-1.6' ? 0.03 : 0.035, `${id} ${l.id}: outer copper as the API states it`); t.near(l.calc.v, 1.6 * MIL, `${id} ${l.id}: calculator 1.6 mil`); }
       }
     }
     // stackZ: the top is the total, faces in order.
@@ -70,17 +72,15 @@ export function run(t) {
   // JLC061611-3313A in full (facts-fab.md §1.3).
   const a = P.presetStackup('JLC061611-3313A');
   const seq = a.layers.slice(1, -1).map((l) => (l.kind === 'copper' ? `Cu${l.t.v}` : `${l.material}:${l.t.v}:${l.er.v}`)).join(' ');
-  t.eq(seq, 'Cu0.035 3313:0.092:4.1 Cu0.03 FR-4 core (NP-155F):0.13:4.17 Cu0.03 1080:0.069:3.91 not named:0.865:4.43 1080:0.069:3.91 Cu0.03 FR-4 core (NP-155F):0.13:4.17 Cu0.03 3313:0.092:4.1 Cu0.035', '3313A layer by layer');
+  t.eq(seq, 'Cu0.035 3313:0.092:4.1 Cu0.03 FR-4 core (NP-155F):0.13:4.17 Cu0.03 1080:0.069:3.91 FR-4 core, etched bare (NP-155F):0.865:4.55 1080:0.069:3.91 Cu0.03 FR-4 core (NP-155F):0.13:4.17 Cu0.03 3313:0.092:4.1 Cu0.035', '3313A layer by layer');
   const mid = a.layers.find((l) => l.kind === 'dielectric' && l.t.v === 0.865);
-  t.ok(mid && /no material/.test(mid.er.src.note ?? ''), '3313A: the centre layer says its εr is assumed');
-  t.ok(/GsuberlandStackups|gsuberland/.test(a.layers[1].t.src.url) && a.layers[1].t.src.url.endsWith('JLC061611-3313A.json'), '3313A thickness cites its data file');
-  t.eq(P.refUrl('G', 'JLC061611-3313A'), a.layers[1].t.src.url, 'refUrl gives the data file');
+  t.ok(mid && mid.role === 'core' && mid.er.src.ref === 'A' && !mid.er.src.note, '3313A: the centre layer is a core etched bare, εr from the API');
+  t.ok(a.layers[1].t.src.ref === 'A' && a.layers[1].t.src.url === P.REFS.A.url && P.refUrl('A', 'JLC061611-3313A') === P.REFS.A.url, '3313A thickness cites the calculator');
+  t.ok(P.refUrl('G', 'JLC061611-3313A').endsWith('/raw_json/jlcpcb_6L_1.6mm_outer1oz_inner1oz_JLC061611-3313A.json'), 'refUrl G still gives the former data file (old links)');
   // Copies: editing one changes nothing else.
   a.layers[2].t.v = 9;
   t.eq(P.presetStackup('JLC061611-3313A').layers[2].t.v, 0.092, 'presetStackup returns a copy');
   t.eq(P.presetStackup('nope'), null, 'unknown preset');
-  // coreEr table.
-  t.eq(P.coreEr(0.13), 4.17, 'core 0.13'); t.eq(P.coreEr(1.065), 4.43, 'core > 0.7'); t.eq(P.coreEr(0.7), 4.53, 'core 0.70');
   // Order and range checks find what is wrong.
   const bad = P.presetStackup('JLC04161H-7628');
   const L = bad.layers;

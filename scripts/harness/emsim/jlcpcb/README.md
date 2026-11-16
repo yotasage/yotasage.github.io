@@ -12,7 +12,7 @@ Two POST endpoints of the calculator, with only the calculator's own query param
   layer (material, thickness, εr). The page sends layers, thickness, outer and inner copper; left out, the answer holds
   every template of that layer count.
 
-Mode `layers` (default): one request per layer count for rigid boards and one for all HDI templates (`boardType` 2),
+Mode `layers` (default): one request per layer count for rigid boards and one for all `boardType` 2 templates (flexible boards, M1.8b; not HDI as first assumed),
 33 requests with the menu read once. Mode `combos` (`JLC_MODE=combos`): one request per menu combination as the page
 makes them (layers × thickness × outer 1/2 oz × inner ½/1/2 oz), 1068 requests, about 7 h; a fallback if the short
 form ever stops working.

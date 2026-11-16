@@ -10,6 +10,7 @@ import { performance } from 'node:perf_hooks';
 const MODULES = [
   ['Units', './check-units.mjs'],
   ['Stackup presets', './check-stackup.mjs'],
+  ['JLCPCB stackups (M1.8b)', './check-jlcpcb.mjs'],
   ['Structure geometry', './check-geometry.mjs'],
   ['Via structures', './check-via.mjs'],
   ['KiCad reader', './check-kicad.mjs'],

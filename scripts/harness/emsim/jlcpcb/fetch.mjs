@@ -6,7 +6,7 @@
 //   node jlcpcb/fetch.mjs            (from scripts/harness/emsim; `npm run jlcpcb:fetch`)
 //
 // Environment (all optional):
-//   JLC_MODE      layers (default): one request per layer count (rigid) and one for all HDI templates;
+//   JLC_MODE      layers (default): one request per layer count (rigid) and one for all boardType 2 templates (flexible boards, not HDI);
 //                 combos: one request per menu combination (layers × thickness × outer × inner copper), as the page does.
 //   JLC_INTERVAL  base wait between requests in s (default 24; at least 10), JLC_JITTER ± s (default 6)
 //   JLC_LIMIT     at most this many network requests in this run (tests)

@@ -180,6 +180,13 @@ fetcher (`scripts/harness/emsim/jlcpcb/`, cache in the ignored `.cache/`) and th
 `lib/emsim/`, test on a handful of requests. **The fetch** runs in the background (main session), in parallel with
 other steps (owner, 2026-11-16). **M1.8b** (after the fetch, between page steps): convert, check every stackup's
 invariants, load the list with `await import` only when the preset list opens, keep the first-load budget.
+Split by the main session on 2026-11-16 (two jobs, engine and page): **M1.8b** (S–M, harness only): convert and commit
+`lib/emsim/jlcpcbStackups.json`, a framework-free module that turns an entry into a `Stackup` with the presets'
+conventions, `check-jlcpcb.mjs` in `npm run check` with every stackup's invariants, the ten hand presets moved onto the
+API's values (checked equal to their entries), facts-cases rows re-checked. **M1.8c** (M, page): the preset picker
+(layer count, thickness, copper, offer; the hand presets first), the data loaded with `await import` only when the
+picker opens, a list stackup in the link (also opened from a fresh link), `ui-stackup.mjs` extended, the first-load
+budget kept.
 
 ### M1.5 – Fields and the static worker · M
 
