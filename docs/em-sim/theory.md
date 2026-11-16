@@ -15,6 +15,8 @@ into the page's Theory and References sections. Part of [plan.md](plan.md); the 
 | 4 | Microstrip, stripline and the solder mask | `structures` (`trapezoid`, `solder-mask`, `coplanar-ground`, `copper-thickness`) | [theory-2.md](theory-2.md) |
 | 5 | Why calculators and fabs disagree | `calculators` (`closed-forms`, `jlcpcb-calculator`) | [theory-2.md](theory-2.md) |
 | 6 | Tolerances and what matters most | `tolerances` | [theory-2.md](theory-2.md) |
+| 7–13 | Vias: the line, pads and antipads, the return path, stubs, the TDR, S-parameters, the model's limits | `via-line`, `via-pads`, `via-return`, `via-stubs`, `via-tdr`, `via-sparams`, `via-limits` | [theory-vias.md](theory-vias.md) |
+| – | Every equation with its derivation; worked examples | – | [equations-list.md](equations-list.md), [examples.md](examples.md) |
 | – | The short lines beside every control and readout | – | [theory-lines.md](theory-lines.md) |
 
 **How to read these files.**
