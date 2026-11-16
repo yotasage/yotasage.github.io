@@ -134,7 +134,7 @@ range.
 - **Wide strip (eqs. 4, 5), w/(b − t) ≥ 0.35:** Z0·√εr = 94.15/(w/b/(1 − t/b) + Cf′/(ε0εr)) Ω, with the fringe of one edge
   Cf′/(ε0εr) = (1/π)·[(2/(1 − t/b))·ln(1/(1 − t/b) + 1) − (1/(1 − t/b) − 1)·ln(1/(1 − t/b)² − 1)]
   (Cohn writes Cf′/(0.0885εr) with Cf′ in pF/cm). At t = 0: Cf′/ε = 2ln2/π = 0.4413 and 94.15 ≈ η0/4 = 94.18: it is
-  the wide-strip limit of the exact solution (facts.md §8), 0.4 % high at w/b = 0.5, 0.05 % at w/b = 1.
+  the wide-strip limit of the exact solution (facts.md §8), 0.4 % low at w/b = 0.5 (measured in M1.4b), 0.05 % at w/b = 1.
 - **Narrow strip (eq. 3), w/(b − t) ≤ 0.35 and t/b ≤ 0.25:** Z0·√εr = 60·ln(4b/(π·d0)), d0 the diameter of the
   equivalent round conductor (Cohn's Fig. 2 graphically). With d′ the larger and d″ the smaller of w and t (p. 122):
   d0 = (d′/2)·(1 + (d″/(πd′))·(1 + ln(4πd′/d″))), "accurate for d″/d′ ≤ 0.06"; improved (eq. 21):
