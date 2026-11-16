@@ -345,6 +345,19 @@
   scroll-margin-top: calc(var(--bar-h) + 8px);
 }
 
+/* The loaded Theory and References (M2.4c fix): not laid out, pre-painted or painted while off screen. Without this the
+   browser painted their 3 000 nodes (KaTeX, the figures) on every drag frame of the Trace section, which is within its
+   paint area, and a drag frame took 4 to 5 ms more at 4x CPU throttle. The size is a guess until first shown; then
+   `auto` keeps the real one. */
+.offscreen {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 14000px;
+}
+
+.offscreen[id='references'] {
+  contain-intrinsic-size: auto 2000px;
+}
+
 .h2 {
   margin: 0 0 4px;
   font-size: 1.125rem;

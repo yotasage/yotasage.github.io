@@ -53,3 +53,31 @@ width 0.2 mm, and on the default pair (19 equations), within 1e-9 relative. `npm
 - A short line's "→ theory" is a plain `<a href="#field-solver">`: the hashchange loads the chunk if needed and scrolls
   to the id once it exists; `.topic:target` / `.sub:target` fade in (`useReplayHighlight` in EmSimTool replays it on a
   second click of the same link). The short lines themselves stay in the first load (text only; no KaTeX).
+
+## Fix after M2.4c (2026-11-16)
+
+Dragging a width got slower with this step: at 4× CPU throttle, 16.1–17.2 ms of main-thread work per frame against
+10.2–12.9 ms before, with 2–9 dropped frames where there had been none. The drag frame's own work (p50/p95) and the
+script time did not change. A Chromium trace of a 2 s drag showed where it went: Paint 601 → 859 ms and PrePaint
+82 → 333 ms. The loaded Theory (about 3 000 elements of text, KaTeX and figures) is below the Trace section but inside the
+area the browser paints around the window, so every drag frame painted it again. The solve results' new
+`Matrices.levels` (a few n×n arrays) and the feed (`feedTheory` is not called during a drag) cost nothing measurable.
+
+Fix: once the Theory is loaded, `#theory` and `#references` get `styles.offscreen` (`EmSim.module.css`:
+`content-visibility: auto` and `contain-intrinsic-size: auto 14000px` / `2000px`). The browser then skips their layout
+and paint while they are off screen; links into the theory, find in page and the figures work as before. EmSimTool's
+IntersectionObserver that loads the theory now disconnects once it has loaded. After the fix Paint and PrePaint are
+the same as before M2.4c.
+
+`ui-drag.mjs` A/B, production builds, interleaved, 5 runs each (mean task/frame; dropped frames over all runs):
+
+| structure | 1× before M2.4c | 1× fixed | 4× before M2.4c | 4× with M2.4c | 4× fixed | dropped at 4× (before / fixed) |
+|---|---|---|---|---|---|---|
+| microstrip | 2.24 ms | 2.31 ms | 10.63 ms | 16.1–16.5 ms | 11.58 ms | 0 / 0 |
+| pair-microstrip | 2.69 ms | 2.85 ms | 11.57 ms | 16.5–16.8 ms | 12.36 ms | 0 / 0 |
+| pair-cpw | 2.77 ms | 3.03 ms | 12.14 ms | 16.8–17.2 ms | 12.07 ms | 1 / 0 |
+
+Single runs scatter by ±0.7 ms. What is left, about 0.8–1.0 ms at 4× on the microstrip and the pair microstrip, comes
+from the loaded theory but not from drawing it: the same harness with the sections hidden by `display: none` after the
+theory had loaded gave 11.3 and 11.9 ms, and with the theory never loaded 10.7–10.9 and 10.7–11.5 ms. Most likely the
+larger heap (the theory's DOM and React tree) makes garbage collection dearer. It is BL111.

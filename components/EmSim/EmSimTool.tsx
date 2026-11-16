@@ -81,11 +81,12 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
   const jumpTo = useRef('');
   useEffect(() => {
     let asked = false;
+    let io: IntersectionObserver | null = null;
     const load = () => {
       if (asked) return;
       asked = true;
       // @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
-      void import('./Theory').then((m: TheoryMod) => setTh(() => m), () => { asked = false; });
+      void import('./Theory').then((m: TheoryMod) => { setTh(() => m); io?.disconnect(); }, () => { asked = false; }); // loaded: no more intersections to compute per frame
     };
     const fromHash = () => {
       const id = decodeURIComponent(window.location.hash.slice(1));
@@ -95,7 +96,7 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
     };
     fromHash();
     window.addEventListener('hashchange', fromHash);
-    const io = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) load(); }, { rootMargin: LOAD_MARGIN });
+    io = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) load(); }, { rootMargin: LOAD_MARGIN });
     if (!io) load();
     for (const el of [thBox.current, refBox.current]) if (el && io) io.observe(el);
     return () => { window.removeEventListener('hashchange', fromHash); io?.disconnect(); };
@@ -274,11 +275,11 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
         )}
         <StackupSection setup={setup} commit={commit} unit={unit} digits={digits} kicad={kicad} setKicad={setKicad} />
         <TraceSection setup={setup} commit={commit} unit={unit} digits={digits} kicad={kicad} />
-        <section id="theory" ref={thBox} className={styles.section} aria-labelledby="theory-h" data-loaded={th ? 'true' : 'false'}>
+        <section id="theory" ref={thBox} className={th ? `${styles.section} ${styles.offscreen}` : styles.section} aria-labelledby="theory-h" data-loaded={th ? 'true' : 'false'}>
           <h2 id="theory-h" className={styles.h2}>Theory</h2>
           {th && bib ? <th.default bib={bib} unit={unit} digits={digits} /> : <p className={styles.lede}>The theory loads as you come near it.</p>}
         </section>
-        <section id="references" ref={refBox} className={styles.section} aria-labelledby="references-h">
+        <section id="references" ref={refBox} className={th ? `${styles.section} ${styles.offscreen}` : styles.section} aria-labelledby="references-h">
           <h2 id="references-h" className={styles.h2}>References</h2>
           {th && bib ? <th.References bib={bib} /> : <p className={styles.lede}>The sources the theory cites, listed once it has loaded.</p>}
         </section>
