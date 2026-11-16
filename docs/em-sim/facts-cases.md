@@ -106,13 +106,13 @@ v2's form (notes-M0.1.md). Open cells (—) are for the owner (inputs below) or 
 | C41 | edge-coupled pair L1/L2, w 0.11 (sheet 4.36 mil), s 0.2 (8 mil) | — | 100 Ω at 4.36/8 mil, "unchanged"; calculator — (owner) | — | K–J (zero thickness, no mask): 126.32 Ω on the bare rectangle, 132.25 on the preset reduced (mean width 0.1011, gap 0.2089) | **Zdiff 103.36 ± 0.15 Ω**, Zcm 30.91 (preset); at the sheet's 4.36/8 mil 103.31 ± 0.15; KiCad as read 103.64; bare rectangle without mask 110.03; 100 Ω needs w 0.1191 (4.69 mil) at s 0.2 | +3.4 Ω (+3.4 %) to JLCPCB's 100 Ω; K–J +23 Ω (no thickness, no mask) | mask −9.2 Ω, trapezoid +2.9 Ω, εr 4.3 −1.7 Ω, copper 1.6 mil −1.7 Ω; the copper thickness itself −16.4 Ω against the zero-thickness formula |
 | C42 | as C41 on L6/L5 | = C41 | as C41 | — | as C41 | **Zdiff 103.36 ± 0.15 Ω** (= C41, checked) | 0 | mirror check |
 | C43 | pair L1/L2, w 0.2, s 0.25 | — | — (owner) | — | K–J 91.74 Ω (bare), 94.54 (preset reduced) | **Zdiff 80.02 ± 0.32 Ω**, Zcm 22.52 (preset); KiCad as read 79.63; bare 83.58; 100 Ω would need w 0.1268 (4.99 mil) at s 0.25 | K–J +11.7 Ω | informative: an unassigned pair is about 80 Ω, not 100 Ω; copper thickness −8.0 Ω, mask −4.8 Ω |
-| C44 | via 0.6/0.3, antipad Ø1.8 on all layers, GND vias 0.8–1.5 away | — (openEMS, M3) | — | — (via tab) | C36's thin-wire form | — | — | — |
-| C45 | via pair Ø0.5/0.22, pitch 0.7, stadium antipad, 6 GND vias | — (openEMS, M3) | — | — | — | — | — | — |
+| C44 | via 0.6/0.3, antipad Ø1.8 on all layers, GND vias 0.8–1.5 away | — (openEMS, M3) | — | — (via tab) | C36's thin-wire form (two returns at 0.8, εr 4.43): 61.65 Ω | **barrel 60.51 ± 0.08 Ω** (preset: two returns at 0.8, εr 4.43); via section √(L/C) 50.49 Ω, 13.48 ps, C 266.9 fF (pads ΣΔC 89.9), L 0.681 nH; TDR 35 ps between 50 Ω ports at the pads 49.70–51.19 Ω (M1.7) | thin-wire +1.9 % on the barrel | the thin-wire form ignores proximity (returns 0.8 from a 0.3 barrel); the section lies below the barrel's Z because the six pads and four antipads add 90 fF; the returns cut into the antipads (flag `return-in-antipad`); notes-M1.7.md |
+| C45 | via pair Ø0.5/0.22, pitch 0.7, stadium antipad, 6 GND vias | — (openEMS, M3) | — | — | — | **barrel Zdiff 93.47 Ω**, Zcm 41.01 Ω (εr 4.43); via section Zdiff 83.99 Ω, Zcm 36.84 Ω, 12.52 ps, ΔC 54.0 fF per via; differential TDR 35 ps (100 Ω ports) dips to 90.99 Ω; the stadium 1.22 × 1.92 solved as round Ø1.22 per via (BL88) (M1.7) | — | 100 Ω section Zdiff would need a round antipad of Ø3.14 (the target); the pads' coupling is the flagged estimate −k12·ΔC (k12 0.274) |
 | C14–C18 | Cohn zero-thickness stripline | exact | — | — | — | — | — | — |
 | C19–C25, C28–C29 | Cohn coupled stripline | exact | — | — | — | — | — | — |
 | C26–C27 | coplanar waveguide | exact | — | — | — | — | — | — |
 
-The via rows C44–C45 are left for M1.7 (the via model) and M3 (openEMS).
+The via rows C44–C45: the via model's values from M1.7 (notes-M1.7.md); openEMS for them is M3.
 
 ### Differences explained (M1.4b)
 

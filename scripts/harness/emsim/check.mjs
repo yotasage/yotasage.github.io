@@ -23,6 +23,7 @@ const MODULES = [
   ['Static worker (M1.5)', './check-worker.mjs'],
   ['Axisymmetric solver (M1.6)', './check-axisym.mjs'],
   ['Via cut (M1.6)', './check-viacut.mjs'],
+  ['Via model (M1.7)', './check-viamodel.mjs'],
 ];
 
 const failures = [];

@@ -20,6 +20,8 @@ import type { DriveName, FieldGrid, FieldKind, GridOptions, Surface, View } from
 import { electric, fieldGrid, fieldModel, magnetic, modeDrive, namedDrive, sectionMedia, surface } from './fields';
 import type { Contour } from './fieldlines';
 import { contours, fieldLines, levelsBetween } from './fieldlines';
+import type { ViaModelOptions, ViaTargetKey, ViaTargetVary } from './viamodel';
+import { viaModel, viaTarget } from './viamodel';
 
 export const JOBS_VERSION = 1;
 export const SLICE_MS = 40;
@@ -44,6 +46,8 @@ export type StaticJob =
   | { kind: 'corners'; setup: Setup; opt?: EvalOptions & { keys?: string[] } }
   | { kind: 'montecarlo'; setup: Setup; opt?: McOptions }
   | { kind: 'inverse'; setup: Setup; key: InverseKey; target: number; vary?: InverseVary; opt?: InverseOptions }
+  | { kind: 'via'; setup: Setup; opt?: ViaModelOptions } // M1.7: the via model of the setup's via with its trace as feeds
+  | { kind: 'via-target'; setup: Setup; key: ViaTargetKey; target: number; vary: ViaTargetVary; opt?: ViaModelOptions }
   | FieldJob;
 
 export interface FieldResult {
@@ -180,6 +184,10 @@ export function* runJob(job: StaticJob, cache: SolveCache = new SolveCache()): G
     }
     case 'field':
       return yield* fieldJob(job, cache);
+    case 'via':
+      return viaModel(job.setup.stackup, job.setup.via, job.setup.trace, job.opt ?? {});
+    case 'via-target':
+      return viaTarget(job.setup.stackup, job.setup.via, job.setup.trace, job.key, job.target, job.vary, job.opt ?? {});
     default:
       throw new Error(`Unknown job ${(job as { kind: string }).kind}.`);
   }
