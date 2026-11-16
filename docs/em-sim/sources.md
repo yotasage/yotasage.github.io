@@ -166,10 +166,11 @@ JLCPCB's online calculator (JavaScript app); any JLCPCB page with JLC061611-3313
 order emails (images on JLCPCB's server under order-specific addresses, deliberately not fetched); the NP-155F
 datasheet (εr against frequency), left for M1.1 or phase 2.
 
-## Literature, abstracts only (M0.2d)
+## Literature, abstracts only (M0.2d, M0.2e)
 
-[literature.md](literature.md) lists 57 papers on the 2D field solver, pair impedance definitions, calculators against
+[literature.md](literature.md) lists 85 papers (57 from M0.2d, 28 more from M0.2e with its "Findings with numbers") on the 2D field solver, pair impedance definitions, calculators against
 field solvers and measurements, and via models, with the step each one is for. Each was checked on Crossref by its
 DOI (title, authors and year); **none was opened**. They may be cited on the page only for what their abstract says
 until someone opens them; then they move to a section above with what was read. Keys in `references.bib` from
-`Wang1994` to `RimoloDonadio2009b`, under the comment "step M0.2d".
+`Wang1994` to `RimoloDonadio2009b`, under the comment "step M0.2d", and the M0.2e entries after them. A finding marked
+"summary only, unconfirmed" in literature.md is not cited at all.
