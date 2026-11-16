@@ -235,3 +235,6 @@ topics. Lines without a claim describe what the control does.
 | Paper (`data-report-paper`, report-paper) | The page size the report is laid out for: A4 or US Letter. | – | – |
 | Include (`data-report-part`, report-parts) | What the report holds; field maps, plots and calculators once the page has them. | – | – |
 | Print report (`data-report-print`, report-print) | Opens the browser's print dialog with the report alone, light; "Save as PDF" there gives a file. | – | – |
+| Equations (`data-eq-open` in the Trace results, eq-open) | A number with a dotted underline opens its equation with your numbers beside the results; Escape closes it. | – | – |
+| Equations (`data-eq-open` in the Via results, eq-via-open) | A number with a dotted underline opens its equation with this via's numbers; Escape closes it. | – | – |
+| Derivation (`data-eq-derive`, eq-derive) | How the equation follows, one step at a time with its reason; Next step, Back, Show all. | – | – |

@@ -29,7 +29,7 @@ import { openDerivation } from './Derivation';
 import { hasDerivation } from './derive';
 import { GOAL_VSWR } from './pathLayer';
 import { onFollowTopic } from './Why';
-import { markWide, watchWide } from './wide';
+import { markWide, watchWide } from '../Equations/wide';
 import { complexText } from './readout';
 import type { Outcome } from './SolvePanel';
 import { CirclesFigure, GammaFigure, LineFigure, MatchFigure, PlaneFigure, VswrFigure, WalksFigure } from './TheoryFigures';

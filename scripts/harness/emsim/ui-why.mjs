@@ -42,7 +42,7 @@ const pairSetup = () => { const s = withTrace('pair-microstrip', 0.11); s.trace 
 
 // ---- the data ----
 const keys = Object.keys(WHYS);
-check(keys.length === 193, `${keys.length} short lines (192 of theory-lines.md and the switch's own)`);
+check(keys.length === 196, `${keys.length} short lines (195 of theory-lines.md and the switch's own)`);
 check(keys.every((k) => WHYS[k].text && WHYS[k].label && (WHYS[k].topic === null || TOPIC_TITLE[WHYS[k].topic])), 'every line has a label, a text and a known topic or none');
 check(keys.every((k) => WHYS[k].text.split(/\s+/).length <= 22), 'every line at most about 20 words');
 const fullText = (k) => `${WHYS[k].text}${WHYS[k].topic ? ' → theory' : ''}`;
@@ -91,7 +91,9 @@ try {
   await page.waitForSelector('[data-jlc-picker][data-loaded="true"]', { timeout: 30000 });
   await fieldsOn(page);
   for (const k of ['target', 'sweep', 'tolerance', 'calc']) await tool(page, k);
-  await state(page, 'default microstrip', ['status', 'home', 'nav', 'undo', 'whys', 'theme', 'units', 'digits', 'copy-link', 'preset', 'jlc-open', 'kicad',
+  await page.click('[data-eq-open="z0"]');
+  await page.waitForSelector('[data-eq-panel="z0-lc"] [data-eq-derive]', { timeout: 30000 });
+  await state(page, 'default microstrip', ['eq-open', 'eq-derive', 'status', 'home', 'nav', 'undo', 'whys', 'theme', 'units', 'digits', 'copy-link', 'preset', 'jlc-open', 'kicad',
     'summary', 'stackup-drawing', 'stackup-widen', 'diel-t', 'er', 'tand', 'er-freq', 'cu-t', 'calc-t', 'etch', 'mask-laminate', 'mask-copper',
     'mask-between', 'mask-er', 'tol', 'src', 'sources', 'jlc-filter', 'jlc-withdrawn', 'jlc-row', 'structure', 'to-general', 'class-structure',
     'trace-view', 'handles', 'trace-reset', 'trace-widen', 'layer', 'plane', 'width', 'masked', 'field-on', 'field-qty', 'field-scale-kind',
@@ -140,7 +142,7 @@ try {
     'via-pad', 'via-plane', 'via-antipad', 'via-shape', 'via-antipad-all', 'via-returns', 'via-return-add', 'via-return-remove', 'via-return-planes',
     'via-backdrill', 'via-feeds', 'via-side', 'via-top', 'via-handles', 'via-reset', 'via-add-tap', 'via-remove-sel', 'via-issues', 'via-solve', 'via-barrel-z', 'via-section-z', 'via-delay', 'via-lc',
     'via-segments', 'via-crossings', 'via-stubs', 'via-feed-z', 'via-valid', 'via-flags', 'via-assumptions', 'via-next',
-    'via-tdr', 'via-tr', 'via-port', 'via-tdt', 'via-s', 'via-s-ports', 'via-cursor', 'via-fields', 'via-target', 'via-target-vary', 'via-target-use']);
+    'eq-via-open', 'via-tdr', 'via-tr', 'via-port', 'via-tdt', 'via-s', 'via-s-ports', 'via-cursor', 'via-fields', 'via-target', 'via-target-vary', 'via-target-use']);
   await vp.click('[data-via-preset="pair"]');
   await vp.waitForSelector('[data-via-results][data-n="2"]:not([data-stale="true"])', { timeout: 60000 });
   await vp.waitForSelector('[data-via-plots][data-stale="false"] [data-via-s-mode]', { timeout: 60000 });

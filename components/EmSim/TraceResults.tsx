@@ -14,6 +14,7 @@ import type { Q } from '../../lib/emsim/lines';
 import type { LengthUnit } from '../../lib/emsim/units';
 import base from '../../styles/EmSim.module.css';
 import css from '../../styles/EmSimTrace.module.css';
+import { EqNum, traceEq } from './eqLinks';
 import { FLOOR, qText } from './trace';
 import { Why, Whys } from './Why';
 
@@ -29,6 +30,8 @@ const STATUS_TEXT: Record<string, string> = {
 // One value with its error (data-q, data-v, data-e for the harness, in SI units as the engine gives them).
 // The panel's overall status: a value shows its own status only when it differs (the flags explain the overall one).
 const Overall = React.createContext<string>('');
+// M4.3a: the result's signals, which decide the numbers with an equation (eqLinks.tsx traceEq).
+const Signals = React.createContext(0);
 const QUICK = 'quick';
 
 function Val({ q, name, label, unit, floor, scale = 1, big, note }: { q: Q; name: string; label: React.ReactNode; unit: string; floor: number; scale?: number; big?: boolean; note?: React.ReactNode }) {
@@ -36,11 +39,12 @@ function Val({ q, name, label, unit, floor, scale = 1, big, note }: { q: Q; name
   const overall = React.useContext(Overall);
   const quick = overall === QUICK;
   const st = quick || q.status === overall ? '' : STATUS_TEXT[q.status] ?? q.status;
+  const eq = traceEq(name, React.useContext(Signals)) !== null;
   return (
     <div className={big ? css.big : css.val} data-q={name} data-v={q.v} data-e={q.e} data-status={q.status}>
       <dt>{label}</dt>
       <dd>
-        <span className={css.num}>{t.v}</span>
+        <span className={css.num}>{eq ? <EqNum section="trace" name={name} label={typeof label === 'string' ? label : name} text={t.v} v={q.v} scale={scale} /> : t.v}</span>
         {t.e && !quick && <span className={css.err}> ± {t.e}</span>}
         <span className={css.qUnit}> {unit}</span>
         {st && <span className={css.qStatus} data-level={q.status === 'irregular' ? 'warn' : 'note'}>{st}</span>}
@@ -51,6 +55,7 @@ function Val({ q, name, label, unit, floor, scale = 1, big, note }: { q: Q; name
 }
 
 function Matrix({ name, title, m, e, unit, scale, floor }: { name: string; title: string; m: number[][]; e: number[][] | null; unit: string; scale: number; floor: number }) {
+  const n = React.useContext(Signals);
   return (
     <div className={css.matrix} data-matrix={name}>
       <p className={css.matrixTitle}>{title} <span className={css.qUnit}>({unit})</span></p>
@@ -61,7 +66,9 @@ function Matrix({ name, title, m, e, unit, scale, floor }: { name: string; title
               <tr key={i}>
                 {row.map((x, j) => {
                   const t = qText(x, e ? e[i][j] : 0, floor, scale);
-                  return <td key={j}>{t.v}{t.e && <span className={css.err}> ±{t.e}</span>}</td>;
+                  const q = `${name}.${i + 1}.${j + 1}`;
+                  const v = traceEq(q, n) ? <EqNum section="trace" name={q} label={`${title}, row ${i + 1}, column ${j + 1}`} text={t.v} v={x} scale={scale} /> : t.v;
+                  return <td key={j}>{v}{t.e && <span className={css.err}> ±{t.e}</span>}</td>;
                 })}
               </tr>
             ))}
@@ -114,6 +121,7 @@ export default function TraceResults({ r, state, stale, quick = false, message, 
       {r && !r.ok && state !== 'invalid' && <p className={css.reasonText} data-results-failed>{r.reason}</p>}
       {shown && state !== 'invalid' && (
         <Overall.Provider value={quick ? QUICK : shown.status}>
+        <Signals.Provider value={shown.n}>
         <div className={css.values}>
           {shown.n === 1 && (
             <dl className={css.grid}>
@@ -137,10 +145,10 @@ export default function TraceResults({ r, state, stale, quick = false, message, 
               </p>
               <dl className={css.grid}>
                 {shown.modes.map((m, k) => (
-                  <Val key={k} q={m.eeff} name={`mode${k + 1}.eeff`} label={<>εeff {m.label || `mode ${k + 1}`}</>} unit="" floor={FLOOR.ratio} />
+                  <Val key={k} q={m.eeff} name={`mode${k + 1}.eeff`} label={`εeff ${m.label || `mode ${k + 1}`}`} unit="" floor={FLOOR.ratio} />
                 ))}
                 {shown.modes.map((m, k) => (
-                  <Val key={k} q={m.delay} name={`mode${k + 1}.delay`} label={<>Delay {m.label || `mode ${k + 1}`}</>} unit={dUnit} floor={FLOOR.delay} scale={dScale} />
+                  <Val key={k} q={m.delay} name={`mode${k + 1}.delay`} label={`Delay ${m.label || `mode ${k + 1}`}`} unit={dUnit} floor={FLOOR.delay} scale={dScale} />
                 ))}
               </dl>
               <details className={css.details} data-other-definitions>
@@ -149,7 +157,7 @@ export default function TraceResults({ r, state, stale, quick = false, message, 
                   <Val q={pair.zdiffB} name="zdiffB" label="Zdiff (B)" unit="Ω" floor={FLOOR.ohm} note="driven by voltages: 4 / (Yc11 + Yc22 − 2·Yc12)" />
                   <Val q={pair.zcmB} name="zcmB" label="Zcm (B)" unit="Ω" floor={FLOOR.ohm} note="1 / (Yc11 + Yc22 + 2·Yc12)" />
                   <Val q={pair.ztdr} name="ztdr" label="Z_TDR" unit="Ω" floor={FLOOR.ohm} note="what a differential TDR with two 50 Ω sources reads" />
-                  <Val q={{ ...pair.kb, v: pair.kb.v * 100, e: pair.kb.e * 100 }} name="kb" label="NEXT kb" unit="%" floor={FLOOR.pct} note="near-end: ¼ (Cm/C + Lm/L), of a step driven on one line" />
+                  <Val q={pair.kb} scale={100} name="kb" label="NEXT kb" unit="%" floor={FLOOR.pct} note="near-end: ¼ (Cm/C + Lm/L), of a step driven on one line" />
                   <Val q={pair.kf} name="kf" label="FEXT kf" unit={dUnit} floor={FLOOR.delay} scale={dScale} note="far-end: (Cm/C − Lm/L) / 2v; the far-end pulse is kf · length · dV/dt" />
                   {shown.lines.map((l, k) => (
                     <Val key={k} q={l.z0} name={`z0.${k + 1}`} label={`Z0 of line ${k + 1}`} unit="Ω" floor={FLOOR.ohm} note="Zc_kk: with the other line carrying no current (not the trace alone)" />
@@ -174,8 +182,8 @@ export default function TraceResults({ r, state, stale, quick = false, message, 
                 <summary>Modes: εeff and delay</summary>
                 <dl className={css.grid}>
                   {shown.modes.flatMap((m, k) => [
-                    <Val key={`e${k}`} q={m.eeff} name={`mode${k + 1}.eeff`} label={<>εeff {m.label || `mode ${k + 1}`}</>} unit="" floor={FLOOR.ratio} />,
-                    <Val key={`d${k}`} q={m.delay} name={`mode${k + 1}.delay`} label={<>Delay {m.label || `mode ${k + 1}`}</>} unit={dUnit} floor={FLOOR.delay} scale={dScale} />,
+                    <Val key={`e${k}`} q={m.eeff} name={`mode${k + 1}.eeff`} label={`εeff ${m.label || `mode ${k + 1}`}`} unit="" floor={FLOOR.ratio} />,
+                    <Val key={`d${k}`} q={m.delay} name={`mode${k + 1}.delay`} label={`Delay ${m.label || `mode ${k + 1}`}`} unit={dUnit} floor={FLOOR.delay} scale={dScale} />,
                   ])}
                 </dl>
                 <Why k="modes" />
@@ -183,7 +191,7 @@ export default function TraceResults({ r, state, stale, quick = false, message, 
             </>
           )}
           {shown.n === 1 && <p className={css.definition} data-definition="single">Z0 = √(L/C) of the line, from the solved C and L per unit length; εeff = C/C0 (C0 with every dielectric replaced by air).</p>}
-          <Whys ks={shown.n === 1 ? 'z0 eeff delay err solve-status quick' : pair ? `zdiff zcm zodd zeven${pair.symmetric ? '' : ' zdc'} modes err solve-status quick` : 'lines-each err solve-status quick'} />
+          <Whys ks={shown.n === 1 ? 'z0 eeff delay eq-open err solve-status quick' : pair ? `zdiff zcm zodd zeven${pair.symmetric ? '' : ' zdc'} modes eq-open err solve-status quick` : 'lines-each err solve-status quick'} />
           {shown.flags.length > 0 && !quick && (
             <ul className={base.issues} data-flags>
               {shown.flags.map((f) => <li key={f.code} data-flag={f.code}><span className={base.level} data-level="warn">{f.code}</span>{f.message}</li>)}
@@ -196,6 +204,7 @@ export default function TraceResults({ r, state, stale, quick = false, message, 
             {quick ? 'Solved at one coarse level while you drag, without an error estimate; the full solve with its error follows when you stop.' : "The error is estimated from the solver's coarse and fine levels."}
           </p>
         </div>
+        </Signals.Provider>
         </Overall.Provider>
       )}
       {!shown && state === 'running' && <p className={css.small}>Solving…</p>}

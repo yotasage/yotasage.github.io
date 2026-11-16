@@ -158,7 +158,8 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   `components/Viewer3D/Viewer3D.tsx`.
 - The equation engine (text → tree, TeX printer, evaluator) is shared in `lib/equations/` (and `lib/complex.ts`): the Smith
   chart (`lib/smith/equations.ts`, which re-exports it) and the EM simulation (`lib/emsim/equations.ts`, numbers from
-  `lib/emsim/eqvalues.ts`) each keep their own registry and symbols.
+  `lib/emsim/eqvalues.ts`) each keep their own registry and symbols. The derivation dialog (taking a built derivation
+  as data), `mathHtml` and `wide.ts` are shared in `components/Equations/`; each page builds its own steps and numbers.
 - Math is rendered with `components/KatexSpan.tsx`. `lib/useReplayHighlight.ts` replays the highlight on elements a
   `#link` jumps to.
 - Unused leftovers in package.json: `peerjs`, `socket.io`, `socket.io-client`, `@jaames/iro`, `clsx`,

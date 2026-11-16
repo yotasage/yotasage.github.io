@@ -241,4 +241,7 @@ export const WHYS: Readonly<Record<string, Why>> = {
   'report-paper': w('Paper', null, 'The page size the report is laid out for: A4 or US Letter.'),
   'report-parts': w('Include', null, 'What the report holds; field maps, plots and calculators once the page has them.'),
   'report-print': w('Print report', null, 'Opens the browser’s print dialog with the report alone, light; “Save as PDF” there gives a file.'),
+  'eq-open': w('Equations', null, 'A number with a dotted underline opens its equation with your numbers beside the results; Escape closes it.'),
+  'eq-via-open': w('Equations', null, 'A number with a dotted underline opens its equation with this via’s numbers; Escape closes it.'),
+  'eq-derive': w('Derivation', null, 'How the equation follows, one step at a time with its reason; Next step, Back, Show all.'),
 };

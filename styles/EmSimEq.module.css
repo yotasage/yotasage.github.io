@@ -1,0 +1,45 @@
+/* The EM simulation page's equation panel (step M4.3a, components/EmSim/EqPanel.tsx), in its chunk: beside the results
+   on a wide section, below them on a narrow one (EmSimTrace.module.css .eqGrid). Tokens from EmSim.module.css's .root;
+   the equations' rows and lines are the shared ones of Equations.module.css. */
+
+.panel {
+  min-width: 0;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--field);
+  color: var(--ink);
+}
+.panel:focus { outline: none; }
+.panel:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.panel[data-eq-stale='true'] .rows { opacity: 0.5; }
+
+.head { display: flex; align-items: center; gap: 10px; }
+.title { flex: 1; min-width: 0; margin: 0; font-size: 0.9375rem; font-weight: 650; line-height: 1.3; }
+
+.rows { margin-top: 8px; }
+.rel { padding: 6px 0; border-top: 1px solid var(--rule); row-gap: 2px; }
+.rel:first-child { border-top: 0; }
+.result { border-radius: 4px; background: var(--accent-soft); padding-inline: 3px; }
+
+.meta { margin: 8px 0 0; font-size: 0.8125rem; line-height: 1.45; color: var(--ink-3); overflow-wrap: anywhere; }
+.meta a, .theory { color: var(--accent); }
+.note { margin: 8px 0 0; font-size: 0.8125rem; line-height: 1.45; color: var(--warn); }
+
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 10px; }
+.theory { font-size: 0.8125rem; }
+
+.panel .button {
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 7px;
+  background: var(--raise);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.84375rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.panel .primary { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.panel .button:focus-visible, .theory:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

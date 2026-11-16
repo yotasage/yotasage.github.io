@@ -300,3 +300,28 @@
 .fieldNote { margin-top: 2px; color: var(--ink-3); }
 .fieldControls { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 @media (max-width: 600px) { .fieldTicks .tickOdd { display: none; } }
+
+/* M4.3a: a result number with an equation (eqLinks.tsx EqNum) and the results with the equation panel beside them
+   on a wide section, below them on a narrow one. */
+.eqNum {
+  margin: 0;
+  padding: 0 1px;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline dotted var(--accent);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+.eqNum:hover { text-decoration-style: solid; }
+.eqNum:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.eqNum[aria-expanded='true'] { background: var(--accent-soft); }
+.eqBox { container-type: inline-size; min-width: 0; }
+.eqGrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
+@container (min-width: 640px) {
+  .eqGrid[data-eq-layout='open'] { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .eqGrid[data-eq-layout='open'] > aside { position: sticky; top: calc(var(--bar-h) + 8px); max-height: calc(100dvh - var(--bar-h) - 16px); overflow: auto; }
+}

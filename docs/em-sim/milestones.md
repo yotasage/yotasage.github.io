@@ -373,6 +373,12 @@ touch, both themes.
 
 M0.5: moves the derivation dialog's shell, `mathHtml` and `wide.ts` to `components/Equations/`; Smith `npm run check` and `npm run ui` pass.
 
+**Split** (main session, 2026-11-16, L page step with two jobs): **M4.3a** (the shared dialog shell moved as
+notes-M0.5.md item 1b says, with the Smith chart's checks; the equation panel beside the trace and via results with
+live numbers, every result number one click from its equation; the derivation dialog) and **M4.3b** (the via theory
+topics §7–§13 on the page with their figures and the via short lines re-linked; the Examples section with its links;
+the status note).
+
 ## M5 – 3D view
 
 ### M5.1 – 3D view · M (page)

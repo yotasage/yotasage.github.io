@@ -32,6 +32,7 @@ import StackupSection, { IssueList, NO_KICAD } from './StackupSection';
 import { Status } from './Status';
 import type { Commit, KicadState } from './StackupSection';
 import TraceSection from './TraceSection';
+import { EqEnv } from './eqLinks';
 import { Why, Whys } from './Why';
 
 export type Theme = 'light' | 'dark';
@@ -159,6 +160,8 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
   // @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
   const [xm, exportBox] = useNearLoad<ExportMod>('export', () => import('./ExportSection'));
   const bib = useMemo<Bibliography | null>(() => (th ? th.bibOf(references) : null), [th, references]);
+  // M4.3a: what the equation panel cites from (eqLinks.tsx).
+  const eqEnv = useMemo(() => ({ references, bib }), [references, bib]);
   // A link into the theory that arrived before it was loaded: shown once it is there, by the same fragment navigation
   // again (no hashchange, no history entry), so the topic also becomes the :target and gets its highlight (M2.4d).
   useEffect(() => {
@@ -349,6 +352,7 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
         </div>
       </header>
 
+      <EqEnv.Provider value={eqEnv}>
       <main className={styles.main}>
         <Status />
         <Whys ks="status home nav undo whys theme" />
@@ -398,6 +402,7 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
           {th && bib ? <th.References bib={bib} /> : <p className={styles.lede}>The sources the theory cites, listed once it has loaded.</p>}
         </section>
       </main>
+      </EqEnv.Provider>
     </div>
   );
 }

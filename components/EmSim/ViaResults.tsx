@@ -16,6 +16,7 @@ import base from '../../styles/EmSim.module.css';
 import css from '../../styles/EmSimTrace.module.css';
 import vcss from '../../styles/EmSimVia.module.css';
 import { lenText } from './format';
+import { EqNum, viaEq } from './eqLinks';
 import { FLOOR, qText } from './trace';
 import type { RunState } from './TraceResults';
 import { realStubs } from '../../lib/emsim/viaGeom';
@@ -35,14 +36,21 @@ export const ASSUME_TEXT: Readonly<Record<string, string>> = {
 };
 
 const ps = (s: number) => s * 1e12;
+// M4.3a: the via's signals, which decide the numbers with an equation (eqLinks.tsx viaEq).
+const Signals = React.createContext(0);
+/** A number of the via's results, a button to its equation where it has one (`v` in SI, `scale` to the shown unit). */
+function Num({ name, label, text, v, scale = 1 }: { name: string; label: string; text: string; v: number; scale?: number }) {
+  const n = React.useContext(Signals);
+  return viaEq(name, n) && Number.isFinite(v) ? <EqNum section="via" name={name} label={label} text={text} v={v} scale={scale} /> : <>{text}</>;
+}
 
-function V({ name, label, v, e, floor, unit, scale = 1, big, note }: { name: string; label: React.ReactNode; v: number; e: number; floor: number; unit: string; scale?: number; big?: boolean; note?: React.ReactNode }) {
+function V({ name, label, v, e, floor, unit, scale = 1, si = 1, big, note }: { name: string; label: string; v: number; e: number; floor: number; unit: string; scale?: number; si?: number; big?: boolean; note?: React.ReactNode }) {
   const t = qText(v, e, floor, scale);
   return (
     <div className={big ? css.big : css.val} data-via-q={name} data-v={v} data-e={e}>
       <dt>{label}</dt>
       <dd>
-        <span className={css.num}>{t.v}</span>
+        <span className={css.num}><Num name={name} label={label} text={t.v} v={v / si} scale={si * scale} /></span>
         {t.e && <span className={css.err}> ± {t.e}</span>}
         <span className={css.qUnit}> {unit}</span>
         {note && <span className={css.qNote}>{note}</span>}
@@ -52,20 +60,22 @@ function V({ name, label, v, e, floor, unit, scale = 1, big, note }: { name: str
 }
 
 // Adjacent pieces of one dielectric with the same line merged, each named by the layers it spans.
-export function pieceRows(s: Stackup, pieces: ViaPiece[]): { names: string; len: number; er: number; z: number; zdiff: number; zcm: number; delay: number; part: string }[] {
+export function pieceRows(s: Stackup, pieces: ViaPiece[]): { names: string; len: number; er: number; z: number; zdiff: number; zcm: number; delay: number; part: string; first: number; count: number }[] {
   const z = stackZ(s);
   const nameAt = (zz: number) => { for (let i = 0; i < s.layers.length; i++) if (zz <= z[i] + 1e-12 && zz >= z[i + 1] - 1e-12) return s.layers[i].name || s.layers[i].id; return '?'; };
   const out: ReturnType<typeof pieceRows> = [];
-  for (const p of pieces) {
+  for (let k = 0; k < pieces.length; k++) {
+    const p = pieces[k];
     const nm = nameAt(0.5 * (p.zTop + p.zBot));
     const last = out[out.length - 1];
     if (last && last.part === p.part && last.er === p.er && Math.abs(last.z - p.z0) < 1e-9 * p.z0) {
       last.len += p.zTop - p.zBot;
       last.delay += p.delay;
+      last.count++;
       if (!last.names.endsWith(nm)) last.names = `${last.names.split('–')[0]}–${nm}`;
       continue;
     }
-    out.push({ names: nm, len: p.zTop - p.zBot, er: p.er, z: p.z0, zdiff: p.zdiff, zcm: p.zcm, delay: p.delay, part: p.part });
+    out.push({ names: nm, len: p.zTop - p.zBot, er: p.er, z: p.z0, zdiff: p.zdiff, zcm: p.zcm, delay: p.delay, part: p.part, first: k, count: 1 });
   }
   return out;
 }
@@ -97,6 +107,7 @@ function ViaResults({ r, s, v, state, stale, message, ms, unit, digits, quick = 
       {state === 'error' && <p className={css.reasonText} role="alert">{message}</p>}
       {r && !r.ok && state === 'done' && <p className={css.reasonText} data-via-reason>{r.reason}</p>}
       {ok && (
+        <Signals.Provider value={r.n}>
         <div className={css.values}>
           <dl className={css.grid}>
             {pair ? (
@@ -112,11 +123,11 @@ function ViaResults({ r, s, v, state, stale, message, ms, unit, digits, quick = 
                 <V big name="section-z" label="Via section √(L/C)" v={L.z} e={L.z * relSec} floor={FLOOR.ohm} unit="Ω" />
               </>
             )}
-            <V name="delay" label="Delay through" v={ps(L.delay)} e={ps(L.delay) * relSec} floor={0.01} unit="ps" />
-            <V name="L" label={pair ? 'L (each via)' : 'L'} v={L.L[0][0] * 1e9} e={L.L[0][0] * 1e9 * rel} floor={0.001} unit="nH" />
-            <V name="C" label={pair ? 'C (each via)' : 'C'} v={Ctot * 1e15} e={(L.lineC * rel + dCe) * 1e15} floor={0.1} unit="fF" note={<>of which pads and planes {qText(L.dCsum * 1e15, dCe * 1e15, 0.1).v} fF</>} />
+            <V name="delay" label="Delay through" v={ps(L.delay)} e={ps(L.delay) * relSec} floor={0.01} unit="ps" si={1e12} />
+            <V name="L" label={pair ? 'L (each via)' : 'L'} v={L.L[0][0] * 1e9} e={L.L[0][0] * 1e9 * rel} floor={0.001} unit="nH" si={1e9} />
+            <V name="C" label={pair ? 'C (each via)' : 'C'} v={Ctot * 1e15} e={(L.lineC * rel + dCe) * 1e15} floor={0.1} unit="fF" si={1e15} note={<>of which pads and planes <Num name="dcsum" label="Pads and planes" text={qText(L.dCsum * 1e15, dCe * 1e15, 0.1).v} v={L.dCsum} scale={1e15} /> fF</>} />
           </dl>
-          <div className={vcss.whyRow}><Why k="via-barrel-z" /><Why k="via-section-z" /><Why k="via-delay" /><Why k="via-lc" /></div>
+          <div className={vcss.whyRow}><Why k="via-barrel-z" /><Why k="via-section-z" /><Why k="via-delay" /><Why k="via-lc" /><Why k="eq-via-open" /></div>
 
           <h4 className={vcss.h4}>Barrel, piece by piece</h4>
           <div className={vcss.tableScroll}>
@@ -128,8 +139,8 @@ function ViaResults({ r, s, v, state, stale, message, ms, unit, digits, quick = 
                     <td>{p.names}{p.part !== 'through' ? ` (${p.part})` : ''}</td>
                     <td>{lenText(p.len, unit, Math.min(digits, 3))}</td>
                     <td>{p.er}</td>
-                    {pair ? <><td>{qText(p.zdiff, p.zdiff * relD, FLOOR.ohm).v}</td><td>{qText(p.zcm, p.zcm * relC, FLOOR.ohm).v}</td></> : <td>{qText(p.z, p.z * rel, FLOOR.ohm).v}</td>}
-                    <td>{ps(p.delay).toFixed(2)}</td>
+                    {pair ? <><td>{qText(p.zdiff, p.zdiff * relD, FLOOR.ohm).v}</td><td>{qText(p.zcm, p.zcm * relC, FLOOR.ohm).v}</td></> : <td><Num name={`piece.${p.first}.z`} label={`Z of ${p.names}`} text={qText(p.z, p.z * rel, FLOOR.ohm).v} v={p.z} /></td>}
+                    <td>{p.count === 1 ? <Num name={`piece.${p.first}.delay`} label={`Delay of ${p.names}`} text={ps(p.delay).toFixed(2)} v={p.delay} scale={1e12} /> : ps(p.delay).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -156,7 +167,7 @@ function ViaResults({ r, s, v, state, stale, message, ms, unit, digits, quick = 
             <ul className={vcss.list}>
               {stubs.map((st) => (
                 <li key={st.side} data-via-stub-result={st.side} data-f={st.fRes ?? NaN} data-f0={st.fFormula}>
-                  The {st.side} stub, {lenText(st.length, unit, Math.min(digits, 3))}, {Number.isFinite(st.fRes) ? <>resonates at <b className={css.num}>{(st.fRes / 1e9).toFixed(2)} GHz</b> with its pads</> : <>has no resonance with its pads below twice the bare one</>} ({(st.fFormula / 1e9).toFixed(2)} GHz bare, c₀/4ℓ√εr).
+                  The {st.side} stub, {lenText(st.length, unit, Math.min(digits, 3))}, {Number.isFinite(st.fRes) ? <>resonates at <b className={css.num}>{(st.fRes / 1e9).toFixed(2)} GHz</b> with its pads</> : <>has no resonance with its pads below twice the bare one</>} (<Num name={`stub.${st.side}`} label={`The ${st.side} stub bare`} text={(st.fFormula / 1e9).toFixed(2)} v={st.fFormula} scale={1e-9} /> GHz bare, c₀/4ℓ√εr).
                 </li>
               ))}
             </ul>
@@ -178,7 +189,7 @@ function ViaResults({ r, s, v, state, stale, message, ms, unit, digits, quick = 
           )}
 
           <p className={css.small} data-via-valid={r.valid.fMax}>
-            Lumped parts hold to <b>{(r.valid.fMax / 1e9).toFixed(1)} GHz</b> (λ/8). Flags are for a {ps(r.tr).toFixed(0)} ps edge, whose band reaches {(r.band / 1e9).toFixed(1)} GHz.
+            Lumped parts hold to <b><Num name="valid" label="Lumped parts hold to" text={(r.valid.fMax / 1e9).toFixed(1)} v={r.valid.fMax} scale={1e-9} /> GHz</b> (λ/8). Flags are for a {ps(r.tr).toFixed(0)} ps edge, whose band reaches <Num name="band" label="The edge’s band" text={(r.band / 1e9).toFixed(1)} v={r.band} scale={1e-9} /> GHz.
           </p>
           <Why k="via-valid" bare />
 
@@ -204,6 +215,7 @@ function ViaResults({ r, s, v, state, stale, message, ms, unit, digits, quick = 
           <p className={css.small} data-via-next>Next: a 3D view, full-wave waves and export.</p>
           <Why k="via-next" bare />
         </div>
+        </Signals.Provider>
       )}
       {r && !r.ok && r.flags.length > 0 && (
         <ul className={base.issues} data-via-flags={r.flags.length}>

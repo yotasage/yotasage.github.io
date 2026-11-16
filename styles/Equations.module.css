@@ -1,6 +1,7 @@
-/* The Smith chart's derivations (step M5.3, components/Smith/Derivation.tsx): a modal dialog on the right of the screen
-   (the chart stays visible on the left, so its lit parts show) and the whole screen on phones. Theme tokens come from
-   Smith.module.css's .root, which the dialog sits in. */
+/* The derivation dialog shared by the Smith chart and the EM simulation (components/Equations/DerivationDialog.tsx;
+   Smith step M5.3, shared by EM step M4.3a): a modal dialog on the right of the screen (the page stays visible on the
+   left, so what it lights shows) and the whole screen on phones. Theme tokens are the base names both pages define on
+   their .root (Smith.module.css, EmSim.module.css), which the dialog sits in. */
 
 .dialog {
   width: min(620px, calc(100vw - 32px));

@@ -7,7 +7,7 @@
 // that makes no sense is kept as typed and viaIssues says why, as the Trace section does. The via is in the setup's
 // plain form, so the link carries it.
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { Setup } from '../../lib/emsim/setup';
 import { layerIndex } from '../../lib/emsim/stackup';
@@ -33,6 +33,11 @@ import type { ViaEdit } from './ViaDrawing';
 import { addReturnAt, applyViaHandle } from './viaHandles';
 import ViaPlots from './ViaPlots';
 import ViaResults from './ViaResults';
+import { EqLayout, useEqRequest } from './eqLinks';
+
+// M4.3a: the equation panel (KaTeX and the registry), loaded when a result number is first opened.
+// @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
+const EqPanel = lazy(() => import('./EqPanel'));
 import ViaTarget from './ViaTarget';
 import {
   addFeed, addReturn, coppersOf, removeFeed, removeReturn, withAllAntipads, withAntipad, withBackdrill, withBarrel, withFeed, withPad, withPair,
@@ -379,10 +384,20 @@ function ViaSolve({ s, t, v: v0, store, unit, digits }: { s: Setup['stackup']; t
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s, v, t, quick, tr, z0]);
   useEffect(() => { if (dragging) lastArrival.current = performance.now(); }, [dragging]);
+  const eqReq = useEqRequest();
+  const eqHere = eqReq?.section === 'via' ? eqReq : null;
+  const eqVia = useMemo(() => (res && res.r.ok ? { r: res.r, v: res.v } : null), [res]);
   return (
     <div className={css.resultArea} data-via-solves={solves} data-quick={quickShown} data-dragging={dragging}>
       {/* The result with the via it was solved for: a drag frame without a new result does not draw the panel again. */}
-      <ViaResults r={res ? res.r : null} s={s} v={res ? res.v : v} state={state} stale={stale} message={message} ms={rt} unit={unit} digits={digits} quick={quickShown} />
+      <EqLayout open={eqHere !== null}>
+        <ViaResults r={res ? res.r : null} s={s} v={res ? res.v : v} state={state} stale={stale} message={message} ms={rt} unit={unit} digits={digits} quick={quickShown} />
+        {eqHere && (
+          <Suspense fallback={<p className={css.small}>Loading the equation…</p>}>
+            <EqPanel req={eqHere} via={eqVia} stale={stale} digits={digits} />
+          </Suspense>
+        )}
+      </EqLayout>
       {plotRes && (
         <ViaPlots r={plotRes.r} trace={t} tr={tr} onTr={setTr} z0={z0} onZ0={setZ0}
           stale={plotRes.v !== v || plotRes.r.tr !== tr || plotRes.r.z0 !== z0 || (stale && !quick) || state === 'invalid'} />

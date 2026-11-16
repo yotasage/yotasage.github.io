@@ -38,6 +38,7 @@ import TraceDrawing from './TraceDrawing';
 import type { HandleEdit } from './TraceDrawing';
 import { applyHandle } from './traceGeom';
 import TraceResults from './TraceResults';
+import { EqLayout, useEqRequest } from './eqLinks';
 import type { ToolName } from './TraceTools';
 import type { RunState } from './TraceResults';
 import ValField from './ValField';
@@ -63,6 +64,9 @@ export function getClient(): Promise<StaticClient> {
 // M2.3a: the target, sweeps and the tolerance band, loaded when a tool is first opened.
 // @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
 const TraceTools = lazy(() => import('./TraceTools'));
+// M4.3a: the equation panel (KaTeX and the registry), loaded when a result number is first opened.
+// @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
+const EqPanel = lazy(() => import('./EqPanel'));
 const TOOLS: [ToolName, string][] = [['target', 'Target'], ['sweep', 'Sweep'], ['tolerance', 'Tolerance'], ['calc', 'Calculators']];
 
 const QUICK_ABOVE_MS = 30; // a full solve slower than about two frames: the drag uses the fast path
@@ -139,6 +143,8 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
 
   // ---- the solve: the newest setup wins; the old result stays, marked stale, until the new one arrives ----
   const [res, setRes] = useState<SolveResult | null>(null);
+  const eqReq = useEqRequest();
+  const eqHere = eqReq?.section === 'trace' ? eqReq : null;
   const [state, setState] = useState<RunState>('running');
   const [stale, setStale] = useState(true);
   const [message, setMessage] = useState('');
@@ -351,7 +357,14 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
         </div>
 
         <div className={css.resultArea} data-solves={solves} data-quick={quickShown} data-dragging={dragging}>
-          <TraceResults r={res} state={state} stale={stale} quick={quickShown} message={message} where={where} unit={unit} />
+          <EqLayout open={eqHere !== null}>
+            <TraceResults r={res} state={state} stale={stale} quick={quickShown} message={message} where={where} unit={unit} />
+            {eqHere && (
+              <Suspense fallback={<p className={css.small}>Loading the equation…</p>}>
+                <EqPanel req={eqHere} trace={res && res.ok ? res : null} stale={stale} digits={digits} />
+              </Suspense>
+            )}
+          </EqLayout>
           <div className={tcss.toolsArea} data-tools>
             <div className={tcss.toolsHead}>
               <h3 className={base.h3}>Target · Sweep · Tolerance · Calculators</h3>

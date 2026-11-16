@@ -15,7 +15,6 @@
 // (hover, a tap, or the arrow keys in a focused row) lights it on the page, and the page's pointing lights it here
 // (components/Smith/mathLink.ts); "show equation" requests (ShowEq.tsx) set the subject, focus a row and offer a way back.
 
-import katex from 'katex';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { goalNode } from '../../lib/smith/goal';
@@ -24,30 +23,27 @@ import { askOf } from '../../lib/smith/state';
 import type { Circuit as StateCircuit } from '../../lib/smith/state';
 import styles from '../../styles/Smith.module.css';
 import css from '../../styles/SmithMath.module.css';
+import { mathHtml as sharedMathHtml } from '../Equations/math';
 import { openDerivation } from './Derivation';
 import { hasDerivation } from './derive';
 import { mathLink } from './mathLink';
 import type { ShowRequest } from './mathLink';
 import { COLOUR_KEYS, MathRow, Spec, Subject, rowOf, specsFor, subjectName } from './mathRows';
 import { Why } from './Why';
-import { markWide, watchWide } from './wide';
+import { markWide, watchWide } from '../Equations/wide';
 
 // The sentinel colours of the TeX become a colour's class and the variable's target in the MathML (learning.md §2:
-// \htmlClass is dropped in MathML output): `#0a` + colour + the variable's index in its row.
-const CLASS_OF: readonly string[] = ['', ...COLOUR_KEYS.map((k) => css[k])];
-/** An equation's box in a row: it scrolls sideways when wider than the panel (wide.ts). */
+// \htmlClass is dropped in MathML output): `#0a` + colour + the variable's index in its row (components/Equations/math.ts).
+export const MATH_CLASSES: readonly string[] = ['', ...COLOUR_KEYS.map((k) => css[k])];
+/** An equation's box in a row: it scrolls sideways when wider than the panel (components/Equations/wide.ts). */
 const WIDE = `.${css.grid}`;
-const SENTINEL = /mathcolor="#0a([0-9a-f]{2})([0-9a-f]{2})"/g;
 
 /**
  * TeX as MathML with the sentinels as classes and targets (`data-mt`, the row's `targets` by index); in display style
- * unless `inline` (maths within a sentence: a derivation's reasons).
+ * unless `inline` (maths within a sentence: a derivation's reasons). The shared mathHtml with the Smith chart's colours.
  */
 export function mathHtml(tex: string, targets: readonly string[] = [], inline = false): string {
-  return katex.renderToString(inline ? tex : `\\displaystyle ${tex}`, { output: 'mathml' }).replace(SENTINEL, (_, c: string, v: string) => {
-    const t = targets[parseInt(v, 16)];
-    return `class="${CLASS_OF[parseInt(c, 16)] ?? ''}"${t ? ` data-mt="${t}"` : ''}`;
-  });
+  return sharedMathHtml(tex, targets, inline, MATH_CLASSES);
 }
 
 /** The HTML of a row's lines with numbers: each "= …" line, the result (or its bound) and the raw number of D20. */

@@ -8,7 +8,8 @@ export const STATUS_NOW =
   'or the stackup and net classes of a KiCad board: microstrip, stripline, coplanar lines, edge- and broadside-coupled ' +
   'pairs or any arrangement of traces and planes, each result with the solver’s error. Drag the sizes in the drawing, ' +
   'see the fields, find the width for a target, sweep an input, see which tolerance matters most, compare with ' +
-  'closed-form calculators and with the inputs JLCPCB’s calculator uses, and read the theory. Type a via or a via ' +
+  'closed-form calculators and with the inputs JLCPCB’s calculator uses, and read the theory; every result with an ' +
+  'equation opens it with your numbers in one click, with its derivation step by step. Type a via or a via ' +
   'pair with its pads, antipads, return vias, backdrill and feeds, see it drawn to scale from the side and from above, ' +
   'drag its sizes and return vias in the drawings, ' +
   'with the impedance of its barrel and of the whole via, the extra capacitance of each pad and plane, the stub ' +

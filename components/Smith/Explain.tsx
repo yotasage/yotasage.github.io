@@ -25,7 +25,7 @@ import mcss from '../../styles/SmithMath.module.css';
 import { openDerivation } from './Derivation';
 import { mathHtml } from './MathPanel';
 import { mathLink } from './mathLink';
-import { markWide, watchWide } from './wide';
+import { markWide, watchWide } from '../Equations/wide';
 import { rowOf, specsFor, v } from './mathRows';
 import { complexText } from './readout';
 import { followTopic } from './Why';
