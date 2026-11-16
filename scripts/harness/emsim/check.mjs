@@ -17,6 +17,7 @@ const MODULES = [
   ['2D solver (BEM)', './check-bem.mjs'],
   ['Modes and impedances', './check-modes.mjs'],
   ['Target, sweeps, tolerance', './check-vary.mjs'],
+  ['FD reference (M1.4a)', './check-fd.mjs'],
 ];
 
 const failures = [];

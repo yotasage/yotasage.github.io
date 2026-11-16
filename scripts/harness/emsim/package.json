@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "check": "tsx check.mjs",
+    "check:fd": "tsx fd/fuzz.mts",
     "spike": "tsx spikes/run.mts",
     "spike:fdtd": "tsx spikes/fdtd.mts",
     "openems": "node openems/run.mjs"
