@@ -28,7 +28,7 @@ after reading them.
 | Dispatch splitting, adapter limits | Steps per submit so a submit takes about 30 ms (≥ 10 steps), at most two in flight; request the adapter's `maxBufferSize` and `maxStorageBufferBindingSize` (§9) |
 | Estimator and refusal | Cells, steps, memory, time from a calibration run on the real mesh; refusal rules in §11 |
 | JavaScript fallback | One worker, Float32Array, about 3·10⁷ cell updates per second here; no threads in phase 1 (§10) |
-| WebGPU types (plan.md D12, "M0.4 decides") | `@webgpu/types` (BSD-3-Clause) as a dev dependency, referenced only by the full-wave GPU module (§9.5) |
+| WebGPU types (plan.md D12, "M0.4 decides") | No `@webgpu/types`: lib.dom types WebGPU, M6.3 declares the missing flag constants (§9.5, M0.5) |
 | How the harness runs WebGPU code | Node server on 127.0.0.1:3023, esbuild bundle, headless Edge by Playwright: adapter found headless (§12) |
 | Run time of a 2 M-cell via run | WebGPU about 3 s, JavaScript about 10 min on this PC (§11.3) |
 
@@ -240,10 +240,9 @@ Request `powerPreference: 'high-performance'` and, as required limits, the adapt
 | Features of note | `shader-f16`, `subgroups`, `timestamp-query` |
 
 ### 9.5 Types (plan.md D12)
-**`@webgpu/types`** (BSD-3-Clause, by the W3C GPU for the Web group) as a devDependency of the site, referenced with
-`/// <reference types="@webgpu/types" />` only in the full-wave GPU module; types only, nothing at run time, so D12's
-"no new runtime dependency" holds. A hand-written subset would drift from the browsers. M6.3 adds it (licence checked
-here; `npm install` updates the licence list, which ignores type-only packages).
+**Superseded by M0.5** ([notes-M0.5.md](notes-M0.5.md) item 6): no `@webgpu/types`. TypeScript 7's lib.dom already
+types WebGPU; M6.3 declares in the GPU module only the flag constants it uses (`GPUBufferUsage`, `GPUMapMode`,
+`GPUShaderStage`, `GPUTextureUsage`). M0.4a had proposed `@webgpu/types` (BSD-3-Clause) as a dev dependency.
 
 ### 9.6 Measured rates (spike, bare E and H update with per-edge coefficients)
 
