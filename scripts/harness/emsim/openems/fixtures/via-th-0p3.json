@@ -290,8 +290,8 @@
    "timestep (s)": 6.259995621273942e-14,
    "number of iterations": 12779.0,
    "total numerical time (s)": 7.99964840442597e-10,
-   "simulation time (s)": 139.083957,
-   "speed (cells/s)": 105085081.782653
+   "simulation time (s)": 135.950042,
+   "speed (cells/s)": 107507498.9384704
   }
  },
  "ports": [
@@ -3046,10 +3046,10 @@
  },
  "provenance": {
   "script": "scripts/harness/emsim/openems/via.py",
-  "gitCommit": "8e58209",
-  "scriptsChangedSinceCommit": true,
+  "gitCommit": "bc5b06a",
+  "scriptsChangedSinceCommit": false,
   "date": "2026-11-16",
-  "runTime_s": 144.2,
+  "runTime_s": 139.5,
   "threads": 8,
   "machine": "owner PC, Ryzen 9 7950X (16 cores), Windows 11"
  }

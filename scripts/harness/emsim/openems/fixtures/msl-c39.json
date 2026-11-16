@@ -117,8 +117,8 @@
    "timestep (s)": 1.627289716181132e-14,
    "number of iterations": 49161.0,
    "total numerical time (s)": 7.999918973718064e-10,
-   "simulation time (s)": 262.742592,
-   "speed (cells/s)": 89499866.60327992
+   "simulation time (s)": 261.222221,
+   "speed (cells/s)": 90020775.58708148
   }
  },
  "ports": [
@@ -2739,10 +2739,10 @@
  },
  "provenance": {
   "script": "scripts/harness/emsim/openems/microstrip.py",
-  "gitCommit": "8e58209",
-  "scriptsChangedSinceCommit": true,
+  "gitCommit": "bc5b06a",
+  "scriptsChangedSinceCommit": false,
   "date": "2026-11-16",
-  "runTime_s": 264.2,
+  "runTime_s": 262.7,
   "threads": 8,
   "machine": "owner PC, Ryzen 9 7950X (16 cores), Windows 11"
  }
