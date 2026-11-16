@@ -1,6 +1,6 @@
 # Backlog
 
-Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL78**). When a row is
+Wanted, not scheduled, for every tool on the site. Ids `BL<n>`, never reused (**next free: BL81**). When a row is
 scheduled it moves into the tool's plan (for the PCB viewer: [pcb-viewer/plan.md](pcb-viewer/plan.md); for the resistor
 lookup: [resistor/plan.md](resistor/plan.md); for the Smith chart: [smith-chart/plan.md](smith-chart/plan.md); for the EM simulation: [em-sim/plan.md](em-sim/plan.md)) and the move is noted here; when it is done the row is removed and that is
 noted here too.
@@ -29,6 +29,9 @@ them; none is scheduled.
 
 | id | tool | what | why / trigger |
 |---|---|---|---|
+| BL80 | EM simulation | 2D solver: the exact cases C12/C13 (parallel plates without fringing), C04 (two-layer coax with a curved interface) and C25 (touching strips, Zodd = 0) are not run: the first need magnetic side walls, the second curved panels (solver.md §2.1), the third is degenerate | 2026-11-16, step M1.2a. Trigger: magnetic walls or curved interfaces enter the model |
+| BL79 | EM simulation | 2D solver: per-corner grading from the wedge exponent (Zhechev2026, literature.md) in place of one q = 2, to remove the slow pre-asymptotic drift on masked structures (C39: +1.3 × 10⁻³ Ω from 390 to 780 panels; the pair's Zdiff +0.03 Ω from 620 to 1238, flagged "irregular" by the estimate) and to need fewer panels | 2026-11-16, step M1.2a (notes-M1.2a.md). Trigger: M1.2b's budgets or a page result shown as irregular |
+| BL78 | EM simulation | Mask side-wall thickness of JLCPCB: the convention (over-copper thickness on the walls) moves C39's Z0 by −0.21 Ω against no side-wall mask (0.42 %), and C1 on the walls by another −0.20 Ω; ask JLCPCB or measure a cross-section | 2026-11-16, step M1.2a measured it (notes-M1.2a.md). Trigger: the owner gets JLCPCB's answer or a microsection |
 | BL77 | EM simulation | Shorter links for edited JLCPCB presets: cite a preset number's note by its preset and reference instead of writing the text (an edited 6-layer preset's link is about 2.2 kB, mostly the notes and layer names) | 2026-11-16, step M1.1 (`lib/emsim/setup.ts` writes every source note). Trigger: a link is too long to paste somewhere the owner needs |
 | BL76 | EM simulation | Net classes of KiCad 5 boards: the `(net_class …)` items of a `.kicad_pcb` older than KiCad 6 (`lib/emsim/kicad.ts` refuses KiCad 5 boards, which have no stackup, and `.pro` files) | 2026-11-16, step M1.1. Trigger: the owner opens a KiCad 5 board |
 | BL75 | EM simulation | Other levels and speed-ups: quasi-static 3D extraction (3D capacitance and PEEC partial inductance), WebAssembly SIMD kernels for the FDTD's CPU path, the opt-in multi-thread mode (service worker adding COOP/COEP under the tool's path), four-port de-embedding of full-wave pairs ([em-sim/later.md](em-sim/later.md) P2.7) | 2026-11-16, plan review M0.1 (from the v2 draft). Trigger: phase 1's full-wave runs are too slow for a question the owner has |
