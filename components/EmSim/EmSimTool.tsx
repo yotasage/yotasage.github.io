@@ -26,6 +26,7 @@ import { DEFAULT_DIGITS, DIGIT_CHOICES, SHOWN_UNITS } from './format';
 import { errorText, jlcLoaded, jlcResolve, loadJlc } from './jlcData';
 import type { ShownUnit } from './format';
 import StackupSection, { IssueList, NO_KICAD } from './StackupSection';
+import { Status } from './Status';
 import type { Commit, KicadState } from './StackupSection';
 import TraceSection from './TraceSection';
 import { Why, Whys } from './Why';
@@ -259,7 +260,7 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
       </header>
 
       <main className={styles.main}>
-        <p className={styles.status} data-status>Work in progress: the stackup (with every JLCPCB stackup), the trace with its impedance, dragging in the drawing, the fields of the cross-section, Target, Sweep, Tolerance, Calculators and the theory are here so far; vias come next.</p>
+        <Status />
         <Whys ks="status home nav undo whys theme" />
         <div className={styles.prefs}>
           <div className={styles.pref} role="group" aria-label="Units">

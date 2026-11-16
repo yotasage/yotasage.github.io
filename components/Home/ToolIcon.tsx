@@ -2,7 +2,7 @@ import React from 'react';
 
 // Icons for the tool cards on the main page, in the style of components/PdfTools/ToolIcon.tsx. Filled shapes use
 // currentColor, which the <svg> sets to the tool's colour.
-export type HomeIconName = 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith';
+export type HomeIconName = 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
 
 const SAMPLES: [number, number][] = [[6, 24], [12, 12], [18, 12], [24, 24], [30, 36], [36, 36], [42, 24]];
 
@@ -107,6 +107,17 @@ const ICONS: Record<HomeIconName, React.ReactNode> = {
       <circle cx={34} cy={24} r={10} opacity={0.6} />
       <path d="M44 24A20 20 0 0 1 24 4M44 24A20 20 0 0 0 24 44" opacity={0.6} />
       <circle cx={24} cy={24} r={2.6} fill="currentColor" stroke="none" />
+    </>
+  ),
+  // A microstrip in cross-section: the trace on the dielectric over the ground plane, and two of the field's
+  // equipotentials around it, ending on the plane.
+  emsim: (
+    <>
+      <path d="M3 42h42" />
+      <path d="M3 33h42" opacity={0.6} />
+      <path d="M12 42C12 21 36 21 36 42" opacity={0.6} />
+      <path d="M5 42C5 8 43 8 43 42" opacity={0.35} />
+      <rect x={18} y={28} width={12} height={5} rx={1.2} fill="currentColor" />
     </>
   ),
 };

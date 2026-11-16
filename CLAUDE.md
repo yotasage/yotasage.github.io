@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 A personal collection of browser tools (simulation setup calculator, QR code generator and reader, PDF tools, Base64 image
-converter, text case converter, 3D viewer, PCB viewer, resistor lookup, Smith chart), so the owner does not have to use other people's sites with ads and bad design. Next.js 16 Pages Router,
+converter, text case converter, 3D viewer, PCB viewer, resistor lookup, Smith chart, EM simulation), so the owner does not have to use other people's sites with ads and bad design. Next.js 16 Pages Router,
 React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 
 ## Hard constraints
@@ -144,10 +144,12 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   `getStaticProps`. Checks in `scripts/harness/smith/`: `npm run check` (engine and TikZ compiles), `npm run ui` (next
   build, then every browser script against `next start` on 3021), `npm run recheck` (both, plus the resistor harness,
   as one table of every milestone's "done when"; about 25 minutes).
-- EM simulation (planned, branch `em-sim`, not on `main` before its step M2.5): [docs/em-sim/plan.md](docs/em-sim/plan.md)
+- EM simulation (released with step M2.5; later steps are built on the branch `em-sim` and merged to `main` after each
+  step as plan.md's "Running a step" says): [docs/em-sim/plan.md](docs/em-sim/plan.md)
   (decisions, steps, status), `milestones.md` (every step's scope and "done when"), `engine.md` (the model and each
   solver's contract: 2D boundary elements, axisymmetric pads, the via model, FDTD on WebGPU), `later.md` (phase 2,
-  unscheduled). Route `/em-sim/main`, code `lib/emsim/`, `components/EmSim/`, harness `scripts/harness/emsim/`; openEMS
+  unscheduled); **where code lives: the module map** `modules.md` (`lib/emsim/`), `modules-page.md` (the page) and
+  `modules-harness.md` (checks). The status note's texts are in `components/EmSim/statusText.ts`. Route `/em-sim/main`, code `lib/emsim/`, `components/EmSim/`, harness `scripts/harness/emsim/`; openEMS
   on the owner's PC is for the harness's reference fixtures only.
 - `tsconfig` uses `"module": "node16"`, so our own files count as CommonJS and the ES-module-only add-ons of three.js
   (`three/examples/jsm/...`) can only be loaded with `await import(...)`, or imported as types with
