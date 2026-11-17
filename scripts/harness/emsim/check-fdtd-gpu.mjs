@@ -10,7 +10,11 @@
 // (c) the fallback: no navigator.gpu, no adapter, a run over the device's binding limit, an f64 run, and a device
 //     destroyed mid-run (the excitation restarts on the CPU), each with its message;
 // (d) dispatch splitting: a forced limit of 3 workgroups per dimension gives the same records and frames bit for bit;
-//     snapshots on the GPU against the CPU's frames (within one quantisation step).
+//     snapshots on the GPU against the CPU's frames (within one quantisation step);
+// (e) M7.2a: the C45 pair with its fixture's feeds through the job handler with the page's snapshots of entry A and
+//     entry B: the records equal bit for bit those of a run that takes entry A's frames only (S and TDR unchanged),
+//     the extra time, and from above (the entry and the cavity views, Ez) the common drive even and the differential
+//     odd about the pair's mid-plane.
 import { spawn } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -18,10 +22,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as Ru0 from '../../../lib/emsim/fdtd/run.ts';
 import * as N0 from '../../../lib/emsim/nport.ts';
+import * as Fw0 from '../../../lib/emsim/fullwave.ts';
+import * as Wp0 from '../../../lib/emsim/wavesPlayer.ts';
+import { pairVia } from './check-drive.mjs';
 import { withWebGpuPage } from './webgpu/runner.mjs';
 
 const d = (m) => m.default ?? m;
-const Ru = d(Ru0), N = d(N0);
+const Ru = d(Ru0), N = d(N0), Fw = d(Fw0), Wp = d(Wp0);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const LONG = process.env.EMSIM_FDTD_LONG === '1';
 const VIA_STEPS = 3000; // the C44 via's default comparison (port 1); LONG runs both ports to the cap (7 645)
@@ -178,4 +185,47 @@ async function gpuChecks(t, page, lines) {
   t.ok(st.backend === 'webgpu' && st.calibrated && c45.done.backends.every((b) => b === 'webgpu'), () => `C45 pair: on WebGPU, calibrated (${JSON.stringify(st)})`);
   t.ok(act <= 2 * est && act >= est / 2, () => `C45 pair: ${act.toFixed(2)} s against the calibrated estimate ${est.toFixed(2)} s (bar within 2×)`);
   lines.push(`C45 pair: ${st.cells} cells, 4 runs, ${steps} steps in ${act.toFixed(2)} s, estimate ${est.toFixed(2)} s (${(act / est).toFixed(2)}×); ${fmt(rate(st.cells, steps, c45.done.ms))} cells/s with CPML, ports and records`);
+
+  // (e) the pair's drive (M7.2a): entry A's and entry B's frames, the records untouched, the symmetry
+  const pv = Fw.preview(pairVia(), { kind: 'via', tr: 35e-12, length: 10, backend: 'js' }, { gpu: { ok: false, reason: '' }, js: { backend: 'js' }, mobile: false });
+  const top = pv.views.map((v, i) => (v === 'entry' || v === 'cavity' ? i : -1)).filter((i) => i >= 0);
+  const specA = { ...pv.snap, runs: [0] };
+  const onlyA = await ev(([o, h]) => fdtd.job(o, h), [{ name: 'c45f', mode: 'full', snapshots: specA }, { gpu: 'real', timeoutMs: 300_000 }]);
+  const both = await ev(([o, h]) => fdtd.job(o, h), [{ name: 'c45f', mode: 'full', snapshots: pv.snap, frames: top }, { gpu: 'real', timeoutMs: 300_000 }]);
+  const ra = unpack(onlyA.done.records), rb = unpack(both.done.records);
+  const same = ra.runs.length === 4 && ra.runs.every((x, q) => x.rows === rb.runs[q].rows && x.rec.every((v, i) => Object.is(v, rb.runs[q].rec[i])));
+  t.ok(same && both.done.backends.every((b) => b === 'webgpu'), () => `C45 pair: the records with entry B's frames equal those without, bit for bit (${ra.runs.map((x) => x.rows)} / ${rb.runs.map((x) => x.rows)})`);
+  t.ok(both.started.snapRuns.join() === '0,1' && both.started.snapBytes === pv.snapBytes && Object.keys(both.frames).filter((r) => both.frames[r].length).join() === '0,1', () => `C45 pair: frames of entry A and entry B (${both.started.snapRuns}), ${both.started.snapBytes} B as the estimate's ${pv.snapBytes} B`);
+  const Pr = d(await import('../../../lib/emsim/fdtd/problem.ts'));
+  const Sn = d(await import('../../../lib/emsim/fdtd/snapshots.ts'));
+  const pb = Pr.buildProblem(pairVia(), 'via', { trMin: 35e-12, precision: 'f32', allocate: false });
+  const plan = Sn.snapPlanOf(pb.mesh, pv.snap, pb.est.steps);
+  const frs = (r) => both.frames[r].map((f) => ({ step: f.step, t: f.t, scale: Float32Array.from(f.scale), data: f.data.map((b) => { const u = Buffer.from(b, 'base64'); return new Int8Array(u.buffer, u.byteOffset, u.length); }) }));
+  const A = frs(0), B = frs(1);
+  const ys = [...new Set(pb.model.cyl.filter((c) => !c.name.startsWith('return')).map((c) => c.y))];
+  const mid = (Math.min(...ys) + Math.max(...ys)) / 2;
+  const sym = [];
+  top.forEach((si, k) => {
+    const info = plan.slices[si], v = info.v, nu = info.nu;
+    const at = (vals, i, y) => { if (y <= v[0] || y >= v[v.length - 1]) return NaN; let j = 0; while (v[j + 1] < y) j++; const w = (y - v[j]) / (v[j + 1] - v[j]); return vals[i + nu * j] * (1 - w) + vals[i + nu * (j + 1)] * w; };
+    // the RMS of f(y) ∓ f(2m − y) over the RMS of f, over all frames: the mesh is not quite mirror-symmetric (its lines
+    // near barrel B lie up to 0.012 mm off the mirror of barrel A's), and at copper edges, where Ez is singular, a
+    // point-by-point bar would measure that, not the drive
+    for (const [mode, sign] of [['common', 1], ['diff', -1]]) {
+      const tk = Wp.trackOf([A, B], [k], 'Ez', mode, []);
+      let e2 = 0, f2 = 0, o2 = 0;
+      for (const f of tk.frames) {
+        const vals = Float64Array.from(f.data[0], (q) => q * f.scale[0]);
+        for (let j = 0; j < info.nv; j++) for (let i = 0; i < nu; i++) {
+          const m = at(vals, i, 2 * mid - v[j]), x = vals[i + nu * j];
+          if (Number.isNaN(m)) continue;
+          e2 += (x - sign * m) ** 2; o2 += (x + sign * m) ** 2; f2 += x * x;
+        }
+      }
+      sym.push({ view: pv.views[si], mode, worst: Math.sqrt(e2 / f2), other: Math.sqrt(o2 / f2) });
+    }
+  });
+  const vv = plan.slices[top[0]].v, off = Math.max(...Array.from(vv, (y) => Math.min(...Array.from(vv, (w) => Math.abs(w - (2 * mid - y)))))); // the mesh's mirror offset
+  t.ok(sym.length === 4 && sym.every((x) => x.worst <= 0.25 && x.other >= 1.5), () => `C45 pair from above (Ez about y = ${mid}): ${sym.map((x) => `${x.view} ${x.mode === 'common' ? 'common even' : 'differential odd'} within ${(100 * x.worst).toFixed(1)} % (the other way ${(100 * x.other).toFixed(0)} %)`).join(', ')} RMS over the run (bar 25 %, the other way at least 150 %: the mesh's lines lie up to ${off.toFixed(3)} mm off their mirror, which the small differential field between the planes feels most)`);
+  lines.push(`C45 pair's drive (M7.2a, fixture feeds): entry A's frames only ${(onlyA.done.ms / 1000).toFixed(2)} s, entry A's and B's ${(both.done.ms / 1000).toFixed(2)} s, records equal; frames ${(both.started.snapBytes / 1048576).toFixed(1)} MiB; mesh mirror offset ${off.toFixed(3)} mm; symmetry (RMS) ${sym.map((x) => `${x.view} ${x.mode} ${(100 * x.worst).toFixed(1)} % (other way ${(100 * x.other).toFixed(0)} %)`).join(', ')}`);
 }

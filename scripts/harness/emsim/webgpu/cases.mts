@@ -8,13 +8,18 @@ import * as Ru0 from '../../../../lib/emsim/fdtd/run.ts';
 const d = (m: any) => m.default ?? m;
 export const Su = d(Su0), Pr = d(Pr0), V = d(V0), Ru = d(Ru0);
 
-/** The cases: M6.2b's 6 mm microstrip, a 3 mm one (short checks), the C44 via and the C45 pair. */
+/** The cases: M6.2b's 6 mm microstrip, a 3 mm one (short checks), the C44 via, the C45 pair and (M7.2a) the C45 pair
+ *  with its fixture's feeds. */
 export function caseJob(name: string): { setup: any; kind: 'trace' | 'via'; model: any } {
   const su = Su.defaultSetup();
   if (name === 'micro6') return { setup: su, kind: 'trace', model: { length: 6 } };
   if (name === 'micro3') return { setup: su, kind: 'trace', model: { length: 3 } };
   if (name === 'c44') return { setup: su, kind: 'via', model: {} };
   if (name === 'c45') return { setup: { ...su, via: V.presetVia('pair', su.stackup) }, kind: 'via', model: {} };
+  if (name === 'c45f') { // the C45 fixture's feeds (entry feeds to −x, exit feeds to +x), as the page's checks use it
+    const pre = V.presetVia('pair', su.stackup);
+    return { setup: { ...su, via: { ...pre, feeds: [{ ...pre.feeds[0], angle: 180 }, { ...pre.feeds[1], angle: 0 }] } }, kind: 'via', model: {} };
+  }
   throw new Error(`unknown case ${name}`);
 }
 

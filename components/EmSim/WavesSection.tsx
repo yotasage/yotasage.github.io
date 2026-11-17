@@ -9,6 +9,8 @@
 // notes and what the engine was checked against; it stays, marked stale, until the next run. The snapshot frames
 // the worker sends (framesRef while running, data-waves-frames the count held) go with the result to the player
 // (WavesPlayer.tsx, M7.1b) in a FrameStore, emptied on a new run, a cancel or when the setup makes the result stale.
+// For a pair the frames of entry A's and entry B's excitations are kept (pairRef: `started` says which runs, a
+// progress message's frames are of its run), so the player can show the differential and common drive (M7.2a).
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -38,6 +40,7 @@ import { takeWavesAsk, WAVES_EVENT } from './wavesSuggest';
 import type { WavesKindAsk } from './wavesSuggest';
 import { Why } from './Why';
 import WavesPlayer from './WavesPlayer';
+import { freeFrames, heldFrames } from './WavesPlayer';
 import type { FrameStore } from './WavesPlayer';
 
 const TRS = [15e-12, 35e-12, 100e-12];
@@ -71,8 +74,11 @@ export default function WavesSection({ setup, unit = 'mm' }: Props) {
   const [refusal, setRefusal] = useState<{ verdicts: Verdict[]; offer: Offer | null; notes: Note[] } | null>(null);
   const [error, setError] = useState('');
   const [done, setDone] = useState<Done | null>(null);
-  const framesRef = useRef<Frame[]>([]);
+  const framesRef = useRef<Frame[]>([]); // entry A's (the first recorded run's)
+  const pairRef = useRef<Frame[]>([]); // entry B's for a pair
+  const runsRef = useRef<number[]>([0]); // the recorded runs (started info)
   const [frames, setFrames] = useState(0);
+  const dropFrames = () => { framesRef.current = []; pairRef.current = []; setFrames(0); };
   const client = useMemo(() => (typeof window === 'undefined' ? null : new FdtdClient()), []);
   const box = useRef<HTMLDivElement>(null);
 
@@ -94,8 +100,8 @@ export default function WavesSection({ setup, unit = 'mm' }: Props) {
   const run = async () => {
     if (!client || !dev || !pv) return;
     const s = setup, sp = spec, p = pv;
-    framesRef.current = []; setFrames(0);
-    if (done?.store) { done.store.frames = []; setDone((d) => (d && d.store ? { ...d, store: null } : d)); } // the last run's frames go now
+    dropFrames(); runsRef.current = [0];
+    if (done?.store) { freeFrames(done.store); setDone((d) => (d && d.store ? { ...d, store: null } : d)); } // the last run's frames go now
     setPhase('running'); setBk(null); setInfo(null); setProg(null); setRefusal(null); setError('');
     const t0 = performance.now();
     let est = NaN, backendName = '';
@@ -104,15 +110,21 @@ export default function WavesSection({ setup, unit = 'mm' }: Props) {
       out = await client.run(wavesJob(s, sp, p, dev), {
         backend: (b) => {
           setBk(b); backendName = b.backend;
-          if (b.restart === 0) { framesRef.current = []; setFrames(0); } // the first excitation's frames start again
+          // a recorded excitation restarted on the CPU: its frames start again
+          if (b.restart !== undefined && b.restart === runsRef.current[0]) framesRef.current = [];
+          else if (b.restart !== undefined && b.restart === runsRef.current[1]) pairRef.current = [];
+          setFrames(framesRef.current.length + pairRef.current.length);
         },
         started: (i) => {
-          setInfo(i); est = i.seconds * i.runs;
+          setInfo(i); est = i.seconds * i.runs; runsRef.current = i.snapRuns.length ? i.snapRuns : [0];
           if (i.calibrated) { measured[i.backend] = { rate: i.rate, cells: i.cells }; setCalib((n) => n + 1); }
         },
         progress: (q) => {
           setProg({ ...q, frames: [] }); // the frames live in framesRef only
-          if (q.frames.length) { framesRef.current.push(...q.frames); setFrames(framesRef.current.length); }
+          if (q.frames.length) {
+            const to = q.run === runsRef.current[0] ? framesRef.current : q.run === runsRef.current[1] ? pairRef.current : null;
+            if (to) { for (const f of q.frames) to.push(f); setFrames(framesRef.current.length + pairRef.current.length); }
+          }
         },
       });
     } catch (e) {
@@ -120,7 +132,7 @@ export default function WavesSection({ setup, unit = 'mm' }: Props) {
       return;
     }
     if (out === null) { setPhase((ph) => (ph === 'running' ? 'cancelled' : ph)); return; }
-    if (out.kind === 'refused') { framesRef.current = []; setFrames(0); setRefusal(out); setPhase('refused'); return; }
+    if (out.kind === 'refused') { dropFrames(); setRefusal(out); setPhase('refused'); return; }
     const elapsed = (performance.now() - t0) / 1000;
     let q: ViaModelResult | null = null;
     if (sp.kind === 'via') {
@@ -130,19 +142,19 @@ export default function WavesSection({ setup, unit = 'mm' }: Props) {
     }
     const view = wavesView(out.result, p, s, sp, q);
     if (typeof window !== 'undefined') (window as unknown as { __emsimWaves?: unknown }).__emsimWaves = { result: out.result, view, spec: sp, preview: p };
-    const store: FrameStore | null = out.result.snap && framesRef.current.length ? { frames: framesRef.current } : null;
-    framesRef.current = [];
-    setFrames(store ? store.frames.length : 0);
+    const store: FrameStore | null = out.result.snap && framesRef.current.length ? { frames: framesRef.current, pair: pairRef.current, track: null } : null;
+    framesRef.current = []; pairRef.current = [];
+    setFrames(heldFrames(store));
     setDone({ res: out.result, view, setup: s, spec: sp, pv: p, elapsed, estimate: est, backend: backendName, where: out.where, store });
     setPhase('done');
   };
-  const cancel = () => { client?.cancel(); setPhase('cancelled'); framesRef.current = []; setFrames(0); };
+  const cancel = () => { client?.cancel(); setPhase('cancelled'); dropFrames(); };
 
   const stale = !!done && (done.setup !== setup || !sameSpec(done.spec, spec));
   // a stale result keeps its plots, but its frames (up to SNAP_BUDGET) go
   useEffect(() => {
     if (!stale || !done?.store) return;
-    done.store.frames = [];
+    freeFrames(done.store);
     if (phase !== 'running') setFrames(0);
     setDone({ ...done, store: null });
   }, [stale, done, phase]);
@@ -189,7 +201,7 @@ export default function WavesSection({ setup, unit = 'mm' }: Props) {
       </div>
 
       <div className={wcss.estimate} data-waves-estimate={pv ? (pv.est ? 'ready' : 'none') : 'pending'} data-backend={pv?.backend} data-cells={pv?.est?.cells}
-        data-steps={pv?.est?.steps} data-mem={pv?.est?.memory.total} data-runs={runs} data-seconds={total} data-rate-from={pv?.rateFrom} data-refused={refuse.length > 0}>
+        data-steps={pv?.est?.steps} data-mem={pv?.est?.memory.total} data-snap-mem={pv?.snapBytes} data-pair={pv?.pair} data-runs={runs} data-seconds={total} data-rate-from={pv?.rateFrom} data-refused={refuse.length > 0}>
         {!pv ? <p className={css.small}>Working out the estimate…</p> : (
           <>
             <p className={css.small} data-waves-backend={pv.backend}>{pv.backend === 'webgpu' ? `Runs on the GPU: ${pv.reason}` : `Runs on the CPU. ${pv.reason}`}</p>
@@ -197,6 +209,7 @@ export default function WavesSection({ setup, unit = 'mm' }: Props) {
               <p className={css.small}>
                 {big(pv.est.cells)} cells, {(pv.est.memory.total / 1048576).toFixed(0)} MiB, up to {pv.est.steps.toLocaleString('en-GB')} steps for each of {runs} excitation{runs === 1 ? '' : 's'}:
                 about <b>{sText(total)}</b> {pv.rateFrom === 'measured' ? 'on this device (measured by the last run).' : '(from a typical rate; the run measures this device first).'}
+                {pv.snapBytes > 0 && <> The waves’ frames take {(pv.snapBytes / 1048576).toFixed(0)} MiB{pv.pair ? ', entry A’s and entry B’s, so the player can show entry A driven alone and the differential and common drive without another run' : ''}.</>}
               </p>
             )}
             {pv.verdicts.length > 0 && (

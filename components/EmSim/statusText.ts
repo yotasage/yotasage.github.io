@@ -21,7 +21,8 @@ export const STATUS_NOW =
   'Touchstone, the whole setup as a project file to open again or drop on the page, and a printable report of it all ' +
   'on A4 or Letter. Run the via or a trace section full-wave (FDTD) on your graphics card with WebGPU, or on the CPU, ' +
   'with an estimate of its time first, see its TDR and S-parameters beside the quasi-static ones, and play its waves ' +
-  'as an animation on a slice from the side or from above, with the copper drawn over them.';
+  'as an animation on a slice from the side or from above, with the copper drawn over them; a pair’s waves with one ' +
+  'entry driven, or both as a differential or common drive.';
 export const STATUS_CHECKED =
   'Checked by automated tests against exact solutions, against a separate finite-difference solver on hundreds of ' +
   'random structures and against JLCPCB’s own calculator (within about 0.3 %), and the page in the browser. The ' +
@@ -31,4 +32,4 @@ export const STATUS_ASSUMES =
   'Apart from the full-wave runs it is quasi-static: no losses and no change with frequency; a via is lines and lumped capacitances, right while ' +
   'its parts are short against the wavelength. The tolerances are placeholders until you type the ones of your board house.';
 export const STATUS_COMING =
-  'Not here yet: the waves in the 3D view and a pair driven as a differential or common mode; they come next.';
+  'Not here yet: the waves in the 3D view; they come next.';

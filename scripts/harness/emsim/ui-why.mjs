@@ -20,10 +20,11 @@ import * as importedLink from '../../../lib/emsim/link.ts';
 import * as importedSetup from '../../../lib/emsim/setup.ts';
 import * as importedStackup from '../../../lib/emsim/stackup.ts';
 import * as importedStructure from '../../../lib/emsim/structure.ts';
+import * as importedVia from '../../../lib/emsim/via.ts';
 import * as importedWhys from '../../../components/EmSim/whys.ts';
 
 const d = (m) => m.default ?? m;
-const LK = d(importedLink), SU = d(importedSetup), S = d(importedStackup), ST = d(importedStructure);
+const LK = d(importedLink), SU = d(importedSetup), S = d(importedStackup), ST = d(importedStructure), VI = d(importedVia);
 const { WHYS, TOPIC_TITLE } = d(importedWhys);
 
 const shots = process.argv[2] && process.argv[2] !== '-' ? process.argv[2] : null;
@@ -42,7 +43,7 @@ const pairSetup = () => { const s = withTrace('pair-microstrip', 0.11); s.trace 
 
 // ---- the data ----
 const keys = Object.keys(WHYS);
-check(keys.length === 220, `${keys.length} short lines (219 of theory-lines.md and the switch's own)`);
+check(keys.length === 221, `${keys.length} short lines (220 of theory-lines.md and the switch's own)`);
 check(keys.every((k) => WHYS[k].text && WHYS[k].label && (WHYS[k].topic === null || TOPIC_TITLE[WHYS[k].topic])), 'every line has a label, a text and a known topic or none');
 check(keys.every((k) => WHYS[k].text.split(/\s+/).length <= 22), 'every line at most about 20 words');
 const fullText = (k) => `${WHYS[k].text}${WHYS[k].topic ? ' → theory' : ''}`;
@@ -166,10 +167,17 @@ try {
   await wp.click('[data-waves-kind-set="via"]');
   await wp.waitForTimeout(500);
   await wp.waitForSelector('[data-waves-estimate="ready"]', { timeout: 60000 });
-  await wp.click('[data-waves-run]');
-  await wp.waitForSelector('[data-waves-results][data-stale="false"]', { timeout: 900000 });
-  await state(wp, 'waves result', ['waves-plots', 'waves-notes', 'waves-player', 'waves-view', 'waves-comp', 'waves-play', 'waves-time', 'waves-speed', 'waves-loop', 'waves-scale']);
   await wp.close();
+  // the run on the LVDS via pair (C45 with the fixture's feeds): the player's drive choice is there (M7.2a)
+  const pairVia = SU.defaultSetup();
+  const pre = VI.presetVia('pair', pairVia.stackup);
+  pairVia.via = { ...pre, feeds: [{ ...pre.feeds[0], angle: 180 }, { ...pre.feeds[1], angle: 0 }] };
+  const wq = await open(`${urlOf(pairVia)}#waves`);
+  await wq.waitForSelector('[data-waves-estimate="ready"]', { timeout: 60000 });
+  await wq.click('[data-waves-run]');
+  await wq.waitForSelector('[data-waves-results][data-stale="false"]', { timeout: 900000 });
+  await state(wq, 'waves result', ['waves-plots', 'waves-notes', 'waves-player', 'waves-view', 'waves-comp', 'waves-mode', 'waves-play', 'waves-time', 'waves-speed', 'waves-loop', 'waves-scale']);
+  await wq.close();
   // ---- 5: the Export section (M8.1b) ----
   const ep = await open(`${URL0}#export`);
   await ep.waitForSelector('[data-export-ready] [data-export-preview]', { timeout: 30000 });

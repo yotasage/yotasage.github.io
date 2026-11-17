@@ -51,7 +51,7 @@ async function runCase(o: { name: string; mode: 'full' | 'tdr'; maxSteps?: numbe
 /** A job through the product's handler with a GPU provider: 'real' (the shared device), 'fresh' (a device of its own,
  *  destroyed after `lose` progress messages when given), 'none' (no navigator.gpu), 'noadapter', 'misfit' (a device
  *  whose binding limit is 1 MiB). Resolves with the messages' summary. */
-async function job(o: { name: string; mode?: 'full' | 'tdr'; maxSteps?: number; snapshots?: any; backend?: string; rate?: number; precision?: string }, h: { gpu: string; lose?: number; runner?: any; chunkMs?: number; timeoutMs?: number }) {
+async function job(o: { name: string; mode?: 'full' | 'tdr'; maxSteps?: number; snapshots?: any; backend?: string; rate?: number; precision?: string; frames?: number[] }, h: { gpu: string; lose?: number; runner?: any; chunkMs?: number; timeoutMs?: number }) {
   let fresh: any = null;
   const provider = async () => {
     if (h.gpu === 'real') return sharedGpu();
@@ -96,12 +96,20 @@ async function job(o: { name: string; mode?: 'full' | 'tdr'; maxSteps?: number; 
     error: msgs.find((m) => m.type === 'error')?.message ?? null,
     refused: msgs.find((m) => m.type === 'refused')?.verdicts ?? null,
     progress: prog.length,
+    // M7.2a: the frames of the asked slices per run (int8/u8 bytes as base64, the scale, the time)
+    frames: o.frames ? Object.fromEntries([...new Set(prog.map((m) => m.run))].map((r) => [r, prog.filter((m) => m.run === r).flatMap((m) => m.frames).map((f: any) => ({ t: f.t, step: f.step, scale: o.frames!.map((k) => f.scale[k]), data: o.frames!.map((k) => b64u8(new Uint8Array(f.data[k].buffer, f.data[k].byteOffset, f.data[k].byteLength))) }))])) : null,
     restarts: prog.filter((m, q) => q > 0 && m.run === prog[q - 1].run && m.from === 0).length, // rows sent again from 0
     done: dn ? {
       ms: dn.result.ms, status: dn.result.status, steps: dn.result.steps, backends: dn.result.backends, known: dn.result.nport.known,
       notes: dn.result.notes.map((n: any) => n.code), snapFrames: dn.result.snap?.frames ?? null, records: packRecords(dn.result.records),
     } : null,
   };
+}
+
+function b64u8(u: Uint8Array): string {
+  let s = '';
+  for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000));
+  return btoa(s);
 }
 
 (globalThis as any).fdtd = { info, runCase, job };

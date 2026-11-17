@@ -266,6 +266,7 @@ Placed in `whys.ts` with the keys in brackets. Since M4.3b the links go to the v
 | Waves (waves-player) | The electric field on one slice of the run, frame by frame, with the copper the slice cuts drawn over it. | – | – |
 | Slice (waves-view) | Where the slice lies: from the side through the barrel, or from above at a feed or between the planes. | – | – |
 | Field (waves-comp) | \|E\| is the field’s strength; Ez and the others one direction with its sign, red one way, blue the other. | – | – |
+| Drive (waves-mode) | Entry A alone, or both entries at once: differential (A +, B −) or common (both +), from the same run. | – | – |
 | Play (waves-play) | Plays the frames in turn; it rests while the player is out of view, and waits for you under reduced motion. | – | – |
 | Time (waves-time) | Since the pulse began; arrow keys step one frame, Page Up and Down further, Home and End to the ends. | – | – |
 | Speed (waves-speed) | How fast the frames play: at 1× a run’s frames take about ten seconds. | – | – |

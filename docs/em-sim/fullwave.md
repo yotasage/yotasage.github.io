@@ -179,11 +179,15 @@ model's TDR and the full-wave TDR are overlaid without a conversion.
   taken twice); the page takes a via from the side through barrel A along its feeds (|E|, Ez, E along the feeds) and
   from above halfway between each feed and its plane and in the widest plane cavity (Ez); a trace from above (Ez, |E|),
   along trace 1 and across the middle (|E|) — fullwave.ts `snapOf`, notes-M7.1b.md.
+- **Pairs (M7.2a):** the frames of entry A's and entry B's excitations (`SnapSpec.runs`), each with its own recorder
+  on one plan, the budget shared (C45: 2 × 12.2 = 24.4 MiB of the 64); the page adds them as values for the
+  differential and common drive. |E| of a sum needs the vector, so a pair's |E| planes are taken as the three
+  components at the nodes (`Nx`, `Ny`, `Nz`, int8, the edges |E| averages) — notes-M7.2a.md.
 - **How often:** every k = ⌈N_steps/300⌉ steps, about 300 frames per run (12 s at 25 fps), submits aligned to frames.
 - **Format:** a gather kernel copies the slice (f32) into a staging buffer, read back with the submit; the worker
   quantises it to **int8 with a per-frame f32 scale** (u8 for |E|) and keeps the run's maximum for the fixed colour
-  scale (engine.md §9). A 300 × 150 slice is 45 kB per frame; 3 slices × 300 frames = 40 MB. Budget **≤ 64 MB**; the
-  estimator lowers the frame count to fit.
+  scale (engine.md §9). A 300 × 150 slice is 45 kB per frame; 3 slices × 300 frames = 40 MB. Budget **≤ 64 MB** over all
+  recorded runs (M7.2a); the estimator lowers the frame count to fit.
 - f16 storage (the adapter has `shader-f16`) is not needed: int8 is enough for a linear colour scale.
 
 ### 7.4 Monitors

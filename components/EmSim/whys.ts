@@ -222,6 +222,7 @@ export const WHYS: Readonly<Record<string, Why>> = {
   'waves-player': w('Waves', null, 'The electric field on one slice of the run, frame by frame, with the copper the slice cuts drawn over it.'),
   'waves-view': w('Slice', null, 'Where the slice lies: from the side through the barrel, or from above at a feed or between the planes.'),
   'waves-comp': w('Field', null, '|E| is the field’s strength; Ez and the others one direction with its sign, red one way, blue the other.'),
+  'waves-mode': w('Drive', null, 'Entry A alone, or both entries at once: differential (A +, B −) or common (both +), from the same run.'),
   'waves-play': w('Play', null, 'Plays the frames in turn; it rests while the player is out of view, and waits for you under reduced motion.'),
   'waves-time': w('Time', null, 'Since the pulse began; arrow keys step one frame, Page Up and Down further, Home and End to the ends.'),
   'waves-speed': w('Speed', null, 'How fast the frames play: at 1× a run’s frames take about ten seconds.'),

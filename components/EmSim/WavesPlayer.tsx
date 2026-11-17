@@ -12,6 +12,10 @@
 // prefers-reduced-motion. The frames belong to the result, in its FrameStore: WavesSection empties it on a new run, a
 // cancel or a stale setup (so closures of an old render that still hold the box hold no frames), and the Engine lets go
 // of it on unmount; no closure here captures the frames' array itself. `el.emsimPlayer` (the Engine) is for the harness.
+// M7.2a: for a pair the store holds entry A's and entry B's frames, and a third choice, the drive (entry A alone,
+// differential, common), shows them added as values (wavesPlayer.ts trackOf); the combined frames of the shown
+// component and drive live in the store too (`track`, one at a time, made when chosen), so emptying it frees them.
+// Changing the drive keeps the frame and the clock; the scale is per slice, component and drive over the whole run.
 
 import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
@@ -25,16 +29,25 @@ import {
   advance, axisTicks, axesOf, COMP_TEXT, focusBox, framePixels, outlineOf, PLAY_CLIP, playerViews, playScale, psText, rasterOf, rasterSize, siText,
   SPEEDS, viewBox, VIEW_TEXT, FPS_1X,
 } from '../../lib/emsim/wavesPlayer';
-import type { Outline, PlayScale, Raster, Ring } from '../../lib/emsim/wavesPlayer';
+import { driveText, DRIVE_MODES, MODE_TEXT, trackOf } from '../../lib/emsim/wavesPlayer';
+import type { DriveMode, Outline, PlayScale, Raster, Ring } from '../../lib/emsim/wavesPlayer';
 import base from '../../styles/EmSim.module.css';
 import css from '../../styles/EmSimTrace.module.css';
 import vcss from '../../styles/EmSimVia.module.css';
 import wcss from '../../styles/EmSimWaves.module.css';
 import { Why } from './Why';
 
-export interface PlayerSnap { slices: SliceInfo[]; max: number[] }
-/** The run's frames in a box the result owns: emptying it frees them, whatever still holds the box. */
-export interface FrameStore { frames: Frame[] }
+export interface PlayerSnap { slices: SliceInfo[]; max: number[]; runs?: { run: number }[] }
+/** The run's frames in a box the result owns: emptying it frees them, whatever still holds the box. `frames` entry A's
+ *  (the first excitation's), `pair` entry B's for a pair (else empty), `track` the combined frames shown (M7.2a). */
+export interface FrameStore { frames: Frame[]; pair: Frame[]; track: { key: string; frames: Frame[] } | null }
+/** Lets go of every frame the box holds. */
+export function freeFrames(s: FrameStore | null | undefined): void {
+  if (!s) return;
+  s.frames = []; s.pair = []; s.track = null;
+}
+/** The frames the box holds (both runs'). */
+export const heldFrames = (s: FrameStore | null | undefined): number => (s ? s.frames.length + s.pair.length : 0);
 interface Props { store: FrameStore; snap: PlayerSnap; views: SnapView[]; geom: Model; unit: LengthUnit }
 
 const M = { l: 46, r: 10, t: 20, b: 38 }; // the figure's margins around the plot (CSS px)
@@ -43,7 +56,9 @@ const speedText = (s: number) => (s === 0.25 ? '¼×' : s === 0.5 ? '½×' : `${
 
 /** The animation outside React. */
 export class Engine {
-  store: FrameStore = { frames: [] }; si = 0; ps: PlayScale | null = null; raster: Raster | null = null;
+  store: FrameStore = { frames: [], pair: [], track: null }; si = 0; ps: PlayScale | null = null; raster: Raster | null = null;
+  key: string | null = null; // the shown track's key when it is combined (store.track), null for entry A's own frames
+  src: number[] = []; mode: DriveMode = 'single'; // the harness reads them
   pos = 0; shown = -1; playing = false; speed = 1; loop = true; visible = false;
   raf = 0; last = NaN;
   off: HTMLCanvasElement | null = null; img: ImageData | null = null; px: Uint32Array | null = null;
@@ -52,7 +67,10 @@ export class Engine {
   onEnd: () => void = () => {};
   stats = { intervals: [] as number[], work: [] as number[], draws: 0, ticks: 0 };
 
-  get frames(): Frame[] { return this.store.frames; }
+  get frames(): Frame[] {
+    const s = this.store;
+    return this.key === null ? s.frames : s.track && s.track.key === this.key ? s.track.frames : [];
+  }
   get n(): number { return this.store.frames.length; }
   get running(): boolean { return this.raf !== 0; }
 
@@ -124,7 +142,7 @@ export class Engine {
   stop(): void {
     if (this.raf) cancelAnimationFrame(this.raf);
     this.raf = 0;
-    this.store = { frames: [] }; this.img = null; this.px = null; this.raster = null; this.ps = null;
+    this.store = { frames: [], pair: [], track: null }; this.img = null; this.px = null; this.raster = null; this.ps = null;
     if (this.off) { this.off.width = 1; this.off.height = 1; }
     this.off = null;
   }
@@ -141,10 +159,20 @@ export default function WavesPlayer({ store, snap, views, geom, unit }: Props) {
   const pviews = useMemo(() => playerViews(snap.slices, views), [snap, views]);
   const [vi, setVi] = useState(0);
   const [ci, setCi] = useState(0);
+  const pair = (snap.runs?.length ?? 1) > 1;
+  const [mode, setMode] = useState<DriveMode>('single');
   const view = pviews[Math.min(vi, pviews.length - 1)];
-  const si = view.slices[Math.min(ci, view.slices.length - 1)];
-  const info = snap.slices[si];
-  const ps = useMemo(() => playScale(store.frames, si, info.comp, snap.max[si] ?? 0), [store, si, info, snap]);
+  const k = Math.min(ci, view.comps.length - 1), compSet = view.comps[k], src = view.src[k];
+  const info = snap.slices[src[0]];
+  // the frames shown: entry A's own, or combined into the box (the memo keeps only the key and the scale)
+  const tk = useMemo(() => {
+    const m: DriveMode = pair ? mode : 'single';
+    const t = trackOf([store.frames, store.pair], src, compSet, m, snap.max);
+    const key = t.frames === store.frames ? null : `${src.join('.')}:${compSet}:${m}`;
+    store.track = key === null ? null : { key, frames: t.frames };
+    return { key, si: t.si, mode: m, ps: playScale(t.frames, t.si, compSet, t.max) };
+  }, [store, src, compSet, mode, pair, snap]);
+  const si = tk.si, ps = tk.ps;
   const box = useMemo(() => focusBox(geom, view.normal, viewBox(snap.slices, view)), [geom, snap, view]);
   const outline = useMemo(() => outlineOf(geom, view.normal, view.at, box), [geom, view, box]);
   const [playing, setPlaying] = useState(() => !reduced());
@@ -180,9 +208,9 @@ export default function WavesPlayer({ store, snap, views, geom, unit }: Props) {
   useLayoutEffect(() => { eng.store = store; eng.pos = Math.min(eng.pos, Math.max(0, store.frames.length - 1)); }, [eng, store]);
   // the slice, its scale and the picture's size
   useLayoutEffect(() => {
-    eng.si = si; eng.ps = ps;
+    eng.si = si; eng.ps = ps; eng.key = tk.key; eng.src = src; eng.mode = tk.mode;
     if (width > 0) eng.layout(info, box, lay.w, lay.h, dpr);
-  }, [eng, si, ps, info, box, lay, width, dpr]);
+  }, [eng, si, ps, tk, src, info, box, lay, width, dpr]);
   useEffect(() => { eng.speed = speed; eng.loop = loop; }, [eng, speed, loop]);
   useEffect(() => {
     if (playing && !eng.playing && eng.n > 1 && !loop && Math.floor(eng.pos) >= eng.n - 1) eng.seek(0); // Play at the end: from the start
@@ -212,10 +240,10 @@ export default function WavesPlayer({ store, snap, views, geom, unit }: Props) {
   const svg = useMemo(() => overlay(outline, box, lay, unit, uid), [outline, box, lay, unit, uid]);
   const bar = useMemo(() => barOf(ps), [ps]);
   const pct = (100 * PLAY_CLIP).toFixed(1);
-  const comp = COMP_TEXT[info.comp];
+  const comp = COMP_TEXT[compSet];
 
   return (
-    <div ref={root} className={wcss.player} data-waves-player data-player-view={view.view} data-player-comp={info.comp} data-player-slice={si}
+    <div ref={root} className={wcss.player} data-waves-player data-player-view={view.view} data-player-comp={compSet} data-player-slice={src.join(',')} data-player-mode={pair ? tk.mode : ''}
       data-player-frames={n} data-player-playing={playing} data-player-speed={speed} data-player-loop={loop}
       data-player-top={ps.top} data-player-max={ps.max} data-player-box={JSON.stringify(box)} data-player-size={`${lay.w}x${lay.h}`}>
       <Why k="waves-player" bare />
@@ -227,13 +255,19 @@ export default function WavesPlayer({ store, snap, views, geom, unit }: Props) {
         )}
         {view.comps.length > 1 && (
           <div className={base.seg} role="group" aria-label="Field" data-player-comps={view.comps.length}>
-            {view.comps.map((c, i) => <button key={c} type="button" aria-pressed={i === ci} onClick={() => setCi(i)} data-player-comp-set={c}>{COMP_TEXT[c]}</button>)}
+            {view.comps.map((c, i) => <button key={c} type="button" aria-pressed={i === k} onClick={() => setCi(i)} data-player-comp-set={c}>{COMP_TEXT[c]}</button>)}
+          </div>
+        )}
+        {pair && (
+          <div className={base.seg} role="group" aria-label="Drive" data-player-modes>
+            {DRIVE_MODES.map((m) => <button key={m} type="button" aria-pressed={m === tk.mode} onClick={() => setMode(m)} data-player-mode-set={m}>{MODE_TEXT[m]}</button>)}
           </div>
         )}
       </div>
       <div className={vcss.whyRow}>
         {pviews.length > 1 && <Why k="waves-view" />}
         {view.comps.length > 1 && <Why k="waves-comp" />}
+        {pair && <Why k="waves-mode" />}
       </div>
 
       <div ref={fig} className={wcss.figure}>
@@ -285,7 +319,7 @@ export default function WavesPlayer({ store, snap, views, geom, unit }: Props) {
           ))}
         </div>
         <div className={css.fieldNote}>
-          One scale for all {n} frames, for a 1 V pulse at the port; its top holds {pct} % of the values, the rest
+          One scale for all {n} frames, for <span data-player-drive-note>{driveText(tk.mode, pair)}</span>; its top holds {pct} % of the values, the rest
           (up to {siText(ps.max, 'V/m')}, at copper edges) is drawn in the top colour. At 1× the run plays in {(n / FPS_1X).toFixed(0)} s.
         </div>
       </div>

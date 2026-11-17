@@ -14,7 +14,13 @@
 //     the GPU buffers held at each run's start stay the same, and the JS heap after GC falls by the frames' bytes;
 // (5) a setup change that makes the result stale lets go of the frames (the plots stay);
 // (6) reduced motion: no autoplay; no horizontal scroll at 320/390/1440 in both themes; screenshots
-//     `emsim-player-390-dark` and `emsim-player-1440-light`.
+//     `emsim-player-390-dark` and `emsim-player-1440-light`, and of the differential drive
+//     `emsim-player-modes-390-dark` and `emsim-player-modes-1440-light`;
+// M7.2a, the pair's drive: the Drive choice is there for the pair (entry A, differential, common) and not for a single
+//     via; each drive's picture equals wavesPlayer.ts in Node (trackOf on entry A's and entry B's frames, the scale,
+//     the raster, the pixels) byte for byte; a change of drive keeps the frame and the clock (paused and playing); the
+//     scale is fixed over the frames in each drive; the TDR/TDT and S plots do not change with the drive; (3) and (4)
+//     play and cancel in the differential drive (its combined frames are freed with the rest).
 //   tsx ui-player.mjs [screenshot folder | -] [base URL]      (part of npm run ui)
 
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -48,11 +54,11 @@ const q = (xs, f) => { const s = xs.slice().sort((a, b) => a - b); return s.leng
 const browser = await chromium.launch({ channel: 'msedge', args: ARGS });
 const errors = [];
 try {
-  const newPage = async (opt) => {
+  const newPage = async (opt, url = URL1) => {
     const c = await browser.newContext({ viewport: { width: 1440, height: 1000 }, colorScheme: 'light', ...opt });
     const p = await c.newPage();
     p.on('pageerror', (e) => errors.push(String(e)));
-    await p.goto(URL1);
+    await p.goto(url);
     await p.waitForSelector('[data-ready="true"]', { timeout: 30000 });
     await p.waitForSelector('[data-waves-estimate="ready"]', { timeout: 60000 });
     await p.waitForTimeout(300);
@@ -75,24 +81,27 @@ try {
   await runToPlayer(page);
   const nWaves = Number(await page.locator('[data-waves]').getAttribute('data-waves-frames'));
   const n = Number(await A(page, 'data-player-frames'));
-  check(n > 100 && n === nWaves, `the player holds the run's ${n} frames (the section's count ${nWaves})`);
+  const nB = await page.evaluate(() => document.querySelector('[data-waves-player]').emsimPlayer.store.pair.length);
+  check(n > 100 && nB === n && n + nB === nWaves, `the player holds the run's ${n} frames of entry A and ${nB} of entry B (the section's count ${nWaves})`);
+  const modes = await page.$$eval('[data-player-mode-set]', (es) => es.map((e) => e.getAttribute('data-player-mode-set')));
+  check(modes.join() === 'single,diff,common' && (await A(page, 'data-player-mode')) === 'single', `the pair's drives: ${modes.join(', ')}, entry A first`);
   check((await A(page, 'data-player-playing')) === 'true' && (await A(page, 'data-player-running')) === 'true', 'it plays by itself once in view');
   const views = await page.$$eval('[data-player-view-set]', (es) => es.map((e) => e.getAttribute('data-player-view-set')));
   const comps = await page.$$eval('[data-player-comp-set]', (es) => es.map((e) => e.getAttribute('data-player-comp-set')));
   check(views.join() === 'side,entry,cavity,exit' && comps.join() === 'E,Ez,Ex', `views ${views.join(', ')}; components on the side view ${comps.join(', ')}`);
 
+  // the page's raw frames of the shown component's slices (entry A's and entry B's), its raster and picture
   const pageData = (p) => p.evaluate(() => {
     const e = document.querySelector('[data-waves-player]').emsimPlayer;
     const b64 = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
-    const si = e.si, f0 = e.frames[0];
+    const pack = (fs) => fs.map((f) => ({ t: f.t, step: f.step, scale: e.src.map((s) => f.scale[s]), data: e.src.map((s) => b64(new Uint8Array(f.data[s].buffer, f.data[s].byteOffset, f.data[s].byteLength))), signed: e.src.map((s) => f.data[s] instanceof Int8Array) }));
     const info = JSON.parse(JSON.stringify({ ...e.raster, c0: 0, c1: 0, cw: 0, r0: 0, r1: 0, rw: 0 }));
-    const sl = { ...[...document.querySelectorAll('[data-waves-player]')][0].dataset };
+    const root = document.querySelector('[data-waves-player]');
     const img = e.off.getContext('2d').getImageData(0, 0, e.off.width, e.off.height).data;
     return {
-      si, shown: e.shown, n: e.frames.length, signed: f0.data[si] instanceof Int8Array,
-      data: e.frames.map((f) => b64(new Uint8Array(f.data[si].buffer, f.data[si].byteOffset, f.data[si].byteLength))),
-      scale: e.frames.map((f) => f.scale[si]), t: e.frames.map((f) => f.t),
-      raster: info, w: e.off.width, h: e.off.height, img: b64(new Uint8Array(img.buffer)), top: e.ps.top, ds: sl,
+      src: e.src, mode: e.mode, comp: root.getAttribute('data-player-comp'), shown: e.shown, n: e.frames.length,
+      A: pack(e.store.frames), B: pack(e.store.pair), t: e.store.frames.map((f) => f.t),
+      raster: info, w: e.off.width, h: e.off.height, img: b64(new Uint8Array(img.buffer)), top: e.ps.top,
     };
   });
   const sliceInfo = (p, si) => p.evaluate((si) => {
@@ -101,32 +110,66 @@ try {
     const s = r.slices[si];
     return { comp: s.comp, normal: s.normal, at: s.at, nu: s.nu, nv: s.nv, u: Array.from(s.u), v: Array.from(s.v), max: r.max[si] };
   }, si);
+  const unpack = (fs) => fs.map((f) => ({ step: f.step, t: f.t, scale: Float32Array.from(f.scale), data: f.data.map((b, k) => { const buf = Buffer.from(b, 'base64'); const u8 = new Uint8Array(buf.buffer, buf.byteOffset, buf.length); return f.signed[k] ? new Int8Array(u8.buffer, u8.byteOffset, u8.length) : u8.slice(); }) }));
   const nodePicture = async (p) => {
     const g = await pageData(p);
-    const s = await sliceInfo(p, g.si);
-    const fr = g.data.map((b, i) => { const buf = Buffer.from(b, 'base64'); const u8 = new Uint8Array(buf.buffer, buf.byteOffset, buf.length); return { step: i, t: g.t[i], data: [g.signed ? new Int8Array(u8.buffer, u8.byteOffset, u8.length) : u8.slice()], scale: Float32Array.of(g.scale[i]) }; });
-    const ps = WP.playScale(fr, 0, s.comp, s.max);
+    const s = await sliceInfo(p, g.src[0]);
+    const tk = WP.trackOf([unpack(g.A), unpack(g.B)], g.src.map((_, k) => k), g.comp, g.mode, [s.max]);
+    const ps = WP.playScale(tk.frames, tk.si, g.comp, tk.max);
     const info = { ...s, u: Float32Array.from(s.u), v: Float32Array.from(s.v) };
     const box = { u0: g.raster.u0, u1: g.raster.u1, v0: g.raster.v0, v1: g.raster.v1 };
     const r = WP.rasterOf(info, g.w, g.h, box);
     const out = new Uint32Array(g.w * g.h);
-    WP.framePixels(r, fr[g.shown].data[0], fr[g.shown].scale[0], ps, out);
+    WP.framePixels(r, tk.frames[g.shown].data[tk.si], tk.frames[g.shown].scale[tk.si], ps, out);
     const mine = new Uint8Array(out.buffer), theirs = Buffer.from(g.img, 'base64');
     let diff = 0;
     for (let i = 0; i < mine.length; i++) if (mine[i] !== theirs[i]) diff++;
-    return { diff, bytes: mine.length, top: ps.top, pageTop: g.top, shown: g.shown, comp: s.comp, w: g.w, h: g.h, t: g.t };
+    return { diff, bytes: mine.length, top: ps.top, pageTop: g.top, shown: g.shown, comp: g.comp, mode: g.mode, src: g.src, w: g.w, h: g.h, t: g.t };
   };
+  const plots = (p) => p.$$eval('[data-plot^="waves-"]', (es) => es.map((e) => `${e.getAttribute('data-plot')}:${e.innerHTML}`).join('\n'));
+  const plots0 = await plots(page);
   await pause(page);
-  for (const [v, c, k] of [['side', 'E', 60], ['side', 'Ez', 140], ['cavity', 'Ez', 200]]) {
+  for (const [v, c, k, m] of [['side', 'E', 60, 'single'], ['side', 'Ez', 140, 'single'], ['cavity', 'Ez', 200, 'single'], ['side', 'E', 90, 'diff'], ['entry', 'Ez', 120, 'common'], ['side', 'Ex', 150, 'diff'], ['cavity', 'Ez', 100, 'diff']]) {
     await page.click(`[data-player-view-set="${v}"]`);
     if (c !== 'Ez' || v === 'side') await page.click(`[data-player-comp-set="${c}"]`).catch(() => {});
+    await page.click(`[data-player-mode-set="${m}"]`);
     await key(page, 'Home'); await key(page, 'ArrowRight', 5); await key(page, 'PageDown'); // a frame somewhere in the run
     await page.evaluate((k) => document.querySelector('[data-waves-player]').emsimPlayer.seek(k), k);
     await page.waitForTimeout(50);
     const r = await nodePicture(page);
-    check(r.diff === 0 && r.shown === k, `${v} ${c}, frame ${r.shown}: the ${r.w}×${r.h} picture equals wavesPlayer.ts in Node (${r.diff} of ${r.bytes} bytes differ)`);
-    check(r.top === r.pageTop && Number(await A(page, 'data-player-top')) === r.top, `${v} ${c}: the scale's top ${WP.siText(r.top, 'V/m')} as Node's from all ${n} frames`);
+    check(r.diff === 0 && r.shown === k && r.mode === m, `${v} ${c} ${m} (slices ${r.src}), frame ${r.shown}: the ${r.w}×${r.h} picture equals wavesPlayer.ts in Node (${r.diff} of ${r.bytes} bytes differ)`);
+    check(r.top === r.pageTop && Number(await A(page, 'data-player-top')) === r.top, `${v} ${c} ${m}: the scale's top ${WP.siText(r.top, 'V/m')} as Node's from all ${n} frames`);
   }
+  // a change of drive keeps the frame and the clock; the scale is fixed over the frames in each drive
+  await page.click('[data-player-view-set="side"]'); await page.click('[data-player-comp-set="E"]'); await page.click('[data-player-mode-set="single"]');
+  await page.evaluate(() => document.querySelector('[data-waves-player]').emsimPlayer.seek(110));
+  const t110 = await page.locator('[data-player-time-text]').textContent();
+  const keep = [];
+  for (const m of ['diff', 'common', 'single']) {
+    await page.click(`[data-player-mode-set="${m}"]`);
+    await page.waitForTimeout(50);
+    keep.push({ m, f: await frame(page), tt: await page.locator('[data-player-time-text]').textContent(), top: await A(page, 'data-player-top'), note: await page.locator('[data-player-drive-note]').textContent() });
+  }
+  check(keep.every((x) => x.f === 110 && x.tt === t110), `paused, a change of drive keeps the frame and its time (${keep.map((x) => `${x.m} ${x.f}`).join(', ')}; "${t110}")`);
+  check(keep[0].note === 'differential drive: A + 1 V, B − 1 V' && keep[1].note === 'common drive: A + 1 V, B + 1 V' && /entry A driven alone/.test(keep[2].note) && keep[0].top !== keep[2].top,
+    `the scale's note says the drive ("${keep[0].note}", "${keep[1].note}") and each drive has its own scale (tops ${keep.map((x) => x.top).join(', ')})`);
+  await page.click('[data-player-mode-set="diff"]');
+  const dtops = [];
+  for (const k of [0, Math.floor(n / 2), n - 1]) { await page.evaluate((k) => document.querySelector('[data-waves-player]').emsimPlayer.seek(k), k); dtops.push(await A(page, 'data-player-top')); }
+  check(dtops.every((x) => x === dtops[0]), `differential drive: the scale is the same at frames 0, ${Math.floor(n / 2)} and ${n - 1} (top ${dtops[0]})`);
+  await page.click('[data-player-speed-set="1"]');
+  await page.evaluate(() => document.querySelector('[data-waves-player]').emsimPlayer.seek(20));
+  await play(page);
+  await page.waitForTimeout(400);
+  const fp = await frame(page), c0 = await page.evaluate(() => document.querySelector('[data-waves-player]').emsimPlayer.pos);
+  await page.click('[data-player-mode-set="common"]');
+  const c1 = await page.evaluate(() => document.querySelector('[data-waves-player]').emsimPlayer.pos);
+  await page.waitForTimeout(300);
+  const fq = await frame(page);
+  check((await A(page, 'data-player-playing')) === 'true' && c1 >= c0 && c1 - c0 < 10 && fq > fp && fq - fp < 25, `playing, a change of drive keeps the clock (position ${c0.toFixed(1)} → ${c1.toFixed(1)}, frame ${fp} → ${fq} 0.3 s later)`);
+  await pause(page);
+  check(await plots(page) === plots0, 'the TDR/TDT and S plots are the same in every drive (their markup unchanged)');
+  await page.click('[data-player-mode-set="single"]');
   // the scale stays the same from frame to frame
   const tops = [], ticks = [];
   for (const k of [0, Math.floor(n / 2), n - 1]) {
@@ -197,7 +240,7 @@ try {
   // ---- 3: smooth playback ----
   const timing = async (p, rate) => {
     await p.locator(P).scrollIntoViewIfNeeded();
-    await p.click('[data-player-view-set="side"]'); await p.click('[data-player-comp-set="E"]');
+    await p.click('[data-player-view-set="side"]'); await p.click('[data-player-comp-set="E"]'); await p.click('[data-player-mode-set="diff"]');
     await p.click('[data-player-speed-set="2"]');
     await play(p);
     const cdp = await p.context().newCDPSession(p);
@@ -217,7 +260,7 @@ try {
   const phone = await newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, colorScheme: 'dark' });
   await runToPlayer(phone);
   for (const r of [1, 4]) rows.push({ label: '390 px, dpr 3', ...(await timing(phone, r)) });
-  console.log('  playback at 2× (a new frame every display frame), 3 s; ms:');
+  console.log('  playback at 2× (a new frame every display frame), 3 s, side |E| in the differential drive; ms:');
   console.log('  | width | CPU | canvas | raster | ticks | draws | interval p50 | interval p95 | over 25 ms | work p50 | work p95 |');
   for (const r of rows) {
     console.log(`  | ${r.label} | ${r.rate}× | ${r.canvas} | ${r.raster} | ${r.frames} | ${r.draws} | ${r.p50.toFixed(1)} | ${r.p95.toFixed(1)} | ${r.dropped} | ${r.w50.toFixed(2)} | ${r.w95.toFixed(2)} |`);
@@ -230,13 +273,21 @@ try {
   // the JS heap and the ArrayBuffers' backing stores (the frames' bytes live there), after GC
   const heap = async () => { await cdp.send('HeapProfiler.collectGarbage'); await page.waitForTimeout(100); await cdp.send('HeapProfiler.collectGarbage'); const h = await cdp.send('Runtime.getHeapUsage'); return h.usedSize + (h.backingStorageSize ?? 0); };
   // weak references to the frames: none may stay reachable
-  const watch = () => page.evaluate(() => { const e = document.querySelector('[data-waves-player]').emsimPlayer; window.__weak = [new WeakRef(e.frames), new WeakRef(e.frames[0].data[0]), new WeakRef(e.frames[e.frames.length - 1])]; });
+  const watch = () => page.evaluate(() => {
+    const e = document.querySelector('[data-waves-player]').emsimPlayer, s = e.store;
+    window.__weak = [new WeakRef(s.frames), new WeakRef(s.frames[0].data[0]), new WeakRef(s.frames[s.frames.length - 1]), new WeakRef(s.pair[0].data[0]), new WeakRef(e.frames), new WeakRef(e.frames[3].data[0])];
+    return { key: e.key, track: !!s.track };
+  });
   const alive = () => page.evaluate(() => window.__weak.filter((w) => w.deref() !== undefined).length);
-  const bytes = async (p) => p.evaluate(() => { const e = document.querySelector('[data-waves-player]')?.emsimPlayer; return e ? e.frames.reduce((a, f) => a + f.data.reduce((b, x) => b + x.byteLength, 0), 0) : 0; });
+  const bytes = async (p) => p.evaluate(() => {
+    const e = document.querySelector('[data-waves-player]')?.emsimPlayer;
+    const of = (fs) => fs.reduce((a, f) => a + f.data.reduce((b, x) => b + x.byteLength, 0), 0);
+    return e ? of(e.store.frames) + of(e.store.pair) + (e.store.track ? of(e.store.track.frames) : 0) : 0;
+  });
   const helds = [];
   const runAndCancel = async (what) => {
     const fb = await bytes(page);
-    await watch();
+    const w = await watch();
     const h1 = await heap();
     await page.click('[data-waves-run]');
     await page.waitForSelector('[data-waves-held]:not([data-waves-held=""])', { timeout: 60000 });
@@ -250,17 +301,19 @@ try {
     const h2 = await heap();
     check(gone && during > 0 && after === 0 && (await page.locator('[data-waves]').getAttribute('data-waves-phase')) === 'cancelled', `${what}: the new run lets go of the player's frames at once, its cancel of its own (${during} → ${after})`);
     const left = await alive();
-    check(left === 0 && h1 - h2 >= 0.8 * fb, `${what}: after GC no frame is reachable (${left} of 3 watched) and the heap with its buffers falls by ${((h1 - h2) / 1048576).toFixed(1)} MiB, the frames held ${(fb / 1048576).toFixed(1)} MiB`);
+    check(left === 0 && h1 - h2 >= 0.8 * fb && w.track && w.key, `${what} (${w.key}): after GC no frame is reachable (${left} of 6 watched: entry A's, entry B's and the combined drive's) and the heap with its buffers falls by ${((h1 - h2) / 1048576).toFixed(1)} MiB, the frames held ${(fb / 1048576).toFixed(1)} MiB`);
   };
   await page.locator(P).scrollIntoViewIfNeeded();
   await play(page);
   await runAndCancel('cancel during playback');
   await runToPlayer(page);
+  await page.click('[data-player-mode-set="diff"]');
   await page.click('[data-player-loop-set]');
   await key(page, 'End');
   await page.waitForTimeout(200);
   await runAndCancel('cancel after playback');
   await runToPlayer(page);
+  await page.click('[data-player-mode-set="common"]');
   await runAndCancel('again');
   const nb = helds.map((h) => Number(h.split('/')[0]));
   check(nb[0] > 0 && helds.every((h) => h === helds[0]), `the GPU buffers held at each run's start stay the same (${helds.join(', ')})`);
@@ -283,6 +336,13 @@ try {
   await rm.waitForTimeout(500);
   check((await A(rm, 'data-player-playing')) === 'false' && (await A(rm, 'data-player-running')) === 'false' && await frame(rm) === 0, 'under reduced motion it waits on the first frame');
   await rm.context().close();
+  // a single via (the default C44): no drive to choose, entry A's frames only
+  const sv = await newPage({ reducedMotion: 'reduce' }, `${URL0}#waves`);
+  await runToPlayer(sv);
+  const svn = Number(await A(sv, 'data-player-frames')), svw = Number(await sv.locator('[data-waves]').getAttribute('data-waves-frames'));
+  check(await sv.locator('[data-player-mode-set]').count() === 0 && await sv.locator('[data-player-modes]').count() === 0 && (await A(sv, 'data-player-mode')) === '' && svn > 100 && svn === svw
+    && /a 1 V pulse at the port/.test(await sv.locator('[data-player-drive-note]').textContent()), `a single via: no drive to choose, ${svn} frames of its one run (${svw} held)`);
+  await sv.context().close();
   if (shots) mkdirSync(shots, { recursive: true });
   for (const scheme of ['light', 'dark']) {
     const p = await newPage({ colorScheme: scheme });
@@ -307,6 +367,21 @@ try {
           return c.toDataURL('image/png').split(',')[1];
         }, `data:image/png;base64,${buf.toString('base64')}`);
         writeFileSync(join(shots, `emsim-player-${width}-${scheme}.png`), Buffer.from(small, 'base64'));
+        // the differential drive from above at the entry feed (Ez: odd about the pair's mid-plane)
+        await p.click('[data-player-view-set="entry"]'); await p.click('[data-player-mode-set="diff"]');
+        await p.evaluate(() => document.querySelector('[data-waves-player]').emsimPlayer.seek(70));
+        await p.evaluate(() => { const e = document.querySelector('[data-waves-player]'); window.scrollTo(0, e.getBoundingClientRect().top + window.scrollY - 70); });
+        await p.waitForTimeout(150);
+        const buf2 = await p.locator(P).screenshot();
+        const small2 = await p.evaluate(async (src) => {
+          const img = new Image(); img.src = src; await img.decode();
+          const w = Math.min(1000, img.width), h = Math.round((img.height * w) / img.width);
+          const c = document.createElement('canvas'); c.width = w; c.height = h;
+          const g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(img, 0, 0, w, h);
+          return c.toDataURL('image/png').split(',')[1];
+        }, `data:image/png;base64,${buf2.toString('base64')}`);
+        writeFileSync(join(shots, `emsim-player-modes-${width}-${scheme}.png`), Buffer.from(small2, 'base64'));
+        await p.click('[data-player-mode-set="single"]');
       }
     }
     await p.context().close();

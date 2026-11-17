@@ -1,18 +1,24 @@
 // Field snapshots for the animation (step M6.2b, docs/em-sim/fullwave.md §7.3): up to 6 slices through the mesh, each of
-// one field component (Ex, Ey, Ez on its edges, or |E| at the nodes; the spec's, or the slice's own since M7.1b, so one
-// plane can be taken twice) every k steps of the first excitation, each frame
+// one field component (Ex, Ey, Ez on its edges, |E| at the nodes, or since M7.2a Nx, Ny, Nz: a signed component
+// averaged to the nodes, so the page can combine two runs' vectors into |E|; the spec's component, or the slice's own
+// since M7.1b, so one plane can be taken twice) every k steps of the excitations the spec names (`runs`, the first by
+// default; a pair's player takes entry A's and entry B's, M7.2a), each frame
 // quantised to int8 with an f32 scale per slice (u8 for |E|), the run's largest |value| per slice kept for a fixed
 // colour scale. On conformal edges the value is f·E (the edge's voltage per cell length; E itself may be several times
 // larger in the narrow gap, notes-M6.2a.md). The slices cover the mesh inside the CPML, with their coordinates (mm).
-// The memory is planned before the run (`snapPlan`: frames × cells, at most 64 MiB, the frame count lowered to fit)
-// and the frames are taken out as they come (`drain`), so the worker can transfer them.
+// The memory is planned before the run (`snapPlan`: frames × cells, at most 64 MiB over all recorded runs, the frame
+// count lowered to fit; `snapPlanOf` the same from the mesh alone, for the estimate) and the frames are taken out as
+// they come (`drain`), so the worker can transfer them.
 
 import type { Problem } from './problem';
+import type { Mesh } from './mesh';
+import { gridOf } from './mesh';
 import { MiB } from './estimate';
 
-export type SnapComp = 'Ex' | 'Ey' | 'Ez' | 'E';
+export type SnapComp = 'Ex' | 'Ey' | 'Ez' | 'E' | 'Nx' | 'Ny' | 'Nz'; // N*: the component at the nodes (M7.2a)
 export interface SliceSpec { normal: 'x' | 'y' | 'z'; at: number; comp?: SnapComp } // mm; comp: this slice's own (M7.1b)
-export interface SnapSpec { comp: SnapComp; slices: SliceSpec[]; frames?: number; budget?: number } // frames ≤ 300 by default, budget bytes
+// frames ≤ 300 by default; budget: bytes over all recorded runs; runs: the excitations recorded (default [0]; M7.2a)
+export interface SnapSpec { comp: SnapComp; slices: SliceSpec[]; frames?: number; budget?: number; runs?: number[] }
 export interface SliceInfo {
   comp: SnapComp; // the component taken on this slice
   normal: 'x' | 'y' | 'z'; at: number; // the plane actually used (a node, or an edge's middle for the normal component)
@@ -29,33 +35,59 @@ const AX = { x: 0, y: 1, z: 2 } as const;
 
 interface Gather { idx: Int32Array; mul: Float32Array | null } // per sample one edge (a component) or 6 (|E|: 2 per axis)
 
-/** The slices and the frame interval for a run of `steps` steps; its memory is `bytes` (frames at most `frames`). */
+/** The slices and the frame interval for each recorded run of `steps` steps; one run's memory is `bytes` (frames at
+ *  most `frames`), the spec's budget shared by its runs. */
 export function snapPlan(p: Problem, spec: SnapSpec, steps: number): SnapPlan {
-  const slices = spec.slices.slice(0, MAX_SLICES).map((s) => sliceGeom(p, s.comp ?? spec.comp, s).info);
+  return planOf(gridOfProblem(p), spec, steps);
+}
+
+/** The same plan from the mesh alone (before the problem is allocated: the estimate's frames memory). */
+export function snapPlanOf(mesh: Mesh, spec: SnapSpec, steps: number): SnapPlan {
+  return planOf({ g: [gridOf(mesh.x), gridOf(mesh.y), gridOf(mesh.z)], n: [mesh.x.lines.length + 1, mesh.y.lines.length + 1, mesh.z.lines.length + 1], cells: [mesh.x.cpml, mesh.y.cpml, mesh.z.cpml] }, spec, steps);
+}
+
+/** The excitations a spec records (each once, in order). */
+export const snapRuns = (spec: SnapSpec): number[] => (spec.runs?.length ? [...new Set(spec.runs)].sort((a, b) => a - b) : [0]);
+
+function planOf(gr: SnapGrid, spec: SnapSpec, steps: number): SnapPlan {
+  const slices = spec.slices.slice(0, MAX_SLICES).map((s) => sliceInfo(gr, s.comp ?? spec.comp, s).info);
   const frameBytes = slices.reduce((a, s) => a + s.nu * s.nv + 4, 0); // 1 B a sample, the f32 scale
-  const want = Math.max(1, Math.min(spec.frames ?? SNAP_FRAMES, Math.floor((spec.budget ?? SNAP_BUDGET) / frameBytes)));
+  const budget = (spec.budget ?? SNAP_BUDGET) / snapRuns(spec).length;
+  const want = Math.max(1, Math.min(spec.frames ?? SNAP_FRAMES, Math.floor(budget / frameBytes)));
   const every = Math.max(1, Math.ceil(steps / want));
   const frames = Math.floor(steps / every); // steps every, 2·every … ≤ steps
   return { comp: spec.comp, slices, every, frames, frameBytes, bytes: frames * frameBytes };
 }
 
-function sliceGeom(p: Problem, comp: SnapComp, s: SliceSpec): { info: SliceInfo; gather: Gather } {
-  const g = [p.gx, p.gy, p.gz], n = [p.nx, p.ny, p.nz];
-  const cells = [p.cpml.x.cells, p.cpml.y.cells, p.cpml.z.cells];
+interface SnapGrid { g: Float64Array[]; n: number[]; cells: number[] } // node coordinates (ghost first), counts, CPML cells
+const gridOfProblem = (p: Problem): SnapGrid => ({ g: [p.gx, p.gy, p.gz], n: [p.nx, p.ny, p.nz], cells: [p.cpml.x.cells, p.cpml.y.cells, p.cpml.z.cells] });
+
+/** The sampling of a slice: per sample one edge (an edge component), 2 (a component at the nodes) or 6 (|E|). */
+const perSample = (comp: SnapComp) => (comp === 'E' ? 6 : comp[0] === 'N' ? 2 : 1);
+/** The axis of a component's edges (−1: |E|). */
+const compAxis = (comp: SnapComp) => (comp === 'E' ? -1 : AX[comp.slice(1) as 'x' | 'y' | 'z']);
+
+function sliceInfo(gr: SnapGrid, comp: SnapComp, s: SliceSpec) {
+  const { g, n, cells } = gr;
   const na = AX[s.normal], [ua, va] = [0, 1, 2].filter((a) => a !== na);
   const lo = (a: number) => 1 + cells[a], hi = (a: number) => n[a] - 1 - cells[a];
   const nearestNode = (a: number, x: number) => { let b = lo(a), bd = Infinity; for (let i = lo(a); i <= hi(a); i++) { const d = Math.abs(g[a][i] - x); if (d < bd) { bd = d; b = i; } } return b; };
   const nearestEdge = (a: number, x: number) => { let b = lo(a), bd = Infinity; for (let i = lo(a); i < hi(a); i++) { const d = Math.abs((g[a][i] + g[a][i + 1]) / 2 - x); if (d < bd) { bd = d; b = i; } } return b; };
-  const ca = comp === 'E' ? -1 : AX[comp.slice(1) as 'x' | 'y' | 'z'];
-  // along each in-plane axis: nodes, or edges for the component's own axis
+  // along each in-plane axis: nodes, or edges for an edge component's own axis (a component at the nodes: nodes)
+  const ca = perSample(comp) === 1 ? compAxis(comp) : -1;
   const range = (a: number) => (a === ca ? { i0: lo(a), m: hi(a) - lo(a), mid: true } : { i0: lo(a), m: hi(a) - lo(a) + 1, mid: false });
   const ru = range(ua), rv = range(va);
   const k = na === ca ? nearestEdge(na, s.at) : nearestNode(na, s.at);
   const at = na === ca ? (g[na][k] + g[na][k + 1]) / 2 : g[na][k];
   const coord = (a: number, r: { i0: number; m: number; mid: boolean }) => Float32Array.from({ length: r.m }, (_, q) => (r.mid ? (g[a][r.i0 + q] + g[a][r.i0 + q + 1]) / 2 : g[a][r.i0 + q]));
   const info: SliceInfo = { comp, normal: s.normal, at, nu: ru.m, nv: rv.m, u: coord(ua, ru), v: coord(va, rv) };
+  return { info, na, ua, va, k, ru, rv };
+}
+
+function sliceGeom(p: Problem, comp: SnapComp, s: SliceSpec): { info: SliceInfo; gather: Gather } {
+  const { info, na, ua, va, k, ru, rv } = sliceInfo(gridOfProblem(p), comp, s);
   const N = p.N, cell = (ijk: number[]) => ijk[0] + p.nx * (ijk[1] + p.ny * ijk[2]);
-  const per = ca >= 0 ? 1 : 6;
+  const per = perSample(comp), axis = compAxis(comp);
   const idx = new Int32Array(ru.m * rv.m * per);
   const frac = new Map<number, number>();
   for (let q = 0; q < p.mat.cut.length; q++) frac.set(p.mat.cut[q], p.mat.frac[q]);
@@ -65,8 +97,8 @@ function sliceGeom(p: Problem, comp: SnapComp, s: SliceSpec): { info: SliceInfo;
     const ijk = [0, 0, 0];
     ijk[na] = k; ijk[ua] = ru.i0 + iu; ijk[va] = rv.i0 + iv;
     const o = (iu + ru.m * iv) * per;
-    if (ca >= 0) idx[o] = ca * N + cell(ijk);
-    else for (let a = 0; a < 3; a++) { const m = ijk.slice(); idx[o + 2 * a] = a * N + cell(m); m[a] -= 1; idx[o + 2 * a + 1] = a * N + cell(m); }
+    if (per === 1) idx[o] = axis * N + cell(ijk);
+    else for (let a = per === 6 ? 0 : axis, e = o; e < o + per; a++) { const m = ijk.slice(); idx[e++] = a * N + cell(m); m[a] -= 1; idx[e++] = a * N + cell(m); }
     for (let q = o; q < o + per; q++) { const f = frac.get(idx[q]); mul[q] = f ?? 1; if (f !== undefined) cut = true; }
   }
   return { info, gather: { idx, mul: cut ? mul : null } };
@@ -118,9 +150,15 @@ export class SnapRecorder {
     const pl = this.plan;
     const data: (Int8Array | Uint8Array)[] = [], scale = new Float32Array(gathers.length);
     gathers.forEach((G, s) => {
-      const m = pl.slices[s].nu * pl.slices[s].nv, b = this.buf, idx = G.idx, mul = G.mul, signed = pl.slices[s].comp !== 'E';
+      const comp = pl.slices[s].comp, m = pl.slices[s].nu * pl.slices[s].nv, b = this.buf, idx = G.idx, mul = G.mul, signed = comp !== 'E';
       let mx = 0;
-      if (signed) {
+      if (comp[0] === 'N') { // the mean of the node's two edges of the axis, as |E| takes them
+        for (let q = 0; q < m; q++) {
+          const e0 = 2 * q;
+          const x = mul ? (E[idx[e0]] * mul[e0] + E[idx[e0 + 1]] * mul[e0 + 1]) / 2 : (E[idx[e0]] + E[idx[e0 + 1]]) / 2;
+          b[q] = x; const ax = x < 0 ? -x : x; if (ax > mx) mx = ax;
+        }
+      } else if (signed) {
         for (let q = 0; q < m; q++) { const x = mul ? E[idx[q]] * mul[q] : E[idx[q]]; b[q] = x; const ax = x < 0 ? -x : x; if (ax > mx) mx = ax; }
       } else {
         for (let q = 0; q < m; q++) {

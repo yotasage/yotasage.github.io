@@ -44,6 +44,7 @@ const MODULES = [
   ['openEMS fixtures (M6.4a)', './check-openems.mjs'],
   ['Full-wave against openEMS (M6.4c)', './check-compare.mjs'],
   ['Waves player (M7.1b)', './check-player.mjs'],
+  ['Waves drive (M7.2a)', './check-drive.mjs'],
 ];
 
 const failures = [];

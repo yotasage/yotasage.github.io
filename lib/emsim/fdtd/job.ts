@@ -14,7 +14,10 @@
 // the CPU (fullwave.md §9.3) after a 'backend' message with `restart` (that run's rows and frames sent so far are void)
 // and the session stays on the CPU; the CPU's own calibration and §11.4 then decide whether the run goes on.
 // The result holds the records (to post-process again at another rise time), the N-port, the TDRs at the asked rise
-// times, the feeds' εeff, the backend of each excitation and the run's notes.
+// times, the feeds' εeff, the backend of each excitation and the run's notes. Snapshot frames are taken in the
+// excitations the spec names (`SnapSpec.runs`, the first by default; M7.2a: a pair's entry A and entry B, which the
+// page combines into the differential and common drive), each with a recorder of its own on the same plan; a progress
+// message's frames are of its `run`.
 //
 //   page → worker: { type: 'run', id, job: FdtdJob } | { type: 'cancel', id }
 //   worker → page: 'backend' { backend, reason, adapter?, restart? } | 'refused' { verdicts, offer, notes }
@@ -28,7 +31,7 @@ import { OVERHEAD, RATES, rateFromCalibration } from './estimate';
 import type { Env, Offer, Verdict } from './estimate';
 import { bandOf, calibrate, drivesOf, Excitation, feedEeff, newRecords, nportOf, probeLayout, RECORD, stepsCap, tdrOf } from './run';
 import type { Records } from './run';
-import { SnapRecorder } from './snapshots';
+import { SnapRecorder, snapPlan, snapRuns } from './snapshots';
 import type { Frame, SliceInfo, SnapSpec } from './snapshots';
 import { acquireGpu, GpuError, gpuEnv, gpuHeld, gpuMisfit, GpuRunner, perSubmitOf } from './gpu';
 import type { GpuAcquire, RunnerOptions } from './gpu';
@@ -50,11 +53,12 @@ export interface FdtdJob {
   mode?: 'full' | 'tdr'; // each port in turn (default), or port 1 alone
   nf?: number; // S-parameter points over 0 … f_S (default 201)
   tr?: number[]; // rise times of the TDRs (default [tr_min])
-  snapshots?: SnapSpec | null; // of the first excitation
+  snapshots?: SnapSpec | null; // of the excitations in its `runs` (default the first)
   maxSteps?: number; stopDb?: number;
 }
 export interface FdtdInfo {
-  cells: number; steps: number; dt: number; runs: number; ports: string[]; seconds: number; slices: SliceInfo[]; every: number; frames: number; snapBytes: number;
+  cells: number; steps: number; dt: number; runs: number; ports: string[]; seconds: number; slices: SliceInfo[]; every: number; frames: number; snapBytes: number; // snapBytes: all recorded runs
+  snapRuns: number[]; // the excitations whose frames are taken (M7.2a)
   backend: Backend; rate: number; calibrated: boolean; // the estimator's rate (cell updates per second, bare) and whether it was measured
   held: { buffers: number; bytes: number }; // GPU buffers all runners hold once this run's are made (M7.1a: none left by earlier runs)
 }
@@ -63,14 +67,16 @@ export interface FdtdProgress {
   elapsed: number; eta: number; // ms
   energyDb: number; // the last energy sum under its maximum (dB, ≤ 0)
   from: number; rows: Float64Array; // record rows from row `from` of this run (RECORD values per port)
-  frames: Frame[];
+  frames: Frame[]; // of excitation `run`
 }
 export interface FdtdResult {
   records: Records; nport: NPort & { known: boolean[] }; tdr: TdrResult[];
   eeff: ReturnType<typeof feedEeff>;
   status: string[]; steps: number[]; backends: Backend[]; ms: number; notes: Note[];
-  snap: { slices: SliceInfo[]; every: number; frames: number; max: number[]; bytes: number } | null;
+  // frames and max: the first recorded run's; runs: each recorded run's (M7.2a); bytes: all of them
+  snap: { slices: SliceInfo[]; every: number; frames: number; max: number[]; bytes: number; runs: SnapRun[] } | null;
 }
+export interface SnapRun { run: number; frames: number; max: number[] }
 export interface BackendInfo { backend: Backend; reason: string; adapter?: { vendor: string; architecture: string }; restart?: number }
 export type FdtdRequest = { type: 'run'; id: number; job: FdtdJob } | { type: 'cancel'; id: number };
 export type FdtdReply =
@@ -92,7 +98,7 @@ const now = () => (typeof performance !== 'undefined' ? performance.now() : Date
 interface Calibration { cells: number; rate: number; stepMs: number }
 interface Current {
   id: number; job: FdtdJob; b: Built | null; p: Problem | null; rec: Records | null; drives: number[][]; run: number; x: Excitation | null;
-  snap: SnapRecorder | null; t0: number; sent: number; notes: Note[]; backend: Backend; backends: Backend[];
+  snap: SnapRecorder | null; snapRuns: number[]; snapDone: SnapRun[]; snapBytes: number; t0: number; sent: number; notes: Note[]; backend: Backend; backends: Backend[];
   runner: GpuRunner | null; chunkSteps: number; busy: boolean;
 }
 
@@ -198,15 +204,19 @@ export function createFdtdHandler(post: (msg: FdtdReply, transfer?: ArrayBuffer[
   function launch(c: Current, pr: { rate: number; seconds: number; calibrated: boolean }): void {
     const j = c.job, p = allocateBuilt(c.b!, { ...j.model, precision: j.precision ?? 'f32' });
     c.p = p; c.rec = newRecords(p); c.drives = drivesOf(p.ports.length, j.mode ?? 'full');
-    c.snap = j.snapshots?.slices?.length ? new SnapRecorder(p, j.snapshots, stepsCap(p, j.maxSteps)) : null;
+    c.snapRuns = j.snapshots?.slices?.length ? snapRuns(j.snapshots).filter((r) => r < c.drives.length) : [];
+    c.snapDone = []; c.snapBytes = 0;
+    c.snap = recorder(c);
     c.x = excitation(c);
-    const sp = c.snap?.plan;
-    post({ type: 'started', id: c.id, info: { cells: p.N, steps: c.x.cap, dt: p.dt, runs: c.drives.length, ports: c.rec.ports.map((q) => q.name), seconds: pr.seconds, slices: sp?.slices ?? [], every: sp?.every ?? 0, frames: sp?.frames ?? 0, snapBytes: sp?.bytes ?? 0, backend: c.backend, rate: pr.rate, calibrated: pr.calibrated, held: gpuHeld() } });
+    const sp = c.snapRuns.length ? snapPlan(p, j.snapshots!, stepsCap(p, j.maxSteps)) : null;
+    post({ type: 'started', id: c.id, info: { cells: p.N, steps: c.x.cap, dt: p.dt, runs: c.drives.length, ports: c.rec.ports.map((q) => q.name), seconds: pr.seconds, slices: sp?.slices ?? [], every: sp?.every ?? 0, frames: sp?.frames ?? 0, snapBytes: (sp?.bytes ?? 0) * c.snapRuns.length, snapRuns: c.snapRuns, backend: c.backend, rate: pr.rate, calibrated: pr.calibrated, held: gpuHeld() } });
     c.t0 = now();
     kick(c);
   }
 
-  const excitation = (c: Current) => new Excitation(c.p!, c.drives[c.run], { maxSteps: c.job.maxSteps, stopDb: c.job.stopDb, snap: c.run === 0 ? c.snap : null, backend: c.runner ? c.runner.factory() : null });
+  /** A recorder of its own for an excitation whose frames are taken (the same plan for each). */
+  const recorder = (c: Current) => (c.snapRuns.includes(c.run) ? new SnapRecorder(c.p!, c.job.snapshots!, stepsCap(c.p!, c.job.maxSteps)) : null);
+  const excitation = (c: Current) => new Excitation(c.p!, c.drives[c.run], { maxSteps: c.job.maxSteps, stopDb: c.job.stopDb, snap: c.snap, backend: c.runner ? c.runner.factory() : null });
 
   /** The GPU failed: the session goes on on the CPU; the excitation under way restarts there (`started`: it had begun). */
   async function fallback(c: Current, message: string, started = true): Promise<void> {
@@ -218,7 +228,7 @@ export function createFdtdHandler(post: (msg: FdtdReply, transfer?: ArrayBuffer[
     if (!pr || !live(c)) return;
     if (!started) { launch(c, pr); return; }
     c.sent = 0;
-    if (c.run === 0 && c.snap) c.snap = new SnapRecorder(c.p!, c.job.snapshots!, stepsCap(c.p!, c.job.maxSteps));
+    c.snap = recorder(c); // the restarted excitation's frames start again
     c.x = excitation(c);
     kick(c);
   }
@@ -250,8 +260,10 @@ export function createFdtdHandler(post: (msg: FdtdReply, transfer?: ArrayBuffer[
         x.release();
         c.rec!.runs.push(x.record());
         c.backends.push(c.backend);
+        if (c.snap) { c.snapDone.push({ run: c.run, frames: c.snap.count, max: Array.from(c.snap.max) }); c.snapBytes += c.snap.bytes; }
         if (c.run + 1 < c.drives.length) {
           c.run++; c.sent = 0;
+          c.snap = recorder(c);
           c.x = excitation(c);
         } else { finish(c); return; }
       }
@@ -269,7 +281,7 @@ export function createFdtdHandler(post: (msg: FdtdReply, transfer?: ArrayBuffer[
     const rows = x.rec.slice(c.sent * W, x.rows * W);
     const from = c.sent;
     c.sent = x.rows;
-    const frames = c.run === 0 && c.snap ? c.snap.drain() : [];
+    const frames = c.snap ? c.snap.drain() : [];
     const elapsed = now() - c.t0;
     const runs = c.rec!.runs;
     const done = runs.reduce((a, r) => a + r.rows - 1, 0) + x.step;
@@ -295,10 +307,10 @@ export function createFdtdHandler(post: (msg: FdtdReply, transfer?: ArrayBuffer[
       if (x.status === 'unstable') notes.push({ level: 'error', code: 'unstable', message: `Excitation ${q + 1} became unstable; its results are not valid.` });
       else if (x.status === 'done') notes.push({ level: 'info', code: 'not-settled', message: `Excitation ${q + 1} reached the run's length before its energy fell 50 dB.` });
     });
-    const s = c.snap;
+    const s = c.snapDone, plan = s.length ? snapPlan(c.p!, j.snapshots!, stepsCap(c.p!, j.maxSteps)) : null;
     const result: FdtdResult = {
       records: r, nport, tdr, eeff, status: r.runs.map((x) => x.status), steps: r.runs.map((x) => x.rows - 1), backends: c.backends, ms: now() - c.t0, notes,
-      snap: s ? { slices: s.plan.slices, every: s.plan.every, frames: s.count, max: Array.from(s.max), bytes: s.bytes } : null,
+      snap: plan ? { slices: plan.slices, every: plan.every, frames: s[0].frames, max: s[0].max, bytes: c.snapBytes, runs: s } : null,
     };
     post({ type: 'done', id: c.id, result }, r.runs.map((x) => x.rec.buffer as ArrayBuffer));
   }
@@ -314,7 +326,7 @@ export function createFdtdHandler(post: (msg: FdtdReply, transfer?: ArrayBuffer[
       const old = cur;
       if (old) { end(old); post({ type: 'cancelled', id: old.id }); }
       const c: Current = {
-        id: req.id, job: req.job, b: null, p: null, rec: null, drives: [], run: 0, x: null, snap: null, t0: now(), sent: 0, notes: [],
+        id: req.id, job: req.job, b: null, p: null, rec: null, drives: [], run: 0, x: null, snap: null, snapRuns: [], snapDone: [], snapBytes: 0, t0: now(), sent: 0, notes: [],
         backend: 'js', backends: [], runner: null, chunkSteps: 0, busy: false,
       };
       cur = c;

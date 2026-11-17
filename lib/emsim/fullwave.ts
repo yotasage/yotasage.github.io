@@ -16,6 +16,7 @@ import { gpuMisfit } from './fdtd/gpu';
 import type { GpuLimits } from './fdtd/gpu';
 import { CALIB_RANGE } from './fdtd/job';
 import type { Backend, FdtdJob, FdtdResult } from './fdtd/job';
+import { snapPlanOf, snapRuns } from './fdtd/snapshots';
 import type { SliceSpec, SnapSpec } from './fdtd/snapshots';
 import { renormalize, toMixedMode } from './nport';
 import type { NPort } from './nport';
@@ -69,6 +70,8 @@ export interface Preview {
   snap: SnapSpec | null; ms: number;
   views: SnapView[]; // the snapshot slices' places (M7.1b), one per slice of `snap` in order
   geom: Model; // the run's structure (the player's outline)
+  pair: boolean; // four ports: the frames are of entry A's and entry B's excitations (`snap.runs`, M7.2a)
+  snapBytes: number; // the frames' memory over the recorded runs (0 before the mesh)
 }
 
 /** The estimate and backend before the run, as job.ts will choose and judge them. */
@@ -92,7 +95,8 @@ export function preview(setup: Setup, spec: WavesSpec, dev: DeviceInfo): Preview
     return { name: p.name, layer: p.layer, ref, eeff: p.eeff };
   });
   const sv = snapOf(b.model);
-  const base = { model: opt, ports: ports(b.model), notes: [...b.notes, ...overReturns(b.model)], snap: sv.spec, views: sv.views, geom: b.model, ms: 0 };
+  const snapBytes = sv.spec && b.mesh && b.est ? snapPlanOf(b.mesh, sv.spec, b.est.steps).bytes * snapRuns(sv.spec).length : 0;
+  const base = { model: opt, ports: ports(b.model), notes: [...b.notes, ...overReturns(b.model)], snap: sv.spec, views: sv.views, geom: b.model, pair: pairOf(b.model) > 0, snapBytes, ms: 0 };
   let backend: Backend = 'js', reason = '';
   if (spec.backend === 'js') reason = 'The CPU was asked for.';
   else if (!dev.gpu.ok) reason = `${(dev.gpu as { reason: string }).reason} The run is on the CPU.`;
@@ -138,22 +142,39 @@ function overReturns(m: Model): Note[] {
 /** Where a slice of the snapshots lies (M7.1b's player names its views by it). */
 export type SnapView = 'side' | 'entry' | 'cavity' | 'exit' | 'above' | 'along' | 'across';
 
+/** A pair's second entry port (the excitation whose frames join entry A's for the differential and common drive), as
+ *  wavesView pairs the ports: a via's entry B is port 2 of [A in, B in, A out, B out], a trace's port 3 of
+ *  [A near, A far, B near, B far]; −1 for a single line. */
+export function pairOf(m: Model): number {
+  return m.ports.length === 4 ? (m.kind === 'via' ? 1 : 2) : -1;
+}
+
 /** The slices the frames are taken on (M7.1b plays them), each plane with the components worth seeing there:
  *  a via from the side through barrel A along its feeds (|E|, Ez, E along the feeds), from above halfway between each
  *  feed and its plane (Ez: the feed's wave, a pair's odd mode) and in the plane cavity the barrel crosses (Ez: the
  *  parallel-plate wave the quasi-static model leaves out); a trace from above halfway to its plane (Ez, |E|), from the
- *  side along trace 1 (|E|) and across the section's middle (|E|). */
+ *  side along trace 1 (|E|) and across the section's middle (|E|).
+ *  A pair (M7.2a) records entry A's and entry B's excitations, and the player adds them as values for the
+ *  differential and common drive; |E| of a sum is not the sum of |E|, so a pair's |E| planes take the three
+ *  components at the nodes (Nx, Ny, Nz: |E| as the recorder makes it, and the components shown beside it). Within six
+ *  slices: a via's side view as Nx, Ny, Nz and the three top views (Ez); a trace's view from above and across the
+ *  middle as Nx, Ny, Nz each (the view along trace 1, which shows one line of the two, is left out, BL180). */
 function snapOf(m: Model): { spec: SnapSpec | null; views: SnapView[] } {
   const p = m.ports[0];
   if (!p) return { spec: null, views: [] };
+  const pair = pairOf(m);
   const mid = (q: typeof p) => (q.ref.kind === 'plane' ? (q.zSig + q.ref.z) / 2 : q.zSig);
   const slices: SliceSpec[] = [], views: SnapView[] = [];
   const add = (v: SnapView, s: SliceSpec) => { slices.push(s); views.push(v); };
+  const nodes = (v: SnapView, s: Omit<SliceSpec, 'comp'>) => { for (const c of ['Nx', 'Ny', 'Nz'] as const) add(v, { ...s, comp: c }); };
   if (m.kind === 'via') {
     const side = p.axis === 'x' ? 'y' : 'x';
-    add('side', { normal: side, at: p.centre, comp: 'E' });
-    add('side', { normal: side, at: p.centre, comp: 'Ez' });
-    add('side', { normal: side, at: p.centre, comp: p.axis === 'x' ? 'Ex' : 'Ey' });
+    if (pair > 0) nodes('side', { normal: side, at: p.centre });
+    else {
+      add('side', { normal: side, at: p.centre, comp: 'E' });
+      add('side', { normal: side, at: p.centre, comp: 'Ez' });
+      add('side', { normal: side, at: p.centre, comp: p.axis === 'x' ? 'Ex' : 'Ey' });
+    }
     add('entry', { normal: 'z', at: mid(p), comp: 'Ez' });
     // the widest gap between two planes inside the barrel's length
     const bar = m.cyl.find((c) => !c.name.startsWith('return'));
@@ -164,14 +185,19 @@ function snapOf(m: Model): { spec: SnapSpec | null; views: SnapView[] } {
     const q = m.ports.find((x) => x.layer !== p.layer);
     if (q) add('exit', { normal: 'z', at: mid(q), comp: 'Ez' });
   } else {
-    add('above', { normal: 'z', at: mid(p), comp: 'Ez' });
-    add('above', { normal: 'z', at: mid(p), comp: 'E' });
-    add('along', { normal: p.axis === 'y' ? 'x' : 'y', at: p.centre, comp: 'E' });
     const ends = m.ports.filter((x) => x.centre === p.centre).map((x) => x.pos);
     const half = ends.length > 1 ? (Math.min(...ends) + Math.max(...ends)) / 2 : p.pos;
-    add('across', { normal: p.axis, at: half, comp: 'E' });
+    if (pair > 0) {
+      nodes('above', { normal: 'z', at: mid(p) });
+      nodes('across', { normal: p.axis, at: half });
+    } else {
+      add('above', { normal: 'z', at: mid(p), comp: 'Ez' });
+      add('above', { normal: 'z', at: mid(p), comp: 'E' });
+      add('along', { normal: p.axis === 'y' ? 'x' : 'y', at: p.centre, comp: 'E' });
+      add('across', { normal: p.axis, at: half, comp: 'E' });
+    }
   }
-  return { spec: { comp: 'E', slices }, views };
+  return { spec: { comp: 'E', slices, ...(pair > 0 ? { runs: [0, pair] } : {}) }, views };
 }
 
 export function wavesJob(setup: Setup, spec: WavesSpec, pv: Preview, dev: DeviceInfo): FdtdJob {

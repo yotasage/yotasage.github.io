@@ -9,6 +9,7 @@
 // CPU) is refused with its reason; a via without returns gets the suggestion, whose link opens the section on the via;
 // no horizontal scroll at 320/390/1440 in both themes; screenshots `emsim-waves-{390,1440}-{light,dark}`. M7.1b: the
 // first cancelled run starts while the player holds the finished run's frames, and every cancel leaves no frames.
+// M7.2a: the pair's run keeps entry A's and entry B's frames, their memory in the estimate (data-snap-mem).
 // EMSIM_WAVES_LONG=1 also runs the C45 pair on the CPU ("CPU" choice) to the end (about 25 min) and holds its steps'
 // time to its calibrated estimate (M7.1's "done when"; ui-player.mjs checks the player).
 //   tsx ui-waves.mjs [screenshot folder | -] [base URL]      (part of npm run ui)
@@ -90,6 +91,13 @@ try {
   check((await attr(page, '[data-waves-results]', 'data-backend')) === 'webgpu' && (await attr(page, '[data-waves-results]', 'data-where')) === 'worker', 'the C45 run went on WebGPU in the worker');
   check(el > 0 && el <= 2 * est, `C45 on WebGPU in ${el.toFixed(2)} s, estimate ${est.toFixed(2)} s (within 2×)`);
   check(Number(await attr(page, '[data-waves]', 'data-waves-frames')) > 10, `snapshot frames kept (${await attr(page, '[data-waves]', 'data-waves-frames')})`);
+  // M7.2a: the pair's frames of entry A and entry B, their memory in the estimate
+  const sm = Number(await attr(page, '[data-waves-estimate]', 'data-snap-mem'));
+  const sr = await page.evaluate(() => { const s = window.__emsimWaves.result.snap; return { runs: s.runs.map((r) => `${r.run}:${r.frames}`), bytes: s.bytes, frames: s.frames }; });
+  const etext = await page.locator('[data-waves-estimate]').textContent();
+  check((await attr(page, '[data-waves-estimate]', 'data-pair')) === 'true' && sr.runs.length === 2 && sr.runs[0].startsWith('0:') && sr.runs[1].startsWith('1:') && sr.bytes > 0 && sr.bytes <= sm && sm <= 64 * 1048576
+    && Number(await attr(page, '[data-waves]', 'data-waves-frames')) === sr.runs.reduce((a, r) => a + Number(r.split(':')[1]), 0) && /entry A’s and entry B’s/.test(etext),
+    `the pair's frames: runs ${sr.runs.join(', ')}, ${(sr.bytes / 1048576).toFixed(1)} MiB of the estimate's ${(sm / 1048576).toFixed(1)} MiB, said in the estimate`);
   const got = await page.evaluate(() => {
     const w = window.__emsimWaves, r = w.result, R = r.records;
     const arr = (x) => Array.from(x);

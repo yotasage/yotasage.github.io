@@ -2,6 +2,10 @@
 // into views (a plane with the components taken on it), the fixed colour scale of a slice over the whole run, a frame
 // turned into the pixels of a picture to scale (bilinear on the run's graded mesh), the structure's outline in the
 // slice (copper cut by it, the copper beside it, the ports), the axes' ticks in the page's unit and the playback clock.
+// M7.2a: a pair's drive (entry A alone, differential, common): the frames of entry A's and entry B's excitations added
+// as values (q·scale, never q) with the mode's signs, |E| from the three components at the nodes, quantised again as
+// the recorder does (`trackOf`); the field is linear in the sources, so this is the field of both driven at once up to
+// the frames' 8-bit steps (check-player holds it against a run driven at both ports).
 //
 // Values: E in V/m for the run's source, a Gaussian pulse of 1 V peak behind each port's resistor (fdtd/ports.ts); the
 // frames hold f·E on conformal edges (snapshots.ts). The colour maps are colormap.ts's: sequential for |E|, diverging
@@ -16,7 +20,7 @@ import type { SnapView } from './fullwave';
 import { fromMm, toMm } from './units';
 import type { LengthUnit } from './units';
 
-export const COMP_TEXT: Readonly<Record<SnapComp, string>> = { E: '|E|', Ex: 'Ex', Ey: 'Ey', Ez: 'Ez' };
+export const COMP_TEXT: Readonly<Record<SnapComp, string>> = { E: '|E|', Ex: 'Ex', Ey: 'Ey', Ez: 'Ez', Nx: 'Ex', Ny: 'Ey', Nz: 'Ez' };
 export const VIEW_TEXT: Readonly<Record<SnapView, string>> = {
   side: 'From the side', entry: 'At the entry feed', cavity: 'Between the planes', exit: 'At the exit feed',
   above: 'From above', along: 'Along the trace', across: 'Across the trace',
@@ -32,18 +36,82 @@ export const RASTER_CAP = 200_000;
 
 // ---------------------------------------------------------------- views
 
-export interface PlayerView { view: SnapView; normal: 'x' | 'y' | 'z'; at: number; slices: number[]; comps: SnapComp[] }
+/** A plane with the components shown on it: `comps` as the player names them (|E| 'E', 'Ex' …), `src` the slices each
+ *  is made of (one; or a pair's three components at the nodes, x, y, z, for |E|), `slices` all of the plane's. */
+export interface PlayerView { view: SnapView; normal: 'x' | 'y' | 'z'; at: number; slices: number[]; comps: SnapComp[]; src: number[][] }
 
-/** The slices grouped by their plane (one view per plane, its components in the order taken). */
+/** The slices grouped by their plane (one view per plane, its components in the order taken). A plane taken as the
+ *  three components at the nodes (a pair, M7.2a) shows |E| from all three, then Ez and the in-plane component across
+ *  the picture (a side view's along the feeds). */
 export function playerViews(infos: readonly SliceInfo[], views: readonly SnapView[]): PlayerView[] {
   const out: PlayerView[] = [];
   infos.forEach((s, i) => {
     const v = views[i] ?? (s.normal === 'z' ? 'above' : 'side');
     let g = out.find((o) => o.view === v && o.normal === s.normal && Math.abs(o.at - s.at) < 1e-6);
-    if (!g) { g = { view: v, normal: s.normal, at: s.at, slices: [], comps: [] }; out.push(g); }
-    g.slices.push(i); g.comps.push(s.comp);
+    if (!g) { g = { view: v, normal: s.normal, at: s.at, slices: [], comps: [], src: [] }; out.push(g); }
+    g.slices.push(i);
+    if (s.comp[0] !== 'N') { g.comps.push(s.comp); g.src.push([i]); }
   });
+  for (const g of out) {
+    const node = (c: 'Nx' | 'Ny' | 'Nz') => g.slices.find((i) => infos[i].comp === c);
+    const [x, y, z] = [node('Nx'), node('Ny'), node('Nz')];
+    const add = (c: SnapComp, src: number[]) => { g.comps.push(c); g.src.push(src); };
+    if (x !== undefined && y !== undefined && z !== undefined) add('E', [x, y, z]);
+    if (z !== undefined) add('Ez', [z]);
+    const across = g.normal === 'z' ? undefined : axesOf(g.normal)[0] === 'x' ? x : y;
+    if (across !== undefined) add(axesOf(g.normal)[0] === 'x' ? 'Ex' : 'Ey', [across]);
+  }
   return out;
+}
+
+// ---------------------------------------------------------------- a pair's drive (M7.2a)
+
+export type DriveMode = 'single' | 'diff' | 'common';
+export const DRIVE_MODES: readonly DriveMode[] = ['single', 'diff', 'common'];
+export const MODE_TEXT: Readonly<Record<DriveMode, string>> = { single: 'Entry A', diff: 'Differential', common: 'Common' };
+/** The weights of entry A's and entry B's runs (each a 1 V pulse at its port). */
+export const MODE_W: Readonly<Record<DriveMode, readonly [number, number]>> = { single: [1, 0], diff: [1, -1], common: [1, 1] };
+/** What the frames show, for the scale's note. */
+export function driveText(mode: DriveMode, pair: boolean): string {
+  if (!pair) return 'a 1 V pulse at the port';
+  return mode === 'diff' ? 'differential drive: A + 1 V, B − 1 V' : mode === 'common' ? 'common drive: A + 1 V, B + 1 V' : 'entry A driven alone: A + 1 V, B at rest behind its resistor';
+}
+
+/** The frames a component shows in a drive (one slice each), with their largest |value|, from the runs' frames
+ *  (`runs[0]` entry A's, `runs[1]` entry B's). Entry A alone on one slice is its own frames (`si` that slice);
+ *  otherwise each frame is Σ_r w_r·q_r·scale_r per component (a run without the frame counts as zero: it settled),
+ *  |E| the root of the components' squares, quantised as SnapRecorder does (int8 at max/127, u8 at max/255; `si` 0).
+ *  Frame i's time is entry A's. */
+export function trackOf(runs: readonly (readonly Frame[])[], src: readonly number[], comp: SnapComp, mode: DriveMode, maxOf: readonly number[]): { frames: Frame[]; si: number; max: number } {
+  const w = MODE_W[mode];
+  const A = runs[0] ?? [];
+  if (src.length === 1 && w[1] === 0) return { frames: A as Frame[], si: src[0], max: maxOf[src[0]] ?? 0 };
+  const mag = comp === 'E', n = A.length, m = n ? A[0].data[src[0]].length : 0;
+  const val = new Float64Array(m), sq = mag ? new Float64Array(m) : null;
+  const frames: Frame[] = [];
+  let max = 0;
+  for (let i = 0; i < n; i++) {
+    if (sq) sq.fill(0);
+    for (const s of src) {
+      val.fill(0);
+      for (let r = 0; r < w.length; r++) {
+        const f = runs[r]?.[i], wr = w[r];
+        if (!f || !wr) continue;
+        const d = f.data[s], k = wr * f.scale[s];
+        for (let q = 0; q < m; q++) val[q] += d[q] * k;
+      }
+      if (sq) for (let q = 0; q < m; q++) sq[q] += val[q] * val[q];
+    }
+    let mx = 0;
+    if (sq) for (let q = 0; q < m; q++) { const x = Math.sqrt(sq[q]); val[q] = x; if (x > mx) mx = x; }
+    else for (let q = 0; q < m; q++) { const x = val[q], ax = x < 0 ? -x : x; if (ax > mx) mx = ax; }
+    const sc = mx > 0 ? mx / (mag ? 255 : 127) : 1, inv = 1 / sc;
+    const d = mag ? new Uint8Array(m) : new Int8Array(m);
+    for (let q = 0; q < m; q++) d[q] = Math.round(val[q] * inv);
+    frames.push({ step: A[i].step, t: A[i].t, data: [d], scale: Float32Array.of(sc) });
+    if (mx > max) max = mx;
+  }
+  return { frames, si: 0, max };
 }
 
 /** A view's extent: every slice of it (an edge component's samples lie half a cell inside the nodes'). */
@@ -95,7 +163,7 @@ const BINS = 4096;
 /** The slice's scale over all frames: the PLAY_CLIP quantile of |value| (values of every frame and sample), from a
  *  histogram on 0 … max. One scale for the whole run, so a frame's colours compare with every other frame's. */
 export function playScale(frames: readonly Frame[], s: number, comp: SnapComp, max: number, clip = PLAY_CLIP): PlayScale {
-  const signed = comp !== 'E';
+  const signed = comp !== 'E'; // a component at the nodes (Nx …) is signed too
   const hist = new Float64Array(BINS + 1);
   let n = 0;
   const m = max > 0 ? max : 1;
