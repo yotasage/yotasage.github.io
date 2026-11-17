@@ -46,19 +46,21 @@ const HISTORY = 200;
 const GROUP_MS = 1500;
 
 // The sections that exist (plan.md: Stackup · Trace · Via · Waves · Theory · Examples · Report · Export · References).
-const SECTIONS: readonly { id: string; label: string }[] = [{ id: 'stackup', label: 'Stackup' }, { id: 'trace', label: 'Trace' }, { id: 'via', label: 'Via' }, { id: 'export', label: 'Export' }, { id: 'examples', label: 'Examples' }, { id: 'theory', label: 'Theory' }, { id: 'references', label: 'References' }];
+const SECTIONS: readonly { id: string; label: string }[] = [{ id: 'stackup', label: 'Stackup' }, { id: 'trace', label: 'Trace' }, { id: 'via', label: 'Via' }, { id: 'waves', label: 'Waves' }, { id: 'export', label: 'Export' }, { id: 'examples', label: 'Examples' }, { id: 'theory', label: 'Theory' }, { id: 'references', label: 'References' }];
 
 // M2.4c: the Theory and References (Theory.tsx with KaTeX and the equations) load when they come within LOAD_MARGIN of
 // the window or a link points at an id outside the tool's sections; until then the sections are empty frames.
 type TheoryMod = typeof import('./Theory');
 const LOAD_MARGIN = '400px 0px';
-const TOOL_IDS = new Set(['', 'stackup', 'trace', 'via', 'export', 'examples']);
+const TOOL_IDS = new Set(['', 'stackup', 'trace', 'via', 'waves', 'export', 'examples']);
 // M4.3b: the worked examples' anchors (ex-…) belong to the Examples chunk, not the theory.
 const notTheory = (id: string) => TOOL_IDS.has(id) || id.startsWith('ex-');
 // M3.1a: the Via section (ViaSection.tsx, its drawings and results) loads the same way: near, or by the link #via.
 type ViaMod = typeof import('./ViaSection');
 // M8.1b: the Export section (ExportSection.tsx with the figure model and fflate) the same way: near, or by #export.
 type ExportMod = typeof import('./ExportSection');
+// M7.1a: the Waves section (WavesSection.tsx with the full-wave client and lib/emsim/fullwave.ts) the same way.
+type WavesMod = typeof import('./WavesSection');
 // M4.3b: the Examples section (Examples.tsx with lib/emsim/examples.ts) the same way: near, by #examples or an example's id.
 type ExamplesMod = typeof import('./Examples');
 
@@ -163,6 +165,8 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
   }, []);
   // @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
   const [xm, exportBox] = useNearLoad<ExportMod>('export', () => import('./ExportSection'));
+  // @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
+  const [wm, wavesBox] = useNearLoad<WavesMod>('waves', () => import('./WavesSection'));
   // @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
   const [em, examplesBox] = useNearLoad<ExamplesMod>('examples', () => import('./Examples'), 'ex-');
   const bib = useMemo<Bibliography | null>(() => (th ? th.bibOf(references) : null), [th, references]);
@@ -412,6 +416,10 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
         <section id="via" ref={viaBox} className={styles.section} aria-labelledby="via-h" data-loaded={vm ? 'true' : 'false'}>
           <h2 id="via-h" className={styles.h2}>Via</h2>
           {vm ? <vm.default setup={setup} commit={commit} unit={unit} digits={digits} /> : <p className={styles.lede}>The via editor loads as you come near it.</p>}
+        </section>
+        <section id="waves" ref={wavesBox} className={styles.section} aria-labelledby="waves-h" data-loaded={wm ? 'true' : 'false'}>
+          <h2 id="waves-h" className={styles.h2}>Waves</h2>
+          {wm ? <wm.default setup={setup} /> : <p className={styles.lede}>The full-wave runs load as you come near them.</p>}
         </section>
         <section id="export" ref={exportBox} className={styles.section} aria-labelledby="export-h" data-loaded={xm ? 'true' : 'false'}>
           <h2 id="export-h" className={styles.h2}>Export</h2>

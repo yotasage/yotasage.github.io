@@ -42,12 +42,13 @@ const pairSetup = () => { const s = withTrace('pair-microstrip', 0.11); s.trace 
 
 // ---- the data ----
 const keys = Object.keys(WHYS);
-check(keys.length === 202, `${keys.length} short lines (201 of theory-lines.md and the switch's own)`);
+check(keys.length === 212, `${keys.length} short lines (211 of theory-lines.md and the switch's own)`);
 check(keys.every((k) => WHYS[k].text && WHYS[k].label && (WHYS[k].topic === null || TOPIC_TITLE[WHYS[k].topic])), 'every line has a label, a text and a known topic or none');
 check(keys.every((k) => WHYS[k].text.split(/\s+/).length <= 22), 'every line at most about 20 words');
 const fullText = (k) => `${WHYS[k].text}${WHYS[k].topic ? ' → theory' : ''}`;
 
-const browser = await chromium.launch({ channel: 'msedge' });
+// WebGPU on (webgpu/runner.mjs's flags): the Waves section's result lines need a run, a few seconds on the GPU.
+const browser = await chromium.launch({ channel: 'msedge', args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=d3d11', '--ignore-gpu-blocklist'] });
 try {
   const errors = [];
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 }, colorScheme: 'light' });
@@ -155,6 +156,20 @@ try {
   await vp.waitForSelector('[data-via3d] [data-via3d-png]', { timeout: 30000 });
   await state(vp, 'via 3D view', ['via-3d-reset', 'via-3d-cut', 'via-3d-laminate', 'via-3d-png', 'via-3d-fields']);
   await vp.close();
+  // ---- 4b: the Waves section (M7.1a): before a run, the trace's length, then the default via's run ----
+  const wp = await open(`${URL0}#waves`);
+  await wp.waitForSelector('[data-waves-estimate="ready"]', { timeout: 60000 });
+  await state(wp, 'waves', ['waves-kind', 'waves-tr', 'waves-backend', 'waves-estimate', 'waves-run', 'waves-progress', 'waves-checked']);
+  await wp.click('[data-waves-kind-set="trace"]');
+  await wp.waitForSelector('[data-field="waves.length"]', { timeout: 30000 });
+  await state(wp, 'waves trace', ['waves-length']);
+  await wp.click('[data-waves-kind-set="via"]');
+  await wp.waitForTimeout(500);
+  await wp.waitForSelector('[data-waves-estimate="ready"]', { timeout: 60000 });
+  await wp.click('[data-waves-run]');
+  await wp.waitForSelector('[data-waves-results][data-stale="false"]', { timeout: 900000 });
+  await state(wp, 'waves result', ['waves-plots', 'waves-notes']);
+  await wp.close();
   // ---- 5: the Export section (M8.1b) ----
   const ep = await open(`${URL0}#export`);
   await ep.waitForSelector('[data-export-ready] [data-export-preview]', { timeout: 30000 });

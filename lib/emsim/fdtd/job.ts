@@ -30,7 +30,7 @@ import { bandOf, calibrate, drivesOf, Excitation, feedEeff, newRecords, nportOf,
 import type { Records } from './run';
 import { SnapRecorder } from './snapshots';
 import type { Frame, SliceInfo, SnapSpec } from './snapshots';
-import { acquireGpu, GpuError, gpuEnv, gpuMisfit, GpuRunner, perSubmitOf } from './gpu';
+import { acquireGpu, GpuError, gpuEnv, gpuHeld, gpuMisfit, GpuRunner, perSubmitOf } from './gpu';
 import type { GpuAcquire, RunnerOptions } from './gpu';
 import type { NPort } from '../nport';
 import type { TdrResult } from '../tdr';
@@ -56,6 +56,7 @@ export interface FdtdJob {
 export interface FdtdInfo {
   cells: number; steps: number; dt: number; runs: number; ports: string[]; seconds: number; slices: SliceInfo[]; every: number; frames: number; snapBytes: number;
   backend: Backend; rate: number; calibrated: boolean; // the estimator's rate (cell updates per second, bare) and whether it was measured
+  held: { buffers: number; bytes: number }; // GPU buffers all runners hold once this run's are made (M7.1a: none left by earlier runs)
 }
 export interface FdtdProgress {
   run: number; runs: number; step: number; steps: number; // the excitation (from 0) and its step of its cap
@@ -200,7 +201,7 @@ export function createFdtdHandler(post: (msg: FdtdReply, transfer?: ArrayBuffer[
     c.snap = j.snapshots?.slices?.length ? new SnapRecorder(p, j.snapshots, stepsCap(p, j.maxSteps)) : null;
     c.x = excitation(c);
     const sp = c.snap?.plan;
-    post({ type: 'started', id: c.id, info: { cells: p.N, steps: c.x.cap, dt: p.dt, runs: c.drives.length, ports: c.rec.ports.map((q) => q.name), seconds: pr.seconds, slices: sp?.slices ?? [], every: sp?.every ?? 0, frames: sp?.frames ?? 0, snapBytes: sp?.bytes ?? 0, backend: c.backend, rate: pr.rate, calibrated: pr.calibrated } });
+    post({ type: 'started', id: c.id, info: { cells: p.N, steps: c.x.cap, dt: p.dt, runs: c.drives.length, ports: c.rec.ports.map((q) => q.name), seconds: pr.seconds, slices: sp?.slices ?? [], every: sp?.every ?? 0, frames: sp?.frames ?? 0, snapBytes: sp?.bytes ?? 0, backend: c.backend, rate: pr.rate, calibrated: pr.calibrated, held: gpuHeld() } });
     c.t0 = now();
     kick(c);
   }

@@ -19,14 +19,15 @@ export const STATUS_NOW =
   'what to watch out for. Export any of these drawings, field maps and plots as TikZ, SVG or PNG at the width of your ' +
   'document, in colour, grey or black and white, and the numbers behind the results as CSV, the via’s S-parameters as ' +
   'Touchstone, the whole setup as a project file to open again or drop on the page, and a printable report of it all ' +
-  'on A4 or Letter.';
+  'on A4 or Letter. Run the via or a trace section full-wave (FDTD) on your graphics card with WebGPU, or on the CPU, ' +
+  'with an estimate of its time first, and see its TDR and S-parameters beside the quasi-static ones.';
 export const STATUS_CHECKED =
   'Checked by automated tests against exact solutions, against a separate finite-difference solver on hundreds of ' +
   'random structures and against JLCPCB’s own calculator (within about 0.3 %), and the page in the browser. The ' +
   'numbers are a careful estimate; for an order, your board house’s own figures have the last word.';
 /** Behind "More". */
 export const STATUS_ASSUMES =
-  'It is quasi-static: no losses and no change with frequency; a via is lines and lumped capacitances, right while ' +
+  'Apart from the full-wave runs it is quasi-static: no losses and no change with frequency; a via is lines and lumped capacitances, right while ' +
   'its parts are short against the wavelength. The tolerances are placeholders until you type the ones of your board house.';
 export const STATUS_COMING =
-  'Not here yet: animated waves from a full-wave run; they come next.';
+  'Not here yet: the waves of a full-wave run as an animation; they come next.';

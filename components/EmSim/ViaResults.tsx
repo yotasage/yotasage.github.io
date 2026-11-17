@@ -22,6 +22,18 @@ import type { RunState } from './TraceResults';
 import { realStubs } from '../../lib/emsim/viaGeom';
 import type { ViaStructure } from '../../lib/emsim/via';
 import { Why } from './Why';
+import { askWaves, suggestFullWave } from './wavesSuggest';
+
+/** The line under the flags (M7.1a): why a full-wave run would check this via, with the link that opens it. */
+function WavesHint({ r }: { r: ViaModelResult }) {
+  const why = suggestFullWave(r);
+  return (
+    <p className={css.small} data-via-next data-waves-suggest={why.length}>
+      {why.length ? `A full-wave run would check this via: ${why.join('; ')}. ` : 'The model holds for this via and edge; a full-wave run checks it. '}
+      <a href="#waves" onClick={() => askWaves('via')} data-waves-open>Run it in Waves</a>
+    </p>
+  );
+}
 
 /** The assumption ids of viaModel as sentences. */
 export const ASSUME_TEXT: Readonly<Record<string, string>> = {
@@ -212,7 +224,7 @@ function ViaResults({ r, s, v, state, stale, message, ms, unit, digits, quick = 
             </ul>
           </details>
           <Why k="via-assumptions" bare />
-          <p className={css.small} data-via-next>Next: full-wave waves.</p>
+          <WavesHint r={r} />
           <Why k="via-next" bare />
         </div>
         </Signals.Provider>
@@ -222,6 +234,7 @@ function ViaResults({ r, s, v, state, stale, message, ms, unit, digits, quick = 
           {r.flags.map((f, i) => <li key={i} data-via-flag={f.code} data-numbers={f.numbers.join(' ')}><span className={base.level} data-level="error">{f.level}</span>{f.message}</li>)}
         </ul>
       )}
+      {r && !r.ok && r.flags.some((f) => f.code === 'no-return') && <WavesHint r={r} />}
     </div>
   );
 }

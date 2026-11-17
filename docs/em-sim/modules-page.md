@@ -57,6 +57,8 @@ and (in [modules-page-checks.md](modules-page-checks.md)) its browser checks, on
 | `styles/EmSimStackup.module.css` | M2.1a: the Stackup section: tools and drop zone, summary, the two-column layout from 960 px (drawing sticky), the drawing, the layer rows (name beside the fields from 720 px, two fields a line under 400 px), fields, source tags, sources, net-class cards |
 | `styles/EmSimTrace.module.css` | M2.1b: the Trace section: tools, class buttons, the layout (phone: drawing, controls, results; from 960 px drawing and results left, controls right), the drawing and its labels, the results (stale dimmed), details, matrices |
 
+The Waves section (M7.1a: `WavesSection.tsx`, `wavesSuggest.ts`, `styles/EmSimWaves.module.css`, `lib/emsim/fullwave.ts`) is in [modules-page-waves.md](modules-page-waves.md).
+
 The theory, the equations and the examples (the teaching layer) are in [modules-page-teach.md](modules-page-teach.md) (split off at M4.3b to keep this part under 40 kB).
 
 ## Browser checks

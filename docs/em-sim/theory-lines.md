@@ -194,7 +194,7 @@ Placed in `whys.ts` with the keys in brackets. Since M4.3b the links go to the v
 | Valid to (via-valid) | Each lumped part is short against the wavelength up to here (λ/8). | `via-limits` | – |
 | Flags (via-flags) | Where the model is stretched, each with its numbers. | `via-limits` | – |
 | Assumptions (via-assumptions) | What the via model takes as given. | `via-limits` | – |
-| Next (via-next) | Full-wave waves on the via and the trace come in later steps. | – | – |
+| Full-wave (via-next) | Why a full-wave run would check this via, and the link that opens it in the Waves section. | – | – |
 | TDR (via-tdr, M3.2a) | The impedance a step from the port meets, there and back: feeds, pads, barrel and stubs in turn. | `via-tdr` | – |
 | Rise time (`data-field="via.tr"`, via-tr) | The edge's 10–90 % time; a faster edge shows finer detail and reaches higher frequencies. | `via-tdr` | – |
 | Port (`data-field="via.port"`, via-port) | The instrument's impedance at both ends; a pair's is the differential one, twice each line's. | – | – |
@@ -243,3 +243,18 @@ Placed in `whys.ts` with the keys in brackets. Since M4.3b the links go to the v
 | Equations (`data-eq-open` in the Trace results, eq-open) | A number with a dotted underline opens its equation with your numbers beside the results; Escape closes it. | – | – |
 | Equations (`data-eq-open` in the Via results, eq-via-open) | A number with a dotted underline opens its equation with this via's numbers; Escape closes it. | – | – |
 | Derivation (`data-eq-derive`, eq-derive) | How the equation follows, one step at a time with its reason; Next step, Back, Show all. | – | – |
+
+## Waves (step M7.1a)
+
+| Where | Line | → | Claim |
+| --- | --- | --- | --- |
+| What to run (waves-kind) | The via with its feeds, or the trace as a straight section between two ports. | – | – |
+| Length (waves-length) | The trace section between the reference planes; the run adds a feed at each end. | – | – |
+| Rise time (waves-tr) | The fastest edge the run resolves: a faster one needs finer cells, so more memory and time. | – | – |
+| Where it runs (waves-backend) | WebGPU when the browser offers a GPU and the run fits it; the CPU is slower, often a hundred times or more. | – | – |
+| Estimate (waves-estimate) | Cells, memory and steps of the grid, and the time from the rate this device measured. | – | – |
+| Run (waves-run) | Starts the run; a new run cancels the one under way, and Cancel stops it and frees the memory. | – | – |
+| Progress (waves-progress) | The step of each excitation, the time left and how far the energy in the grid has died down. | – | – |
+| Full-wave against model (waves-plots) | Both curves at the same ports, reference and edge: where they part, the quasi-static model stops holding. | – | – |
+| Run notes (waves-notes) | Whether the run settled, stayed stable and its feeds matched the 2D solver. | – | – |
+| Checked (waves-checked) | The limits the engine held against openEMS, a separate full-wave solver, on the same structures. | – | – |

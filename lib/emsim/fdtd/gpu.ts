@@ -45,6 +45,11 @@ export interface GpuLimits {
 export interface GpuInfo { vendor: string; architecture: string; description: string; fallback: boolean; limits: GpuLimits }
 
 /** A GPU failure; `lost` when the device is gone (the run falls back to the CPU). */
+/** The GPU buffers every runner holds now (step M7.1a: the page's check that a cancelled or finished run frees them). */
+const HELD = new Set<GPUBuffer>();
+const drop = (b: GPUBuffer | null | undefined): void => { if (b) { HELD.delete(b); b.destroy(); } };
+export const gpuHeld = (): { buffers: number; bytes: number } => { let bytes = 0; for (const b of HELD) bytes += b.size; return { buffers: HELD.size, bytes }; };
+
 export class GpuError extends Error {
   constructor(message: string, readonly lost = false) { super(message); this.name = 'GpuError'; }
 }
@@ -198,6 +203,7 @@ export class GpuRunner {
     const b = this.ctx.device.createBuffer({ size: Math.max(16, Math.ceil(size / 4) * 4), usage, mappedAtCreation: !!data });
     if (data) { new Uint8Array(b.getMappedRange()).set(new Uint8Array(data.buffer, data.byteOffset, data.byteLength)); b.unmap(); }
     this.buffers.push(b);
+    HELD.add(b);
     return b;
   }
 
@@ -380,7 +386,7 @@ export class GpuRunner {
     const ng = idx.length;
     this.ngather = ng;
     this.frameSlots = Math.max(1, Math.min(64, Math.floor(FRAME_BYTES / Math.max(4, 4 * ng))));
-    this.gidx?.destroy(); this.snapBuf?.destroy();
+    drop(this.gidx); drop(this.snapBuf);
     this.gidx = this.buf(4 * ng, BU.STORAGE, Uint32Array.from(idx));
     this.snapBuf = this.buf(4 * ng * this.frameSlots, BU.STORAGE | BU.COPY_SRC);
     const parts = splitGroups(Math.ceil(ng / K.WG_1D), this.maxDim);
@@ -404,10 +410,11 @@ export class GpuRunner {
 
   private ensureStage(bytes: number): GPUBuffer {
     if (this.stage && this.stageBytes >= bytes) return this.stage;
-    this.stage?.destroy();
+    drop(this.stage);
     this.stageBytes = Math.ceil(bytes / 256) * 256;
     this.stage = this.ctx.device.createBuffer({ size: this.stageBytes, usage: BU.MAP_READ | BU.COPY_DST });
     this.buffers.push(this.stage);
+    HELD.add(this.stage);
     return this.stage;
   }
 
@@ -441,7 +448,7 @@ export class GpuRunner {
     }
     const len = o.maxSteps + 1;
     if (!this.wave || this.waveLen < len * Math.max(1, waves.length)) {
-      this.wave?.destroy();
+      drop(this.wave);
       this.waveLen = len * Math.max(1, waves.length);
       this.wave = this.buf(4 * this.waveLen, BU.STORAGE | BU.COPY_DST);
     }
@@ -498,7 +505,7 @@ export class GpuRunner {
 
   /** Frees the buffers (the device stays). */
   destroy(): void {
-    for (const b of this.buffers) { try { b.destroy(); } catch { /* lost already */ } }
+    for (const b of this.buffers) { HELD.delete(b); try { b.destroy(); } catch { /* lost already */ } }
     this.buffers = [];
   }
 }

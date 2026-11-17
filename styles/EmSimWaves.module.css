@@ -1,0 +1,9 @@
+/* The Waves section (step M7.1a): the estimate, the run row and the progress bar; the rest is EmSim*.module.css's. */
+.waves { min-width: 0; }
+.estimate { margin-top: 12px; padding: 8px 12px; border-left: 3px solid var(--rule); max-width: 72ch; }
+.estimate p { margin: 4px 0; }
+.runRow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.run { font-weight: 600; }
+.progress { margin-top: 8px; max-width: 72ch; }
+.progress progress { width: 100%; height: 10px; accent-color: var(--accent); }
+.progress p { margin: 4px 0; }

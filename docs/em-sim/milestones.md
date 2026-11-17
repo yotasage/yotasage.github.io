@@ -469,6 +469,12 @@ a 2D slice (slice and component choice, play, pause, scrub, speed, fixed colour 
 **Done when:** the owner's LVDS via runs to the end on the laptop with WebGPU and on the JavaScript fallback within the
 estimate; the animation plays smoothly at 1440 and 390 px; cancelling frees the GPU memory.
 
+**Split** (main session, 2026-11-17, two jobs): **M7.1a** (the Waves section: the structure taken from the Trace or Via
+section, the estimate with backend, cells, memory and time, run with progress and cancel through `FdtdClient`, the
+results: TDR/TDT and S-parameters overlaid with the quasi-static ones, the notes and the "checked against openEMS"
+limits, when to suggest a run (notes-M6.4c.md "For M7")) and **M7.1b** (the 2D animation player on a slice: slice and
+component, play, pause, scrub, speed, fixed colour scale, phone width; cancel frees the GPU memory).
+
 ### M7.2 – Waves in 3D, modes, theory · M (page)
 
 The animation on cut planes in the 3D view, differential and common-mode excitation of pairs, the theory topic on
