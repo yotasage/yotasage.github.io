@@ -46,7 +46,7 @@ into the page's Theory and References sections. Part of [plan.md](plan.md); the 
 
 **Text.**
 
-The page works out what a trace on a printed circuit board looks like to a fast signal: its impedance, how fast the
+The page works out what a trace or a via on a printed circuit board looks like to a fast signal: its impedance, how fast the
 signal travels and, for a pair, how the two traces share their fields. ⟨1⟩ It opens on a 50 Ω microstrip of
 0.1377 mm on the top layer of JLCPCB's six-layer stackup JLC061611-3313A, under solder mask, over the plane on L2. ⟨2⟩
 
@@ -63,6 +63,14 @@ signal travels and, for a pair, how the two traces share their fields. ⟨1⟩ I
 5. **Tools.** Target finds the width or gap for an impedance; Sweep plots what one input does; Tolerance shows the
    spread the inputs' tolerances give; Calculators compares the result with closed formulas and with JLCPCB's
    calculator. ⟨10⟩
+6. **Via.** Type a via or a via pair, or start from one of the two examples, with its pads, antipads, return vias,
+   backdrill and feeds. It is drawn to scale from the side, from above and in 3D, with its impedance, TDR,
+   S-parameters, stub resonance and fields; Target finds the antipad or the return vias' distance for an impedance.
+7. **Waves.** Run the via or a trace section full-wave. An estimate of its time comes first; the run's TDR and
+   S-parameters appear beside the via model's, and the player shows its waves on a slice and in 3D.
+8. **Keep.** Export saves the drawings, field maps and plots as TikZ, SVG or PNG, the numbers as CSV or Touchstone,
+   and the whole setup as a project file; Report prints it all. The worked Examples open each of their states on the
+   page. (Items 6–8 added in M9.3b, without claims of their own: they say where things are, as the topic's how-to.)
 
 Undo and Redo step through every change. The page's address holds the whole setup, so Copy link shares exactly what
 you see. ⟨11⟩
@@ -108,8 +116,10 @@ per millimetre. ⟨22⟩
 millimetre, about 0.02 of a wavelength. ⟨23⟩ Getsinger's dispersion model estimates how εeff of a microstrip rises
 with frequency [QucsTech §11.1] [Getsinger1973]. ⟨24⟩ Applied to the default microstrip it gives a rise of 0.05 % at
 10 GHz and 0.3 % at 25 GHz; the rise reaches the solver's error on εeff (0.17 %) at about 18 GHz. ⟨25⟩ So on thin
-laminates the quasi-TEM numbers hold within their error to well above 10 GHz. ⟨26⟩ This version leaves out
-dispersion, losses, copper roughness and how εr changes with frequency; they are planned for later. ⟨27⟩
+laminates the quasi-TEM numbers hold within their error to well above 10 GHz. ⟨26⟩ The quasi-static results
+leave out dispersion, losses, copper roughness and how εr changes with frequency. The full-wave runs (topic 14)
+take in the structure's own dispersion and the laminate's loss at one frequency, but not how εr and tanδ change
+with frequency. ⟨27⟩
 
 **Equations** (in this order):
 

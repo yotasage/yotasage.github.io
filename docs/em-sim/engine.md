@@ -122,7 +122,7 @@ handles as §6 says.
    segment. This gives the segment's Z (single: Z0; pair: Zodd, Zeven, Zdiff, Zcm) and velocity.
 3. **Pads and antipads.** At each plane crossing a shunt capacitance from §5 (for a pair: each via's own, with the
    coupling between the two pads estimated as ΔC·(−C12/C11) of the barrel pair's cut, [solver.md](solver.md) §5.2,
-flagged until M6.4 checks it).
+flagged as an estimate; M6.4's pair fixture shares one antipad, so it could not measure it: fullwave-verify.md §4).
 4. **Stubs** are open-ended barrel lines; backdrill shortens them.
 5. **Feed traces** are lines from §4 with their own Z0 and length. Where a feed runs over its reference plane's
    antipad (from the pad's edge to the opening's rim) that part of it is a line with its own C′ and the L′ of the trace

@@ -46,7 +46,8 @@ impedance can be matched, studied up to 20 GHz [Fan2014 abstract]. ⟨143⟩
 
 A via pair is the same with two barrels: the cut gives Zdiff and Zcm as for a pair of traces (§3). ⟨144⟩ For the LVDS
 pair of 0.22 mm drills 0.7 mm apart with six return vias, the barrel's Zdiff is 92.23 Ω in the core and 97.16 Ω in the
-prepreg; the section as one element is 83.49 Ω differential and 36.63 Ω common, 12.59 ps. ⟨145⟩
+prepreg; the section as one element is 83.49 Ω differential and 36.63 Ω common, 12.59 ps; with 0.11 mm feeds over the openings
+(example 3) it reads 89.08 Ω, 48.09 Ω and 13.43 ps (M6.5). ⟨145⟩
 
 **Equations:**
 
@@ -89,7 +90,7 @@ pad, antipad and pitch are the means of tuning a differential via, by whether it
 
 The LVDS pair keeps pads only on L1 and L6, 31.5 fF each per via, while its planes' openings take 4.5 fF away: 54.0 fF
 per via. ⟨153⟩ Between the pair's two pads the tool estimates the coupling from the barrel's cut, as −k12·ΔC with
-k12 = 0.274, and flags it until a full-wave check. ⟨154⟩
+k12 = 0.274, and marks it as an estimate: a full-wave run of the pair takes the pads' coupling in fully. ⟨154⟩
 
 **Equations:**
 
@@ -97,7 +98,7 @@ k12 = 0.274, and flags it until a full-wave check. ⟨154⟩
 |---|---|---|
 | `via-dc` | `\Delta C_k = Q_k - C'(z_{\mathrm{hi},k} - z_{\mathrm{lo},k})` (1 V on the barrel) | `nodes[k].dC` [L1 15.31, L2 14.33 fF], `nodes[k].dCErr` |
 | `via-pad-coupling` | `\Delta C_{12} = -k_{12}\,\Delta C,\ k_{12} = -C_{12}'/C_{11}'` | `barrel.k12` [VP 0.2740]; pair only |
-| `via-target` | `Z_\mathrm{sec}(x) = Z_\mathrm{target}` (x: every antipad's Ø, or the return vias' distance) | `viaTarget(…).x` [Ø1.7583 mm for 50 Ω], `.value`, `.range`, `.values` |
+| `via-target` | `Z_\mathrm{sec}(x) = Z_\mathrm{target}` (x: every antipad's Ø, or the return vias' distance) | `viaTarget(…).x` [Ø1.048 mm for 50 Ω], `.value`, `.range`, `.values` |
 
 **Figures.** 1. The side view's field map of one via in its coaxial wall (M3.2b, "Potential"), with the windows of
 two crossings shaded, caption "The excess at a pad is the charge in its window less the barrel line's." 2. A bar per
@@ -146,14 +147,14 @@ length ℓ has the input impedance −jZ0·cot(βℓ), zero when βℓ = π/2: a
 frequency and its odd multiples [SteerVol2 §2.4] [Ellingson2018 §3.16]. ⟨169⟩ So the bare stub resonates at
 f = 1/(4τ) = c0/(4ℓ√εeff), τ its one-way delay. ⟨170⟩
 
-The 0.6/0.3 via leaving on L3 has 1.335 mm of barrel below it: 9.19 ps, a quarter wave at 27.2 GHz bare; with its pads
-the stub resonates at 21.8 GHz, where |S21| falls to −48.6 dB. ⟨171⟩ The pads load the stub with capacitance and pull
+The 0.6/0.3 via leaving on L3, with its 2 mm feed on L1, has 1.335 mm of barrel below it: 9.19 ps, a quarter wave at 27.2 GHz bare; with its pads
+the stub resonates at 21.8 GHz, where |S21| falls to −51.7 dB. ⟨171⟩ The pads load the stub with capacitance and pull
 its resonance down. ⟨172⟩ The frequency is set by the stub's length, its depth by the stub's structure and return
 paths [Huddar2021 abstract]. ⟨173⟩
 
 Backdrilling drills the unused barrel out from the other side with a wider bit, leaving a short remainder. ⟨174⟩
 Backdrilled from the bottom to 1.2 mm, the same via keeps 0.165 mm of stub, which resonates near 215 GHz, far above
-the band; at 10 GHz the stub cost 0.68 dB of transmission, the backdrilled via 0.07 dB. ⟨175⟩ In a pair, residual stubs
+the band; at 10 GHz the stub cost 0.60 dB of transmission, the backdrilled via 0.10 dB. ⟨175⟩ In a pair, residual stubs
 that differ by the ±10 mil backdrill tolerance gave 9 Ω of differential impedance variation, mode conversion above
 −40 dB from 5 GHz and 2–3 ps of skew in simulation [Zhang2020 abstract]. ⟨176⟩ Removing power-via stub resonances in
 25 Gbps+ links improved the bit-error rate by seven orders of magnitude, simulated and measured [Park2017
@@ -211,7 +212,8 @@ dashed line. 2. A sketch of a step meeting a dip and a bump, with the round trip
 S-parameters describe the via as a sine wave sees it: S11 what returns to the port, S21 what goes through, each
 against frequency, usually in dB as 20·log10|S|. ⟨191⟩ The tool chains the ABCD matrix of every piece (barrel lines,
 shunt capacitances, stubs, feeds) and turns the product into S at the ports' impedance. ⟨192⟩ The 0.6/0.3 via with its
-2 mm feeds between 50 Ω ports: S11 −33.4 dB and S21 −0.002 dB at 10 GHz, S11 −17.3 dB at 25 GHz. ⟨193⟩ The model has
+2 mm feeds between 50 Ω ports: S11 −18.0 dB and S21 −0.07 dB at 10 GHz, S11 −5.0 dB at 25 GHz; most of the reflection comes from the feeds'
+runs over the antipads (M6.5). ⟨193⟩ The model has
 no losses, so |S11|² + |S21|² = 1 at every frequency. ⟨194⟩
 
 For a pair, the four single-ended ports become mixed-mode ports: differential (Sdd) referred to 100 Ω, common (Scc)

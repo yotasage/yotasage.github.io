@@ -102,8 +102,8 @@ export default function Theory({ bib, unit, digits }: Props) {
 
       <Topic id="how-to-use" no={0} title={TOPICS[0].title}>
         <p>
-          The page works out what a trace on a printed circuit board looks like to a fast signal: its impedance, how fast
-          the signal travels and, for a pair, how the two traces share their fields. It opens on a 50 Ω microstrip of
+          The page works out what a trace or a via on a printed circuit board looks like to a fast signal: its impedance, how
+          fast the signal travels and, for a pair, how the two traces share their fields. It opens on a 50 Ω microstrip of
           0.1377 mm on the top layer of JLCPCB’s six-layer stackup JLC061611-3313A, under solder mask, over the plane on L2.
         </p>
         <ol className={css.steps}>
@@ -120,6 +120,15 @@ export default function Theory({ bib, unit, digits }: Props) {
           <li><b>Tools.</b> Target finds the width or gap for an impedance; Sweep plots what one input does; Tolerance shows
             the spread the inputs’ tolerances give; Calculators compares the result with closed formulas and with JLCPCB’s
             calculator.</li>
+          <li><b>Via.</b> Type a via or a via pair, or start from one of the two examples, with its pads, antipads, return
+            vias, backdrill and feeds. It is drawn to scale from the side, from above and in 3D, with its impedance, TDR,
+            S-parameters, stub resonance and fields; Target finds the antipad or the return vias’ distance for an
+            impedance.</li>
+          <li><b>Waves.</b> Run the via or a trace section full-wave. An estimate of its time comes first; the run’s TDR and
+            S-parameters appear beside the via model’s, and the player shows its waves on a slice and in 3D.</li>
+          <li><b>Keep.</b> Export saves the drawings, field maps and plots as TikZ, SVG or PNG, the numbers as CSV or
+            Touchstone, and the whole setup as a project file; Report prints it all. The worked Examples open each of their
+            states on the page.</li>
         </ol>
         <p>
           Undo and Redo step through every change. The page’s address holds the whole setup, so Copy link shares exactly
@@ -177,8 +186,9 @@ export default function Theory({ bib, unit, digits }: Props) {
           microstrip rises with frequency{cite('QucsTech', '§11.1')}{cite('Getsinger1973')}. Applied to the default microstrip
           it gives a rise of 0.05 % at 10 GHz and 0.3 % at 25 GHz; the rise reaches the solver’s error on ε<sub>eff</sub>
           (0.17 %) at about 18 GHz. So on thin laminates the quasi-TEM numbers hold within their error to well above 10 GHz.
-          This version leaves out dispersion, losses, copper roughness and how εr changes with frequency; they are planned
-          for later.
+          The quasi-static results leave out dispersion, losses, copper roughness and how εr changes with frequency. The
+          full-wave runs (topic 14) take in the structure’s own dispersion and the laminate’s loss at one frequency, but
+          not how εr and tanδ change with frequency.
         </p>
         {E('getsinger', 'With numbers for a microstrip or embedded microstrip.')}
         {E('getsinger-limit', 'With numbers for a microstrip or embedded microstrip.')}
@@ -304,9 +314,6 @@ export default function Theory({ bib, unit, digits }: Props) {
       <Theory2 live={live} cite={cite} E={E} />
       <TheoryVias live={live} cite={cite} />
       <TheoryWaves live={live} cite={cite} />
-      <p className={css.foot}>
-        The waves on a line and through a via, from a full-wave run, follow in later versions.
-      </p>
     </div>
   );
 }

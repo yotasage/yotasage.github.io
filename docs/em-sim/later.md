@@ -1,7 +1,7 @@
 # EM simulation – phase 2 and beyond
 
-Kept from the v2 draft (2026-11-11) so it survives outside `.local/`. **Nothing here is scheduled.** When phase 1 is
-done (M9.3) or earlier if the owner asks, the owner picks what comes next and the main session plans it into
+Kept from the v2 draft (2026-11-11) so it survives outside `.local/`. **Nothing here is scheduled.** Phase 1 is done
+(M9.3b, 2026-11-17); the owner picks what comes next and the main session plans it into
 milestones the way [milestones.md](milestones.md) does. Each area has a backlog row in `docs/BACKLOG.md`.
 
 ## Principles that phase 1 already keeps for this

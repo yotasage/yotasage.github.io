@@ -30,8 +30,8 @@ its plane's antipad and so has no plane under it there, and return vias far from
 a wide path through the planes. ⟨243⟩ A full-wave run solves Maxwell's equations themselves in 3D, over the via with
 its feeds and the board around it, so all three are in it without a model of their own. ⟨244⟩
 
-On the default via, before the via model took the feeds' runs over the antipads in, it read the via's section at
-49.7 Ω; the full-wave runs read 73.1 Ω (this tool) and 68.9 Ω (openEMS), and the model now reads 67.9 Ω. ⟨245⟩ The
+On the 0.6/0.3 via of the openEMS comparison (its section between 3 mm feeds), before the via model took the feeds'
+runs over the antipads in, it read the section at 49.7 Ω; the full-wave runs read 73.1 Ω (this tool) and 68.9 Ω (openEMS), and the model now reads 67.9 Ω. ⟨245⟩ The
 Via section suggests a run when a feed crosses its antipad by more than 0.1 mm, when the nearest return via is more
 than 1.5 mm away or there is none, when the edge's band reaches past the model's, or when a stub resonates within
 twice the band. ⟨246⟩ The default via at 35 ps is one of these: its band reaches 25.0 GHz, the model's 20.8 GHz.

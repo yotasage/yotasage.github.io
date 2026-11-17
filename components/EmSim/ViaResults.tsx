@@ -44,7 +44,7 @@ export const ASSUME_TEXT: Readonly<Record<string, string>> = {
   'solid-barrel': 'The barrel is solid copper of the drill’s diameter.',
   'mask-as-air': 'The solder mask around the pads on the outside is taken as air.',
   'feeds-to-pad-edge': 'The feed traces end at the pad’s edge; their length is counted to the via’s centre.',
-  'pad-coupling-estimate': 'The pads’ coupling across the pair is an estimate from the barrel pair’s cut, not yet checked.',
+  'pad-coupling-estimate': 'The pads’ coupling across the pair is an estimate from the barrel pair’s cut; a full-wave run of the pair takes it in fully.',
   'antipad-as-round': 'An oblong or joined antipad is solved as a round one of its width around each via (the drawing shows its real shape).',
 };
 

@@ -46,7 +46,7 @@ export const VIA_DEFS: Def[] = [
   {
     id: 'via-quasi-coax', title: 'The return vias as thin wires', topic: 'via-line', on: 'via', applies: 'line',
     text: 'Z_qc = eta_0*(ln(R/a) + ln(R/(N*b))/N)/(2*pi*sqrt(varepsilon_ri))', where: ['eta_0 = 1/(varepsilon_0*c_0)'],
-    derivation: 'Line charges: the barrel’s q and N return vias of −q/N at the distance R (facts-formulas.md §7).',
+    derivation: 'Line charges: the barrel’s q and N return vias of −q/N at the distance R.',
     assumptions: ['thin wires: a and b much smaller than R', 'one via, every return via at R', 'an estimate: the field solver’s cut is the engine’s value'],
     engine: 'eqvaluesVia.quasiCoax (its own closed form; the solver’s pieces[i].z0 differs by about 2 %)',
     steps: [
@@ -67,7 +67,7 @@ export const VIA_DEFS: Def[] = [
   },
   {
     id: 'via-section-l', title: 'Inductance of the via section', topic: 'via-line', on: 'via', text: 'L_sec = Z_vac*ell_th/c_0 + L_over',
-    derivation: 'L′ is the same in every non-magnetic material; lines in series add; each feed’s run over its plane’s antipad adds the inductance of the trace over the next plane less its own line’s (step M6.5).', assumptions: [LUMPED],
+    derivation: 'L′ is the same in every non-magnetic material; lines in series add; each feed’s run over its plane’s antipad adds the inductance of the trace over the next plane less its own line’s.', assumptions: [LUMPED],
     engine: 'viamodel.viaModel: lumped.L[0][0], the through pieces’ lengths, overs[i].dL',
     steps: [
       ['L_ip = mu_0*varepsilon_0/C_0p = Z_vac/c_0', 'the same in every material'],
@@ -111,13 +111,13 @@ export const VIA_DEFS: Def[] = [
   {
     id: 'via-dc', title: 'What the pads and openings add', topic: 'via-pads', on: 'via', text: 'Delta_Csum = C_axi - C_line',
     extra: '\\text{(each } \\Delta C_k\\text{: the window’s charge at 1 V less the barrel line’s)}',
-    derivation: 'The tool’s rule (notes-M1.7.md, the wall): the axisymmetric whole-via capacitance less the barrel’s line.',
+    derivation: 'The tool’s rule: the axisymmetric whole-via capacitance less the barrel’s line.',
     assumptions: ['the wall at the equivalent radius (not the rule wall)'], engine: 'viamodel.viaModel: nodes[k].dC summed, axiTotal, lumped.lineC',
   },
   {
     id: 'via-pad-coupling', title: 'Coupling of the pads of a pair', topic: 'via-pads', on: 'via', applies: 'pair', text: 'Delta_C12 = -k_12*Delta_C',
-    where: ['k_12 = -C_0p12/C_0p'], derivation: 'An estimate: the pads’ excess couples in the cut’s ratio (engine.md §6.3).',
-    assumptions: ['an estimate (flagged until M6.4)'], engine: 'viamodel.viaModel: barrel.k12, the shunt elements of the nodes',
+    where: ['k_12 = -C_0p12/C_0p'], derivation: 'An estimate: the pads’ excess couples in the cut’s ratio.',
+    assumptions: ['an estimate, not measured on its own; a full-wave run of the pair takes the coupling in fully'], engine: 'viamodel.viaModel: barrel.k12, the shunt elements of the nodes',
   },
   {
     id: 'via-target', title: 'Target impedance of the via', topic: 'via-pads', on: 'via', text: 'Z_secx = Z_target',
@@ -134,7 +134,7 @@ export const VIA_DEFS: Def[] = [
   {
     id: 'cavity-f', title: 'Resonances of a plane pair', topic: 'via-return', on: 'via', live: false,
     text: 'f_mn = c_0*sqrt((m_c/a_x)^2 + (n_c/b_y)^2)/(2*sqrt(varepsilon_r))',
-    derivation: 'The plane pair as a cavity with open edges (facts.md §2).', assumptions: ['open edges as magnetic walls', 'a rectangular board'],
+    derivation: 'The plane pair as a cavity with open edges.', assumptions: ['open edges as magnetic walls', 'a rectangular board'],
     engine: 'none (the board’s size is not in the setup, BL134)',
     steps: [
       ['E_z = cos(m_c*pi*x_c/a_x)*cos(n_c*pi*y_c/b_y)', 'open edges as magnetic walls'],
@@ -176,7 +176,7 @@ export const VIA_DEFS: Def[] = [
   // §11 The TDR (`via-tdr`).
   {
     id: 'edge-f3', title: 'Bandwidth of the edge', topic: 'via-tdr', on: 'via', text: 'f_3 = sqrt(ln(2))/(2*pi*sigma_e)',
-    where: ['sigma_e = t_r/(2*z_90)'], derivation: 'A step smoothed by a Gaussian (facts-formulas.md §8).',
+    where: ['sigma_e = t_r/(2*z_90)'], derivation: 'A step smoothed by a Gaussian.',
     engine: 'tdr.edgeF3: f3, tr',
     steps: [
       ['t_r = 2*z_90*sigma_e', '10 % and 90 % of a Gaussian edge lie `z_90` standard deviations either side of its middle'],
@@ -261,7 +261,7 @@ export const VIA_DEFS: Def[] = [
     id: 'mixed-mode-s', title: 'Mixed-mode S-parameters', topic: 'via-sparams', on: 'via', applies: 'pair',
     text: 'S_dd11 = (S_11 - S_12 - S_21 + S_22)/2',
     where: ['S_dd21 = (S_31 - S_32 - S_41 + S_42)/2', 'S_cc11 = (S_11 + S_12 + S_21 + S_22)/2', 'S_cd21 = (S_31 - S_32 + S_41 - S_42)/2'],
-    sources: [src('BockelmanEisenstadt1995', '')], derivation: 'Mixed-mode power waves (facts.md §5); the whole matrix is M·S·Mᵀ.',
+    sources: [src('BockelmanEisenstadt1995', '')], derivation: 'Mixed-mode power waves; the whole matrix is M·S·Mᵀ.',
     assumptions: ['ports 1, 2 the first pair and 3, 4 the second, references 2Z₀ and Z₀/2'], engine: 'nport.toMixedMode: mixed.s against nport.s',
     steps: [
       ['a_d1 = (a_1 - a_2)/sqrt(2)', 'the differential wave into the first pair'],

@@ -144,15 +144,16 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   `getStaticProps`. Checks in `scripts/harness/smith/`: `npm run check` (engine and TikZ compiles), `npm run ui` (next
   build, then every browser script against `next start` on 3021), `npm run recheck` (both, plus the resistor harness,
   as one table of every milestone's "done when"; about 25 minutes).
-- EM simulation (released with step M2.5; later steps are built on the branch `em-sim` and merged to `main` after each
-  step as plan.md's "Running a step" says): [docs/em-sim/plan.md](docs/em-sim/plan.md)
-  (decisions, steps, status), `milestones.md` (every step's scope and "done when"), `engine.md` (the model and each
-  solver's contract: 2D boundary elements, axisymmetric pads, the via model, FDTD on WebGPU), `later.md` (phase 2,
-  unscheduled); **where code lives: the module map** `modules.md` (`lib/emsim/`), `modules-page.md` (the page; the Via section in
-  `modules-page-via.md`, the Waves section in `modules-page-waves.md`, its theory, equations and examples in
-  `modules-page-teach.md`) and `modules-harness.md` (checks). The status note's texts are in `components/EmSim/statusText.ts`. Route `/em-sim/main`, code `lib/emsim/`, `components/EmSim/`, harness `scripts/harness/emsim/`
-  (`npm run check`, `npm run ui`, and `npm run recheck`: both plus the Smith chart's checks on the shared modules, as one
-  table of every step's "done when"; about an hour); openEMS on the owner's PC is for the harness's reference fixtures only.
+- EM simulation (plan phase 1 finished with M9.3): [docs/em-sim/plan.md](docs/em-sim/plan.md) (decisions, status,
+  "State at the end of phase 1"), `howto.md` for visitors, `engine.md` (the model and each solver's contract),
+  `later.md` (phase 2, waits for the owner). **Where code lives: the module map**, `modules.md` (`lib/emsim/`),
+  `modules-page.md` (`components/EmSim/`, `pages/em-sim/main.tsx`; the Via and Waves sections in
+  `modules-page-via.md` and `modules-page-waves.md`, theory, equations and examples in `modules-page-teach.md`) and `modules-harness.md` (checks); read the part you need rather than the code. The status
+  note's texts are in `components/EmSim/statusText.ts`, the short lines in `whys.ts`, every claim's source in
+  `claims.md`, citations from `references.bib` in `getStaticProps`. Checks in `scripts/harness/emsim/`: `npm run check`
+  (engine), `npm run ui` (next build, then every browser script against `next start` on 3022), `npm run recheck` (both,
+  plus the Smith chart's checks on the shared equation modules, as one table of every step's "done when"; about 40
+  minutes). openEMS on the owner's PC is for the harness's reference fixtures only.
 - `tsconfig` uses `"module": "node16"`, so our own files count as CommonJS and the ES-module-only add-ons of three.js
   (`three/examples/jsm/...`) can only be loaded with `await import(...)`, or imported as types with
   `import type ... with { 'resolution-mode': 'import' }`. A dynamic import of one of our own files needs
@@ -216,7 +217,7 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   parts: `plan.md` (index: goal, decisions, milestones and status, how a step is run), `howto.md` (for visitors),
   `modules.md` (module map, index and lib; the page in `modules-page.md`, the checks in `modules-harness.md`),
   `engine.md`, `solver.md`, `learning.md`, `milestones.md`, and the `notes-<step>.md` each step leaves.
-- [docs/em-sim/](docs/em-sim/plan.md): EM simulation plan (branch `em-sim`): `plan.md`, `milestones.md`, `engine.md`,
+- [docs/em-sim/](docs/em-sim/plan.md): EM simulation plan (phase 1 done; branch `em-sim`): `plan.md`, `howto.md` (for visitors), `milestones.md`, `engine.md`,
   `later.md`, and the `notes-<step>.md` each step leaves.
 - [docs/agent-workflow.md](docs/agent-workflow.md): how to run large work with Claude agents cheaply and safely, with
   the measured cost of the PCB viewer build.

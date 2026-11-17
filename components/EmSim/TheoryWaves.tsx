@@ -82,8 +82,8 @@ export default function TheoryWaves({ live, cite }: { live: Live; cite: Cite }) 
             are in it without a model of their own.
           </p>
           <p>
-            On the default via, before the via model took the feeds’ runs over the antipads in, it read the via’s section at
-            49.7 Ω; the full-wave runs read 73.1 Ω (this tool) and 68.9 Ω (openEMS), and the model now reads 67.9 Ω. The Via
+            On the 0.6/0.3 via of the openEMS comparison (its section between 3 mm feeds), before the via model took the feeds’
+            runs over the antipads in, it read the section at 49.7 Ω; the full-wave runs read 73.1 Ω (this tool) and 68.9 Ω (openEMS), and the model now reads 67.9 Ω. The Via
             section suggests a run when a feed crosses its antipad by more than 0.1 mm, when the nearest return via is more
             than 1.5 mm away or there is none, when the edge’s band reaches past the model’s, or when a stub resonates within
             twice the band. The default via at 35 ps is one of these: its band reaches 25.0 GHz, the model’s 20.8 GHz. The

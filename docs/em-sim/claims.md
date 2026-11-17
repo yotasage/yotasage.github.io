@@ -54,7 +54,7 @@ JI = `JLCPCBImpedance`, JK = `JLCPCBCapabilities`; D/P = the default microstrip 
 | 24 | S | Q §11.1 (Getsinger's model), `Getsinger1973` (not opened) beside |
 | 25 | D | `getsinger`, `getsinger-limit`; engine (D) |
 | 26 | D | from 23–25 |
-| 27 | T | engine.md §2 ("dispersion out of scope in phase 1"), §4 (lossless); later.md |
+| 27 | T | engine.md §2 ("dispersion out of scope in phase 1"), §4 (lossless); later.md; fullwave.md §3 (the full-wave runs: tanδ as a conductivity at one frequency, constant εr) |
 
 ## Topic 2 – The field solver (theory.md §2)
 
@@ -120,7 +120,7 @@ JI = `JLCPCBImpedance`, JK = `JLCPCBCapabilities`; D/P = the default microstrip 
 | 75 | D | engine (D 54.98 → 51.50, P 112.52 → 103.36 Ω) |
 | 76 | D | engine (εeff 3.298 / 2.893) |
 | 77 | T + D | `closedform.ts` `neglects` (mask); 75 |
-| 78 | T | `TraceSection.tsx` `data-trace-masked`; ui-trace.mjs |
+| 78 | T | `TraceSection.tsx` `data-trace-masked` (the switch; ui-why.mjs checks its short line) |
 | 79 | D | `z0-lc` (more conductor at 0 V, more C) |
 | 80 | D | engine (cpwg g 0.6 / 0.2 / 0.1 mm: 51.43, 50.38, 46.73 Ω) |
 | 81 | D | from 80 (0.6 mm ≈ 6.5 h: no change; 0.1 mm ≈ 1.1 h: −4.8 Ω) |
@@ -216,7 +216,7 @@ listed in notes-M4.1.md "Numbers checked". Equation ids are those of [equations-
 | 139 | D | `via-quasi-coax` (facts-formulas.md §7); 60.839 against 59.706 (+1.9 %) |
 | 140 | D + T | `via-req`; `viacut.equivalentRadius`; engine 1.2548 mm |
 | 141 | D | `via-section-l`, `via-section-c`, `via-section-z`, `via-section-delay` |
-| 142 | D | engine V: `lumped` L 0.6806 nH, C 269.74 fF, lineC 179.79, dCsum 89.95, z 50.229, delay 13.549 ps |
+| 142 | D | engine V: `lumped` L 0.6806 nH, C 269.74 fF, lineC 179.79, dCsum 89.95, z 50.229, delay 13.549 ps (the section without the feeds' runs over the antipads; with them, M6.5: 69.38 Ω, 18.72 ps, ui-via.mjs) |
 | 143 | S | `Fan2014` abstract (V3) |
 | 144 | D | `via-section-pair`, `zdiff-zodd`; engine.md §6.2 |
 | 145 | D | engine VP: pieces' zdiff 92.232 (core), 97.161 (prepreg); `lumped` 83.492, 36.628, 12.592 ps (core; with the setup's pair over the opening, M6.5: 89.08, 48.09, 13.43 ps) |
@@ -245,11 +245,11 @@ listed in notes-M4.1.md "Numbers checked". Equation ids are those of [equations-
 | 168 | Def | – |
 | 169 | S | `SteerVol2` §2.4, `Ellingson2018` §3.16 (facts-formulas.md §7) |
 | 170 | D | `stub-quarter` |
-| 171 | D | engine E: exit stub 1.335 mm, 9.188 ps, `fFormula` 27.210, `fRes` 21.791 GHz; \|S21\| −48.63 dB at 21.77 GHz (401 points) |
+| 171 | D | engine E: exit stub 1.335 mm, 9.188 ps, `fFormula` 27.210, `fRes` 21.791 GHz; \|S21\| −51.68 dB at 21.77 GHz (401 points; −48.40 without the feed) |
 | 172 | D | engine E (21.79 < 27.21 GHz); `stub-zin` with a shunt C at the stub |
 | 173 | S | `Huddar2021` abstract (V8) |
 | 174 | Def + T | `via.ts` (the backdrill must be wider than the drill and may not reach the signal layer) |
-| 175 | D | engine Eb: stub 0.1655 mm, `fRes` 215.18 GHz; S21 at 10.07 GHz −0.684 (E) and −0.0696 dB (Eb) |
+| 175 | D | engine Eb: stub 0.1655 mm, `fRes` 215.18 GHz; S21 at 10 GHz (interpolated, as examples.ts) −0.60 (E) and −0.10 dB (Eb); without the feed −0.68 and −0.08 |
 | 176 | S | `Zhang2020` abstract (V7) |
 | 177 | S | `Park2017` abstract (V9) |
 | 178 | T | flag `stub-resonance` (notes-M1.7.md "Flags") |
@@ -258,7 +258,7 @@ listed in notes-M4.1.md "Numbers checked". Equation ids are those of [equations-
 | 181 | D + T | `edge-f3`, `edge-band`; `tdr.ts`, `viamodel.ts` (sweep to the −60 dB point); engine f3 9.7036, last f 43.321 GHz |
 | 182 | D | facts-formulas.md §8 |
 | 183 | D | engine V25 (claim 184's numbers) |
-| 184 | D | engine V25 via window: 15 ps 48.537 / 55.318, 35 ps 50.808, 100 ps 51.194 Ω |
+| 184 | D | engine V25 via window (M6.5): 15 ps 70.17, 35 ps 60.34, 100 ps 56.97 Ω |
 | 185 | D | `tdr-z` with `z0-lc` on the local section (more C: lower Z; more L: higher Z) |
 | 186 | D + T | engine V25 51.4975 Ω 60 ps before the via, trace 51.4976 Ω; ui-viaplots.mjs (notes-M3.2a.md) |
 | 187 | D | `tdr-roundtrip`; engine V feed 1.7 mm, εeff 3.298: 20.60 ps |
@@ -267,10 +267,10 @@ listed in notes-M4.1.md "Numbers checked". Equation ids are those of [equations-
 | 190 | D | engine VP25: flat 103.361, dip 93.69 (35 ps), 90.74 (15 ps), 99.30 Ω (100 ps) (M6.5) |
 | 191 | Def | `s-db` |
 | 192 | T | engine.md §6.6; `viamodel.cascadeS`, `nport.abcdToS` |
-| 193 | D | engine V: 10.07 GHz S11 −33.35, S21 −0.0020 dB; 25.02 GHz S11 −17.31 dB |
+| 193 | D | engine V at 10 GHz (interpolated between 9.96 and 10.07 GHz): S11 −17.98, S21 −0.070 dB; 25.02 GHz S11 −5.02 dB (without the feeds' runs: −34.4, −0.0016, −14.76) |
 | 194 | D + T | a lossless reciprocal network has a unitary S; `check-viamodel.mjs` (unitarity < 1e-12) |
 | 195 | S + D | `BockelmanEisenstadt1995` (not opened) beside `mixed-mode-s` and facts.md §5; `mixed.z0` |
-| 196 | D | engine VP at 10.07 GHz: Sdd11 −19.35, Sdd21 −0.0507, Scc11 −10.33 dB |
+| 196 | D | engine VP at 10 GHz (M6.5): Sdd11 −21.7, Sdd21 −0.03, Scc11 about −7 dB |
 | 197 | D + S | engine VP Scd21 −325 dB; `Zhang2020`, `RimoloDonadio2009b` abstracts |
 | 198 | T | `ViaPlots.tsx` (faded beyond `valid.fMax`) |
 | 199 | S + T | `Cartier2007` abstract (V1); `LUMPED_FRACTION` 8 in `viamodel.ts`; `lambda8` |
@@ -307,7 +307,7 @@ Numbers from the engine at M = 2 (trace) and the via model's defaults, in notes-
 | 223 | D | engine `viaTarget(VP, 'zdiff', 85, 'antipad')` Ø1.033 mm (M6.5) |
 | 224 | D | engine VP: TDR minimum 91.589 Ω; VP25 flat 103.361, dip 91.647 Ω |
 | 225 | D | engine VP25 at 15 and 100 ps: 90.74, 99.30 Ω (M6.5) |
-| 226 | D | engine VP at 10.07 GHz (claim 196), Scd21 −325 dB |
+| 226 | D | engine VP at 10 GHz (claim 196), Scd21 −325 dB |
 | 227 | S | `JLCPCBCalc` (the inputs it sends; notes-M1.4c.md) |
 | 228 | D | engine 50.0587 Ω |
 | 229 | D | engine `jlcAllBut(D, 'er')` 50.9988 Ω (+0.9401) |
@@ -317,12 +317,12 @@ Numbers from the engine at M = 2 (trace) and the via model's defaults, in notes-
 | 233 | D | `parts-sum`; 1.4266 against 1.4389 Ω |
 | 234 | D | engine `calculatorParts(P)`: 1.7019, 1.6264, 0.7285, −0.7258; 3.331 against 3.357 Ω |
 | 235 | D + S | claims 211, 217 (+0.20 %, +0.05 %); εr part 0.94 of 1.44 Ω; `JLCPCBCalcGuide` (3313 εr 4.1), `JLCPCBCalc` (4.3) |
-| 236 | D | engine V25 as V (claims 137, 142) |
+| 236 | D | engine V25 as V (claims 137, 142: with the feeds' runs 69.38 Ω, 18.72 ps) |
 | 237 | D | engine V25 (claims 184, 186) |
 | 238 | D | as claim 151 |
 | 239 | D + T | engine E (claim 171), flag `stub-resonance`, band 25.012 GHz |
-| 240 | D | engine E at 10.07 GHz: S21 −0.684, S11 −8.364 dB |
-| 241 | D + T | engine Eb (claim 175), S11 −17.99 dB; no `stub-resonance` flag |
+| 240 | D | engine E at 10 GHz (interpolated): S21 −0.60, S11 −8.9 dB (without the feed −0.68 dB) |
+| 241 | D + T | engine Eb (claim 175) at 10 GHz: S21 −0.10, S11 −16.3 dB (without the feed −0.08, −17.5); no `stub-resonance` flag |
 
 **Counts of M4.1:** 108 claims (134–241): 23 with a source (13 S alone, 10 S beside a derivation or a tool
 description), 67 D (57 alone, 10 with T), 16 T (2 of them with Def) and 2 Def. [equations-list.md](equations-list.md)

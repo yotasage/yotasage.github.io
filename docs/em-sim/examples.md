@@ -134,9 +134,9 @@ is a stub.
 2. The TDR at 35 ps is flat at the feeds' 51.50 Ω and rises at the via, where the runs over the antipads add inductance; at
    15 ps the bump is higher still. ⟨237⟩ Target 50 Ω by the antipad: Ø1.048 mm, which also shortens the runs over it. ⟨238⟩
 3. Open the via with a stub (`stub`): the barrel below L3 is a 1.335 mm stub (9.19 ps). Its bare quarter wave is 27.2 GHz; with its pads it
-   resonates at 21.8 GHz, where |S21| falls to −48.6 dB, and the page flags it inside the 25.0 GHz band. ⟨239⟩ At
-   10 GHz S21 is already −0.60 dB and S11 −8.9 dB (with the 2 mm feed; E without it: −0.68 dB). ⟨240⟩
-4. Open the stub backdrilled (`backdrill`): 0.165 mm of stub is left, resonating near 215 GHz; at 10 GHz S21 is −0.07 dB and S11 −16.3 dB (−18.0 without the feed), and
+   resonates at 21.8 GHz, where |S21| falls to −51.7 dB, and the page flags it inside the 25.0 GHz band. ⟨239⟩ At
+   10 GHz S21 is already −0.60 dB and S11 −8.9 dB (with the 2 mm feed; without it −0.68 dB). ⟨240⟩
+4. Open the stub backdrilled (`backdrill`): 0.165 mm of stub is left, resonating near 215 GHz; at 10 GHz S21 is −0.10 dB and S11 −16.3 dB (−0.08 and −17.5 dB without the feed), and
    the stub flag is gone. ⟨241⟩
 
 **Topics.** `via-line`, `via-pads`, `via-stubs`, `via-tdr`, `via-sparams`, `via-limits`.

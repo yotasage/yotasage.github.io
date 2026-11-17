@@ -23,7 +23,7 @@ code but correct; M1.2 may copy its closed-form integrals and kernels (§2.3) af
 | §4 Modes | Eigen-solution | Cholesky C = RᵀR, W′ = R·L·Rᵀ, cyclic Jacobi; every impedance from Zc; clusters at 10⁻⁹ (§3) |
 | §5 Kernel | Singularity, truncation, output | Subtract the 2D log in closed form, 8-point Gauss on the bounded rest; grounded coaxial wall at R_w; excess capacitance per crossing by z windows (§4) |
 | §6.1 Segments | Several dielectrics in one barrel segment | Cascade one homogeneous sub-segment per dielectric layer: exact for the line part, no averaging (§5.1) |
-| §6.3 Pad coupling | Pair pads | ΔC12 = ΔC·(−C12/C11) of the barrel pair's cut, flagged until M6.4 checks it (§5.2) |
+| §6.3 Pad coupling | Pair pads | ΔC12 = ΔC·(−C12/C11) of the barrel pair's cut, flagged as an estimate, not measured by M6.4 (fullwave-verify.md §4; §5.2) |
 | §10 Budgets | Reachable? | Microstrip with mask: yes (6.5 ms for 20 ms). Coupled pair with mask and coplanar ground: **no** (57 ms for 40 ms), and the pair rows of inverse, sweep and Monte Carlo follow; flagged for the owner with the measures that close most of it (§6) |
 
 ## 2. The 2D boundary-element solver

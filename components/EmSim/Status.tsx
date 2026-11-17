@@ -1,6 +1,6 @@
 // The status note at the top of the EM simulation page (step M2.5). The tool goes live before it has been used for a
 // real order (plan.md, owner checkpoints), so the note says plainly what works, how it is checked, what it assumes and
-// what comes next. The texts are in statusText.ts.
+// what it leaves out. The texts are in statusText.ts.
 
 import React from 'react';
 

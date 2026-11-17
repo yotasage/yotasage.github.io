@@ -2,37 +2,30 @@
 // without the page's styles. Every step that changes what the page does keeps them true: this is the one place they live.
 
 /** The short lines, always shown. */
-export const STATUS_LEAD = 'New and still growing.';
+export const STATUS_LEAD = 'New, with everything planned for now in place.';
 export const STATUS_NOW =
-  'It works out the impedance of PCB traces with a 2D field solver, on a stackup you type, any of JLCPCB’s stackups ' +
-  'or the stackup and net classes of a KiCad board: microstrip, stripline, coplanar lines, edge- and broadside-coupled ' +
-  'pairs or any arrangement of traces and planes, each result with the solver’s error. Drag the sizes in the drawing, ' +
-  'see the fields, find the width for a target, sweep an input, see which tolerance matters most, compare with ' +
-  'closed-form calculators and with the inputs JLCPCB’s calculator uses, read the theory of traces and vias with your ' +
-  'numbers in its equations, and follow five worked examples whose links open each state on the page; every result ' +
-  'with an equation opens it with your numbers in one click, with its derivation step by step. Type a via or a via ' +
-  'pair with its pads, antipads, return vias, backdrill and feeds, see it drawn to scale from the side and from above, ' +
-  'drag its sizes and return vias in the drawings, turn it in 3D with its fields on the cut planes, ' +
-  'with the impedance of its barrel and of the whole via, the extra capacitance of each pad and plane, the stub ' +
-  'resonance, its TDR and TDT at the rise time you choose and its S-parameters in dB (mixed-mode for a pair), its ' +
-  'fields from the side and from above with a probe, the antipad or return-via distance for a target impedance, and ' +
-  'what to watch out for. Export any of these drawings, field maps and plots as TikZ, SVG or PNG at the width of your ' +
-  'document, in colour, grey or black and white, and the numbers behind the results as CSV, the via’s S-parameters as ' +
-  'Touchstone, the whole setup as a project file to open again or drop on the page, and a printable report of it all ' +
-  'on A4 or Letter. Run the via or a trace section full-wave (FDTD) on your graphics card with WebGPU, or on the CPU, ' +
-  'with an estimate of its time first, see its TDR and S-parameters beside the quasi-static ones, and play its waves ' +
-  'as an animation on a slice from the side or from above, with the copper drawn over them, and in 3D on cut planes ' +
-  'through the structure with the same clock; a pair’s waves with one entry driven, or both as a differential or ' +
-  'common drive, with a theory topic on how the full-wave runs work and how to read their waves.';
+  'It works out the impedance of PCB traces and vias with field solvers, on a stackup you type, any of JLCPCB’s ' +
+  'stackups or the stackup and net classes of a KiCad board. Traces: microstrip, stripline, coplanar lines, edge- and ' +
+  'broadside-coupled pairs or any arrangement of traces and planes, each result with the solver’s error; drag the ' +
+  'sizes, see the fields, find the width for a target, sweep an input, see which tolerance matters most, and compare ' +
+  'with closed-form calculators and JLCPCB’s calculator. Vias and via pairs with their pads, antipads, return vias, ' +
+  'backdrill and feeds, drawn from the side, from above and in 3D, with their impedance, TDR, S-parameters, stub ' +
+  'resonance and fields, and the antipad or return-via distance for a target. Full-wave (FDTD) runs of a via or a ' +
+  'trace section, with their TDR and S-parameters beside the model’s and their waves played on a slice and in 3D. ' +
+  'Theory with your numbers in its equations and their derivations, five worked examples, figures for LaTeX (TikZ), ' +
+  'SVG and PNG, CSV, Touchstone, a project file and a printable report.';
 export const STATUS_CHECKED =
-  'Checked by automated tests against exact solutions, against a separate finite-difference solver on hundreds of ' +
-  'random structures and against JLCPCB’s own calculator (within about 0.3 %), and the page in Edge, Firefox and Safari’s ' +
-  'engine, by keyboard and by touch, and for its speed and memory over a long session. The ' +
-  'numbers are a careful estimate; for an order, your board house’s own figures have the last word.';
+  'Checked by automated tests against exact solutions, a separate finite-difference solver on hundreds of random ' +
+  'structures, JLCPCB’s own calculator (within about 0.3 %) and, for vias and full-wave runs, openEMS, a separate ' +
+  'full-wave solver; and the page in Edge, Firefox and Safari’s engine, by keyboard and by touch, and for its speed ' +
+  'and memory. The numbers are a careful estimate; for an order, your board house’s own figures have the last word.';
 /** Behind "More". */
 export const STATUS_ASSUMES =
-  'Apart from the full-wave runs it is quasi-static: no losses and no change with frequency; a via is lines and lumped capacitances, right while ' +
-  'its parts are short against the wavelength. The tolerances are placeholders until you type the ones of your board house.';
+  'Apart from the full-wave runs it is quasi-static: no losses and no change with frequency; a via is lines and lumped ' +
+  'capacitances, right while its parts are short against the wavelength (the Via section says up to which frequency). ' +
+  'The tolerances are placeholders until you type the ones of your board house.';
 export const STATUS_COMING =
-  'Not here yet: a how-to and a re-check of every result; they come next. ' +
-  'Full-wave runs use the graphics card through WebGPU where the browser offers it, and the CPU (slower) where not.';
+  'Not here: losses and how εr changes with frequency, reading routed boards, simulating drivers and receivers in ' +
+  'time, and measured data; they may come later. On a slow device a drag can fall a little behind the pointer. ' +
+  'Full-wave runs use the graphics card through WebGPU where the browser offers it (Edge and Chrome, for example), and the CPU, ' +
+  'often a hundred times slower, where not.';

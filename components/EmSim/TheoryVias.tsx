@@ -82,7 +82,8 @@ export default function TheoryVias({ live, cite }: { live: Live; cite: Cite }) {
           A via pair is the same with two barrels: the cut gives Z<sub>diff</sub> and Z<sub>cm</sub> as for a pair of traces
           (<a href="#pairs">topic 3</a>). For the LVDS pair of 0.22 mm drills 0.7 mm apart with six return vias, the barrel’s
           Z<sub>diff</sub> is 92.23 Ω in the core and 97.16 Ω in the prepreg; the section as one element is 83.49 Ω
-          differential and 36.63 Ω common, 12.59 ps.
+          differential and 36.63 Ω common, 12.59 ps; with 0.11 mm feeds over the openings (example 3) it reads 89.08 Ω,
+          48.09 Ω and 13.43 ps.
         </p>
         {E('via-section-pair')}
       </Topic>
@@ -109,7 +110,7 @@ export default function TheoryVias({ live, cite }: { live: Live; cite: Cite }) {
         <p>
           The LVDS pair keeps pads only on L1 and L6, 31.5 fF each per via, while its planes’ openings take 4.5 fF away:
           54.0 fF per via. Between the pair’s two pads the tool estimates the coupling from the barrel’s cut, as
-          −k<sub>12</sub>·ΔC with k<sub>12</sub> = 0.274, and flags it until a full-wave check.
+          −k<sub>12</sub>·ΔC with k<sub>12</sub> = 0.274, and marks it as an estimate: a full-wave run of the pair takes the pads’ coupling in fully.
         </p>
         {E('via-pad-coupling')}
         {E('via-target', 'With numbers in the Via section’s Target, which solves for them.')}
@@ -156,8 +157,8 @@ export default function TheoryVias({ live, cite }: { live: Live; cite: Cite }) {
         {E('stub-zin')}
         {E('stub-quarter', 'With numbers for a via with a stub.')}
         <p>
-          The 0.6/0.3 via leaving on L3 has 1.335 mm of barrel below it: 9.19 ps, a quarter wave at 27.2 GHz bare; with its
-          pads the stub resonates at 21.8 GHz, where |S<sub>21</sub>| falls to −48.6 dB. The pads load the stub with
+          The 0.6/0.3 via leaving on L3, with its 2 mm feed on L1, has 1.335 mm of barrel below it: 9.19 ps, a quarter wave at 27.2 GHz bare; with its
+          pads the stub resonates at 21.8 GHz, where |S<sub>21</sub>| falls to −51.7 dB. The pads load the stub with
           capacitance and pull its resonance down. The frequency is set by the stub’s length, its depth by the stub’s
           structure and return paths{cite('Huddar2021', 'abstract')}.
         </p>
@@ -165,7 +166,7 @@ export default function TheoryVias({ live, cite }: { live: Live; cite: Cite }) {
         <p>
           Backdrilling drills the unused barrel out from the other side with a wider bit, leaving a short remainder.
           Backdrilled from the bottom to 1.2 mm, the same via keeps 0.165 mm of stub, which resonates near 215 GHz, far
-          above the band; at 10 GHz the stub cost 0.68 dB of transmission, the backdrilled via 0.07 dB. In a pair, residual
+          above the band; at 10 GHz the stub cost 0.60 dB of transmission, the backdrilled via 0.10 dB. In a pair, residual
           stubs that differ by the ±10 mil backdrill tolerance gave 9 Ω of differential impedance variation, mode conversion
           above −40 dB from 5 GHz and 2–3 ps of skew in simulation{cite('Zhang2020', 'abstract')}. Removing power-via stub
           resonances in 25 Gbps+ links improved the bit-error rate by seven orders of magnitude, simulated and
@@ -211,8 +212,8 @@ export default function TheoryVias({ live, cite }: { live: Live; cite: Cite }) {
           S-parameters describe the via as a sine wave sees it: S<sub>11</sub> what returns to the port, S<sub>21</sub> what
           goes through, each against frequency, usually in dB as 20·log<sub>10</sub>|S|. The tool chains the ABCD matrix of
           every piece (barrel lines, shunt capacitances, stubs, feeds) and turns the product into S at the ports’ impedance.
-          The 0.6/0.3 via with its 2 mm feeds between 50 Ω ports: S<sub>11</sub> −33.4 dB and S<sub>21</sub> −0.002 dB at
-          10 GHz, S<sub>11</sub> −17.3 dB at 25 GHz. The model has no losses, so |S<sub>11</sub>|² + |S<sub>21</sub>|² = 1 at
+          The 0.6/0.3 via with its 2 mm feeds between 50 Ω ports: S<sub>11</sub> −18.0 dB and S<sub>21</sub> −0.07 dB at
+          10 GHz, S<sub>11</sub> −5.0 dB at 25 GHz; most of the reflection comes from the feeds’ runs over the antipads. The model has no losses, so |S<sub>11</sub>|² + |S<sub>21</sub>|² = 1 at
           every frequency.
         </p>
         {E('abcd-line')}

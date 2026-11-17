@@ -4,7 +4,7 @@
 // adds a shunt capacitance at its middle: ΔC = the axisymmetric window charge − the cut's own C′ over the window
 // (axisym.ts with the wall at the return vias' coaxial equivalent radius, so the axisymmetric line part is the cut's
 // C′ and nothing is counted twice; notes-M1.7.md). A pair has each via's ΔC on the diagonal and −k12·ΔC between them
-// (k12 = −C12/C11 of the cut, flagged until M6.4). The barrel beyond the signal layers is an open stub (backdrill
+// (k12 = −C12/C11 of the cut, flagged as an estimate). The barrel beyond the signal layers is an open stub (backdrill
 // shortens it), the feed traces are lines from the 2D solver (lines.ts) ending at the pad's edge (their length is
 // given to the via's axis).
 // The cascade is in the frequency domain with 2n × 2n chain matrices of complex numbers: S of the 2-port (single) or the

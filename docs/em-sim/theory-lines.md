@@ -16,10 +16,10 @@ the page remembers your choice."). A new control gets its line here and in whys.
 | Where | Line | → | Claim |
 |---|---|---|---|
 | Home (`aria-label="Home"`) | Back to all the tools on this site. | – | – |
-| Sections nav | Jump to Stackup, Trace, Via, Export, the worked Examples or Theory. | – | – |
+| Sections nav | Jump to Stackup, Trace, Via, Waves, Export, the worked Examples, Theory or References. | – | – |
 | Undo / Redo (`data-undo`, `data-redo`) | Step back or forward through every change; Ctrl+Z and Ctrl+Shift+Z too. | `how-to-use` | 11 |
 | Theme (`data-theme-toggle`) | Light or dark; the page remembers your choice on this device. | – | 127 |
-| Status line | What the page does so far and what comes next. | `how-to-use` | – |
+| Status line | What the page does, how it is checked and what it leaves out. | `how-to-use` | – |
 | Units (`aria-label="Units"`) | Show lengths in mm, mil or µm; what you type is kept exactly. | – | 128 |
 | Significant digits | Digits for typed values and lengths; results follow their own error instead. | `field-solver` | 44, 45 |
 | Copy link (`data-copy-link`) | The address holds the whole setup: share it and others see the same. | `how-to-use` | 11 |
@@ -43,7 +43,7 @@ the page remembers your choice."). A new control gets its line here and in whys.
 | Mask: between traces | Mask thickness in the gap of a pair. | `solder-mask` | – |
 | Mask: εr | The mask's permittivity; it lowers Z0 by raising εeff. | `solder-mask` | 74 |
 | εr (dielectric) | The laminate's permittivity; on the default microstrip 0.3 more lowers Z0 by about 1.5 Ω. | `tolerances` | 131 |
-| tanδ | Loss of the material; kept for later, not used by the impedance. | `transmission-lines` | 27 |
+| tanδ | Loss of the material: the full-wave runs use it, the quasi-static impedance does not. | `transmission-lines` | 27 |
 | εr frequency | The frequency the fab states εr at; the impedance uses εr as given, at any frequency. | `transmission-lines` | 27 |
 | Thickness (dielectric) | Pressed thickness between copper layers; the largest single input for an outer microstrip. | `tolerances` | 118, 120 |
 | Thickness (copper) | Finished copper; side walls add capacitance, most in a pair. | `copper-thickness` | 82, 84 |
