@@ -17,9 +17,9 @@
 // with fewer runs only the driven port's column, b/a of the driven port.
 
 import { CpuLoop, portSources, pulseEnd } from './cpu';
-import type { LoopStatus } from './cpu';
+import type { LoopStatus, Source } from './cpu';
 import type { Problem } from './problem';
-import { runTime } from './estimate';
+import { CALIB_MAX_STEPS, CALIB_MIN_MS, CALIB_STEPS, CALIB_WARMUP, runTime } from './estimate';
 import { C0_MM } from './model';
 import { cInv, cMul, NPORT_VERSION } from '../nport';
 import type { NPort } from '../nport';
@@ -73,37 +73,74 @@ export function drivesOf(P: number, mode: 'full' | 'tdr' | number[][]): number[]
   return Array.from({ length: P }, (_, j) => Array.from({ length: P }, (_, q) => (q === j ? 1 : 0)));
 }
 
-export interface ExcitationOptions { maxSteps?: number; stopDb?: number; snap?: SnapRecorder | null }
+export interface ExcitationOptions { maxSteps?: number; stopDb?: number; snap?: SnapRecorder | null; backend?: LoopFactory | null }
 
-/** One excitation of a problem: zeroes its fields, then `advance(n)` steps and records until the loop stops. */
+/** The record's probes of a problem, flat: per port its v probes (on E) then its i probes (on H̃); probe k sums
+ *  coef·field over idx[off[k] … off[k + 1]). */
+export interface ProbeLayout { idx: Int32Array; coef: Float64Array; off: Int32Array; onH: Uint8Array }
+export function probeLayout(p: Problem): ProbeLayout {
+  const probes = p.ports.flatMap((pt) => [...pt.v.map((v) => [v, 0] as const), ...pt.i.map((i) => [i, 1] as const)]);
+  const n = probes.reduce((s, [q]) => s + q.idx.length, 0);
+  const L: ProbeLayout = { idx: new Int32Array(n), coef: new Float64Array(n), off: new Int32Array(probes.length + 1), onH: new Uint8Array(probes.length) };
+  let o = 0;
+  probes.forEach(([q, h], k) => { L.idx.set(q.idx, o); L.coef.set(q.coef, o); o += q.idx.length; L.off[k + 1] = o; L.onH[k] = h; });
+  return L;
+}
+
+/** What job.ts and the harness read of a loop, CPU or GPU. */
+export interface LoopLike { readonly step: number; readonly status: LoopStatus; readonly energy: [number, number][]; readonly wMax: number }
+/** A loop that steps and records on its own and asynchronously (the GPU backend, gpu.ts). */
+export interface AsyncLoop extends LoopLike {
+  /** Up to `steps` steps; the rows of the steps done go to `rec` from row `row`, frames to `snap`. */
+  advance(steps: number, rec: Float64Array, row: number, snap: SnapRecorder | null): Promise<number>;
+  release(): void;
+}
+export interface AsyncLoopOptions { sources: Source[]; sourceEnd: number; stopDb: number; maxSteps: number; snap: SnapRecorder | null }
+/** Makes an excitation's loop on another backend (gpu.ts `GpuRunner.factory()`). */
+export type LoopFactory = (p: Problem, opt: AsyncLoopOptions) => AsyncLoop;
+
+/** One excitation of a problem: zeroes its fields, then `advance(n)` (CPU) or `advanceAsync(n)` (any backend) steps
+ *  and records until the loop stops. */
 export class Excitation {
-  readonly loop: CpuLoop;
+  readonly loop: CpuLoop | AsyncLoop;
   readonly cap: number;
   readonly rec: Float64Array;
   rows = 1; // row 0: the zero fields
   ms = 0;
   private idx: Int32Array; private coef: Float64Array; private off: Int32Array; private onH: Uint8Array;
+  private aloop: AsyncLoop | null = null;
 
   constructor(readonly p: Problem, readonly drive: number[], private opt: ExcitationOptions = {}) {
     p.E.fill(0); p.H.fill(0);
     for (const a of p.cpml.psi) a.fill(0);
     this.cap = stepsCap(p, opt.maxSteps);
-    this.loop = new CpuLoop(p, { sources: portSources(p, drive), sourceEnd: pulseEnd(p), stopDb: opt.stopDb, maxSteps: this.cap });
+    const lo = { sources: portSources(p, drive), sourceEnd: pulseEnd(p), stopDb: opt.stopDb, maxSteps: this.cap };
+    if (opt.backend) this.loop = this.aloop = opt.backend(p, { ...lo, stopDb: opt.stopDb ?? 50, snap: opt.snap ?? null });
+    else this.loop = new CpuLoop(p, lo);
     this.rec = new Float64Array((this.cap + 1) * p.ports.length * RECORD);
-    const probes = p.ports.flatMap((pt) => [...pt.v.map((v) => [v, 0] as const), ...pt.i.map((i) => [i, 1] as const)]);
-    const n = probes.reduce((s, [q]) => s + q.idx.length, 0);
-    this.idx = new Int32Array(n); this.coef = new Float64Array(n); this.off = new Int32Array(probes.length + 1); this.onH = new Uint8Array(probes.length);
-    let o = 0;
-    probes.forEach(([q, h], k) => { this.idx.set(q.idx, o); this.coef.set(q.coef, o); o += q.idx.length; this.off[k + 1] = o; this.onH[k] = h; });
+    ({ idx: this.idx, coef: this.coef, off: this.off, onH: this.onH } = probeLayout(p));
   }
 
   get status(): LoopStatus { return this.loop.status; }
   get step(): number { return this.loop.step; }
+  /** True when the loop is not the CPU's (use `advanceAsync`). */
+  get async(): boolean { return !!this.aloop; }
 
-  /** Up to `steps` steps, each recorded; returns the steps done (fewer when the loop stops). */
-  advance(steps: number): number {
+  /** Up to `steps` steps on any backend; resolves with the steps done. */
+  async advanceAsync(steps: number): Promise<number> {
+    if (!this.aloop) return this.advance(steps);
     const t0 = now();
-    const { E, H } = this.p, L = this.loop, idx = this.idx, coef = this.coef, off = this.off, onH = this.onH;
+    const done = await this.aloop.advance(steps, this.rec, this.rows, this.opt.snap ?? null);
+    this.rows += done;
+    this.ms += now() - t0;
+    return done;
+  }
+
+  /** Up to `steps` steps, each recorded; returns the steps done (fewer when the loop stops). CPU only. */
+  advance(steps: number): number {
+    if (this.aloop) throw new Error('This excitation runs on another backend: use advanceAsync.');
+    const t0 = now();
+    const { E, H } = this.p, L = this.loop as CpuLoop, idx = this.idx, coef = this.coef, off = this.off, onH = this.onH;
     const np = off.length - 1, snap = this.opt.snap;
     let done = 0;
     while (done < steps && L.status === 'running') {
@@ -127,6 +164,8 @@ export class Excitation {
   record(): RunRecord {
     return { drive: this.drive.slice(), rows: this.rows, rec: this.rec.slice(0, this.rows * this.p.ports.length * RECORD), status: this.loop.status, ms: this.ms };
   }
+
+  release(): void { this.aloop?.release(); }
 }
 
 /** Runs a problem to the end in one call (the harness; the worker chunks it): one excitation per drive. */
@@ -138,6 +177,45 @@ export function runProblem(p: Problem, mode: 'full' | 'tdr' | number[][] = 'full
     r.runs.push(x.record());
   });
   return r;
+}
+
+/** `runProblem` on any backend (`opt.backend`, the GPU's factory; the CPU without). */
+export async function runProblemAsync(p: Problem, mode: 'full' | 'tdr' | number[][] = 'full', opt: ExcitationOptions = {}, chunk = 1000): Promise<Records> {
+  const r = newRecords(p);
+  const drives = drivesOf(p.ports.length, mode);
+  for (let k = 0; k < drives.length; k++) {
+    const x = new Excitation(p, drives[k], { ...opt, snap: k === 0 ? opt.snap : null });
+    while (x.status === 'running') await x.advanceAsync(chunk);
+    x.release();
+    r.runs.push(x.record());
+  }
+  return r;
+}
+
+/** The estimator's calibration (fullwave.md §11.2): CALIB_WARMUP steps, then CALIB_STEPS timed steps of the real
+ *  problem with its CPML, ports and records on a backend (the CPU without one); when they take less than CALIB_MIN_MS,
+ *  as many more as fill it are timed twice instead (the faster gives the rate), after `tune` has had the first time per step (the GPU sets its steps
+ *  per submit from it). `rate` is the cell updates per second of the whole loop (estimate.ts `rateFromCalibration`
+ *  turns it into the estimator's rate), `stepMs` per step. */
+export async function calibrate(p: Problem, backend: LoopFactory | null = null, tune?: (stepMs: number) => void): Promise<{ rate: number; stepMs: number; steps: number }> {
+  const x = new Excitation(p, [1], { backend, maxSteps: CALIB_WARMUP + CALIB_STEPS + CALIB_MAX_STEPS });
+  await x.advanceAsync(CALIB_WARMUP);
+  let t0 = now();
+  let n = await x.advanceAsync(CALIB_STEPS);
+  let ms = Math.max(now() - t0, 1e-3);
+  if (ms < CALIB_MIN_MS && x.status === 'running') {
+    tune?.(ms / Math.max(1, n));
+    const more = Math.min(CALIB_MAX_STEPS >> 1, Math.ceil((n * CALIB_MIN_MS) / ms));
+    let best = Infinity;
+    for (let r = 0; r < 2 && x.status === 'running'; r++) { // the best of two (the first long submit may still be cold)
+      t0 = now();
+      const m = await x.advanceAsync(more);
+      const t = Math.max(now() - t0, 1e-3);
+      if (m > 0 && t / m < best) { best = t / m; n = m; ms = t; }
+    }
+  }
+  x.release();
+  return { rate: (p.N * n) / (ms / 1000), stepMs: ms / Math.max(1, n), steps: n };
 }
 
 // ---------------------------------------------------------------- DFT

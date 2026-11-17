@@ -4,7 +4,7 @@
 // (fdtd/job.ts) runs on the page in chunks.
 
 import { createFdtdHandler } from './fdtd/job';
-import type { FdtdJob, FdtdInfo, FdtdProgress, FdtdReply, FdtdRequest, FdtdResult } from './fdtd/job';
+import type { BackendInfo, FdtdJob, FdtdInfo, FdtdProgress, FdtdReply, FdtdRequest, FdtdResult } from './fdtd/job';
 import type { Offer, Verdict } from './fdtd/estimate';
 import type { Note } from './fdtd/model';
 import { messageScheduler } from './jobs';
@@ -12,7 +12,9 @@ import { messageScheduler } from './jobs';
 export type FdtdOutcome =
   | { kind: 'done'; result: FdtdResult; where: 'worker' | 'page' }
   | { kind: 'refused'; verdicts: Verdict[]; offer: Offer | null; notes: Note[] };
-export interface FdtdCallbacks { started?: (info: FdtdInfo) => void; progress?: (p: FdtdProgress) => void }
+/** `backend`: which backend runs the job and why (WebGPU, or the CPU with the reason); again with `restart` when the
+ *  GPU failed mid-run and that excitation restarted on the CPU (its rows and frames so far are void). */
+export interface FdtdCallbacks { started?: (info: FdtdInfo) => void; progress?: (p: FdtdProgress) => void; backend?: (b: BackendInfo) => void }
 
 interface Pending { id: number; job: FdtdJob; cb: FdtdCallbacks; resolve: (r: FdtdOutcome | null) => void; reject: (e: Error) => void }
 
@@ -29,6 +31,7 @@ export class FdtdClient {
   private onReply = (msg: FdtdReply): void => {
     const c = this.cur;
     if (!c || msg.id !== c.id) return; // an overtaken run
+    if (msg.type === 'backend') { c.cb.backend?.(msg); return; }
     if (msg.type === 'started') { c.cb.started?.(msg.info); return; }
     if (msg.type === 'progress') { c.cb.progress?.(msg); return; }
     this.cur = null;

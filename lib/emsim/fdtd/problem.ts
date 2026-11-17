@@ -14,7 +14,7 @@ import { buildCpml } from './cpml';
 import type { Cpml } from './cpml';
 import { buildPorts, pulseOf } from './ports';
 import type { Port, Pulse } from './ports';
-import { estimate, RECORD_PER_PORT, RING, verdicts } from './estimate';
+import { estimate, OVERHEAD, RECORD_PER_PORT, RING, verdicts } from './estimate';
 import type { Env, Estimate, Offer, Verdict } from './estimate';
 import type { Setup } from '../setup';
 
@@ -60,9 +60,7 @@ export function buildProblem(setup: Setup, kind: 'trace' | 'via', opt: ProblemOp
   const mc: [number, number, number] = [minCell(mesh.x), minCell(mesh.y), minCell(mesh.z)];
   const bytes = opt.precision === 'f64' ? 8 : 4;
   const est = estimate({ n, cpml: [mesh.x.cpml, mesh.y.cpml, mesh.z.cpml], minCell: mc, ports: model.ports.length, trMin: model.trMin, path: model.path, bytes, rate: opt.rate });
-  const hB = model.blocks.x[0]?.h;
-  const thinnest = Math.min(...model.dielectric.map((d) => d.z1 - d.z0).filter((t) => t >= 2 * HMIN));
-  const v = verdicts(est, opt.env ?? { backend: 'webgpu' }, { drill: model.drill || undefined, hBarrel: hB, thinnest, hZ: mc[2] });
+  const v = verdicts(est, opt.env ?? { backend: 'webgpu' }, limitsOf(model, mesh));
   const refused = v.verdicts.some((x) => x.level === 'refuse');
   const out: Built = { ok: !refused, model, mesh, est, verdicts: v.verdicts, offer: v.offer, notes, problem: null };
   if ((refused && !opt.force) || opt.allocate === false) return out;
@@ -111,6 +109,27 @@ function allocate(model: Model, mesh: Mesh, dt: number, opt: ProblemOptions): Pr
     model, mesh, nx, ny, nz, N, gx, gy, gz, dt, precision: opt.precision ?? 'f32', lines, mat, cpml, ports, pulse: pulseOf(model.trMin),
     E: new A(3 * N), H: new A(3 * N), record: new A(RING * ports.length * RECORD_PER_PORT),
   };
+}
+
+/** The coarser-mesh offer's limits of a model and mesh (estimate.ts `verdicts`). */
+export function limitsOf(model: Model, mesh: Mesh): { drill?: number; hBarrel?: number; thinnest: number; hZ: number } {
+  const thinnest = Math.min(...model.dielectric.map((d) => d.z1 - d.z0).filter((t) => t >= 2 * HMIN));
+  return { drill: model.drill || undefined, hBarrel: model.blocks.x[0]?.h, thinnest, hZ: minCell(mesh.z) };
+}
+
+/** The verdicts of a built problem again for another environment or rate (the calibration, the backend's choice):
+ *  the estimate's time at `rate` and §11.4's rules. */
+export function judge(b: Built, env: Env, rate: number): { ok: boolean; est: Estimate; verdicts: Verdict[]; offer: Offer | null } {
+  const e = b.est!;
+  const est: Estimate = { ...e, rate, seconds: (e.cells * e.steps * OVERHEAD) / rate };
+  const v = verdicts(est, env, limitsOf(b.model, b.mesh!));
+  return { ok: !v.verdicts.some((x) => x.level === 'refuse'), est, verdicts: v.verdicts, offer: v.offer };
+}
+
+/** Allocates a problem built with `allocate: false` (job.ts decides the backend and calibrates first). */
+export function allocateBuilt(b: Built, opt: ProblemOptions = {}): Problem {
+  if (!b.problem) b.problem = allocate(b.model, b.mesh!, b.est!.dt, opt);
+  return b.problem;
 }
 
 /** Bytes of every typed array the problem holds (what the estimator's memory is checked against). */

@@ -89,9 +89,33 @@ export class SnapRecorder {
   take(p: Problem, step: number): void {
     const pl = this.plan;
     if (step === 0 || step % pl.every || this.count >= pl.frames) return;
-    const E = p.E, signed = pl.comp !== 'E';
-    const data: (Int8Array | Uint8Array)[] = [], scale = new Float32Array(this.gathers.length);
-    this.gathers.forEach((G, s) => {
+    this.fill(p.E, this.gathers, step, p.dt);
+  }
+
+  /** The edges of E every frame reads, all slices in order (the GPU gathers them, gpu.ts). */
+  gatherIndex(): Int32Array {
+    const out = new Int32Array(this.gathers.reduce((a, G) => a + G.idx.length, 0));
+    let o = 0;
+    for (const G of this.gathers) { out.set(G.idx, o); o += G.idx.length; }
+    return out;
+  }
+
+  /** A frame from the values of `gatherIndex()`'s edges (the GPU's gather), at `step` (a frame step of the plan). */
+  takeGathered(values: ArrayLike<number>, step: number, dt: number): void {
+    if (this.count >= this.plan.frames) return;
+    if (!this.local) {
+      let o = 0;
+      this.local = this.gathers.map((G) => { const idx = Int32Array.from(G.idx, (_, q) => o + q); o += G.idx.length; return { idx, mul: G.mul }; });
+    }
+    this.fill(values, this.local, step, dt);
+  }
+
+  private local: Gather[] | null = null;
+
+  private fill(E: ArrayLike<number>, gathers: Gather[], step: number, dt: number): void {
+    const pl = this.plan, signed = pl.comp !== 'E';
+    const data: (Int8Array | Uint8Array)[] = [], scale = new Float32Array(gathers.length);
+    gathers.forEach((G, s) => {
       const m = pl.slices[s].nu * pl.slices[s].nv, b = this.buf, idx = G.idx, mul = G.mul;
       let mx = 0;
       if (signed) {
@@ -114,7 +138,7 @@ export class SnapRecorder {
       data.push(d); scale[s] = sc;
       if (mx > this.max[s]) this.max[s] = mx;
     });
-    this.out.push({ step, t: step * p.dt, data, scale });
+    this.out.push({ step, t: step * dt, data, scale });
     this.count++;
     this.bytes += data.reduce((a, d) => a + d.byteLength, 0) + scale.byteLength;
   }

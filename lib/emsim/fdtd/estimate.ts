@@ -11,6 +11,14 @@ export const RING = 64; // steps of the port record (§9.1)
 export const RECORD_PER_PORT = 6; // values per port and step: the port's v and i, and v, i at its two planes
 export const RATES = { webgpu: 6e9, js: 3e7 } as const; // cell updates per second before the calibration (§9.6, §10)
 export const MiB = 1024 * 1024;
+/** The calibration (§11.2, M6.3): warm-up and timed steps on the real problem, and the margin on its time. */
+export const CALIB_WARMUP = 10, CALIB_STEPS = 30, CALIB_MARGIN = 1.1;
+/** When the timed steps take less than CALIB_MIN_MS (a GPU: 30 steps are a few ms, mostly the submit and read-back
+ *  latency), as many more as fill CALIB_MIN_MS are timed (at most CALIB_MAX_STEPS) and give the rate (M6.3). */
+export const CALIB_MIN_MS = 50, CALIB_MAX_STEPS = 2000;
+/** The estimator's rate (a bare update's, × OVERHEAD in `estimate`) from a calibrated rate of the whole loop, so the
+ *  estimate is the calibrated time × CALIB_MARGIN. */
+export const rateFromCalibration = (loopRate: number): number => (loopRate * OVERHEAD) / CALIB_MARGIN;
 
 /** Δt of §2 from the smallest cells (mm): 0.95/(c0·√(dx⁻² + dy⁻² + dz⁻²)). */
 export function courantDt(dx: number, dy: number, dz: number): number {

@@ -46,6 +46,20 @@ export const UNSTABLE_RISE = 2;
  *  ports' loads at −40…−50 dB after a baseband pulse rises and falls by a few dB without diverging. */
 export const UNSTABLE_FLOOR = 1e-3;
 
+/** The energy monitor's state (CpuLoop, and gpu.ts's GpuLoop). */
+export interface EnergyWatch { status: LoopStatus; energy: [number, number][]; wMax: number; wMinAfter: number }
+/** The stop and stability rules on an energy sum W after `step` (shared by both backends so they stop alike). */
+export function judgeEnergy(s: EnergyWatch, step: number, w: number, dt: number, o: { sourceEnd: number; stopDb: number; sources: boolean }): void {
+  s.energy.push([step, w]);
+  // under the Courant limit the sum is a positive definite form; negative or not finite means the run diverges
+  if (!Number.isFinite(w) || w < 0) { s.status = 'unstable'; return; }
+  s.wMax = Math.max(s.wMax, w);
+  if (step * dt <= o.sourceEnd) return;
+  s.wMinAfter = Math.min(s.wMinAfter, w);
+  if (w > UNSTABLE_RISE * s.wMinAfter && w > UNSTABLE_FLOOR * s.wMax) s.status = 'unstable';
+  else if (o.sources && w < s.wMax * 10 ** (-o.stopDb / 10)) s.status = 'settled';
+}
+
 /** The sources of a problem's ports, driven with the weights `drive` (port 1 alone by default) by the problem's pulse. */
 export function portSources(p: Problem, drive: number[] = [1]): Source[] {
   const out: Source[] = [];
@@ -233,7 +247,7 @@ export class CpuLoop {
   /** The energy sums: [step after which, W] (step·Δt is E's time). */
   readonly energy: [number, number][] = [];
   wMax = 0;
-  private wMinAfter = Infinity;
+  wMinAfter = Infinity;
   private K: Kernels;
   private kE: FArray[]; private kH: FArray[];
   private dE: Float64Array[]; private dH: Float64Array[];
@@ -336,13 +350,6 @@ export class CpuLoop {
   }
 
   private monitor(w: number): void {
-    this.energy.push([this.step, w]);
-    // under the Courant limit the sum is a positive definite form; negative or not finite means the run diverges
-    if (!Number.isFinite(w) || w < 0) { this.status = 'unstable'; return; }
-    this.wMax = Math.max(this.wMax, w);
-    if (this.step * this.g.dt <= this.opt.sourceEnd) return;
-    this.wMinAfter = Math.min(this.wMinAfter, w);
-    if (w > UNSTABLE_RISE * this.wMinAfter && w > UNSTABLE_FLOOR * this.wMax) this.status = 'unstable';
-    else if (this.opt.sources.length && w < this.wMax * 10 ** (-this.opt.stopDb / 10)) this.status = 'settled';
+    judgeEnergy(this, this.step, w, this.g.dt, { sourceEnd: this.opt.sourceEnd, stopDb: this.opt.stopDb, sources: this.opt.sources.length > 0 });
   }
 }
