@@ -122,12 +122,12 @@ const withMatrices = (r: LineResults | null): SolveResult | null => {
   return { ...r, bem: null, matrices };
 };
 
-/** Solves kept for field jobs: the newest few, by hash. */
+/** Solves kept for field jobs and the via's feeds: the newest few, by the hash of what a solve reads (stackup, trace, options). */
 export class SolveCache {
   private map = new Map<string, { key: string; r: LineResults }>();
   constructor(private size = 4) {}
   get(setup: Setup, opt: SolveOptions = {}): LineResults {
-    const key = canonical({ setup, opt });
+    const key = canonical({ stackup: setup.stackup, trace: setup.trace, opt });
     const h = hashOf(key);
     const hit = this.map.get(h);
     if (hit && hit.key === key) { this.map.delete(h); this.map.set(h, hit); return hit.r; }
@@ -135,6 +135,12 @@ export class SolveCache {
     this.map.set(h, { key, r });
     while (this.map.size > this.size) this.map.delete(this.map.keys().next().value);
     return r;
+  }
+  /** BL197: the solve of a trace at the default options if it is kept, else null (nothing is solved or kept). */
+  peek(stackup: Setup['stackup'], trace: Setup['trace']): LineResults | null {
+    const key = canonical({ stackup, trace, opt: {} });
+    const hit = this.map.get(hashOf(key));
+    return hit && hit.key === key ? hit.r : null;
   }
 }
 
@@ -221,9 +227,9 @@ export function* runJob(job: StaticJob, cache: SolveCache = new SolveCache()): G
     case 'field':
       return yield* fieldJob(job, cache);
     case 'via':
-      return viaModel(job.setup.stackup, job.setup.via, job.setup.trace, job.opt ?? {});
+      return viaModel(job.setup.stackup, job.setup.via, job.setup.trace, { ...job.opt, solved: (st, tr) => cache.peek(st, tr) });
     case 'via-target':
-      return viaTarget(job.setup.stackup, job.setup.via, job.setup.trace, job.key, job.target, job.vary, job.opt ?? {});
+      return viaTarget(job.setup.stackup, job.setup.via, job.setup.trace, job.key, job.target, job.vary, { ...job.opt, solved: (st, tr) => cache.peek(st, tr) });
     case 'via-field': {
       const g = viaFieldJob(job.setup.stackup, job.setup.via, job);
       for (;;) {

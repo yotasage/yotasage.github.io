@@ -14,9 +14,12 @@ import * as ST0 from '../../../lib/emsim/stackup.ts';
 import * as SR0 from '../../../lib/emsim/structure.ts';
 import * as AX0 from '../../../lib/emsim/axisym.ts';
 import * as J0 from '../../../lib/emsim/jobs.ts';
+import * as LN0 from '../../../lib/emsim/lines.ts';
+import * as BM0 from '../../../lib/emsim/bem2d.ts';
+import * as PN0 from '../../../lib/emsim/panels.ts';
 
 const d = (m) => m.default ?? m;
-const VM = d(VM0), NP = d(NP0), TD = d(TD0), SU = d(SU0), V = d(V0), ST = d(ST0), SR = d(SR0), AX = d(AX0), J = d(J0);
+const VM = d(VM0), NP = d(NP0), TD = d(TD0), SU = d(SU0), V = d(V0), ST = d(ST0), SR = d(SR0), AX = d(AX0), J = d(J0), LN = d(LN0), BM = d(BM0), PN = d(PN0);
 const C = 299792458;
 const fx = (x, n = 2) => x.toExponential(n);
 const pick = (S, nf, P, i, j) => { const o = new Float64Array(2 * nf); for (let k = 0; k < nf; k++) { const q = 2 * ((k * P + i) * P + j); o[2 * k] = S[q]; o[2 * k + 1] = S[q + 1]; } return o; };
@@ -244,6 +247,57 @@ export async function run(t) {
     rows.push(`C44: barrel ${core(e).z0.toFixed(2)} ± ${(e.barrel.zVacErr / Math.sqrt(core(e).er)).toFixed(2)} Ω in εr ${core(e).er}; section √(L/C) ${e.lumped.z.toFixed(2)} Ω, ${(e.lumped.delay * 1e12).toFixed(2)} ps, C ${(e.lumped.C[0][0] * 1e15).toFixed(1)} fF (ΣΔC ${(e.lumped.dCsum * 1e15).toFixed(1)}), L ${(e.lumped.L[0][0] * 1e9).toFixed(3)} nH; TDR 35 ps with 50 Ω ports at the pads: ${ex.zMin.toFixed(2)}–${ex.zMax.toFixed(2)} Ω; with the 2 mm feeds (${c44.feeds[0].z0.toFixed(2)} Ω) the TDR stays within ${TD.tdrExtremes(c44.tdr, 0, 2 * c44.span + 6 * c44.tr).zMin.toFixed(2)}–${TD.tdrExtremes(c44.tdr, 0, 2 * c44.span + 6 * c44.tr).zMax.toFixed(2)} Ω`);
     const exd = TD.tdrExtremes(pz.tdr, 0, 2 * pz.span + 6 * pz.tr);
     rows.push(`C45 (stadium as round Ø1.22): barrel Zdiff ${core(pz).zdiff.toFixed(2)} Ω, Zcm ${core(pz).zcm.toFixed(2)} Ω in εr ${core(pz).er}; section Zdiff ${pz.lumped.zdiff.toFixed(2)} Ω, Zcm ${pz.lumped.zcm.toFixed(2)} Ω, ${(pz.lumped.delay * 1e12).toFixed(2)} ps; ΔC per via ${(pz.lumped.dCsum * 1e15).toFixed(1)} fF; differential TDR 35 ps (100 Ω ports) ${exd.zMin.toFixed(2)}–${exd.zMax.toFixed(2)} Ω`);
+  }
+  // 12. BL197 (fix after M9.2): the feeds' shortcuts give the numbers of solving each feed on its own.
+  {
+    // The vacuum problem alone: bit for bit the full solve's finest C0 and L (the line over the next plane's L′).
+    let n = 0, same = 0;
+    const ids = ST.copperIds(st);
+    for (const kind of ['microstrip', 'cpwg', 'pair-microstrip', 'stripline', 'pair-stripline', 'cpw', 'pair-cpw']) {
+      const t0 = SR.presetStructure(kind, st, 0.12);
+      if (!t0) continue;
+      for (const tr of [t0, ...ids.filter((b) => t0.below && ids.indexOf(b) > ids.indexOf(t0.below)).map((b) => ({ ...t0, below: b }))]) {
+        const sec = LN.setupSection({ stackup: st, trace: tr });
+        if (typeof sec === 'string') continue;
+        const full = BM.solveSection(sec);
+        if (!full.ok) continue;
+        const fin = full.levels[full.levels.length - 1], vl = BM.vacuumLevel(PN.sectionBoundary(sec).boundary, BM.DEFAULT_LEVEL);
+        n++;
+        if (typeof vl !== 'string' && fin.L.every((x, i) => x === vl.L[i]) && fin.C0.every((x, i) => x === vl.C0[i])) same++;
+      }
+    }
+    t.ok(n >= 20 && same === n, `vacuumLevel = the full solve's finest C0 and L bit for bit: ${same} of ${n} sections`);
+    // The exit feed mirrored through the symmetric stackup shares the entry's section key (1 nm wider does not) and its
+    // numbers are those of its own solve.
+    const mir = VM.feedStructure(st, su.trace, su.via.exit);
+    const key = (tr) => PN.sectionKey(LN.setupSection({ stackup: st, trace: tr }));
+    t.ok(key(su.trace) === key(mir) && key(su.trace) !== key({ ...su.trace, w: { ...su.trace.w, v: su.trace.w.v + 1e-6 } }), 'sectionKey: the trace mirrored to L6 shares the key of L1; 1 nm wider does not');
+    VM.clearFeedCache();
+    const m = VM.viaModel(st, su.via, su.trace);
+    const own = LN.solveSetup({ stackup: st, trace: mir }), ex = m.feeds.find((f) => f.side === 'exit');
+    const rel = (a, b) => Math.abs(a - b) / Math.abs(b);
+    t.ok(rel(ex.z0, own.lines[0].z0.v) < 1e-12 && rel(ex.eeff, own.lines[0].eeff.v) < 1e-12, `C44's exit feed (the entry's section) = its own solve: z0 ${ex.z0} / ${own.lines[0].z0.v}`);
+    // The run over the antipad: ΔL from the full solves of the trace and of the trace over the next plane, as the model sums it.
+    const ov = m.overs.find((o) => o.side === 'entry');
+    const La = LN.solveSetup({ stackup: st, trace: { ...su.trace, below: ov.next } }).bem.L[0][0], Lb = LN.solveSetup({ stackup: st, trace: su.trace }).bem.L[0][0];
+    const dL = 0 + (La + Lb * -1) * (ov.length * 1e-3);
+    t.ok(ov.dL === dL, `C44's ΔL over the antipad from the vacuum solve = from the full solves: ${ov.dL} / ${dL} H`);
+    // The worker's via job with the trace's solve in its cache = the model solving every feed.
+    const cache = new J.SolveCache();
+    const drain = (job) => { const g = J.runJob(job, cache); for (;;) { const x = g.next(); if (x.done) return x.value; } };
+    const tw = { ...su.trace, w: { ...su.trace.w, v: 0.1411 } };
+    drain({ kind: 'solve', setup: { ...su, trace: tw } });
+    VM.clearFeedCache();
+    const a = drain({ kind: 'via', setup: { ...su, trace: tw } });
+    VM.clearFeedCache();
+    const b = VM.viaModel(st, su.via, tw);
+    t.ok(a.ok && a.feeds[0].z0 === b.feeds[0].z0 && a.lumped.L[0][0] === b.lumped.L[0][0] && a.nport.s.every((x, i) => x === b.nport.s[i]), "the via job with the trace's solve in the worker's cache = the model solving it (bit for bit)");
+    // Timing: after a trace edit (the trace's solve held) and after a new drill, best of 5 (engine.md §10: 30 ms).
+    let w = 0.1411, dr = 0.3;
+    const tTrace = time(() => { const tr = { ...su.trace, w: { ...su.trace.w, v: (w += 0.0013) } }; drain({ kind: 'solve', setup: { ...su, trace: tr } }); drain({ kind: 'via', setup: { ...su, trace: tr } }); });
+    const tDrill = time(() => { drain({ kind: 'via', setup: { ...su, via: { ...su.via, drill: { ...su.via.drill, v: (dr += 0.0021) } } } }); });
+    rows.push(`via model C44 in a worker's job (best of 5): ${tTrace.toFixed(1)} ms after a trace edit (the trace's solve included), ${tDrill.toFixed(1)} ms after a new drill`);
+    t.ok(tTrace <= 30 && tDrill <= 30, `via model after a trace edit ${tTrace.toFixed(1)} ms, after a new drill ${tDrill.toFixed(1)} ms (≤ 30)`);
   }
   for (const r of rows) t.note(r);
 }

@@ -17,12 +17,12 @@
 // (`asym`, relative) is reported and added to the estimate of every off-diagonal entry.
 
 import type { Section } from './geometry';
-import { assemble, dnRow, vacuumMatrix } from './kernels';
+import { assemble, dnRow, potRow, vacuumMatrix } from './kernels';
 import type { Kernel, Panels } from './kernels';
 import { invert, luFactor, luSolve, symmetrize, toRows } from './linalg';
 import { meshBoundary, sectionBoundary, validLevel } from './panels';
 import type { Boundary } from './panels';
-import { assembleMirror, findMirror, vacuumMirror } from './symmetry';
+import { assembleMirror, findMirror, vacuumMirror, vacuumOnlyMirror } from './symmetry';
 
 export const EPS0 = 8.8541878188e-12; // F/m, CODATA 2022
 export const C0 = 299792458; // m/s
@@ -202,6 +202,84 @@ export function solveLevel(b: Boundary, M: number, mirror = true): Level | strin
     M, panels: N, nc, C, C0: Cv, L, asym, pivot, mirror: !!sym, mesh, q: B, q0: B0,
     ms: { mesh: t1 - t0, assemble: t2 - t1, lu: t3 - t2, lu0: t4 - t3, solve: t5 - t4, total: t5 - t0 },
   };
+}
+
+/**
+ * BL197: the vacuum problem alone at level M: C0 and L = C0⁻¹/c0², the same numbers as solveLevel's (the same mesh,
+ * mirror, conductor rows, factorisations and sums), without the interface rows, the dielectric matrix or coarser
+ * levels. The via's feed over its antipad needs only the L′ of the trace over the next plane.
+ */
+export function vacuumLevel(b: Boundary, M: number, mirror = true): { C0: Float64Array; L: Float64Array } | string {
+  const mesh = meshBoundary(b, M);
+  const nc = mesh.nc;
+  const ns = b.signals;
+  if (nc === 0) return 'The structure has no conductor surface.';
+  const sym = mirror ? findMirror(mesh, ns) : null;
+  const B0 = new Float64Array(ns * nc);
+  const cond = mesh.cond;
+  if (sym) {
+    const { e: ve, o: vo } = vacuumOnlyMirror(b.kernel, mesh, sym, sym.oddNeeded && sym.no > 0);
+    const piv0E = new Int32Array(ve.n0);
+    let pivot0 = luFactor(ve.A0, ve.n0, piv0E);
+    const piv0O = vo ? new Int32Array(vo.n0) : null;
+    if (vo) pivot0 = Math.min(pivot0, luFactor(vo.A0, vo.n0, piv0O));
+    if (!(pivot0 > 1e-15)) return 'The solver\'s matrix is singular (conductors overlapping or too thin for the mesh).';
+    const n0e = ve.n0;
+    const n0o = vo ? vo.n0 : 0;
+    const B0e = new Float64Array(ns * n0e);
+    const B0o = vo ? new Float64Array(ns * n0o) : null;
+    for (let s = 0; s < ns; s++) {
+      for (let a = 0; a < sym.nce; a++) {
+        const r = sym.reps[a];
+        const o = sym.mate[r];
+        const vr = cond[r] === s + 1 ? 1 : 0;
+        const vm = cond[o] === s + 1 ? 1 : 0;
+        B0e[s * n0e + a] = o === r ? vr : 0.5 * (vr + vm);
+        if (o !== r && B0o) B0o[s * n0o + sym.odd[r]] = 0.5 * (vr - vm);
+      }
+    }
+    luSolve(ve.A0, n0e, piv0E, B0e, ns);
+    if (B0o) luSolve(vo.A0, n0o, piv0O, B0o, ns);
+    for (let s = 0; s < ns; s++) {
+      for (let j = 0; j < nc; j++) {
+        let v = B0e[s * n0e + sym.even[j]];
+        if (B0o && sym.odd[j] >= 0) v += sym.sign[j] * B0o[s * n0o + sym.odd[j]];
+        B0[s * nc + j] = v;
+      }
+    }
+  } else {
+    const free = b.kernel.kind === 'free';
+    const n0 = nc + (free ? 1 : 0);
+    const A0 = new Float64Array(n0 * n0);
+    const row = new Float64Array(nc);
+    for (let i = 0; i < nc; i++) {
+      potRow(b.kernel, mesh, i, mesh.mx[i], mesh.mz[i], row, 0, nc);
+      A0.set(row, i * n0);
+      if (free) A0[i * n0 + nc] = 1;
+    }
+    if (free) for (let j = 0; j < nc; j++) A0[nc * n0 + j] = mesh.len[j];
+    const piv0 = new Int32Array(n0);
+    if (!(luFactor(A0, n0, piv0) > 1e-15)) return 'The solver\'s matrix is singular (conductors overlapping or too thin for the mesh).';
+    const X0 = new Float64Array(ns * n0);
+    for (let s = 0; s < ns; s++) for (let i = 0; i < nc; i++) if (cond[i] === s + 1) X0[s * n0 + i] = 1;
+    luSolve(A0, n0, piv0, X0, ns);
+    for (let s = 0; s < ns; s++) B0.set(X0.subarray(s * n0, s * n0 + nc), s * nc);
+  }
+  const Cv = new Float64Array(ns * ns);
+  for (let s = 0; s < ns; s++) {
+    for (let j = 0; j < nc; j++) {
+      const c = cond[j];
+      if (c < 1) continue;
+      Cv[(c - 1) * ns + s] += EPS0 * B0[s * nc + j] * mesh.len[j];
+    }
+  }
+  symmetrize(Cv, ns);
+  const inv = invert(Cv, ns);
+  if (!inv) return 'The vacuum capacitance matrix is singular.';
+  const L = new Float64Array(ns * ns);
+  for (let i = 0; i < ns * ns; i++) L[i] = inv[i] / (C0 * C0);
+  symmetrize(L, ns);
+  return { C0: Cv, L };
 }
 
 // The free charge density / ε0 on each conductor panel for each signal's solution (q: total charges, q[s·N + j]):

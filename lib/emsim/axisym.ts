@@ -28,9 +28,10 @@ const INV_PI = 1 / Math.PI;
 // ---------- complete elliptic integrals ----------
 
 // K(k) and E(k) by the AGM (facts.md §8) from k′ formed directly and k² (both from the geometry, never 1 − k²).
-// Leaves K in KV and the series Σ 2^{n−1}·c_n² in SV, so that E = K·(1 − SV) and E − K = −K·SV without cancellation.
-let KV = 0;
-let SV = 0;
+// Leaves K in KS[0] and the series Σ 2^{n−1}·c_n² in KS[1] (SV), so that E = K·(1 − SV) and E − K = −K·SV without
+// cancellation. A typed array, not a module's `let`: in the bundle a module is a function, and each write of a double
+// to one of its variables allocates a heap number (the via model's pads solve a few hundred thousand per edit; BL199).
+const KS = new Float64Array(2);
 function ke(kp: number, k2: number): void {
   let a = 1;
   let g = kp;
@@ -45,14 +46,14 @@ function ke(kp: number, k2: number): void {
     p *= 2;
     sum += p * c * c;
   }
-  KV = Math.PI / (2 * a);
-  SV = sum;
+  KS[0] = Math.PI / (2 * a);
+  KS[1] = sum;
 }
 
 // [K, E] of modulus k given k′ = √(1 − k²) and k² separately.
 export function ellipKE(kp: number, k2: number = 1 - kp * kp): [number, number] {
   ke(kp, k2);
-  return [KV, KV * (1 - SV)];
+  return [KS[0], KS[0] * (1 - KS[1])];
 }
 
 // The ring kernel K(k)/R₊ at (r, z) of a ring at (rp, zp), and its derivatives by r and z (mm⁻¹, mm⁻²): the
@@ -65,6 +66,7 @@ export function ringKernel(r: number, z: number, rp: number, zp: number, out: Fl
   const Rm2 = dr * dr + dz * dz;
   const Rp = Math.sqrt(Rp2);
   ke(Math.sqrt(Rm2 / Rp2), (4 * r * rp) / Rp2);
+  const KV = KS[0], SV = KS[1];
   const E = KV * (1 - SV);
   out[0] = KV / Rp;
   out[1] = (-dr * E) / (Rp * Rm2) + (r > 0 ? (-KV * SV) / (2 * r * Rp) : 0);
@@ -156,7 +158,7 @@ export function meshAxi(edges: AxiEdge[], M: number): AxiPanels {
 
 const FAR2 = 36; // (6 panel lengths)²: 2-point Gauss beyond
 const NEAR2 = 2.25; // (1.5 lengths)²: bisected below
-let ACC0 = 0, ACC1 = 0, ACC2 = 0;
+const ACC = new Float64Array(3); // the panel integrals' sums (a typed array for the reason of KS)
 
 // Adds w·K/R₊ (and its gradient when grad) at (r, z) from a ring at (rp, zp).
 function addPoint(r: number, z: number, rp: number, zp: number, w: number, grad: boolean): void {
@@ -168,11 +170,12 @@ function addPoint(r: number, z: number, rp: number, zp: number, w: number, grad:
   if (Rm2 <= 1e-28 * Rp2) return; // a quadrature node on the field point (field grids only)
   const Rp = Math.sqrt(Rp2);
   ke(Math.sqrt(Rm2 / Rp2), (4 * r * rp) / Rp2);
-  ACC0 += (w * KV) / Rp;
+  const KV = KS[0], SV = KS[1];
+  ACC[0] += (w * KV) / Rp;
   if (grad) {
     const t = (KV * (1 - SV)) / (Rp * Rm2);
-    ACC1 += w * (-dr * t + (r > 0 ? (-KV * SV) / (2 * r * Rp) : 0));
-    ACC2 += w * (-dz * t);
+    ACC[1] += w * (-dr * t + (r > 0 ? (-KV * SV) / (2 * r * Rp) : 0));
+    ACC[2] += w * (-dz * t);
   }
 }
 
@@ -199,7 +202,7 @@ function nearPiece(p: AxiPanels, j: number, r: number, z: number, t0: number, t1
   nearPiece(p, j, r, z, tm, t1, grad, depth + 1);
 }
 
-// Panel j's (1/π)∫r′K/R₊ dl′ and gradient at (r, z) (not on panel j's midpoint), added to ACC0..2. g8: 8 points
+// Panel j's (1/π)∫r′K/R₊ dl′ and gradient at (r, z) (not on panel j's midpoint), added to ACC[0..2]. g8: 8 points
 // wherever the piece is not bisected (the harness's reference rule).
 function panelAt(p: AxiPanels, j: number, r: number, z: number, grad: boolean, g8: boolean): void {
   const er = r - p.mr[j], ez = z - p.mz[j];
@@ -235,6 +238,7 @@ function selfPD(p: AxiPanels, i: number, out: Float64Array): void {
       const Rp2 = sr * sr + dz * dz;
       const Rp = Math.sqrt(Rp2);
       ke(Math.sqrt((dr * dr + dz * dz) / Rp2), (4 * r * rp) / Rp2);
+      const KV = KS[0], SV = KS[1];
       const ls = Math.log(s);
       P += ds * ((rp * KV) / (Math.PI * Rp) - cP * ls);
       D += ds * ((-rp * nr * KV * SV) / (2 * Math.PI * r * Rp) - cD * ls);
@@ -273,18 +277,18 @@ export function solveAxiLevel(edges: AxiEdge[], M: number, opt: AxiSolveOptions 
     if (p.cond[i] >= 0) {
       for (let j = 0; j < n; j++) {
         if (j === i) { selfPD(p, i, sd); A[row + j] = sd[0]; continue; }
-        ACC0 = 0;
+        ACC[0] = 0;
         panelAt(p, j, r, z, false, g8);
-        A[row + j] = ACC0;
+        A[row + j] = ACC[0];
       }
       b[i] = p.cond[i] === sig ? 1 : 0;
     } else {
       const lam = p.lam[i], nr = p.tz[i], nz = -p.tr[i];
       for (let j = 0; j < n; j++) {
         if (j === i) { selfPD(p, i, sd); A[row + j] = 1 - lam * sd[1]; continue; }
-        ACC0 = 0; ACC1 = 0; ACC2 = 0;
+        ACC[0] = 0; ACC[1] = 0; ACC[2] = 0;
         panelAt(p, j, r, z, true, g8);
-        A[row + j] = -lam * (nr * ACC1 + nz * ACC2);
+        A[row + j] = -lam * (nr * ACC[1] + nz * ACC[2]);
       }
     }
   }
@@ -320,10 +324,10 @@ export function axiField(lv: AxiLevel, r: number, z: number, out: Float64Array |
   const p = lv.mesh;
   let phi = 0, gr = 0, gz = 0;
   for (let j = 0; j < p.n; j++) {
-    ACC0 = 0; ACC1 = 0; ACC2 = 0;
+    ACC[0] = 0; ACC[1] = 0; ACC[2] = 0;
     panelAt(p, j, r, z, true, false);
     const s = lv.s[j];
-    phi += ACC0 * s; gr += ACC1 * s; gz += ACC2 * s;
+    phi += ACC[0] * s; gr += ACC[1] * s; gz += ACC[2] * s;
   }
   out[0] = phi;
   out[1] = r > 0 ? -gr * 1e3 : 0;

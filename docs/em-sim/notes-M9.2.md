@@ -172,3 +172,88 @@ work p95 was 2.9–7.4 ms in all. The via model's 31–32 ms is the same before 
 - ui-session's 2 minutes in that run: page heap 22.37 → 23.31 MiB from the third sample, nodes 18,489 → 18,493,
   listeners 717, GPU buffers 19 / 56,433,580 B for every single-via run, 1 WebGL context object and 2 detached nodes in
   the end's snapshot. The 10-minute run's table is above.
+
+## Fix: via-model budgets (BL197, BL198, BL199)
+
+Done 2026-11-17 after M9.2. engine.md §10's via-model budget (≤ 30 ms) is now met in the static worker after an edit of
+the via and after an edit of the trace, and ui-perf checks both (median and p95 at 1×; before, it only reported the
+drill row and failed at 1.5×). No engine number changed: the via model's results are the same to 3·10⁻¹⁴ relative on
+588 setups (every stackup preset × both via presets × five trace kinds × three widths × two drills, against the
+previous viamodel.ts; the TDR's settling bound, itself a spread at the round-off level of about 6·10⁻¹⁰, moves in its
+seventh digit), `VIAMODEL_VERSION` stays 2.
+
+**Causes.**
+
+1. **The worker's pads solve was slow for a reason Node did not show (BL199).** `axisym.ts` kept the AGM's K and its
+   series (`KV`, `SV`) and the panel sums (`ACC0..2`) in module-level `let`s. In the production bundle a module is a
+   function, so these are closure variables, and V8 boxes a double written to a context slot as a new heap number on
+   every write: a few hundred thousand allocations per via model. Node runs the TypeScript as an ES module, whose
+   top-level `let`s V8 keeps unboxed, so Node read 21–25 ms where the worker read 31. A CDP profile of the worker
+   (`Profiler` on the worker target, by a flat session on Edge's debugging port) showed every function of the pads
+   solve 1.3–2× slower, not one deopt; and the worker's time depended on what ran before it in the browser (a fresh
+   browser 22–23 ms, after one other page of the site 28–31 ms: allocation and GC state), which is why ui-perf's full
+   run read 31 and its via part alone 22.5. Now `KS` and `ACC` are module `Float64Array`s (as kernels.ts's `GV`, `RV`
+   already were): the same arithmetic bit for bit, 33 → 21.5 ms for one `viaAxisym` in Node, and the worker no longer
+   depends on the browser's state.
+2. **A trace edit solved four 2D sections (BL197),** about 36 ms in Node, 50–55 in the worker: the entry feed (the
+   trace itself, which the worker had just solved), the exit feed (the trace mirrored to L6), and the trace over the
+   next plane beyond each antipad (L1 over L5 and L6 under L2: 648 panels at the finest level, 13 ms each in Node).
+3. **A typed trace width sent the field map's job twice (BL198):** the edit's render still had the old view, and the
+   fit's layout effect replaced it before the paint; the first job ran about 10 ms before its cancel came.
+
+**Changes.**
+
+- `lib/emsim/axisym.ts`: `KS`, `ACC` typed arrays (cause 1).
+- `lib/emsim/jobs.ts`: `SolveCache` keyed by what a solve reads (stackup, trace, options; the via was in the key and
+  is not read) with `peek(stackup, trace)`, which the `via` and `via-target` jobs pass to the model as
+  `ViaModelOptions.solved`: the entry feed is the trace's own solve, not solved again.
+- `lib/emsim/panels.ts` `sectionKey(section)`: a key equal for sections the solver reads as the same problem (its own
+  frame, polygons as rings to 10⁻¹² mm, sorted); `viaModel`'s feed cache also keys by it, so the exit feed mirrored
+  through a symmetric stackup is the entry's (z0 the same to 10⁻¹² relative; check-viamodel checks it).
+- `lib/emsim/bem2d.ts` `vacuumLevel(boundary, M)` (with `symmetry.ts` `vacuumOnlyMirror` and `potRow`'s `end`): the
+  vacuum problem alone at the finest level, bit for bit the full solve's C0 and L (544 sections of every preset
+  stackup and trace kind, and 29 of the default stackup in check-viamodel), without the interface rows, the dielectric
+  matrix or the two coarser levels. The line over the next plane only needs L′ (engine.md §6.5), so `feedLine(…,
+  lOnly)` uses it: 13 ms → about 1 ms. `ViaOver.zNext` (that line's impedance, never shown, exported or checked) is
+  gone with it.
+- `components/EmSim/TraceDrawing.tsx`, `useFieldMap.ts`: the fit the view was set for (`viewFit`); the map's job waits
+  while the view is still the previous section's (`ready`): one job per typed width (ui-perf checks it).
+
+**Numbers** (ui-perf's via part, the worker's own time `data-ms`, median / p95; Node from check-viamodel and the scripts
+of this fix):
+
+| case | before | after |
+| --- | --- | --- |
+| via model C44, a new drill, worker (full ui-perf run) | 31.0 / 34.4 ms | 22.7 / 26.3 ms |
+| via model C44, a new trace width, worker (before: A1 of the A/B below; after: full ui-perf run) | 53.5 / 65.4 ms | 9.9 / 11.4 ms |
+| the same, Node (best of 5 or median of 15) | drill 20.5, trace edit 36–41 ms | drill 15, trace edit 7 ms |
+| field map's first picture after a typed width (1440 px) | 20 / 22 ms | 14 / 19 ms |
+
+**A/B** (the drag paths changed: the via's antipad drag runs the faster model, a drag's end now waits for the fitted
+view before the map's job): `.ab-head`, a worktree of d38a82a with its own build on 3023, against this build on 3022,
+ui-perf's `EMSIM_PERF_PARTS=drag,via` with 3 repeats, interleaved A B A B (the new via rows run against both):
+
+| case (all main-thread work per frame, ms; medians of 3) | A1 (d38a82a) | B1 (fix) | A2 (d38a82a) | B2 (fix) |
+| --- | --- | --- | --- | --- |
+| microstrip width, 1× / 4× | 3.09 / 12.34 | 3.18 / 12.68 | 3.23 / 13.18 | 3.09 / 12.28 |
+| pair-cpw width, 1× / 4× | 3.23 / 14.03 | 3.35 / 13.94 | 3.82 / 15.00 | 3.38 / 13.15 |
+| microstrip with the field map, 1× / 4× (coarse map at 4×) | 5.81 / 22.72 (42 ms) | 6.06 / 21.55 (41 ms) | 6.51 / 27.34 (40 ms) | 5.70 / 21.85 (37 ms) |
+| via side antipad, 1× / 4× (results per frame at 1×) | 5.17 / 22.54 (0.73) | 5.81 / 20.00 (0.92) | 5.48 / 25.48 (0.52) | 5.82 / 20.08 (0.95) |
+| via model, new drill, worker median / p95 | 32.5 / 35.0 | 23.9 / 27.1 | 32.6 / 36.6 | 22.9 / 24.6 |
+| via model, new trace width, worker median / p95 | 53.5 / 65.4 | 10.0 / 11.8 | 60.3 / 67.1 | 10.4 / 11.0 |
+
+The trace drags are within the spread between runs of the same build; the via's antipad drag gets a new result on more
+frames at 1× (0.92–0.95 against 0.52–0.73) and its 4× work per frame is lower, as its model is faster. The drag frame's
+own work p95 was 0.7–8.7 ms in A and 0.7–6.9 ms in B.
+
+**Checks.** check-viamodel's group 12 (new): `vacuumLevel` against the full solve bit for bit, the mirrored exit feed's
+section key and numbers, ΔL over the antipad from the vacuum solve equal to the full solves', the worker's via job with
+the trace's solve held equal to the model solving it, and the via model in a worker's job after a trace edit and a new
+drill within 30 ms in Node. ui-perf: both via rows checked (median and p95 ≤ 30 ms at 1×), one field-map job per typed
+width, and the target tool's wait keyed by the result's width as well as its time (two runs of the same 0.1 ms left it
+waiting until the timeout once).
+
+**Runs.** `npx tsc --noEmit` clean. `npm run check`: all 54,212 checks passed (301 s; 6 new in
+check-viamodel). `npm run build` (stopped once on Next.js's security notice, passed on the retry), then `node ui.mjs -
+--no-build`: **28 of 28 scripts passed**; its ui-perf: via model after a new drill 22.1 / 25.7 ms, after a new trace
+width 9.0 / 13.1 ms, field map's first picture 15 / 18 ms with one job per typed width.

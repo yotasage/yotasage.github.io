@@ -11,12 +11,14 @@
 // 4-port (pair: ports A entry, B entry, A exit, B exit) with every port at z0 (50 Ω), and the mixed-mode 4-port (D1,
 // D2 at 2·z0, C1, C2 at z0/2). TDR and TDT from tdr.ts. Validity flags with their numbers. No Node APIs.
 
-import { C0 as CLIGHT } from './bem2d';
+import { C0 as CLIGHT, DEFAULT_LEVEL, solveSection, vacuumLevel } from './bem2d';
 import { AXI_LEVEL, viaAxisym, viaLayout, viaWall } from './axisym';
 import type { ViaAxiResult, ViaLayout } from './axisym';
 import { equivalentRadius, viaCut } from './viacut';
-import { solveSetup } from './lines';
-import type { Flag } from './lines';
+import { linesOf, setupSection } from './lines';
+import type { Flag, LineResults } from './lines';
+import { sectionBoundary, sectionKey } from './panels';
+import { toRows } from './linalg';
 import { copperIds, layerIndex, stackZ } from './stackup';
 import type { Stackup } from './stackup';
 import type { Structure } from './structure';
@@ -207,9 +209,17 @@ export const stubFormula = (lenMm: number, eeff: number): number => CLIGHT / (4 
 // ---------- feeds ----------
 
 export interface FeedLine { ok: boolean; reason: string; spec: LineSpec | null; L: Mat | null; z0: number; eeff: number; cached: boolean; ms: number } // L: H/m, n × n
-const FEEDS = new Map<string, FeedLine>();
+/** A solve the caller already holds (the worker's SolveCache: the trace's own section), or null (BL197). */
+export type SolvedLookup = (stackup: Stackup, trace: Structure) => LineResults | null;
+const FEEDS = new Map<string, FeedLine>(); // by the input
+const FEED_SECTIONS = new Map<string, FeedLine>(); // by the section as the solver sees it (panels.ts sectionKey)
 const FEED_CACHE = 16;
-export function clearFeedCache(): void { FEEDS.clear(); }
+export function clearFeedCache(): void { FEEDS.clear(); FEED_SECTIONS.clear(); }
+const remember = (m: Map<string, FeedLine>, key: string, x: FeedLine): void => {
+  m.delete(key); // newest last
+  m.set(key, x);
+  while (m.size > FEED_CACHE) m.delete(m.keys().next().value);
+};
 
 const PAIR_KIND: Partial<Record<Structure['kind'], Structure['kind']>> = { microstrip: 'pair-microstrip', stripline: 'pair-stripline', cpw: 'pair-cpw', cpwg: 'pair-cpw' };
 
@@ -228,24 +238,55 @@ export function feedStructure(s: Stackup, trace: Structure, layer: string): Stru
 }
 
 // The feed line of a structure (n = the via's barrels: a single trace feeds each via of a pair alone, uncoupled).
-export function feedLine(s: Stackup, st: Structure, n: number, via: ViaStructure): FeedLine {
+// BL197: a feed whose section the solver sees as one solved before (the exit feed, mirrored through a symmetric
+// stackup, is the entry's; the run over the antipad likewise) is taken from it, and a section the caller has solved
+// (`solved`: the worker's own solve of the trace) is not solved again. lOnly: only `L` is wanted (the trace over the
+// next plane beyond an antipad): the vacuum problem alone at the solver's level (bem2d `vacuumLevel`, the same L′ as
+// the full solve's), `spec` null and z0, eeff NaN, unless a full solve of the section is at hand.
+export function feedLine(s: Stackup, st: Structure, n: number, via: ViaStructure, solved?: SolvedLookup, lOnly = false): FeedLine {
   const t0 = now();
   const key = JSON.stringify([s, st, n]);
-  const hit = FEEDS.get(key);
-  if (hit) { FEEDS.delete(key); FEEDS.set(key, hit); return { ...hit, cached: true, ms: now() - t0 }; }
-  const r = solveSetup({ stackup: s, trace: st, via });
+  const hk = FEEDS.has(key) ? key : `L;${key}`;
+  const hit = hk === key || lOnly ? FEEDS.get(hk) : undefined;
+  if (hit) { remember(FEEDS, hk, hit); return { ...hit, cached: true, ms: now() - t0 }; }
+  const sec = setupSection({ stackup: s, trace: st, via });
+  if (typeof sec === 'string') return { ok: false, reason: sec, spec: null, L: null, z0: NaN, eeff: NaN, cached: false, ms: now() - t0 };
+  const sk = `${n};${sectionKey(sec)}`;
+  const sk2 = FEED_SECTIONS.has(sk) ? sk : `L;${sk}`;
+  const same = sk2 === sk || lOnly ? FEED_SECTIONS.get(sk2) : undefined;
+  if (same) {
+    remember(FEED_SECTIONS, sk2, same);
+    remember(FEEDS, sk2 === sk ? key : `L;${key}`, same);
+    return { ...same, cached: true, ms: now() - t0 };
+  }
+  const fail = (reason: string): FeedLine => ({ ok: false, reason, spec: null, L: null, z0: NaN, eeff: NaN, cached: false, ms: 0 });
+  const held = solved ? solved(s, st) : null;
   let out: FeedLine;
-  if (!r.ok) out = { ok: false, reason: r.reason, spec: null, L: null, z0: NaN, eeff: NaN, cached: false, ms: 0 };
-  else if (r.n !== 1 && r.n !== n) out = { ok: false, reason: `The feed has ${r.n} signals and the via ${n}.`, spec: null, L: null, z0: NaN, eeff: NaN, cached: false, ms: 0 };
-  else {
-    let spec = lineFromCL(r.bem.C, r.bem.L);
-    let Lm: Mat = r.bem.L.map((row) => [...row]);
-    if (r.n === 1 && n === 2) { spec = { n: 2, C: [[spec.C[0][0], 0], [0, spec.C[0][0]]], T: rEye(2), v: [spec.v[0], spec.v[0]] }; Lm = [[Lm[0][0], 0], [0, Lm[0][0]]]; }
-    out = { ok: true, reason: '', spec, L: Lm, z0: r.n === 1 ? r.lines[0].z0.v : r.pair.zdiff.v, eeff: r.lines[0].eeff.v, cached: false, ms: 0 };
+  if (lOnly && !held) {
+    const sb = sectionBoundary(sec);
+    const vl = sb.boundary ? vacuumLevel(sb.boundary, DEFAULT_LEVEL) : sb.reason;
+    const ns = sb.boundary ? sb.boundary.signals : 0;
+    if (typeof vl === 'string') out = fail(vl);
+    else if (ns !== 1 && ns !== n) out = fail(`The feed has ${ns} signals and the via ${n}.`);
+    else {
+      const Lr = toRows(vl.L, ns);
+      out = { ok: true, reason: '', spec: null, L: ns === 1 && n === 2 ? [[Lr[0][0], 0], [0, Lr[0][0]]] : Lr, z0: NaN, eeff: NaN, cached: false, ms: 0 };
+    }
+  } else {
+    const r = held || linesOf(solveSection(sec));
+    if (!r.ok) out = fail(r.reason);
+    else if (r.n !== 1 && r.n !== n) out = fail(`The feed has ${r.n} signals and the via ${n}.`);
+    else {
+      let spec = lineFromCL(r.bem.C, r.bem.L);
+      let Lm: Mat = r.bem.L.map((row) => [...row]);
+      if (r.n === 1 && n === 2) { spec = { n: 2, C: [[spec.C[0][0], 0], [0, spec.C[0][0]]], T: rEye(2), v: [spec.v[0], spec.v[0]] }; Lm = [[Lm[0][0], 0], [0, Lm[0][0]]]; }
+      out = { ok: true, reason: '', spec, L: Lm, z0: r.n === 1 ? r.lines[0].z0.v : r.pair.zdiff.v, eeff: r.lines[0].eeff.v, cached: false, ms: 0 };
+    }
   }
   out.ms = now() - t0;
-  FEEDS.set(key, out);
-  while (FEEDS.size > FEED_CACHE) FEEDS.delete(FEEDS.keys().next().value);
+  const full = !lOnly || !!held;
+  remember(FEEDS, full ? key : `L;${key}`, out);
+  remember(FEED_SECTIONS, full ? sk : `L;${sk}`, out);
   return out;
 }
 
@@ -258,6 +299,7 @@ export interface ViaModelOptions {
   estimate?: boolean; // axisymmetric and cut estimates (default true)
   cutM?: number; // the cut's level (default the 2D solver's)
   feeds?: 'setup' | 'none' | { entry?: LineSpec | null; exit?: LineSpec | null }; // default 'setup' when a trace is given
+  solved?: SolvedLookup; // the caller's solves of feed sections (the worker's SolveCache; not cloneable: never sent)
   f?: ArrayLike<number>; // Hz; default 0 … the edge spectrum's −60 dB in `nf` points
   nf?: number; // default 401
   tdr?: boolean; // default true
@@ -269,8 +311,9 @@ export interface ViaPiece { zTop: number; zBot: number; er: number; z0: number; 
 export interface ViaStub { side: 'entry' | 'exit'; length: number; delay: number; fFormula: number; fRes: number } // mm, s, Hz
 export interface ViaFeed { side: 'entry' | 'exit'; layer: string; length: number; z0: number; eeff: number } // mm (to the pad's edge), Ω
 // A feed's run over its reference plane's antipad (BL90): planes cut and the next ones beyond, its length (mm, from the
-// pad's edge), the series inductance it adds (H, one trace) and the impedance of the trace over the next plane (Ω).
-export interface ViaOver { side: 'entry' | 'exit'; layer: string; ref: string; next: string; length: number; dL: number; zNext: number }
+// pad's edge) and the series inductance it adds (H, one trace). (zNext, the impedance of the trace over the next plane,
+// was never shown or used: only its L′ is, solved alone since BL197.)
+export interface ViaOver { side: 'entry' | 'exit'; layer: string; ref: string; next: string; length: number; dL: number }
 // The plane cavity between two of the via's planes (BL165): height (mm), its εr in series, the return vias that join
 // both planes, the barrel's share of its height, and the frequency (Hz) where its radial wave moves S by CAVITY_DS.
 export interface ViaCavity {
@@ -628,7 +671,7 @@ export function buildVia(s: Stackup, v: ViaStructure, trace: Structure | null, o
       if (typeof fs === 'string') { if (fo === 'setup') return failed(fs, flags); } else st = fs;
     }
     if (st) {
-      fl = feedLine(s, st, n, v);
+      fl = feedLine(s, st, n, v, opt.solved);
       if (!fl.ok) { if (fo === 'setup') return failed(`The ${side} feed: ${fl.reason}`, flags); fl = null; }
     }
     // The run over the antipad: per cut reference plane, its length and the next plane beyond it.
@@ -650,10 +693,10 @@ export function buildVia(s: Stackup, v: ViaStructure, trace: Structure | null, o
       const pk = PAIR_KIND[st.kind];
       if (n === 2 && pk && v.pitch && cuts.length && v.pitch.v - st.w.v > 0) {
         const ps: Structure = { ...st, kind: pk, s: { ...st.s, v: v.pitch.v - st.w.v } };
-        const fp = feedLine(s, ps, 2, v);
+        const fp = feedLine(s, ps, 2, v, opt.solved);
         if (fp.ok) { base = ps; baseL = fp.L; baseSpec = fp.spec; }
       }
-      let dL: Mat = rScale(rEye(n), 0), ok = cuts.length > 0, prev = 0, zNext = NaN;
+      let dL: Mat = rScale(rEye(n), 0), ok = cuts.length > 0, prev = 0;
       const segs: { L: Mat; len: number }[] = []; // from the pad outwards
       for (let i = 0; i < cuts.length && ok; i++) {
         const seg = cuts[i].over - prev;
@@ -662,9 +705,8 @@ export function buildVia(s: Stackup, v: ViaStructure, trace: Structure | null, o
         if (cuts.slice(i).some((c) => !c.next)) { ok = false; break; }
         const alt: Structure = { ...base };
         for (const c of cuts.slice(i)) alt[c.key] = c.next;
-        const fn = feedLine(s, alt, n, v);
+        const fn = feedLine(s, alt, n, v, opt.solved, true);
         if (!fn.ok) { ok = false; break; }
-        if (i === 0) zNext = fn.z0;
         dL = rAdd(dL, rScale(rAdd(fn.L, rScale(baseL, -1)), seg * 1e-3));
         segs.push({ L: fn.L, len: seg });
       }
@@ -685,7 +727,7 @@ export function buildVia(s: Stackup, v: ViaStructure, trace: Structure | null, o
         for (const g of [...segs].reverse()) run.push({ kind: 'line', name: `${side} feed over the antipad, ${g.len.toFixed(3)} mm`, len: g.len * 1e-3, spec: lineFromCL(baseSpec.C, g.L) });
         if (side === 'entry') before.push(...run); else after.push(...run.reverse());
         overL.push(dL);
-        overs.push({ side, layer, ref: cuts.map((c) => c.ref).join(', '), next: cuts.map((c) => c.next).join(', '), length: cuts[cuts.length - 1].over, dL: dL[0][0], zNext });
+        overs.push({ side, layer, ref: cuts.map((c) => c.ref).join(', '), next: cuts.map((c) => c.next).join(', '), length: cuts[cuts.length - 1].over, dL: dL[0][0] });
       }
     }
     if (fo === 'none') continue;

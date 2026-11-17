@@ -66,7 +66,9 @@ export class FieldStore {
 
 interface Stat { requests: number; paints: { kind: 'partial' | 'done'; ms: number; at: number; drag: boolean; nx: number; cached: boolean }[] }
 
-export function useFieldMap(f: FieldSettings | undefined, env: FieldEnv | undefined, s: Stackup, st: Structure, sec: Section | null, view: View, map: WorldMap, dragging: boolean, box: React.RefObject<HTMLDivElement | null>) {
+// ready: false while the view is still the one of the previous section (a new fit not yet applied): no job is sent for
+// it (BL198: a typed width sent one for the old view, then one for the fitted view, and the first held the worker).
+export function useFieldMap(f: FieldSettings | undefined, env: FieldEnv | undefined, s: Stackup, st: Structure, sec: Section | null, view: View, map: WorldMap, dragging: boolean, box: React.RefObject<HTMLDivElement | null>, ready = true) {
   const on = !!(f && f.on && env && sec);
   const [mod, setMod] = useState<FieldMod | null>(null);
   const [store] = useState(() => new FieldStore());
@@ -115,6 +117,7 @@ export function useFieldMap(f: FieldSettings | undefined, env: FieldEnv | undefi
       if (!on && store.state !== 'off') { store.set({ painted: null, state: 'off', message: '' }); waiting.current = null; }
       return;
     }
+    if (!ready) return;
     const surfaceOnly = qty === 'charge' || qty === 'current';
     const gv = surfaceOnly ? { x0: -1, x1: 1, z0: sec.zLo, z1: sec.zHi, nx: 2, ny: 2 } : gridView(view, map, sec, dragging ? DRAG_STEP_PX : STEP_PX);
     if (!gv) { store.set({ painted: null }); return; }
@@ -164,6 +167,6 @@ export function useFieldMap(f: FieldSettings | undefined, env: FieldEnv | undefi
     if (timer.current) { clearTimeout(timer.current); timer.current = 0; }
     if (store.state === 'off') store.set({ state: 'loading' });
     send();
-  }, [on, mod, sec, env, s, st, qty, scaleKind, drive, view, map, dragging, store]);
+  }, [on, mod, sec, env, s, st, qty, scaleKind, drive, view, map, dragging, store, ready]);
   return { mod, store, on: on && !!mod };
 }

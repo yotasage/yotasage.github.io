@@ -183,10 +183,11 @@ function ppDn(b: number, p: Panels, j: number, px: number, pz: number, nx: numbe
 const kindOf = (k: Kernel): number => (k.kind === 'free' ? 0 : k.kind === 'image' ? 1 : 2);
 
 // One row of potentials: out[off + j] = potential at P of unit s on panel j, for every panel (self: the index of the
-// panel whose midpoint P is, or −1). logI is written out in the loop for the source and its image in z = 0: a call
-// would pass its seven doubles boxed (half of the assembly's time in V8).
-export function potRow(k: Kernel, p: Panels, self: number, px: number, pz: number, out: Float64Array, off: number): void {
-  const N = p.n;
+// panel whose midpoint P is, or −1; end: only panels j < end, the conductors for the vacuum problem alone). logI is
+// written out in the loop for the source and its image in z = 0: a call would pass its seven doubles boxed (half of the
+// assembly's time in V8).
+export function potRow(k: Kernel, p: Panels, self: number, px: number, pz: number, out: Float64Array, off: number, end = p.n): void {
+  const N = end;
   const AX = p.ax;
   const AZ = p.az;
   const TX = p.tx;

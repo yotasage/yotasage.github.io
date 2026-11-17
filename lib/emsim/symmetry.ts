@@ -179,6 +179,41 @@ export function assembleMirror(k: Kernel, p: Panels, m: Mirror, withOdd: boolean
   return { Ae, Ao, nE, nO };
 }
 
+// BL197: the vacuum problem's even and odd matrices alone, as vacuumMirror makes them from assembleMirror's (the same
+// potentials, the conductor rows and columns only, with V0 and the neutrality row for the free kernel): no interface
+// rows. The odd one when `withOdd` and the odd half has conductor panels.
+export function vacuumOnlyMirror(k: Kernel, p: Panels, m: Mirror, withOdd: boolean): { e: { A0: Float64Array; n0: number }; o: { A0: Float64Array; n0: number } | null } {
+  const free = k.kind === 'free';
+  const nce = m.nce, nco = m.nco;
+  const n0 = nce + (free ? 1 : 0);
+  const Ae = new Float64Array(n0 * n0);
+  const Ao = withOdd && m.no > 0 && nco > 0 ? new Float64Array(nco * nco) : null;
+  const row = new Float64Array(p.nc);
+  const mate = m.mate;
+  const reps = m.reps;
+  for (let a = 0; a < nce; a++) {
+    const i = reps[a];
+    potRow(k, p, i, p.mx[i], p.mz[i], row, 0, p.nc);
+    const re = a * n0;
+    for (let c = 0; c < nce; c++) {
+      const j = reps[c];
+      const jj = mate[j];
+      Ae[re + c] = jj === j ? row[j] : row[j] + row[jj];
+    }
+    if (free) Ae[re + nce] = 1;
+    if (Ao && mate[i] !== i) {
+      const ro = m.odd[i] * nco;
+      for (let c = 0; c < nce; c++) {
+        const j = reps[c];
+        const jj = mate[j];
+        if (jj !== j) Ao[ro + m.odd[j]] = row[j] - row[jj];
+      }
+    }
+  }
+  if (free) for (let c = 0; c < nce; c++) { const j = reps[c]; Ae[nce * n0 + c] = mate[j] === j ? p.len[j] : 2 * p.len[j]; }
+  return { e: { A0: Ae, n0 }, o: Ao ? { A0: Ao, n0: nco } : null };
+}
+
 // The vacuum problem's even (or odd) matrix: the conductor block of the even (odd) matrix, plus V0 and the
 // neutrality row for the free kernel's even problem.
 export function vacuumMirror(k: Kernel, p: Panels, m: Mirror, A: Float64Array, n: number, odd: boolean): { A0: Float64Array; n0: number } {

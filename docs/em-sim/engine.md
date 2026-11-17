@@ -218,8 +218,11 @@ How the budgets are read (M9.2, [notes-M9.2.md](notes-M9.2.md); none was changed
 - **Field map:** the budget is the map's own work (M1.5: the solve excluded, checked in Node by check-fields). On the
   page, a typed edit's first picture also waits for the solve and for any job queued before it in the static worker;
   since M9.2 the worker takes solves and maps' first pictures before other jobs, so it is about 20 ms there too.
-- **Via model:** the budget is the model for an edit of the via. An edit of the trace also solves the via's feed lines
-  again (four 2D solves for a single via, about 36 ms in Node), so the via's result follows a trace edit in about 40 to
-  55 ms (BL197).
+- **Via model:** checked in the static worker after an edit of the via (a new drill: the pads solved again) and after
+  an edit of the trace (its feed lines solved again), median and p95. Since the fix after M9.2 the trace's own solve
+  comes from the worker's solve cache, a feed mirrored through a symmetric stackup is the entry's, and the trace over
+  the next plane beyond an antipad is solved as the vacuum problem alone (only its L′ is used; the same numbers): C44
+  about 10 ms after a trace edit (was 40–55), 23 ms after a new drill (was 31; [notes-M9.2.md](notes-M9.2.md), "Fix:
+  via-model budgets").
 - **Drag frames:** "main thread per frame" is read two ways, both checked: the drag frame's own work (p95) and all
   main-thread work divided by the frames (CDP TaskDuration, which includes the harness's synthetic events).

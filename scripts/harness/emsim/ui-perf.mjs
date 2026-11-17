@@ -3,7 +3,8 @@
 // every chunk with its trigger (first paint, scrolled near a section, opened view, run), none of three.js, the FDTD
 // kernels or KaTeX in the first load; one 2D solve (microstrip with mask; coupled pair with mask and coplanar ground):
 // the worker's own time and the round trip from Enter to the result shown; the inverse, a sweep of 100 and Monte Carlo
-// 1000; the field map's first and full picture at 1440 px; the via model (worker time and round trip); drags (trace,
+// 1000; the field map's first and full picture at 1440 px; the via model (worker time and round trip) after an edit of
+// the via (a new drill) and after one of the trace (a new width: its feeds solved again, BL197); drags (trace,
 // pair, trace with the field map, via antipad): the drag frame's own work p95, all main-thread work per frame (CDP
 // TaskDuration), new results per frame, the coarse map's latency; the full-wave estimate against the real time on
 // WebGPU (the first run of a worker calibrates); the theory, an equation and its derivation, and a figure saved.
@@ -238,10 +239,12 @@ try {
     await throttle(page, rate);
     await tool(page, 'target');
     for (let i = 0; i < REP; i++) {
-      const old = await attr(page, '[data-target-result]', 'data-total');
+      // The result's width and round trip together: two runs can take the same 0.1 ms (the wait then never ended).
+      const key = () => page.evaluate(() => { const e = document.querySelector('[data-target-result]'); return e ? `${e.getAttribute('data-w')}|${e.getAttribute('data-total')}` : null; });
+      const old = await key();
       await page.locator('[data-target-input]').fill(String(47 + i * 0.7 + (rate === 4 ? 0.3 : 0)));
       await page.locator('[data-target-input]').press('Enter');
-      await page.waitForFunction((o) => { const e = document.querySelector('[data-target-result]'); return e && e.getAttribute('data-total') !== o; }, old, { timeout: 60000 });
+      await page.waitForFunction((o) => { const e = document.querySelector('[data-target-result]'); return e && `${e.getAttribute('data-w')}|${e.getAttribute('data-total')}` !== o; }, old, { timeout: 60000 });
       tools.inv[rate].push(Number(await attr(page, '[data-target-result]', 'data-ms')));
     }
     await tool(page, 'sweep');
@@ -278,14 +281,17 @@ try {
   await page.check('[data-field-on]');
   await mapped(page);
   const maps = { 1: { first: [], full: [] }, 4: { first: [], full: [] } };
+  const sends = []; // the map's jobs per typed width: one (BL198: the view's refit sent a second)
   for (const rate of [1, 4]) {
     await throttle(page, rate);
     for (let i = 0; i < REP + 1; i++) {
       const m0 = await page.evaluate(() => document.querySelector('[data-trace-view]').emsimField.paints.length);
+      const r0 = await page.evaluate(() => document.querySelector('[data-trace-view]').emsimField.requests);
       await typeW(page);
       await page.waitForFunction((m) => document.querySelector('[data-trace-view]').emsimField.paints.slice(m).some((x) => x.kind === 'done' && !x.cached), m0, { timeout: 30000 });
       await mapped(page);
       const ps = await page.evaluate((m) => document.querySelector('[data-trace-view]').emsimField.paints.slice(m), m0);
+      sends.push((await page.evaluate(() => document.querySelector('[data-trace-view]').emsimField.requests)) - r0);
       const first = ps.find((x) => x.kind === 'partial') ?? ps.find((x) => x.kind === 'done'), full = ps.find((x) => x.kind === 'done' && !x.cached);
       if (i > 0 && first && full) { maps[rate].first.push(first.ms); maps[rate].full.push(full.ms); }
     }
@@ -294,6 +300,7 @@ try {
   {
     const [a, b] = [maps[1], maps[4]];
     row('field map, 1440 px view: first picture', `≤ ${B.mapFirst} ms`, `${f1(med(a.first), 0)} / ${f1(q(a.first, 0.95), 0)}`, `${f1(med(b.first), 0)} / ${f1(q(b.first, 0.95), 0)}`, q(a.first, 0.95) <= B.mapFirst ? 'met' : 'MISSED');
+    check(sends.every((x) => x === 1), `one field-map job per typed width (${sends.join(', ')}; BL198)`);
     row('field map, 1440 px view: full', `≤ ${B.mapFull} ms`, `${f1(med(a.full), 0)} / ${f1(q(a.full, 0.95), 0)}`, `${f1(med(b.full), 0)} / ${f1(q(b.full, 0.95), 0)}`, q(a.full, 0.95) <= B.mapFull ? 'met' : 'MISSED');
     check(a.full.length >= 3 && q(a.full, 0.95) <= B.mapFull && q(a.first, 0.95) <= B.mapFirst, `field map at 1×: full p95 ${f1(q(a.full, 0.95), 0)} ms (budget ${B.mapFull}), first p95 ${f1(q(a.first, 0.95), 0)} ms (budget ${B.mapFirst})`);
   }
@@ -363,34 +370,39 @@ try {
 
   }
 
-  // ---- 6: the via model (typed drills, each new) and the via drag ----
+  // ---- 6: the via model (typed drills and trace widths, each new) and the via drag ----
   if (want('via')) {
   await page.close(); page = await fresh(`${URL0}#via`);
   await page.evaluate(() => document.getElementById('via')?.scrollIntoView());
   await page.waitForSelector('#via[data-loaded="true"]', { timeout: 30000 });
   const viaSettled = async (p) => { await p.waitForTimeout(60); await p.waitForSelector('[data-via-solves][data-dragging="false"][data-quick="false"] [data-via-results][data-state="done"]:not([data-stale="true"])', { timeout: 60000 }); };
   await viaSettled(page);
-  const via = { 1: { ms: [], rt: [] }, 4: { ms: [], rt: [] } };
-  let di = 0;
-  for (const rate of [1, 4]) {
-    await throttle(page, rate);
-    for (let i = 0; i < 3 * REP; i++) {
-      const f = page.locator('[data-field="via.drill"] input').first();
-      await f.fill((0.2 + 0.0021 * ++di).toFixed(4)); await f.press('Enter');
-      await viaSettled(page);
-      via[rate].ms.push(Number(await attr(page, '[data-via-results]', 'data-ms')));
-      via[rate].rt.push(Number(await attr(page, '[data-via-results]', 'data-rt')));
+  // Typed edits, each value new (no cache hit): the drill (the pads solved again) and the trace's width (its feeds).
+  const viaRuns = async (sel, value) => {
+    const out = { 1: { ms: [], rt: [] }, 4: { ms: [], rt: [] } };
+    let k = 0;
+    for (const rate of [1, 4]) {
+      await throttle(page, rate);
+      for (let i = 0; i < 3 * REP; i++) {
+        const f = page.locator(sel).first();
+        await f.fill(value(++k)); await f.press('Enter');
+        await viaSettled(page);
+        out[rate].ms.push(Number(await attr(page, '[data-via-results]', 'data-ms')));
+        out[rate].rt.push(Number(await attr(page, '[data-via-results]', 'data-rt')));
+      }
     }
-  }
-  await throttle(page, 1);
-  {
-    const w1 = q(via[1].ms, 0.95);
-    row('via model (segments, pads, cascade, TDR), C44: worker', `≤ ${B.via} ms`, `${f1(med(via[1].ms))} / ${f1(w1)}`, `× 4 → ${f1(4 * w1)} (measured unthrottled ${f1(q(via[4].ms, 0.95))})`, w1 <= B.via ? 'met' : 'MISSED (BL199)');
-    row('via model: edit to result shown', 'none (information)', `${f1(med(via[1].rt))} / ${f1(q(via[1].rt, 0.95))}`, `${f1(med(via[4].rt))} / ${f1(q(via[4].rt, 0.95))}`, 'info');
-    // Missed by a few ms in the worker for a new drill (21 to 25 ms in Node; BL199): reported, as ui-via checks its own
-    // edits against the budget.
-    if (w1 > B.via) console.log(`NOTE the via model p95 ${f1(w1)} ms in the worker, median ${f1(med(via[1].ms))} (budget ${B.via}; BL199)`);
-    check(med(via[1].ms) <= 1.5 * B.via, `the via model's median ${f1(med(via[1].ms))} ms in the worker (budget ${B.via}, reported; fails over 1.5×)`);
+    await throttle(page, 1);
+    return out;
+  };
+  const viaDrill = await viaRuns('[data-field="via.drill"] input', (k) => (0.2 + 0.0021 * k).toFixed(4));
+  const viaTrace = await viaRuns('[data-field="trace.w"] input', (k) => (0.1377 + 0.0013 * k).toFixed(4));
+  { const f = page.locator('[data-field="trace.w"] input').first(); await f.fill('0.1377'); await f.press('Enter'); await viaSettled(page); }
+  for (const [what, via] of [['a new drill', viaDrill], ['a new trace width (feeds solved again)', viaTrace]]) {
+    const m1 = med(via[1].ms), w1 = q(via[1].ms, 0.95);
+    const met = m1 <= B.via && w1 <= B.via;
+    row(`via model (segments, pads, feeds, cascade, TDR), C44, after ${what}: worker`, `≤ ${B.via} ms`, `${f1(m1)} / ${f1(w1)}`, `× 4 → ${f1(4 * w1)} (measured unthrottled ${f1(med(via[4].ms))} / ${f1(q(via[4].ms, 0.95))})`, met ? 'met' : 'MISSED');
+    row(`via model after ${what}: edit to result shown`, 'none (information)', `${f1(med(via[1].rt))} / ${f1(q(via[1].rt, 0.95))}`, `${f1(med(via[4].rt))} / ${f1(q(via[4].rt, 0.95))}`, 'info');
+    check(met, `the via model after ${what}: ${f1(m1)} / ${f1(w1)} ms (median / p95) in the worker (budget ${B.via}; BL197, BL199)`);
   }
   const apKey = await page.locator('[data-via-handle^="ap:"]').first().getAttribute('data-via-handle');
   await dragRows(page, 'via side antipad (C44)', { view: '[data-via-view="side"]', solves: 'data-via-solves', handle: `[data-via-handle="${apKey}"]`, amp: 20, settle: viaSettled });

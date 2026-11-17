@@ -98,9 +98,12 @@ function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit, sel = nul
   const [view, setView] = useState<View>({ cx: 0, cy: 0, k: 1, w: W0, h: 1 });
   const viewRef = useRef(view);
   viewRef.current = view;
+  // The fit the view was last set for (BL198): a new section's first render still has the old view, which the fit's
+  // layout effect replaces before the paint, so the field map waits for it instead of sending a job for the old view.
+  const [viewFit, setViewFit] = useState<TraceFit | null>(null);
 
   // ---- the field view (M2.2) ----
-  const fm = useFieldMap(fields, fieldEnv, s, st, sec, view, map, dragKey !== null, box);
+  const fm = useFieldMap(fields, fieldEnv, s, st, sec, view, map, dragKey !== null, box, dragKey !== null || viewFit === fit);
   const fieldOn = fm.on;
   const mapShown = fieldOn && fields!.qty !== 'charge' && fields!.qty !== 'current';
   const drawRef = useRef<() => void>(() => {});
@@ -180,6 +183,7 @@ function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit, sel = nul
     pz.setFit(fit.rect, other);
     setView(pz.view);
     setAtFit(pz.atFit);
+    setViewFit(fit);
   }, [fit, W, dragKey, shape]);
   // A drawn view: the gesture's transform is no longer needed.
   useLayoutEffect(() => { content.current?.removeAttribute('transform'); }, [view]);

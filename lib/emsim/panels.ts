@@ -201,6 +201,49 @@ interface Kept { a: number; b: number; cond: number; epsC: number; epsP: number;
 
 export interface SectionBoundary { boundary: Boundary | null; reason: string }
 
+/**
+ * A key of a section as `sectionBoundary` reads it (BL197): its frame (z from the plane; a lone plane above flipped
+ * below; between two planes or with none, the lesser key of the section and its mirror image), the kernel, the side
+ * walls, the signals, every polygon as a ring from its least vertex with coordinates to 1e-12 mm (conductors with id,
+ * sideways openness and the rank of their layer, regions with εr), sorted. Two sections with the same key are the same
+ * problem (a trace and its mirror image through a symmetric stackup), solved alike to rounding; sections that differ
+ * by more than 1e-12 mm never share one.
+ */
+export function sectionKey(sec: Section): string {
+  if (sec.planeBelow != null && sec.planeAbove != null) {
+    // Between two planes, and with none, a section and its mirror image are the same problem: the lesser key of both.
+    const a = keyIn(sec, sec.planeBelow, false, `pp${Math.round((sec.planeAbove - sec.planeBelow) * 1e12)}`);
+    const b = keyIn(sec, sec.planeAbove, true, `pp${Math.round((sec.planeAbove - sec.planeBelow) * 1e12)}`);
+    return a < b ? a : b;
+  }
+  if (sec.planeBelow != null) return keyIn(sec, sec.planeBelow, false, 'image');
+  if (sec.planeAbove != null) return keyIn(sec, sec.planeAbove, true, 'image');
+  const a = keyIn(sec, 0, false, 'free'), b = keyIn(sec, 0, true, 'free');
+  return a < b ? a : b;
+}
+
+function keyIn(sec: Section, zShift: number, flip: boolean, kernel: string): string {
+  const ring = (pts: Float64Array): string => {
+    const m = pts.length >> 1;
+    const U = new Array<number>(m), Z = new Array<number>(m);
+    for (let i = 0; i < m; i++) {
+      const k = flip ? m - 1 - i : i; // flipped, the order is reversed to stay counter-clockwise
+      U[i] = Math.round(pts[2 * k] * 1e12);
+      Z[i] = Math.round((flip ? zShift - pts[2 * k + 1] : pts[2 * k + 1] - zShift) * 1e12);
+    }
+    let s0 = 0;
+    for (let i = 1; i < m; i++) if (U[i] < U[s0] || (U[i] === U[s0] && Z[i] < Z[s0])) s0 = i;
+    let out = '';
+    for (let i = 0; i < m; i++) { const k = (s0 + i) % m; out += `${U[k]} ${Z[k]},`; }
+    return out;
+  };
+  const open = (o: number): number => (flip ? (o & 3) | ((o & 4) << 1) | ((o & 8) >> 1) : o);
+  const layers = [...new Set(sec.conductors.map((c) => (flip ? -c.layer : c.layer)))].sort((a, b) => a - b);
+  const cs = sec.conductors.map((c) => `c${c.id}|${open(c.open)}|${layers.indexOf(flip ? -c.layer : c.layer)}|${ring(c.pts)}`).sort();
+  const rs = sec.regions.map((r) => `r${sec.materials[r.mat].er}|${open(r.open)}|${ring(r.pts)}`).sort();
+  return `${kernel};${sec.wall > 0 ? 1 : 0};${sec.signals};${cs.join(';')};${rs.join(';')}`;
+}
+
 export function sectionBoundary(sec: Section): SectionBoundary {
   const fail = (reason: string): SectionBoundary => ({ boundary: null, reason });
   if (sec.signals < 1) return fail('The structure has no signal conductor.');
