@@ -21,6 +21,7 @@ import type { CornersResult, McResult, SweepPoint, SweepResult } from '../../lib
 import base from '../../styles/EmSim.module.css';
 import css from '../../styles/EmSimTools.module.css';
 import CalcTool from './CalcTool';
+import Calm from './Calm';
 import Plot from './Plot';
 import type { PlotSeries } from './Plot';
 import type { Commit } from './StackupSection';
@@ -356,7 +357,8 @@ function SweepTool({ setup, invalid, unit, client }: ToolProps) {
       {run && (
         <div className={css.result} data-sweep-result data-state={run.state} data-points={done} data-total={run.xs.length} data-ms={run.ms.toFixed(1)} data-input={run.input}>
           <Old show={run.setup !== setup} />
-          <p className={css.busy} aria-live="polite">
+          <Calm name="sweep" text={run.state === 'running' ? 'Sweeping…' : run.state === 'cancelled' ? `Cancelled after ${done} of ${run.xs.length} points` : run.state === 'failed' ? '' : `${run.xs.length} points in ${Math.round(run.ms)} ms`} />
+          <p className={css.busy}>
             {run.state === 'running' ? `Sweeping: ${done} of ${run.xs.length} points` : run.state === 'cancelled' ? `Cancelled after ${done} of ${run.xs.length} points` : run.state === 'failed' ? '' : `${run.xs.length} points in ${Math.round(run.ms)} ms`}
           </p>
           {run.state === 'running' && <progress className={css.progress} max={run.xs.length} value={done} />}
@@ -496,9 +498,10 @@ function ToleranceTool({ setup, invalid, unit, digits, client }: ToolProps) {
         <button type="button" className={base.button} data-mc-cancel onClick={cancelMc} disabled={!mcBusy}>Cancel</button>
       </div>
       <Whys ks="tol-corners mc mc-stats rank" />
+      <Calm name="mc" text={mcBusy ? 'Running Monte Carlo…' : mc ? `Monte Carlo of ${MC_SAMPLES} samples done` : ''} />
       {mcBusy && (
-        <p className={css.busy} aria-live="polite">
-          <progress className={css.progress} max={MC_SAMPLES} value={prog} /> {prog} of {MC_SAMPLES} samples
+        <p className={css.busy}>
+          <progress className={css.progress} max={MC_SAMPLES} value={prog} aria-label="Monte Carlo progress" /> {prog} of {MC_SAMPLES} samples
         </p>
       )}
       {mc && (

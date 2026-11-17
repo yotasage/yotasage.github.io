@@ -1,6 +1,6 @@
 // The field view's scale bar and probe (M2.2), shown by TraceDrawing when the field view is on. The probe keeps its own
 // state (set through `api` by hover, tap and keys), so moving it does not draw the cross-section again; its readout is
-// text under the drawing (aria-live polite), with a marker in the drawing.
+// text under the drawing (read out by Calm.tsx once the probe rests, M9.1a), with a marker in the drawing.
 
 import React, { useImperativeHandle, useMemo, useState, useSyncExternalStore } from 'react';
 
@@ -10,6 +10,7 @@ import type { LengthUnit } from '../../lib/emsim/units';
 import css from '../../styles/EmSimTrace.module.css';
 import type { FieldMod, FieldStore } from './useFieldMap';
 import type { Painted } from './fieldPaint';
+import Calm from './Calm';
 import { QTY_LABEL } from './fieldTypes';
 import { lenText } from './format';
 import type { View } from './panZoom';
@@ -91,7 +92,8 @@ export function FieldProbe({ api, mod, store, sec, s, view, map, unit, digits, k
   const painted = store.painted;
   useImperativeHandle(api, () => ({ set: setPt, get: () => pt }), [pt]);
   if (!pt) {
-    return <p className={css.fieldProbe} aria-live="polite" data-field-probe="">{keys ? 'Probe: arrow keys on the focused drawing move it (Shift: finer).' : 'Probe: hover over or tap the drawing to read the field at a point.'}</p>;
+    const hint = keys ? 'Probe: arrow keys on the focused drawing move it (Shift: finer).' : 'Probe: hover over or tap the drawing to read the field at a point.';
+    return <><Calm text={hint} name="probe" /><p className={css.fieldProbe} data-field-probe="">{hint}</p></>;
   }
   const media = mod ? mod.mediaOf(sec) : null;
   const surfaceOnly = !painted || !painted.values;
@@ -115,8 +117,9 @@ export function FieldProbe({ api, mod, store, sec, s, view, map, unit, digits, k
   const inside = px >= 0 && px <= view.w && py >= 0 && py <= view.h;
   return (
     <>
+      <Calm text={`Probe at ${text}`} name="probe" />
       {inside && <span className={css.probeMark} style={{ left: Math.round(px) + 1, top: Math.round(py) + 1 }} aria-hidden="true" />}
-      <p className={css.fieldProbe} aria-live="polite" data-field-probe={pr ? 'value' : 'none'} data-x={pt.x} data-z={pt.z} data-phi={pr?.phi ?? ''} data-f={pr?.f ?? ''} data-fx={pr?.fx ?? ''} data-fz={pr?.fz ?? ''} data-cls={pr?.cls ?? ''}>
+      <p className={css.fieldProbe} data-field-probe={pr ? 'value' : 'none'} data-x={pt.x} data-z={pt.z} data-phi={pr?.phi ?? ''} data-f={pr?.f ?? ''} data-fx={pr?.fx ?? ''} data-fz={pr?.fz ?? ''} data-cls={pr?.cls ?? ''}>
         Probe at {text}
       </p>
     </>

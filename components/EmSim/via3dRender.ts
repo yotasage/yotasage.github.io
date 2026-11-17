@@ -36,6 +36,8 @@ export interface WavePlane { key: string; o: [number, number, number]; U: [numbe
 export interface Via3DOptions { copper?: number; fit?: number }
 
 const BUILD_FRAMES = 3;
+// M9.1a: with prefers-reduced-motion the view stops where a gesture leaves it (no damping's glide after it).
+const glide = () => !(typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
 const FOV = 35;
 
 type Ctor = typeof OrbitControls;
@@ -142,7 +144,7 @@ export class Via3D {
     head.position.set(0.3, 0.6, 1);
     this.camera.add(head);
     this.controls = new OC(this.camera, c);
-    this.controls.enableDamping = true;
+    this.controls.enableDamping = glide();
     this.controls.dampingFactor = 0.15;
     this.controls.screenSpacePanning = true;
     this.controls.addEventListener('change', () => { this.dirty = true; });
@@ -283,7 +285,7 @@ export class Via3D {
     // Drop what damping still has to apply of the last gesture, or it moves the camera after the reset.
     this.controls.enableDamping = false;
     this.controls.update();
-    this.controls.enableDamping = true;
+    this.controls.enableDamping = glide();
     this.camera.position.copy(target).addScaledVector(dir, dist);
     this.camera.near = dist / 200;
     this.camera.far = dist * 20;

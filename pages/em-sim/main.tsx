@@ -50,6 +50,16 @@ export default function EmSimPage({ references }: { references: BibEntry[] }) {
           padding: 0;
           background: ${day.bg};
         }
+        /* M9.1a: what the browser scrolls to (a focused control, a #link) stays clear of the sticky bar, which has
+           two rows below 860 px (EmSim.module.css --bar-h); the sections' own scroll-margin adds the gap. */
+        html {
+          scroll-padding-top: 52px;
+        }
+        @media (max-width: 860px) {
+          html {
+            scroll-padding-top: 88px;
+          }
+        }
         #__next > footer {
           background: ${day.bg};
           border-top-color: ${day.rule};

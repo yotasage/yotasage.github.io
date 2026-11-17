@@ -72,7 +72,8 @@
 .handleRing { fill: none; stroke: transparent; stroke-width: 2px; }
 .handle:focus-visible .handleRing,
 .handle[data-active="true"] .handleRing { stroke: var(--ink); }
-.handleDot { fill: var(--accent); stroke: var(--accent-ink); stroke-width: 1.5px; }
+/* M9.1a: --handle (a darker accent in light) keeps 3:1 on copper seen through laminate; the edge on dark parts. */
+.handleDot { fill: var(--handle); stroke: var(--accent-ink); stroke-width: 1.5px; }
 .handleText {
   font-family: var(--font-num);
   font-size: 11px;
@@ -304,8 +305,8 @@
 /* M4.3a: a result number with an equation (eqLinks.tsx EqNum) and the results with the equation panel beside them
    on a wide section, below them on a narrow one. */
 .eqNum {
-  margin: 0;
   padding: 0 1px;
+  margin: 0;
   border: 0;
   border-radius: 3px;
   background: none;
@@ -316,6 +317,8 @@
   text-underline-offset: 0.2em;
   cursor: pointer;
 }
+/* M9.1a: a 25 px tall target (WCAG 2.5.8) in the same line box as before; above .root button's padding: 0. */
+button.eqNum[data-eq-open] { padding: 3px 1px; margin: -3px 0; }
 .eqNum:hover { text-decoration-style: solid; }
 .eqNum:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .eqNum[aria-expanded='true'] { background: var(--accent-soft); }

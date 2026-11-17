@@ -47,7 +47,7 @@
 
 .topic,
 .sub {
-  scroll-margin-top: calc(var(--bar-h) + 8px);
+  scroll-margin-top: 8px; /* M9.1a: below the sticky bar by the html scroll-padding (pages/em-sim/main.tsx) */
 }
 
 .topic {
@@ -383,4 +383,10 @@
 
 .fwSvg text {
   font-size: 15px;
+}
+
+/* M9.1a: the contents' links are 24 px tall touch targets (WCAG 2.5.8), not 19 px lines touching each other. */
+.contents a {
+  display: inline-block;
+  padding: 3px 0;
 }

@@ -269,7 +269,7 @@
   min-width: 0;
   min-height: 30px;
   padding: 2px 6px;
-  border: 1px solid var(--rule);
+  border: 1px solid var(--edge);
   border-radius: 6px;
   background: transparent;
   color: var(--ink-2);

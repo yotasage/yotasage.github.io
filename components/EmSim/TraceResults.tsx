@@ -14,6 +14,7 @@ import type { Q } from '../../lib/emsim/lines';
 import type { LengthUnit } from '../../lib/emsim/units';
 import base from '../../styles/EmSim.module.css';
 import css from '../../styles/EmSimTrace.module.css';
+import Calm, { lineOf } from './Calm';
 import { EqNum, traceEq } from './eqLinks';
 import { FLOOR, qText } from './trace';
 import { Why, Whys } from './Why';
@@ -114,8 +115,9 @@ export default function TraceResults({ r, state, stale, quick = false, message, 
     <section className={css.results} aria-labelledby="results-h" data-results data-state={state} data-stale={stale} data-where={where} data-quick={quick} data-n={shown ? shown.n : 0}>
       <div className={css.resultsHead}>
         <h3 id="results-h" className={base.h3}>Results</h3>
-        <span className={css.busy} aria-live="polite" data-busy={stale}>{stale ? (quick ? 'Updating…' : 'Computing…') : quick ? 'Coarse while dragging' : ''}</span>
+        <span className={css.busy} data-busy={stale}>{stale ? (quick ? 'Updating…' : 'Computing…') : quick ? 'Coarse while dragging' : ''}</span>
       </div>
+      <Calm name="results" within="#stackup, #trace, header" read={() => (stale ? '' : lineOf(document.querySelector('[data-results] dl')) || lineOf(document.querySelector('[data-results] [data-results-invalid], [data-results] [data-results-failed]')))} />
       {state === 'invalid' && <p className={css.small} data-results-invalid>{message}</p>}
       {state === 'error' && <p className={css.reasonText} role="alert">{message}</p>}
       {r && !r.ok && state !== 'invalid' && <p className={css.reasonText} data-results-failed>{r.reason}</p>}

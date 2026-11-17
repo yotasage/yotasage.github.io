@@ -32,6 +32,7 @@ import stk from '../../styles/EmSimStackup.module.css';
 import css from '../../styles/EmSimTrace.module.css';
 import vcss from '../../styles/EmSimVia.module.css';
 import wcss from '../../styles/EmSimWaves.module.css';
+import Calm, { lineOf } from './Calm';
 import Plot from './Plot';
 import type { PlotSeries } from './Plot';
 import { getClient } from './TraceSection';
@@ -150,7 +151,17 @@ export default function WavesSection({ setup, unit = 'mm' }: Props) {
     setDone({ res: out.result, view, setup: s, spec: sp, pv: p, elapsed, estimate: est, backend: backendName, where: out.where, store });
     setPhase('done');
   };
-  const cancel = () => { client?.cancel(); setPhase('cancelled'); dropFrames(); };
+  // M9.1a: Cancel is shown only while a run runs; when it goes (cancelled or the run ended) with the focus on it, the
+  // focus goes to Run instead of being lost to the page's body.
+  const runBtn = useRef<HTMLButtonElement>(null);
+  const onCancel = useRef(false);
+  const cancel = () => { client?.cancel(); setPhase('cancelled'); dropFrames(); runBtn.current?.focus({ preventScroll: true }); };
+  useEffect(() => {
+    if (phase === 'running' || !onCancel.current) return;
+    onCancel.current = false;
+    const a = document.activeElement;
+    if (!a || a === document.body) runBtn.current?.focus({ preventScroll: true });
+  }, [phase]);
 
   const stale = !!done && (done.setup !== setup || !sameSpec(done.spec, spec));
   // a stale result keeps its plots, but its frames (up to SNAP_BUDGET) go
@@ -234,16 +245,17 @@ export default function WavesSection({ setup, unit = 'mm' }: Props) {
       <Why k="waves-estimate" bare />
 
       <div className={wcss.runRow}>
-        <button type="button" className={`${base.button} ${wcss.run}`} onClick={() => void run()} disabled={!pv || !pv.est || refuse.length > 0 || !!(kind === 'trace' && lenReason)} data-waves-run>
+        <button ref={runBtn} type="button" className={`${base.button} ${wcss.run}`} onClick={() => void run()} disabled={!pv || !pv.est || refuse.length > 0 || !!(kind === 'trace' && lenReason)} data-waves-run>
           {phase === 'running' || done ? 'Run again' : 'Run'}
         </button>
-        {phase === 'running' && <button type="button" className={base.button} onClick={cancel} data-waves-cancel>Cancel</button>}
+        {phase === 'running' && <button type="button" className={base.button} onClick={cancel} onFocus={() => { onCancel.current = true; }} onBlur={(e) => { if (e.relatedTarget) onCancel.current = false; }} data-waves-cancel>Cancel</button>}
       </div>
       <div className={wcss.progress} data-waves-progress={phase === 'running' ? frac : phase}>
+        <Calm name="waves" read={() => (phase === 'running' ? (bk ? `Running on the ${bk.backend === 'webgpu' ? 'GPU' : 'CPU'}.` : 'Preparing the run.') : lineOf(document.querySelector('[data-waves-progress] > p')))} />
         {phase === 'running' ? (
           <>
             <progress max={1} value={frac} aria-label="Run progress" />
-            <p className={css.small} aria-live="polite">
+            <p className={css.small}>
               {bk ? (bk.backend === 'webgpu' ? 'On the GPU. ' : `On the CPU: ${bk.reason} `) : 'Preparing the run… '}
               {prog ? `Excitation ${prog.run + 1} of ${prog.runs}, step ${prog.step.toLocaleString('en-GB')} of ${prog.steps.toLocaleString('en-GB')}${Number.isFinite(prog.eta) ? `, about ${sText(prog.eta / 1000)} left` : ''}, energy ${Number.isFinite(prog.energyDb) ? `${prog.energyDb.toFixed(0)} dB` : '–'}.` : info ? `Started: ${big(info.cells)} cells, about ${sText(info.seconds * info.runs)}.` : 'Measuring this device…'}
             </p>

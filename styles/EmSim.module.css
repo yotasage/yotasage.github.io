@@ -13,10 +13,11 @@
   --ink-4: #8d897f;
   --rule: #e3dfd5;
   --rule-strong: #cbc6ba;
-  --edge: #968b73;
+  --edge: #8c8169;
   --accent: #0b6a5f;
   --accent-ink: #ffffff;
   --accent-soft: rgba(11, 106, 95, 0.1);
+  --handle: #08574e;
   --warn: #8a4b08;
   --error: #b3261e;
 
@@ -29,7 +30,7 @@
   --mask: #2f7d4f;
   --mask-edge: #1f5a37;
   --air: #e8eff4;
-  --air-ink: #5f7282;
+  --air-ink: #596a79;
 
   --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-num: ui-monospace, 'Cascadia Mono', 'Cascadia Code', 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
@@ -62,17 +63,18 @@
     --ink-4: #7f7d76;
     --rule: #3d3d3a;
     --rule-strong: #54544f;
-    --edge: #7b7b73;
+    --edge: #888880;
     --accent: #72d1c0;
     --accent-ink: #0f2e29;
     --accent-soft: rgba(114, 209, 192, 0.13);
+    --handle: #72d1c0;
     --warn: #f0b26b;
     --error: #ff8a80;
     --copper: #d98f4e;
     --copper-edge: #f2b57c;
-    --core: #7c6f45;
-    --prepreg: #978a5c;
-    --laminate-edge: #5d5435;
+    --core: #625836;
+    --prepreg: #716745;
+    --laminate-edge: #8a7d52;
     --mask: #3b9660;
     --mask-edge: #6cc493;
     --air: #313a43;
@@ -91,17 +93,18 @@
   --ink-4: #7f7d76;
   --rule: #3d3d3a;
   --rule-strong: #54544f;
-  --edge: #7b7b73;
+  --edge: #888880;
   --accent: #72d1c0;
   --accent-ink: #0f2e29;
   --accent-soft: rgba(114, 209, 192, 0.13);
+  --handle: #72d1c0;
   --warn: #f0b26b;
   --error: #ff8a80;
   --copper: #d98f4e;
   --copper-edge: #f2b57c;
-  --core: #7c6f45;
-  --prepreg: #978a5c;
-  --laminate-edge: #5d5435;
+  --core: #625836;
+  --prepreg: #716745;
+  --laminate-edge: #8a7d52;
   --mask: #3b9660;
   --mask-edge: #6cc493;
   --air: #313a43;
@@ -133,6 +136,19 @@
 
 .root a { color: var(--accent); }
 
+/* M9.1a: Calm.tsx's live region, read by screen readers only. */
+.calm {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .root *,
   .root *::before,
@@ -156,7 +172,7 @@
 .barInner {
   max-width: var(--page-w);
   margin: 0 auto;
-  min-height: var(--bar-h);
+  min-height: 52px; /* one row; --bar-h is the whole bar (two rows on narrow screens) */
   padding: 0 var(--gutter);
   display: flex;
   align-items: center;
@@ -227,11 +243,13 @@
 .root[data-theme='dark'] .sun { display: block; }
 .root[data-theme='dark'] .moon { display: none; }
 
-/* Narrow phones: the section links go to a second row of the bar. */
-@media (max-width: 480px) {
+/* Narrow screens (phones, and 200 % zoom on a laptop, M9.1a): the section links go to a second row of the bar. */
+@media (max-width: 860px) {
+  .root { --bar-h: 88px; }
   .barInner { flex-wrap: wrap; row-gap: 0; padding-bottom: 4px; }
   .nav { order: 10; flex-basis: 100%; margin: 0 0 0 -6px; overflow-x: auto; scrollbar-width: none; }
   .nav a { padding: 6px 6px; white-space: nowrap; }
+  .nav a:focus-visible { outline-offset: -2px; } /* M9.1a: inside the link, as the scrolling row clips what is outside */
   .title { line-height: 52px; }
 }
 
@@ -328,7 +346,7 @@
   min-height: 36px;
   max-width: 100%;
   padding: 0 8px;
-  border: 1px solid var(--rule-strong);
+  border: 1px solid var(--edge); /* M9.1a: 3:1 against every surface (WCAG 1.4.11) */
   border-radius: 8px;
   background: var(--field);
   color: var(--ink);
@@ -341,7 +359,7 @@
   min-width: 0;
   min-height: 34px;
   padding: 4px 7px;
-  border: 1px solid var(--rule-strong);
+  border: 1px solid var(--edge); /* M9.1a: 3:1 against every surface (WCAG 1.4.11) */
   border-radius: 6px;
   background: var(--field);
   color: var(--ink);
@@ -351,7 +369,7 @@
   transition: border-color var(--quick);
 }
 
-.input:hover { border-color: var(--edge); }
+.input:hover { border-color: var(--ink-3); }
 .input[aria-invalid='true'] { border-color: var(--error); }
 .input:disabled { opacity: 0.5; }
 
@@ -359,7 +377,7 @@
   margin-top: 20px;
   padding-top: 20px;
   border-top: 1px solid var(--rule);
-  scroll-margin-top: calc(var(--bar-h) + 8px);
+  scroll-margin-top: 8px; /* M9.1a: below the sticky bar by the html scroll-padding (pages/em-sim/main.tsx) */
 }
 
 /* The loaded Theory and References (M2.4c fix): not laid out, pre-painted or painted while off screen. Without this the

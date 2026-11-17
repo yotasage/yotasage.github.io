@@ -35,7 +35,7 @@
 
 .example {
   margin-top: 26px;
-  scroll-margin-top: calc(var(--bar-h) + 8px);
+  scroll-margin-top: 8px; /* M9.1a: below the sticky bar by the html scroll-padding (pages/em-sim/main.tsx) */
 }
 
 .example:target .head {

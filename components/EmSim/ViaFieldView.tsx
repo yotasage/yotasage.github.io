@@ -7,6 +7,7 @@ import React, { useImperativeHandle, useMemo, useState, useSyncExternalStore } f
 import type { LengthUnit } from '../../lib/emsim/units';
 import base from '../../styles/EmSim.module.css';
 import css from '../../styles/EmSimTrace.module.css';
+import Calm from './Calm';
 import { lenText } from './format';
 import type { View } from './panZoom';
 import type { FieldMod } from './useFieldMap';
@@ -46,13 +47,16 @@ export interface ViaProbeApi { set(p: ViaProbePt | null): void; get(): ViaProbeP
 
 interface ProbeProps { api: React.Ref<ViaProbeApi>; mod: FieldMod | null; store: ViaFieldStore; which: 'side' | 'top'; thick: number; view: View; unit: LengthUnit; digits: number; keys: boolean }
 
-/** The probe's readout under the view (aria-live) and its marker over the view. */
+/** The probe's readout under the view (read out by Calm.tsx once the probe rests) and its marker over the view. */
 export function ViaFieldProbe({ api, mod, store, which, thick, view, unit, digits, keys }: ProbeProps) {
   const [pt, setPt] = useState<ViaProbePt | null>(null);
   useStore(store);
   useImperativeHandle(api, () => ({ set: setPt, get: () => pt }), [pt]);
   const attr = { 'data-viafield-probe': which };
-  if (!pt) return <p className={css.fieldProbe} aria-live="polite" {...attr} data-state="">{keys ? 'Probe: arrow keys on the focused view move it (Shift: finer).' : 'Probe: hover over or tap the view to read the field at a point.'}</p>;
+  if (!pt) {
+    const hint = keys ? 'Probe: arrow keys on the focused view move it (Shift: finer).' : 'Probe: hover over or tap the view to read the field at a point.';
+    return <><Calm text={hint} name="probe" /><p className={css.fieldProbe} {...attr} data-state="">{hint}</p></>;
+  }
   const side = which === 'side';
   const p = store.painted;
   const pr = mod && p ? mod.probeAt(p, pt.x, pt.z, null) : null;
@@ -73,8 +77,9 @@ export function ViaFieldProbe({ api, mod, store, which, thick, view, unit, digit
   const inside = px >= 0 && px <= view.w && py >= 0 && py <= view.h;
   return (
     <>
+      <Calm text={`Probe at ${text}`} name="probe" />
       {inside && <span className={css.probeMark} style={{ left: Math.round(px) + 1, top: Math.round(py) + 1 }} aria-hidden="true" data-viafield-mark={which} />}
-      <p className={css.fieldProbe} aria-live="polite" {...attr} data-state={pr ? 'value' : 'none'} data-x={pt.x} data-z={pt.z} data-phi={pr?.phi ?? ''} data-f={pr?.f ?? ''} data-cls={pr?.cls ?? ''}>
+      <p className={css.fieldProbe} {...attr} data-state={pr ? 'value' : 'none'} data-x={pt.x} data-z={pt.z} data-phi={pr?.phi ?? ''} data-f={pr?.f ?? ''} data-cls={pr?.cls ?? ''}>
         Probe at {text}
       </p>
     </>

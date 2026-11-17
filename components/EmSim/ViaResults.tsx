@@ -16,6 +16,7 @@ import base from '../../styles/EmSim.module.css';
 import css from '../../styles/EmSimTrace.module.css';
 import vcss from '../../styles/EmSimVia.module.css';
 import { lenText } from './format';
+import Calm, { lineOf } from './Calm';
 import { EqNum, viaEq } from './eqLinks';
 import { FLOOR, qText } from './trace';
 import type { RunState } from './TraceResults';
@@ -112,8 +113,9 @@ function ViaResults({ r, s, v, state, stale, message, ms, unit, digits, quick = 
     <div className={css.results} data-via-results data-state={state} data-stale={stale} data-n={ok ? r.n : 0} data-ms={ok ? r.ms.toFixed(2) : ''} data-rt={ms.toFixed(1)}>
       <div className={css.resultsHead}>
         <h3 className={base.h3}>Results</h3>
-        {state === 'running' ? <span className={css.busy} role="status">Solving…</span> : quick && <span className={css.busy} data-via-quick>Coarse while dragging</span>}
+        {state === 'running' ? <span className={css.busy}>Solving…</span> : quick && <span className={css.busy} data-via-quick>Coarse while dragging</span>}
       </div>
+      <Calm name="via-results" within="#via, header" read={() => (stale || state === 'running' ? '' : lineOf(document.querySelector('[data-via-results] dl')) || lineOf(document.querySelector('[data-via-results] [data-via-invalid], [data-via-results] [data-results-failed]')))} />
       <Why k="via-solve" bare />
       {state === 'invalid' && <p className={css.reasonText} data-via-invalid>{message}</p>}
       {state === 'error' && <p className={css.reasonText} role="alert">{message}</p>}

@@ -32,6 +32,8 @@ function save(blob: Blob, file: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+const STEP = Math.PI / 24; // a key's turn, as in the Waves section's 3D view (M9.1a)
+
 interface Props { s: Stackup; v: ViaStructure; traceW: number; fields: ViaFieldSettings; t0: number }
 
 export default function Via3DView({ s, v, traceW, fields, t0 }: Props) {
@@ -80,11 +82,26 @@ export default function Via3DView({ s, v, traceW, fields, t0 }: Props) {
     setSaved('');
     view.png(scale).then((b) => { save(b, scale > 1 ? `via-3d@${scale}x.png` : 'via-3d.png'); setSaved(`${Math.round(b.size / 1024)} kB`); }, (e: unknown) => setErr(String(e)));
   };
+  // M9.1a: the keys turn and zoom as in the Waves section's 3D view (WavesView3D.tsx).
+  const onKey = (e: React.KeyboardEvent) => {
+    if (!view) return;
+    const k = e.key;
+    if (k === 'ArrowLeft') view.turn(-STEP, 0);
+    else if (k === 'ArrowRight') view.turn(STEP, 0);
+    else if (k === 'ArrowUp') view.turn(0, STEP);
+    else if (k === 'ArrowDown') view.turn(0, -STEP);
+    else if (k === '+' || k === '=') view.zoomBy(1 / 1.2);
+    else if (k === '-' || k === '_') view.zoomBy(1.2);
+    else if (k === 'Home' || k === '0') view.reset();
+    else return;
+    e.preventDefault();
+  };
   const n = (k: string) => scene.counts[k as keyof typeof scene.counts] ?? 0;
 
   return (
     <div className={vcss.v3d} data-via3d data-via3d-ready={!!view && Number.isFinite(openMs)} data-open-ms={Number.isFinite(openMs) ? openMs.toFixed(0) : ''} data-fields={side || top ? 'on' : 'off'}>
-      <div ref={host} className={vcss.v3dHost} aria-label="The via in 3D: drag to turn, wheel or pinch to zoom, right-drag or two fingers to pan" role="img" />
+      <div ref={host} className={vcss.v3dHost} tabIndex={0} onKeyDown={onKey} data-via3d-host
+        aria-label="The via in 3D: drag or use the arrow keys to turn, wheel, pinch or + and − to zoom, Home to reset, right-drag or two fingers to pan" role="img" />
       {err && <p className={css.refused} role="alert" data-via3d-error>{err}</p>}
       <div className={vcss.viewTools}>
         <button type="button" className={base.button} data-via3d-reset onClick={() => view?.reset()}>Reset view</button>

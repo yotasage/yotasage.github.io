@@ -12,6 +12,7 @@ import type { LengthUnit } from '../../lib/emsim/units';
 import base from '../../styles/EmSim.module.css';
 import css from '../../styles/EmSimStackup.module.css';
 import { errorText, jlcLoaded, loadJlc } from './jlcData';
+import Calm from './Calm';
 import { lenText } from './format';
 import { Whys } from './Why';
 
@@ -153,7 +154,8 @@ export default function JlcPicker({ current, unit, digits, onPick, onClose, onLo
             <button type="button" className={base.button} onClick={() => setC(ANY)} disabled={JSON.stringify(c) === JSON.stringify(ANY)} data-jlc-reset>Clear filters</button>
           </div>
           <Whys ks="jlc-filter jlc-withdrawn jlc-row" />
-          <p className={css.layerNote} aria-live="polite" data-jlc-count={list.length}>{list.length} stackup{list.length === 1 ? '' : 's'}</p>
+          <p className={css.layerNote} data-jlc-count={list.length}>{list.length} stackup{list.length === 1 ? '' : 's'}</p>
+          <Calm text={`${list.length} stackup${list.length === 1 ? '' : 's'}`} name="jlc-count" />
           <ul className={css.jlcList} aria-label="Matching stackups">
             {list.map((e) => <Row key={jlcKey(e)} e={e} current={jlcKey(e) === current} unit={unit} digits={digits} onPick={(x) => onPick(x, data)} />)}
           </ul>

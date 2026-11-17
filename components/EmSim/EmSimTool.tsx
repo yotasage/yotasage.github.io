@@ -429,11 +429,11 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
           <h2 id="examples-h" className={styles.h2}>Examples</h2>
           {em ? <em.default apply={applyLink} /> : <p className={styles.lede}>The worked examples load as you come near them.</p>}
         </section>
-        <section id="theory" ref={thBox} className={th ? `${styles.section} ${styles.offscreen}` : styles.section} aria-labelledby="theory-h" data-loaded={th ? 'true' : 'false'}>
+        <section id="theory" ref={thBox} className={th ? `${styles.section} ${styles.offscreen}` : styles.section} aria-label="Theory" data-loaded={th ? 'true' : 'false'}>
           <h2 id="theory-h" className={styles.h2}>Theory</h2>
           {th && bib ? <th.default bib={bib} unit={unit} digits={digits} /> : <p className={styles.lede}>The theory loads as you come near it.</p>}
         </section>
-        <section id="references" ref={refBox} className={th ? `${styles.section} ${styles.offscreen}` : styles.section} aria-labelledby="references-h">
+        <section id="references" ref={refBox} className={th ? `${styles.section} ${styles.offscreen}` : styles.section} aria-label="References">
           <h2 id="references-h" className={styles.h2}>References</h2>
           {th && bib ? <th.References bib={bib} /> : <p className={styles.lede}>The sources the theory cites, listed once it has loaded.</p>}
         </section>

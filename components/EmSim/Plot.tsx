@@ -3,7 +3,7 @@
 // other plots of the same x (the parent holds it). The plot follows its box's width (ResizeObserver) and works from
 // 320 px. The cursor moves by pointer (hover or tap; touch-action pan-y keeps the page's vertical scroll), and by the
 // arrow keys on the focused plot (a slider for screen readers: Shift moves ten points, Home and End go to the ends);
-// the readout under the plot is text (aria-live polite) and never only on hover.
+// the readout under the plot is text (read out by Calm.tsx once the cursor rests, M9.1a) and never only on hover.
 // M3.2a: an x axis in another unit than its labels (`xScale`: seconds labelled in ps or ns), dashed reference lines
 // across the plot (`lines`, kept inside the y range), a faded range from `fadeFrom` on (where the model no longer
 // holds), dimmed while `stale`, and the series' exact values at the cursor in the readout's `data-values`.
@@ -13,6 +13,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { PLOT_U, bandPath, extent, frac, linePath, niceAxis, readAt, stepCursor, tickText, ticks, valueAt } from '../../lib/emsim/plot';
 import type { Axis, Scale } from '../../lib/emsim/plot';
 import css from '../../styles/EmSimTools.module.css';
+import Calm from './Calm';
 
 export interface PlotSeries { name: string; ys: number[]; lo?: number[]; hi?: number[] }
 
@@ -152,7 +153,8 @@ function Plot({ name, title, xs, series, xDomain, xLabel, marker, cursor, onCurs
         )}
       </div>
       <p className={css.xLabel}>{xLabel}</p>
-      <p className={css.readout} aria-live="polite" data-plot-readout data-cursor={cursor} data-values={values.join(' ')}>{text}</p>
+      <p className={css.readout} data-plot-readout data-cursor={cursor} data-values={values.join(' ')}>{text}</p>
+      <Calm text={text} name="plot" />
     </figure>
   );
 }
