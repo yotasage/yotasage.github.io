@@ -58,6 +58,14 @@ try {
     check(await page.locator(`[id="${ex.id}"] [data-example-link]`).count() === ex.links.length, `${ex.id}: its ${ex.links.length} links`);
     check(await page.locator(`[id="${ex.id}"] [data-example-step]`).count() === ex.steps.length, `${ex.id}: its ${ex.steps.length} steps`);
   }
+  // Every link says what it opens: its label, never an internal id in quotes ("Open “w50”").
+  {
+    const texts = await page.locator('[data-example-link]').allTextContents();
+    const want = EX.EXAMPLES.flatMap((e) => e.links.map((l) => `Open ${l.label}`));
+    const ids = new Set(EX.EXAMPLES.flatMap((e) => e.links.map((l) => l.name)));
+    const bad = texts.filter((t, i) => t !== want[i] || [...ids].some((id) => new RegExp(`[“"'‘]${id}[”"'’]`).test(t)));
+    check(texts.length === want.length && bad.length === 0, `${texts.length} example links read “Open ” + their label, none an internal id in quotes ${bad.join('; ')}`);
+  }
 
   // Waits until the page's address holds `want`, then until the numbers of `vals` show (polled: a solve follows).
   const applied = async (p, want, what) => {

@@ -45,7 +45,7 @@ function LinkItem({ ex, l, apply }: { ex: Example; l: ExampleLink; apply: ApplyL
   };
   return (
     <li className={css.link}>
-      <a href={l.link} onClick={onClick} data-example-link={key} data-section={section}>Open “{l.name}”</a>
+      <a href={l.link} onClick={onClick} data-example-link={key} data-section={section}>Open {l.label}</a>
       {OPENS[key] && <span className={css.recipe}>also opens the equation of {OPENS[key].label}</span>}
     </li>
   );
