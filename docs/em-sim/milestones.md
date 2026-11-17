@@ -487,6 +487,9 @@ differential and common-mode drive of a pair, its frames for the player as value
 opposite signs), a mode choice in the Waves section, the Sdd/Scc results unchanged), **M7.2b** (the animation on cut
 planes in the 3D view, from the same frames and the player's clock, at the 2D player's frame rate) and **M7.2c** (the
 theory topic on full-wave simulation and what the animation shows, with sourced claims).
+M7.2c is split again (main session, 2026-11-17; each of M7.1b–M7.2b took about 340k tokens): **M7.2c** (the topic's
+content in `theory-waves.md`, every claim sourced in `claims.md` and `sources.md`, the derivations and the pictures it
+points to) and **M7.2d** (the topic on the page in the Theory chunk, its figures and links to the Waves section).
 
 ## M8 – Export and report (next after M3: the owner moved it ahead of M4–M7 on 2026-11-16)
 
