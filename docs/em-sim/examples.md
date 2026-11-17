@@ -73,16 +73,15 @@ pitch 0.7 mm, a stadium antipad 1.22 × 1.92 mm on the planes L2 and L5, and six
 **Steps.**
 1. Open the via pair (`via`). The barrel's Zdiff is 92.23 Ω in the 0.865 mm core and 97.16 Ω in the 3313 prepreg (`pieces[i].zdiff`).
    ⟨219⟩
-2. The section as one element is 83.49 Ω differential, 36.63 Ω common, 12.59 ps (`lumped`); each via's pads and
+2. The section as one element is 89.08 Ω differential, 48.09 Ω common, 13.43 ps (`lumped`); each via's pads and
    openings add 54.0 fF (`lumped.dCsum`). ⟨220⟩
-3. Target Zdiff 100 Ω by the antipad: out of reach. Widening the antipad raises the section from 83.49 Ω at 1.22 mm to
-   99.88 Ω at 3.27 mm, the widest the search tries (`viaTarget(…, 'zdiff', 100, 'antipad')`). ⟨221⟩ The pads on L1 and
-   L6, 31.5 fF per via, stay whatever the antipad, and an antipad that wide already reaches past the ground vias 0.81 mm
-   away. ⟨222⟩ 85 Ω is in reach, at Ø1.375 mm. ⟨223⟩
-4. The differential TDR at 35 ps against 100 Ω: with the 2 mm feeds it dips to 91.59 Ω and never settles on the feeds;
-   open the via pair with 25 mm feeds (`long`): flat at the feeds' 103.36 Ω, a dip to 91.65 Ω at the via, flat again after it. ⟨224⟩
-5. Change the rise time to 15 ps: the dip deepens to 88.29 Ω; at 100 ps it is 97.99 Ω. ⟨225⟩
-6. Sdd21 at 10 GHz is −0.05 dB and Sdd11 −19.4 dB; Scd21 is rounding noise, since the pair is symmetric. ⟨226⟩
+3. Target Zdiff 100 Ω by the antipad: Ø1.687 mm (`viaTarget(…, 'zdiff', 100, 'antipad')`; the search tries up to 3.27
+   mm, 123.64 Ω there): a wider opening takes capacitance off and puts more of each trace over it (M6.5). ⟨221⟩ The pads
+   on L1 and L6, 31.5 fF per via, stay whatever the antipad. ⟨222⟩ 85 Ω is at Ø1.033 mm. ⟨223⟩
+4. The differential TDR at 35 ps against 100 Ω: with the 2 mm feeds it dips to 93.64 Ω and never settles on the feeds;
+   open the via pair with 25 mm feeds (`long`): flat at the feeds' 103.36 Ω, a dip to 93.69 Ω at the via, flat again after it. ⟨224⟩
+5. Change the rise time to 15 ps: the dip deepens to 90.74 Ω; at 100 ps it is 99.30 Ω. ⟨225⟩
+6. Sdd21 at 10 GHz is −0.03 dB and Sdd11 −21.7 dB; Scd21 is rounding noise, since the pair is symmetric. ⟨226⟩
 
 **Topics.** `via-line`, `via-pads`, `via-return`, `via-tdr`, `via-sparams`, `via-limits`.
 
@@ -129,14 +128,15 @@ is a stub.
 - `backdrill` (“Open the stub backdrilled”) = `stub` backdrilled from the bottom, 1.2 mm deep, Ø0.5: `/em-sim/main?v=1&via=(st:L1,en:L6,in:L1,out:L3,dr:0.3,pl:0.02,pd:!(!(L1,0.6),!(L2,0.6),!(L3,0.6),!(L4,0.6),!(L5,0.6),!(L6,0.6)),pn:!(L2,L5),ap:!(!(L2,1.8,round),!(L5,1.8,round)),bd:!(bottom,1.2,0.5),rv:!(!(0,0.8,0.3,0.6,!(L2,L5)),!(0,-0.8,0.3,0.6,!(L2,L5))),fd:!(!(L1,2,180)))`
 
 **Steps.**
-1. Open the through via (`through`). The barrel is 59.71 Ω in the core (`pieces[i].z0`), but the section as one element is 50.23 Ω,
-   13.55 ps: the pads and planes add 90.0 fF to 179.8 fF of barrel (`lumped`). ⟨236⟩
-2. The TDR at 35 ps is flat at the feeds' 51.50 Ω and dips to 50.81 Ω at the via; at 15 ps the pads (48.54 Ω) and the
-   barrel (55.32 Ω) show apart. ⟨237⟩ Target 50 Ω by the antipad: Ø1.758 mm. ⟨238⟩
+1. Open the through via (`through`). The barrel is 59.71 Ω in the core (`pieces[i].z0`), but the section as one element is 69.38 Ω,
+   18.72 ps: the pads and planes add 90.0 fF to 179.8 fF of barrel, and each feed's run over its plane's antipad, with no
+   plane under it, adds inductance (`lumped`, M6.5). ⟨236⟩
+2. The TDR at 35 ps is flat at the feeds' 51.50 Ω and rises at the via, where the runs over the antipads add inductance; at
+   15 ps the bump is higher still. ⟨237⟩ Target 50 Ω by the antipad: Ø1.048 mm, which also shortens the runs over it. ⟨238⟩
 3. Open the via with a stub (`stub`): the barrel below L3 is a 1.335 mm stub (9.19 ps). Its bare quarter wave is 27.2 GHz; with its pads it
    resonates at 21.8 GHz, where |S21| falls to −48.6 dB, and the page flags it inside the 25.0 GHz band. ⟨239⟩ At
-   10 GHz S21 is already −0.67 dB and S11 −8.4 dB (with the 2 mm feed; E without it: −0.68 dB). ⟨240⟩
-4. Open the stub backdrilled (`backdrill`): 0.165 mm of stub is left, resonating near 215 GHz; at 10 GHz S21 is −0.07 dB and S11 −18.1 dB (−18.0 without the feed), and
+   10 GHz S21 is already −0.60 dB and S11 −8.9 dB (with the 2 mm feed; E without it: −0.68 dB). ⟨240⟩
+4. Open the stub backdrilled (`backdrill`): 0.165 mm of stub is left, resonating near 215 GHz; at 10 GHz S21 is −0.07 dB and S11 −16.3 dB (−18.0 without the feed), and
    the stub flag is gone. ⟨241⟩
 
 **Topics.** `via-line`, `via-pads`, `via-stubs`, `via-tdr`, `via-sparams`, `via-limits`.

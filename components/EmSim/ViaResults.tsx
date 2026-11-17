@@ -189,7 +189,7 @@ function ViaResults({ r, s, v, state, stale, message, ms, unit, digits, quick = 
           )}
 
           <p className={css.small} data-via-valid={r.valid.fMax}>
-            Lumped parts hold to <b><Num name="valid" label="Lumped parts hold to" text={(r.valid.fMax / 1e9).toFixed(1)} v={r.valid.fMax} scale={1e-9} /> GHz</b> (λ/8). Flags are for a {ps(r.tr).toFixed(0)} ps edge, whose band reaches <Num name="band" label="The edge’s band" text={(r.band / 1e9).toFixed(1)} v={r.band} scale={1e-9} /> GHz.
+            The model holds to <b>{(r.valid.fMax / 1e9).toFixed(1)} GHz</b>{r.valid.cavity <= r.valid.fMax ? ' (the plane cavity: above it the radial wave between the planes takes power past the return vias)' : ''}; its lumped parts to <Num name="valid" label="Lumped parts hold to" text={(r.valid.lumped / 1e9).toFixed(1)} v={r.valid.lumped} scale={1e-9} /> GHz (λ/8). Flags are for a {ps(r.tr).toFixed(0)} ps edge, whose band reaches <Num name="band" label="The edge’s band" text={(r.band / 1e9).toFixed(1)} v={r.band} scale={1e-9} /> GHz.
           </p>
           <Why k="via-valid" bare />
 

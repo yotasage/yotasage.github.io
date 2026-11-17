@@ -1,6 +1,6 @@
 // The EM simulation page's Via section in the installed Edge (step M3.1a): the section loads only when it comes near
-// (or by #via); the default via (C44: barrel 59.71 ± 0.08 Ω, section 50.23 Ω) and the pair preset (C45: barrel Zdiff
-// 92.23 Ω, section 83.49 Ω) equal the engine's viaModel in Node with the page's options (barrel Z or Zdiff/Zcm and
+// (or by #via); the default via (C44: barrel 59.71 ± 0.08 Ω, section 69.38 Ω since M6.5) and the pair preset (C45: barrel Zdiff
+// 92.23 Ω) equal the engine's viaModel in Node with the page's options (barrel Z or Zdiff/Zcm and
 // their errors, the section, ΣΔC and every crossing's ΔC, the stub resonance); typed changes (all antipads, the drill,
 // an exit layer that leaves a stub) each equal the engine of the setup the link then holds; a return via added and
 // removed; a refused text and a refused via (pad not larger than the drill) with their reasons; the flags
@@ -113,7 +113,7 @@ try {
   const c44 = await matches(page, 'C44 default');
   const bz = await q(page, 'barrel-z'), sz = await q(page, 'section-z');
   check(/^59\.71 ± 0\.08 Ω/.test(bz?.text ?? ''), `C44 barrel reads 59.71 ± 0.08 Ω (${bz?.text})`);
-  check(/^50\.2\d? ± /.test(sz?.text ?? '') && Math.abs(sz.v - 50.23) < 0.005, `C44 section reads 50.23 Ω (${sz?.text})`);
+  check(/^69\.4\d* ± /.test(sz?.text ?? '') && Math.abs(sz.v - 69.38) < 0.005, `C44 section reads 69.38 Ω with each feed's run over its antipad (${sz?.text})`);
   check(c44 && Math.abs(c44.r.lumped.dCsum * 1e15 - 90.0) < 0.06, `C44 ΣΔC ${(c44?.r.lumped.dCsum * 1e15).toFixed(2)} fF (facts 90.0)`);
   // Timing: the model in the worker (cached pads), and an edit that needs new pads.
   const msOf = async (p) => [Number(await p.locator('[data-via-results]').getAttribute('data-ms')), Number(await p.locator('[data-via-results]').getAttribute('data-rt'))];
@@ -198,7 +198,7 @@ try {
   const c45 = await matches(page, 'C45 pair preset');
   const zd = await q(page, 'barrel-zdiff');
   check(Math.abs(zd.v - 92.23) < 0.005, `C45 barrel Zdiff ${zd.text} (facts 92.23)`);
-  check(c45 && Math.abs(c45.r.lumped.zdiff - 83.49) < 0.005, `C45 section Zdiff ${c45?.r.lumped.zdiff.toFixed(2)} (facts 83.49)`);
+  check(c45 && Math.abs(c45.r.lumped.zdiff - 95.75) < 0.005, `C45 section Zdiff ${c45?.r.lumped.zdiff.toFixed(2)} (facts-cases C45: 95.75 with the page's single trace over the opening at the pitch, M6.5)`);
   check(await page.locator('[data-via-assume="antipad-as-round"]').count() === 1, 'the stadium solved as round is said (BL88)');
   check(await page.locator('[data-via-top] [data-via-return]').count() === 6 && await page.locator('[data-via-top] [data-via-pad]').count() === 2, 'top view: two vias and six returns');
   await page.selectOption('[data-via-shape="L2"]', 'joined'); await settled(page);

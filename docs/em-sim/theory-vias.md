@@ -40,7 +40,8 @@ radius R_eq of the coaxial line with the same capacitance: 1.255 mm here. ⟨140
 **The section as one element.** Taken whole between its outer pads, the via has the inductance of its barrel lines
 and their capacitance plus every pad's and plane's excess; its impedance is √(L/C) and its delay √(LC). ⟨141⟩ For the
 0.6/0.3 via: L 0.681 nH, C 269.7 fF (179.8 fF of barrel line, 90.0 fF at the pads and planes), so √(L/C) = 50.23 Ω and
-13.55 ps through the board. ⟨142⟩ With a controlled return path, physics-based models treat a via as a line whose
+13.55 ps through the board. ⟨142⟩ Each feed's 0.6 mm over its plane's antipad has no plane under it; its return runs in
+the next plane beyond, which adds 0.31 nH per feed, so with its feeds the via reads 69.38 Ω and 18.72 ps (M6.5). With a controlled return path, physics-based models treat a via as a line whose
 impedance can be matched, studied up to 20 GHz [Fan2014 abstract]. ⟨143⟩
 
 A via pair is the same with two barrels: the cut gives Zdiff and Zcm as for a pair of traces (§3). ⟨144⟩ For the LVDS
@@ -81,7 +82,8 @@ with pads and openings, and how they depend on pad and opening size [Kok1993 abs
 On the 0.6/0.3 via each pad adds about 15.3 fF and each plane crossing with its pad 14.3 fF: 90.0 fF over six
 layers. ⟨149⟩ So the section, 50.23 Ω, lies below the barrel's 59.71 Ω: half again as much capacitance at the same
 inductance. ⟨150⟩ A smaller antipad adds capacitance and lowers the impedance, a larger one does the opposite; the
-Target finds the size: the 0.6/0.3 via reaches 50 Ω with antipads of Ø1.758 mm instead of 1.8 mm. ⟨151⟩ Drill,
+Target finds the size: the 0.6/0.3 via reaches 50 Ω with antipads of Ø1.048 mm instead of 1.8 mm (less capacitance taken off, and shorter runs over
+them). ⟨151⟩ Drill,
 pad, antipad and pitch are the means of tuning a differential via, by whether it is too capacitive or too inductive
 [Vardapetyan2020 abstract]. ⟨152⟩
 
@@ -178,8 +180,8 @@ the port shows at 2τ. ⟨180⟩ The tool's step has a Gaussian edge of the chos
 common 0.35/tr belongs to a single-pole edge; for the Gaussian edge the factor is 0.3396. ⟨182⟩
 
 A feature shorter than the rise time shows as a softened bump or dip, smaller than its true step. ⟨183⟩ On the 0.6/0.3
-via between 25 mm feeds of 51.50 Ω: at 15 ps the trace shows the pads as dips to 48.54 Ω and the barrel as a bump to
-55.32 Ω; at 35 ps a single dip to 50.81 Ω is left; at 100 ps 51.19 Ω. ⟨184⟩ Extra capacitance (pads, a wide trace) shows
+via between 25 mm feeds of 51.50 Ω: at 15 ps the feeds' runs over the antipads and the barrel show as a bump to
+70.17 Ω; at 35 ps it is 60.34 Ω; at 100 ps 56.97 Ω. ⟨184⟩ Extra capacitance (pads, a wide trace) shows
 as a dip, extra inductance (a barrel far from its returns, a narrow neck) as a bump. ⟨185⟩ The flat parts before and
 after the via are the feeds' own impedance: 51.4975 Ω here, the trace's 51.4976 Ω. ⟨186⟩
 
@@ -187,7 +189,7 @@ A feed shows a flat part only when its round trip is longer than the rise time: 
 pad's edge) take 20.6 ps there and back, less than 35 ps, so the step never settles on them. ⟨187⟩ With the ports right
 at the pads the 0.6/0.3 via reads 49.66 to 51.00 Ω at 35 ps. ⟨188⟩ For a pair the TDR drives the two vias in opposite
 directions against a 100 Ω differential port, or together against 25 Ω for the common mode. ⟨189⟩ The LVDS pair
-between 25 mm feeds dips from 103.36 to 91.65 Ω at 35 ps, to 88.29 Ω at 15 ps and to 97.99 Ω at 100 ps. ⟨190⟩
+between 25 mm feeds dips from 103.36 to 93.69 Ω at 35 ps, to 90.74 Ω at 15 ps and to 99.30 Ω at 100 ps. ⟨190⟩
 
 **Equations:**
 
@@ -214,7 +216,7 @@ no losses, so |S11|² + |S21|² = 1 at every frequency. ⟨194⟩
 
 For a pair, the four single-ended ports become mixed-mode ports: differential (Sdd) referred to 100 Ω, common (Scc)
 to 25 Ω, and Scd and Sdc for conversion between them [BockelmanEisenstadt1995]. ⟨195⟩ The LVDS pair at 10 GHz: Sdd11
-−19.4 dB, Sdd21 −0.05 dB, Scc11 −10.3 dB. ⟨196⟩ A symmetric pair converts nothing between the modes in this model
+−21.7 dB, Sdd21 −0.03 dB, Scc11 about −7 dB. ⟨196⟩ A symmetric pair converts nothing between the modes in this model
 (Scd21 is rounding noise, below −300 dB); unequal stubs or return vias are what convert
 [Zhang2020 abstract] [RimoloDonadio2009b abstract]. ⟨197⟩ The plots fade above the frequency where the lumped parts stop
 being short (§13). ⟨198⟩
@@ -238,8 +240,11 @@ the LVDS pair.
 
 Each lumped part, a pad's window or the section as one element, holds while it is short against the wavelength.
 Quasi-static via circuits lose their usable bandwidth as the structure approaches λ/8 [Cartier2007 abstract], so the
-tool's limit is c0/(8ℓ√εr) for the longest window. ⟨199⟩ For the 0.6/0.3 via that is 29.5 GHz (the 0.597 mm window at
-L4, εr 4.55); for the LVDS pair 23.8 GHz. ⟨200⟩ The flags name each case with its numbers: no return via (refused), a
+lumped parts hold to c0/(8ℓ√εr) of the longest window. ⟨199⟩ For the 0.6/0.3 via that is 29.5 GHz (the 0.597 mm window
+at L4, εr 4.55); for the LVDS pair 23.8 GHz. ⟨200⟩ Earlier, the plane cavity: between two planes the barrel launches a
+radial wave that the return vias cancel only in part; the tool's limit is where that wave moves S by 0.1, 20.8 GHz for
+the 0.6/0.3 via with its two returns (full-wave runs leave the model there too, M6.5); the pair's opposite currents
+launch almost none, so its limit stays near 23 GHz. The flags name each case with its numbers: no return via (refused), a
 far return, a return inside an antipad, overlapping pads or antipads in a pair, a shared antipad, a long lumped part,
 a stub resonance in the band, a feed over its plane's antipad, and the wider wall. ⟨201⟩ A shared antipad of a
 differential via excites higher-order modes, and separate antipads on the outer planes did better mainly at 40–60 GHz
@@ -255,6 +260,6 @@ check these limits on the same vias. ⟨204⟩
 
 | Id | TeX | Live numbers |
 |---|---|---|
-| `lambda8` | `f_\mathrm{valid} = \frac{c_0}{8\ell\sqrt{\varepsilon_r}}` | `valid.fMax` [29.452 GHz], `valid.reason` (the window and its εr) |
+| `lambda8` | `f_\mathrm{valid} = \frac{c_0}{8\ell\sqrt{\varepsilon_r}}` | `valid.lumped` [29.452 GHz] (`valid.fMax` the lower of it and `valid.cavity`, 20.8 GHz), `valid.reason` |
 
 **Figures.** None beyond the plots' faded part.

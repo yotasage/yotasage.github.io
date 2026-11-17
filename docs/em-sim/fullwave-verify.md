@@ -85,6 +85,11 @@ Above 20 GHz nothing is barred: the C44 via resonates and radiates there, and th
 - **Shared antipad, pad coupling:** the pair fixture has one shared (stadium) antipad and no unshared twin, so the
   40 GHz threshold (Duan2014) and k12 are not measured here; left as they are.
 
+**After M6.5** ([notes-M6.5.md](notes-M6.5.md)): the model with the feeds' runs over the antipads reads C44's section
+67.9 Ω, 15.1 ps (TDR peak 61.3 Ω, |Δz| 1.3 Ω) and C45's Sdd TDR 96.9–105.6 Ω; it leaves openEMS at 16.2 and 22.9 GHz (was 2.9 and 6.8);
+its band comes from the plane cavity (C44 20.8 GHz; the antipad-0.8 sweep leaves FDTD at 19.1 / 12.5 / 8.0 / 5.9
+GHz against a band of 18.3 / 13.5 / 9.2 / 6.9). `compare.json` is version 2 (`model` M6.5, `modelM64` as above).
+
 ## 5. What the page should say (M7)
 Suggest a full-wave run when any of: a feed crosses its plane's antipad by more than about 0.1 mm (the model's Z then
 reads low: −15 % at 0.3 mm, −31 % at 0.6 mm); the nearest return is beyond 1.5 mm; there are no returns; the edge's

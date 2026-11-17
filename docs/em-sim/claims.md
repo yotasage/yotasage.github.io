@@ -219,13 +219,13 @@ listed in notes-M4.1.md "Numbers checked". Equation ids are those of [equations-
 | 142 | D | engine V: `lumped` L 0.6806 nH, C 269.74 fF, lineC 179.79, dCsum 89.95, z 50.229, delay 13.549 ps |
 | 143 | S | `Fan2014` abstract (V3) |
 | 144 | D | `via-section-pair`, `zdiff-zodd`; engine.md §6.2 |
-| 145 | D | engine VP: pieces' zdiff 92.232 (core), 97.161 (prepreg); `lumped` 83.492, 36.628, 12.592 ps |
+| 145 | D | engine VP: pieces' zdiff 92.232 (core), 97.161 (prepreg); `lumped` 83.492, 36.628, 12.592 ps (core; with the setup's pair over the opening, M6.5: 89.08, 48.09, 13.43 ps) |
 | 146 | D | engine.md §5, §6.3 (geometry of pads and antipads) |
 | 147 | D + T | `via-dc`; `axisym.ts` windows (notes-M1.6.md), notes-M1.7.md "The wall" |
 | 148 | T | engine.md §5; `axisym.ts` |
 | 149 | D | engine V: `nodes` 15.31, 14.33, 15.34, 15.34, 14.33, 15.31 fF, sum 89.95 |
 | 150 | D | engine V: 269.74 / 179.79 = 1.50; 50.229 against 59.706 |
-| 151 | D + T | `via-target`; engine `viaTarget(V, 'z', 50, 'antipad')` Ø1.75828 mm, 50.0000 Ω; `ViaTarget.tsx` |
+| 151 | D + T | `via-target`; engine `viaTarget(V, 'z', 50, 'antipad')` Ø1.048 mm with the setup's trace (M6.5; Ø1.75828 without the runs over the antipads), 50.0000 Ω; `ViaTarget.tsx` |
 | 152 | S | `Vardapetyan2020` abstract (literature.md, Vias) |
 | 153 | D | engine VP: `nodes` L1 31.49, L6 31.48, L2 −4.47, L5 −4.45 fF; dCsum 54.04 |
 | 154 | T | engine.md §6.3, solver.md §5.2; `barrel.k12` 0.27399 |
@@ -264,7 +264,7 @@ listed in notes-M4.1.md "Numbers checked". Equation ids are those of [equations-
 | 187 | D | `tdr-roundtrip`; engine V feed 1.7 mm, εeff 3.298: 20.60 ps |
 | 188 | D | engine V with `feeds: 'none'`: 49.665–50.998 Ω (facts-cases.md C44) |
 | 189 | T | `mixed.z0` [100, 100, 25, 25]; `lines.ts` `TDR_COMMON_OHM`; theory-lines.md (via-port, via-tdr-mode) |
-| 190 | D | engine VP25: flat 103.361, dip 91.647 (35 ps), 88.290 (15 ps), 97.987 Ω (100 ps) |
+| 190 | D | engine VP25: flat 103.361, dip 93.69 (35 ps), 90.74 (15 ps), 99.30 Ω (100 ps) (M6.5) |
 | 191 | Def | `s-db` |
 | 192 | T | engine.md §6.6; `viamodel.cascadeS`, `nport.abcdToS` |
 | 193 | D | engine V: 10.07 GHz S11 −33.35, S21 −0.0020 dB; 25.02 GHz S11 −17.31 dB |
@@ -274,7 +274,7 @@ listed in notes-M4.1.md "Numbers checked". Equation ids are those of [equations-
 | 197 | D + S | engine VP Scd21 −325 dB; `Zhang2020`, `RimoloDonadio2009b` abstracts |
 | 198 | T | `ViaPlots.tsx` (faded beyond `valid.fMax`) |
 | 199 | S + T | `Cartier2007` abstract (V1); `LUMPED_FRACTION` 8 in `viamodel.ts`; `lambda8` |
-| 200 | D | engine `valid.fMax` V 29.452 GHz (0.597 mm window of L4, εr 4.55), VP 23.821 GHz |
+| 200 | D | engine `valid.lumped` V 29.452 GHz (0.597 mm window of L4, εr 4.55), VP 23.821 GHz; `valid.cavity` V 20.8 GHz (M6.5) |
 | 201 | T | `viamodel.ts` flags (notes-M1.7.md "Flags") |
 | 202 | S + T | `Duan2014` abstract (V6); `SHARED_ANTIPAD_HZ` 40 GHz |
 | 203 | T | `viamodel.ts` assumptions; engine.md §6 |
@@ -302,11 +302,11 @@ Numbers from the engine at M = 2 (trace) and the via model's defaults, in notes-
 | 218 | D | engine P `modes`: εeff 3.0818 / 3.4352, 5.8558 / 6.1824 ps/mm |
 | 219 | D | as claim 145 |
 | 220 | D | engine VP `lumped` (claim 145), dCsum 54.04 fF |
-| 221 | D | engine `viaTarget(VP, 'zdiff', 100, 'antipad')`: 53.21–99.88 Ω over 0.270–3.270 mm |
+| 221 | D | engine `viaTarget(VP, 'zdiff', 100, 'antipad')`: Ø1.687 mm, up to 123.64 Ω at 3.270 mm (M6.5) |
 | 222 | D | engine VP `nodes` (claim 153); at Ø3.27 flags `return-in-antipad`, `wall-rule`; `nearestReturn` 0.81 mm |
-| 223 | D | engine `viaTarget(VP, 'zdiff', 85, 'antipad')` Ø1.37534 mm |
+| 223 | D | engine `viaTarget(VP, 'zdiff', 85, 'antipad')` Ø1.033 mm (M6.5) |
 | 224 | D | engine VP: TDR minimum 91.589 Ω; VP25 flat 103.361, dip 91.647 Ω |
-| 225 | D | engine VP25 at 15 and 100 ps: 88.290, 97.987 Ω |
+| 225 | D | engine VP25 at 15 and 100 ps: 90.74, 99.30 Ω (M6.5) |
 | 226 | D | engine VP at 10.07 GHz (claim 196), Scd21 −325 dB |
 | 227 | S | `JLCPCBCalc` (the inputs it sends; notes-M1.4c.md) |
 | 228 | D | engine 50.0587 Ω |

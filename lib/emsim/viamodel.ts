@@ -13,7 +13,7 @@
 
 import { C0 as CLIGHT } from './bem2d';
 import { AXI_LEVEL, viaAxisym, viaLayout, viaWall } from './axisym';
-import type { ViaAxiResult } from './axisym';
+import type { ViaAxiResult, ViaLayout } from './axisym';
 import { equivalentRadius, viaCut } from './viacut';
 import { solveSetup } from './lines';
 import type { Flag } from './lines';
@@ -26,7 +26,7 @@ import type { NPort } from './nport';
 import { edgeF3, edgeFrequency, tdr } from './tdr';
 import type { TdrResult } from './tdr';
 
-export const VIAMODEL_VERSION = 1;
+export const VIAMODEL_VERSION = 2; // 2: the feed over its antipad (BL90) and the band from the plane cavity (BL165), step M6.5
 export const VIA_TR = 35e-12; // default 10–90 % rise time (the openEMS fixtures' TDR)
 export const VIA_Z0 = 50;
 // Provisional: no published number (literature V2 has curves only); M6.4's full-wave runs set it.
@@ -36,8 +36,11 @@ export const VIA_Z0 = 50;
 export const RETURN_NEAR_MM = 1.5;
 export const SHARED_ANTIPAD_HZ = 40e9; // Duan2014: a pair's shared antipad matters above about 40 GHz
 export const LUMPED_FRACTION = 8; // Cartier2007: a lumped part of length ℓ holds to c0/(8·ℓ·√εr)
+export const CAVITY_DS = 0.1; // the band ends where the plane cavity's radial wave moves any S entry by this much (M6.4c's measure of where the model leaves the full-wave results)
+export const OVER_CHECKED_MM = 0.6; // the longest feed over its antipad checked against openEMS (C44): beyond it `feed-over-antipad` warns
 export const BAND_LEVEL = 0.1; // the band of the stub and shared-antipad flags: the edge spectrum down to −20 dB (2.58·f3)
 
+const MU0 = 4e-7 * Math.PI;
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
 // ---------- real n × n matrices (n ≤ 2) ----------
@@ -65,6 +68,7 @@ interface LinePre { T: Float64Array; Tinv: Float64Array; Ti: Float64Array; Tiinv
 export type Element =
   | { kind: 'line'; name: string; len: number; spec: LineSpec; pre?: LinePre } // len in m
   | { kind: 'shunt'; name: string; C: Mat } // F, Maxwell matrix to ground
+  | { kind: 'series'; name: string; L: Mat; z?: (f: number) => Float64Array } // H, series inductance; z: a further complex n × n impedance at f (Ω)
   | { kind: 'stub'; name: string; elements: Element[] }; // a chain open at its far end, shunt at this node
 
 function prepare(spec: LineSpec): LinePre {
@@ -106,6 +110,15 @@ function elementAbcd(e: Element, f: number, n: number, out: Float64Array): void 
   if (e.kind === 'shunt') {
     const w = 2 * Math.PI * f;
     for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) out[2 * ((n + i) * m + j) + 1] = w * e.C[i][j];
+    return;
+  }
+  if (e.kind === 'series') {
+    const w = 2 * Math.PI * f, z = e.z ? e.z(f) : null;
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      const o = 2 * (i * m + n + j);
+      out[o + 1] = w * e.L[i][j];
+      if (z) { out[o] += z[2 * (i * n + j)]; out[o + 1] += z[2 * (i * n + j) + 1]; }
+    }
     return;
   }
   if (e.kind === 'stub') {
@@ -193,10 +206,12 @@ export const stubFormula = (lenMm: number, eeff: number): number => CLIGHT / (4 
 
 // ---------- feeds ----------
 
-export interface FeedLine { ok: boolean; reason: string; spec: LineSpec | null; z0: number; eeff: number; cached: boolean; ms: number }
+export interface FeedLine { ok: boolean; reason: string; spec: LineSpec | null; L: Mat | null; z0: number; eeff: number; cached: boolean; ms: number } // L: H/m, n × n
 const FEEDS = new Map<string, FeedLine>();
-const FEED_CACHE = 8;
+const FEED_CACHE = 16;
 export function clearFeedCache(): void { FEEDS.clear(); }
+
+const PAIR_KIND: Partial<Record<Structure['kind'], Structure['kind']>> = { microstrip: 'pair-microstrip', stripline: 'pair-stripline', cpw: 'pair-cpw', cpwg: 'pair-cpw' };
 
 // The setup's trace on a feed layer: itself, or mirrored through the stackup (L1 over L2 → L6 under L5).
 export function feedStructure(s: Stackup, trace: Structure, layer: string): Structure | string {
@@ -220,12 +235,13 @@ export function feedLine(s: Stackup, st: Structure, n: number, via: ViaStructure
   if (hit) { FEEDS.delete(key); FEEDS.set(key, hit); return { ...hit, cached: true, ms: now() - t0 }; }
   const r = solveSetup({ stackup: s, trace: st, via });
   let out: FeedLine;
-  if (!r.ok) out = { ok: false, reason: r.reason, spec: null, z0: NaN, eeff: NaN, cached: false, ms: 0 };
-  else if (r.n !== 1 && r.n !== n) out = { ok: false, reason: `The feed has ${r.n} signals and the via ${n}.`, spec: null, z0: NaN, eeff: NaN, cached: false, ms: 0 };
+  if (!r.ok) out = { ok: false, reason: r.reason, spec: null, L: null, z0: NaN, eeff: NaN, cached: false, ms: 0 };
+  else if (r.n !== 1 && r.n !== n) out = { ok: false, reason: `The feed has ${r.n} signals and the via ${n}.`, spec: null, L: null, z0: NaN, eeff: NaN, cached: false, ms: 0 };
   else {
     let spec = lineFromCL(r.bem.C, r.bem.L);
-    if (r.n === 1 && n === 2) spec = { n: 2, C: [[spec.C[0][0], 0], [0, spec.C[0][0]]], T: rEye(2), v: [spec.v[0], spec.v[0]] };
-    out = { ok: true, reason: '', spec, z0: r.n === 1 ? r.lines[0].z0.v : r.pair.zdiff.v, eeff: r.lines[0].eeff.v, cached: false, ms: 0 };
+    let Lm: Mat = r.bem.L.map((row) => [...row]);
+    if (r.n === 1 && n === 2) { spec = { n: 2, C: [[spec.C[0][0], 0], [0, spec.C[0][0]]], T: rEye(2), v: [spec.v[0], spec.v[0]] }; Lm = [[Lm[0][0], 0], [0, Lm[0][0]]]; }
+    out = { ok: true, reason: '', spec, L: Lm, z0: r.n === 1 ? r.lines[0].z0.v : r.pair.zdiff.v, eeff: r.lines[0].eeff.v, cached: false, ms: 0 };
   }
   out.ms = now() - t0;
   FEEDS.set(key, out);
@@ -252,6 +268,15 @@ export interface ViaNode { z: number; layer: string; dC: number; dCErr: number }
 export interface ViaPiece { zTop: number; zBot: number; er: number; z0: number; zdiff: number; zcm: number; delay: number; part: 'through' | 'entry stub' | 'exit stub' }
 export interface ViaStub { side: 'entry' | 'exit'; length: number; delay: number; fFormula: number; fRes: number } // mm, s, Hz
 export interface ViaFeed { side: 'entry' | 'exit'; layer: string; length: number; z0: number; eeff: number } // mm (to the pad's edge), Ω
+// A feed's run over its reference plane's antipad (BL90): planes cut and the next ones beyond, its length (mm, from the
+// pad's edge), the series inductance it adds (H, one trace) and the impedance of the trace over the next plane (Ω).
+export interface ViaOver { side: 'entry' | 'exit'; layer: string; ref: string; next: string; length: number; dL: number; zNext: number }
+// The plane cavity between two of the via's planes (BL165): height (mm), its εr in series, the return vias that join
+// both planes, the barrel's share of its height, and the frequency (Hz) where its radial wave moves S by CAVITY_DS.
+export interface ViaCavity {
+  top: string; bottom: string; h: number; er: number; returns: number; share: number; fMax: number;
+  at: number; posts: number[][]; // its ΔZ enters the cascade before element `at`; posts [x, y, r] (mm): the n barrels, then the returns
+}
 // The through section (entry node to exit node, stubs' capacitance included) as one lumped element.
 export interface ViaLumped { L: Mat; C: Mat; z: number; zdiff: number; zcm: number; delay: number; dCsum: number; lineC: number }
 export interface ViaModelResult {
@@ -266,8 +291,12 @@ export interface ViaModelResult {
   pieces: ViaPiece[];
   stubs: ViaStub[];
   feeds: ViaFeed[];
+  overs: ViaOver[];
+  cavities: ViaCavity[];
   lumped: ViaLumped | null;
-  valid: { fMax: number; reason: string; window: number; er: number }; // Hz: the lowest λ/8 limit of the lumped parts, its window (mm) and εr
+  // Hz: the model's band, the lower of the lumped parts' λ/8 limit (`lumped`, of the `window` (mm) with εr `er`) and the
+  // plane cavity's (`cavity`, viaModel only: buildVia leaves it NaN), and why.
+  valid: { fMax: number; reason: string; window: number; er: number; lumped: number; cavity: number };
   axiTotal: number; axiTotalErr: number; // F, the axisymmetric whole-via capacitance (one via)
   elements: Element[];
   span: number; // s, one-way delay of feeds and through section
@@ -285,7 +314,7 @@ export interface ViaModelResult {
 function failed(reason: string, flags: ViaFlag[] = []): ViaModelResult {
   return {
     ok: false, reason, version: VIAMODEL_VERSION, n: 0, tr: 0, f3: 0, band: 0, z0: 0, wall: null, barrel: null, nodes: [], pieces: [], stubs: [], feeds: [],
-    lumped: null, valid: null, axiTotal: NaN, axiTotalErr: NaN, elements: [], span: 0, nport: null, mixed: null, tdr: null, tdrCommon: null, flags, assumptions: [], axiCached: false,
+    overs: [], cavities: [], lumped: null, valid: null, axiTotal: NaN, axiTotalErr: NaN, elements: [], span: 0, nport: null, mixed: null, tdr: null, tdrCommon: null, flags, assumptions: [], axiCached: false,
     ms: 0, parts: { axi: 0, cut: 0, feeds: 0, cascade: 0, tdr: 0 },
   };
 }
@@ -338,6 +367,147 @@ function geometryFlags(v: ViaStructure, a: number, band: number): ViaFlag[] {
   }
   if (!(a > 0)) flags.push({ level: 'error', code: 'drill', message: 'The drill must be above 0.', numbers: [] });
   return flags;
+}
+
+// ---------- the plane cavity (BL165) ----------
+// Between two planes the barrels and the return vias are posts in a parallel-plate guide. Its TEM radial mode (Ez and
+// Hφ uniform in z, no cutoff; the next mode starts at c0/(2h√εr), 54 GHz on C44) is what the quasi-static model leaves
+// out: the barrel's current launches it, the shorted returns cancel most of it, and what is left carries power away
+// between the planes. Thin posts: a z-current I at the origin gives Ez = −(ωμ0/4)·I·H0⁽²⁾(kρ) (the 2D Green's function
+// of the Helmholtz equation), so the plane-pair impedance between posts i and j is Zij = (ωμ0h/4)·H0⁽²⁾(kρij), ρii the
+// post's radius, with k = ω√(μ0ε0εr) and εr the layers' series value (Ez crosses them). With the returns shorted
+// (Vr = 0) the barrels see Zeff = Zbb − Zbr·Zrr⁻¹·Zrb; its low-frequency part jωL0 is the barrel's inductance between
+// the planes (the model's lines hold it), the rest ΔZ = Zeff − jωL0 is the cavity's radiation and dispersion. A barrel
+// that carries the signal over only a share w of the height couples to the mode by w twice (ΔZ·w²).
+
+// J0 and Y0: the power series below 8, Hankel's asymptotic expansion from 8 (both to about 1e-12 of their scale).
+function bessel0(x: number): [number, number] {
+  if (x < 8) {
+    const q = (x * x) / 4;
+    let j = 1, sum = 0, t = 1, H = 0;
+    for (let m = 1; m < 80; m++) {
+      t *= -q / (m * m);
+      H += 1 / m;
+      j += t;
+      sum -= H * t;
+      if (Math.abs(t) * (1 + H) < 1e-17) break;
+    }
+    return [j, (2 / Math.PI) * ((Math.log(x / 2) + 0.5772156649015329) * j + sum)];
+  }
+  // J0 = √(2/πx)(P cos χ − Q sin χ), Y0 = √(2/πx)(P sin χ + Q cos χ), χ = x − π/4; the series' terms are
+  // a_k = Π_{i≤k} (2i−1)²/(i·8x) with signs + − − + + − − …: P takes the even k, Q the odd k (Q starts −1/(8x)).
+  let P = 1, Q = 0, t = 1;
+  for (let k = 1; k <= 30; k++) {
+    const tn = (t * (2 * k - 1) ** 2) / (k * 8 * x);
+    if (tn > t) break; // asymptotic: stop at the smallest term
+    t = tn;
+    if (k % 2) Q += (k % 4 === 1 ? -1 : 1) * t;
+    else P += (k % 4 === 2 ? -1 : 1) * t;
+    if (t < 1e-17) break;
+  }
+  const chi = x - Math.PI / 4, s = Math.sqrt(2 / (Math.PI * x));
+  return [s * (P * Math.cos(chi) - Q * Math.sin(chi)), s * (P * Math.sin(chi) + Q * Math.cos(chi))];
+}
+
+// The cavities between consecutive planes the barrel passes (an opening on both), with the through section's share.
+function planeCavities(L: ViaLayout, v: ViaStructure, zEn: number, zEx: number, offset: number, throughZ: { at: number; z: number }[]): ViaCavity[] {
+  const out: ViaCavity[] = [];
+  const pl = L.planes.filter((p) => p.r0 > 0).sort((p, q) => q.zLo - p.zLo);
+  const barrels = barrelsOf(v);
+  const zHi = Math.max(zEn, zEx), zLo = Math.min(zEn, zEx);
+  for (let i = 0; i + 1 < pl.length; i++) {
+    const upper = pl[i], lower = pl[i + 1];
+    const zTop = upper.zLo, zBot = lower.zHi, h = zTop - zBot; // the upper plane's lower face to the lower plane's upper face
+    if (!(h > 0)) continue;
+    let inv = 0;
+    for (const sl of L.slabs) { const t = Math.min(sl.zHi, zTop) - Math.max(sl.zLo, zBot); if (t > 0) inv += t / sl.er; }
+    const share = Math.max(0, Math.min(zHi, zTop) - Math.max(zLo, zBot)) / h;
+    const mid = 0.5 * (zTop + zBot);
+    let best: { at: number; z: number } = null, bd = Infinity;
+    for (const t of throughZ) { const d = Math.abs(t.z - mid); if (d < bd) { bd = d; best = t; } }
+    if (!best || !(share > 0)) continue;
+    const rets = v.returns.filter((r) => r.planes.includes(upper.layer) && r.planes.includes(lower.layer));
+    out.push({
+      top: upper.layer, bottom: lower.layer, h, er: h / inv, returns: rets.length, share, fMax: NaN, at: offset + best.at,
+      posts: [...barrels.map(([x, y]) => [x, y, L.a]), ...rets.map((r) => [r.x.v, r.y.v, r.drill.v / 2])],
+    });
+  }
+  return out;
+}
+
+// Zeff of the barrels (n × n complex, Ω) at f with the returns shorted.
+function cavityZeff(c: ViaCavity, n: number, f: number): Float64Array {
+  const k = (2 * Math.PI * f * Math.sqrt(c.er)) / CLIGHT, A = (2 * Math.PI * f * MU0 * c.h * 1e-3) / 4;
+  const N = c.posts.length, m = N - n;
+  const z = (i: number, j: number): [number, number] => {
+    const rho = i === j ? c.posts[i][2] : Math.hypot(c.posts[i][0] - c.posts[j][0], c.posts[i][1] - c.posts[j][1]);
+    const [J, Y] = bessel0(k * rho * 1e-3);
+    return [A * J, -A * Y];
+  };
+  const out = new Float64Array(2 * n * n);
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { const [a, b] = z(i, j); out[2 * (i * n + j)] = a; out[2 * (i * n + j) + 1] = b; }
+  if (!m) return out;
+  const Zrr = new Float64Array(2 * m * m);
+  for (let p = 0; p < m; p++) for (let q = 0; q < m; q++) { const [a, b] = z(n + p, n + q); Zrr[2 * (p * m + q)] = a; Zrr[2 * (p * m + q) + 1] = b; }
+  const Ri = cInv(Zrr, m);
+  if (!Ri) return out;
+  // Zrr⁻¹·Zrb column by column, then Zbr times it.
+  for (let j = 0; j < n; j++) {
+    const x = new Float64Array(2 * m);
+    for (let p = 0; p < m; p++) {
+      let re = 0, im = 0;
+      for (let q = 0; q < m; q++) {
+        const [a, b] = z(n + q, j), r = Ri[2 * (p * m + q)], s = Ri[2 * (p * m + q) + 1];
+        re += r * a - s * b; im += r * b + s * a;
+      }
+      x[2 * p] = re; x[2 * p + 1] = im;
+    }
+    for (let i = 0; i < n; i++) {
+      let re = 0, im = 0;
+      for (let p = 0; p < m; p++) { const [a, b] = z(i, n + p); re += a * x[2 * p] - b * x[2 * p + 1]; im += a * x[2 * p + 1] + b * x[2 * p]; }
+      out[2 * (i * n + j)] -= re; out[2 * (i * n + j) + 1] -= im;
+    }
+  }
+  return out;
+}
+
+// ΔZ (n × n complex, Ω) of a cavity at f: Zeff less its static inductance (from 1 MHz), times share².
+export function cavityImpedance(c: ViaCavity, n: number, f: number): Float64Array {
+  const f0 = 1e6, Z0 = cavityZeff(c, n, f0), Z = cavityZeff(c, n, f), w2 = c.share * c.share;
+  for (let i = 0; i < n * n; i++) { Z[2 * i] *= w2; Z[2 * i + 1] = (Z[2 * i + 1] - (Z0[2 * i + 1] * f) / f0) * w2; }
+  return Z;
+}
+
+// The band of each cavity and of all together: the lowest f where the cascade with the cavities' ΔZ differs from the
+// model's by CAVITY_DS in any S entry (a scan of 0.25 GHz steps to fUp, then bisection). Infinity when none below fUp.
+function cavityBand(r: ViaModelResult, fUp: number): number {
+  const n = r.n, P = 2 * n;
+  const withCav = (cs: ViaCavity[]): Element[] => {
+    const els = [...r.elements];
+    for (const c of [...cs].sort((a, b) => b.at - a.at)) els.splice(c.at, 0, { kind: 'series', name: `cavity ${c.top}–${c.bottom}`, L: rScale(rEye(n), 0), z: (f) => cavityImpedance(c, n, f) });
+    return els;
+  };
+  const first = (cs: ViaCavity[]): number => {
+    const els = withCav(cs);
+    const dS = (f: number): number => {
+      const a = cascadeS(r.elements, n, [f], r.z0), b = cascadeS(els, n, [f], r.z0);
+      let d = 0;
+      for (let i = 0; i < P * P; i++) d = Math.max(d, Math.hypot(a[2 * i] - b[2 * i], a[2 * i + 1] - b[2 * i + 1]));
+      return d;
+    };
+    let lo = 0;
+    for (let f = 0.25e9; f <= fUp; f += 0.25e9) {
+      if (dS(f) > CAVITY_DS) {
+        let a = lo, b = f;
+        for (let it = 0; it < 30 && b - a > 1e6; it++) { const m = 0.5 * (a + b); if (dS(m) > CAVITY_DS) b = m; else a = m; }
+        return 0.5 * (a + b);
+      }
+      lo = f;
+    }
+    return Infinity;
+  };
+  for (const c of r.cavities) c.fMax = first([c]);
+  return r.cavities.length ? first(r.cavities) : Infinity;
 }
 
 // Everything but the frequency sweep and the TDR (the target's inner loop).
@@ -429,35 +599,99 @@ export function buildVia(s: Stackup, v: ViaStructure, trace: Structure | null, o
     stubs.push({ side, length: len, delay: tau, fFormula: fF, fRes: fR });
   };
   stubOf(Array.from({ length: iEn }, (_, j) => iEn - 1 - j), (k) => k, 'entry');
-  for (let k = iEn; k < iEx; k++) { through.push(segEl(k)); piece(k, 'through'); through.push(...shuntEl(k + 1)); }
+  const throughZ: { at: number; z: number }[] = []; // after which element of `through` each through line ends, its middle (mm)
+  for (let k = iEn; k < iEx; k++) { through.push(segEl(k)); throughZ.push({ at: through.length, z: 0.5 * (segs[k].zTop + segs[k].zBot) }); piece(k, 'through'); through.push(...shuntEl(k + 1)); }
   stubOf(Array.from({ length: segs.length - iEx }, (_, j) => iEx + j), (k) => k + 1, 'exit');
-  // 4. Feeds.
+  // 4. Feeds, and each feed's run over its reference plane's antipad (BL90): there the trace has no plane under it, so
+  // its return current runs in the next plane beyond the opening and its inductance per length is the same trace's
+  // over that plane (the 2D solver with the cut plane replaced); its charge stays (the opening's rim and the pad take
+  // the line's C′ there: M6.4c, the model's C within 1 % of openEMS on C44). So the run is a series inductance
+  // ΔL = (L′ over the next plane − L′ of the feed)·ℓ at the pad's edge, and the feed line still runs to the pad.
   const tf = now();
   const feeds: ViaFeed[] = [];
+  const overs: ViaOver[] = [];
+  const overL: Mat[] = [];
   const before: Element[] = [], after: Element[] = [];
   const fo = opt.feeds ?? (trace ? 'setup' : 'none');
+  const ids = copperIds(s);
   for (const side of ['entry', 'exit'] as const) {
     const layer = side === 'entry' ? v.entry : v.exit;
     const fd = v.feeds.find((x) => x.layer === layer);
-    if (!fd || !(fd.length.v > 0) || fo === 'none') continue;
-    let spec: LineSpec = null, zf = NaN, ef = NaN;
+    if (!fd || !(fd.length.v > 0)) continue;
     // The trace joins the pad at its edge: the pad's own capacitance is in its ΔC (assumption 'feeds-to-pad-edge').
     const pd = v.pads.find((x) => x.layer === layer);
     const padR = pd && pd.d && pd.d.v / 2 > L.a ? pd.d.v / 2 : L.a;
     const len = Math.max(0, fd.length.v - padR);
+    let st: Structure = null, fl: FeedLine = null;
+    if (trace) {
+      const fs = feedStructure(s, trace, layer);
+      if (typeof fs === 'string') { if (fo === 'setup') return failed(fs, flags); } else st = fs;
+    }
+    if (st) {
+      fl = feedLine(s, st, n, v);
+      if (!fl.ok) { if (fo === 'setup') return failed(`The ${side} feed: ${fl.reason}`, flags); fl = null; }
+    }
+    // The run over the antipad: per cut reference plane, its length and the next plane beyond it.
+    if (st && fl) {
+      const cuts: { ref: string; next: string; over: number; key: 'below' | 'above' }[] = [];
+      for (const key of ['below', 'above'] as const) {
+        const ref = st[key];
+        const ap = ref ? v.antipads.find((x) => x.layer === ref) : null;
+        if (!ap || !(ap.d.v / 2 > padR) || !(len > 0)) continue;
+        const iRef = ids.indexOf(ref), dir = key === 'below' ? 1 : -1;
+        let next = '';
+        for (let i = iRef + dir; i >= 0 && i < ids.length; i += dir) if (v.planes.includes(ids[i])) { next = ids[i]; break; }
+        cuts.push({ ref, next, over: Math.min(len, ap.d.v / 2 - padR), key });
+      }
+      cuts.sort((x, y) => x.over - y.over);
+      // A pair fed by single traces: over the opening the two traces (at the pitch) close their loop through each other
+      // as much as through the next plane, so both inductances come from the coupled pair of the same traces.
+      let base: Structure = st, baseL = fl.L, baseSpec = fl.spec;
+      const pk = PAIR_KIND[st.kind];
+      if (n === 2 && pk && v.pitch && cuts.length && v.pitch.v - st.w.v > 0) {
+        const ps: Structure = { ...st, kind: pk, s: { ...st.s, v: v.pitch.v - st.w.v } };
+        const fp = feedLine(s, ps, 2, v);
+        if (fp.ok) { base = ps; baseL = fp.L; baseSpec = fp.spec; }
+      }
+      let dL: Mat = rScale(rEye(n), 0), ok = cuts.length > 0, prev = 0, zNext = NaN;
+      const segs: { L: Mat; len: number }[] = []; // from the pad outwards
+      for (let i = 0; i < cuts.length && ok; i++) {
+        const seg = cuts[i].over - prev;
+        prev = cuts[i].over;
+        if (!(seg > 0)) continue;
+        if (cuts.slice(i).some((c) => !c.next)) { ok = false; break; }
+        const alt: Structure = { ...base };
+        for (const c of cuts.slice(i)) alt[c.key] = c.next;
+        const fn = feedLine(s, alt, n, v);
+        if (!fn.ok) { ok = false; break; }
+        if (i === 0) zNext = fn.z0;
+        dL = rAdd(dL, rScale(rAdd(fn.L, rScale(baseL, -1)), seg * 1e-3));
+        segs.push({ L: fn.L, len: seg });
+      }
+      for (const c of cuts) {
+        const why = !ok ? (c.next ? 'its line over the next plane could not be solved' : 'there is no further plane beyond it') : '';
+        const level: ViaFlag['level'] = !ok || c.over > OVER_CHECKED_MM + 1e-9 ? 'warning' : 'info';
+        const message = ok
+          ? `The ${side} feed runs ${c.over.toFixed(3)} mm over the antipad of its reference plane ${c.ref}: there its return current runs in ${c.next}, a series inductance of ${(dL[0][0] * 1e9).toFixed(3)} nH at the pad${c.over > OVER_CHECKED_MM + 1e-9 ? `; checked against openEMS only to ${OVER_CHECKED_MM} mm` : ''} (BL90).`
+          : `The ${side} feed runs ${c.over.toFixed(3)} mm over the antipad of its reference plane ${c.ref}: there it has no plane under it and is more inductive than its line, not modelled because ${why} (BL90).`;
+        flags.push({ level, code: 'feed-over-antipad', message, numbers: [c.over, ok ? dL[0][0] : NaN] });
+      }
+      if (ok) {
+        // As a line: the run's part of the feed taken off again (a line of negative length, its exact inverse) and the
+        // run itself (the feed's C′, the inductance over the next plane) put in; ΔL is its low-frequency sum. Distributed,
+        // so the run does not ring with the pad's ΔC as a lumped ΔL would (near 28 GHz on C44).
+        const total = cuts[cuts.length - 1].over;
+        const run: Element[] = [{ kind: 'line', name: `${side} feed's run over the antipad taken off`, len: -total * 1e-3, spec: baseSpec }];
+        for (const g of [...segs].reverse()) run.push({ kind: 'line', name: `${side} feed over the antipad, ${g.len.toFixed(3)} mm`, len: g.len * 1e-3, spec: lineFromCL(baseSpec.C, g.L) });
+        if (side === 'entry') before.push(...run); else after.push(...run.reverse());
+        overL.push(dL);
+        overs.push({ side, layer, ref: cuts.map((c) => c.ref).join(', '), next: cuts.map((c) => c.next).join(', '), length: cuts[cuts.length - 1].over, dL: dL[0][0], zNext });
+      }
+    }
+    if (fo === 'none') continue;
+    let spec: LineSpec = null, zf = NaN, ef = NaN;
     if (fo === 'setup') {
       if (!trace) return failed('Feeds from the setup need a trace.', flags);
-      const st = feedStructure(s, trace, layer);
-      if (typeof st === 'string') return failed(st, flags);
-      for (const ref of [st.below, st.above]) {
-        const ap = ref ? v.antipads.find((x) => x.layer === ref) : null;
-        if (ap && ap.d.v / 2 > padR) {
-          const over = Math.min(len, ap.d.v / 2 - padR);
-          flags.push({ level: 'warning', code: 'feed-over-antipad', message: `The ${side} feed runs ${over.toFixed(3)} mm over the antipad of its reference plane ${ref}: there it has no plane under it and is more inductive than the line it is modelled as (BL90).`, numbers: [over, ap.d.v] });
-        }
-      }
-      const fl = feedLine(s, st, n, v);
-      if (!fl.ok) return failed(`The ${side} feed: ${fl.reason}`, flags);
       spec = fl.spec; zf = fl.z0; ef = fl.eeff;
     } else {
       spec = fo[side];
@@ -465,7 +699,7 @@ export function buildVia(s: Stackup, v: ViaStructure, trace: Structure | null, o
       zf = 1 / (spec.v[0] * spec.C[0][0]); ef = (CLIGHT / spec.v[0]) ** 2;
     }
     const el: Element = { kind: 'line', name: `${side} feed on ${layer}`, len: len * 1e-3, spec };
-    if (side === 'entry') before.push(el); else after.push(el);
+    if (side === 'entry') before.unshift(el); else after.push(el);
     feeds.push({ side, layer, length: len, z0: zf, eeff: ef });
   }
   const msFeeds = now() - tf;
@@ -480,7 +714,8 @@ export function buildVia(s: Stackup, v: ViaStructure, trace: Structure | null, o
     if (p.part === 'through') { lenThrough += len; tauThrough += p.delay; }
   }
   for (const nd of nodes) if (nd.dC) { Csum = rAdd(Csum, n === 1 ? [[nd.dC]] : [[nd.dC, -k12 * nd.dC], [-k12 * nd.dC, nd.dC]]); dCsum += nd.dC; }
-  const Lsum = rScale(rInv(C0), lenThrough / (CLIGHT * CLIGHT));
+  let Lsum = rScale(rInv(C0), lenThrough / (CLIGHT * CLIGHT));
+  for (const x of overL) Lsum = rAdd(Lsum, x);
   let lumped: ViaLumped;
   if (n === 1) lumped = { L: Lsum, C: Csum, z: Math.sqrt(Lsum[0][0] / Csum[0][0]), zdiff: NaN, zcm: NaN, delay: Math.sqrt(Lsum[0][0] * Csum[0][0]), dCsum, lineC };
   else {
@@ -493,7 +728,7 @@ export function buildVia(s: Stackup, v: ViaStructure, trace: Structure | null, o
   for (const c of axi.crossings) {
     const len = c.zHi - c.zLo, er = slabEr(c.zLo, c.zHi);
     const f8 = CLIGHT / (LUMPED_FRACTION * len * 1e-3 * Math.sqrt(er));
-    if (f8 < fValid) { fValid = f8; validWin = len; validEr = er; validWhy = `λ/${LUMPED_FRACTION} of the ${len.toFixed(3)} mm window of ${c.layer} (εr ${er}), Cartier2007`; }
+    if (f8 < fValid) { fValid = f8; validWin = len; validEr = er; validWhy = `the lumped parts: λ/${LUMPED_FRACTION} of the ${len.toFixed(3)} mm window of ${c.layer} (εr ${er}), Cartier2007`; }
     if (f8 < f3) flags.push({ level: 'warning', code: 'lumped-long', message: `The ${c.layer} crossing's ΔC spans a ${len.toFixed(3)} mm window (εr ${er}), lumped only to ${(f8 / 1e9).toFixed(1)} GHz (λ/${LUMPED_FRACTION}), below the edge's f3 ${(f3 / 1e9).toFixed(1)} GHz (rise time ${(tr * 1e12).toFixed(1)} ps).`, numbers: [len, er, f8, f3] });
   }
   const f8via = 1 / (LUMPED_FRACTION * tauThrough);
@@ -510,7 +745,7 @@ export function buildVia(s: Stackup, v: ViaStructure, trace: Structure | null, o
     ok: true, reason: '', version: VIAMODEL_VERSION, n, tr, f3, band, z0,
     wall: { kind: wallKind, Req, Rw: axi.Rw },
     barrel: { zVac: cut.vac.z, zVacErr: cut.err.z.e, zdiffVac: cut.vac.zdiff, zcmVac: cut.vac.zcm, zdiffVacErr: cut.err.zdiff.e, zcmVacErr: cut.err.zcm.e, k12, C0 },
-    nodes, pieces, stubs, feeds, lumped, valid: { fMax: fValid, reason: validWhy, window: validWin, er: validEr }, axiTotal: axi.total, axiTotalErr: axi.totalErr.e,
+    nodes, pieces, stubs, feeds, overs, cavities: planeCavities(L, v, zEn, zEx, before.length, throughZ), lumped, valid: { fMax: fValid, reason: validWhy, window: validWin, er: validEr, lumped: fValid, cavity: NaN }, axiTotal: axi.total, axiTotalErr: axi.totalErr.e,
     elements: [...before, ...through, ...after], span,
     nport: null, mixed: null, tdr: null, tdrCommon: null, flags, assumptions, axiCached: axi.cached,
     ms: 0, parts: { axi: msAxi, cut: msCut, feeds: msFeeds, cascade: 0, tdr: 0 },
@@ -536,6 +771,13 @@ export function viaModel(s: Stackup, v: ViaStructure, trace: Structure | null, o
   const fmax = edgeFrequency(r.tr, 1e-3);
   const nf = opt.nf ?? 401;
   const f = opt.f ? Float64Array.from(opt.f) : Float64Array.from({ length: nf }, (_, k) => (fmax * k) / (nf - 1));
+  const fCav = cavityBand(r, r.valid.lumped);
+  r.valid.cavity = fCav;
+  if (fCav < r.valid.fMax) {
+    const c = r.cavities.reduce((a, b) => (b.fMax < a.fMax ? b : a), r.cavities[0]);
+    r.valid.fMax = fCav;
+    r.valid.reason = `the plane cavity ${c.top}–${c.bottom}: the radial wave the barrel launches between the planes past its ${c.returns} return via${c.returns === 1 ? '' : 's'} moves S by ${CAVITY_DS} (lumped parts to ${(r.valid.lumped / 1e9).toFixed(1)} GHz)`;
+  }
   const valid = { fMin: 0, fMax: r.valid.fMax, reason: r.valid.reason };
   const producer = { name: 'via model (quasi-static cascade)', version: VIAMODEL_VERSION };
   const sArr = cascadeS(r.elements, n, f, r.z0);
@@ -623,7 +865,7 @@ export function viaTarget(s: Stackup, v: ViaStructure, trace: Structure | null, 
   let solves = 0;
   const g = (x: number): number => {
     solves++;
-    const m = buildVia(s, make(x), null, { ...opt, feeds: 'none', estimate: false });
+    const m = buildVia(s, make(x), trace, { ...opt, feeds: 'none', estimate: false }); // the trace for each feed's run over the antipad (lumped holds it)
     return m.ok ? m.lumped[key] - target : NaN;
   };
   const a0 = v.drill.v / 2;

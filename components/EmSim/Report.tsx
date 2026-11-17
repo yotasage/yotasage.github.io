@@ -419,7 +419,7 @@ function ViaNumbers({ r, s, setup, unit, digits }: { r: ViaModelResult; s: Stack
           <li key={st.side}>The {st.side} stub, {lenText(st.length, unit, Math.min(digits, 3))}, {Number.isFinite(st.fRes) ? `resonates at ${(st.fRes / 1e9).toFixed(2)} GHz with its pads` : 'has no resonance with its pads in the band'} ({(st.fFormula / 1e9).toFixed(2)} GHz bare).</li>
         )) : <li>No stub: the barrel ends on the signal layers.</li>}
         {r.feeds.map((f) => <li key={f.side}>{f.side === 'entry' ? 'In' : 'Out'} on {f.layer}: {lenText(f.length, unit, Math.min(digits, 3))} to the pad, {f.z0.toFixed(2)} Ω, εeff {f.eeff.toFixed(3)}.</li>)}
-        <li>Lumped parts hold to {(r.valid.fMax / 1e9).toFixed(1)} GHz (λ/8); flags are for a {ps(r.tr).toFixed(0)} ps edge, whose band reaches {(r.band / 1e9).toFixed(1)} GHz.</li>
+        <li>The model holds to {(r.valid.fMax / 1e9).toFixed(1)} GHz ({r.valid.reason}); its lumped parts to {(r.valid.lumped / 1e9).toFixed(1)} GHz (λ/8); flags are for a {ps(r.tr).toFixed(0)} ps edge, whose band reaches {(r.band / 1e9).toFixed(1)} GHz.</li>
       </ul>
       <h3 className={css.h3}>Flags and assumptions</h3>
       <ul className={css.list} data-report-via-flags={r.flags.length}>

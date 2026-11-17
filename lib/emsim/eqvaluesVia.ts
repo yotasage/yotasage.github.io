@@ -90,6 +90,7 @@ export function viaBinding(ctx: ViaContext): Record<string, Value> {
   b.ell_th = ell;
   const L = r.lumped;
   if (L) {
+    b.L_over = r.overs.reduce((a, o) => a + o.dL, 0);
     b.L_sec = L.L[0][0]; b.C_sec = L.C[0][0]; b.C_line = L.lineC; b.Delta_Csum = L.dCsum; b.Z_sec = L.z; b.tau_sec = L.delay;
     if (n === 1 && r.wall.kind === 'equivalent') b.C_axi = r.axiTotal;
     if (n === 2) {
@@ -128,8 +129,8 @@ export function viaBinding(ctx: ViaContext): Record<string, Value> {
     }
   }
   // the model's limit
-  if (Number.isFinite(r.valid.fMax) && Number.isFinite(r.valid.window)) {
-    b.f_valid = r.valid.fMax; b.ell_w = r.valid.window * 1e-3; b.varepsilon_rw = r.valid.er;
+  if (Number.isFinite(r.valid.lumped) && Number.isFinite(r.valid.window)) {
+    b.f_valid = r.valid.lumped; b.ell_w = r.valid.window * 1e-3; b.varepsilon_rw = r.valid.er;
   }
   // the feed
   const fd = r.feeds[ctx.feed ?? 0];

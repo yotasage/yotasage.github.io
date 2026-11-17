@@ -124,13 +124,20 @@ handles as §6 says.
    coupling between the two pads estimated as ΔC·(−C12/C11) of the barrel pair's cut, [solver.md](solver.md) §5.2,
 flagged until M6.4 checks it).
 4. **Stubs** are open-ended barrel lines; backdrill shortens them.
-5. **Feed traces** are lines from §4 with their own Z0 and length.
+5. **Feed traces** are lines from §4 with their own Z0 and length. Where a feed runs over its reference plane's
+   antipad (from the pad's edge to the opening's rim) that part of it is a line with its own C′ and the L′ of the trace
+   over the next plane beyond the opening, ΔL = (L′ next − L′ own)·ℓ more (M6.5, BL90; a pair fed by single traces takes the coupled pair
+   at the pitch). An upper bound of the full-wave's inductance (BL168).
 6. **Cascade** in the frequency domain (ABCD or S, 2-port single-ended, 4-port for a pair with mixed-mode conversion)
    from DC to a maximum frequency set by the rise time; **TDR/TDT** by the step response with a Gaussian edge of the
    chosen rise time (10–90 %), windowing stated; stub resonance from the stub's length and εr.
 7. **Validity flags,** each with its numbers: no return via within a set distance (return current through the plane
    cavity, not a line: the quasi-static model is not valid, use full-wave); the via's delay against the rise time; the
    frequency at which a segment is no longer short; pads that overlap or antipads that cut into return vias.
+   **The band** (`valid.fMax`) is the lower of λ/8 of the longest pad window (`valid.lumped`, Cartier2007) and the plane
+   cavity's (`valid.cavity`, M6.5, BL165): between two planes the barrels and returns are thin posts in a parallel-plate
+   guide, Zij = (ωμ0h/4)·H0⁽²⁾(kρij), the returns shorted; the cavity's band ends where its ΔZ beyond the static
+   inductance, put in the barrel, moves an S entry by 0.1 (C44: 20.8 GHz against λ/8's 29.5).
 8. **Target:** antipad diameter or return-via distance for a target barrel impedance, by the same root finder as §4.
 
 ## 7. Full-wave (D5)

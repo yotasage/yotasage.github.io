@@ -446,6 +446,18 @@ conformal/material treatment, re-check M6.2b's microstrip and the GPU agreement)
 quasi-static ↔ FDTD ↔ openEMS on every fixture, the limits frozen, the via model's flag thresholds (BL92) and BL90's
 feed over the antipad, recorded in facts.md and fullwave.md).
 
+### M6.5 – The via model corrected from the verification (added by the main session, 2026-11-17) · M
+
+M6.4c measured two things the quasi-static via model gets wrong on the owner's own via: **BL90**, the feed trace over
+its plane's antipad is a series inductance (0.02 / 0.09 / 0.21 nH per feed for 0.1 / 0.3 / 0.6 mm), and leaving it out
+makes the C44 via read 49.7 Ω where openEMS gives 68.9 Ω; **BL165**, above about 15 GHz the plane cavity takes power, so
+`valid.fMax` (λ/8, 29.5 GHz on C44) claims twice the band the model holds. Model the feed over the antipad in the via
+model, give `valid.fMax` the measured cavity limit, and re-check against the openEMS fixtures and our FDTD.
+
+**Done when:** the C44 via's section Z and TDR peak are within the frozen FDTD ↔ openEMS limits of openEMS (or the
+remaining gap is explained with numbers); the model's band matches where it leaves the full-wave results; every check
+and the page's numbers that moved are updated (facts-cases, examples, theory, short lines).
+
 ## M7 – Waves on the page
 
 ### M7.1 – Runs and the 2D player · L (page)

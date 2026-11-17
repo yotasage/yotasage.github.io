@@ -116,7 +116,7 @@ function gens(r) {
       const phi_a = q * Math.log(R / a) / (2 * Math.PI * eps), phi_b = -q * Math.log(R / (N * b)) / (2 * Math.PI * eps * N), Cp = q / (phi_a - phi_b);
       return { a, b, R, N, varepsilon_ri: er, q, varepsilon: eps, phi_a, phi_b, Cp, Z_qc: Math.sqrt(er) / (C0 * Cp) }; },
     'via-req': () => { const a = U(5e-5, 2e-4), R = a * U(1.5, 20), C_0p = 2 * Math.PI * EPS0 / Math.log(R / a); return { a, R_eq: R, C_0p }; },
-    'via-section-l': () => { const C_0p = U(1e-11, 1e-10), ell = U(1e-4, 3e-3); return { C_0p, ell_th: ell, Z_vac: 1 / (C0 * C_0p), L_ip: MU0 * EPS0 / C_0p, L_sec: MU0 * EPS0 / C_0p * ell }; },
+    'via-section-l': () => { const C_0p = U(1e-11, 1e-10), ell = U(1e-4, 3e-3), L_over = U(0, 5e-10); return { C_0p, ell_th: ell, Z_vac: 1 / (C0 * C_0p), L_ip: MU0 * EPS0 / C_0p, L_over, L_sec: MU0 * EPS0 / C_0p * ell + L_over }; },
     'via-section-c': () => { const C_0p = U(1e-11, 1e-10), e1 = U(1, 10), e2 = U(1, 10), l1 = U(1e-5, 1e-3), l2 = U(1e-5, 1e-3), dC = U(1e-14, 1e-13), Cl = e1 * C_0p * l1 + e2 * C_0p * l2;
       return { C_0p, varepsilon_ri: e1, C_ip: e1 * C_0p, C_1p: e1 * C_0p, C_2p: e2 * C_0p, ell_1: l1, ell_2: l2, C_line: Cl, Delta_Csum: dC, C_sec: Cl + dC, Delta_C: dC, k_12: U(0, 0.4) }; },
     'via-section-z': () => { const Ls = U(1e-10, 2e-9), Cs = U(1e-13, 1e-12); return { L_sec: Ls, C_sec: Cs, Z_sec: Math.sqrt(Ls / Cs) }; },

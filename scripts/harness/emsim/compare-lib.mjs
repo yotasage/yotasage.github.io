@@ -138,10 +138,11 @@ export function fdtdAtPlanes(run, feeds, f, zRef = 50) {
 }
 
 // ---------- the quasi-static model ----------
-/** The model's core (feeds 'none', every port at 50 Ω) with `feeds[p]` from each pad's edge to the planes. `over`:
- *  the BL90 estimate, [{ len, z, eeff }] per port: that much of the feed next to the pad as a line over the next plane. */
-export function modelAtPlanes(st, via, f, feeds, over = null, zRef = 50) {
-  const m = VM.viaModel(st, via, null, { f: Float64Array.from(f), feeds: 'none', tdr: false, z0: 50 });
+/** The model's core (feeds 'none', every port at 50 Ω) with `feeds[p]` from each pad's edge to the planes. With the
+ *  setup's `trace` the core holds each feed's run over its antipad (the series inductance of step M6.5, BL90); without
+ *  it, the model as M6.4c compared it. */
+export function modelAtPlanes(st, via, f, feeds, trace = null, zRef = 50) {
+  const m = VM.viaModel(st, via, trace, { f: Float64Array.from(f), feeds: 'none', tdr: false, z0: 50 });
   if (!m.ok) return { m, S: null };
   const P = m.nport.ports, layers = P === 2 ? [via.entry, via.exit] : [via.entry, via.entry, via.exit, via.exit];
   const padR = layers.map((id) => { const p = via.pads.find((x) => x.layer === id); return p && p.d ? p.d.v / 2 : via.drill.v / 2; });
@@ -149,8 +150,7 @@ export function modelAtPlanes(st, via, f, feeds, over = null, zRef = 50) {
   const S = f.map((fk, k) => {
     if (!(fk > 0)) return null;
     const vi = Array.from({ length: P }, (_, p) => {
-      let T = feedT(feeds[p], fk, X_REF - padR[p] - (over ? over[p].len : 0));
-      if (over) T = mulT(T, lineT([over[p].z, 0], [0, (2 * Math.PI * fk * Math.sqrt(over[p].eeff) / C0) * over[p].len * 1e-3]));
+      const T = feedT(feeds[p], fk, X_REF - padR[p]);
       return Array.from({ length: P }, (_, q) => {
         const sq = N.sEntry(m.nport, k, p, q), a = p === q ? [1, 0] : [0, 0];
         return applyT(T, sc(add(a, sq), s5), sc(sub(a, sq), 1 / s5));
@@ -264,25 +264,6 @@ export function setups() {
     lvds: { ...su, trace: lv },
   };
 }
-/** The next solid plane beyond a feed's reference plane, for the BL90 estimate (L1 over L2's opening: L5; L6 over L5's: L2). */
-export function overEstimate(st, trace, via) {
-  const out = [];
-  const layers = via.pitch ? [via.entry, via.entry, via.exit, via.exit] : [via.entry, via.exit];
-  for (const id of layers) {
-    const fs = VM.feedStructure(st, trace, id);
-    if (typeof fs === 'string' || fs.kind !== 'microstrip') return null;
-    const ref = fs.below || fs.above, ap = via.antipads.find((a) => a.layer === ref), pad = via.pads.find((p) => p.layer === id);
-    const padR = pad && pad.d ? pad.d.v / 2 : via.drill.v / 2;
-    if (!ap || !(ap.d.v / 2 > padR)) { out.push({ len: 0, z: 50, eeff: 1 }); continue; }
-    const next = via.planes.find((p) => p !== ref);
-    const alt = fs.below ? { ...fs, below: next } : { ...fs, above: next };
-    const fl = VM.feedLine(st, alt, 1, via);
-    if (!fl.ok) return null;
-    out.push({ len: ap.d.v / 2 - padR, z: fl.z0, eeff: fl.eeff });
-  }
-  return out;
-}
-
 // ---------- the verdicts (compare-openems.mjs prints them, check-compare.mjs checks them) ----------
 /** Every frozen limit against a compare.json object: [{ what, value, bar, ok }]. */
 export function verdicts(o, lim = o.limits) {

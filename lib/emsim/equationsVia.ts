@@ -66,12 +66,12 @@ export const VIA_DEFS: Def[] = [
     ],
   },
   {
-    id: 'via-section-l', title: 'Inductance of the via section', topic: 'via-line', on: 'via', text: 'L_sec = Z_vac*ell_th/c_0',
-    derivation: 'L′ is the same in every non-magnetic material; lines in series add.', assumptions: [LUMPED],
-    engine: 'viamodel.viaModel: lumped.L[0][0], the through pieces’ lengths',
+    id: 'via-section-l', title: 'Inductance of the via section', topic: 'via-line', on: 'via', text: 'L_sec = Z_vac*ell_th/c_0 + L_over',
+    derivation: 'L′ is the same in every non-magnetic material; lines in series add; each feed’s run over its plane’s antipad adds the inductance of the trace over the next plane less its own line’s (step M6.5).', assumptions: [LUMPED],
+    engine: 'viamodel.viaModel: lumped.L[0][0], the through pieces’ lengths, overs[i].dL',
     steps: [
       ['L_ip = mu_0*varepsilon_0/C_0p = Z_vac/c_0', 'the same in every material'],
-      ['L_sec = L_ip*ell_th = Z_vac*ell_th/c_0', 'lines in series add over the through length'],
+      ['L_sec = L_ip*ell_th + L_over = Z_vac*ell_th/c_0 + L_over', 'lines in series add over the through length, and the feeds’ runs over the antipads in series with them'],
     ],
   },
   {
@@ -167,7 +167,7 @@ export const VIA_DEFS: Def[] = [
   {
     id: 'lambda8', title: 'Where a lumped part holds', topic: 'via-limits', on: 'via', text: 'f_valid = c_0/(8*ell_w*sqrt(varepsilon_rw))',
     sources: [src('Cartier2007', 'abstract')], derivation: 'The tool’s rule after Cartier2007: a part is lumped while shorter than λ/8.',
-    engine: 'viamodel.viaModel: valid.fMax, valid.window, valid.er',
+    engine: 'viamodel.viaModel: valid.lumped, valid.window, valid.er (valid.fMax: the lower of this and the plane cavity’s band)',
     steps: [
       ['ell_w = lambda_w/8', 'the rule, with `lambda_w = c_0/(f_valid*sqrt(varepsilon_rw))`'],
       ['f_valid = c_0/(8*ell_w*sqrt(varepsilon_rw))', 'solved for the frequency'],
@@ -288,7 +288,7 @@ export const VIA_SYMBOLS: Readonly<Record<string, SymbolInfo<EmObject>>> = {
   Z_qc: sym('impedance of the barrel among thin return wires', O, 'formula'),
   phi_a: sym('potential at the barrel', 'V', 'derivation'), phi_b: sym('potential at a return via', 'V', 'derivation'),
   q: sym('the barrel’s charge per unit length', 'C/m', 'derivation'), varepsilon: sym('permittivity of the material', 'F/m', 'derivation'),
-  L_sec: sym('inductance of the via section', H, 'via'), C_sec: sym('capacitance of the via section', F, 'via'),
+  L_sec: sym('inductance of the via section', H, 'via'), L_over: sym('inductance the feeds add over their antipads', H, 'via'), C_sec: sym('capacitance of the via section', F, 'via'),
   ell_th: sym('length of the barrel between the signal layers', m, 'via'), L_ip: sym('the barrel’s inductance per unit length (every material)', 'H/m', 'piece'),
   C_ip: sym('capacitance per unit length of piece i', 'F/m', 'piece'),
   C_1p: sym('capacitance per unit length of piece 1', 'F/m', 'piece'), C_2p: sym('capacitance per unit length of piece 2', 'F/m', 'piece'),
@@ -340,7 +340,7 @@ export const VIA_SYMBOLS: Readonly<Record<string, SymbolInfo<EmObject>>> = {
 export const VIA_TEX_NAMES: Readonly<Record<string, string>> = {
   varepsilon_ri: '\\varepsilon_{r,i}', C_0p: "C_0'", Cp: "C'", Lp: "L'", L_ip: "L'_i", C_ip: "C'_i", C_1p: "C'_1", C_2p: "C'_2",
   C_0p12: "C_{0,12}'", R_eq: 'R_\\mathrm{eq}', Z_vac: 'Z_\\mathrm{vac}', Z_qc: 'Z_\\mathrm{thin}', Delta_Csum: '\\textstyle\\sum_k \\Delta C_k',
-  C_axi: 'C_\\mathrm{via}', C_line: 'C_\\mathrm{line}', L_sec: 'L_\\mathrm{sec}', C_sec: 'C_\\mathrm{sec}', Z_sec: 'Z_\\mathrm{sec}',
+  C_axi: 'C_\\mathrm{via}', C_line: 'C_\\mathrm{line}', L_sec: 'L_\\mathrm{sec}', L_over: 'L_\\mathrm{over}', C_sec: 'C_\\mathrm{sec}', Z_sec: 'Z_\\mathrm{sec}',
   tau_sec: '\\tau_\\mathrm{sec}', ell_th: '\\ell_\\mathrm{through}', L_s11: 'L_{11}', L_s12: 'L_{12}', C_s11: 'C_{11}', C_s12: 'C_{12}',
   Z_diffsec: 'Z_\\mathrm{diff,sec}', Z_cmsec: 'Z_\\mathrm{cm,sec}', Z_oddsec: 'Z_\\mathrm{odd,sec}', Z_evensec: 'Z_\\mathrm{even,sec}',
   Delta_C12: '\\Delta C_{12}', Z_secx: 'Z_\\mathrm{sec}(x)', Z_x: 'Z(x)', Z_target: 'Z_\\mathrm{target}',

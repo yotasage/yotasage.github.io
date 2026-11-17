@@ -231,7 +231,7 @@ function ViaPlots({ r, stale, trace, tr, onTr, z0, onZ0 }: Props) {
         cursor={fCur} onCursor={setFCur} readout={sReadout(1)} fadeFrom={fValid} stale={stale} />
       {fValid < fDomain[1] && (
         <p className={css.small} data-via-s-fade={np.valid.fMax}>
-          Faded above {fValid.toFixed(1)} GHz: the lumped parts no longer hold there ({np.valid.reason}).
+          Faded above {fValid.toFixed(1)} GHz: the model no longer holds there ({np.valid.reason}).
         </p>
       )}
       <Why k="via-s-ports" bare />

@@ -78,7 +78,7 @@ try {
     for (const m of ms) {
       const a = await cursorTo(p, 'via-tdr', m), b = await reading(p, 'via-tdt');
       check(a.x === T.t[m] && same(a.v, T.z[m]), `${what}: the TDR at ${(T.t[m] * 1e12).toFixed(1)} ps is the engine's ${T.z[m].toFixed(4)} Ω (page ${a.v})`);
-      check(b.x === T.t[m] && same(b.v, T.tdt[m]), `${what}: the TDT at the shared cursor is the engine's ${T.tdt[m].toFixed(5)} (page ${b.v})`);
+      check(b.x === T.t[m] && (same(b.v, T.tdt[m]) || Math.abs(b.v - T.tdt[m]) <= 1e-14), `${what}: the TDT at the shared cursor is the engine's ${T.tdt[m].toFixed(5)} (page ${b.v})`);
     }
   };
   const sAt = async (p, np, ks, ij, names, what) => {
@@ -118,9 +118,9 @@ try {
     const m = peakOf(R);
     const a = await cursorTo(p, 'via-tdr', m);
     check(a.x === R.tdr.t[m] && same(a.v, R.tdr.z[m]), `${(tr * 1e12).toFixed(0)} ps: the TDR's peak ${R.tdr.z[m].toFixed(3)} Ω at ${(R.tdr.t[m] * 1e12).toFixed(1)} ps as the engine (page ${a.v.toFixed(3)})`);
-    dist[tr] = Math.abs(R.tdr.z[m] - lumped);
+    dist[tr] = Math.abs(R.tdr.z[m] - R.z0);
   }
-  check(dist[15e-12] > dist[35e-12] && dist[35e-12] > dist[100e-12], `the peak moves toward the via's √(L/C) ${lumped.toFixed(2)} Ω at slower edges (${[15, 35, 100].map((t) => dist[t * 1e-12].toFixed(3)).join(' > ')} Ω away)`);
+  check(dist[15e-12] > dist[35e-12] && dist[35e-12] > dist[100e-12], `the peak softens toward the port at slower edges (the via's √(L/C) ${lumped.toFixed(2)} Ω, shorter than the edge) (${[15, 35, 100].map((t) => dist[t * 1e-12].toFixed(3)).join(' > ')} Ω away)`);
   await p.fill('#via-tr', '0.1 ns');
   await plotted(p, '[data-tr="1e-10"]');
   check(await p.locator('[data-via-tr-preset="100"][aria-pressed="true"]').count() === 1, 'typed "0.1 ns" is the 100 ps preset');
@@ -154,12 +154,13 @@ try {
   const pl = await open(urlOf(longFeeds));
   const L = engineOf(longFeeds);
   const z0f = L.feeds[0].z0, T = L.tdr, dt = T.t[1] - T.t[0];
+  const RING = 0.01; // since M6.5 the feeds' runs over the antipads (84 Ω for 0.6 mm) ring down after the via by a few mΩ
   const one = (f) => (f.length * 1e-3 * Math.sqrt(f.eeff)) / C0;
   const tIn = one(L.feeds[0]), tOut = 2 * L.span - one(L.feeds[1]);
   for (const [t, what] of [[tIn, 'before the via (the entry feed)'], [tOut, 'after the via (the exit feed)']]) {
     const m = Math.round((t - T.t[0]) / dt);
     const a = await cursorTo(pl, 'via-tdr', m);
-    check(Math.abs(a.v - z0f) <= T.err.z && same(a.v, T.z[m]), `25 mm feeds: the flat part ${what} at ${(T.t[m] * 1e12).toFixed(0)} ps is ${a.v.toFixed(6)} Ω, the trace's ${z0f.toFixed(6)} Ω within the stated ${T.err.z.toExponential(1)} Ω`);
+    check(Math.abs(a.v - z0f) <= Math.max(T.err.z, RING) && same(a.v, T.z[m]), `25 mm feeds: the flat part ${what} at ${(T.t[m] * 1e12).toFixed(0)} ps is ${a.v.toFixed(6)} Ω, the trace's ${z0f.toFixed(6)} Ω within the stated ${T.err.z.toExponential(1)} Ω or the via's ring-down ${RING} Ω`);
   }
   check(await pl.locator('[data-via-tdr-short]').count() === 0, '25 mm feeds: no note about short feeds');
   await pl.close();

@@ -1,4 +1,4 @@
-// The full-wave verification against openEMS (step M6.4c, docs/em-sim/fullwave-verify.md): our FDTD on every openEMS
+// The full-wave verification against openEMS (step M6.4c, the model columns since M6.5; docs/em-sim/fullwave-verify.md): our FDTD on every openEMS
 // fixture's structure (WebGPU in headless Edge, webgpu/compare-gpu.mts; tr_min 30 ps so S reaches 41 GHz), the
 // quasi-static via model on the same, and the via model's range (antipad and return-via sweeps on the C44 via, FDTD
 // against the model). Prints the comparison table and writes openems/compare.json (the measured numbers and the frozen
@@ -63,16 +63,15 @@ async function runAll(list, cache) {
 const r3 = (x, n = 3) => Number(x.toFixed(n));
 const fmtS = (S, f, pick) => L.FREQS.map((g) => { const k = L.at(f, g); return S && S[k] ? r3(L.db(pick(S[k])), 2) : null; });
 
-/** One via fixture: openEMS, FDTD, the model (and the model with the BL90 estimate). */
+/** One via fixture: openEMS, FDTD, the model (step M6.5: with each feed's run over its antipad) and the model as M6.4c had it. */
 function viaRow(id, S, run, runStair) {
   const fx = L.readFixture(id), O = L.fixtureS(fx), P = O.P, f = O.f;
   const feeds = Array.from({ length: P }, (_, n) => L.fixtureFeed(fx, n));
   const v = S.vias[id];
   const fd = L.fdtdAtPlanes(run, feeds, f);
   const fdSt = runStair ? L.fdtdAtPlanes(runStair, feeds, f) : null;
-  const md = L.modelAtPlanes(S.st, v, f, feeds);
-  const ov = L.overEstimate(S.st, S.trace, v);
-  const mo = ov ? L.modelAtPlanes(S.st, v, f, feeds, ov) : { S: null };
+  const md = L.modelAtPlanes(S.st, v, f, feeds, S.trace);
+  const mo = L.modelAtPlanes(S.st, v, f, feeds);
   const pair = P === 4;
   const refl = pair ? L.pk.sdd11 : L.pk.s11, trans = pair ? L.pk.sdd21 : L.pk.s21, zRef = pair ? 100 : 50;
   const tFeed = fx.results.tdr.viaWindow.tViaAxis_s;
@@ -84,15 +83,16 @@ function viaRow(id, S, run, runStair) {
   const row = {
     id, ports: P, cells: run.cells, gpuSeconds: r3(run.ms / 1000, 2),
     feeds: { openems: fx.results.feeds.z_ohm_1to10GHz.map((z, n) => [z, fx.results.feeds.eeff_1to10GHz[n]]), fdtd: own.map((x) => [r3(x.z), r3(x.eeff, 4)]), twoD: own.map((x) => [r3(x.z2d), r3(x.eeff2d, 4)]) },
-    section: { openems: sec(O.S), fdtd: sec(fd), fdtdStair: sec(fdSt), model: sec(md.S), modelBL90: sec(mo.S) },
-    tdr: { openems: tO && L.tdrStats(tO, tFeed), fdtd: L.tdrStats(tF, tFeed), fdtdStair: tFs && L.tdrStats(tFs, tFeed), model: tM && L.tdrStats(tM, tFeed), modelBL90: tMo && L.tdrStats(tMo, tFeed) },
-    tdrDiff: { fdtd: L.tdrDiff(tF, tO), fdtdStair: tFs && L.tdrDiff(tFs, tO), model: tM && L.tdrDiff(tM, tO), modelBL90: tMo && L.tdrDiff(tMo, tO) },
-    refl: { openems: fmtS(O.S, f, refl), fdtd: fmtS(fd, f, refl), model: fmtS(md.S, f, refl), modelBL90: fmtS(mo.S, f, refl) },
-    trans: { openems: fmtS(O.S, f, trans), fdtd: fmtS(fd, f, trans), model: fmtS(md.S, f, trans), modelBL90: fmtS(mo.S, f, trans) },
+    section: { openems: sec(O.S), fdtd: sec(fd), fdtdStair: sec(fdSt), model: sec(md.S), modelM64: sec(mo.S) },
+    tdr: { openems: tO && L.tdrStats(tO, tFeed), fdtd: L.tdrStats(tF, tFeed), fdtdStair: tFs && L.tdrStats(tFs, tFeed), model: tM && L.tdrStats(tM, tFeed), modelM64: tMo && L.tdrStats(tMo, tFeed) },
+    tdrDiff: { fdtd: L.tdrDiff(tF, tO), fdtdStair: tFs && L.tdrDiff(tFs, tO), model: tM && L.tdrDiff(tM, tO), modelM64: tMo && L.tdrDiff(tMo, tO) },
+    refl: { openems: fmtS(O.S, f, refl), fdtd: fmtS(fd, f, refl), model: fmtS(md.S, f, refl), modelM64: fmtS(mo.S, f, refl) },
+    trans: { openems: fmtS(O.S, f, trans), fdtd: fmtS(fd, f, trans), model: fmtS(md.S, f, trans), modelM64: fmtS(mo.S, f, trans) },
     dS: {}, notch: null, flags: md.m.ok ? md.m.flags.map((x) => x.code) : md.m.flags.map((x) => x.code), modelOk: md.m.ok,
-    valid: md.m.ok ? { fMax: md.m.valid.fMax, band: md.m.band, f3: md.m.f3, stubs: md.m.stubs.map((s) => s.fRes) } : null,
+    valid: md.m.ok ? { fMax: md.m.valid.fMax, lumped: md.m.valid.lumped, cavity: md.m.valid.cavity, band: md.m.band, f3: md.m.f3, stubs: md.m.stubs.map((s) => s.fRes) } : null,
+    overs: md.m.ok ? md.m.overs.map((o) => [o.side, o.length, o.dL]) : null,
   };
-  for (const [name, SS] of [['fdtd', fd], ['fdtdStair', fdSt], ['model', md.S], ['modelBL90', mo.S]]) {
+  for (const [name, SS] of [['fdtd', fd], ['fdtdStair', fdSt], ['model', md.S], ['modelM64', mo.S]]) {
     if (!SS) continue;
     row.dS[name] = { refl10: L.sDiff(f, SS, O.S, refl, 0, 10e9), trans10: L.sDiff(f, SS, O.S, trans, 0, 10e9), refl20: L.sDiff(f, SS, O.S, refl, 0, 20e9), trans20: L.sDiff(f, SS, O.S, trans, 0, 20e9), refl40: L.sDiff(f, SS, O.S, refl), trans40: L.sDiff(f, SS, O.S, trans) };
     // the first frequency where the model leaves openEMS by 0.1 in |ΔS11| or |ΔS21| (the range)
@@ -143,17 +143,18 @@ function sweepRow(id, S, run) {
   const own = L.fdtdFeeds(run);
   const feeds = own.map((x) => ({ z: () => x.z2d, eeff: () => x.eeff2d }));
   const f = Array.from({ length: 401 }, (_, k) => k * 1e8);
-  const fd = L.fdtdAtPlanes(run, feeds, f), md = L.modelAtPlanes(S.st, v, f, feeds);
-  const ov = L.overEstimate(S.st, S.trace, v), mo = ov ? L.modelAtPlanes(S.st, v, f, feeds, ov) : { S: null };
+  const fd = L.fdtdAtPlanes(run, feeds, f), md = L.modelAtPlanes(S.st, v, f, feeds, S.trace);
+  const mo = L.modelAtPlanes(S.st, v, f, feeds);
   const leave = (SS) => { for (let k = 1; k < f.length; k++) if (Math.max(L.cabs([SS[k][1][0][0] - fd[k][1][0][0], SS[k][1][0][1] - fd[k][1][0][1]]), L.cabs([SS[k][0][0][0] - fd[k][0][0][0], SS[k][0][0][1] - fd[k][0][0][1]])) > 0.1) return f[k]; return null; };
   return {
     id, ap: v.antipads[0].d.v, ret: L.VM.nearestReturn(v),
-    section: { fdtd: L.section(fd, f, feeds), model: L.section(md.S, f, feeds), modelBL90: mo.S && L.section(mo.S, f, feeds) },
-    s11: { fdtd: fmtS(fd, f, L.pk.s11), model: fmtS(md.S, f, L.pk.s11), modelBL90: mo.S && fmtS(mo.S, f, L.pk.s11) },
-    s21: { fdtd: fmtS(fd, f, L.pk.s21), model: fmtS(md.S, f, L.pk.s21), modelBL90: mo.S && fmtS(mo.S, f, L.pk.s21) },
-    fLeave: { model: leave(md.S), modelBL90: mo.S && leave(mo.S) },
-    tdrMax: { fdtd: L.tdrStats(L.tdrOf(f, fd, L.pk.s11, 50), 36.5e-12).zMax, model: L.tdrStats(L.tdrOf(f, md.S, L.pk.s11, 50), 36.5e-12).zMax, modelBL90: mo.S && L.tdrStats(L.tdrOf(f, mo.S, L.pk.s11, 50), 36.5e-12).zMax },
+    section: { fdtd: L.section(fd, f, feeds), model: L.section(md.S, f, feeds), modelM64: mo.S && L.section(mo.S, f, feeds) },
+    s11: { fdtd: fmtS(fd, f, L.pk.s11), model: fmtS(md.S, f, L.pk.s11), modelM64: mo.S && fmtS(mo.S, f, L.pk.s11) },
+    s21: { fdtd: fmtS(fd, f, L.pk.s21), model: fmtS(md.S, f, L.pk.s21), modelM64: mo.S && fmtS(mo.S, f, L.pk.s21) },
+    fLeave: { model: leave(md.S), modelM64: mo.S && leave(mo.S) },
+    tdrMax: { fdtd: L.tdrStats(L.tdrOf(f, fd, L.pk.s11, 50), 36.5e-12).zMax, model: L.tdrStats(L.tdrOf(f, md.S, L.pk.s11, 50), 36.5e-12).zMax, modelM64: mo.S && L.tdrStats(L.tdrOf(f, mo.S, L.pk.s11, 50), 36.5e-12).zMax },
     flags: md.m.flags.map((x) => x.code),
+    valid: { fMax: md.m.valid.fMax, lumped: md.m.valid.lumped, cavity: md.m.valid.cavity },
   };
 }
 
@@ -167,7 +168,7 @@ async function main() {
   const lvds = lvdsRow(S, runs['msl-c41']);
   const sweeps = ['ap0.8', 'ap1.2', 'ret1.2', 'ret1.6', 'ret2', 'ret3', 'ap0.8ret1.2', 'ap0.8ret2', 'ap0.8ret3'].map((id) => sweepRow(id, S, runs[id]));
   sweeps.splice(2, 0, sweepRow('ap1.8', S, runs['via-c44']));
-  const out = { format: 'emsim-fullwave-verification', version: 1, step: 'M6.4c', date: new Date().toISOString().slice(0, 10), trMin: TR_MIN, limits: LIMITS, vias, lvds, sweeps };
+  const out = { format: 'emsim-fullwave-verification', version: 2, step: 'M6.5', date: new Date().toISOString().slice(0, 10), trMin: TR_MIN, limits: LIMITS, vias, lvds, sweeps };
   writeFileSync(L.OUT, JSON.stringify(out, (k, x) => (typeof x === 'number' ? Number(x.toPrecision(6)) : x), 1) + '\n');
   console.log(JSON.stringify(out, (k, x) => (typeof x === 'number' ? Number(x.toPrecision(4)) : x)));
 }

@@ -204,7 +204,7 @@ export const WHYS: Readonly<Record<string, Why>> = {
   'via-crossings': w('Pads and planes', 'via-pads', 'The extra capacitance where the barrel meets a pad or passes a plane.'),
   'via-stubs': w('Stubs', 'via-stubs', 'Unused barrel is an open line; it notches the signal near its quarter-wave frequency.'),
   'via-feed-z': w('Feed traces', 'field-solver', 'The feeds’ impedance and εeff, solved as in the Trace section.'),
-  'via-valid': w('Valid to', 'via-limits', 'Each lumped part is short against the wavelength up to here (λ/8).'),
+  'via-valid': w('Valid to', 'via-limits', 'Up to here the plane cavity leaks little power past the returns and each lumped part is short (λ/8).'),
   'via-flags': w('Flags', 'via-limits', 'Where the model is stretched, each with its numbers.'),
   'via-assumptions': w('Assumptions', 'via-limits', 'What the via model takes as given.'),
   'via-next': w('Next', null, 'Full-wave waves on the via and the trace come in later steps.'),

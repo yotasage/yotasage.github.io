@@ -255,9 +255,9 @@ on the C44 via (0.6/0.3 through L1–L6 of JLC061611-3313A, two returns 0.3/0.6)
 
 | Case | Model against full-wave | Consequence |
 |---|---|---|
-| Feed over its plane's antipad by 0.1 / 0.3 / 0.6 mm (pad 0.6, antipad 0.8 / 1.2 / 1.8) | section Z −1 / −15 / −31 %; the missing part is a series L of about 0.02 / 0.09 / 0.21 nH per feed, C within 2–4 % | the C44 via's 50 against 69 Ω (openEMS) is this alone (BL90); flag `feed-over-antipad` |
+| Feed over its plane's antipad by 0.1 / 0.3 / 0.6 mm (pad 0.6, antipad 0.8 / 1.2 / 1.8) | section Z −1 / −15 / −31 %; the missing part is a series L of about 0.02 / 0.09 / 0.21 nH per feed, C within 2–4 % | the C44 via's 50 against 69 Ω (openEMS) is this alone; M6.5 adds ΔL from the trace over the next plane: 0.052 / 0.155 / 0.309 nH (an upper bound; the local 2D cut gives 0.012 / 0.068 / 0.190), Z +6.4 / +2.9 / −6.4 % of FDTD, C44 67.9 against 68.9 Ω (BL168) |
 | Nearest return 0.8 / 1.2 / 2.0 / 3.0 mm (antipad 0.8) | Z −1.2 / +2.5 / +5.5 / +8.2 %; within \|ΔS\| 0.1 to 15.4 / 13.0 / 9.2 / 6.7 GHz | `RETURN_NEAR_MM` 1.5 mm (about 4 %, 11.6 GHz) |
 | No return via | openEMS 99.3 Ω section, TDR peak 76.4 Ω; the model has no line to solve | refused (`no-return`) |
-| Frequency, two returns at 0.8 mm | holds to about 15 GHz; above, power leaks into the plane cavity (\|S21\| −2.7 dB at 20 GHz, model 0.0 dB) | λ/8 of the window (29.5 GHz) is twice too high (BL165) |
+| Frequency, two returns at 0.8 mm | holds to about 15 GHz; above, power leaks into the plane cavity (\|S21\| −2.7 dB at 20 GHz, model 0.0 dB) | M6.5: the band from the plane cavity (thin posts in the parallel plate), 20.8 GHz on C44 (the model leaves openEMS at 16.2); with antipad 0.8 18.3 / 13.5 / 9.2 / 6.9 GHz against the model leaving FDTD at 19.1 / 12.5 / 8.0 / 5.9 GHz (returns 0.8 / 1.2 / 2 / 3 mm) |
 | Stub L3–L6 | notch 21.8 against 21.6 GHz (openEMS); depth −57 against −22 dB (no loss, no radiation); 1 dB of \|S21\| lost from 0.55·f_res | `stub-resonance` when f_res is in the −20 dB band (BL166) |
 
