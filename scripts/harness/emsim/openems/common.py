@@ -85,8 +85,9 @@ class ProbePort:
     measurement (reference) plane; the excitation (soft E source, plane to trace, like MSLPort) sits at `x_exc`.
     """
 
-    def __init__(self, csx, number, y_half, z_face, z_far, z_plane, x_meas, x_exc=None):
+    def __init__(self, csx, number, y_half, z_face, z_far, z_plane, x_meas, x_exc=None, y_c=0.0):
         self.number = number
+        self.y_c = y_c            # the trace's centre line (y)
         self.direction = 1.0  # set in place(), sign of the way into the structure
         self.y_half = y_half
         self.z_face = z_face      # copper face toward the plane
@@ -109,7 +110,7 @@ class ProbePort:
         for n, x in enumerate(xu):
             name = 'port_ut%d%s' % (self.number, 'ABC'[n])
             p = self.csx.AddProbe(name, p_type=0)
-            p.AddBox([x, 0, self.z_face], [x, 0, self.z_plane])
+            p.AddBox([x, self.y_c, self.z_face], [x, self.y_c, self.z_plane])
             self.u_names.append(name)
         xi = xu[:2] + np.diff(xu) / 2
         self.I_delta = np.diff(xi)
@@ -117,14 +118,14 @@ class ProbePort:
         for n, x in enumerate(xi):
             name = 'port_it%d%s' % (self.number, 'AB'[n])
             p = self.csx.AddProbe(name, p_type=1, weight=self.direction, norm_dir=0)
-            p.AddBox([x, -self.y_half, zlo], [x, self.y_half, zhi])
+            p.AddBox([x, self.y_c - self.y_half, zlo], [x, self.y_c + self.y_half, zhi])
             self.i_names.append(name)
         if self.x_exc is not None:
             ke = int(np.argmin(np.abs(xl - self.x_exc)))
             self.x_exc_actual = float(xl[ke])
             sign = np.sign(self.z_plane - self.z_face)  # E from trace to plane: trace positive
             exc = self.csx.AddExcitation('port_excite_%d' % self.number, exc_type=0, exc_val=[0, 0, sign])
-            exc.AddBox([xl[ke], -self.y_half, self.z_face], [xl[ke], self.y_half, self.z_plane])
+            exc.AddBox([xl[ke], self.y_c - self.y_half, self.z_face], [xl[ke], self.y_c + self.y_half, self.z_plane])
 
     def read(self, path, freq):
         def load(name):
@@ -134,25 +135,34 @@ class ProbePort:
         i = [load(n) for n in self.i_names]
         self.dt = float(u[0][0][1] - u[0][0][0])
         v = np.abs(u[1][1])
-        self.tail = float(np.max(v[int(0.9 * len(v)):]) / np.max(v))  # truncation: last 10 % against the peak
+        self.peak = float(np.max(v))
+        self.tail_abs = float(np.max(v[int(0.9 * len(v)):]))
+        self.tail = self.tail_abs / self.peak  # truncation: last 10 % against the peak
         self.t_end = float(u[0][0][-1])
         U = [dft(t, v, freq) for t, v in u]
         I = [dft(t, v, freq) for t, v in i]
-        self.uf = U[1]
-        self.if_ = 0.5 * (I[0] + I[1])
-        with np.errstate(all='ignore'):
-            dE = (U[2] - U[0]) / (np.sum(np.abs(self.U_delta)) * UNIT)
-            dH = (I[1] - I[0]) / (np.abs(self.I_delta[0]) * UNIT)
-            beta = np.sqrt(-dE * dH / (self.if_ * self.uf))
-            beta[np.real(beta) < 0] *= -1
-            self.beta = beta
-            self.z_line = np.sqrt(self.uf * dE / (self.if_ * dH))
+        self.U, self.I = U, I
+        self.uf, self.if_, self.z_line, self.beta = line_of(U, I, self.U_delta, self.I_delta)
         return self
 
     def waves(self, zr):
         a = 0.5 * (self.uf + zr * self.if_)
         b = self.uf - a
         return a, b
+
+
+def line_of(U, I, U_delta, I_delta):
+    """Voltage and current at the plane, the line's own Z = sqrt(E dE / (H dH)) and beta from the DFTs of the three
+    voltage and two current probes of a probe plane (MSLPort.ReadUIData); also for modal sums of several planes."""
+    uf = U[1]
+    if_ = 0.5 * (I[0] + I[1])
+    with np.errstate(all='ignore'):
+        dE = (U[2] - U[0]) / (np.sum(np.abs(U_delta)) * UNIT)
+        dH = (I[1] - I[0]) / (np.abs(I_delta[0]) * UNIT)
+        beta = np.sqrt(-dE * dH / (if_ * uf))
+        beta[np.real(beta) < 0] *= -1
+        z_line = np.sqrt(uf * dE / (if_ * dH))
+    return uf, if_, z_line, beta
 
 
 def dft(t, v, freq):
@@ -227,11 +237,11 @@ def run_stats(path):
     return out
 
 
-def lumped_port(fdtd, number, R, x, y_half, z_plane, z_face, excite):
+def lumped_port(fdtd, number, R, x, y_half, z_plane, z_face, excite, y_c=0.0):
     """Resistive lumped port (fullwave.md section 6) across the trace's end: z edges from the plane to the trace,
     in parallel over the width. openEMS's LumpedPort: R in the edges, the source as a soft E term in the same
     edges, trace positive for excite = 1."""
-    return fdtd.AddLumpedPort(number, R, [x, -y_half, z_plane], [x, y_half, z_face], 'z', excite, priority=5)
+    return fdtd.AddLumpedPort(number, R, [x, y_c - y_half, z_plane], [x, y_c + y_half, z_face], 'z', excite, priority=5)
 
 
 def provenance(script, run_s, threads):
@@ -244,7 +254,34 @@ def provenance(script, run_s, threads):
         'runTime_s': round(run_s, 1),
         'threads': threads,
         'machine': 'owner PC, Ryzen 9 7950X (16 cores), Windows 11',
+        'scriptSha256': {n: sha256_of(n) for n in (script, 'common.py')},
     }
+
+
+def post_or_run(fdtd, csx, name, threads):
+    """--post: read the probe files a previous run left in the temp folder instead of running openEMS again (for a
+    change in the post-processing only); the run time is then 0 here and taken from the earlier fixture."""
+    import sys
+    if '--post' in sys.argv:
+        path = sim_dir(name)
+        if not os.path.exists(os.path.join(path, 'openEMS_stats.txt')):
+            raise SystemExit('--post: no earlier run in %s' % path)
+        return path, 0.0
+    return run(fdtd, csx, name, threads)
+
+
+def earlier_run_time(fixture_id, run_s):
+    import sys
+    if '--post' not in sys.argv:
+        return round(run_s, 1), False
+    with open(os.path.join(FIXTURES, fixture_id + '.json'), encoding='utf-8') as f:
+        return round(json.load(f)['provenance']['runTime_s'], 1), True
+
+
+def sha256_of(name):
+    import hashlib
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), name), 'rb') as f:
+        return hashlib.sha256(f.read().replace(bytes([13, 10]), bytes([10]))).hexdigest()
 
 
 def openems_info():
@@ -299,3 +336,80 @@ def abcd_inv(m):
     a, b, c, d = m
     det = a * d - b * c
     return d / det, -b / det, -c / det, a / det
+
+
+# --- Added by step M6.4a (several runs, N ports, symmetric meshes) ---
+
+XOR4 = [[i ^ j for j in range(4)] for i in range(4)]  # S of a 4-port with two mirror symmetries (Klein group)
+FULL2 = [[0, 1], [2, 3]]
+SYM2 = [[0, 1], [1, 0]]
+
+
+def fit_s(runs, pattern):
+    """S of an N-port from one or more excitations: runs = [(a, b)], a and b of shape (N, F) (the waves at the probe
+    planes), pattern[i][j] = the index of the unknown that S_ij equals (symmetry; FULL for none). Least squares per
+    frequency over every run's b = S a; the end ports' reflections (a at the undriven ports) drop out. Returns S
+    (N, N, F) and the relative residual per frequency (0 when exactly determined; else the symmetry's misfit)."""
+    N = len(pattern)
+    P = max(max(r) for r in pattern) + 1
+    F = runs[0][0].shape[1]
+    G = np.zeros((N, N, P))
+    for i in range(N):
+        for j in range(N):
+            G[i, j, pattern[i][j]] = 1
+    M = np.concatenate([np.einsum('ijp,jf->fip', G, a) for a, _ in runs], axis=1)  # (F, rows, P)
+    y = np.concatenate([b.T for _, b in runs], axis=1)                              # (F, rows)
+    S = np.zeros((N, N, F), complex)
+    res = np.zeros(F)
+    for k in range(F):
+        p = np.linalg.lstsq(M[k], y[k], rcond=None)[0]
+        r = M[k] @ p - y[k]
+        res[k] = np.linalg.norm(r) / max(np.linalg.norm(y[k]), 1e-300)
+        S[:, :, k] = np.einsum('ijp,p->ij', G, p)
+    return S, res
+
+
+def passivity(S):
+    """Largest singular value of S per frequency (lossless and radiating: at most 1)."""
+    return np.array([np.linalg.svd(S[:, :, k], compute_uv=False)[0] for k in range(S.shape[2])])
+
+
+def s2_to_abcd(s11, s12, s21, s22, zr):
+    d = 2 * s21
+    A = ((1 + s11) * (1 - s22) + s12 * s21) / d
+    B = zr * ((1 + s11) * (1 + s22) - s12 * s21) / d
+    C = ((1 - s11) * (1 - s22) - s12 * s21) / (zr * d)
+    D = ((1 - s11) * (1 + s22) + s12 * s21) / d
+    return A, B, C, D
+
+
+def sym_lines(fixed, centre, max_res, ratio=1.3, fine=None, merge=0.0):
+    """Mesh lines mirror-symmetric about `centre`: the fixed lines (both halves given or not) smoothed by openEMS's
+    SmoothMeshLines on a scratch grid, then the half above the centre mirrored. `fine` = (max_res_core, core_lines):
+    the core lines are smoothed to the finer size first (as via.py's block around the barrels); core lines closer than
+    `merge` to an earlier one (list the important ones first) are left out, so no tiny cell sets the time step."""
+    g = ContinuousStructure().GetGrid()
+    f = np.asarray(fixed, float)
+    f = np.concatenate([f, 2 * centre - f, [centre]])
+    if fine is not None:
+        res0, core = fine
+        c = []  # in the given order, each with its mirror; a line within `merge` of an earlier one is left out
+        for v in [centre] + [w for u in core for w in (u, 2 * centre - u)]:
+            if all(abs(v - u) >= merge for u in c):
+                c.append(v)
+        c = np.unique(np.round(c, 9))
+        g.AddLine('x', c)
+        g.SmoothMeshLines('x', res0, ratio)
+        f = np.concatenate([f, np.asarray(g.GetLines('x'))])
+        g = ContinuousStructure().GetGrid()
+    g.AddLine('x', np.unique(np.round(f, 9)))
+    g.SmoothMeshLines('x', max_res, ratio)
+    L = np.asarray(g.GetLines('x'))
+    hi = L[L >= centre - 1e-9]
+    out = np.unique(np.round(np.concatenate([hi, 2 * centre - hi]), 9))
+    return out
+
+
+def db(x):
+    with np.errstate(all='ignore'):
+        return 20 * np.log10(np.abs(x))

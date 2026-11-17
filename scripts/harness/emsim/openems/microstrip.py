@@ -10,7 +10,8 @@ import sys
 
 import numpy as np
 
-import common as cm
+sys.path.insert(0, __import__('os').path.dirname(__import__('os').path.abspath(__file__)))  # python -I leaves it out
+import common as cm  # noqa: E402
 from common import ContinuousStructure, openEMS
 
 NAME = 'msl-c39'

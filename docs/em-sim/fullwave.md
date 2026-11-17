@@ -381,11 +381,12 @@ Lengths in mm, everything else SI. Each file is about 50 kB.
   line on the edge and 31 µm cells beside it the feed came out at 49.8 Ω and εeff 3.07, the strip acting wider.
 - **Threads:** 8 is fastest at 0.3–1 M cells (64–130 Mcells/s; 16 and 32 threads are slower).
 
-### 14.4 The two fixtures
+### 14.4 The fixtures
 | Fixture | Structure | Mesh | Run |
 |---|---|---|---|
 | `msl-c39.json` | C39 `50R_SE` on F.Cu over In1: w 0.1377, t 0.035, h 0.092 (εr 4.1), JLCPCB mask εr 3.8, 30.5 µm on laminate, 15.2 µm on copper and sides (the BEM case of solver.md), lossless, In1 as the PEC floor; line from x = −8 to 8, reference planes at ±5 (10 mm apart) | 222 × 64 × 32 = 0.45 M cells, smallest 4.5 µm (z: mask over laminate against the copper top), Δt 16.3 fs | 49 152 steps, 187–264 s |
 | `via-th-0p3.json` | Through via F.Cu → B.Cu in the C38 stackup without mask (copper span 1.637, εr 4.3 everywhere, outer copper in air): drill 0.3, pads 0.6 on all six layers, antipads 1.8 on In1–In4 (C44), four return vias (drill 0.3) on a 1.2 mm circle at 45°…315°, `50R_SE` feeds (w 0.1377) over In1 and In4, 3 mm from the via axis to each reference plane, ports at 4.5 | 148 × 100 × 75 = 1.11 M cells, 50 µm over ±1.4 mm in x and y, smallest 25.6 µm (y, thirds lines), Δt 62.6 fs | 12 740 steps, 122–144 s |
+| M6.4a ([notes-M6.4a.md](notes-M6.4a.md)) | `defaultSetup()`'s stackup (JLC061611-3313A with masks); feeds the mean-width rectangle, ports at 4.5, reference planes 3 from the via axis: `via-c44` (C44 preset, two returns at ±0.8; `via-c44-coarse` with 3 cells per drill), `via-c44-noret`, `via-c44-stub` (exit L3), `via-c44-bd` (backdrilled 1.2, Ø0.5), `via-c45` (pair, feeds along −x on L1 and +x on L6, BL161); `msl-c41` (LVDS pair, trapezoid, 4 ports) | 6 cells per drill, thirds rule at the feeds, mirror-symmetric; 0.84–2.46 M cells | 1 run (symmetric), 2 (stub cases, the pair), 7–24 min each |
 
 ### 14.5 Sanity checks
 - **Microstrip:** Z0 **49.794 Ω** (ports 49.792 / 49.796, TDR plateau 49.772, ABCD √(B/C) 49.783), εeff **3.2950**

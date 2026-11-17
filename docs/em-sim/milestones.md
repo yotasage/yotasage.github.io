@@ -434,6 +434,12 @@ model's validity flags tuned to where it is measured to fail, recorded in facts.
 **Done when:** FDTD within the frozen limits of openEMS on every fixture; the table and the flag thresholds are in
 `fullwave.md` and the notes.
 
+**Split** (main session, 2026-11-17, compute and analysis): **M6.4a** (the openEMS fixtures: scripts for the via cases
+— single and pair, with and without return vias, stub and backdrill — and the second trace case, the runs on the
+owner's PC, JSON fixtures with their provenance in `scripts/harness/emsim/openems/fixtures/`) and **M6.4b** (the
+comparison table quasi-static ↔ FDTD ↔ openEMS, the limits frozen, BL150 (FDTD εeff 4 % high) resolved or explained,
+the via model's flag thresholds (BL92) set from the measurements and recorded in facts.md and fullwave.md).
+
 ## M7 – Waves on the page
 
 ### M7.1 – Runs and the 2D player · L (page)

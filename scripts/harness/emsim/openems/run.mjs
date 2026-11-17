@@ -1,4 +1,4 @@
-// Re-makes the openEMS fixtures of fullwave.md section 14 (step M0.4b): `npm run openems [microstrip|via ...]`.
+// Re-makes the openEMS fixtures of fullwave.md section 14 (steps M0.4b, M6.4a): `npm run openems [name ...] [--coarse]`.
 // openEMS (GPL) is installed on the owner's PC only, outside the repo; the paths can be overridden with
 // OPENEMS_DIR (the folder holding CSXCAD.dll and openEMS.exe) and OPENEMS_PYTHON (the venv's python.exe).
 // openEMS's own output goes to a log per script in the temp folder; only the summary line is printed.
@@ -11,12 +11,18 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const openemsDir = process.env.OPENEMS_DIR ?? 'C:\\Users\\Jonat\\opt\\openEMS';
 const python = process.env.OPENEMS_PYTHON ?? 'C:\\Users\\Jonat\\opt\\openEMS-venv\\Scripts\\python.exe';
-const all = { microstrip: 'microstrip.py', via: 'via.py' };
+// name: script and its arguments (M0.4b: microstrip, via; M6.4a: the via cases and the LVDS pair, notes-M6.4a.md)
+const all = {
+  microstrip: ['microstrip.py'], via: ['via.py'],
+  'via-c44': ['viacases.py', '--case=c44'], 'via-c44-noret': ['viacases.py', '--case=c44-noret'],
+  'via-c44-stub': ['viacases.py', '--case=c44-stub'], 'via-c44-bd': ['viacases.py', '--case=c44-bd'],
+  'via-c45': ['viacases.py', '--case=c45'], 'msl-c41': ['lvds.py'],
+};
 const args = process.argv.slice(2);
 const names = args.filter((a) => !a.startsWith('--'));
 const flags = args.filter((a) => a.startsWith('--'));
 const chosen = names.length ? names : Object.keys(all);
-const limitMs = 30 * 60 * 1000; // per script
+const limitMs = 60 * 60 * 1000; // per script (the pair: two runs of about 2.5 M cells)
 
 for (const p of [openemsDir, python]) {
   if (!existsSync(p)) {
@@ -34,11 +40,11 @@ for (const name of chosen) {
     console.error(`unknown fixture ${name}; known: ${Object.keys(all).join(', ')}`);
     process.exit(1);
   }
-  const log = join(logDir, `${name}.log`);
+  const log = join(logDir, `${name}${flags.includes('--coarse') ? '-coarse' : ''}.log`);
   const out = createWriteStream(log);
   const t0 = Date.now();
   const code = await new Promise((resolve) => {
-    const child = spawn(python, [join(here, script), ...flags], {
+    const child = spawn(python, ['-I', join(here, script[0]), ...script.slice(1), ...flags], {
       cwd: here,
       env: { ...process.env, CSXCAD_INSTALL_PATH: openemsDir, PYTHONUNBUFFERED: '1' },
     });

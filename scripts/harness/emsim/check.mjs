@@ -41,6 +41,7 @@ const MODULES = [
   ['FDTD CPU loop (M6.2a)', './check-fdtd-cpu.mjs'],
   ['FDTD runs (M6.2b)', './check-fdtd-run.mjs'],
   ['FDTD WebGPU (M6.3)', './check-fdtd-gpu.mjs'],
+  ['openEMS fixtures (M6.4a)', './check-openems.mjs'],
 ];
 
 const failures = [];

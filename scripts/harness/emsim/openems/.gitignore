@@ -1,2 +1,3 @@
 __pycache__/
 fixtures/*-coarse.json
+!fixtures/via-c44-coarse.json
