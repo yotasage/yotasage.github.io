@@ -3,8 +3,10 @@
 // them) and the ports' sources. No CPML: it steps closed (PEC box) problems only; M6.2's CPU backend adds the ψ
 // updates, DFTs, TDR, snapshots and the energy stop.
 // Order of one step n: H (n − ½ → n + ½), E (n → n + 1) with the sources at t = (n + ½)·Δt.
-// Energy: W = Σ εr·V_E·Eⁿ·Eⁿ⁺¹ + Σ V_H·(H̃ⁿ⁺½)² (V_E = edge length × dual face, V_H = face × dual length, E before and
-// after the E update), which the Yee scheme keeps exactly on a lossless problem without conformal edges or sources.
+// Energy: W = Σ εr·f·V_E·Eⁿ·Eⁿ⁺¹ + Σ V_H·(H̃ⁿ⁺½)² (V_E = edge length × dual face, V_H = face × dual length, E before and
+// after the E update, f the conformal fraction, 1 on whole edges), which the scheme keeps exactly on a lossless problem
+// without sources: the H update's curl is C·F (edges shortened to f·h) and the E update's is Cᵀ, so the pair is
+// adjoint in the inner product with ε·V_E·f on E (step M6.2a, BL147; notes-M6.2a.md).
 
 import { pulseAt } from './ports';
 import type { Problem } from './problem';
@@ -61,7 +63,7 @@ export class RefKernel {
       this.step++;
     }
   }
-  /** W of the header (arbitrary units: mm³·(V/m)²). */
+  /** W of the header (arbitrary units: mm³·(V/m)²), with the conformal edges weighted by f. */
   energy(): number {
     const { nx, ny, nz, N, gx, gy, gz } = this.p;
     const cb = this.p.mat.cb as Float64Array;
@@ -80,6 +82,12 @@ export class RefKernel {
         const vh = a === 0 ? dd(gx, i) * d(gy, j) * d(gz, k) : a === 1 ? d(gx, i) * dd(gy, j) * d(gz, k) : d(gx, i) * d(gy, j) * dd(gz, k);
         w += vh * H[e] * H[e];
       }
+    }
+    for (let q = 0; q < this.p.mat.cut.length; q++) {
+      const e = this.p.mat.cut[q], a = Math.floor(e / N), c = e - a * N;
+      const i = c % nx, j = Math.floor(c / nx) % ny, k = Math.floor(c / (nx * ny));
+      const v = a === 0 ? d(gx, i) * dd(gy, j) * dd(gz, k) : a === 1 ? dd(gx, i) * d(gy, j) * dd(gz, k) : dd(gx, i) * dd(gy, j) * d(gz, k);
+      w += ((this.p.mat.frac[q] - 1) * v / cb[e]) * P[e] * E[e];
     }
     return w;
   }

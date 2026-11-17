@@ -409,6 +409,12 @@ snapshots, energy monitor, cancel and progress.
 (or fullwave.md's bar) of the 2D solver's Z0; a matched port's S11 under −30 dB; reciprocity S21 = S12; energy constant
 without sources.
 
+**Split** (main session, 2026-11-17, two jobs): **M6.2a** (the time loop: Yee update with CPML ψ, conformal barrel
+cells made stable (BL147), sources, the energy monitor; checks: energy constant without sources over a full run's
+length, cavity resonances, CPML reflection) and **M6.2b** (ports and records, DFT to S-parameters, TDR/TDT, snapshots,
+the full-wave worker with cancel and progress; checks: the microstrip's TDR impedance against the 2D solver, matched
+S11, reciprocity).
+
 ### M6.3 – WebGPU backend · L
 
 The WGSL kernels and their host code per fullwave.md (adapter limits, buffers per component, split dispatches,

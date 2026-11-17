@@ -329,7 +329,7 @@ function checkRefusals(t, base) {
 function checkRef(t, stats) {
   const su = Su.defaultSetup();
   const opt = { closed: true, precision: 'f64', loads: false, trMin: 300e-12, z0: [50, 50, 50, 50], eeff: [3, 3, 3, 3] };
-  for (const [kind, len, tol] of [['trace', 1.0, 1e-10], ['via', undefined, 0.01]]) {
+  for (const [kind, len, tol] of [['trace', 1.0, 1e-10], ['via', undefined, 1e-10]]) { // conformal edges weighted by f (M6.2a, BL147)
     const b = Pr.buildProblem(su, kind, { ...opt, length: len });
     const p = b.problem;
     const k = new R.RefKernel(p, false);
@@ -412,7 +412,7 @@ export async function run(t) {
   const big = checkRefusals(t, c44.b);
   checkRef(t, stats);
   t.note(`FDTD mesh: ${rows.length} presets; estimate/allocated worst ${(stats.worstRatio * 100).toFixed(3)} %; εr of ${stats.edges} sampled edges vs direct integration: uniform faces ${stats.epsTight.toExponential(1)}, mixed ${(stats.epsMixed * 100).toFixed(2)} %; conformal fractions vs sampling ${stats.frac.toFixed(4)}; ${stats.pec} edges inside copper PEC`);
-  t.note(`FDTD mesh: reference kernel energy drift over 300 steps: trace ${stats.energy.trace?.toExponential(1)}, via with conformal edges ${stats.energy.via?.toExponential(1)}; refused case (3 ps via, JavaScript, phone) ${big.est?.cells} cells, ${(big.est?.memory.total / 1e6).toFixed(0)} MB, ${(big.est?.seconds / 3600).toFixed(1)} h`);
+  t.note(`FDTD mesh: reference kernel energy drift over 300 steps: trace ${stats.energy.trace?.toExponential(1)}, via with conformal edges (weighted by f) ${stats.energy.via?.toExponential(1)}; refused case (3 ps via, JavaScript, phone) ${big.est?.cells} cells, ${(big.est?.memory.total / 1e6).toFixed(0)} MB, ${(big.est?.seconds / 3600).toFixed(1)} h`);
   for (const r of stats.relaxed) t.note(`FDTD mesh: count rule yields to ratio and 20 µm: ${r}`);
   t.note('FDTD mesh presets (cells, steps, MB, estimate/allocated):\n' + rows.map((r) => `    ${r.name.padEnd(42)} ${String(r.cells).padStart(9)} ${String(r.steps).padStart(6)} ${r.mb.toFixed(1).padStart(7)} ${Number.isFinite(r.ratio) ? r.ratio.toFixed(4) : '-'}`).join('\n'));
 }

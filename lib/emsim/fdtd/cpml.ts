@@ -80,12 +80,17 @@ export function tableEntries(n: [number, number, number], cells: [number, number
  *  [bE(z node), cE(z node), bE(z half), cE(z half), bH(z node), cH(z node), bH(z half), cH(z half)], index i + n_a·k;
  *  z axis: [bE, cE, bH, cH], index k. */
 export function buildCpml(m: Model, mesh: Mesh, dt: number, A: FCtor): Cpml {
+  const col = column(m, 0);
+  return cpmlOf(mesh, dt, A, (zz) => { for (const p of col) if (zz >= p.z0 && zz < p.z1) return p.er; return 1; });
+}
+
+/** The CPML of a mesh with the εr of the material at each height that scales the side slabs' σ (`buildCpml` takes it
+ *  from the model's column; the harness's hand-made boxes give their own). */
+export function cpmlOf(mesh: Pick<Mesh, 'x' | 'y' | 'z'>, dt: number, A: FCtor, erAt: (z: number) => number): Cpml {
   const gx = gridOf(mesh.x), gy = gridOf(mesh.y), gz = gridOf(mesh.z);
   const n: [number, number, number] = [gx.length, gy.length, gz.length];
   const cells: [number, number, number] = [mesh.x.cpml, mesh.y.cpml, mesh.z.cpml];
   const x = cpmlAxis(mesh.x.lines, gx, cells[0]), y = cpmlAxis(mesh.y.lines, gy, cells[1]), z = cpmlAxis(mesh.z.lines, gz, cells[2]);
-  const col = column(m, 0);
-  const erAt = (zz: number) => { for (const p of col) if (zz >= p.z0 && zz < p.z1) return p.er; return 1; };
   const erNode = new Float64Array(n[2]), erHalf = new Float64Array(n[2]);
   for (let k = 0; k < n[2]; k++) { erNode[k] = erAt(gz[k]); erHalf[k] = k + 1 < n[2] ? erAt((gz[k] + gz[k + 1]) / 2) : erNode[k]; }
   const coef: FArray[] = [];

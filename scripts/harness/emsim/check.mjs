@@ -4,6 +4,8 @@
 //
 // Environment: EMSIM_KICAD_OLD = a folder with KiCad 5–8 demo boards (pic_programmer-<tag>.kicad_pcb, …) fetched from
 // KiCad's GitLab (docs/pcb-viewer/test-files.md); without it those boards are skipped with a note.
+// EMSIM_FDTD_LONG=1 runs the FDTD CPU loop's energy check on the closed C44 via over its full 7 645 steps (about a
+// minute more) instead of 300.
 
 import { performance } from 'node:perf_hooks';
 
@@ -34,6 +36,7 @@ const MODULES = [
   ['Figures (M8.1a)', './check-figure.mjs'],
   ['Data export (M8.2a)', './check-data.mjs'],
   ['FDTD mesh (M6.1)', './check-fdtd-mesh.mjs'],
+  ['FDTD CPU loop (M6.2a)', './check-fdtd-cpu.mjs'],
 ];
 
 const failures = [];

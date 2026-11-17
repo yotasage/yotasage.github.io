@@ -83,7 +83,7 @@ table. Agents find their way by it instead of reading the code. Split into parts
 
 ## `lib/emsim/fdtd/` (M6, the full-wave engine)
 
-The 3D FDTD solver's files (model, mesh, materials, CPML, ports, estimator, problem, reference kernel) are in
+The 3D FDTD solver's files (model, mesh, materials, CPML, ports, estimator, problem, reference kernel, CPU loop) are in
 [modules-fdtd.md](modules-fdtd.md).
 
 ## The page
