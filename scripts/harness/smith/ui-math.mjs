@@ -292,23 +292,38 @@ try {
   }
 
   // ---------- the panel's cost during a drag at 4× CPU (the panel in view), on and off ----------
+  // One page, the panel turned off and on between drags (BL202, 2026-11-17): a warm-up drag, then PAIRS pairs of 2 s
+  // drags in the order off on, on off, off on, … (a slow drift of the machine cancels), each drag after a forced garbage
+  // collection; the panel's cost is the median of the pairs' differences of main thread per frame. A fresh page per
+  // drag (as from M5.1 to M9.3a) scattered ±1 ms, mostly garbage collection and paint, against the 0.3 ms bar: on the
+  // same build it gave +0.67 to +1.18 ms in one run and −0.35 to +0.92 in the next. Each drag is aimed at the handle
+  // where the link's circuit puts it (a missed handle costs ~6 ms a frame, not ~12). BL202 measured this way: 0.42 ms
+  // for CHARGE 2.2 (median of 40 pairs), −0.15 to +0.02 ms for 3.4 (em-sim/notes-M9.3a.md, "Fix: BL202").
   const tall = await browser.newContext({ viewport: { width: 1440, height: 4600 }, colorScheme: 'light' });
-  const ten = S.decodeCircuit(TEN).circuit;
-  async function timing(off) {
+  const PAIRS = 8;
+  async function timedPage() {
     const pt = await open(tall, TEN);
-    await pt.evaluate((o) => { document.querySelector('[data-math]').smithMath.off = o; }, off);
     const pressed = await pt.getAttribute('[data-snap-toggle]', 'aria-pressed');
     if (pressed === 'true') await pt.click('[data-snap-toggle]');
     await frame(pt);
-    const { metrics } = N.evaluateCircuit(ten);
+    const cdp = await pt.context().newCDPSession(pt);
+    await cdp.send('Performance.enable');
+    await cdp.send('HeapProfiler.enable');
+    return { pt, cdp };
+  }
+  async function timing({ pt, cdp }, off) {
+    await pt.evaluate((o) => { document.querySelector('[data-math]').smithMath.off = o; }, off);
+    await idle(pt);
+    // The line's handle where the circuit in the link puts it: a drag ends a little off its start, and a drag aimed at
+    // the first place would miss the handle after a few (a miss costs ~6 ms a frame, not the drag's ~12).
+    const { metrics } = N.evaluateCircuit(await linked(pt));
     const gr = metrics[3 * N.METRIC_STRIDE + N.M_GR], gi = metrics[3 * N.METRIC_STRIDE + N.M_GI];
     const [hx, hy] = await pt.evaluate(([gr, gi]) => {
       const box = document.querySelector('[data-chart]'), v = box.smithChart, r = box.getBoundingClientRect();
       return [r.left + box.clientLeft + v.w / 2 + (gr - v.cx) * v.k, r.top + box.clientTop + v.h / 2 - (gi - v.cy) * v.k];
     }, [gr, gi]);
     const visible = await pt.evaluate(() => document.querySelector('[data-math]').smithMath.visible);
-    const cdp = await pt.context().newCDPSession(pt);
-    await cdp.send('Performance.enable');
+    await cdp.send('HeapProfiler.collectGarbage');
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
     await frame(pt);
     const task = async () => (await cdp.send('Performance.getMetrics')).metrics.find((m) => m.name === 'TaskDuration').value;
@@ -323,7 +338,12 @@ try {
       const tick = (t) => {
         ticks++;
         if (t - start < 2000) requestAnimationFrame(tick);
-        else { ev('pointerup', x, y); done({ ticks, sliced: m.sliced - s0, slicedMs: m.slicedMs - ms0 }); }
+        else {
+          // Live frames came (the handle was hit), and the drag ends where it began.
+          const dragged = m.lastLive >= start;
+          ev('pointermove', hx, hy); ev('pointerup', hx, hy);
+          done({ ticks, sliced: m.sliced - s0, slicedMs: m.slicedMs - ms0, dragged });
+        }
       };
       requestAnimationFrame(tick);
       const send = () => {
@@ -338,31 +358,40 @@ try {
     }), [hx, hy]);
     const t1 = await task();
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
-    await cdp.detach();
     // After the drag the panel shows the committed circuit.
     if (!off) {
       const st = await pt.evaluate(() => { const m = document.querySelector('[data-math]').smithMath; return { idle: m.idle, visible: m.visible, subject: document.querySelector('[data-math]').dataset.mathSubject }; });
       if (!st.idle) console.log('after the drag:', JSON.stringify(st));
       await compare(pt, { t: 'part', i: 2 }, 4, 'after the timed drag');
     }
-    const errors = pt.errors.slice();
-    await pt.close();
-    return { off, main: ((t1 - t0) * 1000) / res.ticks, ticks: res.ticks, sliced: res.sliced, slicedMs: res.slicedMs, visible, errors };
+    return { off, main: ((t1 - t0) * 1000) / res.ticks, ticks: res.ticks, sliced: res.sliced, slicedMs: res.slicedMs, dragged: res.dragged, visible };
   }
-  let diff = Infinity, runs = [];
+  const median = (xs) => { const s = xs.slice().sort((a, b) => a - b), n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; };
+  let diff = Infinity, runs = [], timedErrors = [];
   for (let attempt = 0; attempt < 3 && diff > 0.3; attempt++) {
     runs = [];
-    for (let i = 0; i < 3; i++) { runs.push(await timing(true)); runs.push(await timing(false)); }
-    const med = (xs) => xs.slice().sort((a, b) => a - b)[1];
-    const offMs = med(runs.filter((r) => r.off).map((r) => r.main)), onMs = med(runs.filter((r) => !r.off).map((r) => r.main));
-    diff = onMs - offMs;
-    timings.push(`attempt ${attempt + 1}: main thread per drag frame at 4× with the panel off ${offMs.toFixed(2)} ms, on ${onMs.toFixed(2)} ms (+${diff.toFixed(2)}); `
-      + `rows written during each drag ${runs.filter((r) => !r.off).map((r) => `${r.sliced} (${r.slicedMs.toFixed(1)} ms script)`).join(', ')}`);
+    const h = await timedPage();
+    await timing(h, false);
+    const diffs = [];
+    for (let i = 0; i < PAIRS; i++) {
+      const got = {};
+      for (const off of i % 2 ? [false, true] : [true, false]) { const r = await timing(h, off); got[off] = r; runs.push(r); }
+      diffs.push(got[false].main - got[true].main);
+    }
+    await h.cdp.detach();
+    timedErrors.push(...h.pt.errors);
+    await h.pt.close();
+    diff = median(diffs);
+    const ons = runs.filter((r) => !r.off);
+    timings.push(`attempt ${attempt + 1}: main thread per drag frame at 4×, medians of ${PAIRS} pairs on one page: panel off ${median(runs.filter((r) => r.off).map((r) => r.main)).toFixed(2)} ms, `
+      + `on ${median(ons.map((r) => r.main)).toFixed(2)} ms, paired difference +${diff.toFixed(2)} ms [${diffs.map((d) => d.toFixed(2)).join(' ')}]; `
+      + `rows written per drag ${median(ons.map((r) => r.sliced))}, the slice's own script ${median(ons.map((r) => r.slicedMs / r.ticks)).toFixed(3)} ms per frame`);
   }
-  ok(diff <= 0.3, `the panel adds ${diff.toFixed(2)} ms per drag frame at 4× CPU (≤ 0.3)`);
+  ok(diff <= 0.3, `the panel adds ${diff.toFixed(2)} ms per drag frame at 4× CPU (≤ 0.3, median of ${PAIRS} pairs)`);
   ok(runs.every((r) => r.visible), 'the panel was in view during the timed drags');
+  ok(runs.every((r) => r.dragged), `every timed drag moved the line (${runs.filter((r) => !r.dragged).length} missed its handle)`);
   ok(runs.filter((r) => !r.off).every((r) => r.sliced > 0), 'the panel followed the drag (rows written in the time slice)');
-  ok(runs.every((r) => r.errors.length === 0), `no errors in the timed drags: ${runs.flatMap((r) => r.errors).join(' | ')}`);
+  ok(timedErrors.length === 0, `no errors in the timed drags: ${timedErrors.join(' | ')}`);
 
   // ---------- phones: no horizontal scroll with the panel open on the widest rows ----------
   for (const width of [320, 390]) {

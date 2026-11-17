@@ -67,6 +67,13 @@ on the same page): see the table below.
 
 The run-to-run noise of this measure (±0.5 ms) is larger than the 0.3 ms bar; the harness retries up to three times.
 
+Later (BL202, 2026-11-17): with a fresh page per drag the noise grew to ±1 ms (the same build gave +0.67 to +1.18 ms,
+then −0.35 to +0.92), mostly garbage collection and paint. The check now drags on one page, a forced garbage
+collection before each drag, each drag aimed at the handle where the link puts it, and takes the median of 8 off/on
+pairs' differences; the 0.3 ms bar is unchanged. Measured that way the panel added 0.42 ms (median of 40 pairs) for
+0.125 ms of its own script: the style, layout, paint and garbage are 3.4 times the script, not 2.2, so `CHARGE` is now
+3.4 and the bucket holds the panel at its 0.25 ms rate. Numbers in [em-sim/notes-M9.3a.md](../em-sim/notes-M9.3a.md), "Fix: BL202".
+
 ## Harness
 
 - check.mjs "quantity: rounding level (D20)" (21 checks; its fuzz has its own random sequence so the later sections'

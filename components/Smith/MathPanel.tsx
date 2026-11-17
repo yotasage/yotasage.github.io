@@ -66,10 +66,11 @@ export class MathLive {
   static CAP = 1.5;
   /**
    * What a row's measured script time is charged as: the style, layout and paint of its new MathML follow outside
-   * the measured span and cost about as much again (measured by ui-math.mjs at 4× CPU: 0.25 ms of script per frame
-   * added 0.55 ms of main thread), so the bucket's rate holds for the whole of the panel's work.
+   * the measured span and cost more than twice as much again, so the bucket's rate holds for the whole of the panel's
+   * work. Measured by ui-math.mjs at 4× CPU: 2.2 in M5.1 (0.25 ms of script per frame added 0.55 ms, a fresh page per
+   * drag, ±0.5 ms); 3.4 in BL202 (0.125 ms of script added 0.42 ms, the median of 40 off/on pairs on one page).
    */
-  static CHARGE = 2.2;
+  static CHARGE = 3.4;
   /** The panel in view and open (an IntersectionObserver keeps it). */
   visible = true;
   /** Turned off (the harness measures the page without the panel's work). */

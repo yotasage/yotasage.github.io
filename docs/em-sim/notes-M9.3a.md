@@ -72,6 +72,38 @@ against its estimate of 1.45 s (within 2×).
 BL200 (M6.3's 2 M-cell via run), BL201 (the KiCad 5–8 demo boards kept for the recheck), BL202 (the Smith chart's
 ui-math panel cost at 4×). Next free: BL203.
 
+## Fix: BL202 (the Smith chart's ui-math panel cost)
+
+**A/B of the builds:** HEAD (ef37eb0) and M4.3a's commit (5c67a17), each built in a worktree and served by
+`next start` (3022, 3023), ui-math's timing interleaved A B A B, 6 rounds of a fresh page per drag: median panel
+cost +0.37 ms (HEAD) and +1.00 ms (M4.3a), each pair scattering −0.35 to +1.41 ms, and the panel's own script in
+its time slice 0.122 and 0.118 ms per frame. Then 6 same-page pairs a round, 5 rounds (before the handle fix below): HEAD 0.21, 0.43, 0.94, 0.45, 0.18
+ms; M4.3a 0.48, 0.17, −0.60, 0.27, 0.15 ms. **No code change moved it** (the only shared change in the Smith
+page's bundle since M4.3a is `lib/equations/tex.ts`, 56e1712 and 32442ee); frames off are 11.4–15.6 ms on both
+builds, so the 4× frame's move from 11.4 ms (Smith M5.4) is this machine's.
+
+**Why it failed:** two causes in the measure and one in the panel.
+
+- A fresh page per drag scatters ±1 ms (CDP's metrics split it: script, style and layout differences are steady
+  at about 0.1, 0.02 and 0.08 ms; the rest, garbage collection and paint, carries the scatter).
+- On one page, a drag ends a few px off its start and the next drags, aimed at the first place, miss the handle
+  (~6 ms a frame instead of ~12): those gave the 5–8 ms outlier pairs and the "panel followed the drag" failures.
+- With both fixed, the panel added **+0.42 ms** a frame (median of 40 pairs over 5 attempts) for 0.125 ms of its
+  own script: 3.4 times the script, where `MathLive.CHARGE` assumed 2.2 (M5.1's measure, ±0.5 ms). The leaky
+  bucket thus let the panel do more than its 0.25 ms rate.
+
+**Change:** `components/Smith/MathPanel.tsx` `CHARGE` 2.2 → 3.4 (no output changes: the rows are the same, written
+2 times per 2 s drag at 4× instead of 3, and at once after the drag). `scripts/harness/smith/ui-math.mjs`: one
+page, a warm-up drag, 8 off/on pairs (off on, on off, …) of 2 s drags, a forced garbage collection
+(`HeapProfiler.collectGarbage`) before each, each aimed at the handle where the link's circuit puts it and ended
+at its start, the median of the pairs' differences against the unchanged 0.3 ms bar (up to 3 attempts), and a new
+check that every timed drag moved the line. A time refill of the bucket's debt between drags was tried and dropped:
+the debt at a drag's start is −1 to −2 (a few frames), not the cause.
+
+**After:** ui-math on the final build, 3 runs in a row, each passing on its first attempt: −0.00, −0.15, +0.02 ms
+(1990 of 1990 checks each). `npx tsc --noEmit` clean. No shared module changed, so the Smith and EM `npm run check`
+were not rerun.
+
 ## The table
 
 This run: **69 steps, 135 parts:** 99 pass, 2 fail, 4 known misses (fail with a backlog id), 2 not checked, 26 recorded, 2 owner.
