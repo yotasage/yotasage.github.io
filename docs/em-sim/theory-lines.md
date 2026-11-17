@@ -258,3 +258,16 @@ Placed in `whys.ts` with the keys in brackets. Since M4.3b the links go to the v
 | Full-wave against model (waves-plots) | Both curves at the same ports, reference and edge: where they part, the quasi-static model stops holding. | – | – |
 | Run notes (waves-notes) | Whether the run settled, stayed stable and its feeds matched the 2D solver. | – | – |
 | Checked (waves-checked) | The limits the engine held against openEMS, a separate full-wave solver, on the same structures. | – | – |
+
+## Waves: the player (step M7.1b)
+
+| Where | Line | → | Claim |
+| --- | --- | --- | --- |
+| Waves (waves-player) | The electric field on one slice of the run, frame by frame, with the copper the slice cuts drawn over it. | – | – |
+| Slice (waves-view) | Where the slice lies: from the side through the barrel, or from above at a feed or between the planes. | – | – |
+| Field (waves-comp) | \|E\| is the field’s strength; Ez and the others one direction with its sign, red one way, blue the other. | – | – |
+| Play (waves-play) | Plays the frames in turn; it rests while the player is out of view, and waits for you under reduced motion. | – | – |
+| Time (waves-time) | Since the pulse began; arrow keys step one frame, Page Up and Down further, Home and End to the ends. | – | – |
+| Speed (waves-speed) | How fast the frames play: at 1× a run’s frames take about ten seconds. | – | – |
+| Loop (waves-loop) | Starts again from the first frame after the last. | – | – |
+| Colour scale (waves-scale) | One scale for the whole run, so a frame’s colours compare with every other’s. | – | – |

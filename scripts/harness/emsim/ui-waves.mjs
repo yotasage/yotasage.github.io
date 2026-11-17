@@ -7,7 +7,10 @@
 // the first, every earlier one cancelled); the CPU fallback (the "CPU" choice) runs a 3 mm trace section to the end, its steps within its
 // estimate (the C45 pair on the CPU is about 25 min, too long for a check); an oversized case (a 500 mm section on the
 // CPU) is refused with its reason; a via without returns gets the suggestion, whose link opens the section on the via;
-// no horizontal scroll at 320/390/1440 in both themes; screenshots `emsim-waves-{390,1440}-{light,dark}`.
+// no horizontal scroll at 320/390/1440 in both themes; screenshots `emsim-waves-{390,1440}-{light,dark}`. M7.1b: the
+// first cancelled run starts while the player holds the finished run's frames, and every cancel leaves no frames.
+// EMSIM_WAVES_LONG=1 also runs the C45 pair on the CPU ("CPU" choice) to the end (about 25 min) and holds its steps'
+// time to its calibrated estimate (M7.1's "done when"; ui-player.mjs checks the player).
 //   tsx ui-waves.mjs [screenshot folder | -] [base URL]      (part of npm run ui)
 
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -134,6 +137,9 @@ try {
 
   // ---- 3: Cancel mid-run frees the GPU buffers (three runs, each cancelled) ----
   const helds = [];
+  await page.click('[data-waves-run]');
+  await results(page, 180000);
+  check(await page.locator('[data-waves-player]').count() === 1 && Number(await attr(page, '[data-waves]', 'data-waves-frames')) > 10, "the player holds the finished run's frames before the cancelled runs");
   for (let k = 0; k < 4; k++) {
     await page.click('[data-waves-run]');
     await page.waitForSelector('[data-waves-held]:not([data-waves-held=""])', { timeout: 60000 });
@@ -141,7 +147,8 @@ try {
     helds.push(await attr(page, '[data-waves-held]', 'data-waves-held'));
     await page.click('[data-waves-cancel]');
     await page.waitForTimeout(1500);
-    check((await attr(page, '[data-waves]', 'data-waves-phase')) === 'cancelled', `run ${k + 1} cancelled and stays cancelled`);
+    check((await attr(page, '[data-waves]', 'data-waves-phase')) === 'cancelled' && Number(await attr(page, '[data-waves]', 'data-waves-frames')) === 0 && await page.locator('[data-waves-player]').count() === 0,
+      `run ${k + 1} cancelled and stays cancelled, no frames kept`);
   }
   // The first run of a worker also calibrates, which leaves its runner one more staging buffer (its own, freed with it).
   const nb = helds.map((h) => Number(h.split('/')[0]));
@@ -220,6 +227,27 @@ try {
       }
     }
     await c2.close();
+  }
+  // ---- 7 (EMSIM_WAVES_LONG=1): the C45 pair on the CPU to the end ----
+  if (process.env.EMSIM_WAVES_LONG === '1') {
+    const lp = await open(urlOf(pairS));
+    await estimate(lp);
+    await lp.click('[data-waves-backend-set="js"]');
+    await lp.waitForSelector('[data-waves-estimate="ready"][data-backend="js"]', { timeout: 60000 });
+    await lp.waitForTimeout(300);
+    const table = Number(await attr(lp, '[data-waves-estimate]', 'data-seconds'));
+    const t0 = Date.now();
+    await lp.click('[data-waves-run]');
+    await lp.waitForSelector('[data-waves-held]:not([data-waves-held=""])', { timeout: 120000 });
+    const steps = [];
+    const tick = setInterval(async () => { steps.push(await attr(lp, '[data-waves-progress]', 'data-waves-progress').catch(() => '')); }, 60000);
+    await results(lp, 4 * 3600 * 1000);
+    clearInterval(tick);
+    const el = Number(await attr(lp, '[data-waves-results]', 'data-elapsed')), runS = Number(await attr(lp, '[data-waves-results]', 'data-run-s')), est = Number(await attr(lp, '[data-waves-results]', 'data-estimate'));
+    console.log(`  C45 on the CPU: the estimate before the run ${(table / 60).toFixed(1)} min (table rate), calibrated at the start ${(est / 60).toFixed(1)} min; steps ${(runS / 60).toFixed(1)} min, wall ${(el / 60).toFixed(1)} min (${((Date.now() - t0) / 60000).toFixed(1)} by the clock); progress by minute ${steps.map((x) => Number(x).toFixed(2)).join(' ')}`);
+    check((await attr(lp, '[data-waves-results]', 'data-backend')) === 'js' && runS > 0 && runS <= 1.25 * est, `the C45 pair on the CPU runs to the end: its steps in ${(runS / 60).toFixed(1)} min, calibrated estimate ${(est / 60).toFixed(1)} min (within 1.25×)`);
+    check(await lp.locator('[data-waves-player]').count() === 1, 'the CPU run has its player too');
+    await lp.close();
   }
   check(errors.length === 0, `no page errors (${errors.join(' | ')})`);
 } finally {

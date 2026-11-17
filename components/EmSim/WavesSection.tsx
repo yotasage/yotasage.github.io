@@ -7,7 +7,8 @@
 // TDR/TDT at the chosen rise time and |S11|, |S21| (Sdd11, Sdd21 for a pair) beside the quasi-static model's (the via
 // model on the 'waves' channel of the static worker, or the lossless line of the 2D solver for a trace), the run's
 // notes and what the engine was checked against; it stays, marked stale, until the next run. The snapshot frames
-// the worker sends are kept for the player of M7.1b (framesRef, data-waves-frames).
+// the worker sends (framesRef while running, data-waves-frames the count held) go with the result to the player
+// (WavesPlayer.tsx, M7.1b) in a FrameStore, emptied on a new run, a cancel or when the setup makes the result stale.
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -21,6 +22,7 @@ import type { DeviceInfo, Preview, WaveKind, WavesSpec, WavesView } from '../../
 import { DB_FLOOR, readAt, timeScale } from '../../lib/emsim/plot';
 import type { Setup } from '../../lib/emsim/setup';
 import { readPlain } from '../../lib/emsim/units';
+import type { LengthUnit } from '../../lib/emsim/units';
 import type { ViaModelResult } from '../../lib/emsim/viamodel';
 import type { StaticJob } from '../../lib/emsim/jobs';
 import base from '../../styles/EmSim.module.css';
@@ -35,6 +37,8 @@ import { NumInput } from './ValField';
 import { takeWavesAsk, WAVES_EVENT } from './wavesSuggest';
 import type { WavesKindAsk } from './wavesSuggest';
 import { Why } from './Why';
+import WavesPlayer from './WavesPlayer';
+import type { FrameStore } from './WavesPlayer';
 
 const TRS = [15e-12, 35e-12, 100e-12];
 const NO_CURSOR = 'Move over a plot, tap it or use the arrow keys on it for a reading.';
@@ -42,15 +46,15 @@ const NO_CURSOR = 'Move over a plot, tap it or use the arrow keys on it for a re
 const CHECKED = 'The full-wave engine was checked against openEMS on six vias and an LVDS pair line: TDR within 2.5 Ω, |S| within 0.10 to 10 GHz and 0.15 to 20 GHz, a via’s impedance and delay within 12 %, a stub’s notch within 8 %.';
 
 type Phase = 'idle' | 'running' | 'done' | 'refused' | 'error' | 'cancelled';
-interface Done { res: FdtdResult; view: WavesView; setup: Setup; spec: WavesSpec; elapsed: number; estimate: number; backend: string; where: string }
+interface Done { res: FdtdResult; view: WavesView; setup: Setup; spec: WavesSpec; pv: Preview; elapsed: number; estimate: number; backend: string; where: string; store: FrameStore | null }
 
 const sText = (s: number) => (s < 60 ? `${s < 10 ? s.toFixed(1) : s.toFixed(0)} s` : s < 3600 ? `${(s / 60).toFixed(1)} min` : `${(s / 3600).toFixed(1)} h`);
 const big = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(2)} M` : n >= 1e3 ? `${(n / 1e3).toFixed(0)} k` : String(n));
 const sameSpec = (a: WavesSpec, b: WavesSpec) => a.kind === b.kind && a.tr === b.tr && (a.kind === 'via' || a.length === b.length) && a.backend === b.backend;
 
-interface Props { setup: Setup }
+interface Props { setup: Setup; unit?: LengthUnit }
 
-export default function WavesSection({ setup }: Props) {
+export default function WavesSection({ setup, unit = 'mm' }: Props) {
   const [kind, setKind] = useState<WaveKind>(() => takeWavesAsk() ?? 'via');
   const [tr, setTr] = useState(35e-12);
   const [length, setLength] = useState(WAVES_LENGTH);
@@ -91,6 +95,7 @@ export default function WavesSection({ setup }: Props) {
     if (!client || !dev || !pv) return;
     const s = setup, sp = spec, p = pv;
     framesRef.current = []; setFrames(0);
+    if (done?.store) { done.store.frames = []; setDone((d) => (d && d.store ? { ...d, store: null } : d)); } // the last run's frames go now
     setPhase('running'); setBk(null); setInfo(null); setProg(null); setRefusal(null); setError('');
     const t0 = performance.now();
     let est = NaN, backendName = '';
@@ -106,7 +111,7 @@ export default function WavesSection({ setup }: Props) {
           if (i.calibrated) { measured[i.backend] = { rate: i.rate, cells: i.cells }; setCalib((n) => n + 1); }
         },
         progress: (q) => {
-          setProg(q);
+          setProg({ ...q, frames: [] }); // the frames live in framesRef only
           if (q.frames.length) { framesRef.current.push(...q.frames); setFrames(framesRef.current.length); }
         },
       });
@@ -115,7 +120,7 @@ export default function WavesSection({ setup }: Props) {
       return;
     }
     if (out === null) { setPhase((ph) => (ph === 'running' ? 'cancelled' : ph)); return; }
-    if (out.kind === 'refused') { setRefusal(out); setPhase('refused'); return; }
+    if (out.kind === 'refused') { framesRef.current = []; setFrames(0); setRefusal(out); setPhase('refused'); return; }
     const elapsed = (performance.now() - t0) / 1000;
     let q: ViaModelResult | null = null;
     if (sp.kind === 'via') {
@@ -125,12 +130,22 @@ export default function WavesSection({ setup }: Props) {
     }
     const view = wavesView(out.result, p, s, sp, q);
     if (typeof window !== 'undefined') (window as unknown as { __emsimWaves?: unknown }).__emsimWaves = { result: out.result, view, spec: sp, preview: p };
-    setDone({ res: out.result, view, setup: s, spec: sp, elapsed, estimate: est, backend: backendName, where: out.where });
+    const store: FrameStore | null = out.result.snap && framesRef.current.length ? { frames: framesRef.current } : null;
+    framesRef.current = [];
+    setFrames(store ? store.frames.length : 0);
+    setDone({ res: out.result, view, setup: s, spec: sp, pv: p, elapsed, estimate: est, backend: backendName, where: out.where, store });
     setPhase('done');
   };
-  const cancel = () => { client?.cancel(); setPhase('cancelled'); };
+  const cancel = () => { client?.cancel(); setPhase('cancelled'); framesRef.current = []; setFrames(0); };
 
   const stale = !!done && (done.setup !== setup || !sameSpec(done.spec, spec));
+  // a stale result keeps its plots, but its frames (up to SNAP_BUDGET) go
+  useEffect(() => {
+    if (!stale || !done?.store) return;
+    done.store.frames = [];
+    if (phase !== 'running') setFrames(0);
+    setDone({ ...done, store: null });
+  }, [stale, done, phase]);
   const runs = pv ? pv.ports.length : 0;
   const total = pv?.est ? pv.est.seconds * runs : NaN;
   const refuse = pv ? pv.verdicts.filter((v) => v.level === 'refuse') : [];
@@ -226,7 +241,7 @@ export default function WavesSection({ setup }: Props) {
       <Why k="waves-run" bare />
       <Why k="waves-progress" bare />
 
-      {done && <WavesResults d={done} stale={stale} />}
+      {done && <WavesResults d={done} stale={stale} unit={unit} />}
       <p className={css.small} data-waves-checked>{CHECKED}</p>
       <Why k="waves-checked" bare />
     </div>
@@ -235,7 +250,7 @@ export default function WavesSection({ setup }: Props) {
 
 const NOTE_LEVEL: Record<string, string> = { error: 'error', warning: 'warn', info: 'note' };
 
-function WavesResults({ d, stale }: { d: Done; stale: boolean }) {
+function WavesResults({ d, stale, unit }: { d: Done; stale: boolean; unit: LengthUnit }) {
   const v = d.view, T = v.fw.tdr, Q = v.qs;
   const [tCur, setTCur] = useState(NaN);
   const [fCur, setFCur] = useState(NaN);
@@ -264,6 +279,14 @@ function WavesResults({ d, stale }: { d: Done; stale: boolean }) {
   return (
     <div className={vcss.plots} data-waves-results data-stale={stale} data-pair={v.pair} data-elapsed={d.elapsed} data-run-s={d.res.ms / 1000} data-estimate={d.estimate} data-backend={d.backend} data-where={d.where}>
       {stale && <p className={css.small} data-waves-stale>The setup changed since this run; the result is for the earlier one. Run again for this one.</p>}
+      {d.res.snap && (
+        <>
+          <h4 className={vcss.h4}>The waves</h4>
+          {d.store && d.store.frames.length > 0
+            ? <WavesPlayer key={d.res.ms + d.elapsed} store={d.store} snap={d.res.snap} views={d.pv.views} geom={d.pv.geom} unit={unit} />
+            : <p className={css.small} data-waves-player-gone>{stale ? 'The waves of this run were let go when the setup changed; run again to see them.' : 'The waves of this run were let go when the next run started.'}</p>}
+        </>
+      )}
       <h4 className={vcss.h4}>TDR and TDT</h4>
       <Why k="waves-plots" bare />
       <Plot name="waves-tdr" title={`Impedance${v.pair ? ' (differential)' : ''} (Ω)`} xs={ts} series={zS} xDomain={tDomain} xScale={tScale}

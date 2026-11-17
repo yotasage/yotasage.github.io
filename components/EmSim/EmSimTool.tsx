@@ -419,7 +419,7 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
         </section>
         <section id="waves" ref={wavesBox} className={styles.section} aria-labelledby="waves-h" data-loaded={wm ? 'true' : 'false'}>
           <h2 id="waves-h" className={styles.h2}>Waves</h2>
-          {wm ? <wm.default setup={setup} /> : <p className={styles.lede}>The full-wave runs load as you come near them.</p>}
+          {wm ? <wm.default setup={setup} unit={unit} /> : <p className={styles.lede}>The full-wave runs load as you come near them.</p>}
         </section>
         <section id="export" ref={exportBox} className={styles.section} aria-labelledby="export-h" data-loaded={xm ? 'true' : 'false'}>
           <h2 id="export-h" className={styles.h2}>Export</h2>

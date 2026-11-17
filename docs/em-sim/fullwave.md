@@ -175,7 +175,10 @@ model's TDR and the full-wave TDR are overlaid without a conversion.
 
 ### 7.3 Snapshots for the animation
 - **Slices:** up to 3 (default: x–z and y–z through the via axis, x–y at the signal layer), one component chosen
-  before the run (Ez, Ex, Ey, or |E| at the nodes).
+  before the run (Ez, Ex, Ey, or |E| at the nodes). **M7.1b:** up to 6, each with its own component (a plane may be
+  taken twice); the page takes a via from the side through barrel A along its feeds (|E|, Ez, E along the feeds) and
+  from above halfway between each feed and its plane and in the widest plane cavity (Ez); a trace from above (Ez, |E|),
+  along trace 1 and across the middle (|E|) — fullwave.ts `snapOf`, notes-M7.1b.md.
 - **How often:** every k = ⌈N_steps/300⌉ steps, about 300 frames per run (12 s at 25 fps), submits aligned to frames.
 - **Format:** a gather kernel copies the slice (f32) into a staging buffer, read back with the submit; the worker
   quantises it to **int8 with a per-frame f32 scale** (u8 for |E|) and keeps the run's maximum for the fixed colour

@@ -43,6 +43,7 @@ const MODULES = [
   ['FDTD WebGPU (M6.3)', './check-fdtd-gpu.mjs'],
   ['openEMS fixtures (M6.4a)', './check-openems.mjs'],
   ['Full-wave against openEMS (M6.4c)', './check-compare.mjs'],
+  ['Waves player (M7.1b)', './check-player.mjs'],
 ];
 
 const failures = [];

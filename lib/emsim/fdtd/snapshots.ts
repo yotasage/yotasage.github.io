@@ -1,5 +1,6 @@
-// Field snapshots for the animation (step M6.2b, docs/em-sim/fullwave.md §7.3): up to 3 slices through the mesh, one
-// field component (Ex, Ey, Ez on its edges, or |E| at the nodes) every k steps of the first excitation, each frame
+// Field snapshots for the animation (step M6.2b, docs/em-sim/fullwave.md §7.3): up to 6 slices through the mesh, each of
+// one field component (Ex, Ey, Ez on its edges, or |E| at the nodes; the spec's, or the slice's own since M7.1b, so one
+// plane can be taken twice) every k steps of the first excitation, each frame
 // quantised to int8 with an f32 scale per slice (u8 for |E|), the run's largest |value| per slice kept for a fixed
 // colour scale. On conformal edges the value is f·E (the edge's voltage per cell length; E itself may be several times
 // larger in the narrow gap, notes-M6.2a.md). The slices cover the mesh inside the CPML, with their coordinates (mm).
@@ -10,9 +11,10 @@ import type { Problem } from './problem';
 import { MiB } from './estimate';
 
 export type SnapComp = 'Ex' | 'Ey' | 'Ez' | 'E';
-export interface SliceSpec { normal: 'x' | 'y' | 'z'; at: number } // mm
+export interface SliceSpec { normal: 'x' | 'y' | 'z'; at: number; comp?: SnapComp } // mm; comp: this slice's own (M7.1b)
 export interface SnapSpec { comp: SnapComp; slices: SliceSpec[]; frames?: number; budget?: number } // frames ≤ 300 by default, budget bytes
 export interface SliceInfo {
+  comp: SnapComp; // the component taken on this slice
   normal: 'x' | 'y' | 'z'; at: number; // the plane actually used (a node, or an edge's middle for the normal component)
   nu: number; nv: number; // samples along the slice's two axes (u, v: x, y, z less the normal, in order); data[iu + nu·iv]
   u: Float32Array; v: Float32Array; // their coordinates, mm
@@ -22,14 +24,14 @@ export interface SnapPlan { comp: SnapComp; slices: SliceInfo[]; every: number; 
 
 export const SNAP_FRAMES = 300;
 export const SNAP_BUDGET = 64 * MiB;
-export const MAX_SLICES = 3;
+export const MAX_SLICES = 6;
 const AX = { x: 0, y: 1, z: 2 } as const;
 
 interface Gather { idx: Int32Array; mul: Float32Array | null } // per sample one edge (a component) or 6 (|E|: 2 per axis)
 
 /** The slices and the frame interval for a run of `steps` steps; its memory is `bytes` (frames at most `frames`). */
 export function snapPlan(p: Problem, spec: SnapSpec, steps: number): SnapPlan {
-  const slices = spec.slices.slice(0, MAX_SLICES).map((s) => sliceGeom(p, spec.comp, s).info);
+  const slices = spec.slices.slice(0, MAX_SLICES).map((s) => sliceGeom(p, s.comp ?? spec.comp, s).info);
   const frameBytes = slices.reduce((a, s) => a + s.nu * s.nv + 4, 0); // 1 B a sample, the f32 scale
   const want = Math.max(1, Math.min(spec.frames ?? SNAP_FRAMES, Math.floor((spec.budget ?? SNAP_BUDGET) / frameBytes)));
   const every = Math.max(1, Math.ceil(steps / want));
@@ -51,7 +53,7 @@ function sliceGeom(p: Problem, comp: SnapComp, s: SliceSpec): { info: SliceInfo;
   const k = na === ca ? nearestEdge(na, s.at) : nearestNode(na, s.at);
   const at = na === ca ? (g[na][k] + g[na][k + 1]) / 2 : g[na][k];
   const coord = (a: number, r: { i0: number; m: number; mid: boolean }) => Float32Array.from({ length: r.m }, (_, q) => (r.mid ? (g[a][r.i0 + q] + g[a][r.i0 + q + 1]) / 2 : g[a][r.i0 + q]));
-  const info: SliceInfo = { normal: s.normal, at, nu: ru.m, nv: rv.m, u: coord(ua, ru), v: coord(va, rv) };
+  const info: SliceInfo = { comp, normal: s.normal, at, nu: ru.m, nv: rv.m, u: coord(ua, ru), v: coord(va, rv) };
   const N = p.N, cell = (ijk: number[]) => ijk[0] + p.nx * (ijk[1] + p.ny * ijk[2]);
   const per = ca >= 0 ? 1 : 6;
   const idx = new Int32Array(ru.m * rv.m * per);
@@ -81,7 +83,7 @@ export class SnapRecorder {
 
   constructor(p: Problem, spec: SnapSpec, steps: number) {
     this.plan = snapPlan(p, spec, steps);
-    this.gathers = spec.slices.slice(0, MAX_SLICES).map((s) => sliceGeom(p, spec.comp, s).gather);
+    this.gathers = spec.slices.slice(0, MAX_SLICES).map((s) => sliceGeom(p, s.comp ?? spec.comp, s).gather);
     this.max = new Float64Array(this.gathers.length);
     this.buf = new Float64Array(Math.max(1, ...this.plan.slices.map((s) => s.nu * s.nv)));
   }
@@ -113,10 +115,10 @@ export class SnapRecorder {
   private local: Gather[] | null = null;
 
   private fill(E: ArrayLike<number>, gathers: Gather[], step: number, dt: number): void {
-    const pl = this.plan, signed = pl.comp !== 'E';
+    const pl = this.plan;
     const data: (Int8Array | Uint8Array)[] = [], scale = new Float32Array(gathers.length);
     gathers.forEach((G, s) => {
-      const m = pl.slices[s].nu * pl.slices[s].nv, b = this.buf, idx = G.idx, mul = G.mul;
+      const m = pl.slices[s].nu * pl.slices[s].nv, b = this.buf, idx = G.idx, mul = G.mul, signed = pl.slices[s].comp !== 'E';
       let mx = 0;
       if (signed) {
         for (let q = 0; q < m; q++) { const x = mul ? E[idx[q]] * mul[q] : E[idx[q]]; b[q] = x; const ax = x < 0 ? -x : x; if (ax > mx) mx = ax; }

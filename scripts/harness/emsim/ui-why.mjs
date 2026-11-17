@@ -42,7 +42,7 @@ const pairSetup = () => { const s = withTrace('pair-microstrip', 0.11); s.trace 
 
 // ---- the data ----
 const keys = Object.keys(WHYS);
-check(keys.length === 212, `${keys.length} short lines (211 of theory-lines.md and the switch's own)`);
+check(keys.length === 220, `${keys.length} short lines (219 of theory-lines.md and the switch's own)`);
 check(keys.every((k) => WHYS[k].text && WHYS[k].label && (WHYS[k].topic === null || TOPIC_TITLE[WHYS[k].topic])), 'every line has a label, a text and a known topic or none');
 check(keys.every((k) => WHYS[k].text.split(/\s+/).length <= 22), 'every line at most about 20 words');
 const fullText = (k) => `${WHYS[k].text}${WHYS[k].topic ? ' → theory' : ''}`;
@@ -168,7 +168,7 @@ try {
   await wp.waitForSelector('[data-waves-estimate="ready"]', { timeout: 60000 });
   await wp.click('[data-waves-run]');
   await wp.waitForSelector('[data-waves-results][data-stale="false"]', { timeout: 900000 });
-  await state(wp, 'waves result', ['waves-plots', 'waves-notes']);
+  await state(wp, 'waves result', ['waves-plots', 'waves-notes', 'waves-player', 'waves-view', 'waves-comp', 'waves-play', 'waves-time', 'waves-speed', 'waves-loop', 'waves-scale']);
   await wp.close();
   // ---- 5: the Export section (M8.1b) ----
   const ep = await open(`${URL0}#export`);
