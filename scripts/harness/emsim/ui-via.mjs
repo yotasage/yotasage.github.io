@@ -188,7 +188,7 @@ try {
   const pf = await open(urlOf(far));
   await matches(pf, 'one return 3 mm away');
   const nums = (await pf.locator('[data-via-flag="return-far"]').getAttribute('data-numbers') ?? '').split(' ').map(Number);
-  check(Math.abs(nums[0] - 3) < 1e-9 && nums[1] === 2 && /3\.00 mm/.test(await pf.locator('[data-via-flag="return-far"]').innerText()), `return-far with its numbers (${nums.join(', ')})`);
+  check(Math.abs(nums[0] - 3) < 1e-9 && nums[1] === 1.5 && /3\.00 mm/.test(await pf.locator('[data-via-flag="return-far"]').innerText()), `return-far with its numbers (${nums.join(', ')})`);
   await pf.click('[data-via-ret-remove="1"]'); await settled(pf);
   check(await pf.locator('[data-via-flag="no-return"]').count() === 1, 'no return via: the no-return flag, not solved');
   await pf.close();

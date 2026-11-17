@@ -417,3 +417,9 @@ Lengths in mm, everything else SI. Each file is about 50 kB.
   per drill gave 75.9 Ω and 12.8 ps (6 cells: 78.8 Ω, 12.0 ps), about 4 % between those meshes; §4's 23 % at 6 cells
   is for a much tighter coax (0.3 in 0.7), where the barrel's surface matters more. The feeds: 53.94 Ω and εeff
   3.007 against Hammerstad–Jensen's 52.98 Ω and 2.9805 (εr 4.3, t 0.035): +1.8 % and +0.9 %.
+
+### 14.6 Verification and frozen limits (M6.4c)
+The comparison table quasi-static ↔ FDTD ↔ openEMS on every fixture, the limits frozen from it (TDR 2.5 Ω, \|ΔS\| 0.10
+to 10 GHz and 0.15 to 20 GHz, section Z and delay 12 %, stub notch 8 %, the pair line's Zdiff and Zcm 2 %, modal εeff
+10 % against openEMS and 3 % against the 2D solver) and the via model's measured range are in
+[fullwave-verify.md](fullwave-verify.md); the data in `scripts/harness/emsim/openems/compare.json`.

@@ -126,8 +126,8 @@ export default function TheoryVias({ live, cite }: { live: Live; cite: Cite }) {
         </p>
         {E('cavity-f')}
         <p>
-          So the tool refuses a via without return vias and flags one whose nearest return is more than 2 mm away, a
-          provisional limit that the full-wave check will set. Moving the 0.6/0.3 via’s two returns from 0.8 to 2.5 mm
+          So the tool refuses a via without return vias and flags one whose nearest return is more than 1.5 mm away:
+          there full-wave runs put the model’s impedance more than about 4 % off. Moving the 0.6/0.3 via’s two returns from 0.8 to 2.5 mm
           raises its barrel in the core from 59.71 to 108.78 Ω and the section from 50.23 to 68.63 Ω.
         </p>
         <ViaReturnFigure />

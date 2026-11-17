@@ -30,7 +30,10 @@ export const VIAMODEL_VERSION = 1;
 export const VIA_TR = 35e-12; // default 10–90 % rise time (the openEMS fixtures' TDR)
 export const VIA_Z0 = 50;
 // Provisional: no published number (literature V2 has curves only); M6.4's full-wave runs set it.
-export const RETURN_NEAR_MM = 2.0;
+// M6.4c (fullwave-verify.md §4): FDTD against the model on the C44 via with a 0.8 antipad: the section's Z is off by
+// −1.2 / +2.5 / +5.5 / +8.2 % and the model stays within |ΔS| 0.1 to 15.4 / 13.0 / 9.2 / 6.7 GHz with the returns at
+// 0.8 / 1.2 / 2.0 / 3.0 mm; at 1.5 mm about 4 % and 11.6 GHz, above the 35 ps edge's f3 (9.7 GHz).
+export const RETURN_NEAR_MM = 1.5;
 export const SHARED_ANTIPAD_HZ = 40e9; // Duan2014: a pair's shared antipad matters above about 40 GHz
 export const LUMPED_FRACTION = 8; // Cartier2007: a lumped part of length ℓ holds to c0/(8·ℓ·√εr)
 export const BAND_LEVEL = 0.1; // the band of the stub and shared-antipad flags: the edge spectrum down to −20 dB (2.58·f3)
@@ -302,7 +305,7 @@ function geometryFlags(v: ViaStructure, a: number, band: number): ViaFlag[] {
   }
   let dMin = Infinity;
   for (const r of v.returns) for (const [x, y] of barrels) dMin = Math.min(dMin, Math.hypot(r.x.v - x, r.y.v - y));
-  if (dMin > RETURN_NEAR_MM) flags.push({ level: 'warning', code: 'return-far', message: `The nearest return via is ${dMin.toFixed(2)} mm from the barrel, more than ${RETURN_NEAR_MM} mm (a provisional limit until M6.4): the return current may flow through the plane cavity rather than along the barrel.`, numbers: [dMin, RETURN_NEAR_MM] });
+  if (dMin > RETURN_NEAR_MM) flags.push({ level: 'warning', code: 'return-far', message: `The nearest return via is ${dMin.toFixed(2)} mm from the barrel, more than ${RETURN_NEAR_MM} mm: the return current may flow through the plane cavity rather than along the barrel. Full-wave runs put the model's impedance more than 4 % off there, and its range under about 11 GHz.`, numbers: [dMin, RETURN_NEAR_MM] });
   // Antipads that cut into return vias (engine.md §6.7).
   for (const ap of v.antipads) {
     for (const r of v.returns) {

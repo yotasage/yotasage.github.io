@@ -85,6 +85,7 @@ export interface Model {
   path: { len: number; er: number }[]; // the longest port-to-port path (mm, εeff) for τrt (§11.1)
   margins: { side: number; vert: number };
   notes: Note[];
+  staircase?: boolean; // harness only (M6.4c): every cut edge whole or copper, as openEMS meshes metal
 }
 export interface ModelOptions {
   trMin?: number; // s
@@ -92,6 +93,7 @@ export interface ModelOptions {
   z0?: number[]; // the ports' R in the order of the ports' lines, instead of the 2D solver (harness speed)
   eeff?: number[];
   thirds?: boolean; // a trace section's signal edges by the thirds rule (default true, M6.2b); false: lines on the edges
+  staircase?: boolean; // harness only (M6.4c): no conformal edges; an edge more than half in copper is copper, else whole
 }
 
 const lossOf = (l: DielectricLayer | MaskLayer): number => {
@@ -135,7 +137,7 @@ export function buildModel(setup: Setup, kind: 'trace' | 'via', opt: ModelOption
     kind, stackup: s, zs: z, thick, cu: [], cyl: [], drilled: [], outerTop: null, outerBottom: null, dielectric: [],
     erMax: 1, trMin, hmax: 0, extent: { x: [0, 0], y: [0, 0], z: [0, 0] }, open: { x: true, y: true, z: true },
     fixed: { x: [], y: [], z: [] }, spans: { x: [], y: [], z: [] }, blocks: { x: [], y: [] }, drill: 0, ports: [], path: [],
-    margins: { side: 0, vert: 0 }, notes,
+    margins: { side: 0, vert: 0 }, notes, staircase: !!opt.staircase,
   };
   const cuIdx: number[] = [];
   s.layers.forEach((l, i) => {

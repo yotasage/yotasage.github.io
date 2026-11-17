@@ -246,3 +246,18 @@ In [facts-fab.md](facts-fab.md) §2: board file versions per release (6.0 202110
 `(stackup …)` block with what changed between versions (`spec_frequency` and `dielectric_model` only in 11.0
 development), KiCad's default εr 4.5 / tanδ 0.02 / mask 3.3 placeholders, and the `.kicad_pro` net-class fields and
 schema versions (2 in 6.0 … 5 in 10.0).
+
+## 12. Where the via model holds (full-wave, M6.4c)
+
+Measured with our FDTD (held to the openEMS fixtures within the limits of [fullwave-verify.md](fullwave-verify.md) §3)
+on the C44 via (0.6/0.3 through L1–L6 of JLC061611-3313A, two returns 0.3/0.6), against the quasi-static model
+(viamodel.ts). Derived from those runs, not from a paper.
+
+| Case | Model against full-wave | Consequence |
+|---|---|---|
+| Feed over its plane's antipad by 0.1 / 0.3 / 0.6 mm (pad 0.6, antipad 0.8 / 1.2 / 1.8) | section Z −1 / −15 / −31 %; the missing part is a series L of about 0.02 / 0.09 / 0.21 nH per feed, C within 2–4 % | the C44 via's 50 against 69 Ω (openEMS) is this alone (BL90); flag `feed-over-antipad` |
+| Nearest return 0.8 / 1.2 / 2.0 / 3.0 mm (antipad 0.8) | Z −1.2 / +2.5 / +5.5 / +8.2 %; within \|ΔS\| 0.1 to 15.4 / 13.0 / 9.2 / 6.7 GHz | `RETURN_NEAR_MM` 1.5 mm (about 4 %, 11.6 GHz) |
+| No return via | openEMS 99.3 Ω section, TDR peak 76.4 Ω; the model has no line to solve | refused (`no-return`) |
+| Frequency, two returns at 0.8 mm | holds to about 15 GHz; above, power leaks into the plane cavity (\|S21\| −2.7 dB at 20 GHz, model 0.0 dB) | λ/8 of the window (29.5 GHz) is twice too high (BL165) |
+| Stub L3–L6 | notch 21.8 against 21.6 GHz (openEMS); depth −57 against −22 dB (no loss, no radiation); 1 dB of \|S21\| lost from 0.55·f_res | `stub-resonance` when f_res is in the −20 dB band (BL166) |
+

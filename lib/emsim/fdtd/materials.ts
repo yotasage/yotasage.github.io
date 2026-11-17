@@ -188,7 +188,8 @@ export function buildMaterials(m: Model, mesh: Mesh, dt: number, A: FCtor): Mate
       while (p < iv.length && iv[p][1] <= a) p++;
       let cov = 0;
       for (let q = p; q < iv.length && iv[q][0] < b; q++) cov += Math.min(b, iv[q][1]) - Math.max(a, iv[q][0]);
-      put(i, 1 - cov / (b - a));
+      const f = 1 - cov / (b - a);
+      put(i, m.staircase ? (f <= 0.5 ? 0 : 1) : f); // staircase: openEMS's metal (harness, M6.4c)
     }
   };
   for (let k = 1; k < nz; k++) {
