@@ -183,3 +183,42 @@ DOI (title, authors and year); **none was opened**. They may be cited on the pag
 until someone opens them; then they move to a section above with what was read. Keys in `references.bib` from
 `Wang1994` to `RimoloDonadio2009b`, under the comment "step M0.2d", and the M0.2e entries after them. A finding marked
 "summary only, unconfirmed" in literature.md is not cited at all.
+
+## Opened in M7.2c (full-wave runs, 2026-11-17)
+
+For the topic of [theory-waves.md](theory-waves.md). Both opened through a page-reading tool that answers questions
+about a page (so a summary, not the full text); cite them only for what is listed here.
+
+### `WikiFDTD`: "Finite-difference time-domain method", Wikipedia
+https://en.wikipedia.org/wiki/Finite-difference_time-domain_method, revision 1383755497 (read 2026-11-17; the last
+8 % of the page was not read). CC BY-SA 4.0. **Cite for:** the Yee lattice (E and H components staggered, each E
+between H components and the other way round; E on the cell's edges in its figure), leapfrog time stepping, an
+explicit scheme without simultaneous equations; stability by von Neumann analysis giving the CFL condition (no 3D
+formula on the page: the tool's is derived, equations-list.md `fdtd-courant`); numerical dispersion as a result of the
+discretisation; Mur and Liao absorbing conditions, Berenger's PML (1994), CPML by Roden and Gedney (2000), PML
+reflecting much less than Mur or Liao and CPML absorbing evanescent waves better; one run with a broadband pulse
+(e.g. Gaussian) giving the response over a wide band; the whole domain gridded to the smallest wavelength and
+feature (large domains, long runs); FDTD scaling well on GPUs. **Not for:** a cells-per-wavelength rule (the page has
+none), staircase error numbers.
+
+### `OpenEMSDocs`: openEMS documentation
+https://docs.openems.de/en/latest/ (pages "Numerical Method", "Boundary Conditions", "Ports"; read 2026-11-17).
+openEMS's own documentation (openEMS is GPL; nothing of it is in the site, plan.md D10). **Cite for:** openEMS is a
+free, open-source FDTD solver (an equivalent-circuit formulation of the Yee scheme, mathematically the same); explicit
+updates from neighbours, no matrix; a broadband excitation Fourier-transformed gives S-parameters over the band; the
+time step limited by the smallest cell (CFL); Cartesian grids staircase curved boundaries; the whole domain is meshed,
+so cost grows with volume; boundary conditions PEC, PMC, MUR, PML with 8 cells by default (6–20); a lumped port as a
+source with its resistor and probes at one place, probes integrating E and H along lines for voltage and current,
+incident wave ½(V + Z·I), S-parameters as ratios of the waves, one active port per run. **Not for:** the Gaussian's
+bandwidth definition (the excitation page did not state it); the timestep formula (the page names it only).
+
+### Not opened (Crossref checked: title, authors, journal, volume, pages, year)
+
+| Key | What | Why not opened | Cite only beside |
+| --- | --- | --- | --- |
+| `Yee1966` | K. S. Yee, IEEE T-AP 14(3), 302–307, May 1966 | IEEE paywall; no abstract on Crossref or Semantic Scholar | `WikiFDTD` (the Yee lattice) |
+| `CFL1928` | R. Courant, K. Friedrichs, H. Lewy, Math. Ann. 100(1), 32–74, 1928 | Springer paywall | `WikiFDTD` and the derivation `fdtd-courant` |
+| `RodenGedney2000` | J. A. Roden, S. D. Gedney, Microw. Opt. Technol. Lett. 27(5), 334–339, 2000 | Wiley paywall | `WikiFDTD` (CPML) |
+| `DeyMittra1997` | S. Dey, R. Mittra, IEEE MGWL 7(9), 273–275, 1997 | IEEE paywall | the tool's conformal-barrel check (fullwave.md §1, §4: ≤ 0.5 % at 6 cells per drill) |
+| `PiketMay1994` | M. Piket-May, A. Taflove, J. Baron, IEEE T-MTT 42(8), 1514–1523, 1994 | IEEE paywall | `OpenEMSDocs` (lumped ports) |
+| `TafloveHagness2005` | A. Taflove, S. C. Hagness, *Computational Electrodynamics*, 3rd ed., Artech House 2005 | book | `WikiFDTD`; general background (fullwave.md §5 quotes its CPML parameters "as commonly quoted") |

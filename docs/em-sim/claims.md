@@ -2,8 +2,8 @@
 
 Every factual sentence of [theory.md](theory.md), [theory-2.md](theory-2.md) and [theory-lines.md](theory-lines.md),
 with where it comes from (step M2.4a; M2.4b adds the sentences the page itself adds); step M4.1 adds those of
-[theory-vias.md](theory-vias.md) and [examples.md](examples.md) (134–241). The page leaves the `⟨n⟩` markers
-out.
+[theory-vias.md](theory-vias.md) and [examples.md](examples.md) (134–241), step M7.2c those of
+[theory-waves.md](theory-waves.md) (242–313). The page leaves the `⟨n⟩` markers out.
 
 **Kinds.** **S** source (key and section, as [sources.md](sources.md) allows; "abstract" = what the paper's abstract
 states, literature.md "Findings with numbers"; a key "not opened" in sources.md is only cited beside the derivation
@@ -327,3 +327,89 @@ Numbers from the engine at M = 2 (trace) and the via model's defaults, in notes-
 **Counts of M4.1:** 108 claims (134–241): 23 with a source (13 S alone, 10 S beside a derivation or a tool
 description), 67 D (57 alone, 10 with T), 16 T (2 of them with Def) and 2 Def. [equations-list.md](equations-list.md)
 carries its own sources and derivations per entry and has no `⟨n⟩`. **In all:** 241 claims.
+
+## Full-wave runs and the waves (theory-waves.md §14, step M7.2c)
+
+V = the default via run at 35 ps, C45 = the via-pair preset with its feeds at 180° and 0° (the openEMS fixture's).
+"engine" = `preview()` / `buildProblem()` in Node, "compare.json" = `scripts/harness/emsim/openems/compare.json`
+(version 2), both listed in notes-M7.2c.md "Numbers checked". Equation ids are those of equations-list.md "New for
+full-wave runs". Sources opened in M7.2c: `WikiFDTD`, `OpenEMSDocs`; the others are "not opened" (sources.md).
+
+| # | Kind | Where it comes from |
+|---|---|---|
+| 242 | T | engine.md §6 (pieces solved in 2D and axisymmetric, cascaded); claims 199, 203 |
+| 243 | D + T | claims 157 (radial wave), 205 (feed over its antipad), 160–161 (return distance); fullwave-verify.md §4 |
+| 244 | T | plan.md D5, fullwave.md §1–§2; `fdtd/model.ts` `buildModel(setup, 'via')` |
+| 245 | D | compare.json via-c44 `section.z`: modelM64 49.7234, fdtd 73.0969, openems 68.9219, model 67.9323 Ω |
+| 246 | T | `wavesSuggest.ts` `suggestFullWave` (`FEED_OVER_MM` 0.1, `return-far` at `RETURN_NEAR_MM` 1.5, `no-return`, band > `valid.fMax`, stub fRes < 2·band); fullwave-verify.md §5 |
+| 247 | D | engine V `band` 25.012 GHz, `valid.fMax` 20.79 GHz (claim 200; compare.json via-c44 `valid`); notes-M7.1a.md §4 |
+| 248 | T | `snapshots.ts`, notes-M7.1b.md; ui-player.mjs |
+| 249 | Def + S | `WikiFDTD` (FDTD models and methods) |
+| 250 | S | `WikiFDTD` (the Yee lattice and its figure) beside `Yee1966`, `TafloveHagness2005` (not opened) |
+| 251 | D + S | `fdtd-update`; `WikiFDTD` |
+| 252 | S + T | `WikiFDTD` (explicit, no simultaneous equations), `OpenEMSDocs` (Numerical method: neighbours only, no matrix); `cpu.ts`, `gpuKernels.ts` (one update per cell) |
+| 253 | T | fullwave.md §3, §8; `materials.ts` (CA, CB per edge; copper CA = CB = 0) |
+| 254 | S + T | `WikiFDTD` (Stability: von Neumann analysis gives the CFL condition); notes-M6.2a.md (Δt 16 % over the limit caught as unstable) |
+| 255 | D + S + T | `fdtd-courant`; `WikiFDTD` beside `CFL1928` (not opened); `model.ts` `COURANT` 0.95; notes-M6.2a.md (cavity modes on Yee's dispersion relation within 2.7·10⁻⁷) |
+| 256 | S + D | `OpenEMSDocs` (Numerical method: the smallest cell limits the step); engine V mesh's smallest cells 0.0500, 0.0344, 0.0204 mm, `est.dt` 52.444 fs |
+| 257 | D + T | `fdtd-steps`; `estimate.ts` `runTime`; engine V `est.T` 400.93 ps, `est.steps` 7645; `cpu.ts` `stopDb` 50 |
+| 258 | T | `mesh.ts` (fixed lines, `RATIO` 1.3); fullwave.md §2 |
+| 259 | D + T | `fdtd-cell`; engine V `mesh.hmax` 0.37393 mm (`erMax` 4.55, f_hi 25.06 GHz) |
+| 260 | S + D | `WikiFDTD` (numerical dispersion); `fdtd-dispersion` (15 cells: v/c 0.99271); notes-M6.2a.md (cavity modes within 0.49 of (kh)²/24) |
+| 261 | T | fullwave.md §2, §3; `model.ts` `TRACE_CELLS` 4, `HMIN` 0.02 mm |
+| 262 | S + T | `OpenEMSDocs` (Cartesian grids staircase curved boundaries); fullwave.md §1, §4 (spike `barrel2d.mts`: staircased 4 % at 32 cells) |
+| 263 | S + T | `DeyMittra1997` (not opened) beside fullwave.md §4's derivation and `materials.ts` (cut edges times f, faces whole) |
+| 264 | T + D | fullwave.md §1 (≤ 0.5 % at 6 cells), `BARREL_CELLS` 6; engine V 0.3/6 = 0.050 mm; notes-M6.2a.md, fullwave.md §4 (Δt unchanged) |
+| 265 | Def | the boundary's job (fullwave.md §5) |
+| 266 | S + T | `WikiFDTD` (PML, CPML) beside `RodenGedney2000` (not opened); `OpenEMSDocs` (PML 8 cells by default); `cpml.ts`, `CPML_CELLS` 8 |
+| 267 | S | `WikiFDTD` (CPML absorbs evanescent waves better) |
+| 268 | T | notes-M6.2a.md (CPML test: −92.8, −84.7, −74.6 dB) |
+| 269 | T | fullwave.md §5 (placement); claim 158 (a real board's resonances) |
+| 270 | S + T | `OpenEMSDocs` (Ports: lumped port) beside `PiketMay1994` (not opened); `ports.ts` (R = Z0·paths, source term) |
+| 271 | D | a matched load reflects nothing (`tdr-rho`, ρ = 0); fullwave.md §6 |
+| 272 | T + D | `ports.ts` `pulseOf`; `fdtd-pulse`; engine 35 ps: 43.429 GHz, 13.622 ps, 68.109 ps |
+| 273 | S | `WikiFDTD` (Strengths of FDTD modeling), `OpenEMSDocs` (Numerical method) |
+| 274 | S + T | `OpenEMSDocs` (Ports: incident ½(V + Z·I)); `run.ts` `RECORD`; `fdtd-waves` |
+| 275 | T + D | `run.ts` (DFT in f64, S = B·A⁻¹, `F_S` 0.816); `fdtd-pulse` (−40 dB); engine 35.438 GHz |
+| 276 | T | fullwave.md §6 (de-embedding); `run.ts` |
+| 277 | T | fullwave.md §7.2; `tdr.ts`; notes-M7.1a.md §3 |
+| 278 | D | engine V 712 320 × 7645 × 2 = 1.0891·10¹⁰ |
+| 279 | D | cells ∝ s⁻³, Δt ∝ s (`fdtd-courant`), steps ∝ s⁻¹; fullwave.md §11.4 |
+| 280 | S + T | `WikiFDTD` (Popularity: GPUs); `gpu.ts`, `cpu.ts`, `job.ts` (backend choice) |
+| 281 | T | notes-M6.3.md (the C44 via = V, 2 × 7645 steps: 1.15 s GPU, 340 s CPU, 295×); notes-M7.1a.md §5 (C45 4.2 s); notes-M7.1b.md (C45 on the CPU 10.1 min) |
+| 282 | T | fullwave.md §8 (7.3·10⁻⁶ to 9.7·10⁻⁶ of the peak) |
+| 283 | T | `estimate.ts` (`CALIB_WARMUP` 10, `CALIB_STEPS` 30), fullwave.md §11.2, §11.4 (5 and 60 min, 1 GiB / 256 MiB, buffer limits); `problem.ts` `judge` |
+| 284 | T + D | `snapshots.ts` `SNAP_FRAMES` 300; engine V ⌈7645/300⌉ = 26 steps, 294 frames |
+| 285 | T | notes-M7.1b.md (V/m for the run's 1 V source) |
+| 286 | T + Def | `wavesPlayer.ts` (sequential map for \|E\|, diverging for a component), `colormap.ts` |
+| 287 | D | `tdr-rho` (ρ < 0 when Z < Z_ref); claim 179 |
+| 288 | T | `wavesPlayer.ts` `playScale` (one scale per slice over the run) |
+| 289 | T + D | `PLAY_CLIP` 0.999; claim 34 (charge crowds at edges); notes-M7.1b.md |
+| 290 | T + D | `fullwave.ts` `snapOf` (side view through barrel A along its feeds); notes-M7.2b.md §5; ui-player.mjs; claim 185 |
+| 291 | T + D | `snapOf` (Ez halfway between the widest planes); claim 157 |
+| 292 | D + S | claims 156–157 (`Fan2014` abstract; the radial wave); fullwave.md §5 (the CPML absorbs it) |
+| 293 | D | compare.json via-c44 at 20 GHz: trans fdtd −2.61, openEMS −2.70 dB; refl fdtd −4.82, openEMS −4.79 dB; 1 − 0.548 − 0.330 = 0.122 |
+| 294 | D | claim 200 (`valid.cavity` 20.8 GHz); fullwave-verify.md §4 "After M6.5" |
+| 295 | T | `snapOf` (entry and exit at (zSig + ref.z)/2, Ez); check-player.mjs |
+| 296 | T | notes-M7.2a.md; `wavesPlayer.ts` drives; `SnapSpec.runs` |
+| 297 | D + T | the updates are linear (`fdtd-update`, CA and CB fixed); check-drive.mjs (A ∓ B against runs driven at both ports within the quantisation bound) |
+| 298 | D + T | superposition of opposite sources; check-drive.mjs (differential odd about the pair's mid-plane), notes-M7.2a.md |
+| 299 | D + T | superposition of equal sources; check-drive.mjs (common even) |
+| 300 | D + T | claim 201 (the pair's limit near 23 GHz); `valid.cavity` |
+| 301 | T | `snapOf`; BL181 |
+| 302 | T | notes-M7.2b.md (one clock); ui-waves3d.mjs |
+| 303 | T | `via3dRender.ts` (the cut along the side plane); notes-M7.2b.md |
+| 304 | T + D | `snapOf` trace views (above, along, across); theory.md §1 (quasi-TEM) |
+| 305 | S + T | `OpenEMSDocs` (what openEMS is); plan.md D10; fullwave-verify.md |
+| 306 | T | fullwave-verify.md §1 (`staircase: true` meshes as openEMS meshes metal) |
+| 307 | T | `compare-openems.mjs` LIMITS, check-compare.mjs; fullwave-verify.md §3 (43 limits, the worst −9.9 % of 12 %) |
+| 308 | D | compare.json: via-c44 TDR zMax fdtd 62.4355, openEMS 61.9241 Ω; via-c44-stub notch 22.9 / 21.6 GHz; lvds zdiff 102.413 / 103.388 / 2D 103.364 Ω |
+| 309 | D | compare.json via-c44 dS (larger of refl20, trans20) fdtd 0.0924, fdtdStair 0.0287; via-c44-stub notch fdtdStair 22.0 GHz (+1.9 %) |
+| 310 | T | fullwave-verify.md §3 (above 20 GHz) |
+| 311 | T | fullwave.md §3 (copper PEC; tanδ as a conductivity at `f_tan`) |
+| 312 | T | fullwave.md §6 (every rise time ≥ tr_min served), §2 (the largest cell ∝ tr) |
+| 313 | T | BL178, BL182, BL186 |
+
+**Counts of M7.2c:** 72 claims (242–313): 18 with a source (3 S alone, 15 S beside a derivation, a definition or a
+tool description; 6 of the 8 keys "not opened", each beside `WikiFDTD`, `OpenEMSDocs` or the tool's own check), 30 D
+(10 alone, 20 with T or S), 27 T alone, 3 with Def. **In all:** 313 claims.

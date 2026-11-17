@@ -174,3 +174,55 @@ Engine: `viamodel.viaModel` unless named. "Binds" lists the symbols with their f
 **Counts.** 33 registered + 28 new = 61. New definitions without steps or with a rule only: `via-dc`, `via-target`,
 `target`, `abcd-shunt`, `s-db`, `lambda8` (one rule step), `via-pad-coupling` (an estimate). `tdr-rho` is a source
 statement. The rest have steps that M4.2 checks numerically (each step equal to the next on random inputs).
+
+## New for full-wave runs (M7.2c, 9)
+
+For [theory-waves.md](theory-waves.md) §14 (TeX and live fields in its Equations tables). Derivation tree: Maxwell's
+curl equations → `fdtd-update`; its plane-wave analysis → `fdtd-courant` → `fdtd-dispersion`; `edge-band` →
+`fdtd-cell`, `fdtd-pulse`; `fdtd-courant` + `fdtd-pulse` → `fdtd-steps` → `fdtd-cost`; `fdtd-waves` → `fdtd-s`.
+Symbols SI; `curlH`, `curlE` stand for the grid's curls (differences of the neighbouring edges over Δ). Steps with
+`ceil`, `sum` or an inequality are rule steps that M7.2d shows without a numeric check.
+
+- `fdtd-update` (§14 fw-yee) – Der from Maxwell's curl equations, S [WikiFDTD] beside [Yee1966]. Binds nothing (a
+  rule; `materials.ts` CA, CB). 1. `dE/dt = c_0/eps_r*curlH - sigma/(eps_0*eps_r)*E` – Ampère's law with
+  `H~ = eta_0*H` (`eta_0*eps_0 = 1/c_0`). 2. `(E_1 - E_0)/dt = c_0/eps_r*curlH - sigma/(eps_0*eps_r)*(E_1 + E_0)/2` –
+  a central difference at the half step where H~ lives. 3. `E_1 = C_A*E_0 + C_B*c_0*dt*curlH` with
+  `C_A = (1 - a)/(1 + a)`, `C_B = 1/(eps_r*(1 + a))`, `a = sigma*dt/(2*eps_0*eps_r)` – step 2 solved for `E_1`. 4.
+  `dH/dt = -c_0*curlE` – Faraday's law for H~ (`eta_0/mu_0 = c_0`). 5. `H_1 = H_0 - c_0*dt*curlE` – the same
+  difference, E at the half step between. Copper: `C_A = C_B = 0`.
+- `fdtd-courant` (§14 fw-yee) – Der, S [WikiFDTD] (von Neumann analysis gives the CFL condition) beside [CFL1928].
+  Binds the mesh's smallest cells, `est.dt`. 1. `(sin(omega*dt/2)/(c_0*dt))^2 = (sin(k_x*dx/2)/dx)^2 +
+  (sin(k_y*dy/2)/dy)^2 + (sin(k_z*dz/2)/dz)^2` – a plane wave `exp(j*(omega*n*dt - k*r))` put into the updates of
+  `fdtd-update` without loss (Yee's dispersion relation; M6.2a found the grid's cavity modes on it within 2.7·10⁻⁷).
+  2. `sin(omega*dt/2)^2 = (c_0*dt)^2*(1/dx^2 + 1/dy^2 + 1/dz^2)` – the grid's shortest wave, `k_a*h_a = pi` on each
+  axis, makes the right side largest. 3. `(c_0*dt)^2*(1/dx^2 + 1/dy^2 + 1/dz^2) <= 1` – a sine is at most 1; above it
+  ω is complex and that wave grows at every step (rule step). 4. `dt = S_c/(c_0*sqrt(1/dx^2 + 1/dy^2 + 1/dz^2))` –
+  with `S_c = 0.95`, the tool's margin (`COURANT`).
+- `fdtd-dispersion` (§14 fw-mesh) – Der from step 1 of `fdtd-courant`. Binds nothing. 1.
+  `omega = 2*c_0*sin(k*dx/2)/dx` – a wave along x as `dt` → 0 (a finite step only brings ω closer to `c_0*k`:
+  `asin(S*s) >= S*s`). 2. `v/c_0 = omega/(c_0*k) = sin(k*dx/2)/(k*dx/2)`. 3. `v/c_0 = 1 - (k*dx)^2/24` – the first
+  terms of the Taylor series; at 15 cells per wavelength (`k*dx = 2*pi/15`) the exact form gives 0.99271.
+- `fdtd-cell` (§14 fw-mesh) – Def (the tool's rule, fullwave.md §2). Binds `tr`, the model's `erMax`, the mesh's
+  `hmax`. 1. `f_hi = 2.58*0.34/t_r = 0.877/t_r` – where the edge is 20 dB down (`edge-band`). 2.
+  `lambda = c_0/(f_hi*sqrt(eps_rmax))`. 3. `Delta_max = lambda/15`.
+- `fdtd-pulse` (§14 fw-ports) – Der as `edge-band` (a Gaussian's spectrum). Binds `pulseOf(tr)` `fRun`, `sigma`,
+  `t0`, `res.nport.f` (last). 1. `g = exp(-(t - t_0)^2/(2*sigma^2))` – the source, `t_0 = 5*sigma`. 2.
+  `abs(G(f))/abs(G(0)) = exp(-(2*pi*f*sigma)^2/2)`. 3. `2*pi*f_run*sigma = sqrt(2*ln(1000)) = 3.717` – 60 dB down at
+  `f_run`. 4. `f_run = 4.465*f_3 = 4.465*0.3396/t_r = 1.52/t_r` – where the Gaussian edge of `t_r` is 60 dB down
+  (`edge-band`). 5. `f_S/f_run = sqrt(ln(100)/ln(1000)) = 0.8165` – the pulse 40 dB down.
+- `fdtd-steps` (§14 fw-yee) – Def (the tool's rule, fullwave.md §11.1). Binds `est.T`, `est.tauRt`, `est.steps`. 1.
+  `tau_rt = 2*sum(l_i*sqrt(eps_i))/c_0` – there and back along the longest path from port to port. 2.
+  `T = 10*sigma + 3*tau_rt` – the pulse, then three round trips. 3. `N_t = ceil(T/dt)` (rule step).
+- `fdtd-waves` (§14 fw-ports) – S [OpenEMSDocs] (Ports: the incident wave ½(V + Z·I)), Def. Binds the port's
+  reference `Z` (the feed's 2D Z0). 1. `a = (v + Z*i)/2` and `b = (v - Z*i)/2`. 2. `v = a + b` and `Z*i = a - b` –
+  back again.
+- `fdtd-s` (§14 fw-ports) – Der from `fdtd-waves`. Binds `res.nport`. 1.
+  `A_ij(f) = sum(a_i[n]*exp(-j*2*pi*f*n*dt))*dt` – the transform of port i's wave in the run driven at j; the record
+  ends once the fields have died down, so the sum is the whole transform (rule step). 2. `B = S*A` – the network's
+  relation holds for every run at once, so the loads' small reflections need no correction. 3. `S = B*A^-1`.
+- `fdtd-cost` (§14 fw-cost) – Def (the estimator, fullwave.md §11.1). Binds `est.cells`, `est.steps`, the ports,
+  `est.rate`. 1. `W = N_cells*N_t*N_ports` – cell updates. 2. `t_run = 1.5*W/R` – CPML, ports and records over the
+  bare update (`OVERHEAD`), R the calibrated rate. 3. `W(s)/W(1) = s^-3*s^-1 = s^-4` – every cell scaled by s.
+
+**Counts.** 61 + 9 = 70. Rules without a numeric check: `fdtd-steps`, `fdtd-cost` step 1, `fdtd-courant` step 3,
+`fdtd-s` step 1.
