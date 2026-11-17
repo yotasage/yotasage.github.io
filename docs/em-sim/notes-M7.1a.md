@@ -63,3 +63,6 @@ on a new run and on a GPU restart of excitation 1). The slice: a via from the si
 its feeds), a trace from above (normal z halfway to its plane), component |E| (`snapOf`); its `SliceInfo` is in
 `info.slices` (`started`), `every`, `frames`, and `res.snap.max` per slice for a fixed colour scale. Hand the frames
 to the player by prop or context; free them with the result.
+
+## Fix: BL174
+The page's drag was right; the test aimed wrongly. "Top antipads, mouse" read pad A's centre with `centre()` (scrollY 5596, the pad at y 951 of a 1000 px viewport, the handle below it at 1051), then `hc()` scrolled the handle into view (scrollY 6147), so the "outward" direction was taken between two frames 551 px apart: (100, −451) px, nearly straight up, and the antipad shrank 2.1 → 2. The Waves section made the page longer, so the Via section's scroll after the earlier cases changed. Logged through the drag: scrollY and the top view's box stay fixed, the pointer moves where aimed. ui-viadrag now reads the pad's centre at the handle's scroll position (110/110, three runs in a row).

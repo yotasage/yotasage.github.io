@@ -135,8 +135,12 @@ try {
   await dragCase(page, 'side pad on L1, touch', pad('L1'), () => touchDrag(page, 'pad:L1', 12, 0), 1);
   await dragCase(page, 'side drill, keys', (v) => v.drill.v, () => keys(page, 'drill', 'ArrowRight', 3), 1);
   {
-    // The top view's antipad handle sits on a free direction: dragged outwards from via A.
-    const [ax, ay] = await centre(page, '[data-via-top] [data-via-pad="A"]'), [hx, hy] = await hc(page, 'top-ap');
+    // The top view's antipad handle sits on a free direction: dragged outwards from via A. Both centres are read at
+    // one scroll position (the handle's, as mouseDrag uses): scrolling to the handle after reading the pad moved the
+    // page by 551 px once the Waves section made it longer, and the "outward" direction pointed inward (BL174).
+    const [hx, hy] = await hc(page, 'top-ap');
+    const pb = await page.locator('[data-via-top] [data-via-pad="A"]').first().boundingBox();
+    const [ax, ay] = [pb.x + pb.width / 2, pb.y + pb.height / 2];
     const n = Math.hypot(hx - ax, hy - ay);
     await dragCase(page, 'top antipads, mouse', ap(L), () => mouseDrag(page, 'top-ap', (16 * (hx - ax)) / n, (16 * (hy - ay)) / n), 1);
   }
