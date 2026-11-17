@@ -83,7 +83,7 @@ function box({ dx, dy, dz, cpml = [0, 0, 0], layers = [], er = 1, cyl = null, pr
   }
   return {
     nx, ny, nz, N, gx, gy, gz, dt, lines, mesh,
-    mat: { ca, cb, cut: Int32Array.from(cut), frac: Float64Array.from(frac) },
+    mat: { ca, cb, cut: Int32Array.from(cut), frac: Float64Array.from(frac), hcut: new Int32Array(0), harea: new Float64Array(0) },
     cpml: cpmlS, E: new A(3 * N), H: new A(3 * N),
   };
 }

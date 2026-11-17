@@ -135,7 +135,7 @@ export function allocateBuilt(b: Built, opt: ProblemOptions = {}): Problem {
 /** Bytes of every typed array the problem holds (what the estimator's memory is checked against). */
 export function allocatedBytes(p: Problem): number {
   let b = p.E.byteLength + p.H.byteLength + p.mat.ca.byteLength + p.mat.cb.byteLength + p.lines.byteLength + p.record.byteLength;
-  b += p.mat.cut.byteLength + p.mat.frac.byteLength;
+  b += p.mat.cut.byteLength + p.mat.frac.byteLength + p.mat.hcut.byteLength + p.mat.harea.byteLength;
   for (const a of p.cpml.coef) b += a.byteLength;
   for (const a of p.cpml.psi) b += a.byteLength;
   for (const q of p.ports) {

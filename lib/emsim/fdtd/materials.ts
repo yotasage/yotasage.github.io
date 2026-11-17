@@ -9,7 +9,7 @@
 // along its length, arithmetic over the face. σ likewise (parallel: arithmetic; series: σ = ε²·mean(σ/ε²), first order
 // in the loss). Copper inside the averaging takes the column's own material there (it is PEC on its edges).
 
-import { column, inLayer, taperAt, variantAt } from './model';
+import { C0_MM, COURANT, column, inLayer, taperAt, variantAt } from './model';
 import type { CuLayer, Cyl, Model, Piece, Shape } from './model';
 import { gridOf } from './mesh';
 import type { Mesh } from './mesh';
@@ -20,6 +20,7 @@ export type FCtor = Float32ArrayConstructor | Float64ArrayConstructor;
 export interface Materials {
   ca: FArray; cb: FArray; // 3N each
   cut: Int32Array; frac: Float64Array; // conformal edges: index into E (comp·N + c), fraction outside the copper
+  hcut: Int32Array; harea: Float64Array; // H faces beside them (comp·N + c): area outside the copper over the face's (floored)
   pec: [number, number, number]; // PEC edges per component (walls and ghost excluded)
   variants: number[]; // the column variants present
 }
@@ -236,5 +237,68 @@ export function buildMaterials(m: Model, mesh: Mesh, dt: number, A: FCtor): Mate
       }
     }
   }
-  return { ca, cb, cut: Int32Array.from(cutI), frac: Float64Array.from(cutF), pec, variants: present };
+  const cut = Int32Array.from(cutI);
+  const { hcut, harea } = faceAreas(m, cut, gx, gy, gz, C0_MM * dt, activeAt);
+  return { ca, cb, cut, frac: Float64Array.from(cutF), hcut, harea, pec, variants: present };
+}
+
+const FACE_SAMPLES = 8;
+/** The least area fraction a face may take (M6.4b, notes-M6.4b.md). A face of area A·d1·d2 among whole ones has a
+ *  mode of its own at 1/(A·(2 − A)) times the band's top along each side it is cut across (a light H between two E
+ *  in the Yee chain); with that factor on both sides, its cell (d1, d2 and the shorter cell d3 beside it) must keep
+ *  the Courant number of §2, so the time step stays the one of the whole mesh. */
+export function areaFloor(c0dt: number, d1: number, d2: number, d3: number): number {
+  const g = ((COURANT / c0dt) ** 2 - 1 / (d3 * d3)) / (1 / (d1 * d1) + 1 / (d2 * d2));
+  return g <= 1 ? 1 : 1 - Math.sqrt(1 - 1 / g);
+}
+
+/** Dey–Mittra areas (fullwave.md §4, M6.4b): every H face with a conformal edge on its rim, with the share of its area
+ *  outside the copper (sampled on FACE_SAMPLES lines across it; a face in a copper face's plane counts the copper
+ *  there), floored by areaFloor; faces left whole are not listed. The H update divides by it, so the magnetic side
+ *  sees the same shortened edges as the electric one. */
+function faceAreas(m: Model, cut: Int32Array, gx: Float64Array, gy: Float64Array, gz: Float64Array, c0dt: number,
+  activeAt: (z: number) => { L: CuLayer[]; C: Cyl[] }): { hcut: Int32Array; harea: Float64Array } {
+  const nx = gx.length, ny = gy.length, nz = gz.length, N = nx * ny * nz, sy = nx, sz = nx * ny;
+  const faces = new Set<number>();
+  const add = (comp: number, c: number) => { if (c >= 0) faces.add(comp * N + c); };
+  for (const e of cut) {
+    const a = Math.floor(e / N), c = e - a * N;
+    // Ex: Hy (c, c − sz), Hz (c, c − sy); Ey: Hx (c, c − sz), Hz (c, c − 1); Ez: Hx (c, c − sy), Hy (c, c − 1)
+    if (a === 0) { add(1, c); add(1, c - sz); add(2, c); add(2, c - sy); }
+    else if (a === 1) { add(0, c); add(0, c - sz); add(2, c); add(2, c - 1); }
+    else { add(0, c); add(0, c - sy); add(1, c); add(1, c - 1); }
+  }
+  const TOL = 1e-9;
+  const covered = (ivs: Iv[], a: number, b: number) => {
+    let cov = 0;
+    for (const v of merge(ivs)) cov += Math.max(0, Math.min(b, v[1]) - Math.max(a, v[0]));
+    return cov / (b - a);
+  };
+  const hcut: number[] = [], harea: number[] = [];
+  for (const h of [...faces].sort((p, q) => p - q)) {
+    const a = Math.floor(h / N), c = h - a * N;
+    const i = c % nx, j = Math.floor(c / nx) % ny, k = Math.floor(c / sz);
+    if (i >= nx - 1 && a !== 0 || j >= ny - 1 && a !== 1 || k >= nz - 1 && a !== 2) continue;
+    let cov = 0;
+    for (let q = 0; q < FACE_SAMPLES; q++) {
+      const u = (q + 0.5) / FACE_SAMPLES, iv: Iv[] = [];
+      if (a === 2) { // Hz: in the plane z = gz[k], lines along x at y samples
+        const y = gy[j] + u * (gy[j + 1] - gy[j]), z = gz[k], { L, C } = activeAt(z);
+        for (const cu of L) iv.push(...layerIv(cu, 'x', y, z));
+        for (const cy of C) shapeIv({ k: 'disk', x: cy.x, y: cy.y, r0: 0, r1: cy.r }, 'x', y, iv);
+        cov += covered(iv, gx[i], gx[i + 1]);
+      } else { // Hx (plane x = gx[i], along y) or Hy (plane y = gy[j], along x), at z samples: volumes and barrels only
+        const z = gz[k] + u * (gz[k + 1] - gz[k]), ax = a === 0 ? 'y' : 'x', o = a === 0 ? gx[i] : gy[j];
+        for (const cu of m.cu) if (!cu.sheet && z >= cu.zb - TOL && z <= cu.zt + TOL) iv.push(...layerIv(cu, ax, o, z));
+        for (const cy of m.cyl) if (z >= cy.z0 - TOL && z <= cy.z1 + TOL) shapeIv({ k: 'disk', x: cy.x, y: cy.y, r0: 0, r1: cy.r }, ax, o, iv);
+        cov += a === 0 ? covered(iv, gy[j], gy[j + 1]) : covered(iv, gx[i], gx[i + 1]);
+      }
+    }
+    const A = 1 - cov / FACE_SAMPLES;
+    if (A >= 1 - 1e-9) continue;
+    const g = [gx, gy, gz], n = [i, j, k], d = [0, 1, 2].map((ax) => g[ax][n[ax] + 1] - g[ax][n[ax]]);
+    const g3 = g[a], k3 = n[a], d3 = Math.min(k3 >= 1 ? g3[k3] - g3[k3 - 1] : Infinity, k3 + 1 < g3.length ? g3[k3 + 1] - g3[k3] : Infinity);
+    hcut.push(h); harea.push(Math.max(A, areaFloor(c0dt, d[(a + 1) % 3], d[(a + 2) % 3], d3)));
+  }
+  return { hcut: Int32Array.from(hcut), harea: Float64Array.from(harea) };
 }

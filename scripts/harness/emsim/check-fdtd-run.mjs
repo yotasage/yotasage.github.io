@@ -79,6 +79,8 @@ function checkMicrostrip(t) {
   t.ok(Math.abs(Math.hypot(a0, b0) - 1) < 1e-3, () => `microstrip: |S21(0)| ${Math.hypot(a0, b0)}`);
   // S21's phase over the line between the reference planes against εeff from γ
   const ee = Ru.feedEeff(r);
+  // εeff from γ against the 2D solver (M6.4b, BL150: 4.1 % high before the H faces took their areas; openEMS +0.9 %)
+  for (const [q, e] of ee.entries()) t.ok(Math.abs(e.diff) <= 0.015, () => `microstrip: port ${q + 1}'s εeff from γ ${e.eeff.toFixed(4)}, 2D ${e.eeff2d.toFixed(4)}: ${(e.diff * 100).toFixed(2)} % (bar 1.5 %)`);
   const k = Math.round(np.f.length / 4), [a1, b1] = N.sEntry(np, k, 1, 0);
   const phase = -Math.atan2(b1, a1), want = (2 * Math.PI * np.f[k] * between * Math.sqrt(ee[0].eeff)) / C0;
   t.ok(Math.abs(phase - want) < 0.02 * want, () => `microstrip: S21's phase ${phase.toFixed(4)} rad at ${(np.f[k] / 1e9).toFixed(1)} GHz, ${want.toFixed(4)} from εeff`);

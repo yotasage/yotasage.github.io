@@ -45,7 +45,7 @@ after reading them.
   it rarely binds, the geometry does.
 - **Across a trace:** at least 4 cells across the width and 3 across the gap of a pair, copper edges on mesh lines
   (M6.1's invariant). If M6.2's microstrip misses its 1 % bar, the first remedy is openEMS's "thirds rule" (lines at
-  h/3 inside and 2h/3 outside an edge), not a finer mesh. **M6.2b applied it** to trace sections (model.ts `thirdsOf`, with the trapezoid as conformal fractions on the copper faces): the default microstrip's TDR came to 51.56 Ω against 51.50 Ω (lines on the edges: 49.1 Ω), [notes-M6.2b.md](notes-M6.2b.md).
+  h/3 inside and 2h/3 outside an edge), not a finer mesh. **M6.2b applied it** to trace sections (model.ts `thirdsOf`, with the trapezoid as conformal fractions on the copper faces): the default microstrip's TDR came to 51.56 Ω against 51.50 Ω (lines on the edges: 49.1 Ω), [notes-M6.2b.md](notes-M6.2b.md). **M6.4b** moved the conformal edge h/8 inside the true edge (`EDGE_INSET`, the corners' extra width with 4 cells of 20 µm under the trace, BL163) once §4's H faces took their areas: 51.32 Ω, εeff 0.9 % under the 2D solver's, [notes-M6.4b.md](notes-M6.4b.md).
 - **In z:** at least 4 cells across a dielectric that lies between a signal trace of the structure and its reference
   plane, 2 across other layers.
 - **Smallest cell: 20 µm** in any direction. It sets the time step, so nothing thinner is meshed: thinner copper
@@ -99,7 +99,19 @@ thinner, the antipad larger); a nearest-node rule would halve the bias but keep 
 far more than 32 cells per drill for 1 %, and every fine line in x and y runs through the whole height of the board
 (tensor-product mesh), so it multiplies the cells and shortens Δt. The conformal rule is second order: **6 cells per
 drill give ≤ 0.5 %**, 4 cells (the estimator's coarsest offer) 1.2 %. The error estimate the page shows for the barrel
-is this table's max at the run's cells per drill. **M6.2 checks** the 3D implementation on a coaxial via (barrel in a
+is this table's max at the run's cells per drill.
+
+**Dey–Mittra areas on the H side (M6.4b).** The static argument above holds for the electric side only. The TEM
+mode's magnetic side lives on the same links (Hz beside an Ex edge cut by a trace's face, Hx/Hy beside the barrel's
+cut edges), and with the face area whole the magnetic link keeps its full length: the conductor is staircased for L
+while it is conformal for C. On the default microstrip that made L and C each about 2 % high (Z0 right, εeff +4 %,
+BL150), on a stripline εeff +4.6 % where it must be exact. So each H face with a cut edge on its rim divides its
+update by A, its area outside the copper (sampled, `materials.ts` `faceAreas`), and the energy weighs H by A·V_H
+(still conserved to rounding: the closed C44 via 7.5·10⁻¹⁴ over 300 steps). A small A is a light H between two E (a
+local mode at 1/(A·(2 − A)) of the band's top), so A is floored (`areaFloor`) where that mode, on both sides of the
+face, would push the face's cell over the Courant number 0.95: Δt is unchanged. The trace faces (A 0.63–0.95) keep
+their A; barrel faces go down to 0.085. The scheme's largest eigenvalue by power iteration (ρ = √λ·Δt/2, stable
+below 1): 0.614 on the microstrip with or without the areas, 0.613 on the C44 via with them. **M6.2 checks** the 3D implementation on a coaxial via (barrel in a
 ring of returns or a solid antipad wall): TDR impedance within 1 % of the exact Z0 at 6 cells per drill.
 
 ## 5. CPML

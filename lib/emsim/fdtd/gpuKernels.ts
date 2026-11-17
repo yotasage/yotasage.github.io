@@ -14,7 +14,7 @@
 
 export const WG_X = 64, WG_Y = 4, WG_1D = 256;
 /** u32 fields of the grid uniform G, in order. */
-export const G_FIELDS = ['nx', 'ny', 'nz', 'N', 'S', 'nsrc', 'nprobe', 'ring', 'oSw', 'oWave', 'oOff', 'oOnH', 'oPidx', 'oPco', 'ncut', 'ngather', 'nwave', 'pad1', 'pad2', 'pad3'] as const;
+export const G_FIELDS = ['nx', 'ny', 'nz', 'N', 'S', 'nsrc', 'nprobe', 'ring', 'oSw', 'oWave', 'oOff', 'oOnH', 'oPidx', 'oPco', 'ncut', 'ngather', 'nwave', 'nhcut', 'pad2', 'pad3'] as const;
 export const SLOT = 256; // bytes per dispatch slot (minUniformBufferOffsetAlignment)
 
 const HEAD = /* wgsl */ `
@@ -232,6 +232,40 @@ fn energy(@builtin(workgroup_id) w: vec3u, @builtin(local_invocation_id) l: vec3
   let n = g.ncut;
   var s = 0.0;
   if (t < n) { s = bitcast<f32>(CUTS[2u * n + t]) * bitcast<f32>(CUTS[3u * n + t]) * E[CUTS[t]]; }
+  let tot = wgSum(s, l.x);
+  if (l.x == 0u) { WP[d.s.w + w.x + d.o.x] = tot; }
+}
+`;
+
+/** The H faces with an area fraction (cpu.ts advance, M6.4b): `save` keeps H before the H update, `apply` sets
+ *  H = s + (H − s)/A after it and its ψ, `energy` adds the monitor's correction V·(A − 1)·H² into WP from d.s.w.
+ *  HCUTS (u32): [face | 1/A bits | weight bits | saved H bits], nhcut each. */
+export const WGSL_HCUT = HEAD + DYN + /* wgsl */ `
+@group(0) @binding(2) var<storage, read_write> H: array<f32>;
+@group(0) @binding(3) var<storage, read_write> HCUTS: array<u32>;
+@group(0) @binding(4) var<storage, read_write> WP: array<f32>;
+${REDUCE_WG}
+@compute @workgroup_size(${WG_1D})
+fn save(@builtin(workgroup_id) w: vec3u, @builtin(local_invocation_id) l: vec3u) {
+  ${T1}
+  let n = g.nhcut;
+  if (t >= n) { return; }
+  HCUTS[3u * n + t] = bitcast<u32>(H[HCUTS[t]]);
+}
+@compute @workgroup_size(${WG_1D})
+fn apply(@builtin(workgroup_id) w: vec3u, @builtin(local_invocation_id) l: vec3u) {
+  ${T1}
+  let n = g.nhcut;
+  if (t >= n) { return; }
+  let h = HCUTS[t]; let s = bitcast<f32>(HCUTS[3u * n + t]);
+  H[h] = s + (H[h] - s) * bitcast<f32>(HCUTS[n + t]);
+}
+@compute @workgroup_size(${WG_1D})
+fn energy(@builtin(workgroup_id) w: vec3u, @builtin(local_invocation_id) l: vec3u) {
+  ${T1}
+  let n = g.nhcut;
+  var s = 0.0;
+  if (t < n) { let x = H[HCUTS[t]]; s = bitcast<f32>(HCUTS[2u * n + t]) * x * x; }
   let tot = wgSum(s, l.x);
   if (l.x == 0u) { WP[d.s.w + w.x + d.o.x] = tot; }
 }

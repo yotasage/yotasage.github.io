@@ -152,7 +152,7 @@ export class GpuRunner {
   splits = 0; // dispatches beyond one per kernel (split to the limit)
   readonly ring: number;
   private buffers: GPUBuffer[] = [];
-  private B!: Record<'G' | 'D' | 'E' | 'H' | 'CA' | 'CB' | 'L' | 'PSI' | 'T' | 'CUTS' | 'WP' | 'EN' | 'ST' | 'META' | 'REC', GPUBuffer>;
+  private B!: Record<'G' | 'D' | 'E' | 'H' | 'CA' | 'CB' | 'L' | 'PSI' | 'T' | 'CUTS' | 'HCUTS' | 'WP' | 'EN' | 'ST' | 'META' | 'REC', GPUBuffer>;
   private wave: GPUBuffer | null = null; private waveLen = 0;
   private gidx: GPUBuffer | null = null; private snapBuf: GPUBuffer | null = null; private stage: GPUBuffer | null = null;
   private stageBytes = 0;
@@ -239,11 +239,22 @@ export class GpuRunner {
       CU[q] = e; CF[nc + q] = frac[q];
       CF[2 * nc + q] = cb[e] > 0 ? ((1 + ca[e]) / (2 * cb[e])) * lx * ly * lz * (frac[q] - 1) : 0;
     }
+    // H faces with an area fraction: [face | 1/A | weight | saved]
+    const { hcut, harea } = p.mat, nh = hcut.length;
+    const HU = new Uint32Array(Math.max(4, 4 * nh));
+    const HF = new Float32Array(HU.buffer);
+    for (let q = 0; q < nh; q++) {
+      const h = hcut[q], a = Math.floor(h / N), c = h - a * N;
+      const i = c % nx, j = Math.floor(c / nx) % ny, k = Math.floor(c / (nx * ny));
+      const lx = a === 0 ? dualA[0][i] : lenA[0][i], ly = a === 1 ? dualA[1][j] : lenA[1][j], lz = a === 2 ? dualA[2][k] : lenA[2][k];
+      HU[q] = h; HF[nh + q] = 1 / harea[q]; HF[2 * nh + q] = lx * ly * lz * (harea[q] - 1);
+    }
     // dispatch geometry
     const maxDim = Math.max(1, this.opt.maxWorkgroups ?? this.ctx.info.limits.maxComputeWorkgroupsPerDimension);
     const gx = Math.ceil(nx / K.WG_X), gy = Math.ceil(ny / K.WG_Y), gz = nz;
     const cutGroups = Math.ceil(nc / K.WG_1D);
-    const partials = gx * gy * gz + cutGroups;
+    const hcutGroups = Math.ceil(nh / K.WG_1D);
+    const partials = gx * gy * gz + cutGroups + hcutGroups;
     // slots of the dynamic uniform: [o, s, a, p, q, t0, t1] as u32 ×4 each
     const slots: Uint32Array[] = [];
     const slot = (v: number[][]) => { const u = new Uint32Array(K.SLOT / 4); v.forEach((x, r) => u.set(x, 4 * r)); slots.push(u); return (slots.length - 1) * K.SLOT; };
@@ -252,6 +263,7 @@ export class GpuRunner {
       main.push({ off: slot([[ox, oy, oz, 0], [gx, gy, 0, 0]]), n: [cx, cy, cz] });
     }
     const cutParts = splitGroups(cutGroups, maxDim).map(([o1, c1]) => ({ off: slot([[o1, 0, 0, 0], [0, 0, 0, gx * gy * gz]]), n: [c1, 1, 1] as [number, number, number] }));
+    const hcutParts = splitGroups(hcutGroups, maxDim).map(([o1, c1]) => ({ off: slot([[o1, 0, 0, 0], [0, 0, 0, gx * gy * gz + cutGroups]]), n: [c1, 1, 1] as [number, number, number] }));
     // ψ: per open axis, E and H, both slabs in one dispatch
     const cells = [p.cpml.x.cells, p.cpml.y.cells, p.cpml.z.cells], n3 = [nx, ny, nz];
     const psiParts: { axis: 0 | 1 | 2; h: boolean; off: number; n: [number, number, number] }[] = [];
@@ -283,7 +295,7 @@ export class GpuRunner {
     const pr = this.probes, np2 = this.nprobe, srcMax = (this.metaLen - (np2 + 1) - np2 - 2 * pr.idx.length) / 3;
     gi('nx', nx); gi('ny', ny); gi('nz', nz); gi('N', N); gi('S', S); gi('nprobe', np2); gi('ring', this.ring);
     gi('oSw', srcMax); gi('oWave', 2 * srcMax); gi('oOff', 3 * srcMax); gi('oOnH', 3 * srcMax + np2 + 1); gi('oPidx', 3 * srcMax + 2 * np2 + 1);
-    gi('oPco', 3 * srcMax + 2 * np2 + 1 + pr.idx.length); gi('ncut', nc);
+    gi('oPco', 3 * srcMax + 2 * np2 + 1 + pr.idx.length); gi('ncut', nc); gi('nhcut', nh);
     const meta = new Uint32Array(Math.max(4, this.metaLen)), metaF = new Float32Array(meta.buffer);
     meta.set(pr.off, g[K.G_FIELDS.indexOf('oOff')]);
     meta.set(pr.onH, g[K.G_FIELDS.indexOf('oOnH')]);
@@ -296,7 +308,7 @@ export class GpuRunner {
       CA: this.buf(12 * N, BU.STORAGE, f32(ca)), CB: this.buf(12 * N, BU.STORAGE, f32(cb)),
       L: this.buf(L.byteLength, BU.STORAGE, L),
       PSI: this.buf(4 * Math.max(1, np), SRW), T: this.buf(T.byteLength, BU.STORAGE, T),
-      CUTS: this.buf(CU.byteLength, BU.STORAGE, CU),
+      CUTS: this.buf(CU.byteLength, BU.STORAGE, CU), HCUTS: this.buf(HU.byteLength, BU.STORAGE, HU),
       WP: this.buf(4 * Math.max(1, partials), SRW), EN: this.buf(4 * ENERGY_SLOTS, SRW),
       ST: this.buf(16, SRW), META: this.buf(meta.byteLength, BU.STORAGE | BU.COPY_DST, meta),
       REC: this.buf(4 * this.ring * Math.max(1, np2), SRW),
@@ -320,6 +332,7 @@ export class GpuRunner {
       ['PE0', L8.PE, K.wgslPsiE(0)], ['PE1', L8.PE, K.wgslPsiE(1)], ['PE2', L8.PE, K.wgslPsiE(2)],
       ['PH0', L8.PH, K.wgslPsiH(0)], ['PH1', L8.PH, K.wgslPsiH(1)], ['PH2', L8.PH, K.wgslPsiH(2)],
       ['SCALE', L8.CUT, K.WGSL_CUT, 'scale'], ['RESTORE', L8.CUT, K.WGSL_CUT, 'restore'], ['CUTW', L8.CUT, K.WGSL_CUT, 'energy'],
+      ['HSAVE', L8.CUT, K.WGSL_HCUT, 'save'], ['HAPPLY', L8.CUT, K.WGSL_HCUT, 'apply'], ['HCUTW', L8.CUT, K.WGSL_HCUT, 'energy'],
       ['RED', L8.RED, K.WGSL_REDUCE], ['POST', L8.POST, K.WGSL_POST], ['GATH', L8.GATH, K.WGSL_GATHER],
     ];
     const built = await Promise.all(names.map(([, lay, code, ep]) => mk(lay, code, ep)));
@@ -336,19 +349,21 @@ export class GpuRunner {
     const bPE = bg(L8.PE, [B.G, B.D, B.E, B.H, B.CB, B.L, B.PSI, B.T]);
     const bPH = bg(L8.PH, [B.G, B.D, B.E, B.H, B.CB, B.L, B.PSI, B.T]);
     const bC = bg(L8.CUT, [B.G, B.D, B.E, B.CUTS, B.WP]);
+    const bHC = bg(L8.CUT, [B.G, B.D, B.H, B.HCUTS, B.WP]);
     const bR = bg(L8.RED, [B.G, B.D, B.WP, B.EN]);
     this.postBg = (wave: GPUBuffer) => bg(L8.POST, [B.G, null, B.E, B.H, B.ST, wave, B.META, B.REC]); // WAVE per excitation
     const ops = (pipe: GPUComputePipeline, b: GPUBindGroup, list: { off: number; n: [number, number, number] }[]): Op[] => list.map((x) => ({ pipe, bg: b, off: x.off, n: x.n }));
     const cutOps = (name: string) => (nc ? ops(P[name], bC, cutParts) : []);
     const psiOf = (h: boolean) => psiParts.filter((x) => x.h === h).map((x) => ({ pipe: P[(h ? 'PH' : 'PE') + x.axis], bg: h ? bPH : bPE, off: x.off, n: x.n }));
-    this.pre = [...cutOps('SCALE'), ...ops(P.H, bH, main), ...psiOf(true), ...cutOps('RESTORE')];
+    const hcutOps = (name: string) => (nh ? ops(P[name], bHC, hcutParts) : []);
+    this.pre = [...cutOps('SCALE'), ...hcutOps('HSAVE'), ...ops(P.H, bH, main), ...psiOf(true), ...hcutOps('HAPPLY'), ...cutOps('RESTORE')];
     this.psiE = psiOf(false);
     this.eNorm = [...ops(P.E, bE, main), ...this.psiE];
-    this.cutE = cutOps('CUTW');
+    this.cutE = [...cutOps('CUTW'), ...hcutOps('HCUTW')];
     this.eMon = [...ops(P.EMON, bM, main), ...this.cutE, ...this.psiE];
     this.reduce = reduceOffs.map((off) => ({ pipe: P.RED, bg: bR, off, n: [1, 1, 1] }));
     this.dispatches = this.pre.length + this.eNorm.length + 1;
-    const kernels = (nc ? 2 : 0) + 3 + new Set(psiParts.map((x) => `${x.axis}${x.h}`)).size;
+    const kernels = (nc ? 2 : 0) + (nh ? 2 : 0) + 3 + new Set(psiParts.map((x) => `${x.axis}${x.h}`)).size;
     this.splits = this.dispatches - kernels;
     this.slotsUsed = slots.length; this.maxDim = maxDim;
   }

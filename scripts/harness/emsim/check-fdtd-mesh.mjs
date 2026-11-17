@@ -31,7 +31,12 @@ const clone = (x) => JSON.parse(JSON.stringify(x));
 const C0 = 299792458e3, ETA0 = 376.730313412, EPS0 = 1 / (ETA0 * 299792458);
 const onLine = (L, c, tol = 1e-9) => { let lo = 0, hi = L.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (L[m] <= c) lo = m; else hi = m; } return Math.min(Math.abs(L[lo] - c), Math.abs(L[hi] - c)) <= tol; };
 /** The thirds-rule lines of a trace x0…x1 when the model placed them (model.ts thirdsOf), else null. */
-const thirdsIn = (m, x0, x1) => { const th = M.thirdsOf(x0, x1); return th && m.fixed.x.some((f) => f.why === 'trace edge (thirds rule)' && Math.abs(f.c - th.lines[1]) < 1e-12) ? th : null; };
+// a trace's true edges (a port's across) or its copper, inset by EDGE_INSET·h on each side (M6.4b)
+const thirdsIn = (m, x0, x1) => {
+  const hit = (th) => th && m.fixed.x.some((f) => f.why === 'trace edge (thirds rule)' && Math.abs(f.c - th.lines[1]) < 1e-12) ? th : null;
+  const s = M.EDGE_INSET / (M.TRACE_CELLS + 2 / 3), w = (x1 - x0) / (1 - 2 * s), d = s * w;
+  return hit(M.thirdsOf(x0, x1)) ?? hit(M.thirdsOf(x0 - d, x1 + d));
+};
 const grid = (L) => { const g = new Float64Array(L.length + 1); g.set(L, 1); g[0] = 2 * L[0] - L[1]; return g; };
 
 // ---- independent material integration: a column's pieces, air between ----

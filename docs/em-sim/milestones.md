@@ -440,6 +440,12 @@ owner's PC, JSON fixtures with their provenance in `scripts/harness/emsim/openem
 comparison table quasi-static ↔ FDTD ↔ openEMS, the limits frozen, BL150 (FDTD εeff 4 % high) resolved or explained,
 the via model's flag thresholds (BL92) set from the measurements and recorded in facts.md and fullwave.md).
 
+**M6.4b split again** (main session, 2026-11-17: an engine fix and an analysis): **M6.4b** (BL150: our FDTD's εeff is
+4.1 % above the 2D solver where openEMS is 0.9 % above on the same line, so the error is ours; find and fix it in the
+conformal/material treatment, re-check M6.2b's microstrip and the GPU agreement) and **M6.4c** (the comparison table
+quasi-static ↔ FDTD ↔ openEMS on every fixture, the limits frozen, the via model's flag thresholds (BL92) and BL90's
+feed over the antipad, recorded in facts.md and fullwave.md).
+
 ## M7 – Waves on the page
 
 ### M7.1 – Runs and the 2D player · L (page)

@@ -116,6 +116,11 @@ export function thirdsOf(x0: number, x1: number): { lines: [number, number, numb
   return { lines: [x0 - (2 * h) / 3, x0 + h / 3, x1 - h / 3, x1 + (2 * h) / 3], h };
 }
 
+/** The conformal edge of a trace by the thirds rule sits this share of h inside the true edge (M6.4b, notes-M6.4b.md):
+ *  with four cells across the dielectric under the trace (20 µm cells, §2) the strip's corners act wider, about 2 % in
+ *  Z0 on the default microstrip once the H faces take their areas (Dey–Mittra); the inset brings it back. */
+export const EDGE_INSET = 1 / 8;
+
 /** The feed length L of §6 (mm). */
 export const feedLength = (h: number, w: number): number => Math.max(1.5, 10 * h, 5 * w);
 
@@ -214,8 +219,9 @@ export function buildModel(setup: Setup, kind: 'trace' | 'via', opt: ModelOption
       const e2 = etchOffset(s.layers[f.layer] as CopperLayer) / 2;
       const up = fillSide(s, f.layer) === 'up';
       const tx = !c.sheet && e2 > 0 && opt.thirds !== false ? { z0: c.zb, z1: c.zt, d0: up ? e2 : -e2, d1: up ? -e2 : e2 } : undefined;
-      c.shapes.push(tx ? { k: 'rect', x0, x1, y0: 0, y1: len, tx } : { k: 'rect', x0, x1, y0: 0, y1: len });
       const th = f.id > 0 && opt.thirds !== false ? thirdsOf(x0, x1) : null;
+      const ins = th ? EDGE_INSET * th.h : 0, cx0 = x0 + ins, cx1 = x1 - ins;
+      c.shapes.push(tx ? { k: 'rect', x0: cx0, x1: cx1, y0: 0, y1: len, tx } : { k: 'rect', x0: cx0, x1: cx1, y0: 0, y1: len });
       if (th) for (const x of th.lines) m.fixed.x.push({ c: x, rank: 0, why: 'trace edge (thirds rule)' });
       else for (const x of [x0, x1]) if (Number.isFinite(x)) m.fixed.x.push({ c: x, rank: 0, why: `${f.id ? 'trace' : 'ground'} edge` });
       if (f.id > 0) {

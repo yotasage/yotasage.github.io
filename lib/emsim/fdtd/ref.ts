@@ -6,7 +6,8 @@
 // Energy: W = Σ εr·f·V_E·Eⁿ·Eⁿ⁺¹ + Σ V_H·(H̃ⁿ⁺½)² (V_E = edge length × dual face, V_H = face × dual length, E before and
 // after the E update, f the conformal fraction, 1 on whole edges), which the scheme keeps exactly on a lossless problem
 // without sources: the H update's curl is C·F (edges shortened to f·h) and the E update's is Cᵀ, so the pair is
-// adjoint in the inner product with ε·V_E·f on E (step M6.2a, BL147; notes-M6.2a.md).
+// adjoint in the inner product with ε·V_E·f on E (step M6.2a, BL147; notes-M6.2a.md). The H faces of mat.hcut divide
+// their update by their area fraction A (Dey–Mittra, M6.4b), so H weighs V_H·A there.
 
 import { pulseAt } from './ports';
 import type { Problem } from './problem';
@@ -17,6 +18,7 @@ export class RefKernel {
   step = 0;
   sources: boolean;
   private save: Float64Array;
+  private hsave: Float64Array; private hinv: Float64Array;
   constructor(p: Problem, sources = true) {
     if (p.precision !== 'f64') throw new Error('The reference kernel needs an f64 problem.');
     if (p.mesh.x.cpml || p.mesh.y.cpml || p.mesh.z.cpml) throw new Error('The reference kernel steps closed problems only (no CPML).');
@@ -24,6 +26,8 @@ export class RefKernel {
     this.E = p.E as Float64Array; this.H = p.H as Float64Array;
     this.Eprev = new Float64Array(this.E.length);
     this.save = new Float64Array(p.mat.cut.length);
+    this.hsave = new Float64Array(p.mat.hcut.length);
+    this.hinv = Float64Array.from(p.mat.harea, (A) => 1 / A);
     this.sources = sources;
   }
   run(steps: number): void {
@@ -33,9 +37,10 @@ export class RefKernel {
     const o = nx + ny + nz;
     const kxH = lines.subarray(o, o + nx), kyH = lines.subarray(o + nx, o + nx + ny), kzH = lines.subarray(o + nx + ny, o + nx + ny + nz);
     const E = this.E, H = this.H, sy = nx, sz = nx * ny;
-    const cut = this.p.mat.cut, frac = this.p.mat.frac;
+    const cut = this.p.mat.cut, frac = this.p.mat.frac, hcut = this.p.mat.hcut;
     for (let s = 0; s < steps; s++) {
       for (let q = 0; q < cut.length; q++) { this.save[q] = E[cut[q]]; E[cut[q]] *= frac[q]; }
+      for (let q = 0; q < hcut.length; q++) this.hsave[q] = H[hcut[q]];
       for (let k = 0; k < nz - 1; k++) for (let j = 0; j < ny - 1; j++) {
         let c = sy * j + sz * k;
         for (let i = 0; i < nx - 1; i++, c++) {
@@ -45,6 +50,7 @@ export class RefKernel {
           H[2 * N + c] -= kxH[i] * (E[N + c + 1] - ey) - kyH[j] * (E[c + sy] - ex);
         }
       }
+      for (let q = 0; q < hcut.length; q++) H[hcut[q]] = this.hsave[q] + (H[hcut[q]] - this.hsave[q]) * this.hinv[q];
       for (let q = 0; q < cut.length; q++) E[cut[q]] = this.save[q];
       this.Eprev.set(E);
       for (let k = 1; k < nz; k++) for (let j = 1; j < ny; j++) {
@@ -88,6 +94,12 @@ export class RefKernel {
       const i = c % nx, j = Math.floor(c / nx) % ny, k = Math.floor(c / (nx * ny));
       const v = a === 0 ? d(gx, i) * dd(gy, j) * dd(gz, k) : a === 1 ? dd(gx, i) * d(gy, j) * dd(gz, k) : dd(gx, i) * dd(gy, j) * d(gz, k);
       w += ((this.p.mat.frac[q] - 1) * v / cb[e]) * P[e] * E[e];
+    }
+    for (let q = 0; q < this.p.mat.hcut.length; q++) {
+      const h = this.p.mat.hcut[q], a = Math.floor(h / N), c = h - a * N;
+      const i = c % nx, j = Math.floor(c / nx) % ny, k = Math.floor(c / (nx * ny));
+      const vh = a === 0 ? dd(gx, i) * d(gy, j) * d(gz, k) : a === 1 ? d(gx, i) * dd(gy, j) * d(gz, k) : d(gx, i) * d(gy, j) * dd(gz, k);
+      w += (this.p.mat.harea[q] - 1) * vh * H[h] * H[h];
     }
     return w;
   }

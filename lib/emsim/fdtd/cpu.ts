@@ -25,7 +25,7 @@ export interface Grid {
   gx: Float64Array; gy: Float64Array; gz: Float64Array;
   dt: number;
   lines: FArray;
-  mat: { ca: FArray; cb: FArray; cut: Int32Array; frac: Float64Array };
+  mat: { ca: FArray; cb: FArray; cut: Int32Array; frac: Float64Array; hcut: Int32Array; harea: Float64Array };
   cpml: { x: { cells: number }; y: { cells: number }; z: { cells: number }; coef: FArray[]; psi: FArray[] };
   E: FArray; H: FArray;
 }
@@ -254,6 +254,8 @@ export class CpuLoop {
   private len: Float64Array[]; private dual: Float64Array[];
   private save: FArray;
   private cutW: Float64Array; // ε·V·(f − 1) per conformal edge (the monitor's correction)
+  private hsave: FArray; private hinv: Float64Array; // H before the update and 1/A per face of mat.hcut (Dey–Mittra, M6.4b)
+  private hW: Float64Array; // V_H·(A − 1) per such face (the monitor's correction)
   private slabs: Slab[] = [];
   private opt: Required<Omit<LoopOptions, 'maxSteps'>> & { maxSteps: number };
 
@@ -281,6 +283,16 @@ export class CpuLoop {
       const i = c % nx, j = Math.floor(c / nx) % ny, k = Math.floor(c / (nx * ny));
       const [lx, ly, lz] = [a === 0 ? this.len[0][i] : this.dual[0][i], a === 1 ? this.len[1][j] : this.dual[1][j], a === 2 ? this.len[2][k] : this.dual[2][k]];
       this.cutW[q] = cb[e] > 0 ? ((1 + ca[e]) / (2 * cb[e])) * lx * ly * lz * (frac[q] - 1) : 0;
+    }
+    const { hcut, harea } = g.mat;
+    this.hsave = new (g.H.constructor as Float64ArrayConstructor)(hcut.length);
+    this.hinv = Float64Array.from(harea, (A) => 1 / A);
+    this.hW = new Float64Array(hcut.length);
+    for (let q = 0; q < hcut.length; q++) {
+      const h = hcut[q], a = Math.floor(h / N), c = h - a * N;
+      const i = c % nx, j = Math.floor(c / nx) % ny, k = Math.floor(c / (nx * ny));
+      const [lx, ly, lz] = [a === 0 ? this.dual[0][i] : this.len[0][i], a === 1 ? this.dual[1][j] : this.len[1][j], a === 2 ? this.dual[2][k] : this.len[2][k]];
+      this.hW[q] = lx * ly * lz * (harea[q] - 1);
     }
     // slabs in cpml.ts's order: ψ 4 per open side, tables 8 per open x/y axis, 4 for z
     const cells = [g.cpml.x.cells, g.cpml.y.cells, g.cpml.z.cells];
@@ -318,6 +330,8 @@ export class CpuLoop {
     const { ca, cb, cut, frac } = g.mat;
     const save = this.save;
     for (let q = 0; q < cut.length; q++) { const e = cut[q]; save[q] = E[e]; E[e] *= frac[q]; }
+    const { hcut } = g.mat, hsave = this.hsave, hinv = this.hinv;
+    for (let q = 0; q < hcut.length; q++) hsave[q] = H[hcut[q]];
     K.hMain(E, H, this.kH[0], this.kH[1], this.kH[2], nx, ny, nz, N);
     for (const s of this.slabs) {
       const p3 = s.psi[2], p4 = s.psi[3], t = s.tab, m = s.e1 - s.e0;
@@ -325,6 +339,7 @@ export class CpuLoop {
       else if (s.axis === 1) K.psiHy(E, H, p3, p4, t[4], t[5], t[6], t[7], this.dH[1], s.h0, s.h1, nx, ny, nz, N, m);
       else K.psiHz(E, H, p3, p4, t[2], t[3], this.dH[2], s.h0, s.h1, nx, ny, N, m);
     }
+    for (let q = 0; q < hcut.length; q++) { const h = hcut[q], s0 = hsave[q]; H[h] = s0 + (H[h] - s0) * hinv[q]; }
     for (let q = 0; q < cut.length; q++) E[cut[q]] = save[q];
     let w = 0;
     if (mon) {
@@ -332,6 +347,7 @@ export class CpuLoop {
       w = K.eMainMon(E, H, ca, cb, this.kE[0], this.kE[1], this.kE[2], nx, ny, nz, N, dX, dY, dZ, DX, DY, DZ);
       for (let q = 0; q < cut.length; q++) w += this.cutW[q] * save[q] * E[cut[q]];
       w += K.hEnergy(H, nx, ny, nz, N, dX, dY, dZ, DX, DY, DZ);
+      for (let q = 0; q < hcut.length; q++) { const x = H[hcut[q]]; w += this.hW[q] * x * x; }
     } else K.eMain(E, H, ca, cb, this.kE[0], this.kE[1], this.kE[2], nx, ny, nz, N);
     for (const s of this.slabs) {
       const [p1, p2] = s.psi, t = s.tab, m = s.e1 - s.e0;
