@@ -521,6 +521,11 @@ drawings from the figure model, A4 and Letter, light colours, vectors, `@media p
 Every task by keyboard alone and by touch; names, roles, contrast (WCAG AA in both themes), reduced motion, 200 % zoom;
 Edge, Firefox and WebKit, with what each offers for WebGPU and the fallback's message where it is missing.
 
+**Split** (main session, 2026-11-17, two jobs): **M9.1a** (access in Edge: every task by keyboard alone and by touch,
+names and roles, contrast WCAG AA in both themes, reduced motion, 200 % zoom) and **M9.1b** (browsers: the page in
+Firefox and WebKit as well as Edge, what each offers for WebGPU, the CPU fallback and its message where WebGPU is
+missing).
+
 ### M9.2 – Performance, size, memory · M
 
 engine.md §10's budgets on a production build at 1× and 4×; the first-load budget; a 10-minute session with full-wave
