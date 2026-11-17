@@ -33,6 +33,7 @@ const MODULES = [
   ['Equations and derivations (M4.2)', './check-teach.mjs'],
   ['Figures (M8.1a)', './check-figure.mjs'],
   ['Data export (M8.2a)', './check-data.mjs'],
+  ['FDTD mesh (M6.1)', './check-fdtd-mesh.mjs'],
 ];
 
 const failures = [];

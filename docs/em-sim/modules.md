@@ -1,6 +1,6 @@
 # EM simulation – module map
 
-Part of [plan.md](plan.md): one line per file and its main exports (the harness in [modules-harness.md](modules-harness.md), the page in [modules-page.md](modules-page.md) and [modules-page-teach.md](modules-page-teach.md)). A step that renames or adds a file updates this
+Part of [plan.md](plan.md): one line per file and its main exports (the full-wave engine in [modules-fdtd.md](modules-fdtd.md), the harness in [modules-harness.md](modules-harness.md), the page in [modules-page.md](modules-page.md) and [modules-page-teach.md](modules-page-teach.md)). A step that renames or adds a file updates this
 table. Agents find their way by it instead of reading the code. Split into parts before it reaches 40 kB (as
 `docs/smith-chart/modules*.md`).
 
@@ -80,6 +80,11 @@ table. Agents find their way by it instead of reading the code. Split into parts
 | `lib/equations/compile.ts` | `Side`, `Program`, `compile`, `Value`, `Binding`, `bind`, `programOf`, `evaluate` |
 | `lib/equations/equation.ts` | `SymbolInfo<K>` (generic over the tool's object kinds), `Source`, `Step`, `parseReason`, `Equation<K>` |
 | `lib/complex.ts` | Moved from `lib/smith/complex.ts` (which re-exports it; the Smith modules import it directly): allocation-free complex arithmetic |
+
+## `lib/emsim/fdtd/` (M6, the full-wave engine)
+
+The 3D FDTD solver's files (model, mesh, materials, CPML, ports, estimator, problem, reference kernel) are in
+[modules-fdtd.md](modules-fdtd.md).
 
 ## The page
 
