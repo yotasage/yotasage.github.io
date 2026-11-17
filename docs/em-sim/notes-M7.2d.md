@@ -58,3 +58,6 @@ Done 2026-11-17. With it M7 (waves on the page) is done; M9 (polish and re-check
   button on the trace and via topics.
 - The prose's numbers stay the default via's (as the via topics' do); only the equations and the "now" lines follow the
   Waves section.
+
+## Fix: squared units
+- A value with a unit (or `j0.5`) as the base of a power or `^{*}` printed as `50\,\mu\mathrm{m}^{2}`, which reads as square micrometres; the shared printer (`lib/equations/tex.ts`, `TexPiece.u` set by `valueTex`) now brackets it, `(50\,\mu\mathrm{m})^{2}`, for the EM entries `fdtd-courant`, `fdtd-pulse`, `l-c0`, `v-eeff`, `ztdr`, `share`, `rss-sigma`, `cavity-f` and the Smith chart's `quarter-wave`, `quarter-wave-match`, `q-l-network`, `fbw-series-rlc` (`z_t^{*}` too when z_t is purely reactive); checked in the Smith harness's "equations TeX" group and by `RAISED_UNIT` in check-equations.mjs and check-teach.mjs.

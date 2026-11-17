@@ -21,6 +21,9 @@ export interface TexPiece {
   w?: boolean;
   /** A product of plain atoms (a function argument without brackets: \tan βℓ). */
   sp?: boolean;
+  /** A value whose last factor is not the whole of it (a unit after the number, `50\,\mu\mathrm{m}`, or `j0.5`): a power
+   *  or `^{*}` would bind to that factor only, so it is bracketed as their base, `(50\,\mu\mathrm{m})^{2}`. */
+  u?: boolean;
 }
 
 export interface TexOptions {
@@ -73,6 +76,12 @@ function paren(x: TexPiece): TexPiece {
 
 const plainAtom = (x: TexPiece): boolean => x.p === 5 && !x.tall && !x.fn && !x.w;
 
+/** The base of a power or `^{*}`: bracketed unless it is one atom; a bracketed value keeps its \cdot in a product. */
+function baseOf(b: TexPiece): TexPiece {
+  if (b.u) return { ...paren(b), digit: true };
+  return !b.w && (b.p < 5 || b.tall || b.fn) ? paren(b) : b;
+}
+
 function texOf(n: Node, o: TexOptions): TexPiece {
   switch (n.t) {
     case 'num': return piece(numberTex(n.s), 5, false, true);
@@ -100,8 +109,7 @@ function texOf(n: Node, o: TexOptions): TexPiece {
     case 'op': {
       if (n.op === '/') return piece(`\\frac{${bare(n.a, o)}}{${bare(n.b, o)}}`, 5, true);
       if (n.op === '^') {
-        let b = texOf(n.a, o);
-        if (!b.w && (b.p < 5 || b.tall || b.fn)) b = paren(b);
+        const b = baseOf(texOf(n.a, o));
         return { s: `${b.s}^{${bare(n.b, o)}}`, p: 4, tall: b.tall, digit: b.digit };
       }
       const a = texOf(n.a, o);
@@ -137,7 +145,7 @@ function callTex(f: string, arg: Node, o: TexOptions): TexPiece {
     case 'ceil': return { s: `\\left\\lceil ${a.s} \\right\\rceil`, p: 5, tall: a.tall, w: true }; // EM M7.2d: a step count
     case 'exp': return { s: `e^{${a.s}}`, p: 4 };
     case 'conj': {
-      const b = !a.w && (a.p < 5 || a.tall || a.fn) ? paren(a) : a;
+      const b = baseOf(a);
       return { s: `${b.s}^{*}`, p: 4, tall: b.tall };
     }
     case 'Re': case 'Im': case 'arg': {
@@ -222,12 +230,12 @@ export function valueTex(re: number, im = 0, unit = '', digits = 4, polar = fals
   if (im === 0 || re !== re) {
     const a = amountTex(re, unit, digits);
     const neg = a.num.startsWith('-');
-    return piece(joinUnit(a), neg ? 3 : 5, false, !neg);
+    return { ...piece(joinUnit(a), neg ? 3 : 5, false, !neg), u: a.unit !== '' };
   }
   const i = amountTex(Math.abs(im), unit, digits);
-  if (re === 0) return piece(`${im < 0 ? '-' : ''}j${joinUnit(i)}`, im < 0 ? 3 : 5);
+  if (re === 0) return { ...piece(`${im < 0 ? '-' : ''}j${joinUnit(i)}`, im < 0 ? 3 : 5), u: true };
   const r = amountTex(re, unit, digits);
   const sign = im < 0 ? '-' : '+';
-  if (r.unit && r.unit === i.unit) return { s: `(${r.num} ${sign} j${i.num})\\,${r.unit}`, p: 5, w: true, digit: false };
+  if (r.unit && r.unit === i.unit) return { s: `(${r.num} ${sign} j${i.num})\\,${r.unit}`, p: 5, w: true, digit: false, u: true };
   return piece(`${joinUnit(r)} ${sign} j${joinUnit(i)}`, 1, false, !r.num.startsWith('-'));
 }

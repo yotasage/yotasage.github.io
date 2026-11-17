@@ -568,6 +568,25 @@ export function runEquationChecks({ section, ok, random }) {
     ok(valueTex(0.2, 0.4, '', 4, true).s === '0.4472\\angle 63.43^{\\circ}', `polar form (${valueTex(0.2, 0.4, '', 4, true).s})`);
     ok(tex(parse('2*x'), { value: (n) => (n === 'x' ? valueTex(25, 25) : undefined) }) === '2 (25 + j25)', 'a complex value is bracketed when multiplied');
     ok(tex(parse('x^2'), { value: (n) => (n === 'x' ? valueTex(-3) : undefined) }) === '(-3)^{2}', 'a negative value is bracketed when raised');
+    // EM fix "squared units": a power binds tighter than the unit after a number, so a value with a unit (or j0.5) as
+    // the base of a power or ^{*} is bracketed: (50 µm)², never 50 µm² (which reads as 50 square micrometres).
+    {
+      const at = (text, v) => tex(parse(text), { value: (n) => (n === 'x' ? v : undefined) });
+      const um = valueTex(50e-6, 0, 'm', 4), z = valueTex(25, -25, 'Ω', 4);
+      const cases = [
+        ['1/x^2', um, '\\frac{1}{(50\\,\\mu\\mathrm{m})^{2}}'], ['x^2', valueTex(-50e-6, 0, 'm', 4), '(-50\\,\\mu\\mathrm{m})^{2}'],
+        ['2*x^2', um, '2 \\cdot (50\\,\\mu\\mathrm{m})^{2}'], ['x^2', z, '((25 - j25)\\,\\Omega)^{2}'],
+        ['x^2', valueTex(0, 0.5, '', 4), '(j0.5)^{2}'], ['conj(x)', valueTex(0, 0.5, '', 4), '(j0.5)^{*}'],
+        ['x^2', valueTex(25, 25, 'Ω', 4, true), '(35.36\\,\\Omega\\angle 45^{\\circ})^{2}'],
+        // unchanged: a bare number, a number in a product or under a root, a bracketed group, a unit value not raised
+        ['x^2', valueTex(3, 0, '', 4), '3^{2}'], ['2*x', um, '2 \\cdot 50\\,\\mu\\mathrm{m}'], ['sqrt(x)', um, '\\sqrt{50\\,\\mu\\mathrm{m}}'],
+        ['(x)^2', um, '(50\\,\\mu\\mathrm{m})^{2}'], ['x/2', um, '\\frac{50\\,\\mu\\mathrm{m}}{2}'], ['x^2', valueTex(25, 25, '', 4), '(25 + j25)^{2}'],
+      ];
+      for (const [text, v, want] of cases) {
+        const got = at(text, v), err = renderOk(got);
+        ok(got === want && err === null, `tex("${text}") with x = ${v.s}: ${got}, wanted ${want} (${err})`);
+      }
+    }
     ok(nameTex('Gamma_in') === '\\Gamma_{\\mathrm{in}}' && nameTex('ell') === '\\ell' && nameTex('Z_0') === 'Z_{0}', 'names print as the textbook writes them');
   }
 

@@ -27,6 +27,9 @@ const SU = d(SU0), S = d(S0), ST = d(ST0), V = d(V0), TL = d(TL0);
 const katex = createRequire(import.meta.url)('../../../node_modules/katex');
 
 const rel = (a, b) => (a === b ? 0 : Math.abs(a - b) / Math.max(Math.abs(a), Math.abs(b)));
+// A power right after a value's unit (`50\,\mu\mathrm{m}^{2}`) reads as square micrometres: the value must be bracketed,
+// `(50\,\mu\mathrm{m})^{2}` (fix "squared units", notes-M7.2d.md). Degrees (`^{\circ}`) are part of the unit.
+export const RAISED_UNIT = /\\,(?:\\mu|\\Omega|\\mathrm\{[^}]*\})+\^\{(?!\\circ)/;
 const renders = (s) => { try { katex.renderToString(s, { output: 'mathml', throwOnError: true, strict: 'error' }); return null; } catch (e) { return e.message; } };
 
 const withTrace = (base, f) => { const s = { ...base, trace: { ...base.trace } }; f(s.trace, s.stackup); return s; };
@@ -123,6 +126,7 @@ export async function run(t) {
         // the substitution lines with the numbers render
         const sub = EQ.emSubstitutions(tr, EQ.valuesTex(e, b));
         if (sub) t.ok(sub.lines.every((l) => !renders(l)) && !renders(sub.lhs) && !renders(sub.rhs), () => `${name}: ${e.id} substitution lines render: ${sub.lines.map(renders).filter(Boolean).join('; ')}`);
+        if (sub) t.ok(!sub.lines.some((l) => RAISED_UNIT.test(l)), () => `${name}: ${e.id} raises no unit alone: ${sub.lines.join('; ')}`);
       }
     }
     // the comparison sees a wrong number: Z0 off by 1 ppm

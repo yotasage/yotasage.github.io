@@ -8,6 +8,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { mulberry32 } from './check-geometry.mjs';
+import { RAISED_UNIT } from './check-equations.mjs';
 import * as EQ0 from '../../../lib/emsim/equations.ts';
 import * as EV0 from '../../../lib/emsim/eqvalues.ts';
 import * as EVV0 from '../../../lib/emsim/eqvaluesVia.ts';
@@ -437,6 +438,8 @@ function checkWaves(t, byId) {
       const e = byId.get(id), bind = EQ.bindingFor(e, b);
       if (!t.ok(!!bind, `${name}: ${id} bound`)) continue;
       for (const tr0 of [e.tree, ...e.where.map((w) => w.tree)]) {
+        const sub = EQ.emSubstitutions(tr0, EQ.valuesTex(e, b));
+        t.ok(!!sub && sub.lines.every((l) => !renders(l) && !RAISED_UNIT.test(l)), () => `${name}: ${id} substitution lines render and raise no unit alone: ${sub?.lines.join('; ')}`);
         const sides = CO.evaluate(tr0, bind), lhs = tr0.xs[0].t === 'id' ? b[tr0.xs[0].v] : NaN;
         for (const sd of sides) { const w = Math.abs(sd[0] - lhs) / Math.abs(lhs); worst = Math.max(worst, w); n++; t.ok(w <= TOL && sd[1] === 0, () => `${name}: ${id} side ${sd[0]} against the engine's ${lhs}`); }
       }
@@ -447,6 +450,9 @@ function checkWaves(t, byId) {
     const { b, pv } = bV;
     t.ok(b.N_cells === 712320 && b.N_t === 7645 && b.N_ports === 2, 'V: 712 320 cells, 7645 steps, 2 ports');
     t.ok(pv.minCell.map((x) => x.toFixed(4)).join(' ') === '0.0500 0.0344 0.0204', `V: smallest cells 0.0500, 0.0344, 0.0204 mm (${pv.minCell})`);
+    // fix "squared units": each smallest cell is bracketed as the base of its square, (50 µm)², not 50 µm²
+    const ce = byId.get('fdtd-courant'), cl = EQ.emSubstitutions(ce.tree, EQ.valuesTex(ce, b))?.lines[0] ?? '';
+    t.ok(['50', '34.42', '20.38'].every((x) => cl.includes(`\\frac{1}{(${x}\\,\\mu\\mathrm{m})^{2}}`)), `V: the Courant limit's numbers square the bracketed cells: ${cl}`);
     t.near(b.Delta_t * 1e15, 52.444, 'V: dt 52.444 fs', 5e-4); t.near(b.T_run * 1e12, 400.93, 'V: T 400.93 ps', 5e-3); t.near(b.tau_rt * 1e12, 88.237, 'V: tau_rt 88.237 ps', 5e-4);
     t.near(b.Delta_max * 1e3, 0.37393, 'V: largest cell 0.37393 mm', 5e-6); t.near(b.f_run / 1e9, 43.429, 'V: f_run 43.429 GHz', 5e-4);
     t.near(b.sigma_p * 1e12, 13.622, 'V: sigma 13.622 ps', 5e-4); t.near(b.t_0 * 1e12, 68.109, 'V: t0 68.109 ps', 5e-4); t.near(b.f_S / 1e9, 35.438, 'V: f_S 35.438 GHz', 5e-4);
