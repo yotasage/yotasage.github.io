@@ -482,6 +482,12 @@ full-wave simulation and what the animation shows (content and page, with claims
 
 **Done when:** the 3D animation plays at the 2D player's frame rate; the topic's claims are sourced.
 
+**Split** (main session, 2026-11-17, three jobs; M7.1b alone took about 340k tokens): **M7.2a** (pair modes: the
+differential and common-mode drive of a pair, its frames for the player as values (A − B, A + B, or one run driven with
+opposite signs), a mode choice in the Waves section, the Sdd/Scc results unchanged), **M7.2b** (the animation on cut
+planes in the 3D view, from the same frames and the player's clock, at the 2D player's frame rate) and **M7.2c** (the
+theory topic on full-wave simulation and what the animation shows, with sourced claims).
+
 ## M8 – Export and report (next after M3: the owner moved it ahead of M4–M7 on 2026-11-16)
 
 ### M8.1a – Figure model, SVG, PNG, TikZ (harness only) · M
