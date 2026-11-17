@@ -76,3 +76,18 @@ g.hxy { cursor: move; }
 /* M3.2b: the via target's result line. */
 .targetResult { margin: 8px 0 0; font-size: 0.875rem; line-height: 1.5; color: var(--ink-2); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .targetResult button { margin-left: 4px; }
+
+/* M5.1: the 3D view (Via3D.tsx, Via3DView.tsx). The canvas fills a box of the drawings' width; touch goes to the view. */
+.v3dShell { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.v3dShell > button { align-self: flex-start; }
+.v3d { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.v3dHost {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 70vh;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--air);
+  overflow: hidden;
+  touch-action: none;
+}

@@ -33,6 +33,7 @@ import { sideHandles, topHandles } from './viaHandles';
 import type { ViaHandle, ViaHandleKey } from './viaHandles';
 import { Why, Whys } from './Why';
 import { FieldFoot } from './FieldView';
+import Via3D from './Via3D';
 import { useViaField, VIA_FIELD_DEFAULT, viaDriveText } from './useViaField';
 import type { ViaFieldSettings } from './useViaField';
 import { ViaFieldControls, ViaFieldLayer, ViaFieldProbe } from './ViaFieldView';
@@ -541,6 +542,7 @@ export default React.memo(function ViaDrawing({ s, v: v0, traceW, unit, digits, 
       <p className={css.caption}>Drag the handles (or focus one and use the arrow keys) to change pads, antipads, the drill, the pitch, the backdrill and where the return vias are; drag a view to pan, wheel or pinch to zoom.</p>
       <Whys ks="via-handles via-reset" />
       <ViaFieldControls f={fields} set={setFields} pair={!!v.pitch} />
+      <Via3D s={s} v={v} traceW={traceW} fields={fields} />
     </div>
   );
 });

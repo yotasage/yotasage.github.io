@@ -42,7 +42,7 @@ const pairSetup = () => { const s = withTrace('pair-microstrip', 0.11); s.trace 
 
 // ---- the data ----
 const keys = Object.keys(WHYS);
-check(keys.length === 196, `${keys.length} short lines (195 of theory-lines.md and the switch's own)`);
+check(keys.length === 202, `${keys.length} short lines (201 of theory-lines.md and the switch's own)`);
 check(keys.every((k) => WHYS[k].text && WHYS[k].label && (WHYS[k].topic === null || TOPIC_TITLE[WHYS[k].topic])), 'every line has a label, a text and a known topic or none');
 check(keys.every((k) => WHYS[k].text.split(/\s+/).length <= 22), 'every line at most about 20 words');
 const fullText = (k) => `${WHYS[k].text}${WHYS[k].topic ? ' → theory' : ''}`;
@@ -142,7 +142,7 @@ try {
     'via-pad', 'via-plane', 'via-antipad', 'via-shape', 'via-antipad-all', 'via-returns', 'via-return-add', 'via-return-remove', 'via-return-planes',
     'via-backdrill', 'via-feeds', 'via-side', 'via-top', 'via-handles', 'via-reset', 'via-add-tap', 'via-remove-sel', 'via-issues', 'via-solve', 'via-barrel-z', 'via-section-z', 'via-delay', 'via-lc',
     'via-segments', 'via-crossings', 'via-stubs', 'via-feed-z', 'via-valid', 'via-flags', 'via-assumptions', 'via-next',
-    'eq-via-open', 'via-tdr', 'via-tr', 'via-port', 'via-tdt', 'via-s', 'via-s-ports', 'via-cursor', 'via-fields', 'via-target', 'via-target-vary', 'via-target-use']);
+    'eq-via-open', 'via-tdr', 'via-tr', 'via-port', 'via-tdt', 'via-s', 'via-s-ports', 'via-cursor', 'via-fields', 'via-target', 'via-target-vary', 'via-target-use', 'via-3d']);
   await vp.click('[data-via-preset="pair"]');
   await vp.waitForSelector('[data-via-results][data-n="2"]:not([data-stale="true"])', { timeout: 60000 });
   await vp.waitForSelector('[data-via-plots][data-stale="false"] [data-via-s-mode]', { timeout: 60000 });
@@ -150,6 +150,10 @@ try {
   await vp.check('[data-viafield-on]');
   await vp.waitForSelector('[data-viafield-qty]');
   await state(vp, 'via fields', ['via-field-qty', 'via-field-drive', 'via-field-scale', 'via-field-probe-keys', 'via-field-probe', 'via-field-side']);
+  // M5.1: the 3D view's controls (they show without WebGL too).
+  await vp.click('[data-via3d-open]');
+  await vp.waitForSelector('[data-via3d] [data-via3d-png]', { timeout: 30000 });
+  await state(vp, 'via 3D view', ['via-3d-reset', 'via-3d-cut', 'via-3d-laminate', 'via-3d-png', 'via-3d-fields']);
   await vp.close();
   // ---- 5: the Export section (M8.1b) ----
   const ep = await open(`${URL0}#export`);

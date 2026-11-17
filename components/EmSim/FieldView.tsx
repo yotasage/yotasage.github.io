@@ -51,7 +51,7 @@ export function FieldFoot({ mod, store, drive }: { mod: FieldMod; store: FieldSt
   );
 }
 
-function FieldScaleBar({ mod, painted, drive }: { mod: FieldMod; painted: Painted; drive: string }) {
+export function FieldScaleBar({ mod, painted, drive }: { mod: FieldMod; painted: Painted; drive: string }) {
   const { scale, unit, qty } = painted;
   const b = useMemo(() => mod.bar(scale, BAR_W, unit), [mod, scale, unit]);
   const kind = scale.kind === 'signed' ? 'signed, zero in the middle' : scale.kind;

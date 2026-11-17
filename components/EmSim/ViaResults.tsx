@@ -212,7 +212,7 @@ function ViaResults({ r, s, v, state, stale, message, ms, unit, digits, quick = 
             </ul>
           </details>
           <Why k="via-assumptions" bare />
-          <p className={css.small} data-via-next>Next: a 3D view, full-wave waves and export.</p>
+          <p className={css.small} data-via-next>Next: full-wave waves.</p>
           <Why k="via-next" bare />
         </div>
         </Signals.Provider>

@@ -12,7 +12,7 @@ export const STATUS_NOW =
   'numbers in its equations, and follow five worked examples whose links open each state on the page; every result ' +
   'with an equation opens it with your numbers in one click, with its derivation step by step. Type a via or a via ' +
   'pair with its pads, antipads, return vias, backdrill and feeds, see it drawn to scale from the side and from above, ' +
-  'drag its sizes and return vias in the drawings, ' +
+  'drag its sizes and return vias in the drawings, turn it in 3D with its fields on the cut planes, ' +
   'with the impedance of its barrel and of the whole via, the extra capacitance of each pad and plane, the stub ' +
   'resonance, its TDR and TDT at the rise time you choose and its S-parameters in dB (mixed-mode for a pair), its ' +
   'fields from the side and from above with a probe, the antipad or return-via distance for a target impedance, and ' +
@@ -29,4 +29,4 @@ export const STATUS_ASSUMES =
   'It is quasi-static: no losses and no change with frequency; a via is lines and lumped capacitances, right while ' +
   'its parts are short against the wavelength. The tolerances are placeholders until you type the ones of your board house.';
 export const STATUS_COMING =
-  'Not here yet: a 3D view and animated waves from a full-wave run.';
+  'Not here yet: animated waves from a full-wave run; they come next.';

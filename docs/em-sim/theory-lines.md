@@ -194,7 +194,7 @@ Placed in `whys.ts` with the keys in brackets. Since M4.3b the links go to the v
 | Valid to (via-valid) | Each lumped part is short against the wavelength up to here (λ/8). | `via-limits` | – |
 | Flags (via-flags) | Where the model is stretched, each with its numbers. | `via-limits` | – |
 | Assumptions (via-assumptions) | What the via model takes as given. | `via-limits` | – |
-| Next (via-next) | A 3D view of the via and full-wave waves come in later steps. | – | – |
+| Next (via-next) | Full-wave waves on the via and the trace come in later steps. | – | – |
 | TDR (via-tdr, M3.2a) | The impedance a step from the port meets, there and back: feeds, pads, barrel and stubs in turn. | `via-tdr` | – |
 | Rise time (`data-field="via.tr"`, via-tr) | The edge's 10–90 % time; a faster edge shows finer detail and reaches higher frequencies. | `via-tdr` | – |
 | Port (`data-field="via.port"`, via-port) | The instrument's impedance at both ends; a pair's is the differential one, twice each line's. | – | – |
@@ -211,6 +211,12 @@ Placed in `whys.ts` with the keys in brackets. Since M4.3b the links go to the v
 | Probe keys (`data-viafield-probe-mode`, via-field-probe-keys) | When on, the arrow keys on the focused view move the probe instead of panning. | – | – |
 | Probe (`data-viafield-probe`, via-field-probe) | The potential and the field where you point, tap or move it, read from the map. | – | – |
 | Side view (via-field-side) | One via alone at 1 V inside its return vias' coaxial wall, as the via model solves it. | `via-pads` | – |
+| 3D view (`data-via3d-open`, via-3d, M5.1) | The via in 3D: barrels, pads, planes with their antipads, return vias and feeds; drag to turn it. | `via-line` | – |
+| Reset view (`data-via3d-reset`, via-3d-reset) | Back to the first view: from the side the side view shows, a little above. | – | – |
+| Cut away half (`data-via3d-cut`, via-3d-cut) | Removes the near half along the side view's line, so the barrel, its stub and a backdrill show. | `via-stubs` | – |
+| Hide the laminate (`data-via3d-laminate`, via-3d-laminate) | Shows the copper alone: how the return vias join the planes around the signal. | `via-return` | – |
+| Save PNG (`data-via3d-png`, via-3d-png) | The view as it is now, at the canvas's size or twice it. | – | – |
+| Fields in 3D (via-3d-fields) | The side map stands on the side view's line, the top map lies between two planes. | `via-pads` | – |
 | Target (`data-field="via.target"`, via-target) | The impedance the via section should have; the antipad or the return vias are found for it. | `via-pads` | – |
 | By changing (`data-via-target-vary`, via-target-vary) | Every plane's antipad diameter, or how far the return vias are from the barrel. | – | – |
 | Use this (`data-via-target-use`, via-target-use) | Puts the size found into the via, as one undo step. | – | – |
