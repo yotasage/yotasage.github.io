@@ -16,8 +16,11 @@
 // differential, common), shows them added as values (wavesPlayer.ts trackOf); the combined frames of the shown
 // component and drive live in the store too (`track`, one at a time, made when chosen), so emptying it frees them.
 // Changing the drive keeps the frame and the clock; the scale is per slice, component and drive over the whole run.
+// M7.2b: "3D view" opens WavesView3D.tsx (its own chunk with three.js, loaded only then): the run's structure with the
+// slices as cut planes, played from this Engine's clock (its `listeners` hear each frame drawn; its loop runs while the
+// 2D figure or the 3D view is in view), the planes' combined frames in the store's `more`.
 
-import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { scaleBar, barPosition } from '../../lib/emsim/colormap';
 import type { Frame, SliceInfo } from '../../lib/emsim/fdtd/snapshots';
@@ -36,15 +39,24 @@ import css from '../../styles/EmSimTrace.module.css';
 import vcss from '../../styles/EmSimVia.module.css';
 import wcss from '../../styles/EmSimWaves.module.css';
 import { Why } from './Why';
+import type View3DComponent from './WavesView3D';
+
+const View3D = lazy(
+  // @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
+  () => import('./WavesView3D') as Promise<{ default: typeof View3DComponent }>,
+);
 
 export interface PlayerSnap { slices: SliceInfo[]; max: number[]; runs?: { run: number }[] }
 /** The run's frames in a box the result owns: emptying it frees them, whatever still holds the box. `frames` entry A's
- *  (the first excitation's), `pair` entry B's for a pair (else empty), `track` the combined frames shown (M7.2a). */
-export interface FrameStore { frames: Frame[]; pair: Frame[]; track: { key: string; frames: Frame[] } | null }
+ *  (the first excitation's), `pair` entry B's for a pair (else empty), `track` the combined frames shown (M7.2a),
+ *  `more` those of the 3D view's planes (M7.2b; the same arrays where they are `track`'s). */
+export interface FrameStore { frames: Frame[]; pair: Frame[]; track: Track | null; more?: Track[] }
+/** Combined frames: their key (slices, component, drive), the frames, their largest |value|. */
+export interface Track { key: string; frames: Frame[]; max: number }
 /** Lets go of every frame the box holds. */
 export function freeFrames(s: FrameStore | null | undefined): void {
   if (!s) return;
-  s.frames = []; s.pair = []; s.track = null;
+  s.frames = []; s.pair = []; s.track = null; s.more = [];
 }
 /** The frames the box holds (both runs'). */
 export const heldFrames = (s: FrameStore | null | undefined): number => (s ? s.frames.length + s.pair.length : 0);
@@ -56,7 +68,7 @@ const speedText = (s: number) => (s === 0.25 ? '¼×' : s === 0.5 ? '½×' : `${
 
 /** The animation outside React. */
 export class Engine {
-  store: FrameStore = { frames: [], pair: [], track: null }; si = 0; ps: PlayScale | null = null; raster: Raster | null = null;
+  store: FrameStore = { frames: [], pair: [], track: null, more: [] }; si = 0; ps: PlayScale | null = null; raster: Raster | null = null;
   key: string | null = null; // the shown track's key when it is combined (store.track), null for entry A's own frames
   src: number[] = []; mode: DriveMode = 'single'; // the harness reads them
   pos = 0; shown = -1; playing = false; speed = 1; loop = true; visible = false;
@@ -66,6 +78,11 @@ export class Engine {
   cw = 0; ch = 0;
   onEnd: () => void = () => {};
   stats = { intervals: [] as number[], work: [] as number[], draws: 0, ticks: 0 };
+  /** Called with each frame drawn (the 3D view, M7.2b), inside the tick, so its work counts in `stats.work`. */
+  listeners = new Set<(i: number) => void>();
+  /** What is in view: the 2D figure, the 3D view; the loop runs while any is. */
+  seen = new Map<Element, boolean>();
+  io: IntersectionObserver | null = null;
 
   get frames(): Frame[] {
     const s = this.store;
@@ -101,6 +118,7 @@ export class Engine {
     g.imageSmoothingEnabled = true;
     g.drawImage(this.off, 0, 0, this.cw, this.ch);
     this.shown = i;
+    for (const l of this.listeners) l(i);
     this.stats.draws++;
     const t = psText(f.t);
     if (this.slider) { this.slider.value = String(i); this.slider.setAttribute('aria-valuetext', t); }
@@ -112,6 +130,15 @@ export class Engine {
     this.pos = Math.max(0, Math.min(this.n - 1, i));
     this.last = NaN;
     this.draw(Math.floor(this.pos));
+  }
+
+  /** Watches an element's visibility (the loop runs while any watched one is in view). */
+  watch(el: Element): void { this.io?.observe(el); }
+  unwatch(el: Element): void {
+    this.io?.unobserve(el);
+    this.seen.delete(el);
+    this.visible = [...this.seen.values()].some(Boolean);
+    this.sync();
   }
 
   /** Runs the loop when playing, in view and the tab shown; stops it otherwise. */
@@ -142,7 +169,7 @@ export class Engine {
   stop(): void {
     if (this.raf) cancelAnimationFrame(this.raf);
     this.raf = 0;
-    this.store = { frames: [], pair: [], track: null }; this.img = null; this.px = null; this.raster = null; this.ps = null;
+    this.store = { frames: [], pair: [], track: null, more: [] }; this.listeners.clear(); this.img = null; this.px = null; this.raster = null; this.ps = null;
     if (this.off) { this.off.width = 1; this.off.height = 1; }
     this.off = null;
   }
@@ -169,7 +196,7 @@ export default function WavesPlayer({ store, snap, views, geom, unit }: Props) {
     const m: DriveMode = pair ? mode : 'single';
     const t = trackOf([store.frames, store.pair], src, compSet, m, snap.max);
     const key = t.frames === store.frames ? null : `${src.join('.')}:${compSet}:${m}`;
-    store.track = key === null ? null : { key, frames: t.frames };
+    store.track = key === null ? null : { key, frames: t.frames, max: t.max };
     return { key, si: t.si, mode: m, ps: playScale(t.frames, t.si, compSet, t.max) };
   }, [store, src, compSet, mode, pair, snap]);
   const si = tk.si, ps = tk.ps;
@@ -227,11 +254,16 @@ export default function WavesPlayer({ store, snap, views, geom, unit }: Props) {
     size();
     const onWin = size;
     window.addEventListener('resize', onWin);
-    const io = new IntersectionObserver((es) => { eng.visible = es[es.length - 1].isIntersecting; eng.sync(); });
+    const io = new IntersectionObserver((es) => {
+      for (const e of es) eng.seen.set(e.target, e.isIntersecting);
+      eng.visible = [...eng.seen.values()].some(Boolean);
+      eng.sync();
+    });
+    eng.io = io;
     io.observe(f);
     const onVis = () => eng.sync();
     document.addEventListener('visibilitychange', onVis);
-    return () => { ro.disconnect(); io.disconnect(); window.removeEventListener('resize', onWin); document.removeEventListener('visibilitychange', onVis); };
+    return () => { ro.disconnect(); io.disconnect(); eng.io = null; eng.seen.clear(); window.removeEventListener('resize', onWin); document.removeEventListener('visibilitychange', onVis); };
   }, [eng]);
 
   const n = store.frames.length, t0 = n ? store.frames[0].t : 0;
@@ -241,6 +273,8 @@ export default function WavesPlayer({ store, snap, views, geom, unit }: Props) {
   const bar = useMemo(() => barOf(ps), [ps]);
   const pct = (100 * PLAY_CLIP).toFixed(1);
   const comp = COMP_TEXT[compSet];
+  const [open3d, setOpen3d] = useState(false);
+  const t3d = useRef(0);
 
   return (
     <div ref={root} className={wcss.player} data-waves-player data-player-view={view.view} data-player-comp={compSet} data-player-slice={src.join(',')} data-player-mode={pair ? tk.mode : ''}
@@ -324,11 +358,25 @@ export default function WavesPlayer({ store, snap, views, geom, unit }: Props) {
         </div>
       </div>
       <Why k="waves-scale" bare />
+
+      <div className={vcss.v3dShell} data-waves3d-shell>
+        <button type="button" className={base.button} aria-expanded={open3d} aria-pressed={open3d} data-waves3d-open
+          onClick={() => { t3d.current = performance.now(); setOpen3d((o) => !o); }}>
+          {open3d ? 'Close the 3D view' : '3D view'}
+        </button>
+        <Why k="waves-3d" />
+        {open3d && (
+          <Suspense fallback={<p className={vcss.dim} data-waves3d-loading>Loading the 3D view…</p>}>
+            <View3D eng={eng} store={store} snap={snap} views={pviews} comp={compSet} mode={tk.mode} geom={geom} n={n}
+              playing={playing} onPlay={() => setPlaying((p) => !p)} t0={t3d.current} />
+          </Suspense>
+        )}
+      </div>
     </div>
   );
 }
 
-function barOf(ps: PlayScale): { url: string; ticks: { t: number; text: string }[] } {
+export function barOf(ps: PlayScale): { url: string; ticks: { t: number; text: string }[] } {
   let url = '';
   if (typeof document !== 'undefined') {
     const w = 256, c = document.createElement('canvas');

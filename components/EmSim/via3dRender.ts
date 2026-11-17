@@ -8,11 +8,15 @@
 // barrels along the side view's line, removing the half towards the default camera. The field maps are textures on a
 // vertical plane on that line (side map, on the cut) and a horizontal one at the scene's topZ (top map, cut with the
 // board), both cropped to the square of board drawn.
+// M7.2b: the Waves section's 3D view uses the same renderer with its copper see-through (`copper` < 1) and the run's
+// snapshot slices as wave planes (`setWaves`): a DataTexture each over the caller's pixel buffer (wavesPlayer.ts
+// framePixels), re-uploaded in place (texSubImage2D) and drawn at once by `drawWaves(frame)`, which the 2D player's clock
+// calls. The idle loop rests while the view is off screen.
 
 import {
-  CanvasTexture, Color, CylinderGeometry, DirectionalLight, DoubleSide, ExtrudeGeometry, Group, HemisphereLight, LinearFilter,
-  Matrix4, Mesh, MeshBasicMaterial, MeshStandardMaterial, Path, PerspectiveCamera, Plane, PlaneGeometry, Scene, Shape,
-  SRGBColorSpace, Vector2, Vector3, WebGLRenderer,
+  CanvasTexture, Color, CylinderGeometry, DataTexture, DirectionalLight, DoubleSide, ExtrudeGeometry, Group, HemisphereLight, LinearFilter,
+  Matrix4, Mesh, MeshBasicMaterial, MeshStandardMaterial, Path, PerspectiveCamera, Plane, PlaneGeometry, Raycaster, RGBAFormat, Scene, Shape,
+  SRGBColorSpace, UnsignedByteType, Vector2, Vector3, WebGLRenderer,
 } from 'three';
 import type { BufferGeometry, Material, Object3D } from 'three';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js' with { 'resolution-mode': 'import' };
@@ -23,14 +27,40 @@ export interface Via3DColors { bg: string; copper: string; core: string; prepreg
 /** A field map on a plane: the image (row 0 at z1) over x0 … x1 (along the plane) and z0 … z1 (up, or board y). */
 export interface FieldPlane { image: HTMLCanvasElement; x0: number; x1: number; z0: number; z1: number }
 
+/** A wave plane (M7.2b): its corner `o` (mm), the unit vectors along its width and height, its size (mm), and the
+ *  texture's texels `tw` x `th` in `px` (RGBA words, row 0 at the top as framePixels writes them), which the caller
+ *  rewrites before `drawWaves`. */
+export interface WavePlane { key: string; o: [number, number, number]; U: [number, number, number]; V: [number, number, number]; w: number; h: number; tw: number; th: number; px: Uint32Array }
+/** `copper`: the copper's opacity (1: opaque, as the Via section); `fit`: the first view's distance as a share of
+ *  the one that holds the scene's bounding sphere (0.92 as the Via section). */
+export interface Via3DOptions { copper?: number; fit?: number }
+
 const BUILD_FRAMES = 3;
 const FOV = 35;
 
 type Ctor = typeof OrbitControls;
 
-export async function createVia3D(host: HTMLElement): Promise<Via3D> {
+export async function createVia3D(host: HTMLElement, opts: Via3DOptions = {}): Promise<Via3D> {
   const { OrbitControls: OC } = await import('three/examples/jsm/controls/OrbitControls.js');
-  return new Via3D(host, OC);
+  return new Via3D(host, OC, opts);
+}
+
+/** The scene's colours from the page's tokens on `el`. */
+export function colorsOf(el: HTMLElement): Via3DColors {
+  const st = getComputedStyle(el);
+  const g = (k: string, d: string) => st.getPropertyValue(k).trim() || d;
+  return { bg: g('--air', '#e8eff4'), copper: g('--copper', '#c8773a'), core: g('--core', '#d6c688'), prepreg: g('--prepreg', '#e9dfb2'), mask: g('--mask', '#2f7d4f'), ghost: g('--ink-3', '#6c6861') };
+}
+
+/** Follows the theme (the page root's data-theme, the system's scheme) with the view's colours; returns the undo. */
+export function followTheme(el: HTMLElement, view: Via3D): () => void {
+  const again = () => view.setColors(colorsOf(el));
+  const root = el.closest('[data-whys]') ?? document.documentElement;
+  const mo = new MutationObserver(again);
+  mo.observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  mq.addEventListener('change', again);
+  return () => { mo.disconnect(); mq.removeEventListener('change', again); };
 }
 
 function prismGeometry(p: Prism, cx: number, cy: number, cz: number): BufferGeometry {
@@ -54,7 +84,13 @@ function disposeTree(root: Object3D) {
 export class Via3D {
   readonly renderer: WebGLRenderer;
   /** For the harness: meshes per prism kind, frames drawn, the last frames' times (ms), scenes built. */
-  readonly stats = { meshes: {} as Record<string, number>, renders: 0, builds: 0, frameMs: [] as number[], fieldPlanes: 0, disposed: false };
+  readonly stats = {
+    meshes: {} as Record<string, number>, renders: 0, builds: 0, frameMs: [] as number[], fieldPlanes: 0, disposed: false,
+    // M7.2b: wave planes, the frame drawn last, draws, wave textures made and disposed, the renderer's memory when
+    // disposed (its geometries and textures left: three.js keeps one of its own, the 16 × 16 DFG table of the
+    // standard materials, which goes with the context)
+    wavePlanes: 0, waveFrame: -1, waveDraws: 0, texMade: 0, texFreed: 0, memory: null as { geometries: number; textures: number } | null,
+  };
   onFrame: (() => void) | null = null;
 
   private host: HTMLElement;
@@ -76,9 +112,20 @@ export class Via3D {
   private mats: Partial<Record<PrismKind | 'ghost' | 'core' | 'prepreg', Material>> = {};
   private homed = false;
   private fieldIn: { side: FieldPlane | null; top: FieldPlane | null } = { side: null, top: null };
+  private copperOpacity: number;
+  private fit: number;
+  private cutAt = 0; // the cut's place along its normal (M7.2b: through the side plane)
+  private waveCutKeep: string | null = null; // the wave plane the cut leaves whole (the one on it)
+  private waves = new Group();
+  private waveTex: DataTexture[] = [];
+  private seen = true;
+  private io: IntersectionObserver | null = null;
+  private tick: () => void;
 
-  constructor(host: HTMLElement, OC: Ctor) {
+  constructor(host: HTMLElement, OC: Ctor, opts: Via3DOptions = {}) {
     this.host = host;
+    this.copperOpacity = opts.copper ?? 1;
+    this.fit = opts.fit ?? 0.92;
     this.renderer = new WebGLRenderer({ antialias: true, alpha: false });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.localClippingEnabled = true;
@@ -89,7 +136,7 @@ export class Via3D {
     c.setAttribute('data-via3d-canvas', '');
     host.appendChild(c);
     this.camera.up.set(0, 0, 1);
-    this.scene.add(this.camera, this.model, this.fields);
+    this.scene.add(this.camera, this.model, this.fields, this.waves);
     this.scene.add(new HemisphereLight('#ffffff', '#5a5040', 1.6));
     const head = new DirectionalLight('#ffffff', 1.6);
     head.position.set(0.3, 0.6, 1);
@@ -102,15 +149,28 @@ export class Via3D {
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(host);
     this.resize();
-    const tick = () => {
-      this.raf = requestAnimationFrame(tick);
+    this.tick = () => {
+      // off screen: rest until it shows again, once nothing is left to build or draw (so the first frame, which
+      // reports the time to open, is drawn even off screen)
+      if (!this.seen && !this.dirty && !this.pending) { this.raf = 0; return; }
+      this.raf = requestAnimationFrame(this.tick);
       this.sinceBuild++;
       if (this.pending && this.colors && this.sinceBuild >= BUILD_FRAMES) this.build();
       const moved = this.controls.update();
       if (moved || this.dirty) this.render();
     };
-    this.raf = requestAnimationFrame(tick);
+    this.raf = requestAnimationFrame(this.tick);
+    if (typeof IntersectionObserver !== 'undefined') {
+      this.io = new IntersectionObserver((es) => {
+        this.seen = es[es.length - 1].isIntersecting;
+        if (this.seen && !this.raf && !this.stats.disposed) this.raf = requestAnimationFrame(this.tick);
+      });
+      this.io.observe(host);
+    }
   }
+
+  /** Whether the idle loop runs (it rests off screen). */
+  get looping(): boolean { return this.raf !== 0; }
 
   private resize() {
     const w = Math.max(1, this.host.clientWidth), h = Math.max(1, this.host.clientHeight);
@@ -157,6 +217,9 @@ export class Via3D {
       m = new MeshStandardMaterial({ color: kind === 'mask' ? c.mask : c[kind], roughness: 0.9, metalness: 0, transparent: true, opacity: kind === 'mask' ? 0.42 : 0.26, depthWrite: false, side: DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
     } else if (kind === 'ghost') {
       m = new MeshBasicMaterial({ color: c.ghost, transparent: true, opacity: 0.18, depthWrite: false });
+    } else if (this.copperOpacity < 1) {
+      // see-through, so the wave planes show inside it (drawn after the opaque planes, no depth writes)
+      m = new MeshStandardMaterial({ color: c.copper, roughness: 0.42, metalness: 0.35, side: DoubleSide, transparent: true, opacity: this.copperOpacity, depthWrite: false });
     } else {
       m = new MeshStandardMaterial({ color: c.copper, roughness: 0.42, metalness: 0.35, side: DoubleSide });
     }
@@ -199,7 +262,7 @@ export class Via3D {
     }
     this.stats.meshes = counts;
     this.cutPlane.normal.set(-sc.u.y, sc.u.x, 0);
-    this.cutPlane.constant = 0;
+    this.cutPlane.constant = -this.cutAt;
     if (!this.homed) { this.homed = true; this.reset(); }
     this.placeFields();
     this.dirty = true;
@@ -216,7 +279,7 @@ export class Via3D {
     const rho = Math.sqrt(2 * H * H + thick * thick / 4);
     const vf = (FOV * Math.PI) / 180;
     const hf = 2 * Math.atan(Math.tan(vf / 2) * this.camera.aspect);
-    const dist = (rho / Math.sin(Math.min(vf, hf) / 2)) * 0.92;
+    const dist = (rho / Math.sin(Math.min(vf, hf) / 2)) * this.fit;
     // Drop what damping still has to apply of the last gesture, or it moves the camera after the reset.
     this.controls.enableDamping = false;
     this.controls.update();
@@ -237,6 +300,25 @@ export class Via3D {
     this.cut = on;
     for (const m of Object.values(this.mats)) { m.clippingPlanes = on ? [this.cutPlane] : []; m.needsUpdate = true; }
     this.placeFields();
+    this.cutWaves();
+  }
+
+  /** M7.2b: the cut through n·p = c (n the cut's normal, across the side view's line) instead of through the origin,
+   *  and the wave plane it leaves whole (the one lying on it; the others lose their near half with the structure). */
+  setCutAt(c: number, keep: string | null): void {
+    this.cutAt = c;
+    this.cutPlane.constant = -c;
+    this.waveCutKeep = keep;
+    this.cutWaves();
+  }
+
+  private cutWaves(): void {
+    for (const o of this.waves.children) {
+      const m = (o as Mesh).material as Material;
+      m.clippingPlanes = this.cut && o.userData.key !== this.waveCutKeep ? [this.cutPlane] : [];
+      m.needsUpdate = true;
+    }
+    this.dirty = true;
   }
 
   setLaminate(on: boolean) {
@@ -316,6 +398,92 @@ export class Via3D {
 
   cameraState() { return { p: this.camera.position.toArray(), t: this.controls.target.toArray() }; }
 
+  /** Keys (M7.2b): turn about the target (azimuth, elevation in rad, the elevation kept off the poles) and zoom. */
+  turn(dAz: number, dEl: number): void {
+    const t = this.controls.target;
+    const p = this.camera.position.clone().sub(t);
+    const r = p.length(), az = Math.atan2(p.y, p.x) + dAz;
+    const el = Math.max(-1.45, Math.min(1.45, Math.asin(Math.max(-1, Math.min(1, p.z / r))) + dEl));
+    this.camera.position.set(t.x + r * Math.cos(el) * Math.cos(az), t.y + r * Math.cos(el) * Math.sin(az), t.z + r * Math.sin(el));
+    this.camera.lookAt(t);
+    this.dirty = true;
+  }
+  zoomBy(f: number): void {
+    const t = this.controls.target;
+    const p = this.camera.position.clone().sub(t);
+    const r = Math.max(this.controls.minDistance, Math.min(this.controls.maxDistance, p.length() * f));
+    this.camera.position.copy(t).addScaledVector(p.normalize(), r);
+    this.dirty = true;
+  }
+
+  // ---------------------------------------------------------------- wave planes (M7.2b)
+
+  /** The wave planes (replacing any before): one opaque, unlit, double-sided mesh each with a DataTexture over its
+   *  pixel buffer (no copy), shown until `showWave` hides it. */
+  setWaves(planes: readonly WavePlane[]): void {
+    disposeTree(this.waves);
+    this.waves.clear();
+    this.waveTex = [];
+    for (const p of planes) {
+      const tex = new DataTexture(new Uint8Array(p.px.buffer, p.px.byteOffset, p.px.byteLength), p.tw, p.th, RGBAFormat, UnsignedByteType);
+      tex.colorSpace = SRGBColorSpace;
+      tex.minFilter = LinearFilter; tex.magFilter = LinearFilter;
+      tex.generateMipmaps = false;
+      tex.needsUpdate = true;
+      tex.addEventListener('dispose', () => { this.stats.texFreed++; });
+      this.stats.texMade++;
+      const g = new PlaneGeometry(p.w, p.h);
+      // framePixels writes row 0 at the top; a DataTexture's row 0 is at v = 0: turn the plane's v round
+      const uv = g.getAttribute('uv');
+      for (let k = 0; k < uv.count; k++) uv.setY(k, 1 - uv.getY(k));
+      const m = new Mesh(g, new MeshBasicMaterial({ map: tex, side: DoubleSide, toneMapped: false }));
+      const [U, V] = [new Vector3(...p.U), new Vector3(...p.V)];
+      const N = new Vector3().crossVectors(U, V);
+      const c = new Vector3(...p.o).addScaledVector(U, p.w / 2).addScaledVector(V, p.h / 2);
+      m.matrixAutoUpdate = false;
+      m.matrix.copy(new Matrix4().makeBasis(U, V, N).setPosition(c));
+      m.userData.kind = 'wave';
+      m.userData.key = p.key;
+      this.waves.add(m);
+      this.waveTex.push(tex);
+    }
+    this.stats.wavePlanes = planes.length;
+    this.cutWaves();
+  }
+
+  showWave(key: string, on: boolean): void {
+    for (const o of this.waves.children) if (o.userData.key === key) o.visible = on;
+    this.dirty = true;
+  }
+
+  /** The planes' buffers hold frame `frame`: upload them (in place) and draw now, in the caller's animation frame. */
+  drawWaves(frame: number): void {
+    for (let k = 0; k < this.waveTex.length; k++) if (this.waves.children[k].visible) this.waveTex[k].needsUpdate = true;
+    this.stats.waveFrame = frame;
+    this.stats.waveDraws++;
+    if (this.current && !this.stats.disposed) this.render();
+  }
+
+  /** The screen point (client px) of a point of the model (mm). */
+  project(p: [number, number, number]): [number, number] {
+    const v = new Vector3(...p).project(this.camera), r = this.renderer.domElement.getBoundingClientRect();
+    return [r.left + ((v.x + 1) / 2) * r.width, r.top + ((1 - v.y) / 2) * r.height];
+  }
+
+  /** The visible wave plane under a screen point: its key and the point's place on it (fractions of its width from
+   *  the corner `o`, and of its height from the top edge). */
+  probe(x: number, y: number): { key: string; s: number; t: number } | null {
+    const r = this.renderer.domElement.getBoundingClientRect();
+    const rc = new Raycaster();
+    rc.setFromCamera(new Vector2(((x - r.left) / r.width) * 2 - 1, 1 - ((y - r.top) / r.height) * 2), this.camera);
+    this.waves.updateMatrixWorld(true);
+    // the first hit the cut leaves (the raycaster does not clip)
+    const hit = rc.intersectObjects(this.waves.children.filter((o) => o.visible), false)
+      .find((h) => !(((h.object as Mesh).material as Material).clippingPlanes ?? []).some((pl) => pl.distanceToPoint(h.point) < 0));
+    if (!hit || !hit.uv) return null;
+    return { key: hit.object.userData.key, s: hit.uv.x, t: hit.uv.y };
+  }
+
   /** The view as a PNG at `scale` × the canvas's CSS size. */
   async png(scale: number): Promise<Blob> {
     const w = Math.max(1, this.host.clientWidth), h = Math.max(1, this.host.clientHeight);
@@ -335,12 +503,17 @@ export class Via3D {
     if (this.stats.disposed) return;
     this.stats.disposed = true;
     cancelAnimationFrame(this.raf);
+    this.raf = 0;
     this.ro.disconnect();
+    this.io?.disconnect();
     this.controls.dispose();
     disposeTree(this.fields);
     disposeTree(this.model);
+    disposeTree(this.waves);
+    this.waveTex = [];
     for (const m of Object.values(this.mats)) m.dispose();
     this.mats = {};
+    this.stats.memory = { ...this.renderer.info.memory };
     this.renderer.dispose();
     this.renderer.forceContextLoss();
     this.renderer.domElement.remove();

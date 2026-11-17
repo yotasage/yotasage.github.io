@@ -272,3 +272,13 @@ Placed in `whys.ts` with the keys in brackets. Since M4.3b the links go to the v
 | Speed (waves-speed) | How fast the frames play: at 1× a run’s frames take about ten seconds. | – | – |
 | Loop (waves-loop) | Starts again from the first frame after the last. | – | – |
 | Colour scale (waves-scale) | One scale for the whole run, so a frame’s colours compare with every other’s. | – | – |
+
+## Waves: the 3D view (step M7.2b)
+
+| Where | Line | → | Claim |
+| --- | --- | --- | --- |
+| 3D view (waves-3d) | The run’s structure in 3D with the waves on its slices, played with the player’s clock; drag to turn it. | – | – |
+| Planes (waves-3d-planes) | Each slice of the run as a plane in the structure; turn one off to see the ones behind it. | – | – |
+| Reset view (waves-3d-reset) | Back to the first view: from the side the side view shows, a little above. | – | – |
+| Cut away the near half (waves-3d-cut) | Cuts the structure and the other planes along the side plane, so it shows whole and they lie behind it. | – | – |
+| Show the laminate (waves-3d-laminate) | Adds the laminate between the copper, pale, so the board’s layers show. | – | – |

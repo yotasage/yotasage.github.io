@@ -16,17 +16,11 @@ import { useExportFeed } from './exportFeed';
 import * as fieldPaint from './fieldPaint';
 import type { Painted } from './fieldPaint';
 import { FieldScaleBar } from './FieldView';
-import { createVia3D } from './via3dRender';
-import type { FieldPlane, Via3D, Via3DColors } from './via3dRender';
+import { colorsOf, createVia3D, followTheme } from './via3dRender';
+import type { FieldPlane, Via3D } from './via3dRender';
 import { viaDriveText } from './useViaField';
 import type { ViaFieldSettings } from './useViaField';
 import { Whys } from './Why';
-
-function colorsOf(el: HTMLElement): Via3DColors {
-  const st = getComputedStyle(el);
-  const g = (k: string, d: string) => st.getPropertyValue(k).trim() || d;
-  return { bg: g('--air', '#e8eff4'), copper: g('--copper', '#c8773a'), core: g('--core', '#d6c688'), prepreg: g('--prepreg', '#e9dfb2'), mask: g('--mask', '#2f7d4f'), ghost: g('--ink-3', '#6c6861') };
-}
 
 const planeOf = (p: Painted | null): FieldPlane | null => (p && p.image ? { image: p.image, x0: p.grid.view.x0, x1: p.grid.view.x1, z0: p.grid.view.z0, z1: p.grid.view.z1 } : null);
 
@@ -78,13 +72,7 @@ export default function Via3DView({ s, v, traceW, fields, t0 }: Props) {
   useEffect(() => {
     const el = host.current;
     if (!view || !el) return;
-    const again = () => view.setColors(colorsOf(el));
-    const root = el.closest('[data-whys]') ?? document.documentElement;
-    const mo = new MutationObserver(again);
-    mo.observe(root, { attributes: true, attributeFilter: ['data-theme'] });
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    mq.addEventListener('change', again);
-    return () => { mo.disconnect(); mq.removeEventListener('change', again); };
+    return followTheme(el, view);
   }, [view]);
 
   const png = () => {

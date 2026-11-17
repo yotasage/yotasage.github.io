@@ -116,7 +116,7 @@ const TOOLS: SiteTool[] = [
     href: '/em-sim/main',
     title: 'EM simulation',
     category: 'Electronics',
-    description: 'Work out the impedance of PCB traces and differential pairs with a field solver, on a stackup you type, any JLCPCB stackup or the stackup of a KiCad board, with the fields drawn: drag the sizes in the drawing, find the width for a target impedance, sweep an input, see which tolerance matters most, compare with closed-form calculators and read the theory behind it. Vias too, from the side, from above and in 3D, and full-wave runs on your graphics card with their waves played on a slice.',
+    description: 'Work out the impedance of PCB traces and differential pairs with a field solver, on a stackup you type, any JLCPCB stackup or the stackup of a KiCad board, with the fields drawn: drag the sizes in the drawing, find the width for a target impedance, sweep an input, see which tolerance matters most, compare with closed-form calculators and read the theory behind it. Vias too, from the side, from above and in 3D, and full-wave runs on your graphics card with their waves played on a slice and in 3D.',
     icon: 'emsim',
     color: '#2fb3a0',
     tags: ['2D field solver', 'Z0 · Zdiff · Zcm', 'Every JLCPCB stackup', 'KiCad stackups', 'Microstrip · stripline · coplanar', 'Edge- and broadside-coupled pairs', 'Fields', 'Target · sweep · tolerance', 'Every setup is a link'],

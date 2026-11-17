@@ -43,7 +43,7 @@ const pairSetup = () => { const s = withTrace('pair-microstrip', 0.11); s.trace 
 
 // ---- the data ----
 const keys = Object.keys(WHYS);
-check(keys.length === 221, `${keys.length} short lines (220 of theory-lines.md and the switch's own)`);
+check(keys.length === 226, `${keys.length} short lines (225 of theory-lines.md and the switch's own)`);
 check(keys.every((k) => WHYS[k].text && WHYS[k].label && (WHYS[k].topic === null || TOPIC_TITLE[WHYS[k].topic])), 'every line has a label, a text and a known topic or none');
 check(keys.every((k) => WHYS[k].text.split(/\s+/).length <= 22), 'every line at most about 20 words');
 const fullText = (k) => `${WHYS[k].text}${WHYS[k].topic ? ' → theory' : ''}`;
@@ -176,7 +176,11 @@ try {
   await wq.waitForSelector('[data-waves-estimate="ready"]', { timeout: 60000 });
   await wq.click('[data-waves-run]');
   await wq.waitForSelector('[data-waves-results][data-stale="false"]', { timeout: 900000 });
-  await state(wq, 'waves result', ['waves-plots', 'waves-notes', 'waves-player', 'waves-view', 'waves-comp', 'waves-mode', 'waves-play', 'waves-time', 'waves-speed', 'waves-loop', 'waves-scale']);
+  await state(wq, 'waves result', ['waves-plots', 'waves-notes', 'waves-player', 'waves-view', 'waves-comp', 'waves-mode', 'waves-play', 'waves-time', 'waves-speed', 'waves-loop', 'waves-scale', 'waves-3d']);
+  // the player's 3D view (M7.2b)
+  await wq.click('[data-waves3d-open]');
+  await wq.waitForSelector('[data-waves3d][data-waves3d-ready="true"]', { timeout: 30000 });
+  await state(wq, 'waves 3D view', ['waves-3d', 'waves-3d-planes', 'waves-3d-reset', 'waves-3d-cut', 'waves-3d-laminate']);
   await wq.close();
   // ---- 5: the Export section (M8.1b) ----
   const ep = await open(`${URL0}#export`);
