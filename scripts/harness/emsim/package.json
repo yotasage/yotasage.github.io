@@ -12,7 +12,8 @@
     "ui": "node ui.mjs",
     "size": "node size.mjs",
     "jlcpcb:fetch": "node jlcpcb/fetch.mjs",
-    "jlcpcb:convert": "node jlcpcb/convert.mjs"
+    "jlcpcb:convert": "node jlcpcb/convert.mjs",
+    "recheck": "tsx recheck.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.65.1",

@@ -150,8 +150,9 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   solver's contract: 2D boundary elements, axisymmetric pads, the via model, FDTD on WebGPU), `later.md` (phase 2,
   unscheduled); **where code lives: the module map** `modules.md` (`lib/emsim/`), `modules-page.md` (the page; the Via section in
   `modules-page-via.md`, the Waves section in `modules-page-waves.md`, its theory, equations and examples in
-  `modules-page-teach.md`) and `modules-harness.md` (checks). The status note's texts are in `components/EmSim/statusText.ts`. Route `/em-sim/main`, code `lib/emsim/`, `components/EmSim/`, harness `scripts/harness/emsim/`; openEMS
-  on the owner's PC is for the harness's reference fixtures only.
+  `modules-page-teach.md`) and `modules-harness.md` (checks). The status note's texts are in `components/EmSim/statusText.ts`. Route `/em-sim/main`, code `lib/emsim/`, `components/EmSim/`, harness `scripts/harness/emsim/`
+  (`npm run check`, `npm run ui`, and `npm run recheck`: both plus the Smith chart's checks on the shared modules, as one
+  table of every step's "done when"; about an hour); openEMS on the owner's PC is for the harness's reference fixtures only.
 - `tsconfig` uses `"module": "node16"`, so our own files count as CommonJS and the ES-module-only add-ons of three.js
   (`three/examples/jsm/...`) can only be loaded with `await import(...)`, or imported as types with
   `import type ... with { 'resolution-mode': 'import' }`. A dynamic import of one of our own files needs

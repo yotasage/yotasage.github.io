@@ -536,3 +536,7 @@ runs without growing memory (GPU buffers freed).
 `howto.md` for visitors; README, CLAUDE.md and BACKLOG tidied; `npm run recheck` runs every earlier "done when" and
 prints one table; a fresh reading of the status note, short lines and claims. **Phase 1 done**; phase 2 waits for the
 owner ([later.md](later.md)).
+
+**Split** (main session, 2026-11-17, two jobs): **M9.3a** (`npm run recheck`: every earlier step's "done when" run or
+read from its check, as one table, as the Smith chart's) and **M9.3b** (`howto.md` for visitors; README, CLAUDE.md and
+BACKLOG tidied; a fresh reading of the status note, the short lines and the claims; phase 1 done).
