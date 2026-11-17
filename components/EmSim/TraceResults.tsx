@@ -112,7 +112,7 @@ export default function TraceResults({ r, state, stale, quick = false, message, 
   const shown = r && r.ok ? r : null;
   const pair = shown?.pair ?? null;
   return (
-    <section className={css.results} aria-labelledby="results-h" data-results data-state={state} data-stale={stale} data-where={where} data-quick={quick} data-n={shown ? shown.n : 0}>
+    <section className={css.results} aria-labelledby="results-h" data-results data-state={state} data-stale={stale} data-where={where} data-quick={quick} data-n={shown ? shown.n : 0} data-ms={shown ? shown.ms.toFixed(2) : ''}>
       <div className={css.resultsHead}>
         <h3 id="results-h" className={base.h3}>Results</h3>
         <span className={css.busy} data-busy={stale}>{stale ? (quick ? 'Updating…' : 'Computing…') : quick ? 'Coarse while dragging' : ''}</span>

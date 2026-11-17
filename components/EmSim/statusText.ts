@@ -27,12 +27,12 @@ export const STATUS_NOW =
 export const STATUS_CHECKED =
   'Checked by automated tests against exact solutions, against a separate finite-difference solver on hundreds of ' +
   'random structures and against JLCPCB’s own calculator (within about 0.3 %), and the page in Edge, Firefox and Safari’s ' +
-  'engine, by keyboard and by touch. The ' +
+  'engine, by keyboard and by touch, and for its speed and memory over a long session. The ' +
   'numbers are a careful estimate; for an order, your board house’s own figures have the last word.';
 /** Behind "More". */
 export const STATUS_ASSUMES =
   'Apart from the full-wave runs it is quasi-static: no losses and no change with frequency; a via is lines and lumped capacitances, right while ' +
   'its parts are short against the wavelength. The tolerances are placeholders until you type the ones of your board house.';
 export const STATUS_COMING =
-  'Not here yet: a last round of polish (speed and size, a how-to) and a re-check of every result; it comes next. ' +
+  'Not here yet: a how-to and a re-check of every result; they come next. ' +
   'Full-wave runs use the graphics card through WebGPU where the browser offers it, and the CPU (slower) where not.';

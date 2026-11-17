@@ -269,6 +269,8 @@ export function messageScheduler(): (fn: () => void) => void {
  * The message handler: call it with each request; it answers through post (with the buffers to transfer for a
  * result) and continues its work through schedule (setTimeout in a worker, so that messages get in between slices).
  */
+const FIRST_KINDS: ReadonlySet<StaticJob['kind']> = new Set(['solve', 'field', 'via-field']);
+
 export function createStaticHandler(post: (msg: StaticReply, transfer?: ArrayBuffer[]) => void, schedule: (fn: () => void) => void, sliceMs = SLICE_MS): (req: StaticRequest) => void {
   // shown: the job has posted a partial (a picture); jobs that have not are run first
   const queue: { id: number; job: StaticJob; gen?: Generator<JobProgress, unknown>; shown?: boolean }[] = [];
@@ -277,7 +279,19 @@ export function createStaticHandler(post: (msg: StaticReply, transfer?: ArrayBuf
   let current: { id: number; gen: Generator<JobProgress, unknown>; shown: boolean } | null = null;
   let scheduled = false;
   const kick = () => { if (!scheduled) { scheduled = true; schedule(pump); } };
-  const unshown = () => { for (let k = 0; k < queue.length; k++) if (!queue[k].shown) return k; return -1; };
+  // Of the jobs that have shown nothing yet, the main result and the maps' first pictures (a few ms each) go first, then
+  // the rest in order (M9.2: a via model after a typed width, 40 ms and not sliced, held the field map's first picture
+  // back to 70 ms; now the picture comes first and the via's result about 10 ms later).
+  const unshown = () => {
+    let any = -1;
+    for (let k = 0; k < queue.length; k++) {
+      const q = queue[k];
+      if (q.shown) continue;
+      if (q.job && FIRST_KINDS.has(q.job.kind)) return k;
+      if (any < 0) any = k;
+    }
+    return any;
+  };
   function pump(): void {
     scheduled = false;
     const t0 = now();

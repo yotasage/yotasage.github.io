@@ -18,7 +18,7 @@ import {
   Matrix4, Mesh, MeshBasicMaterial, MeshStandardMaterial, Path, PerspectiveCamera, Plane, PlaneGeometry, Raycaster, RGBAFormat, Scene, Shape,
   SRGBColorSpace, UnsignedByteType, Vector2, Vector3, WebGLRenderer,
 } from 'three';
-import type { BufferGeometry, Material, Object3D } from 'three';
+import type { BufferGeometry, Material, Object3D, Texture } from 'three';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js' with { 'resolution-mode': 'import' };
 
 import type { Prism, PrismKind, Scene3D } from '../../lib/emsim/scene3d';
@@ -99,6 +99,7 @@ export class Via3D {
   private scene = new Scene();
   private camera = new PerspectiveCamera(FOV, 1, 0.01, 1000);
   private controls: OrbitControls;
+  private root: Node; // where the controls put their keydown listener (the document, while the view is in the page)
   private model = new Group();
   private fields = new Group();
   private cutPlane = new Plane(new Vector3(1, 0, 0), 0);
@@ -144,6 +145,7 @@ export class Via3D {
     head.position.set(0.3, 0.6, 1);
     this.camera.add(head);
     this.controls = new OC(this.camera, c);
+    this.root = c.getRootNode();
     this.controls.enableDamping = glide();
     this.controls.dampingFactor = 0.15;
     this.controls.screenSpacePanning = true;
@@ -509,6 +511,25 @@ export class Via3D {
     this.ro.disconnect();
     this.io?.disconnect();
     this.controls.dispose();
+    // OrbitControls takes its keydown and keyup listeners off domElement.getRootNode(), which is no longer the document
+    // once React has taken the view out of the page (the effect's cleanup runs after that): every closed view stayed
+    // on the document's listener with its controls, scene, renderer and host (M9.2, about 0.7 MiB and 73 DOM nodes
+    // per view opened and closed). Taken off the document they were put on.
+    const oc = this.controls as unknown as { _interceptControlDown?: EventListener; _interceptControlUp?: EventListener };
+    if (oc._interceptControlDown) this.root.removeEventListener('keydown', oc._interceptControlDown, { capture: true });
+    if (oc._interceptControlUp) this.root.removeEventListener('keyup', oc._interceptControlUp, { capture: true });
+    // three.js shares one DFG table (a module's texture) among every renderer's standard materials; each renderer that
+    // drew it listens to its 'dispose' and keys its own GL texture by it, so a disposed renderer, its context and its
+    // canvas stayed reachable from that table for good (M9.2: one context and canvas per view opened). Disposing the
+    // table after the renderer lets every renderer drop its copy; one still open uploads it again on its next frame.
+    let lut: Texture | null = null;
+    this.scene.traverse((o) => {
+      const ms = (o as Mesh).material;
+      for (const m of (Array.isArray(ms) ? ms : ms ? [ms] : []) as Material[]) {
+        const u = (this.renderer.properties.get(m) as { uniforms?: { dfgLUT?: { value: Texture | null } } }).uniforms;
+        if (!lut && u?.dfgLUT?.value) lut = u.dfgLUT.value;
+      }
+    });
     disposeTree(this.fields);
     disposeTree(this.model);
     disposeTree(this.waves);
@@ -517,6 +538,7 @@ export class Via3D {
     this.mats = {};
     this.stats.memory = { ...this.renderer.info.memory };
     this.renderer.dispose();
+    (lut as Texture | null)?.dispose();
     this.renderer.forceContextLoss();
     this.renderer.domElement.remove();
   }

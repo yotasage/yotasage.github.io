@@ -209,3 +209,17 @@ of phase 2 can take any of them.
 | Via model (all segments, pads, cascade, TDR) | ≤ 30 ms |
 | Full-wave run, via with feed traces (about 2 M cells, WebGPU) | estimator within 2× of the real time; no fixed target |
 | Main thread per frame while dragging | ≤ 8 ms (≤ 12 ms at 4×) |
+
+How the budgets are read (M9.2, [notes-M9.2.md](notes-M9.2.md); none was changed):
+
+- **4× for work in a worker:** Chromium's CPU throttle slows the page's main thread only; CDP refuses it on a dedicated
+  worker. The 4× figure of a worker's task (solves, the via model, sweeps, Monte Carlo) is its 1× time × 4; the round
+  trip on a throttled page is reported beside it.
+- **Field map:** the budget is the map's own work (M1.5: the solve excluded, checked in Node by check-fields). On the
+  page, a typed edit's first picture also waits for the solve and for any job queued before it in the static worker;
+  since M9.2 the worker takes solves and maps' first pictures before other jobs, so it is about 20 ms there too.
+- **Via model:** the budget is the model for an edit of the via. An edit of the trace also solves the via's feed lines
+  again (four 2D solves for a single via, about 36 ms in Node), so the via's result follows a trace edit in about 40 to
+  55 ms (BL197).
+- **Drag frames:** "main thread per frame" is read two ways, both checked: the drag frame's own work (p95) and all
+  main-thread work divided by the frames (CDP TaskDuration, which includes the harness's synthetic events).
