@@ -115,8 +115,8 @@ board's open edges make that plane pair a cavity with resonances; a 50 × 50 mm 
 [Chada2009 abstract], ⟨159⟩ and how far a quasi-static via model holds depends on the distance to the return via
 [Archambeault2004 abstract]. ⟨160⟩
 
-So the tool refuses a via without return vias and flags one whose nearest return is more than 2 mm away, a
-provisional limit that the full-wave check will set. ⟨161⟩ Moving the 0.6/0.3 via's two returns from 0.8 to 2.5 mm
+So the tool refuses a via without return vias and flags one whose nearest return is more than 1.5 mm away: there
+full-wave runs put the model's impedance more than about 4 % off. ⟨161⟩ Moving the 0.6/0.3 via's two returns from 0.8 to 2.5 mm
 raises its barrel in the core from 59.71 to 108.78 Ω and the section from 50.23 to 68.63 Ω. ⟨162⟩
 
 **The wall rule.** The axisymmetric solve closes its domain with a grounded coaxial wall at the returns' R_eq, so that
@@ -253,8 +253,8 @@ A feed that crosses its plane's antipad has no plane under it there and is more 
 modelled as. ⟨205⟩
 
 Left out of this model: losses, the return current through the plane cavity, radiation and higher-order modes, and the
-coupling of a pair's pads beyond the estimate. ⟨203⟩ A full-wave solver in the browser comes in later steps and will
-check these limits on the same vias. ⟨204⟩
+coupling of a pair's pads beyond the estimate. ⟨203⟩ A full-wave run in the Waves section solves these on the same
+vias (#full-wave). ⟨204⟩
 
 **Equations:**
 

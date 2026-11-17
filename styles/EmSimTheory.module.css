@@ -301,3 +301,86 @@
   color: var(--ink-2);
   font-size: 0.875rem;
 }
+
+/* M7.2d: the full-wave topic's figures (TheoryWaveFigures.tsx): E in the accent, η₀·H in the warning colour, copper. */
+.fwE {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.fwH {
+  fill: none;
+  stroke: var(--warn);
+  stroke-width: 2;
+}
+
+.fwE .fwHead {
+  fill: var(--accent);
+  stroke: none;
+}
+
+.fwH .fwHead {
+  fill: var(--warn);
+  stroke: none;
+}
+
+.fwEText {
+  fill: var(--accent);
+  font-weight: 600;
+}
+
+.fwHText {
+  fill: var(--warn);
+  font-weight: 600;
+}
+
+.fwEDot {
+  fill: var(--accent);
+}
+
+.fwHDot {
+  fill: var(--warn);
+}
+
+.fwCopper {
+  fill: var(--copper);
+  stroke: var(--copper-edge);
+  stroke-width: 1;
+}
+
+.fwGrid {
+  fill: none;
+  stroke: var(--ink-3);
+  stroke-width: 1;
+}
+
+.fwCircle {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+
+.fwCut {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3.5;
+  stroke-linecap: butt;
+}
+
+/* M7.2d: the theory's own "Derivation" button under a full-wave equation (the page's .button, set off from the title). */
+.eqDeriveAt {
+  display: inline-block;
+  margin: 4px 0 0 8px;
+  vertical-align: middle;
+}
+
+/* M7.2d: the full-wave figures' labels stay legible when the figure is scaled to a phone's width. */
+.fwSvg {
+  max-width: 480px;
+}
+
+.fwSvg text {
+  font-size: 15px;
+}

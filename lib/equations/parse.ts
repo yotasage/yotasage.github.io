@@ -25,7 +25,7 @@ export type Node =
 
 /** The functions a call may name. */
 export const FUNCTIONS: ReadonlySet<string> = new Set([
-  'abs', 'sqrt', 'exp', 'conj', 'ln', 'log10', 'sin', 'cos', 'tan', 'cot', 'arctan', 'arccos', 'Re', 'Im', 'arg',
+  'abs', 'sqrt', 'exp', 'conj', 'ln', 'log10', 'sin', 'cos', 'tan', 'cot', 'arctan', 'arccos', 'Re', 'Im', 'arg', 'ceil',
 ]);
 
 /** Names that are constants, never variables. */

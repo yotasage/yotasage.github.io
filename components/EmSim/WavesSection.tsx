@@ -38,6 +38,7 @@ import { getClient } from './TraceSection';
 import { NumInput } from './ValField';
 import { takeWavesAsk, WAVES_EVENT } from './wavesSuggest';
 import type { WavesKindAsk } from './wavesSuggest';
+import { feedTheory } from './theoryFeed';
 import { Why } from './Why';
 import WavesPlayer from './WavesPlayer';
 import { freeFrames, heldFrames } from './WavesPlayer';
@@ -66,6 +67,7 @@ export default function WavesSection({ setup, unit = 'mm' }: Props) {
   const spec = useMemo<WavesSpec>(() => ({ kind, tr, length, backend }), [kind, tr, length, backend]);
   const [dev, setDev] = useState<DeviceInfo | null>(null);
   const [pv, setPv] = useState<Preview | null>(null);
+  const pvFor = useRef<{ setup: Setup; spec: WavesSpec } | null>(null); // what `pv` was made for (the theory's numbers)
   const [calib, setCalib] = useState(0); // a run measured this device: the estimate again
   const [phase, setPhase] = useState<Phase>('idle');
   const [bk, setBk] = useState<BackendInfo | null>(null);
@@ -93,7 +95,7 @@ export default function WavesSection({ setup, unit = 'mm' }: Props) {
   useEffect(() => {
     if (!dev || (kind === 'trace' && lenReason)) return;
     let on = true;
-    const id = window.setTimeout(() => { if (on) setPv(preview(setup, spec, dev)); }, 30);
+    const id = window.setTimeout(() => { if (on) { pvFor.current = { setup, spec }; setPv(preview(setup, spec, dev)); } }, 30);
     return () => { on = false; clearTimeout(id); };
   }, [setup, spec, dev, calib, kind, lenReason]);
 
@@ -158,6 +160,13 @@ export default function WavesSection({ setup, unit = 'mm' }: Props) {
     if (phase !== 'running') setFrames(0);
     setDone({ ...done, store: null });
   }, [stale, done, phase]);
+  // M7.2d: the theory's full-wave topic prints this estimate's numbers, and the run's while it is for the same setup
+  useEffect(() => {
+    const f = pvFor.current;
+    if (!pv || !f) return;
+    const res = done && done.setup === f.setup && sameSpec(done.spec, f.spec) ? done.res : null;
+    feedTheory({ waves: { setup: f.setup, spec: f.spec, pv, res } });
+  }, [pv, done]);
   const runs = pv ? pv.ports.length : 0;
   const total = pv?.est ? pv.est.seconds * runs : NaN;
   const refuse = pv ? pv.verdicts.filter((v) => v.level === 'refuse') : [];

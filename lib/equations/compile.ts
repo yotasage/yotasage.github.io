@@ -89,6 +89,7 @@ export function compile(tree: Node): Program {
       case 'sqrt': return () => csqrt(r, o, r[a], r[a + 1]);
       case 'conj': return () => { r[o] = r[a]; r[o + 1] = -r[a + 1]; };
       case 'Re': return () => { r[o] = r[a]; r[o + 1] = 0; };
+      case 'ceil': return () => { r[o] = Math.ceil(r[a]); r[o + 1] = 0; }; // of the real part (EM M7.2d: a step count)
       case 'Im': return () => { r[o] = r[a + 1]; r[o + 1] = 0; };
       case 'arg': return () => { r[o] = Math.atan2(r[a + 1], r[a]); r[o + 1] = 0; };
       case 'exp': return () => {

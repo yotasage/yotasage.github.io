@@ -368,7 +368,7 @@
    `auto` keeps the real one. */
 .offscreen {
   content-visibility: auto;
-  contain-intrinsic-size: auto 22000px;
+  contain-intrinsic-size: auto 26000px; /* M7.2d: with topic 14 */
 }
 
 .offscreen[id='references'] {

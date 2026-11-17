@@ -7,7 +7,12 @@
 // no horizontal scroll at 320/390/1440 in both themes; screenshots `emsim-theory-*` of two topics with equations and
 // a figure at 390 and 1440 in both themes. M4.3b: the via topics 7–13 (anchors in the contents, their sources cited and
 // numbered with the rest), their equations' numbers equal lib/emsim/eqvaluesVia.ts viaBinding in Node for the default
-// (C44) via once the Via section has solved it, their figures drawn; screenshots `emsim-theory-via-*`.
+// (C44) via once the Via section has solved it, their figures drawn; screenshots `emsim-theory-via-*`. M7.2d: topic 14,
+// full-wave runs (its ten sub-anchors, its eight sources cited and numbered with the rest; in a second Edge with WebGPU
+// on: its equations' and "now" lines' numbers equal lib/emsim/eqvaluesWaves.ts wavesBinding of fullwave.preview in Node
+// for the default via, the run time the Waves section's estimate; after a run on the GPU the run's frames, ports' Z and
+// last frequency; the derivation dialog of a full-wave entry; the three figures drawn in both themes; links into
+// #waves); no horizontal scroll with the topic laid out; screenshots `emsim-theory-full-wave-*`, `emsim-theory-fw-*`.
 //   tsx ui-theory.mjs [screenshot folder | -] [base URL]      (part of npm run ui)
 
 import { writeFileSync } from 'node:fs';
@@ -25,10 +30,14 @@ import * as importedCf from '../../../lib/emsim/closedform.ts';
 import * as importedEv from '../../../lib/emsim/eqvalues.ts';
 import * as importedEvVia from '../../../lib/emsim/eqvaluesVia.ts';
 import * as importedVm from '../../../lib/emsim/viamodel.ts';
+import * as importedFw from '../../../lib/emsim/fullwave.ts';
+import * as importedEvW from '../../../lib/emsim/eqvaluesWaves.ts';
+import * as importedEq from '../../../lib/emsim/equations.ts';
 
 const d = (m) => m.default ?? m;
 const LN = d(importedLines), LK = d(importedLink), SU = d(importedSetup), S = d(importedStackup), ST = d(importedStructure);
 const CF = d(importedCf), EV = d(importedEv), EVV = d(importedEvVia), VM = d(importedVm);
+const FW = d(importedFw), EVW = d(importedEvW), EQ = d(importedEq);
 
 const shots = process.argv[2] && process.argv[2] !== '-' ? process.argv[2] : null;
 const base = process.argv[3] ?? 'http://localhost:3022';
@@ -37,7 +46,12 @@ const URL0 = `${base}/em-sim/main`;
 const ANCHORS = ['how-to-use', 'transmission-lines', 'field-solver', 'pairs', 'pair-definitions', 'coupling', 'two-speeds',
   'structures', 'trapezoid', 'solder-mask', 'coplanar-ground', 'copper-thickness', 'calculators', 'closed-forms',
   'jlcpcb-calculator', 'tolerances', 'via-line', 'via-pads', 'via-return', 'via-stubs', 'via-tdr', 'via-sparams', 'via-limits',
+  'full-wave', 'fw-why', 'fw-yee', 'fw-mesh', 'fw-edges', 'fw-ports', 'fw-cost', 'fw-read', 'fw-pair', 'fw-3d', 'fw-checked',
   'references'];
+// M7.2d: topic 14's sources, figures, and the WebGPU flags of ui-waves.mjs for its run
+const WAVES_KEYS = ['WikiFDTD', 'OpenEMSDocs', 'Yee1966', 'TafloveHagness2005', 'CFL1928', 'DeyMittra1997', 'RodenGedney2000', 'PiketMay1994'];
+const WAVES_FIGURES = ['fw-yee-cell', 'fw-leapfrog', 'fw-conformal'];
+const GPU_ARGS = ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=d3d11', '--ignore-gpu-blocklist'];
 const VIA_KEYS = ['WikiCapacitance', 'Fan2014', 'Kok1993', 'Vardapetyan2020', 'Chada2009', 'Archambeault2004', 'RimoloDonadio2009b',
   'Miller2004', 'SteerVol2', 'Ellingson2018', 'Huddar2021', 'Zhang2020', 'Park2017', 'BockelmanEisenstadt1995', 'Cartier2007', 'Duan2014'];
 const VIA_FIGURES = ['via-side', 'via-cut', 'via-pads', 'via-return', 'via-stub-s21', 'via-backdrill', 'via-tdr', 'via-s', 'via-mixed'];
@@ -97,7 +111,7 @@ try {
   const hrefs = await page.$$eval('[data-theory-contents] a', (as) => as.map((a) => a.getAttribute('href')));
   check(hrefs.length === ANCHORS.length - 1, `contents has ${hrefs.length} links`);
   check((await page.evaluate((hs) => hs.every((h) => !!document.getElementById(h.slice(1))), hrefs)), 'every contents link has its target');
-  for (const id of ['coupling', 'jlcpcb-calculator', 'tolerances']) {
+  for (const id of ['coupling', 'jlcpcb-calculator', 'tolerances', 'fw-cost']) {
     await page.click(`[data-theory-contents] a[href="#${id}"]`);
     await page.waitForTimeout(150);
     const top = await page.evaluate((x) => document.getElementById(x).getBoundingClientRect().top, id);
@@ -115,12 +129,20 @@ try {
   check(refs.length === order.length && refs.every((id, i) => id === `ref-${order[i]}`), `References lists the ${refs.length} cited sources in that order`);
   const viaCites = await page.$$eval('[data-theory-vias] [data-cite]', (as) => as.map((a) => a.getAttribute('data-cite')));
   check(VIA_KEYS.every((k) => viaCites.includes(k)), `the via topics cite their ${VIA_KEYS.length} sources (${VIA_KEYS.filter((k) => !viaCites.includes(k)).join(', ')})`);
+  const wavesCites = await page.$$eval('[data-theory-waves] [data-cite]', (as) => as.map((a) => a.getAttribute('data-cite')));
+  check(WAVES_KEYS.every((k) => wavesCites.includes(k)) && wavesCites.length >= 25, `topic 14 cites its ${WAVES_KEYS.length} sources, ${wavesCites.length} citations (${WAVES_KEYS.filter((k) => !wavesCites.includes(k)).join(', ')})`);
+  check(WAVES_KEYS.every((k) => cites.some((c) => c.key === k && c.n === order.indexOf(k) + 1)), 'topic 14\'s sources numbered by first citation with the rest');
+  check((await page.locator('[data-theory-waves] [data-eq][data-scope="waves"]').count()) === 9, 'topic 14 shows its nine equations');
+  const fwLinks = await page.$$eval('[data-theory-waves] a[href^="#"]:not([data-cite])', (as) => as.map((a) => a.getAttribute('href').slice(1)));
+  check(fwLinks.length >= 12 && (await page.evaluate((ids) => ids.every((id) => !!document.getElementById(id)), fwLinks)), `every link of topic 14 has its target (${fwLinks.length}: ${[...new Set(fwLinks)].join(', ')})`);
+  check((await page.$$eval('[data-fw-link]', (as) => as.map((a) => a.getAttribute('href')))).join(',') === '#waves,#waves,#waves', 'fw-read, fw-pair and fw-3d link to the live player and 3D view in #waves');
+  check((await page.locator('#via-limits a[href="#full-wave"]').count()) === 1 && !/later steps/.test(await page.locator('#via-limits').textContent()), 'topic 13 links to topic 14 instead of "later steps"');
   check((await page.locator('[data-theory-vias] [data-eq][data-scope="via"]').count()) >= 25, 'the via topics show their equations');
 
   // ---- live numbers against Node ----
   const liveCheck = async (what, s, want) => {
     const b = nodeBinding(s);
-    const got = await page.$$eval('[data-eq][data-live="true"]:not([data-scope="via"]) [data-sym][data-v]', (es) => es.map((e) => ({ id: e.closest('[data-eq]').getAttribute('data-eq'), sym: e.getAttribute('data-sym'), v: Number(e.getAttribute('data-v')) })));
+    const got = await page.$$eval('[data-eq][data-live="true"]:not([data-scope]) [data-sym][data-v]', (es) => es.map((e) => ({ id: e.closest('[data-eq]').getAttribute('data-eq'), sym: e.getAttribute('data-sym'), v: Number(e.getAttribute('data-v')) })));
     const ids = new Set(got.map((g) => g.id));
     let worst = 0, bad = [];
     for (const g of got) { const x = Math.abs(g.v - b[g.sym]) < 1e-12 ? 0 : rel(g.v, b[g.sym]); worst = Math.max(worst, x); if (!(x <= 1e-9)) bad.push(`${g.id}:${g.sym} ${g.v} vs ${b[g.sym]}`); }
@@ -206,6 +228,119 @@ try {
     const s = SU.defaultSetup();
     const m = VM.viaModel(s.stackup, s.via, s.trace, { tr: VM.VIA_TR, z0: VM.VIA_Z0, nf: 401 });
     check(rel(req, m.wall.Req) < 1e-12, `the cut's R_eq ${req} equals the model's`);
+  }
+
+  // ---- M7.2d: topic 14 against the Waves section's estimate and run, in an Edge with WebGPU on ----
+  const gpuBrowser = await chromium.launch({ channel: 'msedge', args: GPU_ARGS });
+  const wctx = await gpuBrowser.newContext({ viewport: { width: 1440, height: 1000 }, colorScheme: 'light' });
+  const wp = await wctx.newPage();
+  wp.on('pageerror', (e) => errors.push(String(e)));
+  try {
+    await wp.goto(`${URL0}#waves`);
+    await wp.waitForSelector('[data-waves-estimate="ready"]', { timeout: 60000 });
+    await wp.evaluate(() => { window.location.hash = 'fw-yee'; });
+    await wp.waitForSelector('[data-eq="fdtd-courant"][data-scope="waves"][data-live="true"]', { timeout: 60000 });
+    const DEV = { gpu: { ok: false, reason: '' }, js: { backend: 'js' }, mobile: false };
+    const pv = FW.preview(SU.defaultSetup(), { kind: 'via', tr: 35e-12, length: 10, backend: 'auto' }, DEV);
+    const b = EVW.wavesBinding(pv);
+    const seconds = Number(await wp.locator('[data-waves-estimate]').getAttribute('data-seconds'));
+    const rate = await wp.$eval('[data-theory-waves] [data-live-text="rate"]', (e) => Number(e.getAttribute('data-v')));
+    // the run time and rate are the page's own (its backend's rate), the rest as Node's
+    const want = { ...b, R_c: rate, t_run: seconds };
+    const waveNums = async () => wp.$$eval('[data-eq][data-scope="waves"][data-live="true"] [data-sym][data-v]', (es) => es.map((e) => ({ id: e.closest('[data-eq]').getAttribute('data-eq'), sym: e.getAttribute('data-sym'), v: Number(e.getAttribute('data-v')) })));
+    const cmpEq = (got, w, what) => {
+      let worst = 0; const bad = [];
+      for (const g of got) { const x = rel(g.v, w[g.sym]); worst = Math.max(worst, x); if (!(x <= 1e-12)) bad.push(`${g.id}:${g.sym} ${g.v} vs ${w[g.sym]}`); }
+      const ids = new Set(got.map((g) => g.id));
+      check(bad.length === 0 && got.length === 10, `${what}: ${got.length} live numbers of ${ids.size} full-wave equations equal Node (worst ${worst.toExponential(1)}) ${bad.slice(0, 4).join('; ')}`);
+      for (const id of ['fdtd-courant', 'fdtd-steps', 'fdtd-cell', 'fdtd-pulse', 'fdtd-cost']) check(ids.has(id), `${what}: ${id} is live`);
+    };
+    cmpEq(await waveNums(), want, 'default via, estimate');
+    for (const id of ['fdtd-update', 'fdtd-dispersion', 'fdtd-waves', 'fdtd-s']) check((await wp.locator(`[data-eq="${id}"]`).getAttribute('data-live')) === 'false', `${id} is a rule, printed without numbers`);
+    check(rel(rate * seconds, 1.5 * pv.est.cells * pv.est.steps * pv.ports.length) < 1e-12, `the run time ${seconds.toFixed(2)} s is 1.5 x cells x steps x ports over the page's rate ${rate}`);
+    const textWant = (res) => ({
+      minCellX: pv.minCell[0], minCellY: pv.minCell[1], minCellZ: pv.minCell[2], dt: pv.est.dt, T: pv.est.T, tauRt: pv.est.tauRt, steps: pv.est.steps,
+      hmax: pv.geom.hmax, erMax: pv.geom.erMax, tr: 35e-12, fRun: b.f_run, sigma: b.sigma_p, t0: b.t_0, fS: b.f_S, cells: pv.est.cells, steps2: pv.est.steps,
+      ports: pv.ports.length, updates: b.W_u, seconds, rate,
+      ...(res ? { frames: res.frames, every: res.every, ...Object.fromEntries(res.z0.map((z, i) => [`z0-${i}`, z])) } : {}),
+    });
+    const cmpText = async (w, what, n) => {
+      const got = await wp.$$eval('[data-theory-waves] [data-live-text]', (es) => es.map((e) => ({ k: e.getAttribute('data-live-text'), v: Number(e.getAttribute('data-v')) })));
+      const bad = got.filter((g) => !(g.k in w) || !(rel(g.v, w[g.k]) <= 1e-12)).map((g) => `${g.k} ${g.v} vs ${w[g.k]}`);
+      check(bad.length === 0 && got.length === n, `${what}: the ${got.length} numbers of the "now" lines equal Node (${bad.slice(0, 4).join('; ')})`);
+    };
+    await cmpText(textWant(null), 'default via, estimate', 20);
+    // the derivation of a full-wave entry
+    await wp.locator('[data-eq-derive-theory="fdtd-courant"]').click();
+    const dlg = wp.locator('dialog[data-derive="fdtd-courant"][open]');
+    await dlg.waitFor({ timeout: 10000 });
+    check(await wp.evaluate(() => document.activeElement?.hasAttribute('data-derive-next')) && (await dlg.getAttribute('aria-labelledby')) === 'em-derive-theory-title', 'Derivation opens the shared dialog with the focus on Next step');
+    await dlg.locator('[data-derive-all]').click();
+    const nSteps = EQ.EM_EQUATION_BY_ID.get('fdtd-courant').steps.length;
+    check(await dlg.locator('[data-derive-step]').count() === nSteps && await dlg.locator('[data-derive-nums]').count() >= 2, `the dialog shows the ${nSteps} steps, those with every quantity bound with numbers`);
+    const bind = JSON.parse(await dlg.getAttribute('data-derive-bind'));
+    check(bind && rel(bind.Delta_t, b.Delta_t) < 1e-12 && rel(bind.Delta_x, b.Delta_x) < 1e-12, 'the dialog\'s numbers are the estimate\'s');
+    await wp.keyboard.press('Escape');
+    await wp.waitForTimeout(200);
+    check((await wp.locator('dialog[data-derive]').count()) === 0 && await wp.evaluate(() => document.activeElement?.getAttribute('data-eq-derive-theory') === 'fdtd-courant'), 'Escape closes it and gives the focus back to its button');
+    // a run on the GPU: the run's own numbers
+    await wp.evaluate(() => { window.location.hash = 'waves'; });
+    await wp.waitForTimeout(300);
+    const gpu = (await wp.locator('[data-waves-estimate]').getAttribute('data-backend')) === 'webgpu';
+    check(gpu, 'the Waves section runs on WebGPU here');
+    if (gpu) {
+      await wp.click('[data-waves-run]');
+      await wp.waitForSelector('[data-waves-results][data-stale="false"]', { timeout: 180000 });
+      await wp.evaluate(() => { window.location.hash = 'fw-read'; });
+      await wp.waitForSelector('[data-waves-now="frames"]', { timeout: 30000 });
+      const res = await wp.evaluate(() => { const r = window.__emsimWaves.result; return { frames: r.snap.frames, every: r.snap.every, z0: r.records.ports.map((p) => p.z0), fS: r.nport.f[r.nport.f.length - 1] }; });
+      check(res.frames > 100 && res.every > 1 && res.z0.length === 2, `the run recorded ${res.frames} frames, one every ${res.every} steps, ports ${res.z0.map((z) => z.toFixed(2)).join(', ')} ohm`);
+      check(rel(res.fS, b.f_S) < 1e-12, `the run's last frequency ${(res.fS / 1e9).toFixed(3)} GHz is 0.816 f_run`);
+      const rate2 = await wp.$eval('[data-theory-waves] [data-live-text="rate"]', (e) => Number(e.getAttribute('data-v')));
+      const seconds2 = Number(await wp.locator('[data-waves-estimate]').getAttribute('data-seconds'));
+      check(rel(rate2 * seconds2, 1.5 * pv.est.cells * pv.est.steps * pv.ports.length) < 1e-12, `after the run the estimate follows the measured rate (${rate2.toExponential(3)}/s)`);
+      cmpEq(await waveNums(), { ...b, R_c: rate2, t_run: seconds2, f_S: res.fS }, 'default via, after a run');
+      const after = textWant(res); after.seconds = seconds2; after.rate = rate2; after.fS = res.fS;
+      await cmpText(after, 'default via, after a run', 24);
+    }
+    // the figures in both themes
+    for (const scheme of ['light', 'dark']) {
+      await wp.emulateMedia({ colorScheme: scheme });
+      for (const f of WAVES_FIGURES) {
+        const el = wp.locator(`[data-figure="${f}"]`);
+        await el.scrollIntoViewIfNeeded();
+        const r = await el.evaluate((e) => {
+          const svg = e.querySelector('svg'), box = svg.getBoundingClientRect();
+          const bg = getComputedStyle(document.body).backgroundColor;
+          const marks = [...e.querySelectorAll('path, circle, rect')].map((x) => getComputedStyle(x)).filter((c) => (c.fill !== 'none' && c.fill !== bg) || (c.stroke !== 'none' && c.stroke !== bg));
+          return { w: box.width, h: box.height, marks: marks.length, texts: e.querySelectorAll('text').length, cut: Number(e.getAttribute('data-cut-edges') ?? 0) };
+        });
+        check(r.w > 200 && r.h > 80 && r.marks >= 6, `figure ${f} drawn in the ${scheme} theme (${r.w.toFixed(0)} x ${r.h.toFixed(0)} px, ${r.marks} marks)`);
+        if (f === 'fw-conformal') check(r.cut >= 12, `the conformal figure marks the ${r.cut} edges the circle cuts`);
+      }
+    }
+    // no horizontal scroll with topic 14 laid out; screenshots of it
+    await wp.addStyleTag({ content: 'header { visibility: hidden !important; }' });
+    for (const scheme of ['light', 'dark']) {
+      await wp.emulateMedia({ colorScheme: scheme });
+      for (const width of [320, 390, 1440]) {
+        await wp.setViewportSize({ width, height: 900 });
+        await wp.locator('#full-wave').scrollIntoViewIfNeeded();
+        await wp.waitForTimeout(250);
+        const r = await wp.evaluate(() => {
+          const t = document.getElementById('full-wave'), vw = document.documentElement.clientWidth;
+          const wide = [...t.querySelectorAll('p, figure, svg, [data-eq], h3, h4')].filter((e) => e.getBoundingClientRect().right > vw + 0.5).length;
+          return { sw: document.documentElement.scrollWidth, wide };
+        });
+        check(r.sw <= width && r.wide === 0, `topic 14 at ${width} px, ${scheme}: no horizontal scroll (${r.sw}), nothing past the edge (${r.wide})`);
+        if (shots && ((width === 390 && scheme === 'dark') || (width === 1440 && scheme === 'light'))) {
+          writeFileSync(join(shots, `emsim-theory-full-wave-${width}-${scheme}.png`), await wp.locator('#full-wave').screenshot());
+          for (const sub of ['fw-yee', 'fw-mesh']) writeFileSync(join(shots, `emsim-theory-${sub}-${width}-${scheme}.png`), await wp.locator(`[id="${sub}"]`).screenshot());
+        }
+      }
+    }
+  } finally {
+    await gpuBrowser.close();
   }
 
   // ---- widths and themes ----

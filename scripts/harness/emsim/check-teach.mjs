@@ -1,5 +1,5 @@
-// Checks of the EM teaching layer (step M4.2): the 61 equations of lib/emsim/equations.ts (equationsLines.ts,
-// equationsVia.ts) and their derivation steps, the via values of lib/emsim/eqvaluesVia.ts and the worked examples of
+// Checks of the EM teaching layer (step M4.2): the 70 equations of lib/emsim/equations.ts (equationsLines.ts,
+// equationsVia.ts, equationsWaves.ts from M7.2d) and their derivation steps, the via values of lib/emsim/eqvaluesVia.ts and the worked examples of
 // lib/emsim/examples.ts. Every entry with numbers evaluates equal (1e-9 relative) to the engine on the default setups
 // and on seeded random setups and vias; every derivation step's sides are equal on random values that satisfy the
 // entry's assumptions; every example link decodes to the setup its recipe builds and every number it quotes equals the
@@ -27,10 +27,19 @@ import * as IN0 from '../../../lib/emsim/inverse.ts';
 import * as J0 from '../../../lib/emsim/jlcCalc.ts';
 import * as L0 from '../../../lib/emsim/link.ts';
 import * as TD0 from '../../../lib/emsim/tdr.ts';
+import * as FW0 from '../../../lib/emsim/fullwave.ts';
+import * as EW0 from '../../../lib/emsim/eqvaluesWaves.ts';
+import * as PR0 from '../../../lib/emsim/fdtd/problem.ts';
+import * as ME0 from '../../../lib/emsim/fdtd/mesh.ts';
+import * as PO0 from '../../../lib/emsim/fdtd/ports.ts';
+import * as ES0 from '../../../lib/emsim/fdtd/estimate.ts';
+import * as MO0 from '../../../lib/emsim/fdtd/model.ts';
+import * as RU0 from '../../../lib/emsim/fdtd/run.ts';
 
 const d = (m) => m.default ?? m;
 const EQ = d(EQ0), EV = d(EV0), EVV = d(EVV0), EX = d(EX0), PA = d(PA0), CO = d(CO0), LN = d(LN0), CF = d(CF0), SU = d(SU0);
 const S = d(S0), P = d(P0), ST = d(ST0), V = d(V0), VM = d(VM0), NP = d(NP0), IN = d(IN0), J = d(J0), L = d(L0), TD = d(TD0);
+const FW = d(FW0), EW = d(EW0), PR = d(PR0), ME = d(ME0), PO = d(PO0), ES = d(ES0), MO = d(MO0), RU = d(RU0);
 const katex = createRequire(import.meta.url)('../../../node_modules/katex');
 const renders = (s) => { try { katex.renderToString(s, { output: 'mathml', throwOnError: true, strict: 'error' }); return null; } catch (e) { return e.message; } };
 
@@ -144,6 +153,24 @@ function gens(r) {
     'mixed-mode-s': () => { const s = {}; for (const k of ['S_11', 'S_12', 'S_21', 'S_22']) s[k] = RC(); const a_1 = RC(), a_2 = sub(0, a_1);
       const b_1 = add(mul(s.S_11, a_1), mul(s.S_12, a_2)), b_2 = add(mul(s.S_21, a_1), mul(s.S_22, a_2)), a_d1 = mul(Math.SQRT1_2, sub(a_1, a_2)), b_d1 = mul(Math.SQRT1_2, sub(b_1, b_2));
       return { ...s, a_1, a_2, b_1, b_2, a_d1, b_d1, S_dd11: div(b_d1, a_d1) }; },
+    // full-wave runs (M7.2d)
+    'fdtd-update': () => { const er = U(1, 10), sd = U(0, 0.05), Dt = U(1e-14, 1e-13), E_0 = U(-100, 100), H_0 = U(-100, 100), curlH = U(-1e6, 1e6), curlE = U(-1e6, 1e6);
+      const a = sd * Dt / (2 * EPS0 * er), C_A = (1 - a) / (1 + a), C_B = 1 / (er * (1 + a)), E_1 = C_A * E_0 + C_B * C0 * Dt * curlH, H_1 = H_0 - C0 * Dt * curlE;
+      return { varepsilon_r: er, sigma_d: sd, Delta_t: Dt, E_0, E_1, H_0, H_1, curlH, curlE, C_A, C_B, a_l: a, E_h: (E_1 + E_0) / 2, dE_dt: (E_1 - E_0) / Dt, dH_dt: (H_1 - H_0) / Dt }; },
+    'fdtd-courant': () => { const dx = U(2e-5, 4e-4), dy = U(2e-5, 4e-4), dz = U(2e-5, 4e-4), S_c = U(0.3, 0.99), q = Math.sqrt(1 / dx ** 2 + 1 / dy ** 2 + 1 / dz ** 2), Dt = S_c / (C0 * q);
+      return { Delta_x: dx, Delta_y: dy, Delta_z: dz, S_c, Delta_t: Dt, k_x: Math.PI / dx, k_y: Math.PI / dy, k_z: Math.PI / dz, omega: 2 * Math.asin(S_c) / Dt }; },
+    'fdtd-steps': () => { const ell_e = U(1e-3, 0.05), sp = U(5e-12, 5e-11), Dt = U(2e-14, 1e-13), tau = 2 * ell_e / C0, T = 10 * sp + 3 * tau;
+      return { ell_e, sigma_p: sp, tau_rt: tau, T_run: T, Delta_t: Dt, N_t: Math.ceil(T / Dt) }; },
+    'fdtd-cell': () => { const tr = U(1e-11, 2e-10), er = U(1, 10), f_hi = 0.877 / tr, lam = C0 / (f_hi * Math.sqrt(er));
+      return { t_r: tr, varepsilon_rmax: er, f_hi, lambda_hi: lam, Delta_max: lam / 15 }; },
+    'fdtd-dispersion': () => { const h = U(1e-5, 4e-4), k = U(0.01, 2 * Math.PI / 15) / h, omega = 2 * C0 * Math.sin(k * h / 2) / h;
+      return { Delta_h: h, k_w: k, omega, v_n: omega / k }; },
+    'fdtd-pulse': () => { const tr = U(1e-11, 2e-10), fr = 1.52 / tr, sp = 3.717 / (2 * Math.PI * fr), t0 = 5 * sp, tt = U(0, 10 * sp), f = U(0, fr);
+      return { t_r: tr, f_run: fr, sigma_p: sp, t_0: t0, t: tt, f, g_p: Math.exp(-((tt - t0) ** 2) / (2 * sp * sp)), G_f: Math.exp(-((2 * Math.PI * f * sp) ** 2) / 2), G_0: 1, f_3: 0.3396 / tr, f_S: 0.816 * fr }; },
+    'fdtd-waves': () => { const Z = U(20, 120), v = RC(), i = RC(); return { Z_p: Z, v_p: v, i_p: i, a_p: mul(0.5, add(v, mul(Z, i))), b_p: mul(0.5, sub(v, mul(Z, i))) }; },
+    'fdtd-s': () => { const A = RC(), Sm = RC(), x = RC(); return { A_m: A, S_m: Sm, B_m: mul(Sm, A), A_inv: div(1, A), A_ij: x, DFT_a: x }; },
+    'fdtd-cost': () => { const N = Math.round(U(1e4, 1e7)), Nt = Math.round(U(1e3, 2e4)), P = 1 + Math.floor(U(0, 4)), R = U(1e7, 1e10), sc = U(0.5, 2), W = N * Nt * P;
+      return { N_cells: N, N_t: Nt, N_ports: P, R_c: R, W_u: W, t_run: 1.5 * W / R, s_c: sc, W_s: W / sc ** 4 }; },
   };
 }
 function pairLC(U, RC, sign) {
@@ -155,7 +182,10 @@ function pairLC(U, RC, sign) {
 }
 function zc(U) { const Z_c11 = U(40, 70), Z_c22 = U(40, 70), Z_c12 = U(0, 10); return { Z_c11, Z_c22, Z_c12, Z_c21: Z_c12 }; }
 // Steps that hold only approximately, with their bound: the rounded 0.3396 of edge-f3.
-const APPROX = { 'edge-f3 5': 2e-4 };
+// M7.2d: the full-wave entries' rounded constants (3.717 for sqrt(2 ln 1000), 1.52 for 4.465*0.3396, 0.816 for 0.8165) and
+// the dispersion's Taylor form up to 15 cells per wavelength.
+const APPROX = { 'edge-f3 5': 2e-4, 'fdtd-pulse 3': 3e-5, 'fdtd-pulse 4': 3e-3, 'fdtd-pulse 5': 7e-4, 'fdtd-dispersion 3': 2e-5 };
+const WAVES_IDS = ['fdtd-update', 'fdtd-courant', 'fdtd-steps', 'fdtd-cell', 'fdtd-dispersion', 'fdtd-pulse', 'fdtd-waves', 'fdtd-s', 'fdtd-cost'];
 // Entries with no steps: definitions, the tool's rules and source statements (equations-list.md, "Counts").
 const NO_STEPS = ['telegraph', 'eeff-c', 'getsinger', 'charge-potential', 'mixed-mode-vars', 'pct-diff', 'share', 'corners', 'mc-normal',
   'via-dc', 'via-pad-coupling', 'via-target', 'target', 'abcd-shunt', 's-db', 'tdr-rho'];
@@ -170,11 +200,14 @@ const RANDOM_CASES = 50;
 export async function run(t) {
   const E = EQ.EM_EQUATIONS;
   const byId = EQ.EM_EQUATION_BY_ID;
-  t.eq(E.length, 61, 'the registry has 61 equations (33 + 28 of equations-list.md)');
-  t.eq(E.slice(33).map((e) => e.id).join(','), VIA_IDS.join(','), 'the 28 new ids in the order of equations-list.md');
+  t.eq(E.length, 70, 'the registry has 70 equations (33 + 28 + 9 of equations-list.md)');
+  t.eq(E.slice(33, 61).map((e) => e.id).join(','), VIA_IDS.join(','), 'the 28 via ids in the order of equations-list.md');
+  t.eq(E.slice(61).map((e) => e.id).join(','), WAVES_IDS.join(','), 'the 9 full-wave ids (M7.2d)');
+  t.ok(E.slice(61).every((e) => e.on === 'waves'), 'the full-wave entries take their numbers from the Waves section');
   const bib = readFileSync(new URL('../../../references.bib', import.meta.url), 'utf8');
   const keys = new Set([...bib.matchAll(/^@\w+\{([^,\s]+),/gm)].map((m) => m[1]));
-  const topics = new Set(['transmission-lines', 'field-solver', 'pairs', 'calculators', 'tolerances', 'via-line', 'via-pads', 'via-return', 'via-stubs', 'via-tdr', 'via-sparams', 'via-limits']);
+  const topics = new Set(['transmission-lines', 'field-solver', 'pairs', 'calculators', 'tolerances', 'via-line', 'via-pads', 'via-return', 'via-stubs', 'via-tdr', 'via-sparams', 'via-limits',
+    'full-wave', 'fw-why', 'fw-yee', 'fw-mesh', 'fw-edges', 'fw-ports', 'fw-cost', 'fw-read', 'fw-pair', 'fw-3d', 'fw-checked']);
 
   // ---- 1. the registry: steps, sources, symbols, TeX ----
   let stepCount = 0;
@@ -371,6 +404,57 @@ export async function run(t) {
 
   // ---- 5. the examples ----
   checkExamples(t, { def, kindAt, withTrace, models });
+
+  // ---- 6. the full-wave entries against the engine (M7.2d) ----
+  checkWaves(t, byId);
+}
+
+// The full-wave entries' numbers (eqvaluesWaves.wavesBinding on fullwave.preview) against the engine's own pieces on V at
+// 15, 35 and 100 ps, the C45 pair and the default trace, and the default via's numbers that theory-waves.md quotes.
+function checkWaves(t, byId) {
+  const DEV = { gpu: { ok: false, reason: '' }, js: { backend: 'js' }, mobile: false };
+  const pairVia = () => { const s = SU.defaultSetup(), pre = V.presetVia('pair', s.stackup); s.via = { ...pre, feeds: [{ ...pre.feeds[0], angle: 180 }, { ...pre.feeds[1], angle: 0 }] }; return s; };
+  const cases = [['V 15 ps', SU.defaultSetup(), 'via', 15e-12], ['V 35 ps', SU.defaultSetup(), 'via', 35e-12], ['V 100 ps', SU.defaultSetup(), 'via', 100e-12],
+    ['C45 35 ps', pairVia(), 'via', 35e-12], ['trace 35 ps', SU.defaultSetup(), 'trace', 35e-12]];
+  const live = WAVES_IDS.filter((id) => byId.get(id).live);
+  t.eq(live.join(','), 'fdtd-courant,fdtd-steps,fdtd-cell,fdtd-pulse,fdtd-cost', 'five full-wave entries have numbers, four are rules');
+  let worst = 0, n = 0, bV = null;
+  for (const [name, s, kind, tr] of cases) {
+    const pv = FW.preview(s, { kind, tr, length: 10, backend: 'js' }, DEV);
+    if (!t.ok(!!pv.est && !!pv.minCell, `${name}: an estimate with the mesh's smallest cells`)) continue;
+    const b = EW.wavesBinding(pv);
+    if (name === 'V 35 ps') bV = { b, pv };
+    // the binding against the engine's pieces, computed apart
+    const built = PR.buildProblem(s, kind, { ...pv.model, precision: 'f32', allocate: false });
+    const mc = [ME.minCell(built.mesh.x), ME.minCell(built.mesh.y), ME.minCell(built.mesh.z)];
+    t.ok(mc.every((x, i) => x === pv.minCell[i]), `${name}: Preview.minCell is the mesh's smallest cells (${mc.map((x) => x.toFixed(4))} mm)`);
+    t.ok(b.Delta_t === ES.courantDt(...mc) && b.Delta_t === built.est.dt && b.N_t === built.est.steps && b.T_run === built.est.T && b.N_cells === built.est.cells, `${name}: dt, T, steps and cells as the estimator's`);
+    t.ok(b.Delta_max === MO.largestCell(tr, built.model.erMax) * 1e-3 && b.varepsilon_rmax === built.model.erMax, `${name}: the largest cell as the model's`);
+    const pu = PO.pulseOf(tr);
+    t.ok(b.f_run === pu.fRun && b.sigma_p === pu.sigma && b.t_0 === pu.t0 && b.f_S === RU.F_S * pu.fRun && EW.F_S_RUN === RU.F_S, `${name}: the pulse as pulseOf, f_S as the run's last frequency`);
+    t.ok(Math.abs(b.t_run - ES.OVERHEAD * built.est.cells * built.est.steps * pv.ports.length / b.R_c) <= 1e-12 * b.t_run && b.N_ports === pv.ports.length, `${name}: the run time as the estimate's for each port`);
+    for (const id of live) {
+      const e = byId.get(id), bind = EQ.bindingFor(e, b);
+      if (!t.ok(!!bind, `${name}: ${id} bound`)) continue;
+      for (const tr0 of [e.tree, ...e.where.map((w) => w.tree)]) {
+        const sides = CO.evaluate(tr0, bind), lhs = tr0.xs[0].t === 'id' ? b[tr0.xs[0].v] : NaN;
+        for (const sd of sides) { const w = Math.abs(sd[0] - lhs) / Math.abs(lhs); worst = Math.max(worst, w); n++; t.ok(w <= TOL && sd[1] === 0, () => `${name}: ${id} side ${sd[0]} against the engine's ${lhs}`); }
+      }
+    }
+  }
+  // theory-waves.md's V numbers (notes-M7.2c.md "Numbers checked")
+  if (bV) {
+    const { b, pv } = bV;
+    t.ok(b.N_cells === 712320 && b.N_t === 7645 && b.N_ports === 2, 'V: 712 320 cells, 7645 steps, 2 ports');
+    t.ok(pv.minCell.map((x) => x.toFixed(4)).join(' ') === '0.0500 0.0344 0.0204', `V: smallest cells 0.0500, 0.0344, 0.0204 mm (${pv.minCell})`);
+    t.near(b.Delta_t * 1e15, 52.444, 'V: dt 52.444 fs', 5e-4); t.near(b.T_run * 1e12, 400.93, 'V: T 400.93 ps', 5e-3); t.near(b.tau_rt * 1e12, 88.237, 'V: tau_rt 88.237 ps', 5e-4);
+    t.near(b.Delta_max * 1e3, 0.37393, 'V: largest cell 0.37393 mm', 5e-6); t.near(b.f_run / 1e9, 43.429, 'V: f_run 43.429 GHz', 5e-4);
+    t.near(b.sigma_p * 1e12, 13.622, 'V: sigma 13.622 ps', 5e-4); t.near(b.t_0 * 1e12, 68.109, 'V: t0 68.109 ps', 5e-4); t.near(b.f_S / 1e9, 35.438, 'V: f_S 35.438 GHz', 5e-4);
+    t.near(b.W_u / 1e10, 1.0891, 'V: 1.0891e10 cell updates', 5e-5); t.near(b.f_hi / 1e9, 25.057, 'V: f_hi 25.06 GHz', 5e-3);
+  }
+  const x = 2 * Math.PI / 15; t.near(Math.sin(x / 2) / (x / 2), 0.99271, 'fdtd-dispersion: v/c at 15 cells per wavelength 0.99271', 5e-6);
+  t.near(Math.sqrt(2 * Math.log(1000)), 3.717, 'fdtd-pulse: sqrt(2 ln 1000) = 3.717', 5e-4); t.near(Math.sqrt(Math.log(100) / Math.log(1000)), 0.8165, 'fdtd-pulse: f_S/f_run 0.8165', 5e-5);
+  t.note(`full-wave entries: ${n} sides on ${cases.length} cases equal the engine (worst ${worst.toExponential(2)}); the default via's numbers as theory-waves.md quotes them`);
 }
 
 function checkExamples(t, { def, kindAt, withTrace }) {

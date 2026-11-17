@@ -23,7 +23,7 @@ export const STATUS_NOW =
   'with an estimate of its time first, see its TDR and S-parameters beside the quasi-static ones, and play its waves ' +
   'as an animation on a slice from the side or from above, with the copper drawn over them, and in 3D on cut planes ' +
   'through the structure with the same clock; a pair’s waves with one entry driven, or both as a differential or ' +
-  'common drive.';
+  'common drive, with a theory topic on how the full-wave runs work and how to read their waves.';
 export const STATUS_CHECKED =
   'Checked by automated tests against exact solutions, against a separate finite-difference solver on hundreds of ' +
   'random structures and against JLCPCB’s own calculator (within about 0.3 %), and the page in the browser. The ' +
@@ -33,4 +33,5 @@ export const STATUS_ASSUMES =
   'Apart from the full-wave runs it is quasi-static: no losses and no change with frequency; a via is lines and lumped capacitances, right while ' +
   'its parts are short against the wavelength. The tolerances are placeholders until you type the ones of your board house.';
 export const STATUS_COMING =
-  'Not here yet: a theory topic on full-wave simulation and on what the animation shows; it comes next.';
+  'Not here yet: a last round of polish (keyboard and screen-reader use, more browsers and WebGPU support, speed and ' +
+  'size, a how-to) and a re-check of every result; it comes next.';

@@ -194,7 +194,7 @@ Placed in `whys.ts` with the keys in brackets. Since M4.3b the links go to the v
 | Valid to (via-valid) | Each lumped part is short against the wavelength up to here (λ/8). | `via-limits` | – |
 | Flags (via-flags) | Where the model is stretched, each with its numbers. | `via-limits` | – |
 | Assumptions (via-assumptions) | What the via model takes as given. | `via-limits` | – |
-| Full-wave (via-next) | Why a full-wave run would check this via, and the link that opens it in the Waves section. | – | – |
+| Full-wave (via-next) | Why a full-wave run would check this via, and the link that opens it in the Waves section. | `fw-why` | – |
 | TDR (via-tdr, M3.2a) | The impedance a step from the port meets, there and back: feeds, pads, barrel and stubs in turn. | `via-tdr` | – |
 | Rise time (`data-field="via.tr"`, via-tr) | The edge's 10–90 % time; a faster edge shows finer detail and reaches higher frequencies. | `via-tdr` | – |
 | Port (`data-field="via.port"`, via-port) | The instrument's impedance at both ends; a pair's is the differential one, twice each line's. | – | – |
@@ -248,37 +248,37 @@ Placed in `whys.ts` with the keys in brackets. Since M4.3b the links go to the v
 
 | Where | Line | → | Claim |
 | --- | --- | --- | --- |
-| What to run (waves-kind) | The via with its feeds, or the trace as a straight section between two ports. | – | – |
+| What to run (waves-kind) | The via with its feeds, or the trace as a straight section between two ports. | `fw-why` | – |
 | Length (waves-length) | The trace section between the reference planes; the run adds a feed at each end. | – | – |
-| Rise time (waves-tr) | The fastest edge the run resolves: a faster one needs finer cells, so more memory and time. | – | – |
-| Where it runs (waves-backend) | WebGPU when the browser offers a GPU and the run fits it; the CPU is slower, often a hundred times or more. | – | – |
-| Estimate (waves-estimate) | Cells, memory and steps of the grid, and the time from the rate this device measured. | – | – |
+| Rise time (waves-tr) | The fastest edge the run resolves: a faster one needs finer cells, so more memory and time. | `fw-mesh` | – |
+| Where it runs (waves-backend) | WebGPU when the browser offers a GPU and the run fits it; the CPU is slower, often a hundred times or more. | `fw-cost` | – |
+| Estimate (waves-estimate) | Cells, memory and steps of the grid, and the time from the rate this device measured. | `fw-cost` | – |
 | Run (waves-run) | Starts the run; a new run cancels the one under way, and Cancel stops it and frees the memory. | – | – |
-| Progress (waves-progress) | The step of each excitation, the time left and how far the energy in the grid has died down. | – | – |
-| Full-wave against model (waves-plots) | Both curves at the same ports, reference and edge: where they part, the quasi-static model stops holding. | – | – |
-| Run notes (waves-notes) | Whether the run settled, stayed stable and its feeds matched the 2D solver. | – | – |
-| Checked (waves-checked) | The limits the engine held against openEMS, a separate full-wave solver, on the same structures. | – | – |
+| Progress (waves-progress) | The step of each excitation, the time left and how far the energy in the grid has died down. | `fw-yee` | – |
+| Full-wave against model (waves-plots) | Both curves at the same ports, reference and edge: where they part, the quasi-static model stops holding. | `fw-ports` | – |
+| Run notes (waves-notes) | Whether the run settled, stayed stable and its feeds matched the 2D solver. | `fw-ports` | – |
+| Checked (waves-checked) | The limits the engine held against openEMS, a separate full-wave solver, on the same structures. | `fw-checked` | – |
 
 ## Waves: the player (step M7.1b)
 
 | Where | Line | → | Claim |
 | --- | --- | --- | --- |
-| Waves (waves-player) | The electric field on one slice of the run, frame by frame, with the copper the slice cuts drawn over it. | – | – |
-| Slice (waves-view) | Where the slice lies: from the side through the barrel, or from above at a feed or between the planes. | – | – |
-| Field (waves-comp) | \|E\| is the field’s strength; Ez and the others one direction with its sign, red one way, blue the other. | – | – |
-| Drive (waves-mode) | Entry A alone, or both entries at once: differential (A +, B −) or common (both +), from the same run. | – | – |
+| Waves (waves-player) | The electric field on one slice of the run, frame by frame, with the copper the slice cuts drawn over it. | `fw-read` | – |
+| Slice (waves-view) | Where the slice lies: from the side through the barrel, or from above at a feed or between the planes. | `fw-read` | – |
+| Field (waves-comp) | \|E\| is the field’s strength; Ez and the others one direction with its sign, red one way, blue the other. | `fw-read` | – |
+| Drive (waves-mode) | Entry A alone, or both entries at once: differential (A +, B −) or common (both +), from the same run. | `fw-pair` | – |
 | Play (waves-play) | Plays the frames in turn; it rests while the player is out of view, and waits for you under reduced motion. | – | – |
 | Time (waves-time) | Since the pulse began; arrow keys step one frame, Page Up and Down further, Home and End to the ends. | – | – |
 | Speed (waves-speed) | How fast the frames play: at 1× a run’s frames take about ten seconds. | – | – |
 | Loop (waves-loop) | Starts again from the first frame after the last. | – | – |
-| Colour scale (waves-scale) | One scale for the whole run, so a frame’s colours compare with every other’s. | – | – |
+| Colour scale (waves-scale) | One scale for the whole run, so a frame’s colours compare with every other’s. | `fw-read` | – |
 
 ## Waves: the 3D view (step M7.2b)
 
 | Where | Line | → | Claim |
 | --- | --- | --- | --- |
-| 3D view (waves-3d) | The run’s structure in 3D with the waves on its slices, played with the player’s clock; drag to turn it. | – | – |
-| Planes (waves-3d-planes) | Each slice of the run as a plane in the structure; turn one off to see the ones behind it. | – | – |
+| 3D view (waves-3d) | The run’s structure in 3D with the waves on its slices, played with the player’s clock; drag to turn it. | `fw-3d` | – |
+| Planes (waves-3d-planes) | Each slice of the run as a plane in the structure; turn one off to see the ones behind it. | `fw-3d` | – |
 | Reset view (waves-3d-reset) | Back to the first view: from the side the side view shows, a little above. | – | – |
-| Cut away the near half (waves-3d-cut) | Cuts the structure and the other planes along the side plane, so it shows whole and they lie behind it. | – | – |
+| Cut away the near half (waves-3d-cut) | Cuts the structure and the other planes along the side plane, so it shows whole and they lie behind it. | `fw-3d` | – |
 | Show the laminate (waves-3d-laminate) | Adds the laminate between the copper, pale, so the board’s layers show. | – | – |

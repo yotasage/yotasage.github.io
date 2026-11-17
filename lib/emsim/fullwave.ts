@@ -9,6 +9,7 @@
 
 import { buildProblem, judge } from './fdtd/problem';
 import { buildModel } from './fdtd/model';
+import { minCell } from './fdtd/mesh';
 import type { Model, Note } from './fdtd/model';
 import { RATES } from './fdtd/estimate';
 import type { Env, Estimate, Offer, Verdict } from './fdtd/estimate';
@@ -72,6 +73,7 @@ export interface Preview {
   geom: Model; // the run's structure (the player's outline)
   pair: boolean; // four ports: the frames are of entry A's and entry B's excitations (`snap.runs`, M7.2a)
   snapBytes: number; // the frames' memory over the recorded runs (0 before the mesh)
+  minCell: [number, number, number] | null; // mm, the mesh's smallest cell per axis, which set Δt (M7.2d: the theory's numbers)
 }
 
 /** The estimate and backend before the run, as job.ts will choose and judge them. */
@@ -96,7 +98,8 @@ export function preview(setup: Setup, spec: WavesSpec, dev: DeviceInfo): Preview
   });
   const sv = snapOf(b.model);
   const snapBytes = sv.spec && b.mesh && b.est ? snapPlanOf(b.mesh, sv.spec, b.est.steps).bytes * snapRuns(sv.spec).length : 0;
-  const base = { model: opt, ports: ports(b.model), notes: [...b.notes, ...overReturns(b.model)], snap: sv.spec, views: sv.views, geom: b.model, pair: pairOf(b.model) > 0, snapBytes, ms: 0 };
+  const base = { model: opt, ports: ports(b.model), notes: [...b.notes, ...overReturns(b.model)], snap: sv.spec, views: sv.views, geom: b.model, pair: pairOf(b.model) > 0, snapBytes, ms: 0,
+    minCell: b.mesh ? [minCell(b.mesh.x), minCell(b.mesh.y), minCell(b.mesh.z)] as [number, number, number] : null };
   let backend: Backend = 'js', reason = '';
   if (spec.backend === 'js') reason = 'The CPU was asked for.';
   else if (!dev.gpu.ok) reason = `${(dev.gpu as { reason: string }).reason} The run is on the CPU.`;

@@ -235,7 +235,7 @@ listed in notes-M4.1.md "Numbers checked". Equation ids are those of [equations-
 | 158 | D | `cavity-f`; facts.md §2 (50 × 50 mm, εr 4.3: 1.446 GHz) |
 | 159 | S | `Chada2009` abstract (literature.md, Vias) |
 | 160 | S | `Archambeault2004` abstract (V2) |
-| 161 | T | `viamodel.ts` (`no-return` refuses, `RETURN_NEAR_MM` 2.0, BL92); notes-M1.7.md "Flags" |
+| 161 | T | `viamodel.ts` (`no-return` refuses, `RETURN_NEAR_MM` 1.5, set from the full-wave runs, the flag's message); notes-M1.7.md "Flags" |
 | 162 | D | engine V with the returns at ±2.5 mm: core piece 108.784 Ω, section 68.626 Ω (flag `return-far`) |
 | 163 | T | notes-M1.7.md "The wall"; engine.md §5 |
 | 164 | T | notes-M1.7.md (`wall-rule`) |
@@ -278,7 +278,7 @@ listed in notes-M4.1.md "Numbers checked". Equation ids are those of [equations-
 | 201 | T | `viamodel.ts` flags (notes-M1.7.md "Flags") |
 | 202 | S + T | `Duan2014` abstract (V6); `SHARED_ANTIPAD_HZ` 40 GHz |
 | 203 | T | `viamodel.ts` assumptions; engine.md §6 |
-| 204 | T | plan.md (M5–M7), engine.md §7 |
+| 204 | T | the Waves section (`lib/emsim/fullwave.ts`, M7.1); theory-waves.md §14 (M7.2d links it) |
 | 205 | T | flag `feed-over-antipad` (`viamodel.ts`, BL90) |
 
 ## Examples (examples.md, step M4.1)

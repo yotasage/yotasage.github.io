@@ -19,6 +19,7 @@ import { sym } from './equationsDef';
 import type { Def, EmObject } from './equationsDef';
 import { LINE_DEFS, STEP_SYMBOLS, STEP_TEX_NAMES } from './equationsLines';
 import { VIA_DEFS, VIA_SYMBOLS, VIA_TEX_NAMES } from './equationsVia';
+import { WAVES_DEFS, WAVES_SYMBOLS, WAVES_TEX_NAMES } from './equationsWaves';
 
 export type { EmObject } from './equationsDef';
 
@@ -129,6 +130,7 @@ export const EM_SYMBOLS: Readonly<Record<string, SymbolInfo<EmObject>>> = {
   sigma_i: sym('standard deviation input i is drawn with', '', 'tolerance'),
   t_i: sym('tolerance of input i', '', 'tolerance'),
   ...VIA_SYMBOLS,
+  ...WAVES_SYMBOLS,
   ...STEP_SYMBOLS,
 };
 
@@ -149,6 +151,7 @@ export const TEX_NAMES: Readonly<Record<string, string>> = {
   Z_plus: 'Z(x_i + t_i)', Z_minus: 'Z(x_i - t_i)',
   Z_hiat: 'Z\\big(x_i + \\operatorname{sign}(d_i)\\,t_i\\big)', Z_loat: 'Z\\big(x_i - \\operatorname{sign}(d_i)\\,t_i\\big)',
   ...VIA_TEX_NAMES,
+  ...WAVES_TEX_NAMES,
   ...STEP_TEX_NAMES,
 };
 
@@ -166,8 +169,9 @@ export interface EmEquation extends Equation<EmObject> {
   extra?: string;
   /** False for definitions that have no numbers of their own (telegrapher's equations, Q = CV, mixed-mode variables). */
   live: boolean;
-  /** What its numbers come from: the trace's solve (eqvalues.emBinding) or the via model (eqvaluesVia.viaBinding). */
-  on: 'trace' | 'via';
+  /** What its numbers come from: the trace's solve (eqvalues.emBinding), the via model (eqvaluesVia.viaBinding) or the
+   *  Waves section's estimate and run (eqvaluesWaves.wavesBinding, M7.2d). */
+  on: 'trace' | 'via' | 'waves';
   /** Free variables of the steps (and their reasons) that the entry itself does not use: numbers only in the harness. */
   stepVariables: readonly string[];
 }
@@ -192,7 +196,7 @@ function build(d: Def): EmEquation {
 }
 
 /** Every equation of the EM theory, parsed. */
-export const EM_EQUATIONS: readonly EmEquation[] = [...LINE_DEFS, ...VIA_DEFS].map(build);
+export const EM_EQUATIONS: readonly EmEquation[] = [...LINE_DEFS, ...VIA_DEFS, ...WAVES_DEFS].map(build);
 
 export const EM_EQUATION_BY_ID: ReadonlyMap<string, EmEquation> = new Map(EM_EQUATIONS.map((e) => [e.id, e]));
 

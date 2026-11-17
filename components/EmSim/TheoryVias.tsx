@@ -252,8 +252,8 @@ export default function TheoryVias({ live, cite }: { live: Live; cite: Cite }) {
         {E('lambda8')}
         <p>
           Left out of this model: losses, the return current through the plane cavity, radiation and higher-order modes,
-          and the coupling of a pair’s pads beyond the estimate. A full-wave solver in the browser comes in later steps and
-          will check these limits on the same vias.
+          and the coupling of a pair’s pads beyond the estimate. A full-wave run in the Waves section solves these on the
+          same vias (<a href="#full-wave">topic 14</a>).
         </p>
       </Topic>
     </div>

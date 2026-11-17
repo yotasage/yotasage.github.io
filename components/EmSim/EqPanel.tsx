@@ -99,7 +99,7 @@ function Sources({ eq }: { eq: EmEquation }) {
 }
 
 /** The entry's steps as the shared dialog prints them; numbers where every quantity of a step has one. */
-function derivationOf(eq: EmEquation, values: Record<string, Value> | null, digits: number): DerivationView {
+export function derivationOf(eq: EmEquation, values: Record<string, Value> | null, digits: number): DerivationView {
   const pieces: Record<string, TexPiece> = values ? valuesTex(eq, values, Math.max(4, digits)) : {};
   // The steps' own variables have numbers where the engine binds them too (c₀, a via's τ of the stub, …).
   if (values) {

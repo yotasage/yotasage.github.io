@@ -5,6 +5,7 @@
 // (theoryFeed.ts: the Trace section's last full solve, the Calculators and Tolerance tools' last runs) through
 // lib/emsim/eqvalues.ts; nothing is solved here. Citations are numbered by one Bibliography in the order of the page,
 // so References must render after Theory in the same pass (EmSimTool does).
+// M4.3b: topics 7–13 (TheoryVias.tsx); M7.2d: topic 14, full-wave runs (TheoryWaves.tsx, fed by the Waves section).
 
 import React, { useMemo } from 'react';
 
@@ -26,6 +27,7 @@ import type { Live } from './theoryKit';
 import { useTheoryFeed } from './theoryFeed';
 import Theory2 from './Theory2';
 import TheoryVias, { VIA_TOPICS } from './TheoryVias';
+import TheoryWaves, { WAVES_TOPIC } from './TheoryWaves';
 
 export const bibOf = (references: BibEntry[]): Bibliography => new Bibliography(references);
 
@@ -38,6 +40,7 @@ export const TOPICS: readonly { id: string; title: string; subs?: [string, strin
   { id: 'calculators', title: 'Why calculators and fabs disagree', subs: [['closed-forms', 'Closed forms and their ranges'], ['jlcpcb-calculator', 'JLCPCB’s calculator']] },
   { id: 'tolerances', title: 'Tolerances and what matters most' },
   ...VIA_TOPICS,
+  WAVES_TOPIC,
 ];
 export const subTitle = (id: string): string => TOPICS.flatMap((t) => t.subs ?? []).find(([s]) => s === id)?.[1] ?? '';
 
@@ -300,6 +303,7 @@ export default function Theory({ bib, unit, digits }: Props) {
 
       <Theory2 live={live} cite={cite} E={E} />
       <TheoryVias live={live} cite={cite} />
+      <TheoryWaves live={live} cite={cite} />
       <p className={css.foot}>
         The waves on a line and through a via, from a full-wave run, follow in later versions.
       </p>

@@ -134,6 +134,7 @@ function callTex(f: string, arg: Node, o: TexOptions): TexPiece {
   switch (f) {
     case 'abs': return { s: a.tall ? `\\left|${a.s}\\right|` : `|${a.s}|`, p: 5, tall: a.tall, w: true };
     case 'sqrt': return { s: `\\sqrt{${a.s}}`, p: 5, tall: a.tall, fn: true };
+    case 'ceil': return { s: `\\left\\lceil ${a.s} \\right\\rceil`, p: 5, tall: a.tall, w: true }; // EM M7.2d: a step count
     case 'exp': return { s: `e^{${a.s}}`, p: 4 };
     case 'conj': {
       const b = !a.w && (a.p < 5 || a.tall || a.fn) ? paren(a) : a;

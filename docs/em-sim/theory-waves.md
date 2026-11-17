@@ -10,7 +10,8 @@ it, unless named otherwise. Values in brackets are those of **V**, the default v
 antipads Ø1.8, two returns at 0.8 mm, on JLC061611-3313A) run at 35 ps, or of **C45**, the via-pair preset with its
 feeds turned to 180° and 0° as the openEMS fixture has them; every one checked in Node or against
 `scripts/harness/emsim/openems/compare.json` ([notes-M7.2c.md](notes-M7.2c.md) "Numbers checked"). Step M7.2d puts
-this topic on the page after §13 and links the Waves section's short lines to it.
+this topic on the page after §13 and links the Waves section's short lines to it (done: `components/EmSim/TheoryWaves.tsx`,
+[notes-M7.2d.md](notes-M7.2d.md)).
 
 | § | Topic | Id | Sub-anchors |
 |---|---|---|---|
@@ -147,7 +148,7 @@ estimate shows cells, memory, steps and time; the run first times a few dozen st
 
 ### Reading the waves (`fw-read`)
 
-The player shows the electric field on a slice through the run, about 300 frames over the run [294 frames, one every
+The player in the Waves section (#waves) shows the electric field on a slice through the run, about 300 frames over the run [294 frames, one every
 26 steps]. ⟨284⟩ The values are in V/m for the 1 V pulse behind the port's resistor. ⟨285⟩ |E| is the field's
 strength, never negative; Ez, Ex and Ey are one direction each with its sign, one colour for each way. ⟨286⟩ A signed
 component shows polarity: a reflection from a lower impedance comes back with the opposite sign (#via-tdr). ⟨287⟩
@@ -175,11 +176,12 @@ drive the two barrels carry opposite currents, so their fields cancel at a dista
 above, Ez has opposite signs at the two barrels. ⟨298⟩ In the common drive the fields add and the wave spreads into
 the cavity towards the return vias, as from one via. ⟨299⟩ So a pair driven differentially launches almost no cavity
 wave, and the via model's limit for the LVDS pair stays near 23 GHz (#via-limits). ⟨300⟩ The side view still goes
-through barrel A along its feeds, not through both barrels. ⟨301⟩
+through barrel A along its feeds, not through both barrels. ⟨301⟩ The Drive choice in the Waves section (#waves) shows
+each. ⟨301⟩
 
 ### The 3D view (`fw-3d`)
 
-The 3D view puts the same frames on planes inside the run's own structure, played on the player's clock, so both
+The 3D view in the Waves section (#waves) puts the same frames on planes inside the run's own structure, played on the player's clock, so both
 views always show one moment. ⟨302⟩ Cutting the structure along the side plane shows that plane whole with the
 others behind it. ⟨303⟩ On a trace the view from above shows the wave travelling along it and the view across its
 quasi-TEM cross-section, the Trace section's field map in motion (#transmission-lines). ⟨304⟩

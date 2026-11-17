@@ -16,8 +16,9 @@ export const SYM_PAIR = 'symmetric pair (Zc₁₁ = Zc₂₂)';
 export interface Def {
   id: string; title: string; topic: string; text: string; where?: string[]; extra?: string;
   applies?: 'line' | 'pair' | 'any'; live?: boolean;
-  /** What the entry's numbers come from: the trace's solve (eqvalues.emBinding) or the via model (eqvaluesVia.viaBinding). */
-  on?: 'trace' | 'via';
+  /** What the entry's numbers come from: the trace's solve (eqvalues.emBinding), the via model (eqvaluesVia.viaBinding)
+   *  or the Waves section (eqvaluesWaves.wavesBinding, M7.2d). */
+  on?: 'trace' | 'via' | 'waves';
   sources?: Source[]; derivation?: string; assumptions?: string[]; engine: string;
   /** Derivation steps: [equation in the text form, reason with maths between backticks]. */
   steps?: [string, string][];

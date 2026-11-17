@@ -226,3 +226,10 @@ Symbols SI; `curlH`, `curlE` stand for the grid's curls (differences of the neig
 
 **Counts.** 61 + 9 = 70. Rules without a numeric check: `fdtd-steps`, `fdtd-cost` step 1, `fdtd-courant` step 3,
 `fdtd-s` step 1.
+
+**As registered (M7.2d, `lib/emsim/equationsWaves.ts`).** Every step now has a numeric check (check-teach.mjs): the
+shared engine gained `ceil` (so `fdtd-steps` step 3 evaluates); `fdtd-courant` step 3 is written as the Courant number
+`S_c = c_0*Delta_t*sqrt(...)` with the bound in its reason; `fdtd-steps` step 1 and `fdtd-s` step 1 name the sum
+(`ell_e`, `DFT_a`, TeX Σ); `fdtd-s` is written on the matrices as names (`S_m = B_m*A_inv`). `fdtd-pulse` prints
+σ = 3.717/(2π f_run) as the engine computes it, its steps 3–5 and `fdtd-dispersion` step 3 within stated rounding
+bounds (3e-5, 3e-3, 7e-4, 2e-5); `fdtd-cell` step 1 is the tool's 0.877 with 2.578·0.3396 = 0.8755 in its reason.
