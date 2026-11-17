@@ -9,7 +9,7 @@
 // along its length, arithmetic over the face. σ likewise (parallel: arithmetic; series: σ = ε²·mean(σ/ε²), first order
 // in the loss). Copper inside the averaging takes the column's own material there (it is PEC on its edges).
 
-import { column, inLayer, variantAt } from './model';
+import { column, inLayer, taperAt, variantAt } from './model';
 import type { CuLayer, Cyl, Model, Piece, Shape } from './model';
 import { gridOf } from './mesh';
 import type { Mesh } from './mesh';
@@ -67,9 +67,10 @@ function merge(iv: Iv[]): Iv[] {
   return out;
 }
 /** The intervals of the line {other = o} (along `ax`) a shape covers. */
-function shapeIv(sh: Shape, ax: 'x' | 'y', o: number, out: Iv[]): void {
+function shapeIv(sh: Shape, ax: 'x' | 'y', o: number, out: Iv[], z?: number): void {
   if (sh.k === 'rect') {
-    const [a0, a1, b0, b1] = ax === 'x' ? [sh.x0, sh.x1, sh.y0, sh.y1] : [sh.y0, sh.y1, sh.x0, sh.x1];
+    const d = taperAt(sh.tx, z);
+    const [a0, a1, b0, b1] = ax === 'x' ? [sh.x0 - d, sh.x1 + d, sh.y0, sh.y1] : [sh.y0, sh.y1, sh.x0 - d, sh.x1 + d];
     if (o >= b0 - 1e-9 && o <= b1 + 1e-9) out.push([a0, a1]);
     return;
   }
@@ -82,9 +83,9 @@ function shapeIv(sh: Shape, ax: 'x' | 'y', o: number, out: Iv[]): void {
   if (sh.r0 > 0 && h0 > 0) { const s0 = Math.sqrt(h0); out.push([cA - s1, cA - s0], [cA + s0, cA + s1]); }
   else out.push([cA - s1, cA + s1]);
 }
-function layerIv(c: CuLayer, ax: 'x' | 'y', o: number): Iv[] {
+function layerIv(c: CuLayer, ax: 'x' | 'y', o: number, z?: number): Iv[] {
   const iv: Iv[] = [];
-  for (const sh of c.shapes) shapeIv(sh, ax, o, iv);
+  for (const sh of c.shapes) shapeIv(sh, ax, o, iv, z);
   if (c.plane) {
     const op: Iv[] = [];
     for (const sh of c.openings) shapeIv(sh, ax, o, op);
@@ -195,13 +196,13 @@ export function buildMaterials(m: Model, mesh: Mesh, dt: number, A: FCtor): Mate
     if (L.length || C.length) {
       for (let j = 1; j < ny; j++) {
         const iv: Iv[] = [];
-        for (const c of L) iv.push(...layerIv(c, 'x', gy[j]));
+        for (const c of L) iv.push(...layerIv(c, 'x', gy[j], gz[k]));
         cylIv(C, 'x', gy[j], iv);
         if (iv.length) sweep(iv, gx, 1, nx - 2, (i, f) => (fx[i + nx * j] = f));
       }
       for (let i = 1; i < nx; i++) {
         const iv: Iv[] = [];
-        for (const c of L) iv.push(...layerIv(c, 'y', gx[i]));
+        for (const c of L) iv.push(...layerIv(c, 'y', gx[i], gz[k]));
         cylIv(C, 'y', gx[i], iv);
         if (iv.length) sweep(iv, gy, 1, ny - 2, (j, f) => (fy[i + nx * j] = f));
       }

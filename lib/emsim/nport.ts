@@ -199,3 +199,24 @@ export function reciprocityError(np: NPort): number {
   }
   return worst;
 }
+
+// S at other real reference impedances (M6.2b; the full-wave run's ports are at their feeds' Z0): with power waves,
+// a' = p·a + q·b, b' = q·a + p·b per port (p = (z + z')/(2√(z·z')), q = (z − z')/(2√(z·z'))), so
+// S' = (Q + P·S)·(P + Q·S)⁻¹. Returns a new N-port; null when P + Q·S is singular at some frequency.
+export function renormalize(np: NPort, z0: number[]): NPort | null {
+  const P = np.ports, m2 = 2 * P * P;
+  const s = new Float64Array(np.s.length);
+  const num = new Float64Array(m2), den = new Float64Array(m2), inv = new Float64Array(m2), out = new Float64Array(m2);
+  const p = np.z0.map((z, i) => (z + z0[i]) / (2 * Math.sqrt(z * z0[i]))), q = np.z0.map((z, i) => (z - z0[i]) / (2 * Math.sqrt(z * z0[i])));
+  for (let k = 0; k < np.f.length; k++) {
+    const o = k * m2;
+    for (let i = 0; i < P; i++) for (let j = 0; j < P; j++) {
+      const e = 2 * (i * P + j), re = np.s[o + e], im = np.s[o + e + 1], d = i === j ? 1 : 0;
+      num[e] = q[i] * d + p[i] * re; num[e + 1] = p[i] * im;
+      den[e] = p[i] * d + q[i] * re; den[e + 1] = q[i] * im;
+    }
+    if (!cInv(den, P, inv)) return null;
+    s.set(cMul(num, inv, P, out), o);
+  }
+  return { ...np, s, z0: z0.slice() };
+}

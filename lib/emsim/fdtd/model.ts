@@ -29,7 +29,15 @@ export const F_TAN = 1e9; // Hz: tanδ's frequency when the stackup states none 
 export const TR_MIN = 35e-12; // s, the default smallest rise time (viamodel.ts VIA_TR)
 export const BARREL_CELLS = 6; // cells per drill diameter (§4)
 
-export type Shape = { k: 'rect'; x0: number; x1: number; y0: number; y1: number } | { k: 'disk'; x: number; y: number; r0: number; r1: number };
+/** A trapezoid's sides (M6.2b): the x edges of a rect moved outwards by d, linear from d0 at z0 to d1 at z1 (clamped). */
+export interface Taper { z0: number; z1: number; d0: number; d1: number }
+export type Shape = { k: 'rect'; x0: number; x1: number; y0: number; y1: number; tx?: Taper } | { k: 'disk'; x: number; y: number; r0: number; r1: number };
+/** The outward shift of a tapered rect's x edges at z (0 without a taper or z). */
+export function taperAt(t: Taper | undefined, z: number | undefined): number {
+  if (!t || z === undefined) return 0;
+  const u = t.z1 === t.z0 ? 0 : Math.min(1, Math.max(0, (z - t.z0) / (t.z1 - t.z0)));
+  return t.d0 + (t.d1 - t.d0) * u;
+}
 export interface CuLayer {
   id: string; index: number; zb: number; zt: number;
   sheet: boolean; z: number; // a sheet's plane (NaN for a volume)
@@ -83,6 +91,7 @@ export interface ModelOptions {
   length?: number; // a trace section's length (mm); default 2·L of §6
   z0?: number[]; // the ports' R in the order of the ports' lines, instead of the 2D solver (harness speed)
   eeff?: number[];
+  thirds?: boolean; // a trace section's signal edges by the thirds rule (default true, M6.2b); false: lines on the edges
 }
 
 const lossOf = (l: DielectricLayer | MaskLayer): number => {
@@ -93,6 +102,18 @@ const lossOf = (l: DielectricLayer | MaskLayer): number => {
 /** The largest cell (§2): λ/15 in the highest εr at f_hi = 0.877/tr_min. */
 export function largestCell(trMin: number, erMax: number): number {
   return C0_MM / ((0.877 / trMin) * Math.sqrt(erMax)) / 15;
+}
+
+export const TRACE_CELLS = 4; // cells across a trace (§2)
+/** openEMS's thirds rule (§2) for a trace's edges x0 < x1: lines h/3 inside and 2h/3 outside each edge with
+ *  h = (x1 − x0)/(TRACE_CELLS + 2/3), so TRACE_CELLS cells of h lie between the inner lines and a cell of h straddles
+ *  each edge (the strip's field singularity makes a line on the edge act about h/3 wider). Lines in ascending order:
+ *  [x0 − 2h/3, x0 + h/3, x1 − h/3, x1 + 2h/3]; null when an edge is not finite or h is under HMIN. */
+export function thirdsOf(x0: number, x1: number): { lines: [number, number, number, number]; h: number } | null {
+  if (!Number.isFinite(x0) || !Number.isFinite(x1) || x1 <= x0) return null;
+  const h = (x1 - x0) / (TRACE_CELLS + 2 / 3);
+  if (h < HMIN) return null;
+  return { lines: [x0 - (2 * h) / 3, x0 + h / 3, x1 - h / 3, x1 + (2 * h) / 3], h };
 }
 
 /** The feed length L of §6 (mm). */
@@ -188,12 +209,19 @@ export function buildModel(setup: Setup, kind: 'trace' | 'via', opt: ModelOption
     for (const f of arr.features) {
       const c = cuOf.get(s.layers[f.layer].id);
       const [x0, x1] = edges(f);
-      c.shapes.push({ k: 'rect', x0, x1, y0: 0, y1: len });
-      for (const x of [x0, x1]) if (Number.isFinite(x)) m.fixed.x.push({ c: x, rank: 0, why: `${f.id ? 'trace' : 'ground'} edge` });
+      // the trapezoid (base on the side it was etched from, stackup.ts fillSide) on the copper's faces: the mean width
+      // in the lines, the base and the narrow top by conformal fractions of the edges that cross them (thick copper only)
+      const e2 = etchOffset(s.layers[f.layer] as CopperLayer) / 2;
+      const up = fillSide(s, f.layer) === 'up';
+      const tx = !c.sheet && e2 > 0 && opt.thirds !== false ? { z0: c.zb, z1: c.zt, d0: up ? e2 : -e2, d1: up ? -e2 : e2 } : undefined;
+      c.shapes.push(tx ? { k: 'rect', x0, x1, y0: 0, y1: len, tx } : { k: 'rect', x0, x1, y0: 0, y1: len });
+      const th = f.id > 0 && opt.thirds !== false ? thirdsOf(x0, x1) : null;
+      if (th) for (const x of th.lines) m.fixed.x.push({ c: x, rank: 0, why: 'trace edge (thirds rule)' });
+      else for (const x of [x0, x1]) if (Number.isFinite(x)) m.fixed.x.push({ c: x, rank: 0, why: `${f.id ? 'trace' : 'ground'} edge` });
       if (f.id > 0) {
         signalLayers.add(c.id);
         m.fixed.x.push({ c: (x0 + x1) / 2, rank: 2, why: 'trace centre' });
-        m.spans.x.push({ a: x0, b: x1, n: 4, why: 'across a trace' });
+        m.spans.x.push(th ? { a: th.lines[1], b: th.lines[2], n: TRACE_CELLS, why: 'across a trace' } : { a: x0, b: x1, n: TRACE_CELLS, why: 'across a trace' });
       }
     }
     // gaps between features of one layer: 3 cells (pair gap, coplanar gap)
@@ -460,14 +488,14 @@ export function variantAt(m: Model, x: number, y: number): number {
 }
 
 const TOL = 1e-9;
-export function inShape(sh: Shape, x: number, y: number): boolean {
-  if (sh.k === 'rect') return x >= sh.x0 - TOL && x <= sh.x1 + TOL && y >= sh.y0 - TOL && y <= sh.y1 + TOL;
+export function inShape(sh: Shape, x: number, y: number, z?: number): boolean {
+  if (sh.k === 'rect') { const d = taperAt(sh.tx, z); return x >= sh.x0 - d - TOL && x <= sh.x1 + d + TOL && y >= sh.y0 - TOL && y <= sh.y1 + TOL; }
   const r = Math.hypot(x - sh.x, y - sh.y);
   return r <= sh.r1 + TOL && r >= sh.r0 - TOL;
 }
 /** Whether (x, y) is copper on the layer (closed: its outline counts). */
-export function inLayer(c: CuLayer, x: number, y: number): boolean {
-  for (const sh of c.shapes) if (inShape(sh, x, y)) return true;
+export function inLayer(c: CuLayer, x: number, y: number, z?: number): boolean {
+  for (const sh of c.shapes) if (inShape(sh, x, y, z)) return true;
   if (!c.plane) return false;
   for (const o of c.openings) if (inOpen(o, x, y)) return false;
   return true;

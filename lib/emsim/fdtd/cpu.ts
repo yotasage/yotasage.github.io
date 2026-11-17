@@ -42,6 +42,9 @@ export interface LoopOptions {
 export const MONITOR_EVERY = 100;
 /** Energy rising to this factor over its least value after the sources ended means an unstable run. */
 export const UNSTABLE_RISE = 2;
+/** …and above this fraction of its maximum (−30 dB, M6.2b): low-frequency energy that sloshes between the CPML and the
+ *  ports' loads at −40…−50 dB after a baseband pulse rises and falls by a few dB without diverging. */
+export const UNSTABLE_FLOOR = 1e-3;
 
 /** The sources of a problem's ports, driven with the weights `drive` (port 1 alone by default) by the problem's pulse. */
 export function portSources(p: Problem, drive: number[] = [1]): Source[] {
@@ -209,9 +212,13 @@ function psiHz(E, H, p3, p4, bH, cH, dzH, k0, k1, nx, ny, N, cells) {
 
 const KERNELS = { hMain, eMain, eMainMon, hEnergy, psiEx, psiHx, psiEy, psiHy, psiEz, psiHz };
 type Kernels = typeof KERNELS;
+// A serial in the source (M6.2b): V8's compilation cache returns the same code and feedback for the same source, so
+// without it a loop after one in the other precision ran about 2× slower (the arrays' feedback went polymorphic).
+let serial = 0;
 function compile(): Kernels {
   const out = {} as Record<string, unknown>;
-  for (const [name, f] of Object.entries(KERNELS)) out[name] = new Function(`return (${f.toString()});`)();
+  const id = ++serial;
+  for (const [name, f] of Object.entries(KERNELS)) out[name] = new Function(`return (${f.toString()}); // ${id}`)();
   return out as Kernels;
 }
 
@@ -335,7 +342,7 @@ export class CpuLoop {
     this.wMax = Math.max(this.wMax, w);
     if (this.step * this.g.dt <= this.opt.sourceEnd) return;
     this.wMinAfter = Math.min(this.wMinAfter, w);
-    if (w > UNSTABLE_RISE * this.wMinAfter && w > 1e-12 * this.wMax) this.status = 'unstable';
+    if (w > UNSTABLE_RISE * this.wMinAfter && w > UNSTABLE_FLOOR * this.wMax) this.status = 'unstable';
     else if (this.opt.sources.length && w < this.wMax * 10 ** (-this.opt.stopDb / 10)) this.status = 'settled';
   }
 }

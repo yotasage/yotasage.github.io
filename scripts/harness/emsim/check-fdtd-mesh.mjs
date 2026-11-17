@@ -30,6 +30,8 @@ const LIB = join(dirname(fileURLToPath(import.meta.url)), '../../../lib/emsim');
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const C0 = 299792458e3, ETA0 = 376.730313412, EPS0 = 1 / (ETA0 * 299792458);
 const onLine = (L, c, tol = 1e-9) => { let lo = 0, hi = L.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (L[m] <= c) lo = m; else hi = m; } return Math.min(Math.abs(L[lo] - c), Math.abs(L[hi] - c)) <= tol; };
+/** The thirds-rule lines of a trace x0…x1 when the model placed them (model.ts thirdsOf), else null. */
+const thirdsIn = (m, x0, x1) => { const th = M.thirdsOf(x0, x1); return th && m.fixed.x.some((f) => f.why === 'trace edge (thirds rule)' && Math.abs(f.c - th.lines[1]) < 1e-12) ? th : null; };
 const grid = (L) => { const g = new Float64Array(L.length + 1); g.set(L, 1); g[0] = 2 * L[0] - L[1]; return g; };
 
 // ---- independent material integration: a column's pieces, air between ----
@@ -80,10 +82,15 @@ function checkCase(t, name, setup, kind, opt, stats) {
   // copper on lines
   let edges = 0;
   for (const c of m.cu) {
-    for (const sh of c.shapes) if (sh.k === 'rect') for (const [k, v] of [['x', sh.x0], ['x', sh.x1], ['y', sh.y0], ['y', sh.y1]]) {
-      if (!Number.isFinite(v) || v < m.extent[k][0] || v > m.extent[k][1]) continue;
-      edges++;
-      t.ok(onLine(ax[k].lines, v), () => `${name}: ${c.id} copper edge ${k} = ${v} on a mesh line`);
+    for (const sh of c.shapes) if (sh.k === 'rect') {
+      // a trace's edges by the thirds rule (M6.2b): its lines h/3 inside and 2h/3 outside instead of the edge
+      const th = thirdsIn(m, sh.x0, sh.x1);
+      for (const [k, v] of [['x', sh.x0], ['x', sh.x1], ['y', sh.y0], ['y', sh.y1]]) {
+        if (!Number.isFinite(v) || v < m.extent[k][0] || v > m.extent[k][1]) continue;
+        edges++;
+        if (th && k === 'x') t.ok(th.lines.every((x) => onLine(ax.x.lines, x)), () => `${name}: ${c.id} trace edge ${v}: thirds-rule lines ${th.lines.map((x) => x.toFixed(4))} on mesh lines`);
+        else t.ok(onLine(ax[k].lines, v), () => `${name}: ${c.id} copper edge ${k} = ${v} on a mesh line`);
+      }
     }
     const has = c.plane || c.shapes.length || m.cyl.some((y) => y.z0 <= c.zb + 1e-9 && y.z1 >= c.zt - 1e-9);
     if (!has) continue;
@@ -144,7 +151,8 @@ function checkCase(t, name, setup, kind, opt, stats) {
   // ports
   for (const p of m.ports) {
     const along = p.axis === 'y' ? mesh.y.lines : mesh.x.lines, across = p.axis === 'y' ? mesh.x.lines : mesh.y.lines;
-    t.ok(onLine(along, p.pos) && onLine(across, p.across[0]) && onLine(across, p.across[1]), `${name} ${p.name}: port end and trace edges on lines`);
+    const th = p.axis === 'y' ? thirdsIn(m, p.across[0], p.across[1]) : null;
+    t.ok(onLine(along, p.pos) && (th ? th.lines.every((x) => onLine(across, x)) : onLine(across, p.across[0]) && onLine(across, p.across[1])), `${name} ${p.name}: port end and trace edges (or their thirds-rule lines) on lines`);
     t.ok(onLine(mesh.z.lines, p.zSig) && (p.ref.kind !== 'plane' || onLine(mesh.z.lines, p.ref.z)), `${name} ${p.name}: trace face and plane face on z lines`);
     for (const pl of p.planes) t.ok(onLine(along, pl), `${name} ${p.name}: measurement plane ${pl.toFixed(4)} on a line`);
     const h = p.ref.kind === 'plane' ? Math.abs(p.zSig - p.ref.z) : 0;
@@ -236,7 +244,7 @@ function checkMaterials(t, name, pb, stats) {
   const portEdges = new Set(pb.ports.flatMap((q) => [...q.edges]));
   const cutAt = new Map(); pb.mat.cut.forEach((e, q) => cutAt.set(e, pb.mat.frac[q]));
   const copperAt = (x, y, z) => {
-    for (const c of m.cu) if ((c.sheet ? Math.abs(z - c.z) < 1e-9 : z >= c.zb - 1e-9 && z <= c.zt + 1e-9) && M.inLayer(c, x, y)) return true;
+    for (const c of m.cu) if ((c.sheet ? Math.abs(z - c.z) < 1e-9 : z >= c.zb - 1e-9 && z <= c.zt + 1e-9) && M.inLayer(c, x, y, z)) return true;
     for (const c of m.cyl) if (z >= c.z0 - 1e-9 && z <= c.z1 + 1e-9 && Math.hypot(x - c.x, y - c.y) <= c.r + 1e-9) return true;
     return false;
   };

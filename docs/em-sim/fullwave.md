@@ -45,7 +45,7 @@ after reading them.
   it rarely binds, the geometry does.
 - **Across a trace:** at least 4 cells across the width and 3 across the gap of a pair, copper edges on mesh lines
   (M6.1's invariant). If M6.2's microstrip misses its 1 % bar, the first remedy is openEMS's "thirds rule" (lines at
-  h/3 inside and 2h/3 outside an edge), not a finer mesh.
+  h/3 inside and 2h/3 outside an edge), not a finer mesh. **M6.2b applied it** to trace sections (model.ts `thirdsOf`, with the trapezoid as conformal fractions on the copper faces): the default microstrip's TDR came to 51.56 Ω against 51.50 Ω (lines on the edges: 49.1 Ω), [notes-M6.2b.md](notes-M6.2b.md).
 - **In z:** at least 4 cells across a dielectric that lies between a signal trace of the structure and its reference
   plane, 2 across other layers.
 - **Smallest cell: 20 µm** in any direction. It sets the time step, so nothing thinner is meshed: thinner copper
@@ -151,7 +151,7 @@ Per step the GPU writes v and i of every measurement plane (4 numbers per port) 
 it back after each submit and keeps it in **f64**: 10 000 steps × 4 ports × 4 values × 8 B = 1.3 MB. After the run, the
 DFT is evaluated in f64 at any frequency list (no frequency grid: once the signals have decayed, the transform of the
 whole record is exact). S-parameters are reported up to f_S = 0.816·f_run, where the excitation is at −40 dB (above it,
-f32 noise divided by a small incident wave grows). A running DFT on the GPU is only needed for frequency-domain field
+f32 noise divided by a small incident wave grows). **Bars (M6.2b):** reciprocity max |Sij − Sji| ≤ 10⁻³ and passivity (no column of S above 1 + 10⁻³) up to f_S; S = B·A⁻¹ from one run per port takes out the waves the ports' loads reflect. A running DFT on the GPU is only needed for frequency-domain field
 maps, which are phase 2.
 
 ### 7.2 TDR and TDT
