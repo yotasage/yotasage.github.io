@@ -355,8 +355,7 @@ export default function StackupSection({ setup, commit, unit, digits, kicad, set
             multiple
             accept=".kicad_pcb,.kicad_pro"
             data-kicad-input
-            tabIndex={-1}
-            aria-hidden="true"
+            hidden
             onChange={(e) => { const fl = e.target.files; if (fl) void openFiles([...fl]); e.target.value = ''; }}
           />
         </div>

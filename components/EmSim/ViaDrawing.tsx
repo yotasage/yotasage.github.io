@@ -39,7 +39,9 @@ import type { ViaFieldSettings } from './useViaField';
 import { ViaFieldControls, ViaFieldLayer, ViaFieldProbe } from './ViaFieldView';
 import type { ViaProbeApi } from './ViaFieldView';
 
-const LABEL_W = 58; // px for the side view's layer labels
+const LABEL_MIN = 58; // px: the side view's label column at least
+const LABEL_PAD = 15; // px: the leader (10) and the label's halo and a margin beside its text
+const LABEL_SHARE = 0.3; // the label column takes at most this share of the drawing's width
 const PAD = 8;
 const LABEL_GAP = 12;
 const KEY_PX = 4; // px: an arrow key moves a handle by a round step of at least this (Shift: a tenth)
@@ -89,12 +91,45 @@ const layerFill = (kind: string, role: string) => (kind === 'mask' ? 'var(--mask
 
 interface Fit { rect: Rect; H: number; k0: number }
 
-function fitOf(which: 'side' | 'top', g: SideGeom | TopGeom, W: number): Fit | null {
+let measureCtx: CanvasRenderingContext2D | null | undefined;
+/** Width in px of an 11 px label in the page's font (an estimate where there is no canvas, as in the static build). */
+function labelPx(text: string, family: string): number {
+  if (measureCtx === undefined) measureCtx = typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null;
+  if (!measureCtx || !family) return text.length * 7;
+  measureCtx.font = `11px ${family}`;
+  return measureCtx.measureText(text).width;
+}
+
+interface SideLabel { id: string; text: string; full: string }
+
+/** The side view's copper labels and the column they need: the full name where it fits in LABEL_SHARE of the width,
+ * else the name without its bracket ("L6 out" for "L6 (bottom) out"), else cut with an ellipsis; a shortened label
+ * carries its full text in a <title>. */
+function sideLabels(g: SideGeom, W: number, family: string): { labels: SideLabel[]; w: number } {
+  const room = Math.max(LABEL_MIN, Math.floor(W * LABEL_SHARE)) - LABEL_PAD;
+  let widest = 0;
+  const labels = g.layers.filter((l) => l.kind === 'copper').map((l) => {
+    const end = l.signal === 'entry' ? ' in' : l.signal === 'exit' ? ' out' : l.plane ? ' ⏚' : '';
+    const full = l.name + end;
+    let text = full, px = labelPx(text, family);
+    if (px > room) {
+      const short = l.name.replace(/\s*\([^)]*\)/g, '').trim() || l.name;
+      text = short + end;
+      px = labelPx(text, family);
+      for (let n = short.length - 1; px > room && n > 1; n--) { text = `${short.slice(0, n).trimEnd()}…${end}`; px = labelPx(text, family); }
+    }
+    widest = Math.max(widest, px);
+    return { id: l.id, text, full };
+  });
+  return { labels, w: Math.max(LABEL_MIN, Math.ceil(widest) + LABEL_PAD) };
+}
+
+function fitOf(which: 'side' | 'top', g: SideGeom | TopGeom, W: number, labelW: number): Fit | null {
   if (!W || (which === 'side' && !(g as SideGeom).ok)) return null;
   const b = g.box;
   if (which === 'side') {
-    const k0 = fitK(b, W - LABEL_W, 420, PAD);
-    return { k0, H: Math.ceil((b.y1 - b.y0) * k0 + 2 * PAD), rect: { x0: b.x0 - PAD / k0, x1: b.x1 + (PAD + LABEL_W) / k0, y0: b.y0 - PAD / k0, y1: b.y1 + PAD / k0 } };
+    const k0 = fitK(b, W - labelW, 420, PAD);
+    return { k0, H: Math.ceil((b.y1 - b.y0) * k0 + 2 * PAD), rect: { x0: b.x0 - PAD / k0, x1: b.x1 + (PAD + labelW) / k0, y0: b.y0 - PAD / k0, y1: b.y1 + PAD / k0 } };
   }
   const side = Math.min(W, 380);
   const k0 = fitK(b, side, side, PAD);
@@ -136,6 +171,7 @@ function ViaView({ which, s, v, traceW, unit, digits, edit, fields }: ViewProps)
   const content = useRef<SVGGElement>(null);
   const pzRef = useRef<PanZoom | null>(null);
   const [W, setW] = useState(0);
+  const [family, setFamily] = useState('');
   const [dragKey, setDragKey] = useState<ViaHandleKey | null>(null);
   const [focusKey, setFocusKey] = useState<ViaHandleKey | null>(null);
   const [refused, setRefused] = useState('');
@@ -146,7 +182,8 @@ function ViaView({ which, s, v, traceW, unit, digits, edit, fields }: ViewProps)
   const top = which === 'top';
 
   const g = useMemo<SideGeom | TopGeom>(() => (top ? topGeom(s, v, traceW) : sideGeom(s, v, traceW)), [top, s, v, traceW]);
-  const fitNow = useMemo(() => fitOf(which, g, W), [which, g, W]);
+  const side = useMemo(() => (top ? null : sideLabels(g as SideGeom, W, family)), [top, g, W, family]);
+  const fitNow = useMemo(() => fitOf(which, g, W, side ? side.w : 0), [which, g, W, side]);
   const frozen = useRef<Fit | null>(null);
   const fit = dragKey && frozen.current ? frozen.current : fitNow;
   const H = fit ? fit.H : 0;
@@ -164,6 +201,7 @@ function ViaView({ which, s, v, traceW, unit, digits, edit, fields }: ViewProps)
     pz.onSettle = (vw) => { setView(vw); setAtFit(pz.atFit); };
     const set = () => { const w = Math.floor(el.clientWidth); if (w > 0) setW(w); };
     set();
+    setFamily(getComputedStyle(el).fontFamily);
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(set) : null;
     ro?.observe(el);
     return () => { ro?.disconnect(); pz.destroy(); pzRef.current = null; };
@@ -377,14 +415,15 @@ function ViaView({ which, s, v, traceW, unit, digits, edit, fields }: ViewProps)
     // The labels' column on the right.
     const cu = sg.layers.filter((l) => l.kind === 'copper');
     const ly = spread(cu.map((l) => Y(0.5 * (l.y0 + l.y1)) + 4), 11, Hv - 2);
-    const L0 = Wv - LABEL_W;
+    const labelW = side ? side.w : LABEL_MIN;
+    const L0 = Wv - labelW;
     body.push(
       <g key="labels" className={css.svgLabels}>
-        <rect x={L0} y={-Hv} width={LABEL_W} height={3 * Hv} fill="var(--air)" />
+        <rect x={L0} y={-Hv} width={labelW} height={3 * Hv} fill="var(--air)" />
         {cu.map((l, i) => (
           <React.Fragment key={l.id}>
             <line x1={L0} x2={L0 + 8} y1={Y(0.5 * (l.y0 + l.y1))} y2={ly[i] - 4} stroke="var(--ink-4)" strokeWidth={1} />
-            <text x={L0 + 10} y={ly[i]} data-via-label={l.id}>{l.name}{l.signal === 'entry' ? ' in' : l.signal === 'exit' ? ' out' : l.plane ? ' ⏚' : ''}</text>
+            <text x={L0 + 10} y={ly[i]} data-via-label={l.id} data-via-label-full={side?.labels[i].full}>{side?.labels[i].text}{side && side.labels[i].text !== side.labels[i].full && <title>{side.labels[i].full}</title>}</text>
           </React.Fragment>
         ))}
         {sg.barrels.length > 1 && sg.barrels.map((br) => <text key={br.name} x={X(br.s)} y={Y(b.y0) + 10} textAnchor="middle" className={css.sigNum}>{br.name}</text>)}

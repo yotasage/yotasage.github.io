@@ -185,6 +185,38 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
     });
   }, [th]);
 
+  // M9.1b: a control that Tab moves the focus to, off screen or under the sticky bar, is scrolled into view a frame
+  // later, for engines that do not do it themselves (Playwright's WebKit leaves the page where it was); where the
+  // browser scrolls, the control is already in view and nothing happens. Only after Tab: a focus given back by the
+  // browser (Firefox's Back restores the scroll after it) is left where the browser puts the page. The bar's own
+  // controls are always in view.
+  useEffect(() => {
+    let tabbing = false; // between a Tab key's keydown and keyup: the focus that moves then is the Tab's
+    const down = (e: KeyboardEvent) => { if (e.key === 'Tab') tabbing = true; };
+    const up = (e: KeyboardEvent) => { if (e.key === 'Tab') tabbing = false; };
+    const on = (e: FocusEvent) => {
+      if (!tabbing) return;
+      tabbing = false;
+      const t = e.target;
+      const head = document.querySelector('header');
+      if (!(t instanceof HTMLElement || t instanceof SVGElement) || head?.contains(t) || t.closest('dialog')) return;
+      // A frame later, so a part laid out as the focus enters it is in place; only if nothing scrolled the page
+      // meanwhile (the browser's own focus scroll, or a Back right after the Tab).
+      const y0 = window.scrollY;
+      window.requestAnimationFrame(() => {
+        if (document.activeElement !== t || Math.abs(window.scrollY - y0) > 1) return;
+        const r = t.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) return;
+        const bar = head ? head.getBoundingClientRect().bottom : 0;
+        if (r.bottom <= bar + 1 || r.top >= window.innerHeight - 1) t.scrollIntoView({ block: 'nearest' });
+      });
+    };
+    document.addEventListener('keydown', down, true);
+    document.addEventListener('keyup', up, true);
+    document.addEventListener('focusin', on);
+    return () => { document.removeEventListener('keydown', down, true); document.removeEventListener('keyup', up, true); document.removeEventListener('focusin', on); };
+  }, []);
+
   // ---- the setup and its history ----
   const [setup, setSetup] = useState<Setup>(defaultSetup);
   const now = useRef(setup);

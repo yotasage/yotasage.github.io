@@ -54,6 +54,16 @@ type Phase = 'idle' | 'running' | 'done' | 'refused' | 'error' | 'cancelled';
 interface Done { res: FdtdResult; view: WavesView; setup: Setup; spec: WavesSpec; pv: Preview; elapsed: number; estimate: number; backend: string; where: string; store: FrameStore | null }
 
 const sText = (s: number) => (s < 60 ? `${s < 10 ? s.toFixed(1) : s.toFixed(0)} s` : s < 3600 ? `${(s / 60).toFixed(1)} min` : `${(s / 3600).toFixed(1)} h`);
+/** M9.1b: why a run is on the CPU when the visitor did not ask for it (no WebGPU, no adapter, a software adapter), in
+ * the visitor's words; null when the GPU is there or the CPU was chosen. */
+function cpuWhy(dev: DeviceInfo | null, backend: 'auto' | 'js'): { code: string; long: string; short: string } | null {
+  if (!dev || dev.gpu.ok || backend === 'js') return null;
+  const r = (dev.gpu as { reason: string }).reason;
+  if (/no WebGPU/.test(r)) return { code: 'none', short: 'this browser offers no WebGPU', long: 'This browser does not offer WebGPU, the way a web page can compute on the graphics card, so the run is on the CPU.' };
+  if (/no GPU adapter/.test(r)) return { code: 'noadapter', short: 'WebGPU found no graphics card it may use', long: 'This browser has WebGPU but found no graphics card it may use (it can be turned off, or the card or its driver is not supported), so the run is on the CPU.' };
+  return { code: 'software', short: 'WebGPU offers only a software stand-in here', long: 'WebGPU here offers only a software stand-in for a graphics card, no faster than the CPU, so the run is on the CPU.' };
+}
+
 const big = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(2)} M` : n >= 1e3 ? `${(n / 1e3).toFixed(0)} k` : String(n));
 const sameSpec = (a: WavesSpec, b: WavesSpec) => a.kind === b.kind && a.tr === b.tr && (a.kind === 'via' || a.length === b.length) && a.backend === b.backend;
 
@@ -180,6 +190,7 @@ export default function WavesSection({ setup, unit = 'mm' }: Props) {
   }, [pv, done]);
   const runs = pv ? pv.ports.length : 0;
   const total = pv?.est ? pv.est.seconds * runs : NaN;
+  const why = cpuWhy(dev, backend);
   const refuse = pv ? pv.verdicts.filter((v) => v.level === 'refuse') : [];
   const frac = prog ? Math.min(1, (prog.run + prog.step / Math.max(1, prog.steps)) / Math.max(1, prog.runs)) : 0;
 
@@ -224,7 +235,12 @@ export default function WavesSection({ setup, unit = 'mm' }: Props) {
         data-steps={pv?.est?.steps} data-mem={pv?.est?.memory.total} data-snap-mem={pv?.snapBytes} data-pair={pv?.pair} data-runs={runs} data-seconds={total} data-rate-from={pv?.rateFrom} data-refused={refuse.length > 0}>
         {!pv ? <p className={css.small}>Working out the estimate…</p> : (
           <>
-            <p className={css.small} data-waves-backend={pv.backend}>{pv.backend === 'webgpu' ? `Runs on the GPU: ${pv.reason}` : `Runs on the CPU. ${pv.reason}`}</p>
+            {why && pv.backend === 'js' ? (
+              <p className={css.small} data-waves-backend={pv.backend} data-waves-fallback={why.code}>
+                {why.long} It does the same steps on one core, often a hundred times slower than a graphics card{pv.est ? <>: this run takes about <b>{sText(total)}</b></> : ''}.
+                The trace with the 100 ps rise is the quickest case; Edge or Chrome on a computer with a graphics card run it in seconds.
+              </p>
+            ) : <p className={css.small} data-waves-backend={pv.backend}>{pv.backend === 'webgpu' ? `Runs on the GPU: ${pv.reason}` : `Runs on the CPU. ${pv.reason}`}</p>}
             {pv.est && (
               <p className={css.small}>
                 {big(pv.est.cells)} cells, {(pv.est.memory.total / 1048576).toFixed(0)} MiB, up to {pv.est.steps.toLocaleString('en-GB')} steps for each of {runs} excitation{runs === 1 ? '' : 's'}:
@@ -256,7 +272,7 @@ export default function WavesSection({ setup, unit = 'mm' }: Props) {
           <>
             <progress max={1} value={frac} aria-label="Run progress" />
             <p className={css.small}>
-              {bk ? (bk.backend === 'webgpu' ? 'On the GPU. ' : `On the CPU: ${bk.reason} `) : 'Preparing the run… '}
+              {bk ? (bk.backend === 'webgpu' ? 'On the GPU. ' : why ? `On the CPU, as ${why.short}. ` : `On the CPU: ${bk.reason} `) : 'Preparing the run… '}
               {prog ? `Excitation ${prog.run + 1} of ${prog.runs}, step ${prog.step.toLocaleString('en-GB')} of ${prog.steps.toLocaleString('en-GB')}${Number.isFinite(prog.eta) ? `, about ${sText(prog.eta / 1000)} left` : ''}, energy ${Number.isFinite(prog.energyDb) ? `${prog.energyDb.toFixed(0)} dB` : '–'}.` : info ? `Started: ${big(info.cells)} cells, about ${sText(info.seconds * info.runs)}.` : 'Measuring this device…'}
             </p>
           </>

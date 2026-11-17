@@ -1,6 +1,6 @@
 # EM simulation – module map
 
-Part of [plan.md](plan.md): one line per file and its main exports (the full-wave engine in [modules-fdtd.md](modules-fdtd.md), the harness in [modules-harness.md](modules-harness.md), the page in [modules-page.md](modules-page.md) and [modules-page-teach.md](modules-page-teach.md)). A step that renames or adds a file updates this
+Part of [plan.md](plan.md): one line per file and its main exports (the full-wave engine in [modules-fdtd.md](modules-fdtd.md), the harness in [modules-harness.md](modules-harness.md), the page in [modules-page.md](modules-page.md), [modules-page-via.md](modules-page-via.md), [modules-page-waves.md](modules-page-waves.md) and [modules-page-teach.md](modules-page-teach.md)). A step that renames or adds a file updates this
 table. Agents find their way by it instead of reading the code. Split into parts before it reaches 40 kB (as
 `docs/smith-chart/modules*.md`).
 
