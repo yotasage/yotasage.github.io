@@ -25,7 +25,7 @@ export const STATUS_ASSUMES =
   'capacitances, right while its parts are short against the wavelength (the Via section says up to which frequency). ' +
   'The tolerances are placeholders until you type the ones of your board house.';
 export const STATUS_COMING =
-  'Not here: losses and how εr changes with frequency, reading routed boards, simulating drivers and receivers in ' +
+  'Not here: copper losses (the laminate’s only in full-wave runs) and how εr changes with frequency, reading routed boards, simulating drivers and receivers in ' +
   'time, and measured data; they may come later. On a slow device a drag can fall a little behind the pointer. ' +
   'Full-wave runs use the graphics card through WebGPU where the browser offers it (Edge and Chrome, for example), and the CPU, ' +
   'often a hundred times slower, where not.';

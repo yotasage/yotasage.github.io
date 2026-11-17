@@ -40,7 +40,7 @@ result; they come next. Full-wave runs use the graphics card through WebGPU wher
   full-wave solver; and the page in Edge, Firefox and Safari's engine, by keyboard and by touch, and for its speed and
   memory. The numbers are a careful estimate; for an order, your board house's own figures have the last word."
 - More, assumes: as before, plus "(the Via section says up to which frequency)".
-- More, left out: "Not here: losses and how εr changes with frequency, reading routed boards, simulating drivers and
+- More, left out: "Not here: copper losses (the laminate’s only in full-wave runs) and how εr changes with frequency, reading routed boards, simulating drivers and
   receivers in time, and measured data; they may come later. On a slow device a drag can fall a little behind the
   pointer. Full-wave runs use the graphics card through WebGPU where the browser offers it (Edge and Chrome, for
   example), and the CPU, often a hundred times slower, where not."
