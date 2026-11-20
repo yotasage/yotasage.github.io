@@ -738,3 +738,260 @@
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* Page grid (virtualised thumbnails, selection, pointer reordering) */
+
+.pageCard {
+  composes: fileCard;
+  user-select: none;
+}
+
+.pageCardSelectable {
+  cursor: pointer;
+}
+
+.pageCardSortable {
+  cursor: grab;
+}
+
+.pageCardSelected {
+  border-color: #0070f3;
+  background: rgba(0, 112, 243, 0.14);
+}
+
+.pageCardSelected:hover {
+  border-color: #4da3ff;
+}
+
+.pageCardRemove {
+  border-color: #e5537a;
+  background: rgba(229, 83, 122, 0.14);
+}
+
+.pageCardRemove:hover {
+  border-color: #ff7a9e;
+}
+
+.pageCardRemove .thumb img {
+  opacity: 0.35;
+  filter: grayscale(0.7);
+}
+
+.pageCardSplitAfter {
+  box-shadow: 5px 0 0 0 #2fae6b;
+}
+
+.dragHandle {
+  composes: iconButton;
+  touch-action: none;
+  cursor: grab;
+  font-size: 0.9rem;
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+.badgeRemove {
+  composes: badge;
+  background: #e5537a;
+}
+
+.badgeMuted {
+  composes: badge;
+  background: #444;
+  color: #e0e0e0;
+}
+
+.pillExtra {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(31, 31, 31, 0.9);
+  border: 1px solid #6a6a6a;
+  color: #e8e8e8;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.pillAccent {
+  composes: pillExtra;
+  border-color: #0070f3;
+  color: #8cc2ff;
+}
+
+.pillRemove {
+  composes: pillExtra;
+  border-color: #e5537a;
+  color: #ff9cb5;
+}
+
+.blankPage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 112px;
+  height: 158px;
+  max-width: 90%;
+  max-height: 90%;
+  border-radius: 2px;
+  background: #ffffff;
+  color: #666;
+  font-size: 0.78rem;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.sourceRow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.sourceDot {
+  flex: none;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+}
+
+.selectionBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #444;
+  border-radius: 8px;
+  background: #2b2b2b;
+}
+
+.selectionButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.buttonRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.buttonRow > button {
+  flex: 1 1 auto;
+}
+
+.fileBanner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.85rem;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid #444;
+  border-radius: 8px;
+  background: #2b2b2b;
+  font-size: 0.9rem;
+}
+
+.fileBanner strong {
+  overflow-wrap: anywhere;
+}
+
+.fileBannerMeta {
+  color: #9a9a9a;
+  font-size: 0.85rem;
+}
+
+.splitPreviewList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 13rem;
+  overflow: auto;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #444;
+  border-radius: 8px;
+  background: #222;
+  font-size: 0.83rem;
+}
+
+.splitPreviewItem {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: #d8d8d8;
+}
+
+.splitPreviewItem span:last-child {
+  color: #9a9a9a;
+  white-space: nowrap;
+}
+
+.chainRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+}
+
+.chainLabel {
+  width: 100%;
+  color: #9a9a9a;
+  font-size: 0.8rem;
+}
+
+.breakdownBar {
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: #3a3a3a;
+  margin: 0.4rem 0 0.6rem;
+}
+
+.breakdownLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.9rem;
+  font-size: 0.82rem;
+  color: #d8d8d8;
+}
+
+.breakdownItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.passwordBox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid #e0a526;
+  border-radius: 10px;
+  background: rgba(224, 165, 38, 0.08);
+  margin-bottom: 1rem;
+}
+
+.passwordBox p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #f3d796;
+}
+
+.passwordForm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.passwordForm input {
+  flex: 1 1 180px;
+}

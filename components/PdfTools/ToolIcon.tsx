@@ -41,6 +41,28 @@ const ICONS: Record<ToolIconName, React.ReactNode> = {
       <path d="M31 32l3 3 5-6" />
     </>
   ),
+  rotate: (
+    <>
+      <Doc x={11} y={12} w={22} h={28} />
+      <path d="M34 14a13 13 0 0 0-21-5" />
+      <path d="M34 7v7h-7" />
+    </>
+  ),
+  'remove-pages': (
+    <>
+      <Doc x={8} y={6} w={24} h={32} />
+      <path d="M14 18h12M14 24h8" />
+      <circle cx={34} cy={34} r={9} />
+      <path d="M30 34h8" />
+    </>
+  ),
+  'extract-pages': (
+    <>
+      <Doc x={6} y={10} w={22} h={30} />
+      <Doc x={22} y={4} w={20} h={26} />
+      <path d="M30 18h8m-3-3 3 3-3 3" />
+    </>
+  ),
 };
 
 export default function ToolIcon({ name, color, size = 48 }: { name: ToolIconName; color: string; size?: number }) {

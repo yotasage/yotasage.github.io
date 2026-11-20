@@ -1,5 +1,12 @@
 // The tools listed on /pdf/main. See docs/pdf-tools-plan.md for the tools planned next.
-export type ToolIconName = 'merge' | 'compress' | 'images' | 'sanitize';
+export type ToolIconName =
+  | 'merge'
+  | 'compress'
+  | 'images'
+  | 'sanitize'
+  | 'rotate'
+  | 'remove-pages'
+  | 'extract-pages';
 
 export interface PdfTool {
   id: string;
@@ -51,8 +58,35 @@ export const REMOVE_METADATA: PdfTool = {
   color: '#9b7bf0',
 };
 
+export const ROTATE: PdfTool = {
+  id: 'rotate',
+  title: 'Rotate PDF',
+  description: 'Rotate individual pages or the whole PDF by 90° or 180°, without re-encoding anything.',
+  href: '/pdf/rotate',
+  icon: 'rotate',
+  color: '#3aa0e8',
+};
+
+export const REMOVE_PAGES: PdfTool = {
+  id: 'remove-pages',
+  title: 'Remove pages',
+  description: 'Delete unwanted pages from a PDF by clicking their thumbnails or entering page ranges.',
+  href: '/pdf/remove-pages',
+  icon: 'remove-pages',
+  color: '#e5537a',
+};
+
+export const EXTRACT_PAGES: PdfTool = {
+  id: 'extract-pages',
+  title: 'Extract pages',
+  description: 'Pull selected pages out of a PDF into a new document, or save each selected page as its own PDF.',
+  href: '/pdf/extract-pages',
+  icon: 'extract-pages',
+  color: '#34b3a0',
+};
+
 export const TOOL_CATEGORIES: ToolCategory[] = [
-  { title: 'Organize', tools: [MERGE] },
+  { title: 'Organize', tools: [MERGE, ROTATE, REMOVE_PAGES, EXTRACT_PAGES] },
   { title: 'Optimize', tools: [COMPRESS] },
   { title: 'Convert to PDF', tools: [IMAGES_TO_PDF] },
   { title: 'Security', tools: [REMOVE_METADATA] },

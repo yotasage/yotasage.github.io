@@ -118,11 +118,13 @@ export function Progress({ fraction, label }: { fraction: number; label: string 
 }
 
 // The layout of a tool: a large drop zone until files are added, then the file grid next to an options sidebar.
-export function ToolWorkspace({ tool, accept, selectLabel, dropLabel, hasFiles, onFiles, toolbar, sidebar, children }: {
+export function ToolWorkspace({ tool, accept, multiple = true, selectLabel, dropLabel, addLabel = '+ Add files', hasFiles, onFiles, toolbar, sidebar, children }: {
   tool: PdfTool;
   accept: string;
+  multiple?: boolean;
   selectLabel: string;
   dropLabel: string;
+  addLabel?: string;
   hasFiles: boolean;
   onFiles: (files: File[]) => void;
   toolbar?: React.ReactNode;
@@ -135,7 +137,7 @@ export function ToolWorkspace({ tool, accept, selectLabel, dropLabel, hasFiles, 
         <ToolIcon name={tool.icon} color={tool.color} size={72} />
         <h2>{tool.title}</h2>
         <p>{tool.description}</p>
-        <FilePickerButton accept={accept} onFiles={onFiles} className={styles.heroButton}>{selectLabel}</FilePickerButton>
+        <FilePickerButton accept={accept} multiple={multiple} onFiles={onFiles} className={styles.heroButton}>{selectLabel}</FilePickerButton>
         <span className={styles.hint}>{dropLabel}</span>
         <span className={styles.hint}>Your files are processed in this browser and are never uploaded.</span>
       </DropTarget>
@@ -145,7 +147,7 @@ export function ToolWorkspace({ tool, accept, selectLabel, dropLabel, hasFiles, 
     <div className={styles.workspace}>
       <DropTarget onFiles={onFiles} className={styles.filesPanel}>
         <div className={styles.toolbar}>
-          <FilePickerButton accept={accept} onFiles={onFiles} className={styles.buttonSmall}>+ Add files</FilePickerButton>
+          <FilePickerButton accept={accept} multiple={multiple} onFiles={onFiles} className={styles.buttonSmall}>{addLabel}</FilePickerButton>
           <span className={styles.toolbarSpacer} />
           {toolbar}
         </div>

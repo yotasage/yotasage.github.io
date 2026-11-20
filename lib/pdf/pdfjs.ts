@@ -17,11 +17,12 @@ export function loadPdfjs() {
 }
 
 // Opens a document; call `close` when done to free the worker's memory.
-export async function openPdf(bytes: Uint8Array): Promise<{ doc: PDFDocumentProxy; close: () => Promise<void> }> {
+export async function openPdf(bytes: Uint8Array, password?: string): Promise<{ doc: PDFDocumentProxy; close: () => Promise<void> }> {
   const lib = await loadPdfjs();
   // pdf.js transfers the buffer to its worker, so it gets a copy to keep ours usable.
   const task = lib.getDocument({
     data: bytes.slice(),
+    password,
     cMapUrl: `${ASSETS}cmaps/`,
     standardFontDataUrl: `${ASSETS}standard_fonts/`,
     wasmUrl: `${ASSETS}wasm/`,

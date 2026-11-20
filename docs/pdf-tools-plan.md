@@ -72,10 +72,10 @@ Status: ✅ done · 🔜 next phase · 📋 planned · 🔬 needs research · �
 | Tool | PDF24 | iLovePDF | Status | How |
 | --- | :-: | :-: | :-: | --- |
 | Split PDF | ✔ | ✔ | 🔜 | By ranges, every N pages, by size, or by top-level bookmarks. Results as a ZIP. |
-| Remove pages | ✔ | ✔ | 🔜 | Page thumbnail grid; click to mark pages, or type ranges. |
-| Extract pages | ✔ | ✔ | 🔜 | Same UI as Remove pages with the selection inverted. One PDF or one PDF per page. |
+| Remove pages | ✔ | ✔ | ✅ | Page thumbnail grid (`components/PdfTools/PageGrid.tsx`); click, Shift-click, odd/even, or type ranges. |
+| Extract pages | ✔ | ✔ | ✅ | Same UI as Remove pages with the selection inverted. One PDF or one PDF per page (ZIP). |
 | Organize / rearrange pages | ✔ | ✔ | 🔜 | Grid of every page from one or more PDFs; drag to reorder, rotate, delete, duplicate, insert blank pages. This grid is a shared component for Remove, Extract and Rotate. |
-| Rotate PDF | ✔ | ✔ | 🔜 | Set `/Rotate` per page or for all pages. |
+| Rotate PDF | ✔ | ✔ | ✅ | Set `/Rotate` in-place per page, for selected pages, or for all pages (keeps bookmarks and metadata). |
 | PDF to images (JPG/PNG) | ✔ | ✔ | 🔜 | Render with pdf.js at a chosen DPI; ZIP of images. |
 | Extract images | ✔ | ✔ (as PDF to JPG option) | 🔜 | Walk image XObjects; JPEGs are saved as they are, others are re-encoded as PNG. Reuses the image decoding in `lib/pdf/compress.ts`. |
 | Add blank pages / insert PDF into PDF | ✔ | – | 📋 | Part of Organize. |
