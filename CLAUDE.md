@@ -165,9 +165,12 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   as data), `mathHtml` and `wide.ts` are shared in `components/Equations/`; each page builds its own steps and numbers.
 - Math is rendered with `components/KatexSpan.tsx`. `lib/useReplayHighlight.ts` replays the highlight on elements a
   `#link` jumps to.
-- Unused leftovers in package.json: `peerjs`, `socket.io`, `socket.io-client`, `@jaames/iro`, `clsx`,
-  `@testing-library/*`, `@types/jest`, and Tailwind/PostCSS/autoprefixer (no PostCSS config, so Tailwind is not
-  active). Don't take them as a sign that a server or Tailwind is in use.
+- `package.json` holds only what the site and its build use. The unused leftovers (`peerjs`, `socket.io`,
+  `socket.io-client`, `@jaames/iro`, `clsx`, `@testing-library/*`, `@types/jest`, Tailwind/PostCSS/autoprefixer) were
+  removed on 2026-11-18; they were behind every `npm audit` warning. There is no Tailwind; styles are CSS modules.
+- Next.js stops `next build` once (exit 1, after every page is built) when it detects a coding agent and the installed
+  version has a security advisory; a retry within 5 minutes passes, and CI never sees it. The fix is a patch upgrade
+  of `next` (`npm view next dist-tags`), not a workaround.
 
 ## Waiting on
 
