@@ -139,13 +139,40 @@ Status: ✅ done · 🔜 next phase · 📋 planned · 🔬 needs research · �
 - **Web Worker for heavy work.** pdf-lib parsing and saving runs on the main thread today. Move compress and merge into a
   worker so the page stays responsive with large files.
 - **Encrypted input.** Ask for the password and decrypt with `@cantoo/pdf-lib` / pdf.js instead of rejecting the file.
-- **Chain tools.** "Continue with…" buttons on a result (as iLovePDF does), passing the bytes to the next tool in memory.
+- **Chain tools.** "Continue with…" buttons on a result (as iLovePDF does), passing the bytes to the next tool in memory
+  (e.g. Merge → Compress → Remove metadata without downloading and re-selecting).
 - **Merge:** keep the sources' bookmarks and add a bookmark per file; allow images in the merge list.
-- **Touch reordering.** HTML drag and drop does not work on most phones; the arrow buttons cover that for now.
+- **Touch reordering & bulk page selection.** HTML drag and drop does not work reliably on phones; use pointer-event
+  reordering alongside arrow buttons, and support Shift-click / range / odd-even selection in the Phase 2 page grid so
+  working on 100-page PDFs is fast.
+- **Thumbnail virtualisation & canvas cleanup.** In the Phase 2 page grid (Organize, Remove, Extract, Rotate, Split),
+  render pdf.js thumbnails lazily via `IntersectionObserver`, call `page.cleanup()`, and revoke blob URLs so large
+  documents do not exhaust mobile browser canvas memory.
+- **PDF size breakdown (inspector).** `lib/pdf/objects.ts` and `lib/pdf/compress.ts` already walk objects and image
+  XObjects; surfacing a quick breakdown (images vs. fonts vs. streams vs. metadata/attachments) inside Compress or
+  Remove metadata shows why a file is large before processing.
 - **Remember options** per tool in `localStorage`.
+- **Theme & shared form controls.** Form fields currently reuse `components/QrGen/fields.tsx` and
+  `styles/QrGen.module.css`; the site-wide [UX polish plan](ux-polish/plan.md) moves these to shared light/dark themed
+  components (`ToolShell` and `components/ui/Fields.tsx`).
 - **Offline use / PWA.** A service worker would make every tool work offline once loaded.
-- **Tests.** Unit tests for `lib/pdf/*` (page ranges, EXIF orientation, predictors, compression round-trips) and a
-  browser smoke test of each tool.
+- **Verification harness (`scripts/harness/pdf/`).** Generate synthetic test PDFs in Node with `@cantoo/pdf-lib`
+  (multi-page, embedded JPEG/PNG, metadata/EXIF, rotated pages, encrypted) — no copyrighted fixtures needed — and verify
+  page counts, page order, rotation flags, compression savings, metadata removal, and browser smoke tests per tool. Also
+  re-run when bumping `pdfjs-dist` (`BL203`).
+
+## Suggested execution order for Phase 2
+
+Sized for single-agent steps under ~200k tokens ([agent-workflow.md](agent-workflow.md)), using only `@cantoo/pdf-lib`,
+`pdfjs-dist`, and `fflate` (zero new dependencies):
+
+| Step | Scope |
+| --- | --- |
+| P2.1 | Shared virtualised `PageGrid` component (lazy thumbnails, Shift/range/odd-even select, touch-friendly reorder) + **Rotate PDF** and **Remove / Extract pages** |
+| P2.2 | **Organize / rearrange pages** (multi-PDF page grid, reorder, rotate, delete, duplicate, insert blank pages) |
+| P2.3 | **Split PDF** (by ranges, every N pages, target size, or top-level bookmarks; ZIP output) |
+| P2.4 | **PDF to images** (JPG/PNG at chosen DPI, ZIP) and **Extract images** (lossless JPEG extraction + PNG re-encode, reusing `lib/pdf/compress.ts` decoding) |
+| P2.5 | Cross-cutting polish: Web Worker for heavy PDF jobs, encrypted-input password prompt, in-memory *"Continue with…"* tool chaining, and `scripts/harness/pdf/` checks |
 
 ### Remove metadata improvements
 
