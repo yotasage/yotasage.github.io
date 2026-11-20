@@ -73,8 +73,8 @@ export const PDF_TO_IMAGES: PdfTool = {
 
 export const EXTRACT_IMAGES: PdfTool = {
   id: 'extract-images',
-  title: 'Extract images',
-  description: 'Pull embedded photos and graphics out of PDFs as original JPGs or lossless PNGs without re-rendering pages.',
+  title: 'Extract images & vectors',
+  description: 'Extract embedded raster images (JPG/PNG), vector graphics (SVG/PDF), and auto-detected or hand-drawn figure crops from PDFs.',
   href: '/pdf/extract-images',
   icon: 'extract-images',
   color: '#4da3ff',

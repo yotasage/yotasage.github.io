@@ -1084,3 +1084,450 @@
   font-weight: 600;
   color: #ffffff;
 }
+
+/* Extract images & vectors: tabs, vector previews, interactive figure canvas */
+
+.tabBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid #3c3c3c;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid #555;
+  border-radius: 8px;
+  background: #2b2b2b;
+  color: #d0d0d0;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.tab:hover {
+  border-color: #888;
+  color: #ffffff;
+}
+
+.tabActive {
+  border-color: #0070f3;
+  background: rgba(0, 112, 243, 0.2);
+  color: #ffffff;
+}
+
+.tabActive:hover {
+  border-color: #4da3ff;
+}
+
+.tabBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #e6e6e6;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.tabActive .tabBadge {
+  background: rgba(77, 163, 255, 0.35);
+  color: #ffffff;
+}
+
+.thumbPaper {
+  background: #ffffff;
+}
+
+.badgeVector {
+  composes: pillExtra;
+  left: 0.4rem;
+  right: auto;
+  border-color: #2fae6b;
+  color: #84e6ae;
+}
+
+.badgeWarn {
+  composes: pillExtra;
+  top: 0.4rem;
+  right: 0.4rem;
+  border-color: #e0a526;
+  color: #f6d580;
+}
+
+.cardActions {
+  display: flex;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.cardActions > button {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.canvasToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #444;
+  border-radius: 8px;
+  background: #2b2b2b;
+}
+
+.canvasNav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.canvasPageInfo {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #e4e4e4;
+  white-space: nowrap;
+}
+
+.canvasSourceSelect {
+  max-width: 220px;
+  padding: 0.32rem 0.5rem;
+  border: 1px solid #666;
+  border-radius: 6px;
+  background: #1f1f1f;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.canvasTip {
+  margin: 0 0 0.65rem;
+  color: #a8a8a8;
+  font-size: 0.84rem;
+}
+
+.figureStage {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 100%;
+  min-height: 240px;
+  padding: 0.75rem;
+  border: 1px solid #444;
+  border-radius: 10px;
+  background: #1c1c1c;
+  overflow: hidden;
+}
+
+.figureWrap {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  line-height: 0;
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.55);
+  user-select: none;
+  overflow: hidden;
+}
+
+.figureCanvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.figureOverlay {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.figureLoading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(28, 28, 28, 0.68);
+  color: #e4e4e4;
+  font-size: 0.9rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.figureBox {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid #2fae6b;
+  background: rgba(47, 174, 107, 0.14);
+  cursor: move;
+  touch-action: none;
+}
+
+.figureBox:hover {
+  border-color: #5ee39b;
+  background: rgba(47, 174, 107, 0.22);
+}
+
+.figureBoxSelected {
+  border-color: #0070f3;
+  background: rgba(0, 112, 243, 0.18);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85);
+  z-index: 5;
+}
+
+.figureBoxSelected:hover {
+  border-color: #4da3ff;
+  background: rgba(0, 112, 243, 0.22);
+}
+
+.figureBoxDraft {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px dashed #4da3ff;
+  background: rgba(77, 163, 255, 0.18);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.figureLabel {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  max-width: calc(100% - 4px);
+  padding: 0.12rem 0.4rem;
+  border-radius: 4px;
+  background: rgba(20, 20, 20, 0.88);
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.figureBoxSelected .figureLabel {
+  background: rgba(0, 112, 243, 0.92);
+}
+
+.figureQuickActions {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  display: inline-flex;
+  gap: 0.25rem;
+  z-index: 8;
+}
+
+.figureQuickBtn {
+  padding: 0.14rem 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+  background: rgba(24, 24, 24, 0.92);
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.figureQuickBtn:hover {
+  border-color: #4da3ff;
+  background: #0070f3;
+}
+
+.figureQuickBtnDanger:hover {
+  border-color: #ff7a9e;
+  background: #c93356;
+}
+
+.figureHandle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  margin-top: -6px;
+  border: 2px solid #0070f3;
+  border-radius: 2px;
+  background: #ffffff;
+  touch-action: none;
+  z-index: 9;
+}
+
+.figureHandleNw { top: 0; left: 0; cursor: nwse-resize; }
+.figureHandleN  { top: 0; left: 50%; cursor: ns-resize; }
+.figureHandleNe { top: 0; left: 100%; cursor: nesw-resize; }
+.figureHandleE  { top: 50%; left: 100%; cursor: ew-resize; }
+.figureHandleSe { top: 100%; left: 100%; cursor: nwse-resize; }
+.figureHandleS  { top: 100%; left: 50%; cursor: ns-resize; }
+.figureHandleSw { top: 100%; left: 0; cursor: nesw-resize; }
+.figureHandleW  { top: 50%; left: 0; cursor: ew-resize; }
+
+.inspectorBox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid #0070f3;
+  border-radius: 8px;
+  background: rgba(0, 112, 243, 0.08);
+}
+
+.inspectorHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.inspectorMeta {
+  color: #b8d7ff;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.boxList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 14rem;
+  overflow: auto;
+  padding: 0.45rem;
+  border: 1px solid #444;
+  border-radius: 8px;
+  background: #202020;
+}
+
+.boxListItem {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.38rem 0.45rem;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  background: #2b2b2b;
+  font-size: 0.82rem;
+}
+
+.boxListItemSelected {
+  border-color: #0070f3;
+  background: rgba(0, 112, 243, 0.18);
+}
+
+.boxListMain {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.boxListTitle {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.boxListMeta {
+  color: #9f9f9f;
+  font-size: 0.75rem;
+}
+
+.boxListActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex: none;
+}
+
+.miniBtn {
+  padding: 0.18rem 0.38rem;
+  border: 1px solid #5c5c5c;
+  border-radius: 5px;
+  background: #1f1f1f;
+  color: #e6e6e6;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.miniBtn:hover {
+  border-color: #0070f3;
+  color: #ffffff;
+}
+
+.miniBtnDanger:hover {
+  border-color: #e5537a;
+  color: #ff9cb5;
+}
+
+.optionRowThree {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+@media (max-width: 900px) {
+  .figureStage {
+    padding: 0.45rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .filesPanel {
+    padding: 0.7rem;
+  }
+  .sidebar {
+    padding: 1rem;
+  }
+  .tab {
+    font-size: 0.82rem;
+    padding: 0.4rem 0.65rem;
+  }
+  .canvasSourceSelect {
+    max-width: 100%;
+    width: 100%;
+  }
+  .optionRowThree {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.35rem;
+  }
+  .figureHandle {
+    width: 16px;
+    height: 16px;
+    margin-left: -8px;
+    margin-top: -8px;
+  }
+}
