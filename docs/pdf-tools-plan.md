@@ -67,7 +67,7 @@ Status: ✅ done · 🔜 next phase · 📋 planned · 🔬 needs research · �
 | Images to PDF (JPG/PNG/WebP/GIF/BMP/SVG/AVIF to PDF) | ✔ | ✔ | ✅ | JPEG and PNG are embedded unchanged; other formats go through a canvas. EXIF orientation is honoured without re-encoding. Page size (image, A3–A5, Letter, Legal), orientation, margin, fit or actual size at a DPI, per-image rotation, one PDF or one PDF per image (ZIP). |
 | Remove metadata / anonymize | ✔ (remove metadata) | – | ✅ | `lib/pdf/sanitize.ts`. Inspects each file and lists what it found: document properties, XMP, document ID, photo EXIF/GPS/XMP/IPTC inside JPEGs, comment authors and dates, digital signatures, page thumbnails, application private data (PieceInfo), JavaScript and risky actions, attachments, comments, form values, earlier revisions and unused objects. Presets *Metadata only*, *Anonymize* (everything except visible content) and *Maximum* (also attachments, comments, form values), or custom. JPEG metadata is removed without re-encoding (`lib/pdf/jpeg.ts`). The cleaned file is inspected again to confirm. Optional neutral output file names. |
 
-### Phase 2 – organize pages (pdf-lib and pdf.js only)
+### Phase 2 – organize pages (done; pdf-lib and pdf.js only)
 
 | Tool | PDF24 | iLovePDF | Status | How |
 | --- | :-: | :-: | :-: | --- |
@@ -148,23 +148,63 @@ Status: ✅ done · 🔜 next phase · 📋 planned · 🔬 needs research · �
   `styles/QrGen.module.css`; the site-wide [UX polish plan](ux-polish/plan.md) moves these to shared light/dark themed
   components (`ToolShell` and `components/ui/Fields.tsx`).
 - **Offline use / PWA.** A service worker would make every tool work offline once loaded.
-- **Verification harness (`scripts/harness/pdf/`).** Generate synthetic test PDFs in Node with `@cantoo/pdf-lib`
-  (multi-page, embedded JPEG/PNG, metadata/EXIF, rotated pages, encrypted) — no copyrighted fixtures needed — and verify
-  page counts, page order, rotation flags, compression savings, metadata removal, and browser smoke tests per tool. Also
-  re-run when bumping `pdfjs-dist` (`BL203`).
+- **Verification harness (`scripts/harness/pdf/`).** ✅ Implemented (`fixtures.mjs`, `check.mjs`, `ui.mjs`). Generates synthetic test PDFs in Node with `@cantoo/pdf-lib` and `fflate` (multi-page, embedded JPEG/RGBA PNG, metadata/EXIF, rotated pages, bookmarks, compressible streams, encrypted) and verifies all framework-free `lib/pdf/*` modules plus headless Edge/Chrome interactive flows, phone layout, and zero third-party requests. Re-run when bumping `pdfjs-dist` (`BL203`).
 
-## Suggested execution order for Phase 2
+## Module map
 
-Sized for single-agent steps under ~200k tokens ([agent-workflow.md](agent-workflow.md)), using only `@cantoo/pdf-lib`,
-`pdfjs-dist`, and `fflate` (zero new dependencies):
+### `lib/pdf/`
+- `breakdown.ts` — Estimates how a PDF's bytes split across images, fonts, page content, metadata/attachments, and structure.
+- `compress.ts` — Lossless stream re-deflation, unused-object removal, image downsampling/recompression, and optional rasterization.
+- `extractImages.ts` — Extracts embedded JPEGs verbatim and raw/indexed/SMask image streams as lossless PNGs.
+- `files.ts` — File I/O, downloads, ZIP bundling (`fflate`), safe filenames, password-error detection, and formatting helpers.
+- `handoff.ts` — In-memory transfer buffer for passing generated PDFs between tools via *Continue with…*.
+- `imageDecode.ts` — Shared raw PDF image stream decoding, PNG/TIFF predictor reversal, colour-space inspection, and pure-JS RGBA→PNG encoding.
+- `images.ts` — Images-to-PDF conversion with lossless JPEG/PNG embedding, EXIF orientation, paper sizes, margins, and DPI scaling.
+- `jpeg.ts` — Reads and strips JPEG metadata segments (EXIF, XMP, IPTC, comments, trailing data) without re-encoding image scans.
+- `merge.ts` — Page range parser (`parsePageRanges`) and multi-PDF merging via `copyPages`.
+- `objects.ts` — Low-level pdf-lib object graph traversal (`walkDicts`), filter/name/text helpers, and unreachable-object removal.
+- `pages.ts` — Page range formatting, multi-source page builder (`buildPdfFromPages`), in-place rotation, removal, and extraction.
+- `pdfjs.ts` — Lazy `pdfjs-dist` loader (self-hosted worker/cmaps/fonts), page rendering, and card thumbnails.
+- `pdfToImages.ts` — Renders all or selected PDF pages via pdf.js into JPG or lossless PNG images at a chosen DPI.
+- `sanitize.ts` — Metadata and hidden-data inspector (`inspectPdf`) and cleaner (`cleanPdf`) with *Metadata only*, *Anonymize*, and *Maximum* presets.
+- `split.ts` — Range-group, every-N, breakpoint, top-level bookmark, and target-size PDF splitting.
+- `thumbs.ts` — Lazy page-thumbnail pool (`PdfThumbPool`) with concurrency control, LRU Blob URL eviction, and `page.cleanup()`.
+- `tools.ts` — Central `PdfTool` registry and categories powering `/pdf/main` and *Continue with…* navigation.
+- `worker.ts` — Dedicated Web Worker executing heavy pdf-lib jobs off the main thread.
+- `workerClient.ts` — Typed RPC client for `worker.ts` with progress callbacks and automatic main-thread fallback.
 
-| Step | Scope |
-| --- | --- |
-| P2.1 | Shared virtualised `PageGrid` component (lazy thumbnails, Shift/range/odd-even select, touch-friendly reorder) + **Rotate PDF** and **Remove / Extract pages** |
-| P2.2 | **Organize / rearrange pages** (multi-PDF page grid, reorder, rotate, delete, duplicate, insert blank pages) |
-| P2.3 | **Split PDF** (by ranges, every N pages, target size, or top-level bookmarks; ZIP output) |
-| P2.4 | **PDF to images** (JPG/PNG at chosen DPI, ZIP) and **Extract images** (lossless JPEG extraction + PNG re-encode, reusing `lib/pdf/compress.ts` decoding) |
-| P2.5 | Cross-cutting polish: Web Worker for heavy PDF jobs, encrypted-input password prompt, in-memory *"Continue with…"* tool chaining, and `scripts/harness/pdf/` checks |
+### `components/PdfTools/`
+- `ContinueWith.tsx` — *Continue with…* bar handing generated PDFs in memory to other PDF tools.
+- `FileGrid.tsx` — Sortable/static file thumbnail grid (`FileGrid`) and `FileCard` for multi-file tools.
+- `PageGrid.tsx` — Virtualised page thumbnail grid (`PageGrid`), drag/touch/arrow reordering, split-cut indicators, and bulk `PageSelectionBar`.
+- `PasswordPrompt.tsx` — Inline password prompt for unlocking encrypted PDFs.
+- `ToolIcon.tsx` — Inline SVG icons for every PDF tool tile and workspace header.
+- `ToolPage.tsx` — Shared page frame (`PdfPage`), drop-zone/sidebar layout (`ToolWorkspace`), and progress indicator (`Progress`).
+
+### `pages/pdf/`
+- `main.tsx` — Hub page listing all 11 PDF tools grouped by category.
+- `merge.tsx`, `split.tsx`, `organize.tsx`, `rotate.tsx`, `remove-pages.tsx`, `extract-pages.tsx` — Organize tools.
+- `compress.tsx` — Compress PDF with pre-compression size breakdown.
+- `images-to-pdf.tsx`, `pdf-to-images.tsx`, `extract-images.tsx` — Image conversion and extraction tools.
+- `remove-metadata.tsx` — Metadata / anonymize inspector and cleaner.
+
+### `scripts/harness/pdf/`
+- `package.json` — Isolated harness package (`playwright-core`, `tsx`, `check` and `ui` scripts; not part of the site).
+- `fixtures.mjs` — Synthetic in-memory PDF, RGBA PNG, and EXIF JPEG generators.
+- `check.mjs` — Node verification suite (`npm run check`) for all framework-free `lib/pdf/*` modules.
+- `ui.mjs` — Headless Edge/Chrome Playwright suite (`npm run ui`) for routes, phone layout, interactive flows, encrypted unlock, and zero third-party requests.
+
+## Phase 2 execution history (complete)
+
+All Phase 2 steps completed using only `@cantoo/pdf-lib`, `pdfjs-dist`, and `fflate` (zero new dependencies):
+
+| Step | Scope | Status |
+| --- | --- | :-: |
+| P2.1 | Shared virtualised `PageGrid` component (lazy thumbnails, Shift/range/odd-even select, touch-friendly reorder) + **Rotate PDF** and **Remove / Extract pages** | ✅ |
+| P2.2 | **Organize / rearrange pages** (multi-PDF page grid, reorder, rotate, delete, duplicate, insert blank pages) | ✅ |
+| P2.3 | **Split PDF** (by ranges, every N pages, target size, or top-level bookmarks; ZIP output) | ✅ |
+| P2.4 | **PDF to images** (JPG/PNG at chosen DPI, ZIP) and **Extract images** (lossless JPEG extraction + PNG re-encode, reusing `lib/pdf/imageDecode.ts`) | ✅ |
+| P2.5 | Cross-cutting polish: Web Worker for heavy PDF jobs, encrypted-input password prompt, in-memory *"Continue with…"* tool chaining, size breakdown inspector, and `scripts/harness/pdf/` verification harness | ✅ |
 
 ### Remove metadata improvements
 

@@ -1,6 +1,7 @@
 import { degrees, PDFDocument } from '@cantoo/pdf-lib';
 
 import { baseName, nextFrame, OutputFile } from './files';
+import { removeUnusedObjects } from './objects';
 
 export type PageSpec =
   | { kind: 'page'; sourceIndex: number; pageIndex: number; rotation?: number }
@@ -117,6 +118,8 @@ export async function rotatePdf(
   }
   onProgress?.(0.8, 'Writing PDF');
   await nextFrame();
+  // Drop orphaned objects (e.g. stale /Encrypt and /XRef objects left by pdf-lib when loading encrypted PDFs).
+  removeUnusedObjects(doc.context);
   return doc.save({ useObjectStreams: true, addDefaultPage: false, updateFieldAppearances: false });
 }
 

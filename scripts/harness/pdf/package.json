@@ -1,0 +1,14 @@
+{
+  "name": "pdf-harness",
+  "private": true,
+  "description": "Synthetic fixture checks for lib/pdf and browser checks for /pdf/* pages. Not part of the site.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx check.mjs",
+    "ui": "tsx ui.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.50.0",
+    "tsx": "^4.19.0"
+  }
+}

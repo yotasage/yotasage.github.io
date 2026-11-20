@@ -57,9 +57,13 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   imported anywhere. [pages/_app.tsx](pages/_app.tsx) adds `SiteFooter` (links to `/licenses` and the GitHub repo)
   to every page; on the main page only it is fixed to the bottom of the screen.
 - Layouts must work at phone width.
-- PDF tools: register each tool in [lib/pdf/tools.ts](lib/pdf/tools.ts) (hub tiles on `/pdf/main`), use the shared
-  frame in `components/PdfTools/`, and update the status table in
-  [docs/pdf-tools-plan.md](docs/pdf-tools-plan.md). Form fields are shared from `components/QrGen/fields.tsx`.
+- PDF tools: 11 client-side tools (Phase 1 & 2 complete: Merge, Split, Organize, Rotate, Remove/Extract pages, Compress,
+  Images to PDF, PDF to images, Extract images, Remove metadata) registered in [lib/pdf/tools.ts](lib/pdf/tools.ts)
+  (hub tiles on `/pdf/main`), using shared frames/grids/prompts in `components/PdfTools/` (`PageGrid`, `PasswordPrompt`,
+  `ContinueWith`) and shared form fields from `components/QrGen/fields.tsx`. Heavy pdf-lib jobs offload to
+  `lib/pdf/worker.ts` via `lib/pdf/workerClient.ts`, `lib/pdf/handoff.ts` chains outputs between tools in memory, and
+  `lib/pdf/breakdown.ts` inspects PDF size composition. Verify changes with `npm run check` and `npm run ui` in
+  `scripts/harness/pdf/` and update the status table/module map in [docs/pdf-tools-plan.md](docs/pdf-tools-plan.md).
 - Citations: entries live in [references.bib](references.bib). Load them with `loadReferences()` from
   `lib/references.ts` **only in `getStaticProps`** (it uses `node:fs`), then cite with the `Bibliography` class in
   `components/Bibliography.tsx` (IEEE style, numbered by first citation). An unknown key stops the build.
