@@ -41,6 +41,24 @@ const ICONS: Record<ToolIconName, React.ReactNode> = {
       <path d="M29 33h10m-4-4 4 4-4 4" />
     </>
   ),
+  'pdf-to-images': (
+    <>
+      <Doc x={4} y={4} w={20} h={26} />
+      <path d="M9 17h10m-4-4 4 4-4 4" />
+      <rect x={18} y={20} width={26} height={22} rx={2} />
+      <circle cx={25} cy={27} r={2.5} />
+      <path d="M18 39l8-7 6 5 5-4 7 6" />
+    </>
+  ),
+  'extract-images': (
+    <>
+      <Doc x={5} y={6} w={24} h={32} />
+      <rect x={21} y={16} width={22} height={18} rx={2} />
+      <circle cx={27} cy={22} r={2} />
+      <path d="M21 31l6-5 5 4 4-3 7 5" />
+      <path d="M32 39v5m-3-3 3 3 3-3" />
+    </>
+  ),
   sanitize: (
     <>
       <Doc x={4} y={4} w={24} h={32} />

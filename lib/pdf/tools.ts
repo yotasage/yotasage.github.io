@@ -4,6 +4,8 @@ export type ToolIconName =
   | 'split'
   | 'compress'
   | 'images'
+  | 'pdf-to-images'
+  | 'extract-images'
   | 'sanitize'
   | 'rotate'
   | 'remove-pages'
@@ -60,6 +62,24 @@ export const IMAGES_TO_PDF: PdfTool = {
   color: '#e0a526',
 };
 
+export const PDF_TO_IMAGES: PdfTool = {
+  id: 'pdf-to-images',
+  title: 'PDF to images',
+  description: 'Render all or selected PDF pages as JPG or lossless PNG images at the DPI you choose.',
+  href: '/pdf/pdf-to-images',
+  icon: 'pdf-to-images',
+  color: '#e0a526',
+};
+
+export const EXTRACT_IMAGES: PdfTool = {
+  id: 'extract-images',
+  title: 'Extract images',
+  description: 'Pull embedded photos and graphics out of PDFs as original JPGs or lossless PNGs without re-rendering pages.',
+  href: '/pdf/extract-images',
+  icon: 'extract-images',
+  color: '#4da3ff',
+};
+
 export const REMOVE_METADATA: PdfTool = {
   id: 'remove-metadata',
   title: 'Remove metadata',
@@ -109,5 +129,6 @@ export const TOOL_CATEGORIES: ToolCategory[] = [
   { title: 'Organize', tools: [MERGE, SPLIT, ORGANIZE, ROTATE, REMOVE_PAGES, EXTRACT_PAGES] },
   { title: 'Optimize', tools: [COMPRESS] },
   { title: 'Convert to PDF', tools: [IMAGES_TO_PDF] },
+  { title: 'Convert from PDF', tools: [PDF_TO_IMAGES, EXTRACT_IMAGES] },
   { title: 'Security', tools: [REMOVE_METADATA] },
 ];

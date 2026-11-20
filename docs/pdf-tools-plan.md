@@ -76,8 +76,8 @@ Status: ✅ done · 🔜 next phase · 📋 planned · 🔬 needs research · �
 | Extract pages | ✔ | ✔ | ✅ | Same UI as Remove pages with the selection inverted. One PDF or one PDF per page (ZIP). |
 | Organize / rearrange pages | ✔ | ✔ | ✅ | Grid of every page from one or more PDFs; drag/touch reorder, rotate, delete, duplicate, insert blank pages, reverse, undo/redo. Shared grid (`PageGrid`) used by Remove, Extract and Rotate. |
 | Rotate PDF | ✔ | ✔ | ✅ | Set `/Rotate` in-place per page, for selected pages, or for all pages (keeps bookmarks and metadata). |
-| PDF to images (JPG/PNG) | ✔ | ✔ | 🔜 | Render with pdf.js at a chosen DPI; ZIP of images. |
-| Extract images | ✔ | ✔ (as PDF to JPG option) | 🔜 | Walk image XObjects; JPEGs are saved as they are, others are re-encoded as PNG. Reuses the image decoding in `lib/pdf/compress.ts`. |
+| PDF to images (JPG/PNG) | ✔ | ✔ | ✅ | Render all or selected pages with pdf.js at a chosen DPI (72/150/300/custom) and JPEG quality (`lib/pdf/pdfToImages.ts`); single image or ZIP download. |
+| Extract images | ✔ | ✔ (as PDF to JPG option) | ✅ | Walk page and Form XObject image resources (`lib/pdf/extractImages.ts`); JPEGs are extracted verbatim, raw/indexed/SMask streams are encoded as lossless PNG (`lib/pdf/imageDecode.ts`), with thumbnail grid, min-size filter and single/ZIP download. |
 | Add blank pages / insert PDF into PDF | ✔ | – | ✅ | Built into Organize pages (`+ Blank page`, per-page `+`, and `+ Add PDFs`). |
 
 ### Phase 3 – edit and annotate
