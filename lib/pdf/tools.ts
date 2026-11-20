@@ -6,7 +6,8 @@ export type ToolIconName =
   | 'sanitize'
   | 'rotate'
   | 'remove-pages'
-  | 'extract-pages';
+  | 'extract-pages'
+  | 'organize';
 
 export interface PdfTool {
   id: string;
@@ -85,8 +86,17 @@ export const EXTRACT_PAGES: PdfTool = {
   color: '#34b3a0',
 };
 
+export const ORGANIZE: PdfTool = {
+  id: 'organize',
+  title: 'Organize pages',
+  description: 'Rearrange, rotate, duplicate, delete and insert blank pages across one or more PDFs.',
+  href: '/pdf/organize',
+  icon: 'organize',
+  color: '#f07c3a',
+};
+
 export const TOOL_CATEGORIES: ToolCategory[] = [
-  { title: 'Organize', tools: [MERGE, ROTATE, REMOVE_PAGES, EXTRACT_PAGES] },
+  { title: 'Organize', tools: [MERGE, ORGANIZE, ROTATE, REMOVE_PAGES, EXTRACT_PAGES] },
   { title: 'Optimize', tools: [COMPRESS] },
   { title: 'Convert to PDF', tools: [IMAGES_TO_PDF] },
   { title: 'Security', tools: [REMOVE_METADATA] },

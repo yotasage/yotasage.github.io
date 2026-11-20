@@ -154,6 +154,7 @@ export function PageGrid<T extends PageGridItem>({
   selectionStyle = 'select',
   splitAfter,
   renderBadgeExtra,
+  renderTopActions,
   renderActions,
 }: {
   items: T[];
@@ -163,6 +164,7 @@ export function PageGrid<T extends PageGridItem>({
   selectionStyle?: 'select' | 'remove';
   splitAfter?: Set<number>;
   renderBadgeExtra?: (item: T, index: number) => React.ReactNode;
+  renderTopActions?: (item: T, index: number) => React.ReactNode;
   renderActions?: (item: T, index: number, reorder?: PageReorderControls) => React.ReactNode;
 }) {
   const observer = useThumbObserver();
@@ -353,6 +355,11 @@ export function PageGrid<T extends PageGridItem>({
               {index + 1}
             </span>
             {renderBadgeExtra?.(item, index)}
+            {renderTopActions && (
+              <div className={styles.cardActions}>
+                {renderTopActions(item, index)}
+              </div>
+            )}
             <div className={styles.sourceRow}>
               {item.sourceTag && (
                 <span

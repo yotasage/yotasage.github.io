@@ -79,6 +79,19 @@ export class PdfThumbPool {
     return h.doc.numPages;
   }
 
+  async getPageSize(pageIndex = 0): Promise<{ width: number; height: number }> {
+    if (!this.openPromise) await this.open();
+    const h = await this.openPromise!;
+    const idx = Math.max(0, Math.min(pageIndex, h.doc.numPages - 1));
+    const page = await h.doc.getPage(idx + 1);
+    try {
+      const vp = page.getViewport({ scale: 1 });
+      return { width: vp.width, height: vp.height };
+    } finally {
+      page.cleanup();
+    }
+  }
+
   getCached(pageIndex: number): string | null {
     const url = this.cache.get(pageIndex) ?? null;
     if (url !== null) {
