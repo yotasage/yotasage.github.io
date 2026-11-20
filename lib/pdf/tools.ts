@@ -1,6 +1,7 @@
 // The tools listed on /pdf/main. See docs/pdf-tools-plan.md for the tools planned next.
 export type ToolIconName =
   | 'merge'
+  | 'split'
   | 'compress'
   | 'images'
   | 'sanitize'
@@ -30,6 +31,15 @@ export const MERGE: PdfTool = {
   href: '/pdf/merge',
   icon: 'merge',
   color: '#e5533d',
+};
+
+export const SPLIT: PdfTool = {
+  id: 'split',
+  title: 'Split PDF',
+  description: 'Split a PDF into separate files by page ranges, every N pages, target file size, or top-level bookmarks.',
+  href: '/pdf/split',
+  icon: 'split',
+  color: '#e59a3a',
 };
 
 export const COMPRESS: PdfTool = {
@@ -96,7 +106,7 @@ export const ORGANIZE: PdfTool = {
 };
 
 export const TOOL_CATEGORIES: ToolCategory[] = [
-  { title: 'Organize', tools: [MERGE, ORGANIZE, ROTATE, REMOVE_PAGES, EXTRACT_PAGES] },
+  { title: 'Organize', tools: [MERGE, SPLIT, ORGANIZE, ROTATE, REMOVE_PAGES, EXTRACT_PAGES] },
   { title: 'Optimize', tools: [COMPRESS] },
   { title: 'Convert to PDF', tools: [IMAGES_TO_PDF] },
   { title: 'Security', tools: [REMOVE_METADATA] },

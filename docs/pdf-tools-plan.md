@@ -71,7 +71,7 @@ Status: ✅ done · 🔜 next phase · 📋 planned · 🔬 needs research · �
 
 | Tool | PDF24 | iLovePDF | Status | How |
 | --- | :-: | :-: | :-: | --- |
-| Split PDF | ✔ | ✔ | 🔜 | By ranges, every N pages, by size, or by top-level bookmarks. Results as a ZIP. |
+| Split PDF | ✔ | ✔ | ✅ | By ranges / click split points, every N pages, target file size, or top-level bookmarks (`lib/pdf/split.ts`). Single PDF or ZIP download. |
 | Remove pages | ✔ | ✔ | ✅ | Page thumbnail grid (`components/PdfTools/PageGrid.tsx`); click, Shift-click, odd/even, or type ranges. |
 | Extract pages | ✔ | ✔ | ✅ | Same UI as Remove pages with the selection inverted. One PDF or one PDF per page (ZIP). |
 | Organize / rearrange pages | ✔ | ✔ | ✅ | Grid of every page from one or more PDFs; drag/touch reorder, rotate, delete, duplicate, insert blank pages, reverse, undo/redo. Shared grid (`PageGrid`) used by Remove, Extract and Rotate. |

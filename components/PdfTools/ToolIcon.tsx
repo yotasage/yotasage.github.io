@@ -17,6 +17,14 @@ const ICONS: Record<ToolIconName, React.ReactNode> = {
       <Doc x={16} y={30} w={16} h={14} />
     </>
   ),
+  split: (
+    <>
+      <Doc x={15} y={4} w={18} h={16} />
+      <path d="M24 20v4M12 30v-3l12-3 12 3v3" />
+      <Doc x={4} y={30} w={16} h={14} />
+      <Doc x={28} y={30} w={16} h={14} />
+    </>
+  ),
   compress: (
     <>
       <Doc x={13} y={10} w={22} h={28} />
