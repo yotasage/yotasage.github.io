@@ -128,23 +128,51 @@ function hasValue(v: PDFObject | undefined): boolean {
   return s !== '' && s !== 'Off';
 }
 
-// Readable key/value lines from an XMP packet.
+// Readable key/value lines from an XMP packet (uses DOMParser on the main thread, regex fallback in Web Workers).
 function describeXmp(xml: string): string[] {
-  if (typeof DOMParser === 'undefined') return [];
-  const doc = new DOMParser().parseFromString(xml.replace(/^[^<]*/, ''), 'application/xml');
-  if (doc.getElementsByTagName('parsererror').length) return [];
+  const cleaned = xml.replace(/^[^<]*/, '');
   const lines = new Set<string>();
   const containers = new Set(['rdf:Seq', 'rdf:Bag', 'rdf:Alt', 'rdf:li', 'rdf:RDF', 'rdf:Description', 'x:xmpmeta']);
-  for (const el of Array.from(doc.getElementsByTagName('*'))) {
-    if (el.tagName === 'rdf:Description') {
-      for (const attr of Array.from(el.attributes)) {
-        if (!attr.name.startsWith('xmlns') && !attr.name.startsWith('rdf:') && attr.value.trim()) lines.add(`${attr.name}: ${attr.value.trim()}`);
+
+  if (typeof DOMParser !== 'undefined') {
+    const doc = new DOMParser().parseFromString(cleaned, 'application/xml');
+    if (doc.getElementsByTagName('parsererror').length) return [];
+    for (const el of Array.from(doc.getElementsByTagName('*'))) {
+      if (el.tagName === 'rdf:Description') {
+        for (const attr of Array.from(el.attributes)) {
+          if (!attr.name.startsWith('xmlns') && !attr.name.startsWith('rdf:') && attr.value.trim()) lines.add(`${attr.name}: ${attr.value.trim()}`);
+        }
+      }
+      if (el.children.length || !el.textContent?.trim()) continue;
+      let owner: Element | null = el;
+      while (owner && containers.has(owner.tagName)) owner = owner.parentElement;
+      if (owner) lines.add(`${owner.tagName}: ${el.textContent.trim().slice(0, 200)}`);
+    }
+    return [...lines];
+  }
+
+  // Fallback for Web Workers where DOMParser is unavailable.
+  const descRe = /<rdf:Description\b([^>]*)>/g;
+  let descMatch: RegExpExecArray | null;
+  while ((descMatch = descRe.exec(cleaned)) !== null) {
+    const attrRe = /([A-Za-z_][\w.-]*:[A-Za-z_][\w.-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
+    let attrMatch: RegExpExecArray | null;
+    while ((attrMatch = attrRe.exec(descMatch[1])) !== null) {
+      const name = attrMatch[1];
+      const val = (attrMatch[2] ?? attrMatch[3] ?? '').trim();
+      if (!name.startsWith('xmlns') && !name.startsWith('rdf:') && val) {
+        lines.add(`${name}: ${val.slice(0, 200)}`);
       }
     }
-    if (el.children.length || !el.textContent?.trim()) continue;
-    let owner: Element | null = el;
-    while (owner && containers.has(owner.tagName)) owner = owner.parentElement;
-    if (owner) lines.add(`${owner.tagName}: ${el.textContent.trim().slice(0, 200)}`);
+  }
+
+  const leafRe = /<([A-Za-z_][\w.-]*:[A-Za-z_][\w.-]*)\b[^>]*>([^<]+)<\/\1>/g;
+  let leafMatch: RegExpExecArray | null;
+  while ((leafMatch = leafRe.exec(cleaned)) !== null) {
+    const tag = leafMatch[1];
+    const val = leafMatch[2].trim();
+    if (!val || containers.has(tag)) continue;
+    lines.add(`${tag}: ${val.slice(0, 200)}`);
   }
   return [...lines];
 }
@@ -282,8 +310,8 @@ function inspectDoc(doc: PDFDocument, bytes: Uint8Array): Finding[] {
     .map((id) => ({ id, label: LABELS[id], details: found[id] }));
 }
 
-export async function inspectPdf(bytes: Uint8Array): Promise<Finding[]> {
-  const doc = await PDFDocument.load(bytes, { updateMetadata: false });
+export async function inspectPdf(bytes: Uint8Array, password?: string): Promise<Finding[]> {
+  const doc = await PDFDocument.load(bytes, { updateMetadata: false, password });
   return inspectDoc(doc, bytes);
 }
 
@@ -307,8 +335,8 @@ function clearFormValues(doc: PDFDocument) {
   doc.getForm().updateFieldAppearances();
 }
 
-export async function cleanPdf(bytes: Uint8Array, opts: CleanOptions): Promise<Uint8Array> {
-  const doc = await PDFDocument.load(bytes, { updateMetadata: false });
+export async function cleanPdf(bytes: Uint8Array, opts: CleanOptions, password?: string): Promise<Uint8Array> {
+  const doc = await PDFDocument.load(bytes, { updateMetadata: false, password });
   const ctx = doc.context;
   const catalog = doc.catalog;
   const names = catalog.lookup(N('Names'));

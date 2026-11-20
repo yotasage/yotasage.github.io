@@ -1,12 +1,16 @@
 import React from 'react';
 
+import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { PageGrid, PageGridItem, PageSelectionBar } from '../../components/PdfTools/PageGrid';
+import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
 import { Field } from '../../components/QrGen/fields';
-import { baseName, download, errorMessage, formatBytes, isPdf, readBytes, safeFileName } from '../../lib/pdf/files';
-import { normalizeRotation, rotatePdf } from '../../lib/pdf/pages';
+import { baseName, download, errorMessage, formatBytes, isPasswordError, isPdf, readBytes, safeFileName } from '../../lib/pdf/files';
+import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
+import { normalizeRotation } from '../../lib/pdf/pages';
 import { PdfThumbPool } from '../../lib/pdf/thumbs';
 import { ROTATE } from '../../lib/pdf/tools';
+import { runRotatePdf } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
 import qrStyles from '../../styles/QrGen.module.css';
 
@@ -15,6 +19,14 @@ interface LoadedDoc {
   bytes: Uint8Array;
   pageCount: number;
   pool: PdfThumbPool;
+  password?: string;
+}
+
+interface LockedFile {
+  name: string;
+  bytes: Uint8Array;
+  error: string | null;
+  busy: boolean;
 }
 
 interface RotatePageItem extends PageGridItem {
@@ -40,10 +52,43 @@ export default function RotatePdfPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
   const [result, setResult] = React.useState<Uint8Array | null>(null);
+  const [locked, setLocked] = React.useState<LockedFile | null>(null);
 
   const poolRef = React.useRef<PdfThumbPool | null>(null);
   React.useEffect(() => () => poolRef.current?.dispose(), []);
   React.useEffect(() => setResult(null), [doc, rotations]);
+
+  async function openBytes(name: string, bytes: Uint8Array, password?: string) {
+    setError(null);
+    setResult(null);
+    setLoading(true);
+    const pool = new PdfThumbPool(bytes, { password });
+    try {
+      const pageCount = await pool.open();
+      poolRef.current?.dispose();
+      poolRef.current = pool;
+      setLocked(null);
+      setDoc({ name, bytes, pageCount, pool, password });
+      setRotations(new Array(pageCount).fill(0));
+      setSelectedIds(new Set());
+      setFileName(`${baseName(name)}-rotated`);
+    } catch (e) {
+      pool.dispose();
+      if (isPasswordError(e)) {
+        setLocked({
+          name,
+          bytes,
+          error: password !== undefined ? 'Incorrect password. Try again.' : null,
+          busy: false,
+        });
+      } else {
+        setLocked(null);
+        setError(errorMessage(e));
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function loadFile(files: File[]) {
     const pdf = files.find(isPdf);
@@ -52,30 +97,25 @@ export default function RotatePdfPage() {
       return;
     }
     setNotice(files.length > 1 ? 'Only the first PDF was opened. Rotate works on one PDF at a time.' : null);
-    setError(null);
-    setResult(null);
-    setLoading(true);
+    setLocked(null);
     try {
       const bytes = await readBytes(pdf);
-      const pool = new PdfThumbPool(bytes);
-      const pageCount = await pool.open();
-      poolRef.current?.dispose();
-      poolRef.current = pool;
-      setDoc({ name: pdf.name, bytes, pageCount, pool });
-      setRotations(new Array(pageCount).fill(0));
-      setSelectedIds(new Set());
-      setFileName(`${baseName(pdf.name)}-rotated`);
+      await openBytes(pdf.name, bytes);
     } catch (e) {
       setError(errorMessage(e));
-    } finally {
-      setLoading(false);
     }
   }
+
+  React.useEffect(() => {
+    const handoff = consumeHandoff();
+    if (handoff?.length) void loadFile(handoffToFiles(handoff));
+  }, []);
 
   function clearDoc() {
     poolRef.current?.dispose();
     poolRef.current = null;
     setDoc(null);
+    setLocked(null);
     setRotations([]);
     setSelectedIds(new Set());
     setResult(null);
@@ -120,7 +160,7 @@ export default function RotatePdfPage() {
     setError(null);
     setProgress({ fraction: 0, label: '' });
     try {
-      const bytes = await rotatePdf(doc.bytes, rotations, undefined, (fraction, label) => setProgress({ fraction, label }));
+      const bytes = await runRotatePdf(doc.bytes, rotations, { password: doc.password }, (fraction, label) => setProgress({ fraction, label }));
       setResult(bytes);
     } catch (e) {
       setError(errorMessage(e));
@@ -137,8 +177,20 @@ export default function RotatePdfPage() {
       showHub
       lead="Rotate individual pages or the whole PDF without re-encoding anything. Click cards (or Shift-click) to target a subset such as odd or even pages."
     >
+      {locked && (
+        <PasswordPrompt
+          fileName={locked.name}
+          error={locked.error}
+          busy={locked.busy}
+          onSubmit={(pw) => {
+            setLocked((prev) => (prev ? { ...prev, busy: true, error: null } : null));
+            return openBytes(locked.name, locked.bytes, pw);
+          }}
+          onCancel={() => setLocked(null)}
+        />
+      )}
       {error && !doc && <div className={styles.error} style={{ marginBottom: '1rem' }}>{error}</div>}
-      {loading && !doc && <Progress fraction={0.4} label="Opening PDF…" />}
+      {loading && !doc && !locked && <Progress fraction={0.4} label="Opening PDF…" />}
       <ToolWorkspace
         tool={ROTATE}
         accept="application/pdf,.pdf"
@@ -188,6 +240,7 @@ export default function RotatePdfPage() {
                 <button type="button" className={styles.primary} onClick={() => download(result, outputName)}>
                   Download {outputName}
                 </button>
+                <ContinueWith currentToolId={ROTATE.id} files={[{ name: outputName, bytes: result }]} />
               </div>
             )}
           </>

@@ -1,12 +1,17 @@
 import React from 'react';
 
+import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { FileCard, FileGrid } from '../../components/PdfTools/FileGrid';
+import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
 import { Checkbox, Field, NumberInput } from '../../components/QrGen/fields';
-import { compressPdf, CompressOptions } from '../../lib/pdf/compress';
-import { baseName, download, errorMessage, formatBytes, isPdf, OutputFile, readBytes, uid, zipFiles } from '../../lib/pdf/files';
+import { PdfSizeBreakdown } from '../../lib/pdf/breakdown';
+import { CompressOptions } from '../../lib/pdf/compress';
+import { baseName, download, errorMessage, formatBytes, isPasswordError, isPdf, OutputFile, readBytes, uid, zipFiles } from '../../lib/pdf/files';
+import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
 import { pdfPreview } from '../../lib/pdf/pdfjs';
 import { COMPRESS } from '../../lib/pdf/tools';
+import { runCompressPdf, runInspectPdfSizeBreakdown } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
 import qrStyles from '../../styles/QrGen.module.css';
 
@@ -17,6 +22,9 @@ interface CompressItem {
   pageCount: number | null;
   thumb: string | null;
   error: string | null;
+  password?: string;
+  locked?: boolean;
+  breakdown: PdfSizeBreakdown | null;
 }
 
 interface ItemResult {
@@ -42,6 +50,37 @@ function savedPercent(before: number, after: number): string {
   return pct < 1 ? `${pct.toFixed(1)} %` : `${Math.round(pct)} %`;
 }
 
+function SizeBreakdownCard({ name, breakdown }: { name: string; breakdown: PdfSizeBreakdown }) {
+  const visible = breakdown.categories.filter((c) => c.bytes > 0);
+  const sum = Math.max(1, visible.reduce((s, c) => s + c.bytes, 0));
+  return (
+    <section className={styles.report}>
+      <h3>Size breakdown — {name} ({formatBytes(breakdown.totalBytes)})</h3>
+      <div className={styles.breakdownBar} role="img" aria-label={`File size breakdown for ${name}`}>
+        {visible.map((c) => (
+          <div
+            key={c.id}
+            style={{ width: `${(c.bytes / sum) * 100}%`, backgroundColor: c.color }}
+            title={`${c.label}: ${formatBytes(c.bytes)} (${Math.round((c.bytes / sum) * 100)}%)`}
+          />
+        ))}
+      </div>
+      <div className={styles.breakdownLegend}>
+        {visible.map((c) => {
+          const pct = (c.bytes / sum) * 100;
+          const pctLabel = pct < 1 ? '<1%' : `${Math.round(pct)}%`;
+          return (
+            <span key={c.id} className={styles.breakdownItem}>
+              <span style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: c.color, flexShrink: 0 }} />
+              <span>{c.label}: <strong>{formatBytes(c.bytes)}</strong> ({pctLabel})</span>
+            </span>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export default function CompressPdf() {
   const [items, setItems] = React.useState<CompressItem[]>([]);
   const [level, setLevel] = React.useState<Level>('recommended');
@@ -53,6 +92,9 @@ export default function CompressPdf() {
   const [progress, setProgress] = React.useState({ fraction: 0, label: '' });
   const [notice, setNotice] = React.useState<string | null>(null);
   const [results, setResults] = React.useState<Record<string, ItemResult>>({});
+  const [passwordQueue, setPasswordQueue] = React.useState<string[]>([]);
+  const [pwError, setPwError] = React.useState<string | null>(null);
+  const [pwBusy, setPwBusy] = React.useState(false);
 
   const preset = LEVELS.find((l) => l.id === level);
   const dpi = level === 'custom' ? customDpi : preset.dpi;
@@ -68,28 +110,84 @@ export default function CompressPdf() {
     const pdfs = files.filter(isPdf);
     setNotice(pdfs.length < files.length ? `${files.length - pdfs.length} file(s) were skipped because they are not PDFs.` : null);
     const added = await Promise.all(pdfs.map(async (file): Promise<CompressItem> => ({
-      id: uid(), name: file.name, bytes: await readBytes(file), pageCount: null, thumb: null, error: null,
+      id: uid(), name: file.name, bytes: await readBytes(file), pageCount: null, thumb: null, error: null, breakdown: null,
     })));
     setItems((list) => [...list, ...added]);
     for (const item of added) {
       pdfPreview(item.bytes)
-        .then((p) => update(item.id, { pageCount: p.pageCount, thumb: p.thumbnail }))
-        .catch((e) => update(item.id, { error: errorMessage(e) }));
+        .then((p) => {
+          update(item.id, { pageCount: p.pageCount, thumb: p.thumbnail });
+          return runInspectPdfSizeBreakdown(item.bytes)
+            .then((breakdown) => update(item.id, { breakdown }))
+            .catch(() => undefined);
+        })
+        .catch((e) => {
+          if (isPasswordError(e)) {
+            update(item.id, { locked: true, error: null });
+            setPasswordQueue((q) => (q.includes(item.id) ? q : [...q, item.id]));
+          } else {
+            update(item.id, { error: errorMessage(e) });
+          }
+        });
     }
   }
 
-  const ready = items.filter((it) => !it.error);
+  React.useEffect(() => {
+    const handoff = consumeHandoff();
+    if (handoff?.length) void addFiles(handoffToFiles(handoff));
+  }, []);
+
+  const activeLocked = React.useMemo(
+    () => passwordQueue.map((id) => items.find((it) => it.id === id && it.locked)).find(Boolean) ?? null,
+    [passwordQueue, items],
+  );
+  const remainingLocked = React.useMemo(
+    () => passwordQueue.filter((id) => id !== activeLocked?.id && items.some((it) => it.id === id && it.locked)).length,
+    [passwordQueue, items, activeLocked],
+  );
+
+  async function unlockActive(password: string) {
+    if (!activeLocked) return;
+    setPwBusy(true);
+    setPwError(null);
+    try {
+      const p = await pdfPreview(activeLocked.bytes, 240, password);
+      update(activeLocked.id, { pageCount: p.pageCount, thumb: p.thumbnail, password, locked: false, error: null });
+      setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
+      void runInspectPdfSizeBreakdown(activeLocked.bytes, password)
+        .then((breakdown) => update(activeLocked.id, { breakdown }))
+        .catch(() => undefined);
+    } catch (e) {
+      if (isPasswordError(e)) {
+        setPwError('Incorrect password. Try again.');
+      } else {
+        update(activeLocked.id, { locked: false, error: errorMessage(e) });
+        setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
+      }
+    } finally {
+      setPwBusy(false);
+    }
+  }
+
+  function cancelUnlock() {
+    if (!activeLocked) return;
+    update(activeLocked.id, { locked: false, error: 'Password required to open this PDF.' });
+    setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
+    setPwError(null);
+  }
+
+  const ready = items.filter((it) => !it.error && !it.locked);
 
   async function compress() {
     setBusy(true);
     setResults({});
-    const opts: CompressOptions = { images: !lossless, maxDpi: dpi, quality, rasterize: rasterize && !lossless, removeMetadata };
+    const baseOpts: CompressOptions = { images: !lossless, maxDpi: dpi, quality, rasterize: rasterize && !lossless, removeMetadata };
     const out: Record<string, ItemResult> = {};
     for (let i = 0; i < ready.length; i++) {
       const item = ready[i];
       const report = (f: number, label: string) => setProgress({ fraction: (i + f) / ready.length, label: `${item.name}: ${label}` });
       try {
-        const r = await compressPdf(item.bytes, opts, report);
+        const r = await runCompressPdf(item.bytes, { ...baseOpts, password: item.password }, report);
         const kept = r.bytes.length >= item.bytes.length;
         out[item.id] = { bytes: kept ? item.bytes : r.bytes, kept, images: r.imagesRecompressed };
       } catch (e) {
@@ -153,11 +251,22 @@ export default function CompressPdf() {
                 {outputs.length === 1
                   ? <button type="button" className={styles.primary} onClick={() => download(outputs[0].bytes, outputs[0].name)}>Download</button>
                   : <button type="button" className={styles.primary} onClick={() => download(zipFiles(outputs), 'compressed-pdfs.zip', 'application/zip')}>Download all (ZIP)</button>}
+                <ContinueWith currentToolId={COMPRESS.id} files={outputs} />
               </div>
             )}
           </>
         }
       >
+        {activeLocked && (
+          <PasswordPrompt
+            fileName={activeLocked.name}
+            error={pwError}
+            busy={pwBusy}
+            remaining={remainingLocked}
+            onSubmit={unlockActive}
+            onCancel={cancelUnlock}
+          />
+        )}
         <FileGrid
           items={items}
           onChange={setItems}
@@ -169,7 +278,7 @@ export default function CompressPdf() {
               <FileCard
                 thumb={item.thumb}
                 name={item.name}
-                meta={`${item.pageCount === null ? '…' : `${item.pageCount} page${item.pageCount === 1 ? '' : 's'}`} · ${formatBytes(item.bytes.length)}`}
+                meta={`${item.locked ? 'Password protected' : item.pageCount === null ? '…' : `${item.pageCount} page${item.pageCount === 1 ? '' : 's'}`} · ${formatBytes(item.bytes.length)}`}
                 error={item.error ?? r?.error}
                 controls={controls}
                 actions={r && !r.error && (
@@ -187,6 +296,9 @@ export default function CompressPdf() {
             );
           }}
         />
+        {items.map((item) => item.breakdown && (
+          <SizeBreakdownCard key={item.id} name={item.name} breakdown={item.breakdown} />
+        ))}
       </ToolWorkspace>
     </PdfPage>
   );

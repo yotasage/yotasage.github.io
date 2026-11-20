@@ -1,9 +1,10 @@
 import React from 'react';
 
+import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { FileCard, FileGrid } from '../../components/PdfTools/FileGrid';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
 import { Field, NumberInput, Select } from '../../components/QrGen/fields';
-import { baseName, download, errorMessage, formatBytes, isImage, safeFileName, uid, zipFiles } from '../../lib/pdf/files';
+import { baseName, download, errorMessage, formatBytes, isImage, OutputFile, safeFileName, uid, zipFiles } from '../../lib/pdf/files';
 import { imagesToPdf, ImagesToPdfOptions, PAGE_SIZES, PageSizeId } from '../../lib/pdf/images';
 import { IMAGES_TO_PDF } from '../../lib/pdf/tools';
 import styles from '../../styles/PdfTools.module.css';
@@ -36,7 +37,7 @@ export default function ImagesToPdf() {
   const [progress, setProgress] = React.useState(0);
   const [error, setError] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
-  const [result, setResult] = React.useState<{ name: string; bytes: Uint8Array; type: string; count: number } | null>(null);
+  const [result, setResult] = React.useState<{ name: string; bytes: Uint8Array; type: string; count: number; pdfs: OutputFile[] } | null>(null);
 
   const usesDpi = pageSize === 'image' || placement === 'original';
   React.useEffect(() => setResult(null), [items, pageSize, orientation, placement, marginMm, dpi, output, fileName]);
@@ -71,10 +72,11 @@ export default function ImagesToPdf() {
       const pdfs = await imagesToPdf(items.map((it) => ({ file: it.file, rotation: it.rotation })), opts, output === 'separate', (d, t) => setProgress(d / t));
       if (pdfs.length === 1) {
         const name = output === 'separate' ? `${baseName(items[0].file.name)}.pdf` : `${safeFileName(fileName, 'images').replace(/\.pdf$/i, '')}.pdf`;
-        setResult({ name, bytes: pdfs[0], type: 'application/pdf', count: 1 });
+        setResult({ name, bytes: pdfs[0], type: 'application/pdf', count: 1, pdfs: [{ name, bytes: pdfs[0] }] });
       } else {
-        const zip = zipFiles(pdfs.map((bytes, i) => ({ name: `${baseName(items[i].file.name)}.pdf`, bytes })));
-        setResult({ name: `${safeFileName(fileName, 'images')}.zip`, bytes: zip, type: 'application/zip', count: pdfs.length });
+        const pdfFiles: OutputFile[] = pdfs.map((bytes, i) => ({ name: `${baseName(items[i].file.name)}.pdf`, bytes }));
+        const zip = zipFiles(pdfFiles);
+        setResult({ name: `${safeFileName(fileName, 'images')}.zip`, bytes: zip, type: 'application/zip', count: pdfs.length, pdfs: pdfFiles });
       }
     } catch (e) {
       setError(errorMessage(e));
@@ -138,6 +140,7 @@ export default function ImagesToPdf() {
                 <h3>{result.count === 1 ? 'Your PDF is ready' : `${result.count} PDFs are ready`}</h3>
                 <p>{formatBytes(result.bytes.length)}</p>
                 <button type="button" className={styles.primary} onClick={() => download(result.bytes, result.name, result.type)}>Download {result.name}</button>
+                <ContinueWith currentToolId={IMAGES_TO_PDF.id} files={result.pdfs} />
               </div>
             )}
           </>

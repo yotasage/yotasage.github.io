@@ -1,13 +1,17 @@
 import React from 'react';
 
+import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { PageGrid, PageGridItem, PageSelectionBar } from '../../components/PdfTools/PageGrid';
+import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
 import { Field, Select } from '../../components/QrGen/fields';
-import { baseName, download, errorMessage, formatBytes, isPdf, readBytes, safeFileName, uid } from '../../lib/pdf/files';
+import { baseName, download, errorMessage, formatBytes, isPasswordError, isPdf, readBytes, safeFileName, uid } from '../../lib/pdf/files';
+import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
 import { PAGE_SIZES } from '../../lib/pdf/images';
-import { buildPdfFromPages, normalizeRotation, PageSpec } from '../../lib/pdf/pages';
+import { normalizeRotation, PageSpec } from '../../lib/pdf/pages';
 import { PdfThumbPool } from '../../lib/pdf/thumbs';
 import { ORGANIZE } from '../../lib/pdf/tools';
+import { runBuildPdfFromPages } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
 import qrStyles from '../../styles/QrGen.module.css';
 
@@ -21,6 +25,12 @@ interface SourceDoc {
   defaultSize: { width: number; height: number };
   pool: PdfThumbPool;
   color: string;
+  password?: string;
+}
+
+interface PendingLockedPdf {
+  name: string;
+  bytes: Uint8Array;
 }
 
 type OrganizeEntry =
@@ -70,6 +80,9 @@ export default function OrganizePdfPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
   const [result, setResult] = React.useState<{ bytes: Uint8Array; pages: number } | null>(null);
+  const [pendingLocked, setPendingLocked] = React.useState<PendingLockedPdf[]>([]);
+  const [pwError, setPwError] = React.useState<string | null>(null);
+  const [pwBusy, setPwBusy] = React.useState(false);
 
   const sourcesRef = React.useRef<SourceDoc[]>([]);
   sourcesRef.current = sources;
@@ -115,6 +128,28 @@ export default function OrganizePdfPage() {
     });
   }
 
+  async function openSource(name: string, bytes: Uint8Array, colorIndex: number, password?: string): Promise<{ source: SourceDoc; entries: OrganizeEntry[] }> {
+    const pool = new PdfThumbPool(bytes, { password });
+    try {
+      const pageCount = await pool.open();
+      const defaultSize = await pool.getPageSize(0).catch(() => ({ width: PAGE_SIZES.a4.w, height: PAGE_SIZES.a4.h }));
+      const id = uid();
+      const color = SOURCE_COLORS[colorIndex % SOURCE_COLORS.length];
+      const source: SourceDoc = { id, name, bytes, pageCount, defaultSize, pool, color, password };
+      const addedEntries: OrganizeEntry[] = Array.from({ length: pageCount }, (_, p) => ({
+        id: uid(),
+        kind: 'page',
+        sourceId: id,
+        pageIndex: p,
+        rotation: 0,
+      }));
+      return { source, entries: addedEntries };
+    } catch (e) {
+      pool.dispose();
+      throw e;
+    }
+  }
+
   async function addFiles(files: File[]) {
     const pdfs = files.filter(isPdf);
     setNotice(pdfs.length < files.length ? `${files.length - pdfs.length} file(s) were skipped because they are not PDFs.` : null);
@@ -125,29 +160,73 @@ export default function OrganizePdfPage() {
       const existingCount = sourcesRef.current.length;
       const addedSources: SourceDoc[] = [];
       const addedEntries: OrganizeEntry[] = [];
+      const lockedBatch: PendingLockedPdf[] = [];
       for (let i = 0; i < pdfs.length; i++) {
         const file = pdfs[i];
         const bytes = await readBytes(file);
-        const pool = new PdfThumbPool(bytes);
-        const pageCount = await pool.open();
-        const defaultSize = await pool.getPageSize(0).catch(() => ({ width: PAGE_SIZES.a4.w, height: PAGE_SIZES.a4.h }));
-        const id = uid();
-        const color = SOURCE_COLORS[(existingCount + i) % SOURCE_COLORS.length];
-        addedSources.push({ id, name: file.name, bytes, pageCount, defaultSize, pool, color });
-        for (let p = 0; p < pageCount; p++) {
-          addedEntries.push({ id: uid(), kind: 'page', sourceId: id, pageIndex: p, rotation: 0 });
+        try {
+          const opened = await openSource(file.name, bytes, existingCount + addedSources.length);
+          addedSources.push(opened.source);
+          addedEntries.push(...opened.entries);
+        } catch (e) {
+          if (isPasswordError(e)) {
+            lockedBatch.push({ name: file.name, bytes });
+          } else {
+            setError(errorMessage(e));
+          }
         }
       }
-      if (existingCount === 0 && addedSources.length === 1) {
-        setFileName(`${baseName(addedSources[0].name)}-organized`);
+      if (addedSources.length) {
+        if (existingCount === 0 && addedSources.length === 1) {
+          setFileName(`${baseName(addedSources[0].name)}-organized`);
+        }
+        setSources((prev) => [...prev, ...addedSources]);
+        commitEntries((prev) => [...prev, ...addedEntries]);
       }
-      setSources((prev) => [...prev, ...addedSources]);
-      commitEntries((prev) => [...prev, ...addedEntries]);
+      if (lockedBatch.length) {
+        setPendingLocked((prev) => [...prev, ...lockedBatch]);
+      }
     } catch (e) {
       setError(errorMessage(e));
     } finally {
       setLoading(false);
     }
+  }
+
+  React.useEffect(() => {
+    const handoff = consumeHandoff();
+    if (handoff?.length) void addFiles(handoffToFiles(handoff));
+  }, []);
+
+  async function unlockPending(password: string) {
+    const head = pendingLocked[0];
+    if (!head) return;
+    setPwBusy(true);
+    setPwError(null);
+    try {
+      const existingCount = sourcesRef.current.length;
+      const opened = await openSource(head.name, head.bytes, existingCount, password);
+      if (existingCount === 0) {
+        setFileName(`${baseName(head.name)}-organized`);
+      }
+      setSources((prev) => [...prev, opened.source]);
+      commitEntries((prev) => [...prev, ...opened.entries]);
+      setPendingLocked((prev) => prev.slice(1));
+    } catch (e) {
+      if (isPasswordError(e)) {
+        setPwError('Incorrect password. Try again.');
+      } else {
+        setError(errorMessage(e));
+        setPendingLocked((prev) => prev.slice(1));
+      }
+    } finally {
+      setPwBusy(false);
+    }
+  }
+
+  function cancelUnlock() {
+    setPendingLocked((prev) => prev.slice(1));
+    setPwError(null);
   }
 
   function clearAll() {
@@ -157,6 +236,8 @@ export default function OrganizePdfPage() {
     setUndoStack([]);
     setRedoStack([]);
     setSelectedIds(new Set());
+    setPendingLocked([]);
+    setPwError(null);
     setResult(null);
     setError(null);
     setNotice(null);
@@ -323,8 +404,8 @@ export default function OrganizePdfPage() {
           rotation: e.rotation,
         };
       });
-      const bytes = await buildPdfFromPages(
-        sources.map((s) => ({ bytes: s.bytes })),
+      const bytes = await runBuildPdfFromPages(
+        sources.map((s) => ({ bytes: s.bytes, password: s.password })),
         specs,
         (fraction, label) => setProgress({ fraction, label }),
       );
@@ -344,8 +425,18 @@ export default function OrganizePdfPage() {
       showHub
       lead="Drag pages into any order, combine pages from multiple PDFs, rotate, duplicate, delete or insert blank pages. Use the drag handle or arrows on touch screens."
     >
+      {pendingLocked.length > 0 && (
+        <PasswordPrompt
+          fileName={pendingLocked[0].name}
+          error={pwError}
+          busy={pwBusy}
+          remaining={pendingLocked.length - 1}
+          onSubmit={unlockPending}
+          onCancel={cancelUnlock}
+        />
+      )}
       {error && !sources.length && <div className={styles.error} style={{ marginBottom: '1rem' }}>{error}</div>}
-      {loading && !sources.length && <Progress fraction={0.4} label="Opening PDF…" />}
+      {loading && !sources.length && !pendingLocked.length && <Progress fraction={0.4} label="Opening PDF…" />}
       <ToolWorkspace
         tool={ORGANIZE}
         accept="application/pdf,.pdf"
@@ -420,6 +511,7 @@ export default function OrganizePdfPage() {
                 <button type="button" className={styles.primary} onClick={() => download(result.bytes, outputName)}>
                   Download {outputName}
                 </button>
+                <ContinueWith currentToolId={ORGANIZE.id} files={[{ name: outputName, bytes: result.bytes }]} />
               </div>
             )}
           </>

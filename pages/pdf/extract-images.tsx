@@ -1,12 +1,15 @@
 import Link from 'next/link';
 import React from 'react';
 
+import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
 import { Checkbox, Field, NumberInput } from '../../components/QrGen/fields';
-import { ExtractedImage, extractImagesFromPdf } from '../../lib/pdf/extractImages';
-import { baseName, download, errorMessage, formatBytes, isPdf, readBytes, safeFileName, uid, zipFiles } from '../../lib/pdf/files';
+import { ExtractedImage } from '../../lib/pdf/extractImages';
+import { baseName, download, errorMessage, formatBytes, isPasswordError, isPdf, readBytes, safeFileName, uid, zipFiles } from '../../lib/pdf/files';
+import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
 import { formatPageRanges } from '../../lib/pdf/pages';
 import { EXTRACT_IMAGES } from '../../lib/pdf/tools';
+import { runExtractImagesFromPdf } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
 import qrStyles from '../../styles/QrGen.module.css';
 
@@ -18,6 +21,8 @@ interface SourcePdf {
   skipped: number;
   error: string | null;
   scanning: boolean;
+  password?: string;
+  locked?: boolean;
 }
 
 interface ImageCardItem extends ExtractedImage {
@@ -37,6 +42,9 @@ export default function ExtractImagesPage() {
   const [busy, setBusy] = React.useState(false);
   const [progress, setProgress] = React.useState({ fraction: 0, label: '' });
   const [notice, setNotice] = React.useState<string | null>(null);
+  const [passwordQueue, setPasswordQueue] = React.useState<string[]>([]);
+  const [pwError, setPwError] = React.useState<string | null>(null);
+  const [pwBusy, setPwBusy] = React.useState(false);
 
   const urlsRef = React.useRef<Set<string>>(new Set());
   const epochRef = React.useRef(0);
@@ -73,14 +81,17 @@ export default function ExtractImagesPage() {
   }, [skipTiny, minPx, appliedMinSize]);
 
   const scanSources = React.useCallback(async (targets: SourcePdf[], minSize: number, replaceExisting: boolean) => {
-    if (!targets.length) return;
+    const scannable = targets.filter((s) => !s.locked);
+    if (!scannable.length) return;
     if (replaceExisting) {
       epochRef.current += 1;
       setImages((prev) => {
         for (const it of prev) revokeUrl(it.url);
         return [];
       });
-      setSources((prev) => prev.map((s) => ({ ...s, scanning: true, error: null, imageCount: 0, skipped: 0 })));
+      setSources((prev) => prev.map((s) => (
+        s.locked ? s : { ...s, scanning: true, error: null, imageCount: 0, skipped: 0 }
+      )));
     }
 
     const epoch = epochRef.current;
@@ -89,17 +100,18 @@ export default function ExtractImagesPage() {
     setProgress({ fraction: 0, label: 'Scanning PDFs…' });
 
     try {
-      for (let i = 0; i < targets.length; i++) {
+      for (let i = 0; i < scannable.length; i++) {
         if (epochRef.current !== epoch) return;
-        const src = targets[i];
-        if (!sourcesRef.current.some((s) => s.id === src.id)) continue;
+        const src = scannable[i];
+        const currentSrc = sourcesRef.current.find((s) => s.id === src.id);
+        if (!currentSrc || currentSrc.locked) continue;
         try {
-          const res = await extractImagesFromPdf(
+          const res = await runExtractImagesFromPdf(
             src.bytes,
-            { sourceName: src.name, minSize },
+            { sourceName: src.name, minSize, password: currentSrc.password },
             (f, label) => {
               if (epochRef.current === epoch) {
-                setProgress({ fraction: (i + f) / targets.length, label: `${src.name}: ${label}` });
+                setProgress({ fraction: (i + f) / scannable.length, label: `${src.name}: ${label}` });
               }
             },
           );
@@ -113,16 +125,25 @@ export default function ExtractImagesPage() {
           setImages((prev) => [...prev, ...cards]);
           setSources((prev) => prev.map((s) => (
             s.id === src.id
-              ? { ...s, scanning: false, error: null, imageCount: cards.length, skipped: res.skipped }
+              ? { ...s, scanning: false, locked: false, error: null, imageCount: cards.length, skipped: res.skipped }
               : s
           )));
         } catch (e) {
           if (epochRef.current !== epoch) return;
-          setSources((prev) => prev.map((s) => (
-            s.id === src.id
-              ? { ...s, scanning: false, error: errorMessage(e), imageCount: 0, skipped: 0 }
-              : s
-          )));
+          if (isPasswordError(e)) {
+            setSources((prev) => prev.map((s) => (
+              s.id === src.id
+                ? { ...s, scanning: false, locked: true, error: null, imageCount: 0, skipped: 0 }
+                : s
+            )));
+            setPasswordQueue((q) => (q.includes(src.id) ? q : [...q, src.id]));
+          } else {
+            setSources((prev) => prev.map((s) => (
+              s.id === src.id
+                ? { ...s, scanning: false, error: errorMessage(e), imageCount: 0, skipped: 0 }
+                : s
+            )));
+          }
         }
       }
     } finally {
@@ -167,9 +188,80 @@ export default function ExtractImagesPage() {
     await scanSources(added, appliedMinSize, false);
   }
 
+  React.useEffect(() => {
+    const handoff = consumeHandoff();
+    if (handoff?.length) void addFiles(handoffToFiles(handoff));
+  }, []);
+
+  const activeLocked = React.useMemo(
+    () => passwordQueue.map((id) => sources.find((s) => s.id === id && s.locked)).find(Boolean) ?? null,
+    [passwordQueue, sources],
+  );
+  const remainingLocked = React.useMemo(
+    () => passwordQueue.filter((id) => id !== activeLocked?.id && sources.some((s) => s.id === id && s.locked)).length,
+    [passwordQueue, sources, activeLocked],
+  );
+
+  async function unlockActive(password: string) {
+    if (!activeLocked) return;
+    setPwBusy(true);
+    setPwError(null);
+    try {
+      const res = await runExtractImagesFromPdf(activeLocked.bytes, {
+        sourceName: activeLocked.name,
+        minSize: appliedMinSize,
+        password,
+      });
+      const cards: ImageCardItem[] = res.images.map((img) => ({
+        ...img,
+        sourceId: activeLocked.id,
+        sourceName: activeLocked.name,
+        url: createUrl(img.bytes, img.mime),
+      }));
+      setImages((prev) => [...prev, ...cards]);
+      const updated = sourcesRef.current.map((s) => (
+        s.id === activeLocked.id
+          ? { ...s, password, locked: false, scanning: false, error: null, imageCount: cards.length, skipped: res.skipped }
+          : s
+      ));
+      sourcesRef.current = updated;
+      setSources(updated);
+      setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
+    } catch (e) {
+      if (isPasswordError(e)) {
+        setPwError('Incorrect password. Try again.');
+      } else {
+        const updated = sourcesRef.current.map((s) => (
+          s.id === activeLocked.id
+            ? { ...s, locked: false, scanning: false, error: errorMessage(e), imageCount: 0, skipped: 0 }
+            : s
+        ));
+        sourcesRef.current = updated;
+        setSources(updated);
+        setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
+      }
+    } finally {
+      setPwBusy(false);
+    }
+  }
+
+  function cancelUnlock() {
+    if (!activeLocked) return;
+    const updated = sourcesRef.current.map((s) => (
+      s.id === activeLocked.id
+        ? { ...s, locked: false, scanning: false, error: 'Password required to open this PDF.' }
+        : s
+    ));
+    sourcesRef.current = updated;
+    setSources(updated);
+    setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
+    setPwError(null);
+  }
+
   function removeSource(id: string) {
     sourcesRef.current = sourcesRef.current.filter((s) => s.id !== id);
     setSources((prev) => prev.filter((s) => s.id !== id));
+    setPasswordQueue((q) => q.filter((x) => x !== id));
     setImages((prev) => {
       const kept: ImageCardItem[] = [];
       for (const it of prev) {
@@ -186,6 +278,8 @@ export default function ExtractImagesPage() {
     sourcesRef.current = [];
     setSources([]);
     setImages([]);
+    setPasswordQueue([]);
+    setPwError(null);
     setBusy(false);
     setNotice(null);
     setZipName('extracted-images');
@@ -294,6 +388,16 @@ export default function ExtractImagesPage() {
           </>
         }
       >
+        {activeLocked && (
+          <PasswordPrompt
+            fileName={activeLocked.name}
+            error={pwError}
+            busy={pwBusy}
+            remaining={remainingLocked}
+            onSubmit={unlockActive}
+            onCancel={cancelUnlock}
+          />
+        )}
         <div className={styles.sourceChipList}>
           {sources.map((src) => (
             <div key={src.id} className={[styles.sourceChip, src.error ? styles.sourceChipError : ''].join(' ')}>
@@ -301,9 +405,11 @@ export default function ExtractImagesPage() {
               <span className={styles.sourceChipMeta}>
                 {src.scanning
                   ? 'Scanning…'
-                  : src.error
-                    ? src.error
-                    : `${src.imageCount} image${src.imageCount === 1 ? '' : 's'}`}
+                  : src.locked
+                    ? 'Password protected'
+                    : src.error
+                      ? src.error
+                      : `${src.imageCount} image${src.imageCount === 1 ? '' : 's'}`}
               </span>
               <button
                 type="button"

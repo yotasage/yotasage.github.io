@@ -1,9 +1,11 @@
 import React from 'react';
 
 import { PageGrid, PageGridItem, PageSelectionBar } from '../../components/PdfTools/PageGrid';
+import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
 import { Field, NumberInput, Select } from '../../components/QrGen/fields';
-import { baseName, download, errorMessage, formatBytes, isPdf, readBytes, safeFileName, zipFiles } from '../../lib/pdf/files';
+import { baseName, download, errorMessage, formatBytes, isPasswordError, isPdf, readBytes, safeFileName, zipFiles } from '../../lib/pdf/files';
+import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
 import { pdfToImages } from '../../lib/pdf/pdfToImages';
 import { PdfThumbPool } from '../../lib/pdf/thumbs';
 import { PDF_TO_IMAGES } from '../../lib/pdf/tools';
@@ -15,6 +17,14 @@ interface LoadedDoc {
   bytes: Uint8Array;
   pageCount: number;
   pool: PdfThumbPool;
+  password?: string;
+}
+
+interface LockedFile {
+  name: string;
+  bytes: Uint8Array;
+  error: string | null;
+  busy: boolean;
 }
 
 type ImageFormat = 'jpeg' | 'png';
@@ -34,6 +44,7 @@ export default function PdfToImagesPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
   const [result, setResult] = React.useState<{ name: string; bytes: Uint8Array; type: string; count: number } | null>(null);
+  const [locked, setLocked] = React.useState<LockedFile | null>(null);
 
   const poolRef = React.useRef<PdfThumbPool | null>(null);
   React.useEffect(() => () => poolRef.current?.dispose(), []);
@@ -42,6 +53,37 @@ export default function PdfToImagesPage() {
 
   React.useEffect(() => setResult(null), [doc, selectedIds, format, dpi, quality, fileName]);
 
+  async function openBytes(name: string, bytes: Uint8Array, password?: string) {
+    setError(null);
+    setResult(null);
+    setLoading(true);
+    const pool = new PdfThumbPool(bytes, { password });
+    try {
+      const pageCount = await pool.open();
+      poolRef.current?.dispose();
+      poolRef.current = pool;
+      setLocked(null);
+      setDoc({ name, bytes, pageCount, pool, password });
+      setSelectedIds(new Set());
+      setFileName(`${baseName(name)}-images`);
+    } catch (e) {
+      pool.dispose();
+      if (isPasswordError(e)) {
+        setLocked({
+          name,
+          bytes,
+          error: password !== undefined ? 'Incorrect password. Try again.' : null,
+          busy: false,
+        });
+      } else {
+        setLocked(null);
+        setError(errorMessage(e));
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function loadFile(files: File[]) {
     const pdf = files.find(isPdf);
     if (!pdf) {
@@ -49,29 +91,25 @@ export default function PdfToImagesPage() {
       return;
     }
     setNotice(files.length > 1 ? 'Only the first PDF was opened.' : null);
-    setError(null);
-    setResult(null);
-    setLoading(true);
+    setLocked(null);
     try {
       const bytes = await readBytes(pdf);
-      const pool = new PdfThumbPool(bytes);
-      const pageCount = await pool.open();
-      poolRef.current?.dispose();
-      poolRef.current = pool;
-      setDoc({ name: pdf.name, bytes, pageCount, pool });
-      setSelectedIds(new Set());
-      setFileName(`${baseName(pdf.name)}-images`);
+      await openBytes(pdf.name, bytes);
     } catch (e) {
       setError(errorMessage(e));
-    } finally {
-      setLoading(false);
     }
   }
+
+  React.useEffect(() => {
+    const handoff = consumeHandoff();
+    if (handoff?.length) void loadFile(handoffToFiles(handoff));
+  }, []);
 
   function clearDoc() {
     poolRef.current?.dispose();
     poolRef.current = null;
     setDoc(null);
+    setLocked(null);
     setSelectedIds(new Set());
     setResult(null);
     setError(null);
@@ -114,6 +152,7 @@ export default function PdfToImagesPage() {
           quality,
           pages: selectedIndices.length > 0 ? selectedIndices : null,
           sourceName: doc.name,
+          password: doc.password,
         },
         (fraction, label) => setProgress({ fraction, label }),
       );
@@ -156,8 +195,20 @@ export default function PdfToImagesPage() {
       showHub
       lead="Render every page of a PDF—or just the pages you select—into JPG or lossless PNG images at the resolution you choose."
     >
+      {locked && (
+        <PasswordPrompt
+          fileName={locked.name}
+          error={locked.error}
+          busy={locked.busy}
+          onSubmit={(pw) => {
+            setLocked((prev) => (prev ? { ...prev, busy: true, error: null } : null));
+            return openBytes(locked.name, locked.bytes, pw);
+          }}
+          onCancel={() => setLocked(null)}
+        />
+      )}
       {error && !doc && <div className={styles.error} style={{ marginBottom: '1rem' }}>{error}</div>}
-      {loading && !doc && <Progress fraction={0.4} label="Opening PDF…" />}
+      {loading && !doc && !locked && <Progress fraction={0.4} label="Opening PDF…" />}
       <ToolWorkspace
         tool={PDF_TO_IMAGES}
         accept="application/pdf,.pdf"

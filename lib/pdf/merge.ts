@@ -6,6 +6,7 @@ export interface MergeInput {
   bytes: Uint8Array;
   // Zero-based page indices in output order, or null for every page.
   pages: number[] | null;
+  password?: string;
 }
 
 // Parses page selections such as "1-3, 5, 8-" (1-based, inclusive) into zero-based indices.
@@ -35,7 +36,7 @@ export async function mergePdfs(inputs: MergeInput[], onProgress?: (done: number
   for (let i = 0; i < inputs.length; i++) {
     onProgress?.(i, inputs.length);
     await nextFrame();
-    const src = await PDFDocument.load(inputs[i].bytes, { updateMetadata: false });
+    const src = await PDFDocument.load(inputs[i].bytes, { updateMetadata: false, password: inputs[i].password });
     const pages = await out.copyPages(src, inputs[i].pages ?? src.getPageIndices());
     for (const page of pages) out.addPage(page);
   }

@@ -92,11 +92,24 @@ export function nextFrame(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
+export function isPasswordError(e: unknown): boolean {
+  if (!e) return false;
+  if (typeof e === 'object' && (e as { isPassword?: boolean }).isPassword === true) return true;
+  if (typeof e === 'object') {
+    const name = (e as { name?: unknown }).name;
+    const message = (e as { message?: unknown }).message;
+    if (name === 'PasswordException' || name === 'EncryptedPDFError') return true;
+    if (typeof message === 'string' && /password|encrypt/i.test(message)) return true;
+  }
+  if (typeof e === 'string' && /password|encrypt/i.test(e)) return true;
+  return false;
+}
+
 export function errorMessage(e: unknown): string {
+  if (isPasswordError(e)) {
+    return 'This PDF is password protected. Enter the password to unlock it.';
+  }
   if (e instanceof Error) {
-    if (e.name === 'PasswordException' || e.name === 'EncryptedPDFError' || /encrypt/i.test(e.message)) {
-      return 'The PDF is password protected or encrypted, which is not supported yet.';
-    }
     if (e.name === 'InvalidPDFException') return 'The file is not a valid PDF.';
     return e.message;
   }

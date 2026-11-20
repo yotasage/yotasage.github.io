@@ -1,6 +1,8 @@
 import React from 'react';
 
+import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { PageGrid, PageGridItem } from '../../components/PdfTools/PageGrid';
+import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
 import { Field, NumberInput } from '../../components/QrGen/fields';
 import {
@@ -8,12 +10,14 @@ import {
   download,
   errorMessage,
   formatBytes,
+  isPasswordError,
   isPdf,
   OutputFile,
   readBytes,
   safeFileName,
   zipFiles,
 } from '../../lib/pdf/files';
+import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
 import {
   BookmarkSplit,
   formatOrderedRanges,
@@ -24,11 +28,10 @@ import {
   splitByBreakPoints,
   splitByEveryN,
   SplitPart,
-  splitPdfBySize,
-  splitPdfParts,
 } from '../../lib/pdf/split';
 import { PdfThumbPool } from '../../lib/pdf/thumbs';
 import { SPLIT } from '../../lib/pdf/tools';
+import { runSplitPdfBySize, runSplitPdfParts } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
 import qrStyles from '../../styles/QrGen.module.css';
 
@@ -39,6 +42,14 @@ interface LoadedDoc {
   bytes: Uint8Array;
   pageCount: number;
   pool: PdfThumbPool;
+  password?: string;
+}
+
+interface LockedFile {
+  name: string;
+  bytes: Uint8Array;
+  error: string | null;
+  busy: boolean;
 }
 
 interface SplitResult {
@@ -87,6 +98,7 @@ export default function SplitPdfPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
   const [result, setResult] = React.useState<SplitResult | null>(null);
+  const [locked, setLocked] = React.useState<LockedFile | null>(null);
 
   const poolRef = React.useRef<PdfThumbPool | null>(null);
   const loadSeqRef = React.useRef(0);
@@ -94,22 +106,15 @@ export default function SplitPdfPage() {
   React.useEffect(() => setResult(null), [doc, mode, breakAfter, usingCustomText, customText, everyN, maxSizeMb, fileName]);
   React.useEffect(() => setSizeParts(null), [doc, maxSizeMb]);
 
-  async function loadFile(files: File[]) {
-    const pdf = files.find(isPdf);
-    if (!pdf) {
-      setNotice('Please select a PDF file.');
-      return;
-    }
-    setNotice(files.length > 1 ? 'Only the first PDF was opened.' : null);
+  async function openBytes(name: string, bytes: Uint8Array, password?: string) {
     setError(null);
     setResult(null);
     setSizeParts(null);
     setLoading(true);
     const seq = ++loadSeqRef.current;
+    const pool = new PdfThumbPool(bytes, { password });
 
     try {
-      const bytes = await readBytes(pdf);
-      const pool = new PdfThumbPool(bytes);
       const pageCount = await pool.open();
       if (seq !== loadSeqRef.current) {
         pool.dispose();
@@ -117,18 +122,19 @@ export default function SplitPdfPage() {
       }
       poolRef.current?.dispose();
       poolRef.current = pool;
-      setDoc({ name: pdf.name, bytes, pageCount, pool });
+      setLocked(null);
+      setDoc({ name, bytes, pageCount, pool, password });
       setBreakAfter(new Set());
       setUsingCustomText(false);
       setCustomText('');
       setEveryN((prev) => Math.max(1, Math.min(pageCount, prev)));
-      setFileName(`${baseName(pdf.name)}-split`);
+      setFileName(`${baseName(name)}-split`);
 
       // Automatically read top-level bookmarks in the background.
       setBookmarks([]);
       setBookmarksError(null);
       setBookmarksLoading(true);
-      readTopLevelBookmarks(bytes)
+      readTopLevelBookmarks(bytes, password)
         .then((list) => {
           if (seq !== loadSeqRef.current) return;
           setBookmarks(list);
@@ -141,17 +147,51 @@ export default function SplitPdfPage() {
           if (seq === loadSeqRef.current) setBookmarksLoading(false);
         });
     } catch (e) {
-      setError(errorMessage(e));
+      pool.dispose();
+      if (seq !== loadSeqRef.current) return;
+      if (isPasswordError(e)) {
+        setLocked({
+          name,
+          bytes,
+          error: password !== undefined ? 'Incorrect password. Try again.' : null,
+          busy: false,
+        });
+      } else {
+        setLocked(null);
+        setError(errorMessage(e));
+      }
     } finally {
       if (seq === loadSeqRef.current) setLoading(false);
     }
   }
+
+  async function loadFile(files: File[]) {
+    const pdf = files.find(isPdf);
+    if (!pdf) {
+      setNotice('Please select a PDF file.');
+      return;
+    }
+    setNotice(files.length > 1 ? 'Only the first PDF was opened.' : null);
+    setLocked(null);
+    try {
+      const bytes = await readBytes(pdf);
+      await openBytes(pdf.name, bytes);
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
+
+  React.useEffect(() => {
+    const handoff = consumeHandoff();
+    if (handoff?.length) void loadFile(handoffToFiles(handoff));
+  }, []);
 
   function clearDoc() {
     loadSeqRef.current += 1;
     poolRef.current?.dispose();
     poolRef.current = null;
     setDoc(null);
+    setLocked(null);
     setBreakAfter(new Set());
     setUsingCustomText(false);
     setCustomText('');
@@ -301,10 +341,10 @@ export default function SplitPdfPage() {
 
       if (mode === 'size') {
         const maxBytes = Math.round(maxSizeMb * 1024 * 1024);
-        const out = await splitPdfBySize(
+        const out = await runSplitPdfBySize(
           doc.bytes,
           maxBytes,
-          { sourceName: doc.name },
+          { sourceName: doc.name, password: doc.password },
           (fraction, label) => setProgress({ fraction, label }),
         );
         files = out.files;
@@ -312,10 +352,10 @@ export default function SplitPdfPage() {
         setSizeParts(out.parts);
       } else {
         if (!preview.parts || !preview.parts.length) throw new Error('No parts to split.');
-        files = await splitPdfParts(
+        files = await runSplitPdfParts(
           doc.bytes,
           preview.parts,
-          { sourceName: doc.name },
+          { sourceName: doc.name, password: doc.password },
           (fraction, label) => setProgress({ fraction, label }),
         );
       }
@@ -357,8 +397,20 @@ export default function SplitPdfPage() {
       showHub
       lead="Split a PDF into separate files by clicking split points, entering custom ranges, splitting every N pages, targeting a maximum file size, or splitting by top-level bookmarks."
     >
+      {locked && (
+        <PasswordPrompt
+          fileName={locked.name}
+          error={locked.error}
+          busy={locked.busy}
+          onSubmit={(pw) => {
+            setLocked((prev) => (prev ? { ...prev, busy: true, error: null } : null));
+            return openBytes(locked.name, locked.bytes, pw);
+          }}
+          onCancel={() => setLocked(null)}
+        />
+      )}
       {error && !doc && <div className={styles.error} style={{ marginBottom: '1rem' }}>{error}</div>}
-      {loading && !doc && <Progress fraction={0.4} label="Opening PDF…" />}
+      {loading && !doc && !locked && <Progress fraction={0.4} label="Opening PDF…" />}
 
       <ToolWorkspace
         tool={SPLIT}
@@ -517,6 +569,9 @@ export default function SplitPdfPage() {
                 >
                   Download {result.downloadName}
                 </button>
+                {result.files.length === 1 && (
+                  <ContinueWith currentToolId={SPLIT.id} files={[{ name: result.downloadName, bytes: result.files[0].bytes }]} />
+                )}
                 {result.files.length > 1 && (
                   <details>
                     <summary className={styles.note} style={{ cursor: 'pointer' }}>

@@ -1,11 +1,15 @@
 import React from 'react';
 
+import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { FileCard, FileGrid } from '../../components/PdfTools/FileGrid';
+import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { baseName, download, errorMessage, formatBytes, isPdf, nextFrame, OutputFile, readBytes, uid, zipFiles } from '../../lib/pdf/files';
+import { baseName, download, errorMessage, formatBytes, isPasswordError, isPdf, nextFrame, OutputFile, readBytes, uid, zipFiles } from '../../lib/pdf/files';
+import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
 import { pdfPreview } from '../../lib/pdf/pdfjs';
-import { CLEAN_OPTIONS, CleanOption, CleanOptions, cleanPdf, Finding, FindingId, inspectPdf, PRESETS } from '../../lib/pdf/sanitize';
+import { CLEAN_OPTIONS, CleanOption, CleanOptions, Finding, FindingId, PRESETS } from '../../lib/pdf/sanitize';
 import { REMOVE_METADATA } from '../../lib/pdf/tools';
+import { runCleanPdf, runInspectPdf } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
 import qrStyles from '../../styles/QrGen.module.css';
 
@@ -17,6 +21,8 @@ interface Item {
   thumb: string | null;
   error: string | null;
   findings: Finding[] | null;
+  password?: string;
+  locked?: boolean;
 }
 
 interface ItemResult {
@@ -39,7 +45,8 @@ function Report({ item, opts, result }: { item: Item; opts: CleanOptions; result
     <section className={styles.report}>
       <h3>{item.name}</h3>
       {item.error && <div className={styles.error}>{item.error}</div>}
-      {!item.error && !item.findings && <p className={styles.note}>Inspecting…</p>}
+      {!item.error && item.locked && <p className={styles.note}>Password protected — enter the password above to inspect.</p>}
+      {!item.error && !item.locked && !item.findings && <p className={styles.note}>Inspecting…</p>}
       {item.findings?.length === 0 && <p className={styles.note}>No metadata or hidden data found.</p>}
       {!!item.findings?.length && (
         <table className={styles.reportTable}>
@@ -67,6 +74,9 @@ export default function RemoveMetadata() {
   const [progress, setProgress] = React.useState({ fraction: 0, label: '' });
   const [notice, setNotice] = React.useState<string | null>(null);
   const [results, setResults] = React.useState<Record<string, ItemResult>>({});
+  const [passwordQueue, setPasswordQueue] = React.useState<string[]>([]);
+  const [pwError, setPwError] = React.useState<string | null>(null);
+  const [pwBusy, setPwBusy] = React.useState(false);
 
   const preset = PRESETS.find((p) => CLEAN_OPTIONS.every((o) => p.options[o.id] === opts[o.id]))?.id ?? 'custom';
   const ids = items.map((it) => it.id).join();
@@ -82,16 +92,69 @@ export default function RemoveMetadata() {
     })));
     setItems((list) => [...list, ...added]);
     for (const item of added) {
-      inspectPdf(item.bytes)
-        .then((findings) => update(item.id, { findings }))
-        .catch((e) => update(item.id, { error: errorMessage(e) }));
-      pdfPreview(item.bytes)
-        .then((p) => update(item.id, { pageCount: p.pageCount, thumb: p.thumbnail }))
-        .catch(() => undefined);
+      runInspectPdf(item.bytes)
+        .then((findings) => {
+          update(item.id, { findings });
+          return pdfPreview(item.bytes)
+            .then((p) => update(item.id, { pageCount: p.pageCount, thumb: p.thumbnail }))
+            .catch(() => undefined);
+        })
+        .catch((e) => {
+          if (isPasswordError(e)) {
+            update(item.id, { locked: true, error: null });
+            setPasswordQueue((q) => (q.includes(item.id) ? q : [...q, item.id]));
+          } else {
+            update(item.id, { error: errorMessage(e) });
+          }
+        });
     }
   }
 
-  const ready = items.filter((it) => !it.error);
+  React.useEffect(() => {
+    const handoff = consumeHandoff();
+    if (handoff?.length) void addFiles(handoffToFiles(handoff));
+  }, []);
+
+  const activeLocked = React.useMemo(
+    () => passwordQueue.map((id) => items.find((it) => it.id === id && it.locked)).find(Boolean) ?? null,
+    [passwordQueue, items],
+  );
+  const remainingLocked = React.useMemo(
+    () => passwordQueue.filter((id) => id !== activeLocked?.id && items.some((it) => it.id === id && it.locked)).length,
+    [passwordQueue, items, activeLocked],
+  );
+
+  async function unlockActive(password: string) {
+    if (!activeLocked) return;
+    setPwBusy(true);
+    setPwError(null);
+    try {
+      const findings = await runInspectPdf(activeLocked.bytes, password);
+      update(activeLocked.id, { findings, password, locked: false, error: null });
+      setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
+      void pdfPreview(activeLocked.bytes, 240, password)
+        .then((p) => update(activeLocked.id, { pageCount: p.pageCount, thumb: p.thumbnail }))
+        .catch(() => undefined);
+    } catch (e) {
+      if (isPasswordError(e)) {
+        setPwError('Incorrect password. Try again.');
+      } else {
+        update(activeLocked.id, { locked: false, error: errorMessage(e) });
+        setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
+      }
+    } finally {
+      setPwBusy(false);
+    }
+  }
+
+  function cancelUnlock() {
+    if (!activeLocked) return;
+    update(activeLocked.id, { locked: false, error: 'Password required to open this PDF.' });
+    setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
+    setPwError(null);
+  }
+
+  const ready = items.filter((it) => !it.error && !it.locked);
 
   async function clean() {
     setBusy(true);
@@ -102,8 +165,8 @@ export default function RemoveMetadata() {
       setProgress({ fraction: i / ready.length, label: item.name });
       await nextFrame();
       try {
-        const bytes = await cleanPdf(item.bytes, opts);
-        out[item.id] = { bytes, after: await inspectPdf(bytes) };
+        const bytes = await runCleanPdf(item.bytes, opts, item.password);
+        out[item.id] = { bytes, after: await runInspectPdf(bytes) };
       } catch (e) {
         out[item.id] = { bytes: item.bytes, after: [], error: errorMessage(e) };
       }
@@ -183,11 +246,22 @@ export default function RemoveMetadata() {
                 {outputs.length === 1
                   ? <button type="button" className={styles.primary} onClick={() => download(outputs[0].bytes, outputs[0].name)}>Download {outputs[0].name}</button>
                   : <button type="button" className={styles.primary} onClick={() => download(zipFiles(outputs), 'cleaned-pdfs.zip', 'application/zip')}>Download all (ZIP)</button>}
+                <ContinueWith currentToolId={REMOVE_METADATA.id} files={outputs} />
               </div>
             )}
           </>
         }
       >
+        {activeLocked && (
+          <PasswordPrompt
+            fileName={activeLocked.name}
+            error={pwError}
+            busy={pwBusy}
+            remaining={remainingLocked}
+            onSubmit={unlockActive}
+            onCancel={cancelUnlock}
+          />
+        )}
         <FileGrid
           items={items}
           onChange={setItems}
@@ -200,12 +274,12 @@ export default function RemoveMetadata() {
               <FileCard
                 thumb={item.thumb}
                 name={item.name}
-                meta={`${item.pageCount === null ? '…' : `${item.pageCount} page${item.pageCount === 1 ? '' : 's'}`} · ${formatBytes(item.bytes.length)}`}
+                meta={`${item.locked ? 'Password protected' : item.pageCount === null ? '…' : `${item.pageCount} page${item.pageCount === 1 ? '' : 's'}`} · ${formatBytes(item.bytes.length)}`}
                 error={item.error ?? r?.error}
                 controls={controls}
                 actions={output && <button type="button" className={styles.buttonSmall} onClick={() => download(output.bytes, output.name)}>Download</button>}
               >
-                {!item.error && (
+                {!item.error && !item.locked && (
                   <div className={styles.fileMeta}>
                     {r && !r.error
                       ? <span className={styles.saved}>Cleaned · {formatBytes(r.bytes.length)}</span>

@@ -136,21 +136,13 @@ Status: ✅ done · 🔜 next phase · 📋 planned · 🔬 needs research · �
 
 ## Cross-cutting improvements
 
-- **Web Worker for heavy work.** pdf-lib parsing and saving runs on the main thread today. Move compress and merge into a
-  worker so the page stays responsive with large files.
-- **Encrypted input.** Ask for the password and decrypt with `@cantoo/pdf-lib` / pdf.js instead of rejecting the file.
-- **Chain tools.** "Continue with…" buttons on a result (as iLovePDF does), passing the bytes to the next tool in memory
-  (e.g. Merge → Compress → Remove metadata without downloading and re-selecting).
+- **Web Worker for heavy work.** ✅ Implemented (`lib/pdf/worker.ts` + `lib/pdf/workerClient.ts`, with automatic main-thread fallback). Offloads pdf-lib merge, lossless compression, metadata inspection/sanitization, page rotation/removal/extraction/reorganization, split, image extraction, and size breakdown off the main thread while keeping canvas/pdf.js rendering on the main thread.
+- **Encrypted input.** ✅ Implemented (`components/PdfTools/PasswordPrompt.tsx` and `isPasswordError` in `lib/pdf/files.ts`). All PDF-accepting tools prompt for a password and decrypt with `@cantoo/pdf-lib` / pdf.js instead of rejecting encrypted files.
+- **Chain tools.** ✅ Implemented (`lib/pdf/handoff.ts` + `components/PdfTools/ContinueWith.tsx`). "Continue with…" buttons on PDF-producing results pass output bytes directly to the next tool in memory (e.g. Merge → Compress → Remove metadata without downloading and re-selecting).
 - **Merge:** keep the sources' bookmarks and add a bookmark per file; allow images in the merge list.
-- **Touch reordering & bulk page selection.** HTML drag and drop does not work reliably on phones; use pointer-event
-  reordering alongside arrow buttons, and support Shift-click / range / odd-even selection in the Phase 2 page grid so
-  working on 100-page PDFs is fast.
-- **Thumbnail virtualisation & canvas cleanup.** In the Phase 2 page grid (Organize, Remove, Extract, Rotate, Split),
-  render pdf.js thumbnails lazily via `IntersectionObserver`, call `page.cleanup()`, and revoke blob URLs so large
-  documents do not exhaust mobile browser canvas memory.
-- **PDF size breakdown (inspector).** `lib/pdf/objects.ts` and `lib/pdf/compress.ts` already walk objects and image
-  XObjects; surfacing a quick breakdown (images vs. fonts vs. streams vs. metadata/attachments) inside Compress or
-  Remove metadata shows why a file is large before processing.
+- **Touch reordering & bulk page selection.** ✅ Implemented in `components/PdfTools/PageGrid.tsx`: pointer/arrow reordering alongside drag and drop, plus Shift-click / range / odd-even selection.
+- **Thumbnail virtualisation & canvas cleanup.** ✅ Implemented in `lib/pdf/thumbs.ts` and `components/PdfTools/PageGrid.tsx`: lazy `IntersectionObserver` rendering, LRU Blob URL eviction, and `page.cleanup()`.
+- **PDF size breakdown (inspector).** ✅ Implemented (`lib/pdf/breakdown.ts`), surfaced inside Compress PDF to show how each file's bytes split across images, fonts, page content, metadata/attachments, and structure before compressing.
 - **Remember options** per tool in `localStorage`.
 - **Theme & shared form controls.** Form fields currently reuse `components/QrGen/fields.tsx` and
   `styles/QrGen.module.css`; the site-wide [UX polish plan](ux-polish/plan.md) moves these to shared light/dark themed

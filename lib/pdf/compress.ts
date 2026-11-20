@@ -17,6 +17,7 @@ export interface CompressOptions {
   // Replace every page with a JPEG of the rendered page. Removes text, links and forms.
   rasterize: boolean;
   removeMetadata: boolean;
+  password?: string;
 }
 
 export interface CompressResult {
@@ -159,7 +160,7 @@ function removeMetadata(doc: PDFDocument) {
 }
 
 async function rasterizePdf(bytes: Uint8Array, opts: CompressOptions, onProgress: Progress): Promise<Uint8Array> {
-  const { doc: src, close } = await openPdf(bytes);
+  const { doc: src, close } = await openPdf(bytes, opts.password);
   try {
     const out = await PDFDocument.create();
     if (!opts.removeMetadata) {
@@ -191,7 +192,7 @@ export async function compressPdf(bytes: Uint8Array, opts: CompressOptions, onPr
 
   onProgress(0, 'Reading the PDF');
   await nextFrame();
-  const doc = await PDFDocument.load(bytes, { updateMetadata: false });
+  const doc = await PDFDocument.load(bytes, { updateMetadata: false, password: opts.password });
   if (opts.removeMetadata) removeMetadata(doc);
   const imagesRecompressed = opts.images ? await recompressImages(doc, opts, (f, l) => onProgress(f * 0.7, l)) : 0;
   removeUnusedObjects(doc.context);

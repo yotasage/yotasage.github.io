@@ -54,9 +54,9 @@ export interface PdfPreview {
 // Previews are made one at a time so that adding many files does not render them all at once.
 let queue: Promise<unknown> = Promise.resolve();
 
-export function pdfPreview(bytes: Uint8Array, width = 240): Promise<PdfPreview> {
+export function pdfPreview(bytes: Uint8Array, width = 240, password?: string): Promise<PdfPreview> {
   const job = queue.then(async () => {
-    const { doc, close } = await openPdf(bytes);
+    const { doc, close } = await openPdf(bytes, password);
     try {
       const page = await doc.getPage(1);
       const scale = width / page.getViewport({ scale: 1 }).width;
