@@ -27,6 +27,8 @@ import {
   pageDimensionsFor,
 } from './fixtures.mjs';
 
+import { runPhase4UiChecks } from './ui-p4.mjs';
+
 import * as toolsMod from '../../../lib/pdf/tools.ts';
 
 const { TOOL_CATEGORIES } = toolsMod.default ?? toolsMod;
@@ -190,9 +192,9 @@ async function main() {
   const inlineVectorPdf = await makeInlineVectorPdf();
   const readerPdf = await makeReaderPdf();
 
-  // 1. Hub shows all 27 tools and every route returns 200.
-  await runTest('1. /pdf/main lists all 27 tools and every route returns HTTP 200', async () => {
-    assert(ALL_TOOLS.length === 27, `Expected 27 registered tools, found ${ALL_TOOLS.length}`);
+  // 1. Hub shows all 33 tools and every route returns 200.
+  await runTest('1. /pdf/main lists all 33 tools and every route returns HTTP 200', async () => {
+    assert(ALL_TOOLS.length === 33, `Expected 33 registered tools, found ${ALL_TOOLS.length}`);
     const hubRes = await page.goto(`${baseUrl}/pdf/main`, { waitUntil: 'networkidle' });
     assert(hubRes && hubRes.status() === 200, `/pdf/main returned ${hubRes?.status()}`);
     for (const tool of ALL_TOOLS) {
@@ -205,8 +207,8 @@ async function main() {
     }
   });
 
-  // 2. Phone layout (390x844) overflow check across /pdf/main and all 27 tool routes.
-  await runTest('2. Phone layout (390x844) has no horizontal overflow across /pdf/main and all 27 tools', async () => {
+  // 2. Phone layout (390x844) overflow check across /pdf/main and all 33 tool routes.
+  await runTest('2. Phone layout (390x844) has no horizontal overflow across /pdf/main and all 33 tools', async () => {
     await page.setViewportSize({ width: 390, height: 844 });
     const phoneRoutes = ['/pdf/main', ...ALL_TOOLS.map((t) => t.href)];
     for (const route of phoneRoutes) {
@@ -979,8 +981,19 @@ async function main() {
     assert(outDoc.getPageCount() === 2, `expected 2 edited pages, got ${outDoc.getPageCount()}`);
   });
 
-  // 31. Zero runtime errors, failed requests, and third-party network requests.
-  await runTest('31. Zero pageerror, console.error, failed requests, and third-party requests', async () => {
+  // 31–38. Phase 4 interactive browser E2E checks (/licenses, Ghostscript compress, QPDF linearize & repair, compare, redact, PDF/A, OCR).
+  await runPhase4UiChecks({
+    page,
+    baseUrl,
+    runTest,
+    assert,
+    readDownloadBytes,
+    pdfUpload,
+    fixtures: { pdf4, pdf3, pdf2, colorAndImagePdf, compressiblePdf },
+  });
+
+  // 39. Zero runtime errors, failed requests, and third-party network requests.
+  await runTest('39. Zero pageerror, console.error, failed requests, and third-party requests', async () => {
     assert(pageErrors.length === 0, `pageerror(s): ${pageErrors.slice(0, 3).join(' | ')}`);
     assert(consoleErrors.length === 0, `console.error(s): ${consoleErrors.slice(0, 3).join(' | ')}`);
     assert(failedRequests.length === 0, `failed request(s): ${failedRequests.slice(0, 3).join(' | ')}`);

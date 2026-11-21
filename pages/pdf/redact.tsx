@@ -89,6 +89,8 @@ export default function RedactPdfPage() {
   const [pageJump, setPageJump] = React.useState('1');
 
   const [boxes, setBoxes] = React.useState<RedactBox[]>([]);
+  const boxesRef = React.useRef<RedactBox[]>(boxes);
+  boxesRef.current = boxes;
   const [history, setHistory] = React.useState<RedactBox[][]>([]);
   const [future, setFuture] = React.useState<RedactBox[][]>([]);
   const dragSnapshotRef = React.useRef<RedactBox[] | null>(null);
@@ -369,26 +371,30 @@ export default function RedactPdfPage() {
         return;
       }
 
-      let addedCount = 0;
-      let firstAdded: RedactBox | null = null;
-      commitBoxes((prev) => {
-        const next = prev.slice();
-        for (const cand of found) {
-          if (!next.some((existing) => boxesOverlapHeavily(existing, cand))) {
-            next.push(cand);
-            addedCount += 1;
-            if (!firstAdded) firstAdded = cand;
-          }
+      const currentBoxes = boxesRef.current;
+      const toAdd: RedactBox[] = [];
+      for (const cand of found) {
+        const alreadyExists =
+          currentBoxes.some((existing) => boxesOverlapHeavily(existing, cand)) ||
+          toAdd.some((existing) => boxesOverlapHeavily(existing, cand));
+        if (!alreadyExists) {
+          toAdd.push(cand);
         }
-        return next;
-      });
+      }
 
-      if (addedCount > 0) {
-        setScanStatus(`Marked ${addedCount} match${addedCount === 1 ? '' : 'es'} for ${label}.`);
-        if (firstAdded) {
-          setPageIndex((firstAdded as RedactBox).pageIndex);
-          setSelectedId((firstAdded as RedactBox).id);
-        }
+      if (toAdd.length > 0) {
+        commitBoxes((prev) => {
+          const next = prev.slice();
+          for (const cand of toAdd) {
+            if (!next.some((existing) => boxesOverlapHeavily(existing, cand))) {
+              next.push(cand);
+            }
+          }
+          return next;
+        });
+        setScanStatus(`Marked ${toAdd.length} match${toAdd.length === 1 ? '' : 'es'} for ${label}.`);
+        setPageIndex(toAdd[0].pageIndex);
+        setSelectedId(toAdd[0].id);
       } else {
         setScanStatus(`All ${found.length} match${found.length === 1 ? '' : 'es'} for ${label} are already marked.`);
       }
