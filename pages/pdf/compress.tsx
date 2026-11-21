@@ -4,9 +4,9 @@ import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { FileCard, FileGrid } from '../../components/PdfTools/FileGrid';
 import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Checkbox, Field, NumberInput } from '../../components/QrGen/fields';
+import { Checkbox, Field, NumberInput, Select } from '../../components/QrGen/fields';
 import { PdfSizeBreakdown } from '../../lib/pdf/breakdown';
-import { CompressOptions } from '../../lib/pdf/compress';
+import { CompressColorMode, CompressOptions } from '../../lib/pdf/compress';
 import { baseName, download, errorMessage, formatBytes, isPasswordError, isPdf, OutputFile, readBytes, uid, zipFiles } from '../../lib/pdf/files';
 import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
 import { pdfPreview } from '../../lib/pdf/pdfjs';
@@ -32,6 +32,8 @@ interface ItemResult {
   // The compressed file was not smaller, so the original is returned.
   kept: boolean;
   images: number;
+  duplicatesMerged: number;
+  qpdfSavedBytes: number;
   error?: string;
 }
 
@@ -44,10 +46,24 @@ const LEVELS: { id: Level; title: string; text: string; dpi: number; quality: nu
   { id: 'custom', title: 'Custom', text: 'Choose the image resolution and JPEG quality yourself.', dpi: 150, quality: 75 },
 ];
 
+const COLOR_MODES: [CompressColorMode, string][] = [
+  ['original', 'Keep original'],
+  ['grayscale', 'Grayscale'],
+  ['bw1bit', '1-bit B&W (best for scans)'],
+];
+
 function savedPercent(before: number, after: number): string {
   const pct = (1 - after / before) * 100;
   if (pct < 0.1) return '<0.1 %';
   return pct < 1 ? `${pct.toFixed(1)} %` : `${Math.round(pct)} %`;
+}
+
+function summarizeDetails(images: number, duplicatesMerged: number, qpdfSavedBytes: number): string {
+  const parts: string[] = [];
+  if (images > 0) parts.push(`${images} image${images === 1 ? '' : 's'} compressed`);
+  if (duplicatesMerged > 0) parts.push(`${duplicatesMerged} duplicate object${duplicatesMerged === 1 ? '' : 's'} merged`);
+  if (qpdfSavedBytes > 0) parts.push(`QPDF saved ${formatBytes(qpdfSavedBytes)}`);
+  return parts.join(' · ');
 }
 
 function SizeBreakdownCard({ name, breakdown }: { name: string; breakdown: PdfSizeBreakdown }) {
@@ -86,8 +102,11 @@ export default function CompressPdf() {
   const [level, setLevel] = React.useState<Level>('recommended');
   const [customDpi, setCustomDpi] = React.useState(150);
   const [customQuality, setCustomQuality] = React.useState(75);
+  const [colorMode, setColorMode] = React.useState<CompressColorMode>('original');
   const [rasterize, setRasterize] = React.useState(false);
   const [removeMetadata, setRemoveMetadata] = React.useState(false);
+  const [deduplicateObjects, setDeduplicateObjects] = React.useState(true);
+  const [qpdfOptimize, setQpdfOptimize] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [progress, setProgress] = React.useState({ fraction: 0, label: '' });
   const [notice, setNotice] = React.useState<string | null>(null);
@@ -102,7 +121,10 @@ export default function CompressPdf() {
   const lossless = level === 'lossless';
 
   const ids = items.map((it) => it.id).join();
-  React.useEffect(() => setResults({}), [ids, level, dpi, quality, rasterize, removeMetadata]);
+  React.useEffect(
+    () => setResults({}),
+    [ids, level, dpi, quality, colorMode, rasterize, removeMetadata, deduplicateObjects, qpdfOptimize],
+  );
 
   const update = (id: string, patch: Partial<CompressItem>) => setItems((list) => list.map((it) => (it.id === id ? { ...it, ...patch } : it)));
 
@@ -181,7 +203,16 @@ export default function CompressPdf() {
   async function compress() {
     setBusy(true);
     setResults({});
-    const baseOpts: CompressOptions = { images: !lossless, maxDpi: dpi, quality, rasterize: rasterize && !lossless, removeMetadata };
+    const baseOpts: CompressOptions = {
+      images: !lossless,
+      maxDpi: dpi,
+      quality,
+      rasterize: rasterize && !lossless,
+      removeMetadata,
+      deduplicateObjects,
+      colorMode: lossless ? 'original' : colorMode,
+      qpdfOptimize,
+    };
     const out: Record<string, ItemResult> = {};
     for (let i = 0; i < ready.length; i++) {
       const item = ready[i];
@@ -189,9 +220,16 @@ export default function CompressPdf() {
       try {
         const r = await runCompressPdf(item.bytes, { ...baseOpts, password: item.password }, report);
         const kept = r.bytes.length >= item.bytes.length;
-        out[item.id] = { bytes: kept ? item.bytes : r.bytes, kept, images: r.imagesRecompressed };
+        const duplicatesMerged = (r.duplicateImagesMerged ?? 0) + (r.duplicateFontsMerged ?? 0);
+        out[item.id] = {
+          bytes: kept ? item.bytes : r.bytes,
+          kept,
+          images: r.imagesRecompressed,
+          duplicatesMerged,
+          qpdfSavedBytes: r.qpdfSavedBytes ?? 0,
+        };
       } catch (e) {
-        out[item.id] = { bytes: item.bytes, kept: true, images: 0, error: errorMessage(e) };
+        out[item.id] = { bytes: item.bytes, kept: true, images: 0, duplicatesMerged: 0, qpdfSavedBytes: 0, error: errorMessage(e) };
       }
       setResults({ ...out });
     }
@@ -202,10 +240,14 @@ export default function CompressPdf() {
   const outputs: OutputFile[] = succeeded.map((it) => ({ name: `${baseName(it.name)}-compressed.pdf`, bytes: results[it.id].bytes }));
   const before = succeeded.reduce((s, it) => s + it.bytes.length, 0);
   const after = outputs.reduce((s, o) => s + o.bytes.length, 0);
+  const totalImages = succeeded.reduce((s, it) => s + results[it.id].images, 0);
+  const totalDuplicates = succeeded.reduce((s, it) => s + results[it.id].duplicatesMerged, 0);
+  const totalQpdfSaved = succeeded.reduce((s, it) => s + results[it.id].qpdfSavedBytes, 0);
+  const summaryDetail = summarizeDetails(totalImages, totalDuplicates, totalQpdfSaved);
   const done = !busy && outputs.length > 0;
 
   return (
-    <PdfPage title={COMPRESS.title} showHub lead="Reduce the file size of PDFs while keeping text, links and bookmarks. Images are downsampled and re-encoded; everything else is repacked losslessly.">
+    <PdfPage title={COMPRESS.title} showHub lead="Reduce the file size of PDFs while keeping text, links and bookmarks. Images are downsampled to their on-page size and re-encoded; duplicate objects and streams are repacked losslessly.">
       <ToolWorkspace
         tool={COMPRESS}
         accept="application/pdf,.pdf"
@@ -231,13 +273,23 @@ export default function CompressPdf() {
               </div>
             )}
             <div className={styles.options}>
+              <Field label="Colour mode">
+                <Select<CompressColorMode>
+                  value={lossless ? 'original' : colorMode}
+                  disabled={lossless}
+                  onChange={setColorMode}
+                  options={COLOR_MODES}
+                />
+              </Field>
               <Checkbox
                 label={`Convert every page to an image at ${dpi} DPI (best for scans; removes selectable text, links and forms)`}
                 checked={rasterize && !lossless}
                 disabled={lossless}
                 onChange={setRasterize}
               />
+              <Checkbox label="Merge duplicate fonts & images" checked={deduplicateObjects} onChange={setDeduplicateObjects} />
               <Checkbox label="Remove document metadata (title, author, XMP)" checked={removeMetadata} onChange={setRemoveMetadata} />
+              <Checkbox label="Deep structure optimization (QPDF WebAssembly)" checked={qpdfOptimize} onChange={setQpdfOptimize} />
             </div>
             {notice && <p className={qrStyles.warning}>{notice}</p>}
             <button type="button" className={styles.primary} disabled={busy || ready.length === 0} onClick={compress}>
@@ -248,6 +300,7 @@ export default function CompressPdf() {
               <div className={styles.result}>
                 <h3>{after < before ? `Saved ${savedPercent(before, after)}` : 'No savings'}</h3>
                 <p>{formatBytes(before)} &rarr; {formatBytes(after)}</p>
+                {summaryDetail && <p className={styles.hint}>{summaryDetail}</p>}
                 {outputs.length === 1
                   ? <button type="button" className={styles.primary} onClick={() => download(outputs[0].bytes, outputs[0].name)}>Download</button>
                   : <button type="button" className={styles.primary} onClick={() => download(zipFiles(outputs), 'compressed-pdfs.zip', 'application/zip')}>Download all (ZIP)</button>}
@@ -274,6 +327,7 @@ export default function CompressPdf() {
           renderCard={(item, _index, controls) => {
             const r = results[item.id];
             const name = `${baseName(item.name)}-compressed.pdf`;
+            const cardDetail = r && !r.error ? summarizeDetails(r.images, r.duplicatesMerged, r.qpdfSavedBytes) : '';
             return (
               <FileCard
                 thumb={item.thumb}
@@ -290,6 +344,7 @@ export default function CompressPdf() {
                     {r.kept
                       ? 'Already optimal; the original is kept.'
                       : <span className={styles.saved}>{formatBytes(r.bytes.length)} (−{savedPercent(item.bytes.length, r.bytes.length)})</span>}
+                    {cardDetail && <div>{cardDetail}</div>}
                   </div>
                 )}
               </FileCard>
