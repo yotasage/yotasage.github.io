@@ -673,6 +673,36 @@ export const en = {
   'licenses.section.fontsLeadPre': 'Self-hosted variable fonts served directly from ',
   'licenses.section.fontsLeadPost': ' under the SIL Open Font License 1.1, with zero external font CDN requests.',
   'licenses.noText': 'No licence text was found for this package.',
+
+  // PDF tools suite namespace
+  'pdf.pageTitle': 'PDF Tools · yotasage',
+  'pdf.title': 'PDF Tools',
+  'pdf.eyebrow': '{count} Local Browser PDF Tools',
+  'pdf.lead':
+    "Everything runs locally in your browser. Files never leave your device, with no ads, no accounts, and no limits beyond your device's memory.",
+  'pdf.allTools': 'All PDF tools',
+  'pdf.searchPlaceholder': 'Search {count} PDF tools…',
+  'pdf.searchAria': 'Search PDF tools',
+  'pdf.searchClear': 'Clear search',
+  'pdf.filterAria': 'Filter PDF tools by category',
+  'pdf.cat.all': 'All',
+  'pdf.cat.view': 'View',
+  'pdf.cat.organize': 'Organize',
+  'pdf.cat.optimize': 'Optimize',
+  'pdf.cat.edit': 'Edit & annotate',
+  'pdf.cat.toPdf': 'Convert to PDF',
+  'pdf.cat.fromPdf': 'Convert from PDF',
+  'pdf.cat.security': 'Security',
+  'pdf.resultsCount': 'Showing {count} of {total} PDF tools',
+  'pdf.noResults': 'No PDF tools match "{query}".',
+  'pdf.noResultsHint': 'Try a different keyword or reset the category filter.',
+  'pdf.resetFilters': 'Reset filters',
+  'pdf.localHint': 'Your files are processed in this browser and are never uploaded.',
+  'pdf.roadmapPrefix': 'More tools are planned — see the ',
+  'pdf.roadmapLink': 'roadmap',
+  'pdf.teaching.privacyTitle': 'How local browser PDF processing works',
+  'pdf.teaching.privacyBody':
+    'Every PDF tool runs directly in your browser using JavaScript and self-hosted WebAssembly (pdf-lib, pdf.js, QPDF, Ghostscript, and Tesseract OCR) inside Web Workers. Files stay in device memory, chain between tools via Continue with…, and never touch a server.',
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -1348,6 +1378,36 @@ export const nb: Record<TranslationKey, string> = {
   'licenses.section.fontsLeadPre': 'Selvhostede variable skrifttyper servert direkte fra ',
   'licenses.section.fontsLeadPost': ' under SIL Open Font License 1.1, uten eksterne CDN-forespørsler.',
   'licenses.noText': 'Ingen lisenstekst ble funnet for denne pakken.',
+
+  // PDF tools suite namespace
+  'pdf.pageTitle': 'PDF-verktøy · yotasage',
+  'pdf.title': 'PDF-verktøy',
+  'pdf.eyebrow': '{count} lokale PDF-verktøy i nettleseren',
+  'pdf.lead':
+    'Alt kjører lokalt i nettleseren din. Filer forlater aldri enheten din — ingen reklame, ingen innlogging og ingen grenser utover enhetens minne.',
+  'pdf.allTools': 'Alle PDF-verktøy',
+  'pdf.searchPlaceholder': 'Søk i {count} PDF-verktøy…',
+  'pdf.searchAria': 'Søk i PDF-verktøy',
+  'pdf.searchClear': 'Tøm søk',
+  'pdf.filterAria': 'Filtrer PDF-verktøy etter kategori',
+  'pdf.cat.all': 'Alle',
+  'pdf.cat.view': 'Vis',
+  'pdf.cat.organize': 'Organiser',
+  'pdf.cat.optimize': 'Optimaliser',
+  'pdf.cat.edit': 'Rediger og merk',
+  'pdf.cat.toPdf': 'Konverter til PDF',
+  'pdf.cat.fromPdf': 'Konverter fra PDF',
+  'pdf.cat.security': 'Sikkerhet',
+  'pdf.resultsCount': 'Viser {count} av {total} PDF-verktøy',
+  'pdf.noResults': 'Ingen PDF-verktøy samsvarer med «{query}».',
+  'pdf.noResultsHint': 'Prøv et annet søkeord eller tilbakestill kategorifilteret.',
+  'pdf.resetFilters': 'Tilbakestill filtre',
+  'pdf.localHint': 'Filene dine behandles i denne nettleseren og lastes aldri opp.',
+  'pdf.roadmapPrefix': 'Flere verktøy er planlagt — se ',
+  'pdf.roadmapLink': 'veikartet',
+  'pdf.teaching.privacyTitle': 'Slik fungerer lokal PDF-behandling i nettleseren',
+  'pdf.teaching.privacyBody':
+    'Hvert PDF-verktøy kjører direkte i nettleseren med JavaScript og selvhostet WebAssembly (pdf-lib, pdf.js, QPDF, Ghostscript og Tesseract OCR) i Web Workers. Filene blir i enhetens minne, kan kjedes videre mellom verktøy via Continue with…, og berører aldri en server.',
 };
 
 export const TRANSLATIONS: Record<Locale, Record<TranslationKey, string>> = {

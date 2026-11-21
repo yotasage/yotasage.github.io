@@ -1,16 +1,17 @@
-/* Full-featured client-side PDF Reader layout and layers.
-   Designed to match the site's dark #2b2b2b palette with zero horizontal overflow at 390px phone width. */
+/* Full-featured client-side PDF Reader layout and layers — Design System v2.
+   Uses --ds-* tokens across Light, Dark, and High Contrast (AAA) with zero horizontal overflow at 320px+. */
 
 .readerShell {
   display: flex;
   flex-direction: column;
   width: 100%;
   max-width: 100%;
-  height: calc(100vh - 105px);
+  height: calc(100vh - 110px);
   min-height: 460px;
-  border: 1px solid #484848;
-  border-radius: 12px;
-  background: #1f1f1f;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-surface-solid);
+  box-shadow: var(--ds-shadow-card);
   overflow: hidden;
   transition: border-color 0.15s ease, background-color 0.15s ease;
 }
@@ -19,11 +20,12 @@
   height: 100vh;
   border: none;
   border-radius: 0;
+  box-shadow: none;
 }
 
 .readerDropOver {
-  border-color: #0070f3;
-  box-shadow: inset 0 0 0 2px rgba(0, 112, 243, 0.45);
+  border-color: var(--ds-accent);
+  box-shadow: inset 0 0 0 2px var(--ds-accent-border);
 }
 
 /* Toolbar */
@@ -33,9 +35,9 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem 0.5rem;
-  padding: 0.45rem 0.65rem;
-  border-bottom: 1px solid #3c3c3c;
-  background: #282828;
+  padding: 0.5rem 0.7rem;
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-surface);
   max-width: 100%;
 }
 
@@ -51,7 +53,7 @@
 .toolSep {
   width: 1px;
   height: 1.35rem;
-  background: #444;
+  background: var(--ds-border-strong);
   margin: 0 0.1rem;
 }
 
@@ -67,10 +69,10 @@
   gap: 0.3rem;
   height: 2rem;
   padding: 0 0.55rem;
-  border: 1px solid #555;
-  border-radius: 7px;
-  background: #323232;
-  color: #f0f0f0;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
   font: inherit;
   font-size: 0.84rem;
   font-weight: 600;
@@ -82,9 +84,9 @@
 
 .toolBtn:hover:not(:disabled),
 .toolBtn:focus-visible {
-  border-color: #4da3ff;
-  color: #ffffff;
-  background: #3a3a3a;
+  border-color: var(--ds-accent);
+  color: var(--ds-ink);
+  background: var(--ds-well-hover);
   outline: none;
 }
 
@@ -94,9 +96,9 @@
 }
 
 .toolBtnActive {
-  border-color: #0070f3;
-  background: rgba(0, 112, 243, 0.24);
-  color: #8cc2ff;
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  color: var(--ds-accent);
 }
 
 .toolBtnIcon {
@@ -106,25 +108,29 @@
 }
 
 .pageInput {
-  width: 3.1rem;
+  width: 3.2rem;
   height: 2rem;
   padding: 0 0.35rem;
-  border: 1px solid #555;
-  border-radius: 7px;
-  background: #1c1c1c;
-  color: #ffffff;
-  font: inherit;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 0.85rem;
   text-align: center;
 }
 
 .pageInput:focus {
   outline: none;
-  border-color: #0070f3;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
 }
 
 .pageTotal {
-  color: #b0b0b0;
+  color: var(--ds-ink-2);
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 0.84rem;
   white-space: nowrap;
   padding-right: 0.15rem;
@@ -134,10 +140,10 @@
   height: 2rem;
   max-width: 100%;
   padding: 0 0.45rem;
-  border: 1px solid #555;
-  border-radius: 7px;
-  background: #1c1c1c;
-  color: #f0f0f0;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
   font: inherit;
   font-size: 0.83rem;
   cursor: pointer;
@@ -145,7 +151,8 @@
 
 .toolSelect:focus {
   outline: none;
-  border-color: #0070f3;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
 }
 
 /* Search bar */
@@ -155,9 +162,9 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.45rem 0.65rem;
-  border-bottom: 1px solid #3c3c3c;
-  background: #232323;
+  padding: 0.45rem 0.7rem;
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
   max-width: 100%;
 }
 
@@ -166,22 +173,25 @@
   min-width: 0;
   max-width: 320px;
   height: 2rem;
-  padding: 0 0.6rem;
-  border: 1px solid #555;
-  border-radius: 7px;
-  background: #181818;
-  color: #ffffff;
+  padding: 0 0.65rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
   font: inherit;
   font-size: 0.88rem;
 }
 
 .searchInput:focus {
   outline: none;
-  border-color: #0070f3;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
 }
 
 .searchCount {
-  color: #c0c0c0;
+  color: var(--ds-ink-2);
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 0.83rem;
   min-width: 4.5rem;
   white-space: nowrap;
@@ -203,8 +213,8 @@
   flex-direction: column;
   width: 268px;
   flex: 0 0 268px;
-  border-right: 1px solid #3c3c3c;
-  background: #242424;
+  border-right: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-surface-solid);
   min-height: 0;
   overflow: hidden;
 }
@@ -219,7 +229,7 @@
     inset: 0 auto 0 0;
     width: min(290px, 86%);
     z-index: 25;
-    box-shadow: 6px 0 24px rgba(0, 0, 0, 0.55);
+    box-shadow: var(--ds-shadow-elev);
   }
 
   .sidebarBackdrop {
@@ -237,8 +247,8 @@
 
 .sidebarTabs {
   display: flex;
-  border-bottom: 1px solid #3c3c3c;
-  background: #292929;
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
   flex-shrink: 0;
 }
 
@@ -248,7 +258,7 @@
   border: none;
   border-bottom: 2px solid transparent;
   background: transparent;
-  color: #b0b0b0;
+  color: var(--ds-ink-2);
   font: inherit;
   font-size: 0.82rem;
   font-weight: 600;
@@ -257,14 +267,14 @@
 }
 
 .sidebarTab:hover {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.04);
+  color: var(--ds-ink);
+  background: var(--ds-well-hover);
 }
 
 .sidebarTabActive {
-  color: #4da3ff;
-  border-bottom-color: #0070f3;
-  background: rgba(0, 112, 243, 0.08);
+  color: var(--ds-accent);
+  border-bottom-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
 }
 
 .sidebarContent {
@@ -294,23 +304,25 @@
   width: 100%;
   padding: 0.5rem;
   border: 2px solid transparent;
-  border-radius: 8px;
-  background: #2c2c2c;
-  color: #d8d8d8;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  color: var(--ds-ink-2);
   font: inherit;
   font-size: 0.8rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
 }
 
 .thumbButton:hover {
-  border-color: #6a6a6a;
+  border-color: var(--ds-border-strong);
+  color: var(--ds-ink);
 }
 
 .thumbButtonActive {
-  border-color: #0070f3;
-  background: rgba(0, 112, 243, 0.14);
-  color: #ffffff;
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  color: var(--ds-ink);
 }
 
 .thumbBox {
@@ -320,7 +332,8 @@
   width: 148px;
   min-height: 110px;
   max-height: 210px;
-  background: #1a1a1a;
+  background: var(--ds-surface-solid);
+  border: var(--ds-border-w) solid var(--ds-border);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -330,11 +343,12 @@
   max-width: 100%;
   max-height: 210px;
   height: auto;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
 }
 
 .thumbPlaceholder {
-  color: #777;
+  color: var(--ds-ink-3);
   font-size: 0.78rem;
   padding: 2.2rem 0.5rem;
 }
@@ -350,7 +364,7 @@
 .outlineNested {
   margin: 0.15rem 0 0.15rem 0.85rem;
   padding: 0 0 0 0.45rem;
-  border-left: 1px solid #3e3e3e;
+  border-left: var(--ds-border-w) solid var(--ds-border);
   list-style: none;
 }
 
@@ -365,14 +379,14 @@
   height: 1.5rem;
   border: none;
   background: transparent;
-  color: #9a9a9a;
+  color: var(--ds-ink-3);
   font-size: 0.72rem;
   cursor: pointer;
   padding: 0;
 }
 
 .outlineToggle:hover {
-  color: #ffffff;
+  color: var(--ds-ink);
 }
 
 .outlineSpacer {
@@ -390,18 +404,19 @@
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: #e0e0e0;
+  color: var(--ds-ink);
   font: inherit;
   font-size: 0.84rem;
   line-height: 1.35;
   text-align: left;
   cursor: pointer;
   text-decoration: none;
+  transition: background-color 0.14s ease, color 0.14s ease;
 }
 
 .outlineBtn:hover {
-  background: rgba(255, 255, 255, 0.07);
-  color: #4da3ff;
+  background: var(--ds-well-hover);
+  color: var(--ds-accent);
 }
 
 .outlineBtnTitle {
@@ -410,12 +425,14 @@
 
 .outlinePageNum {
   flex: 0 0 auto;
-  color: #8f8f8f;
+  color: var(--ds-ink-3);
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 0.76rem;
 }
 
 .emptyTab {
-  color: #9a9a9a;
+  color: var(--ds-ink-3);
   font-size: 0.88rem;
   text-align: center;
   padding: 2rem 0.5rem;
@@ -438,8 +455,9 @@
 }
 
 .infoItem dt {
-  color: #9a9a9a;
-  font-size: 0.75rem;
+  color: var(--ds-ink-3);
+  font-size: 0.74rem;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin-bottom: 0.1rem;
@@ -447,7 +465,7 @@
 
 .infoItem dd {
   margin: 0;
-  color: #ececec;
+  color: var(--ds-ink);
   font-size: 0.86rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -455,7 +473,7 @@
 
 .infoDivider {
   border: none;
-  border-top: 1px solid #3c3c3c;
+  border-top: var(--ds-border-w) solid var(--ds-border);
   margin: 0;
 }
 
@@ -466,7 +484,7 @@
   min-width: 0;
   min-height: 0;
   overflow: auto;
-  background: #171717;
+  background: var(--ds-well);
   padding: 16px;
   scroll-behavior: auto;
 }
@@ -490,14 +508,26 @@
   margin: 0 auto;
 }
 
+/* PDF paper stays crisp white so documents render accurately in all themes. */
 .pageSlot {
   position: relative;
   flex: 0 0 auto;
   background: #ffffff;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--ds-border);
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.24);
   overflow: hidden;
 }
 
+:global(html[data-ds-theme="dark"]) .pageSlot {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.55);
+}
+
+:global(html[data-ds-theme="hc"]) .pageSlot {
+  border: 2px solid #ffffff;
+  box-shadow: none;
+}
+
+/* Reader's own dark-mode page invert toggle */
 .pageSlotDark {
   background: #1d1d1d;
 }
@@ -516,8 +546,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #2b2b2b;
-  color: #888;
+  background: var(--ds-well);
+  color: var(--ds-ink-3);
   font-size: 0.9rem;
   pointer-events: none;
 }
@@ -543,7 +573,7 @@
 }
 
 .textLayer ::selection {
-  background: rgba(0, 112, 243, 0.35);
+  background: color-mix(in srgb, var(--ds-accent) 34%, transparent);
   color: transparent;
 }
 
@@ -584,17 +614,17 @@
 
 .linkAnnot:hover,
 .linkAnnot:focus-visible {
-  background: rgba(0, 112, 243, 0.18);
-  outline: 1px solid rgba(77, 163, 255, 0.65);
+  background: color-mix(in srgb, var(--ds-accent) 18%, transparent);
+  outline: 1px solid var(--ds-accent);
 }
 
-/* Mobile adjustments for 390px phone screens */
+/* Mobile adjustments for 320px–600px phone screens */
 
 @media (max-width: 600px) {
   .readerShell {
     height: calc(100vh - 96px);
     min-height: 420px;
-    border-radius: 8px;
+    border-radius: var(--ds-radius-ctrl);
   }
 
   .toolbar {

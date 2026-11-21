@@ -1,3 +1,6 @@
+/* Redact PDF specific styles — Design System v2.
+   Uses --ds-* tokens across Light, Dark, and High Contrast (AAA). */
+
 .toolbarGroup {
   display: flex;
   flex-wrap: wrap;
@@ -7,19 +10,21 @@
 }
 
 .toggleBtn {
-  padding: 0.36rem 0.7rem;
-  border-radius: 6px;
-  border: 1px solid #555;
-  background: #333;
-  color: #e4e4e4;
+  padding: 0.36rem 0.72rem;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
   font-size: 0.84rem;
+  font-weight: 550;
   cursor: pointer;
-  transition: background 0.14s, border-color 0.14s;
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
 }
 
 .toggleBtn:hover:not(:disabled) {
-  background: #3e3e3e;
-  border-color: #777;
+  background: var(--ds-well-hover);
+  border-color: var(--ds-accent);
 }
 
 .toggleBtn:disabled {
@@ -28,21 +33,23 @@
 }
 
 .toggleBtnActive {
-  background: #4d2525;
-  border-color: #e06060;
-  color: #fff;
+  background: var(--ds-bad-soft);
+  border-color: var(--ds-bad);
+  color: var(--ds-bad);
+  font-weight: 650;
 }
 
 .pageCountBadge {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.22rem 0.55rem;
-  border-radius: 999px;
-  background: rgba(224, 96, 96, 0.18);
-  border: 1px solid rgba(224, 96, 96, 0.45);
-  color: #f6b2b2;
+  padding: 0.22rem 0.6rem;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-bad-soft);
+  border: var(--ds-border-w) solid var(--ds-bad);
+  color: var(--ds-bad);
   font-size: 0.78rem;
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -54,19 +61,30 @@
   width: 100%;
   min-width: 0;
   padding: 0.75rem;
-  background: #1f1f1f;
-  border: 1px solid #3c3c3c;
-  border-radius: 8px;
+  background: var(--ds-well);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-ctrl);
   overflow: hidden;
 }
 
+/* PDF paper stays white so redaction boxes preview accurately across all themes. */
 .canvasWrap {
   position: relative;
   max-width: 100%;
-  background: #fff;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  background: #ffffff;
+  border: 1px solid var(--ds-border);
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.22);
   user-select: none;
   touch-action: none;
+}
+
+:global(html[data-ds-theme="dark"]) .canvasWrap {
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+}
+
+:global(html[data-ds-theme="hc"]) .canvasWrap {
+  border: 2px solid #ffffff;
+  box-shadow: none;
 }
 
 .canvas {
@@ -82,43 +100,44 @@
   touch-action: none;
 }
 
+/* Semantic redaction mark hatches over white PDF paper */
 .box {
   position: absolute;
   box-sizing: border-box;
   background:
     repeating-linear-gradient(
       -45deg,
-      rgba(224, 96, 96, 0.32),
-      rgba(224, 96, 96, 0.32) 6px,
-      rgba(168, 36, 36, 0.22) 6px,
-      rgba(168, 36, 36, 0.22) 12px
+      rgba(220, 38, 38, 0.3),
+      rgba(220, 38, 38, 0.3) 6px,
+      rgba(168, 36, 36, 0.2) 6px,
+      rgba(168, 36, 36, 0.2) 12px
     );
-  border: 1.5px dashed #ef6b6b;
+  border: 1.5px dashed #dc2626;
   cursor: move;
   outline: none;
   touch-action: none;
 }
 
 .boxSelected {
-  border: 2px solid #ff9c42;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.65), 0 0 10px rgba(255, 156, 66, 0.4);
+  border: 2px solid #f59e0b;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.65), 0 0 10px rgba(245, 158, 11, 0.45);
   z-index: 4;
 }
 
 .boxPreviewFinal {
   background-image: none;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .boxPreviewFinal.boxSelected {
-  border: 2px solid #ff9c42;
+  border: 2px solid #f59e0b;
 }
 
 .boxDraft {
   position: absolute;
   box-sizing: border-box;
-  background: rgba(224, 96, 96, 0.25);
-  border: 1.5px dashed #ff9c42;
+  background: rgba(220, 38, 38, 0.24);
+  border: 1.5px dashed #f59e0b;
   pointer-events: none;
   z-index: 5;
 }
@@ -147,8 +166,8 @@
   padding: 0;
   border-radius: 50%;
   border: 1px solid #1b1b1b;
-  background: #d94848;
-  color: #fff;
+  background: #dc2626;
+  color: #ffffff;
   font-size: 13px;
   line-height: 1;
   display: flex;
@@ -159,7 +178,7 @@
 }
 
 .boxDeleteBtn:hover {
-  background: #f05a5a;
+  background: #ef4444;
 }
 
 .handle {
@@ -168,7 +187,7 @@
   height: 10px;
   margin-left: -5px;
   margin-top: -5px;
-  background: #fff;
+  background: #ffffff;
   border: 1.5px solid #1f1f1f;
   border-radius: 2px;
   z-index: 6;
@@ -190,9 +209,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(24, 24, 24, 0.72);
-  color: #eee;
+  background: rgba(15, 23, 42, 0.72);
+  color: #ffffff;
   font-size: 0.9rem;
+  font-weight: 500;
   z-index: 10;
 }
 
@@ -200,8 +220,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
-  padding-top: 0.65rem;
-  border-top: 1px solid #3d3d3d;
+  padding-top: 0.7rem;
+  border-top: var(--ds-border-w) solid var(--ds-border);
   min-width: 0;
 }
 
@@ -213,8 +233,8 @@
 .sectionTitle {
   margin: 0;
   font-size: 0.88rem;
-  font-weight: 600;
-  color: #e6e6e6;
+  font-weight: 650;
+  color: var(--ds-ink);
   letter-spacing: 0.01em;
 }
 
@@ -227,12 +247,19 @@
 .searchInput {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 0.45rem 0.6rem;
-  border-radius: 6px;
-  border: 1px solid #555;
-  background: #222;
-  color: #f0f0f0;
+  padding: 0.45rem 0.65rem;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
   font-size: 0.88rem;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
 }
 
 .searchFlags {
@@ -249,22 +276,25 @@
 
 .piiBtn {
   padding: 0.38rem 0.45rem;
-  border-radius: 6px;
-  border: 1px solid #4e4e4e;
-  background: #2c2c2c;
-  color: #e0e0e0;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
   font-size: 0.78rem;
+  font-weight: 550;
   text-align: center;
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: border-color 0.14s, background 0.14s;
+  transition: border-color 0.14s ease, background-color 0.14s ease, color 0.14s ease;
 }
 
 .piiBtn:hover:not(:disabled) {
-  border-color: #e06060;
-  background: #3a2b2b;
+  border-color: var(--ds-bad);
+  background: var(--ds-bad-soft);
+  color: var(--ds-bad);
 }
 
 .piiBtn:disabled {
@@ -299,15 +329,15 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.35rem 0.45rem;
-  border-radius: 6px;
-  border: 1px solid #3f3f3f;
-  background: #272727;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
   min-width: 0;
 }
 
 .matchItemSelected {
-  border-color: #ff9c42;
-  background: #352b22;
+  border-color: var(--ds-warn);
+  background: var(--ds-warn-soft);
 }
 
 .matchSelectBtn {
@@ -319,7 +349,8 @@
   padding: 0;
   border: none;
   background: transparent;
-  color: #e6e6e6;
+  color: var(--ds-ink);
+  font: inherit;
   font-size: 0.8rem;
   text-align: left;
   cursor: pointer;
@@ -329,8 +360,10 @@
   flex-shrink: 0;
   padding: 0.1rem 0.36rem;
   border-radius: 4px;
-  background: #3a3a3a;
-  color: #cfcfcf;
+  background: var(--ds-surface-solid);
+  border: var(--ds-border-w) solid var(--ds-border);
+  color: var(--ds-ink-2);
+  font-family: var(--ds-font-mono);
   font-size: 0.72rem;
   font-variant-numeric: tabular-nums;
 }
@@ -349,15 +382,15 @@
   border: none;
   border-radius: 4px;
   background: transparent;
-  color: #bbb;
+  color: var(--ds-ink-3);
   font-size: 1rem;
   line-height: 1;
   cursor: pointer;
 }
 
 .matchRemoveBtn:hover {
-  background: rgba(224, 96, 96, 0.22);
-  color: #ff9d9d;
+  background: var(--ds-bad-soft);
+  color: var(--ds-bad);
 }
 
 .colorGroup {
@@ -368,7 +401,8 @@
 
 .colorGroupLabel {
   font-size: 0.82rem;
-  color: #cfcfcf;
+  font-weight: 500;
+  color: var(--ds-ink-2);
 }
 
 .swatchRow {
@@ -383,24 +417,25 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.3rem 0.55rem;
-  border-radius: 6px;
-  border: 1px solid #525252;
-  background: #2b2b2b;
-  color: #e4e4e4;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
   font-size: 0.78rem;
   cursor: pointer;
 }
 
 .swatchActive {
-  border-color: #e06060;
-  background: #3d2a2a;
+  border-color: var(--ds-bad);
+  background: var(--ds-bad-soft);
 }
 
 .swatchChip {
   width: 14px;
   height: 14px;
   border-radius: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  border: 1px solid var(--ds-border-strong);
   display: inline-block;
 }
 
@@ -409,10 +444,10 @@
   align-items: center;
   gap: 0.3rem;
   padding: 0.22rem 0.45rem;
-  border-radius: 6px;
-  border: 1px solid #525252;
-  background: #2b2b2b;
-  color: #cfcfcf;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink-2);
   font-size: 0.78rem;
 }
 
@@ -427,35 +462,36 @@
 
 .privacyNote {
   margin: 0;
-  padding: 0.55rem 0.65rem;
-  border-radius: 6px;
-  background: rgba(224, 96, 96, 0.1);
-  border: 1px solid rgba(224, 96, 96, 0.32);
-  color: #dcdcdc;
+  padding: 0.6rem 0.7rem;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-bad-soft);
+  border: var(--ds-border-w) solid var(--ds-bad);
+  color: var(--ds-ink);
   font-size: 0.78rem;
   line-height: 1.45;
 }
 
 .verifyBadge {
-  padding: 0.45rem 0.6rem;
-  border-radius: 6px;
-  background: rgba(47, 174, 107, 0.16);
-  border: 1px solid rgba(47, 174, 107, 0.45);
-  color: #a6ebc4;
+  padding: 0.5rem 0.65rem;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-good-soft);
+  border: var(--ds-border-w) solid var(--ds-good);
+  color: var(--ds-good);
   font-size: 0.8rem;
+  font-weight: 550;
   line-height: 1.35;
 }
 
 .verifyBadgeWarn {
-  background: rgba(229, 154, 58, 0.16);
-  border-color: rgba(229, 154, 58, 0.45);
-  color: #f6d09c;
+  background: var(--ds-warn-soft);
+  border-color: var(--ds-warn);
+  color: var(--ds-warn);
 }
 
 .scanStatus {
   margin: 0;
   font-size: 0.78rem;
-  color: #b7c4d6;
+  color: var(--ds-ink-2);
 }
 
 @media (max-width: 600px) {

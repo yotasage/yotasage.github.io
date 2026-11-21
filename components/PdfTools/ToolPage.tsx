@@ -3,42 +3,80 @@ import Link from 'next/link';
 import React from 'react';
 
 import { PdfTool } from '../../lib/pdf/tools';
+import { useI18n } from '../../lib/ui/i18n';
+import { useDesignSystemPage } from '../../lib/ui/theme';
 import styles from '../../styles/PdfTools.module.css';
-import HomeIcon from '../icons/home';
+import ToolHeader from '../UI/ToolHeader';
 import ToolIcon from './ToolIcon';
 
-// Page frame shared by the hub and every tool: header with links back, title and lead text.
-export function PdfPage({ title, lead, showHub, children }: { title: string; lead?: React.ReactNode; showHub?: boolean; children: React.ReactNode }) {
+function ShieldCheckIcon() {
   return (
-    <div className={styles.page}>
+    <svg
+      width={14}
+      height={14}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+// Page frame shared by the hub and every tool: frosted SaaS header with back navigation, lead text and responsive container.
+export function PdfPage({
+  title,
+  lead,
+  showHub,
+  children,
+}: {
+  title: string;
+  lead?: React.ReactNode;
+  showHub?: boolean;
+  children: React.ReactNode;
+}) {
+  useDesignSystemPage('#dc2626', '#ef6a50');
+  const { t } = useI18n();
+
+  return (
+    <div className={styles.page} data-ds="v2">
       <Head>
         <title>{title}</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <style jsx global>{`
-        html,
-        body {
-          margin: 0;
-          padding: 0;
-          background: #2b2b2b;
-        }
-        * {
-          box-sizing: border-box;
-        }
-      `}</style>
 
-      <header className={styles.header}>
-        <Link href="/" className={styles.homeLink} aria-label="Home"><HomeIcon /></Link>
-        {showHub && <Link href="/pdf/main" className={styles.crumb}>&larr; All PDF tools</Link>}
-        <h1 className={styles.title}>{title}</h1>
-      </header>
-      {lead && <p className={styles.lead}>{lead}</p>}
-      {children}
+      <ToolHeader
+        title={title}
+        showExperienceMode={false}
+        actions={
+          showHub ? (
+            <Link href="/pdf/main" className={styles.hubLink}>
+              &larr; {t('pdf.allTools')}
+            </Link>
+          ) : undefined
+        }
+      />
+
+      <main className={styles.main}>
+        {lead && <p className={styles.lead}>{lead}</p>}
+        {children}
+      </main>
     </div>
   );
 }
 
-export function FilePickerButton({ accept, multiple = true, onFiles, className, children }: {
+export function FilePickerButton({
+  accept,
+  multiple = true,
+  onFiles,
+  className,
+  children,
+}: {
   accept: string;
   multiple?: boolean;
   onFiles: (files: File[]) => void;
@@ -48,7 +86,9 @@ export function FilePickerButton({ accept, multiple = true, onFiles, className, 
   const input = React.useRef<HTMLInputElement>(null);
   return (
     <>
-      <button type="button" className={className ?? styles.button} onClick={() => input.current?.click()}>{children}</button>
+      <button type="button" className={className ?? styles.button} onClick={() => input.current?.click()}>
+        {children}
+      </button>
       <input
         ref={input}
         type="file"
@@ -68,7 +108,12 @@ export function FilePickerButton({ accept, multiple = true, onFiles, className, 
 
 // Accepts files dragged in from the desktop. Reordering cards inside the page does not carry files and is ignored.
 // Pages outside the PDF tools pass their own overClassName for the highlight while files are dragged over.
-export function DropTarget({ onFiles, className, overClassName = styles.dropOver, children }: {
+export function DropTarget({
+  onFiles,
+  className,
+  overClassName = styles.dropOver,
+  children,
+}: {
   onFiles: (files: File[]) => void;
   className: string;
   overClassName?: string;
@@ -79,7 +124,7 @@ export function DropTarget({ onFiles, className, overClassName = styles.dropOver
   const hasFiles = (e: React.DragEvent) => Array.from(e.dataTransfer.types).includes('Files');
   return (
     <div
-      className={[className, over ? overClassName : ''].join(' ')}
+      className={[className, over ? overClassName : ''].filter(Boolean).join(' ')}
       onDragEnter={(e) => {
         if (!hasFiles(e)) return;
         e.preventDefault();
@@ -112,13 +157,27 @@ export function Progress({ fraction, label }: { fraction: number; label: string 
   return (
     <div className={styles.progress} role="status">
       <span>{label}</span>
-      <div className={styles.progressTrack}><div style={{ width: `${Math.round(Math.min(1, Math.max(0, fraction)) * 100)}%` }} /></div>
+      <div className={styles.progressTrack}>
+        <div style={{ width: `${Math.round(Math.min(1, Math.max(0, fraction)) * 100)}%` }} />
+      </div>
     </div>
   );
 }
 
-// The layout of a tool: a large drop zone until files are added, then the file grid next to an options sidebar.
-export function ToolWorkspace({ tool, accept, multiple = true, selectLabel, dropLabel, addLabel = '+ Add files', hasFiles, onFiles, toolbar, sidebar, children }: {
+// The layout of a tool: a crisp SaaS drop card until files are added, then the file grid next to a sticky options sidebar.
+export function ToolWorkspace({
+  tool,
+  accept,
+  multiple = true,
+  selectLabel,
+  dropLabel,
+  addLabel = '+ Add files',
+  hasFiles,
+  onFiles,
+  toolbar,
+  sidebar,
+  children,
+}: {
   tool: PdfTool;
   accept: string;
   multiple?: boolean;
@@ -131,15 +190,29 @@ export function ToolWorkspace({ tool, accept, multiple = true, selectLabel, drop
   sidebar: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const { t } = useI18n();
+
   if (!hasFiles) {
     return (
       <DropTarget onFiles={onFiles} className={styles.hero}>
-        <ToolIcon name={tool.icon} color={tool.color} size={72} />
+        <span
+          className={styles.heroIconBadge}
+          style={{ '--tool-accent': tool.color } as React.CSSProperties}
+        >
+          <ToolIcon name={tool.icon} color={tool.color} size={44} />
+        </span>
         <h2>{tool.title}</h2>
         <p>{tool.description}</p>
-        <FilePickerButton accept={accept} multiple={multiple} onFiles={onFiles} className={styles.heroButton}>{selectLabel}</FilePickerButton>
+        <FilePickerButton accept={accept} multiple={multiple} onFiles={onFiles} className={styles.heroButton}>
+          {selectLabel}
+        </FilePickerButton>
         <span className={styles.hint}>{dropLabel}</span>
-        <span className={styles.hint}>Your files are processed in this browser and are never uploaded.</span>
+        <span className={styles.privacyBadge}>
+          <span className={styles.privacyBadgeIcon}>
+            <ShieldCheckIcon />
+          </span>
+          <span>{t('pdf.localHint')}</span>
+        </span>
       </DropTarget>
     );
   }
@@ -147,7 +220,9 @@ export function ToolWorkspace({ tool, accept, multiple = true, selectLabel, drop
     <div className={styles.workspace}>
       <DropTarget onFiles={onFiles} className={styles.filesPanel}>
         <div className={styles.toolbar}>
-          <FilePickerButton accept={accept} multiple={multiple} onFiles={onFiles} className={styles.buttonSmall}>{addLabel}</FilePickerButton>
+          <FilePickerButton accept={accept} multiple={multiple} onFiles={onFiles} className={styles.buttonSmall}>
+            {addLabel}
+          </FilePickerButton>
           <span className={styles.toolbarSpacer} />
           {toolbar}
         </div>
