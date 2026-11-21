@@ -57,7 +57,13 @@ Status: ✅ done · 🔄 in progress · 📋 planned
 | U3 | Simulation setup (`/simsetup/main`) redesign: Hybrid Split + Mode Tabs (`Workbench` / `Examples & Guide` / `Theory`), Quick/Standard/Teaching modes, presets, EN/NB | ✅ | `bd5d504` |
 | U4 | Resistor lookup (`/resistor/main`) redesign: Hybrid Split + Mode Tabs (`Workbench` with sticky left hero + tabbed right `Lookup` / `Bands & SMD` / `Combinations` / `Design`, plus `Examples` and `Theory & Reference`), Quick/Standard/Teaching, EN/NB, harness update | ✅ | `523956a` |
 | U5 | Smith chart (`/smith-chart/main`) redesign: Hybrid Split + Mode Tabs (`Workbench` with sticky chart + tabbed right `Circuit` / `Solver` / `Sweep` / `Equations` / `Export`, plus `Learn & Challenges` and `Theory & References`), Quick/Standard/Teaching, EN/NB, preserving 60 fps drag engine | ✅ | `0e12806` |
-| U6 | Full verification (`npx tsc --noEmit`, `npm run build`, engine checks, Playwright desktop & 390 px visual audit across Light/Dark/HC/Modes/EN/NB), `CLAUDE.md` & plan status update | ✅ | pending |
+| U6 | Full verification (`npx tsc --noEmit`, `npm run build`, engine checks, Playwright desktop & 390 px visual audit across Light/Dark/HC/Modes/EN/NB), `CLAUDE.md` & plan status update | ✅ | `a4874eb` |
+| U7 | EM simulation (`/em-sim/main`) redesign: Modern High-Polish SaaS + Non-Destructive Mode Tabs (`Workbench` with `Stackup` / `Trace` / `Via` / `Waves` / `Export` tabs, `Examples`, `Theory & References`), Quick/Standard/Teaching + `Why` integration, Light/Dark/HC AAA, EN/NB | ✅ | `1d9f587` |
+| U8 | QR code generator (`/qrcode/main`) + QR code reader (`/qr-reader/main`) redesign: Hybrid Split + Mode Tabs (`Workbench`, `Examples` / `Guide & Theory`), Quick/Standard/Teaching, Light/Dark/HC AAA, EN/NB | ✅ | `1cdd296` |
+| U9 | Base64 image converter (`/base64-image/main`), Text case converter (`/text-case/main`), and Licenses (`/licenses`) redesign: Modern High-Polish SaaS, Hybrid Split / Mode Tabs, Quick/Standard/Teaching + Theory guides, Light/Dark/HC AAA, EN/NB | ✅ | `97d8b40` |
+| U10 | PDF tools suite (`/pdf/main` + shared `ToolPage.tsx` covering all 33 `/pdf/*` routes + specialized Reader/Compare/OCR/Redact views): Modern High-Polish SaaS, category pills & search on hub, Light/Dark/HC AAA, EN/NB | ✅ | `41799ce` |
+| U11 | 3D viewer (`/3d-viewer/main`) + PCB viewer (`/pcb-viewer/main`) redesign: Frosted `ToolHeader`, Modern High-Polish SaaS dropzones & tabbed CAD/EDA inspector panels, Quick/Standard/Teaching + Formats & Shortcuts guide, Light/Dark/HC AAA, EN/NB | ✅ | `e61028b` |
+| U12 | Full-site verification (`npx tsc --noEmit`, `npm run build`, engine checks, Playwright visual + functional audit across all newly redesigned tools at 1280 px & 390 px in Light/Dark/HC/Modes/EN/NB), polish, and docs update | ✅ | complete |
 
 ---
 

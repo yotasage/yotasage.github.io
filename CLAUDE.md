@@ -231,7 +231,7 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   `later.md`, and the `notes-<step>.md` each step leaves.
 - [docs/agent-workflow.md](docs/agent-workflow.md): how to run large work with Claude agents cheaply and safely, with
   the measured cost of the PCB viewer build.
-- [docs/ui-redesign/plan.md](docs/ui-redesign/plan.md): Modern High-Polish SaaS Design System v2 spec (`styles/design-system.css`, `lib/ui/{theme,mode,i18n,translations}.*`, `components/UI/{ToolHeader,PillTabs,TeachingCallout}.tsx`, self-hosted Inter & JetBrains Mono fonts) and flagship redesign status (`/`, `/simsetup/main`, `/resistor/main`, `/smith-chart/main`).
+- [docs/ui-redesign/plan.md](docs/ui-redesign/plan.md): Modern High-Polish SaaS Design System v2 spec (`styles/design-system.css`, `lib/ui/{theme,mode,i18n,translations}.*`, `components/UI/{ToolHeader,PillTabs,TeachingCallout}.tsx`, self-hosted Inter & JetBrains Mono fonts) rolled out across every route on the site (`/`, `/licenses`, `/simsetup/main`, `/resistor/main`, `/smith-chart/main`, `/em-sim/main`, `/qrcode/main`, `/qr-reader/main`, `/base64-image/main`, `/text-case/main`, `/pdf/*`, `/3d-viewer/main`, `/pcb-viewer/main`).
 - [docs/BACKLOG.md](docs/BACKLOG.md): wanted but not scheduled, for every tool (ids `BL<n>`, never reused). Work left out
   of a step goes here.
 
