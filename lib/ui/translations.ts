@@ -438,6 +438,85 @@ export const en = {
   'emsim.teaching.wavesTitle': 'When to run 3D full-wave FDTD',
   'emsim.teaching.wavesBody':
     'Quasi-static models hold well below λ/8 where transverse fields dominate. Run the in-browser WebGPU / CPU FDTD solver when edge speeds are very fast, stubs resonate near the signal band, or return vias sit far from the barrel.',
+
+  // QR code generator namespace
+  'qrgen.pageTitle': 'QR Code Generator · yotasage',
+  'qrgen.title': 'QR Code Generator',
+  'qrgen.workbench': 'Workbench',
+  'qrgen.guide': 'Guide & Theory',
+
+  'qrgen.tabsAria': 'Generator sections',
+  'qrgen.tab.content': 'Content',
+  'qrgen.tab.symbol': 'Symbol',
+  'qrgen.tab.encoding': 'Encoding',
+  'qrgen.tab.style': 'Style & Export',
+  'qrgen.tab.decrypt': 'Decrypt',
+
+  'qrgen.quick.badge': 'Quick mode',
+  'qrgen.quick.bannerText':
+    'Showing Content and Style & Export. Switch to Standard for Symbol version/mask, Encoding/ECI/GS1, and Decrypt.',
+  'qrgen.quick.switchStandard': 'Switch to Standard',
+  'qrgen.quick.switchTeaching': 'Try Teaching mode',
+
+  'qrgen.preview.title': 'Live preview',
+  'qrgen.preview.download': 'Download',
+  'qrgen.preview.detailsTitle': 'Symbol details',
+  'qrgen.preview.modules': 'modules',
+
+  'qrgen.teaching.ecTitle': 'Reed-Solomon error correction (L / M / Q / H)',
+  'qrgen.teaching.ecBody':
+    'QR codes embed redundant Reed-Solomon codewords so damaged or occluded symbols remain scannable: L restores ~7%, M ~15%, Q ~25%, and H ~30%. Always choose Q or H when placing a centre logo.',
+  'qrgen.teaching.quietTitle': 'Versions, capacity & quiet zones',
+  'qrgen.teaching.quietBody':
+    'Model 2 scales from Version 1 (21 × 21) to Version 40 (177 × 177), growing by 4 modules per side per version. ISO/IEC 18004 requires a 4-module quiet zone around square QR codes (2 modules for Micro QR and rMQR) so cameras can isolate the finder patterns.',
+  'qrgen.teaching.familyTitle': 'Why Micro QR and rMQR exist',
+  'qrgen.teaching.familyBody':
+    'Micro QR uses a single finder pattern to fit small parts (down to 11 × 11 modules). Rectangular Micro QR (rMQR, ISO/IEC 23941) stays as short as 7 modules tall for cables, tubes, and narrow PCB or label edges.',
+  'qrgen.teaching.encodingTitle': 'Encoding modes & bit efficiency',
+  'qrgen.teaching.encodingBody':
+    'Auto mode mixes segments to minimize symbol size: Numeric packs 3 digits into 10 bits (3.33 bits/char), Alphanumeric packs 2 chars into 11 bits (5.5 bits/char), Byte uses 8 bits/byte, and Kanji packs Shift JIS characters into 13 bits.',
+
+  'qrgen.guide.title': 'QR Code Guide & Theory',
+  'qrgen.guide.lead':
+    'Standards, symbol families, Reed-Solomon error correction budgets, quiet zone requirements, and encoding modes.',
+
+  // QR code reader namespace
+  'qrread.pageTitle': 'QR Code Reader · yotasage',
+  'qrread.title': 'QR Code Reader',
+  'qrread.workbench': 'Workbench',
+  'qrread.guide': 'Supported Formats',
+
+  'qrread.tabsAria': 'Input sources',
+  'qrread.tab.file': 'Image / PDF',
+  'qrread.tab.camera': 'Camera',
+  'qrread.tab.text': 'Text',
+
+  'qrread.quick.badge': 'Quick mode',
+  'qrread.quick.bannerText':
+    'Showing Image / PDF and Camera scanning. Switch to Standard to paste raw payload text or inspect extra details.',
+  'qrread.quick.switchStandard': 'Switch to Standard',
+  'qrread.quick.switchTeaching': 'Try Teaching mode',
+
+  'qrread.results.title': 'Decoded results',
+  'qrread.results.clearAll': 'Clear all',
+  'qrread.results.emptyTitle': 'No codes decoded yet',
+  'qrread.results.emptyDesc':
+    'Drop an image or PDF, paste a screenshot with Ctrl+V, start your camera, or try a built-in example with three QR codes.',
+  'qrread.results.tryExample': 'Try an example',
+
+  'qrread.teaching.wasmTitle': 'Local decoding with ZXing-C++ WebAssembly',
+  'qrread.teaching.wasmBody':
+    'Images, PDF pages, and camera frames are decoded inside a background Web Worker using a self-hosted ZXing-C++ WebAssembly module (/qr/). Pictures and video frames never leave your device.',
+  'qrread.teaching.parsersTitle': 'Structured payload parsers',
+  'qrread.teaching.parsersBody':
+    'Decoded text and bytes are matched against standards for Wi-Fi, eSIM LPA activation codes, vCard/MeCard contacts, iCalendar events, EPC/Swiss QR bills, and TOTP 2FA URIs — giving readable previews without blind execution.',
+  'qrread.teaching.rawTitle': 'Raw bytes, ECI & symbol geometry',
+  'qrread.teaching.rawBody':
+    'Switch to the Raw or Symbol tab inside any result card to inspect hex dumps, non-printable control characters, Extended Channel Interpretation (ECI) encodings, version, mask, and error correction level.',
+
+  'qrread.guide.title': 'Supported Formats & Privacy',
+  'qrread.guide.lead':
+    'Every barcode symbology, structured content parser, and client-side privacy guarantee built into this reader.',
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -878,6 +957,85 @@ export const nb: Record<TranslationKey, string> = {
   'emsim.teaching.wavesTitle': 'Når bør du kjøre 3D fullbølge-FDTD',
   'emsim.teaching.wavesBody':
     'Kvasi-statiske modeller er nøyaktige langt under λ/8. Kjør 3D FDTD-løseren (WebGPU / CPU) i nettleseren når stigetidene er svært korte, en stub resonerer nær signalbåndet, eller returviaene ligger langt fra signalviaen.',
+
+  // QR code generator namespace
+  'qrgen.pageTitle': 'QR-kodegenerator · yotasage',
+  'qrgen.title': 'QR-kodegenerator',
+  'qrgen.workbench': 'Arbeidsbenk',
+  'qrgen.guide': 'Guide og teori',
+
+  'qrgen.tabsAria': 'Generatorseksjoner',
+  'qrgen.tab.content': 'Innhold',
+  'qrgen.tab.symbol': 'Symbol',
+  'qrgen.tab.encoding': 'Koding',
+  'qrgen.tab.style': 'Stil og eksport',
+  'qrgen.tab.decrypt': 'Dekrypter',
+
+  'qrgen.quick.badge': 'Rask modus',
+  'qrgen.quick.bannerText':
+    'Viser Innhold og Stil og eksport. Bytt til Standard for symbolversjon/maske, koding/ECI/GS1 og dekryptering.',
+  'qrgen.quick.switchStandard': 'Bytt til Standard',
+  'qrgen.quick.switchTeaching': 'Prøv Læringsmodus',
+
+  'qrgen.preview.title': 'Forhåndsvisning',
+  'qrgen.preview.download': 'Last ned',
+  'qrgen.preview.detailsTitle': 'Symboldetaljer',
+  'qrgen.preview.modules': 'moduler',
+
+  'qrgen.teaching.ecTitle': 'Reed-Solomon feilkorrigering (L / M / Q / H)',
+  'qrgen.teaching.ecBody':
+    'QR-koder legger inn redundante Reed-Solomon-kodeord slik at skadede eller delvis tildekkede symboler fortsatt kan skannes: L gjenoppretter ~7 %, M ~15 %, Q ~25 % og H ~30 %. Velg alltid Q eller H ved logo i midten.',
+  'qrgen.teaching.quietTitle': 'Versjoner, kapasitet og stille sone',
+  'qrgen.teaching.quietBody':
+    'Modell 2 skalerer fra versjon 1 (21 × 21) til versjon 40 (177 × 177), med 4 ekstra moduler per side for hvert trinn. ISO/IEC 18004 krever en stille sone på 4 moduler rundt kvadratiske QR-koder (2 moduler for Micro QR og rMQR) slik at kameraet finner søkemønstrene.',
+  'qrgen.teaching.familyTitle': 'Hvorfor Micro QR og rMQR finnes',
+  'qrgen.teaching.familyBody':
+    'Micro QR bruker bare ett søkemønster for å passe på små komponenter (ned til 11 × 11 moduler). Rektangulær Micro QR (rMQR, ISO/IEC 23941) er ned til 7 moduler høy for kabler, rør og smale kretskort- eller etikettkanter.',
+  'qrgen.teaching.encodingTitle': 'Kodemoduser og biteffektivitet',
+  'qrgen.teaching.encodingBody':
+    'Automatisk modus kombinerer segmenter for å krympe symbolet: Numerisk pakker 3 siffer på 10 bit (3,33 bit/tegn), Alfanumerisk 2 tegn på 11 bit (5,5 bit/tegn), Byte bruker 8 bit/byte, og Kanji pakker Shift JIS-tegn på 13 bit.',
+
+  'qrgen.guide.title': 'Guide og teori for QR-koder',
+  'qrgen.guide.lead':
+    'Standarder, symbolfamilier, Reed-Solomon feilkorrigeringsbudsjett, krav til stille sone og kodemoduser.',
+
+  // QR code reader namespace
+  'qrread.pageTitle': 'QR-kodeleser · yotasage',
+  'qrread.title': 'QR-kodeleser',
+  'qrread.workbench': 'Arbeidsbenk',
+  'qrread.guide': 'Støttede formater',
+
+  'qrread.tabsAria': 'Inndatakilder',
+  'qrread.tab.file': 'Bilde / PDF',
+  'qrread.tab.camera': 'Kamera',
+  'qrread.tab.text': 'Tekst',
+
+  'qrread.quick.badge': 'Rask modus',
+  'qrread.quick.bannerText':
+    'Viser skanning fra bilde/PDF og kamera. Bytt til Standard for å lime inn rå payload-tekst eller inspisere flere detaljer.',
+  'qrread.quick.switchStandard': 'Bytt til Standard',
+  'qrread.quick.switchTeaching': 'Prøv Læringsmodus',
+
+  'qrread.results.title': 'Dekodede resultater',
+  'qrread.results.clearAll': 'Tøm alle',
+  'qrread.results.emptyTitle': 'Ingen koder dekodet ennå',
+  'qrread.results.emptyDesc':
+    'Slipp et bilde eller en PDF, lim inn et skjermbilde med Ctrl+V, start kameraet, eller prøv et innebygd eksempel med tre QR-koder.',
+  'qrread.results.tryExample': 'Prøv et eksempel',
+
+  'qrread.teaching.wasmTitle': 'Lokal dekoding med ZXing-C++ WebAssembly',
+  'qrread.teaching.wasmBody':
+    'Bilder, PDF-sider og kamerabilder dekodes i en lokal Web Worker med en selvhostet ZXing-C++ WebAssembly-modul (/qr/). Bilder og video forlater aldri enheten din.',
+  'qrread.teaching.parsersTitle': 'Strukturerte innholdstolkere',
+  'qrread.teaching.parsersBody':
+    'Dekodet tekst og rå byte gjenkjennes mot standarder for Wi-Fi, eSIM LPA-aktiveringskoder, vCard/MeCard-kontakter, iCalendar-hendelser, EPC/sveitsiske QR-fakturaer og TOTP 2FA — med trygge forhåndsvisninger.',
+  'qrread.teaching.rawTitle': 'Rå byte, ECI og symbolgeometri',
+  'qrread.teaching.rawBody':
+    'Åpne fanene Raw eller Symbol på et resultat for å inspisere heksdump, kontrolltegn, ECI-tegnsett, versjon, maske og feilkorrigeringsnivå.',
+
+  'qrread.guide.title': 'Støttede formater og personvern',
+  'qrread.guide.lead':
+    'Alle strekkodesymboler, strukturerte innholdstolkere og lokale personverngarantier i denne leseren.',
 };
 
 export const TRANSLATIONS: Record<Locale, Record<TranslationKey, string>> = {
