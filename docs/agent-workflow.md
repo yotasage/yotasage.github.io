@@ -104,7 +104,7 @@ harness was in a session's scratch folder; its contents are described in the pla
   - checks the agents with `ListAgents` and the task notifications;
   - resumes with `SendMessage` any agent that a usage limit, an API error or a lost connection stopped and that is not
     running again, telling it to continue where it stopped, check `git status`, reuse or stop a dev server left on port
-    3020, delete any `AGENTS.md` that `next dev` wrote, and finish its original brief;
+    3020, restore `AGENTS.md` with `git checkout -- AGENTS.md` if `next dev` modified it, and finish its original brief;
   - does not resume agents that finished normally or that the owner stopped, and does not start new agents;
   - tells the owner in one line which agent it resumed and why, or ends with one short line if nothing needed it.
 

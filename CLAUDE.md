@@ -4,6 +4,8 @@ A personal collection of browser tools (simulation setup calculator, QR code gen
 converter, text case converter, 3D viewer, PCB viewer, resistor lookup, Smith chart, EM simulation), so the owner does not have to use other people's sites with ads and bad design. Next.js 16 Pages Router,
 React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 
+> **Before starting multi-step work:** For any feature, phase, or plan work beyond a quick single-file fix, **read [docs/agent-workflow.md](docs/agent-workflow.md) before writing code** and follow it (coordinator + one step subagent at a time, targeted briefs, watchdog schedule, verification bar, and per-step commits). `AGENTS.md`, `GEMINI.md`, and `.agents/rules/agent-workflow.md` all point here so every AI tool follows the same workflow.
+
 ## Hard constraints
 
 - **No server, ever.** The site is a static export. Everything runs client-side (JS or WebAssembly). Not allowed:
