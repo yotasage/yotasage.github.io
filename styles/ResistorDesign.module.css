@@ -92,7 +92,7 @@
 }
 
 .schPart {
-  fill: var(--bg);
+  fill: var(--field);
 }
 
 .schDot {
@@ -101,7 +101,7 @@
 }
 
 .schPin {
-  fill: var(--bg);
+  fill: var(--field);
 }
 
 .schName,

@@ -273,11 +273,76 @@ export const en = {
   'simsetup.theory.rule': 'Rule',
   'simsetup.theory.note': 'Note',
 
-  // Resistor lookup namespace (ready for U4)
+  // Resistor lookup namespace
+  'resistor.pageTitle': 'Resistor Lookup · yotasage',
   'resistor.title': 'Resistor Lookup',
   'resistor.workbench': 'Workbench',
   'resistor.examples': 'Examples',
   'resistor.theory': 'Theory & Reference',
+
+  'resistor.tabsAria': 'Workbench tools',
+  'resistor.tab.lookup': 'Lookup',
+  'resistor.tab.drawing': 'Bands & Export',
+  'resistor.tab.combinations': 'Combinations',
+  'resistor.tab.design': 'Design',
+
+  'resistor.theoryTabsAria': 'Theory and reference sections',
+  'resistor.theoryTab.theory': 'Theory',
+  'resistor.theoryTab.reference': 'Reference Tables',
+  'resistor.theoryTab.references': 'References',
+  'resistor.referencesLead':
+    'The sources of the tables and of the theory on this page, in the order they are first cited.',
+
+  'resistor.quick.badge': 'Quick mode',
+  'resistor.quick.bannerText':
+    'Showing Lookup and Bands & Export. Switch to Standard for series/parallel combinations and divider or gain design.',
+  'resistor.quick.switchStandard': 'Switch to Standard',
+  'resistor.quick.switchTeaching': 'Try Teaching mode',
+
+  'resistor.teaching.inputTitle': 'Smart input syntax & stepping',
+  'resistor.teaching.inputBody':
+    'Type a value (4k7, 4.7k, 49.9), an SMD marking (472, 01C), or band colours (yellow violet red gold). Press Up/Down arrows inside the field to step through the active E-series.',
+  'resistor.teaching.lookupTitle': 'Why E-series use logarithmic spacing',
+  'resistor.teaching.lookupBody':
+    'IEC 60063 spaces preferred values geometrically across each decade so maximum rounding error stays constant and matches the component tolerance (E12 ≈ ±10%, E24 ≈ ±5%, E96 ≈ ±1%).',
+  'resistor.teaching.drawingTitle': 'Interactive band & SMD decoding',
+  'resistor.teaching.drawingBody':
+    'Click any coloured band on the axial drawing to change it directly, or edit the SMD code. Four bands carry 2 digits + multiplier + tolerance; 5- and 6-band parts add a third digit and TCR.',
+  'resistor.teaching.combosTitle': 'Trimming values with combinations',
+  'resistor.teaching.combosBody':
+    'Adding a small series resistor trims upward, while paralleling a much larger resistor trims downward slightly. Two common E24 parts often achieve tighter accuracy than a single E96 part.',
+  'resistor.teaching.designTitle': 'Worst-case vs. RSS tolerance budgets',
+  'resistor.teaching.designBody':
+    'Worst-case assumes every resistor hits its tolerance and temperature drift limit together. Root-sum-square (RSS) models independent random variations across production parts.',
+
+  'resistor.examples.title': 'Practical engineering examples',
+  'resistor.examples.subtitle':
+    'Click any preset to load its value, marking, and typical tolerance straight into the Workbench.',
+  'resistor.examples.try': 'Load in Workbench →',
+  'resistor.examples.i2c.title': '4.7 kΩ I²C Pull-Up',
+  'resistor.examples.i2c.tag': 'Digital · E24 ±5%',
+  'resistor.examples.i2c.desc':
+    'Standard pull-up resistor for 3.3 V / 5 V I²C bus lines (SDA and SCL) balancing rise time against sink current.',
+  'resistor.examples.led.title': '330 Ω LED Limiter',
+  'resistor.examples.led.tag': 'Indicator · 5 V rail',
+  'resistor.examples.led.desc':
+    'Classic current-limiting resistor for a red or green indicator LED (~9–10 mA from a 5 V logic output).',
+  'resistor.examples.rf.title': '49.9 Ω 1% RF Termination',
+  'resistor.examples.rf.tag': 'RF · E96 ±1%',
+  'resistor.examples.rf.desc':
+    'Nearest E96 standard value to 50 Ω for impedance-matched RF ports, coaxial terminations, and high-speed lines.',
+  'resistor.examples.opamp.title': '100 kΩ Op-Amp Feedback',
+  'resistor.examples.opamp.tag': 'Analog · E96 ±1%',
+  'resistor.examples.opamp.desc':
+    'Precision feedback resistor paired with 10 kΩ for an inverting gain of −10 or non-inverting gain of 11.',
+  'resistor.examples.smd3.title': '472 3-Digit SMD',
+  'resistor.examples.smd3.tag': 'SMD · 3-digit code',
+  'resistor.examples.smd3.desc':
+    'Standard 3-digit surface-mount marking: digits 4 and 7 followed by 2 zeros (47 × 10² = 4.7 kΩ).',
+  'resistor.examples.eia96.title': '01C EIA-96 10 kΩ',
+  'resistor.examples.eia96.tag': 'SMD · EIA-96 1%',
+  'resistor.examples.eia96.desc':
+    'Compact 0603 1% precision marking: code 01 maps to 100 in the E96 table, multiplied by C (×100) = 10 kΩ.',
 
   // Smith chart namespace (ready for U5)
   'smith.title': 'Smith Chart',
@@ -559,11 +624,76 @@ export const nb: Record<TranslationKey, string> = {
   'simsetup.theory.rule': 'Regel',
   'simsetup.theory.note': 'Note',
 
-  // Resistor lookup namespace (ready for U4)
+  // Resistor lookup namespace
+  'resistor.pageTitle': 'Motstandsoppslag · yotasage',
   'resistor.title': 'Motstandsoppslag',
   'resistor.workbench': 'Arbeidsbenk',
   'resistor.examples': 'Eksempler',
   'resistor.theory': 'Teori og referanser',
+
+  'resistor.tabsAria': 'Verktøy i arbeidsbenken',
+  'resistor.tab.lookup': 'Oppslag',
+  'resistor.tab.drawing': 'Bånd og eksport',
+  'resistor.tab.combinations': 'Kombinasjoner',
+  'resistor.tab.design': 'Design',
+
+  'resistor.theoryTabsAria': 'Teori- og referanseseksjoner',
+  'resistor.theoryTab.theory': 'Teori',
+  'resistor.theoryTab.reference': 'Referansetabeller',
+  'resistor.theoryTab.references': 'Kilder',
+  'resistor.referencesLead':
+    'Kildene til tabellene og teorien på denne siden, i rekkefølgen de først siteres.',
+
+  'resistor.quick.badge': 'Rask modus',
+  'resistor.quick.bannerText':
+    'Viser Oppslag og Bånd og eksport. Bytt til Standard for serie-/parallellkombinasjoner og deler- eller forsterkerdesign.',
+  'resistor.quick.switchStandard': 'Bytt til Standard',
+  'resistor.quick.switchTeaching': 'Prøv Læringsmodus',
+
+  'resistor.teaching.inputTitle': 'Smart inntasting og trinnvis endring',
+  'resistor.teaching.inputBody':
+    'Skriv en verdi (4k7, 4.7k, 49.9), en SMD-kode (472, 01C) eller fargebånd (yellow violet red gold). Bruk pil opp/ned i feltet for å gå trinnvis gjennom aktiv E-serie.',
+  'resistor.teaching.lookupTitle': 'Hvorfor E-seriene er logaritmisk fordelt',
+  'resistor.teaching.lookupBody':
+    'IEC 60063 fordeler standardverdier geometrisk i hvert dekade slik at maksimal avrundingsfeil er konstant og passer toleransen (E12 ≈ ±10 %, E24 ≈ ±5 %, E96 ≈ ±1 %).',
+  'resistor.teaching.drawingTitle': 'Interaktiv bånd- og SMD-dekoding',
+  'resistor.teaching.drawingBody':
+    'Klikk på et fargebånd i tegningen for å endre det direkte, eller rediger SMD-koden. Fire bånd gir 2 siffer + multiplikator + toleranse; 5 og 6 bånd legger til tredje siffer og TCR.',
+  'resistor.teaching.combosTitle': 'Finjustering med motstandskombinasjoner',
+  'resistor.teaching.combosBody':
+    'En liten motstand i serie justerer oppover, mens en mye større motstand i parallell justerer svakt nedover. To vanlige E24-verdier gir ofte høyere presisjon enn én E96-verdi.',
+  'resistor.teaching.designTitle': 'Verstefall kontra RSS-toleransebudsjett',
+  'resistor.teaching.designBody':
+    'Verstefallsanalyse antar at alle motstander treffer toleranse- og temperaturgrensen samtidig. Kvadratrotsum (RSS) modellerer uavhengige tilfeldige avvik i produksjon.',
+
+  'resistor.examples.title': 'Praktiske elektronikkeksempler',
+  'resistor.examples.subtitle':
+    'Klikk på en mal for å laste verdi, merking og typisk toleranse rett inn i arbeidsbenken.',
+  'resistor.examples.try': 'Last i arbeidsbenk →',
+  'resistor.examples.i2c.title': '4,7 kΩ I²C Pull-Up',
+  'resistor.examples.i2c.tag': 'Digital · E24 ±5 %',
+  'resistor.examples.i2c.desc':
+    'Standard pull-up-motstand for 3,3 V / 5 V I²C-busslinjer (SDA og SCL) som balanserer stigetid mot strømtrekk.',
+  'resistor.examples.led.title': '330 Ω LED-formotstand',
+  'resistor.examples.led.tag': 'Indikator · 5 V',
+  'resistor.examples.led.desc':
+    'Klassisk strømbegrensningsmotstand for en rød eller grønn indikator-LED (~9–10 mA fra en 5 V-utgang).',
+  'resistor.examples.rf.title': '49,9 Ω 1 % RF-terminering',
+  'resistor.examples.rf.tag': 'RF · E96 ±1 %',
+  'resistor.examples.rf.desc':
+    'Nærmeste E96-standardverdi til 50 Ω for impedanstilpassede RF-porter, koaksialterminering og høyhastighetslinjer.',
+  'resistor.examples.opamp.title': '100 kΩ Op-amp tilbakekobling',
+  'resistor.examples.opamp.tag': 'Analog · E96 ±1 %',
+  'resistor.examples.opamp.desc':
+    'Presisjonsmotstand i tilbakekobling sammen med 10 kΩ for inverterende forsterkning −10 eller ikke-inverterende 11.',
+  'resistor.examples.smd3.title': '472 3-sifret SMD',
+  'resistor.examples.smd3.tag': 'SMD · 3-sifret kode',
+  'resistor.examples.smd3.desc':
+    'Standard 3-sifret overflatemontert merking: sifrene 4 og 7 etterfulgt av 2 nuller (47 × 10² = 4,7 kΩ).',
+  'resistor.examples.eia96.title': '01C EIA-96 10 kΩ',
+  'resistor.examples.eia96.tag': 'SMD · EIA-96 1 %',
+  'resistor.examples.eia96.desc':
+    'Kompakt 0603 1 % presisjonsmerking: kode 01 tilsvarer 100 i E96-tabellen, multiplisert med C (×100) = 10 kΩ.',
 
   // Smith chart namespace (ready for U5)
   'smith.title': 'Smith-diagram',
