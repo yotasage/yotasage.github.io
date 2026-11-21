@@ -2212,3 +2212,210 @@
     padding: 0.7rem;
   }
 }
+
+/* Pack C tools: grayscale, invert / dark mode (compare bar, swatch cards, stats) */
+
+.compareCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.85rem 0.95rem;
+  margin-bottom: 1rem;
+  border: 1px solid #444;
+  border-radius: 10px;
+  background: #242424;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.compareBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  min-width: 0;
+}
+
+.compareTitleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.compareTitleRow h3 {
+  margin: 0;
+  font-size: 0.94rem;
+}
+
+.compareControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.compareToggle {
+  display: inline-flex;
+  border: 1px solid #555;
+  border-radius: 7px;
+  background: #1d1d1d;
+  padding: 2px;
+  gap: 2px;
+  max-width: 100%;
+}
+
+.compareToggleBtn {
+  padding: 0.28rem 0.65rem;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: #bcbcbc;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.compareToggleBtn:hover {
+  color: #ffffff;
+}
+
+.compareToggleBtnActive {
+  background: #0070f3;
+  color: #ffffff;
+}
+
+.modeCardList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.modeCard {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0.55rem 0.68rem;
+  border: 1px solid #555;
+  border-radius: 8px;
+  background: #2b2b2b;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.modeCard:hover {
+  border-color: #9a9a9a;
+}
+
+.modeCardSelected {
+  border-color: #0070f3;
+  background: rgba(0, 112, 243, 0.12);
+}
+
+.modeSwatch {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  user-select: none;
+}
+
+.modeSwatchDot {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.modeCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.modeCardBody strong {
+  font-size: 0.9rem;
+  color: #ffffff;
+}
+
+.modeCardBody small {
+  font-size: 0.77rem;
+  color: #a6a6a6;
+  line-height: 1.32;
+}
+
+.infoNote {
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #444;
+  border-radius: 8px;
+  background: #232323;
+  color: #bcbcbc;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.statList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.15rem;
+}
+
+.statChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.14rem 0.48rem;
+  border: 1px solid #4a4a4a;
+  border-radius: 999px;
+  background: #222;
+  color: #d8d8d8;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.statChipWarn {
+  border-color: #e0a526;
+  background: rgba(224, 165, 38, 0.14);
+  color: #f6d580;
+}
+
+@media (max-width: 600px) {
+  .compareCard {
+    padding: 0.65rem;
+  }
+  .compareBar {
+    gap: 0.45rem;
+  }
+  .compareControls {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .compareToggleBtn {
+    padding: 0.26rem 0.52rem;
+    font-size: 0.78rem;
+  }
+}

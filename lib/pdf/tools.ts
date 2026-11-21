@@ -21,7 +21,9 @@ export type ToolIconName =
   | 'watermark'
   | 'crop'
   | 'resize'
-  | 'nup';
+  | 'nup'
+  | 'grayscale'
+  | 'invert';
 
 export interface PdfTool {
   id: string;
@@ -235,11 +237,29 @@ export const NUP: PdfTool = {
   color: '#f07c3a',
 };
 
+export const GRAYSCALE: PdfTool = {
+  id: 'grayscale',
+  title: 'Grayscale PDF',
+  description: 'Convert PDFs to black & white losslessly (keeping text selectable and vectors sharp) or by rasterizing pages.',
+  href: '/pdf/grayscale',
+  icon: 'grayscale',
+  color: '#a8b2bd',
+};
+
+export const INVERT: PdfTool = {
+  id: 'invert',
+  title: 'Invert colours / Dark mode',
+  description: 'Turn light PDFs into comfortable dark-mode documents with smart hue preservation, warm sepia, classic invert or custom colours.',
+  href: '/pdf/invert',
+  icon: 'invert',
+  color: '#7c8cf8',
+};
+
 export const TOOL_CATEGORIES: ToolCategory[] = [
   { title: 'View', tools: [READER] },
   { title: 'Organize', tools: [MERGE, SPLIT, ORGANIZE, ROTATE, REMOVE_PAGES, EXTRACT_PAGES] },
   { title: 'Optimize', tools: [COMPRESS] },
-  { title: 'Edit & annotate', tools: [PAGE_NUMBERS, WATERMARK, CROP, RESIZE, NUP, EDIT_METADATA, FLATTEN, REMOVE_ANNOTATIONS] },
+  { title: 'Edit & annotate', tools: [PAGE_NUMBERS, WATERMARK, CROP, RESIZE, NUP, GRAYSCALE, INVERT, EDIT_METADATA, FLATTEN, REMOVE_ANNOTATIONS] },
   { title: 'Convert to PDF', tools: [IMAGES_TO_PDF] },
   { title: 'Convert from PDF', tools: [PDF_TO_IMAGES, EXTRACT_IMAGES] },
   { title: 'Security', tools: [PROTECT, UNLOCK, REMOVE_METADATA] },
