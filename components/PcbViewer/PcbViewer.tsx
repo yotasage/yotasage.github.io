@@ -2,10 +2,18 @@ import dynamic from 'next/dynamic';
 import React from 'react';
 
 import type { PickedFile } from '../../lib/pcb/load';
+import { useI18n } from '../../lib/ui/i18n';
+import { useExperienceMode } from '../../lib/ui/mode';
 import styles from '../../styles/PcbViewer.module.css';
 import ToolIcon from '../Home/ToolIcon';
+import TeachingCallout from '../UI/TeachingCallout';
 import { canPickFolders, DropZone, PickButton } from './pick';
 import type WorkspaceComponent from './Workspace';
+
+function LoadingWorkspace() {
+  const { t } = useI18n();
+  return <div className={styles.loadingWorkspace}>{t('pcb.loading')}</div>;
+}
 
 // The viewer is only downloaded once files are opened. With "module": "node16", TypeScript takes the files of the site
 // for CommonJS: it wants a file extension (which Turbopack does not resolve to .tsx) and expects the component one level
@@ -13,10 +21,10 @@ import type WorkspaceComponent from './Workspace';
 const Workspace = dynamic(
   // @ts-expect-error TS2835, see above.
   () => import('./Workspace') as Promise<{ default: typeof WorkspaceComponent }>,
-  { ssr: false, loading: () => <div className={styles.loadingWorkspace}>Loading the viewer…</div> },
+  { ssr: false, loading: () => <LoadingWorkspace /> },
 );
 
-const FORMATS: { title: string; formats: string; note?: string }[] = [
+export const PCB_FORMATS: { title: string; formats: string; note?: string }[] = [
   { title: 'Gerber', formats: 'RS-274X and X2 (.gbr, .gtl, .gbl, .gto, .pho, .art and others)', note: 'Including the old commands of older files.' },
   { title: 'Drill', formats: 'Excellon (.drl, .txt, .xln and others) and Gerber drill files', note: 'Slots and routed holes too; a file without a header gets its format from the pads.' },
   { title: 'Gerber job file', formats: '.gbrjob', note: 'Gives each layer its function and order, and the colours.' },
@@ -28,38 +36,102 @@ const FORMATS: { title: string; formats: string; note?: string }[] = [
   { title: 'Archives', formats: 'ZIP, also inside other ZIPs and with folders' },
 ];
 
-export default function PcbViewer() {
+const FORMAT_CHIPS = [
+  'Gerber RS-274X / X2',
+  'Excellon Drill',
+  'KiCad (.kicad_pcb)',
+  'Altium (.PcbDoc)',
+  'PADS (.asc)',
+  'EAGLE (.brd)',
+  'Pick-and-place',
+  'ZIP Archives',
+];
+
+export interface PcbViewerProps {
+  onOpenGuide?: () => void;
+}
+
+export default function PcbViewer({ onOpenGuide }: PcbViewerProps) {
   const [files, setFiles] = React.useState<PickedFile[] | null>(null);
   const [folders, setFolders] = React.useState(false);
+  const { t } = useI18n();
+  const { mode, setMode } = useExperienceMode();
+
   React.useEffect(() => setFolders(canPickFolders()), []);
 
   if (files) return <Workspace initial={files} />;
 
   return (
-    <DropZone onFiles={setFiles} className={styles.hero} overClassName={styles.dropOver}>
-      <ToolIcon name="pcb" color="#9ccc3c" size={72} />
-      <h2>Open Gerber files or a KiCad, Altium, PADS or EAGLE board</h2>
-      <p>
-        Select all the Gerber and drill files of a board, the folder they are in, or a ZIP archive of them, or a KiCad,
-        Altium, PADS or EAGLE board file. See each layer in its own colour or the board as it looks, from the top or the
-        bottom; click anything to see what it is, highlight a net or a component, measure, and save the view as PNG or
-        SVG, the layers as a PDF at 1:1 or as DXF, a board&apos;s BOM and pick-and-place file, or an Altium, PADS or
-        EAGLE board as a KiCad board.
-      </p>
-      <div className={styles.heroButtons}>
-        <PickButton onFiles={setFiles} className={styles.heroButton}>Select files</PickButton>
-        {folders && <PickButton folder onFiles={setFiles} className={styles.heroButtonSecondary}>Select folder</PickButton>}
-      </div>
-      <span className={styles.hint}>or drop files or a folder here. Other files of a project can come along: the file list says what each file is.</span>
-      <dl className={styles.formatList}>
-        {FORMATS.map((g) => (
-          <div key={g.title}>
-            <dt>{g.title}</dt>
-            <dd>{g.formats}{g.note && <small>{g.note}</small>}</dd>
+    <div className={styles.startWrap}>
+      {mode === 'quick' && (
+        <div className={styles.quickBanner}>
+          <div className={styles.quickBannerText}>
+            <span className={styles.quickBadge}>{t('pcb.quick.badge')}</span>
+            <span>{t('pcb.quick.bannerText')}</span>
           </div>
-        ))}
-      </dl>
-      <span className={styles.hint}>Your files are read in this browser and are never uploaded.</span>
-    </DropZone>
+          <div className={styles.quickActions}>
+            <button type="button" className={styles.buttonSmall} onClick={() => setMode('standard')}>
+              {t('pcb.quick.switchStandard')}
+            </button>
+            <button type="button" className={styles.buttonSmall} onClick={() => setMode('teaching')}>
+              {t('pcb.quick.switchTeaching')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <DropZone onFiles={setFiles} className={styles.hero} overClassName={styles.dropOver}>
+        <div className={styles.heroBadge} aria-hidden="true">
+          <ToolIcon name="pcb" color="var(--ds-accent)" size={48} />
+        </div>
+        <h2>{t('pcb.drop.title')}</h2>
+        <p>{t('pcb.drop.desc')}</p>
+        <div className={styles.heroButtons}>
+          <PickButton onFiles={setFiles} className={styles.heroButton}>
+            {t('pcb.drop.selectFiles')}
+          </PickButton>
+          {folders && (
+            <PickButton folder onFiles={setFiles} className={styles.heroButtonSecondary}>
+              {t('pcb.drop.selectFolder')}
+            </PickButton>
+          )}
+        </div>
+        <span className={styles.hint}>{t('pcb.drop.hint')}</span>
+
+        <div className={styles.formatBar}>
+          <ul className={styles.formatChips} aria-label={t('pcb.guide.formatsTitle')}>
+            {FORMAT_CHIPS.map((chip) => (
+              <li key={chip} className={styles.formatChip}>{chip}</li>
+            ))}
+          </ul>
+          {onOpenGuide && (
+            <button type="button" className={styles.formatGuideLink} onClick={onOpenGuide}>
+              {t('pcb.drop.allFormats')}
+            </button>
+          )}
+        </div>
+
+        <span className={styles.localHint}>{t('pcb.drop.localHint')}</span>
+      </DropZone>
+
+      {mode === 'teaching' && (
+        <div className={styles.teachingGrid}>
+          <TeachingCallout
+            title={t('pcb.teaching.formatsTitle')}
+            onTheoryClick={onOpenGuide}
+            theoryLabel={t('pcb.teaching.openGuide')}
+          >
+            {t('pcb.teaching.formatsBody')}
+          </TeachingCallout>
+          <TeachingCallout
+            title={t('pcb.teaching.viewsTitle')}
+            onTheoryClick={onOpenGuide}
+            theoryLabel={t('pcb.teaching.openGuide')}
+          >
+            {t('pcb.teaching.viewsBody')}
+          </TeachingCallout>
+        </div>
+      )}
+    </div>
   );
 }

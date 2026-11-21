@@ -1,41 +1,118 @@
 import Head from 'next/head';
-import Link from 'next/link';
 import React from 'react';
 
-import HomeIcon from '../../components/icons/home';
+import ToolHeader, { WorkspaceTab } from '../../components/UI/ToolHeader';
 import Viewer3D from '../../components/Viewer3D/Viewer3D';
-import styles from '../../styles/QrGen.module.css';
+import { useI18n } from '../../lib/ui/i18n';
+import { useDesignSystemPage } from '../../lib/ui/theme';
+import { FORMAT_GROUPS } from '../../lib/viewer3d/formats';
+import styles from '../../styles/Viewer3D.module.css';
+
+type WorkspaceId = 'workbench' | 'guide';
 
 export default function Viewer3DPage() {
+  useDesignSystemPage('#ea580c', '#f08c3c');
+  const { t } = useI18n();
+  const [workspace, setWorkspace] = React.useState<WorkspaceId>('workbench');
+
+  const workspaces: readonly WorkspaceTab<WorkspaceId>[] = [
+    { id: 'workbench', label: t('viewer3d.workbench') },
+    { id: 'guide', label: t('viewer3d.guide') },
+  ];
+
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-ds="v2">
       <Head>
-        <title>3D viewer</title>
+        <title>{t('viewer3d.pageTitle')}</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <style jsx global>{`
-        html,
-        body {
-          margin: 0;
-          padding: 0;
-          background: #2b2b2b;
-        }
-        * {
-          box-sizing: border-box;
-        }
-      `}</style>
 
-      <header className={styles.header}>
-        <Link href="/" className={styles.homeLink} aria-label="Home"><HomeIcon /></Link>
-        <h1 className={styles.title}>3D viewer</h1>
-      </header>
-      <p className={styles.lead}>
-        View STEP, STL, OBJ, glTF and other 3D files: turn and zoom, cut through the model, measure distances, check
-        its size and volume, and save it as STL, OBJ, PLY or GLB. Everything runs in your browser; the files never leave
-        this page.
-      </p>
+      <ToolHeader<WorkspaceId>
+        title={t('viewer3d.title')}
+        workspaces={workspaces}
+        activeWorkspace={workspace}
+        onWorkspaceChange={setWorkspace}
+        showExperienceMode
+      />
 
-      <Viewer3D />
+      <main className={styles.main}>
+        {/* Kept mounted so an opened 3D scene is never discarded when reading the guide. */}
+        <section
+          className={styles.workspacePanel}
+          hidden={workspace !== 'workbench'}
+          aria-label={t('viewer3d.workbench')}
+        >
+          <p className={styles.lead}>{t('viewer3d.lead')}</p>
+          <Viewer3D onOpenGuide={() => setWorkspace('guide')} />
+        </section>
+
+        <section
+          className={styles.workspacePanel}
+          hidden={workspace !== 'guide'}
+          aria-label={t('viewer3d.guide')}
+        >
+          <div className={styles.guideLayout}>
+            <div className={styles.guideHeader}>
+              <div>
+                <h2>{t('viewer3d.guide.title')}</h2>
+                <p>{t('viewer3d.guide.lead')}</p>
+              </div>
+              <button
+                type="button"
+                className={styles.buttonSmall}
+                onClick={() => setWorkspace('workbench')}
+              >
+                {t('viewer3d.guide.backToWorkbench')}
+              </button>
+            </div>
+
+            <article className={styles.guideCard}>
+              <h3>{t('viewer3d.guide.formatsTitle')}</h3>
+              <dl className={styles.formatList}>
+                {FORMAT_GROUPS.map((g) => (
+                  <div key={g.title} className={styles.formatItem}>
+                    <dt>{g.title}</dt>
+                    <dd>
+                      {g.formats}
+                      {g.note && <small>{g.note}</small>}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </article>
+
+            <div className={styles.guideGrid}>
+              <article className={styles.guideCard}>
+                <h3>{t('viewer3d.guide.controlsTitle')}</h3>
+                <ul className={styles.guideList}>
+                  <li><strong>Orbit:</strong> Drag with left mouse button (or one finger on touch screens).</li>
+                  <li><strong>Pan:</strong> Right-drag or Shift-drag (or two-finger drag on touch).</li>
+                  <li><strong>Zoom:</strong> Scroll wheel or pinch gesture.</li>
+                  <li><strong>Pivot focus:</strong> Double-click / double-tap any point on the model to orbit around it.</li>
+                  <li><strong>Standard views:</strong> Use <code>Fit</code>, <code>Isometric</code>, <code>Front</code>, <code>Top</code>, <code>Right</code>, or click an axis on the orientation gizmo.</li>
+                  <li><strong>Projection:</strong> Toggle <code>Orthographic</code> to remove perspective foreshortening when checking alignment.</li>
+                </ul>
+              </article>
+
+              <article className={styles.guideCard}>
+                <h3>{t('viewer3d.guide.toolsTitle')}</h3>
+                <ul className={styles.guideList}>
+                  <li><strong>Section cuts:</strong> Slice along X, Y, or Z and drag the slider to inspect internal walls; cut interiors highlight in orange.</li>
+                  <li><strong>Point-to-point measure:</strong> Enable <code>Measure</code> and click two points on the surface to read total distance and ΔX / ΔY / ΔZ.</li>
+                  <li><strong>Multi-file comparison:</strong> Use <code>Add files</code> to open multiple models together and spread them apart in <code>Positions</code>.</li>
+                  <li><strong>Part tree &amp; statistics:</strong> Inspect bounding box, triangle count, surface area, and closed-mesh volume, and toggle individual parts.</li>
+                  <li><strong>Export:</strong> Save models as <code>STL</code>, <code>OBJ</code>, <code>PLY</code>, or <code>GLB</code>, or capture a PNG screenshot (optionally transparent).</li>
+                </ul>
+              </article>
+            </div>
+
+            <article className={styles.guideCard}>
+              <h3>{t('viewer3d.guide.privacyTitle')}</h3>
+              <p>{t('viewer3d.guide.privacyBody')}</p>
+            </article>
+          </div>
+        </section>
+      </main>
     </div>
   );
 }

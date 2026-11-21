@@ -1,126 +1,448 @@
-/* The page frame, fields and buttons come from QrGen.module.css; this file has what is special to the 3D viewer. */
+/* ==========================================================================
+   3D Viewer (/3d-viewer/main) — Design System v2
+   Uses --ds-* tokens for Light, Dark, and High Contrast AAA, while keeping a
+   high-contrast WebGL canvas area for accurate 3D material & lighting rendering.
+   ========================================================================== */
 
-/* Start screen */
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.page a {
+  color: var(--ds-accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.page a:hover,
+.page a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.main {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 20px 20px 64px;
+  flex: 1;
+}
+
+.workspacePanel[hidden] {
+  display: none;
+}
+
+.lead {
+  margin: 0 0 18px;
+  max-width: 82ch;
+  color: var(--ds-ink-2);
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+/* --------------------------------------------------------------------------
+   Start screen: Quick banner, SaaS Drop Card & Teaching callouts
+   -------------------------------------------------------------------------- */
+
+.startWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.quickBanner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 12px 16px;
+  border-radius: var(--ds-radius-ctrl);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  background: var(--ds-accent-soft);
+  color: var(--ds-ink);
+  font-size: 0.875rem;
+}
+
+.quickBannerText {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.45;
+  color: var(--ds-ink-2);
+}
+
+.quickBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.quickActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.buttonSmall {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.buttonSmall:hover,
+.buttonSmall:focus-visible {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  outline: none;
+}
 
 .hero {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
-  padding: 3.5rem 1rem;
-  border: 2px dashed #6a6a6a;
-  border-radius: 14px;
+  gap: 14px;
+  padding: 48px 24px 36px;
+  background: var(--ds-surface);
+  border: 2px dashed var(--ds-border-strong);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
   text-align: center;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.hero:hover {
+  border-color: var(--ds-accent-border);
+}
+
+.dropOver {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.heroBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 82px;
+  height: 82px;
+  border-radius: 22px;
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  background: var(--ds-accent-soft);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--ds-accent) 24%, transparent);
 }
 
 .hero h2 {
-  margin: 0;
-  font-size: 1.8rem;
+  margin: 4px 0 0;
+  font-size: 1.65rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--ds-ink);
 }
 
 .hero p {
   margin: 0;
   max-width: 640px;
-  color: #c8c8c8;
-  line-height: 1.5;
-}
-
-.dropOver {
-  border-color: #0070f3;
-  background-color: rgba(0, 112, 243, 0.08);
+  color: var(--ds-ink-2);
+  font-size: 0.96rem;
+  line-height: 1.55;
 }
 
 .heroButton {
-  padding: 1.1rem 2.5rem;
-  border: none;
-  border-radius: 10px;
-  background: #0070f3;
-  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 13px 28px;
+  margin-top: 4px;
+  border: var(--ds-border-w) solid transparent;
+  border-radius: var(--ds-radius-ctrl);
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
   font: inherit;
-  font-size: 1.3rem;
-  font-weight: bold;
+  font-size: 1.02rem;
+  font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0, 112, 243, 0.35);
-  transition: background-color 0.15s ease;
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--ds-accent) 32%, transparent);
+  transition: transform 0.14s ease, filter 0.14s ease, box-shadow 0.14s ease;
 }
 
 .heroButton:hover,
 .heroButton:focus-visible {
-  background: #1a82ff;
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+  outline: none;
+  box-shadow: var(--ds-focus-ring), 0 8px 24px color-mix(in srgb, var(--ds-accent) 36%, transparent);
 }
 
 .hint {
-  max-width: 640px;
-  color: #9a9a9a;
-  font-size: 0.9rem;
+  max-width: 620px;
+  color: var(--ds-ink-3);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.localHint {
+  max-width: 620px;
+  color: var(--ds-ink-3);
+  font-size: 0.82rem;
   line-height: 1.45;
+}
+
+.formatBar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 820px;
+  margin-top: 6px;
+  padding-top: 16px;
+  border-top: var(--ds-border-w) solid var(--ds-border);
+}
+
+.formatChips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.formatChip {
+  padding: 4px 10px;
+  border-radius: var(--ds-radius-pill);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  color: var(--ds-ink-2);
+  font-family: var(--ds-font-mono);
+  font-size: 0.76rem;
+  font-weight: 500;
+}
+
+.formatGuideLink {
+  padding: 4px 10px;
+  border: none;
+  border-radius: var(--ds-radius-sm);
+  background: transparent;
+  color: var(--ds-accent);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.formatGuideLink:hover,
+.formatGuideLink:focus-visible {
+  background: var(--ds-accent-soft);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  outline: none;
+}
+
+.teachingGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* --------------------------------------------------------------------------
+   Guide workspace
+   -------------------------------------------------------------------------- */
+
+.guideLayout {
+  max-width: 980px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.guideHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 16px;
+}
+
+.guideHeader h2 {
+  margin: 0 0 6px;
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--ds-ink);
+}
+
+.guideHeader p {
+  margin: 0;
+  max-width: 68ch;
+  color: var(--ds-ink-2);
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+.guideGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.guideCard {
+  padding: 20px 22px;
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  min-width: 0;
+}
+
+.guideCard h3 {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  color: var(--ds-ink);
+}
+
+.guideCard p {
+  margin: 0;
+  color: var(--ds-ink-2);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.guideList {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--ds-ink-2);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.guideList strong {
+  color: var(--ds-ink);
+}
+
+.guideList code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.82em;
 }
 
 .formatList {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 0.75rem 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
   width: 100%;
-  max-width: 1000px;
-  margin: 0.5rem 0;
+  margin: 0;
   text-align: left;
 }
 
+.formatItem {
+  padding: 12px 14px;
+  border-radius: var(--ds-radius-ctrl);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+}
+
 .formatList dt {
-  color: #f08c3c;
-  font-size: 0.8rem;
-  font-weight: bold;
+  color: var(--ds-accent);
+  font-size: 0.78rem;
+  font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .formatList dd {
-  margin: 0.2rem 0 0;
-  color: #e0e0e0;
-  font-size: 0.92rem;
-  line-height: 1.45;
+  margin: 4px 0 0;
+  color: var(--ds-ink);
+  font-size: 0.9rem;
+  line-height: 1.48;
 }
 
 .formatList small {
   display: block;
-  color: #9a9a9a;
+  margin-top: 4px;
+  color: var(--ds-ink-3);
+  font-size: 0.82rem;
 }
 
 .loadingWorkspace {
   padding: 4rem 1rem;
-  color: #c8c8c8;
+  color: var(--ds-ink-2);
   text-align: center;
+  font-size: 0.96rem;
 }
 
-/* Workspace: the view on the left, the panels on the right */
+/* --------------------------------------------------------------------------
+   Active 3D Workspace: viewport on the left, inspector panels on the right
+   -------------------------------------------------------------------------- */
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) 356px;
+  gap: 16px;
   align-items: start;
-  border-radius: 14px;
+  border-radius: var(--ds-radius-card);
   outline: 2px dashed transparent;
   outline-offset: 4px;
   transition: outline-color 0.15s ease;
 }
 
 .workspaceDropOver {
-  outline-color: #0070f3;
+  outline-color: var(--ds-accent);
 }
 
-/* Fits the screen under the page header; it stays in view while the panels scroll. */
+/* Fits below the sticky frosted ToolHeader; stays anchored while panels scroll. */
 .viewport {
   position: sticky;
-  top: 1rem;
+  top: 72px;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 12rem);
-  min-height: 420px;
+  height: calc(100vh - 96px);
+  min-height: 440px;
   overflow: hidden;
-  border: 1px solid #5a5a5a;
-  border-radius: 12px;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  background: #14161a;
+}
+
+:global(html[data-ds-theme="hc"]) .viewport {
+  background: #000000 !important;
+  border: 2px solid var(--ds-border);
 }
 
 .viewportFullscreen {
@@ -129,29 +451,14 @@
   border-radius: 0;
 }
 
-@media (max-width: 900px) {
-  .workspace {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .viewport {
-    position: relative;
-    top: 0;
-    height: 65vh;
-    min-height: 320px;
-  }
-  .viewportFullscreen {
-    height: 100vh;
-  }
-}
-
 .toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.45rem;
-  background: rgba(20, 22, 26, 0.85);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--ds-surface-elevated);
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
 }
 
 .toolbarSpacer {
@@ -159,29 +466,34 @@
 }
 
 .toolButton {
-  padding: 0.3rem 0.65rem;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.04);
-  color: #f0f0f0;
+  padding: 5px 10px;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  color: var(--ds-ink);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
 }
 
 .toolButton:hover:not(:disabled),
 .toolButton:focus-visible {
-  border-color: #4da3ff;
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  outline: none;
 }
 
 .toolButton[aria-pressed='true'] {
-  border-color: #0070f3;
-  background: rgba(0, 112, 243, 0.35);
+  border-color: var(--ds-accent);
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  font-weight: 600;
 }
 
 .toolButton:disabled {
-  opacity: 0.45;
+  opacity: 0.42;
   cursor: default;
 }
 
@@ -204,7 +516,7 @@
 }
 
 .gizmoBack {
-  fill: rgba(0, 0, 0, 0.18);
+  fill: rgba(0, 0, 0, 0.24);
 }
 
 .gizmoAxis {
@@ -221,38 +533,40 @@
 .gizmoLabel {
   fill: #ffffff;
   font-size: 11px;
-  font-weight: bold;
+  font-weight: 700;
   pointer-events: none;
 }
 
 .measureLabel {
   position: absolute;
   transform: translate(-50%, -150%);
-  padding: 0.2rem 0.5rem;
-  border-radius: 6px;
-  background: rgba(20, 22, 26, 0.88);
+  padding: 3px 8px;
+  border-radius: var(--ds-radius-sm);
+  background: rgba(15, 17, 21, 0.92);
+  border: 1px solid rgba(255, 210, 63, 0.45);
   color: #ffd23f;
-  font-size: 0.9rem;
-  font-weight: bold;
+  font-family: var(--ds-font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
   white-space: nowrap;
   pointer-events: none;
 }
 
 .viewHint {
   position: absolute;
-  left: 0.6rem;
+  left: 0.7rem;
   right: 7rem;
-  bottom: 0.5rem;
+  bottom: 0.55rem;
   margin: 0;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.65);
   font-size: 0.78rem;
   line-height: 1.35;
   pointer-events: none;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
 }
 
 .viewportLight .viewHint {
-  color: rgba(0, 0, 0, 0.55);
+  color: rgba(15, 23, 42, 0.7);
   text-shadow: none;
 }
 
@@ -278,22 +592,22 @@
   justify-content: center;
   gap: 1rem;
   padding: 1.5rem;
-  background: rgba(20, 22, 26, 0.55);
-  color: #f0f0f0;
+  background: rgba(12, 14, 18, 0.72);
+  color: #f8fafc;
   text-align: center;
   line-height: 1.5;
 }
 
 .overlayError {
-  background: rgba(20, 22, 26, 0.85);
-  color: #ffb3b3;
+  background: rgba(12, 14, 18, 0.9);
+  color: #fca5a5;
 }
 
 .spinner {
   width: 2.2rem;
   height: 2.2rem;
-  border: 3px solid rgba(255, 255, 255, 0.25);
-  border-top-color: #4da3ff;
+  border: 3px solid rgba(255, 255, 255, 0.22);
+  border-top-color: var(--ds-accent);
   border-radius: 50%;
   animation: spin 0.9s linear infinite;
 }
@@ -308,27 +622,38 @@
   .spinner {
     animation-duration: 3s;
   }
+  .heroButton {
+    transition: none;
+  }
 }
 
-/* Panels */
+/* --------------------------------------------------------------------------
+   Sidebar Panels
+   -------------------------------------------------------------------------- */
 
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
+  gap: 14px;
   min-width: 0;
 }
 
 .card {
-  padding: 0.9rem 1.1rem 1rem;
-  border: 1px solid #5a5a5a;
-  border-radius: 10px;
+  padding: 16px 18px;
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
   min-width: 0;
+  color: var(--ds-ink);
 }
 
 .card h2 {
-  margin: 0 0 0.6rem;
-  font-size: 1.1rem;
+  margin: 0 0 10px;
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  color: var(--ds-ink);
 }
 
 .card p {
@@ -337,21 +662,22 @@
 
 .fileName {
   overflow: hidden;
-  font-weight: bold;
+  font-weight: 650;
+  color: var(--ds-ink);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .meta {
-  color: #c8c8c8;
-  font-size: 0.88rem;
+  color: var(--ds-ink-2);
+  font-size: 0.85rem;
 }
 
 .note {
   display: block;
   margin-top: 0.2rem;
-  color: #9a9a9a;
-  font-size: 0.8rem;
+  color: var(--ds-ink-3);
+  font-size: 0.78rem;
 }
 
 .info {
@@ -364,7 +690,8 @@
 }
 
 .strong {
-  font-weight: bold;
+  font-weight: 700;
+  color: var(--ds-ink);
 }
 
 .fields {
@@ -379,12 +706,13 @@
   flex-direction: column;
   gap: 0.3rem;
   margin-bottom: 0.5rem;
-  font-size: 0.85rem;
-  color: #c8c8c8;
+  font-size: 0.84rem;
+  color: var(--ds-ink-2);
 }
 
 .slider input {
   width: 100%;
+  accent-color: var(--ds-accent);
 }
 
 /* Positioned, so that the offsetTop of a row is measured from the top of the list. */
@@ -395,10 +723,10 @@
   padding: 0;
   overflow: auto;
   list-style: none;
-  border: 1px solid #444;
-  border-radius: 6px;
-  background: #242424;
-  font-size: 0.88rem;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  font-size: 0.86rem;
 }
 
 .tree ul {
@@ -412,20 +740,20 @@
   align-items: center;
   gap: 0.3rem;
   padding-right: 0.4rem;
-  min-height: 1.9rem;
+  min-height: 1.95rem;
 }
 
 .treeRow:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--ds-well-hover);
 }
 
 .treeSelected,
 .treeSelected:hover {
-  background: rgba(0, 112, 243, 0.3);
+  background: var(--ds-accent-soft);
 }
 
 .treeHidden .treeName {
-  color: #8a8a8a;
+  color: var(--ds-ink-3);
 }
 
 .treeToggle {
@@ -434,7 +762,7 @@
   padding: 0;
   border: none;
   background: none;
-  color: #c8c8c8;
+  color: var(--ds-ink-2);
   font: inherit;
   cursor: pointer;
 }
@@ -446,7 +774,7 @@
   overflow: hidden;
   border: none;
   background: none;
-  color: #f0f0f0;
+  color: var(--ds-ink);
   font: inherit;
   text-align: left;
   text-overflow: ellipsis;
@@ -456,14 +784,14 @@
 
 .treeMore {
   padding: 0.25rem 0;
-  color: #9a9a9a;
+  color: var(--ds-ink-3);
   font-size: 0.82rem;
 }
 
 .selection {
   margin-top: 0.75rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid #444;
+  padding-top: 0.6rem;
+  border-top: var(--ds-border-w) solid var(--ds-border);
 }
 
 .saveGrid {
@@ -493,7 +821,7 @@
 
 .offset .fileName {
   margin: 0 0 0.3rem;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
 }
 
 .offsetFields {
@@ -507,12 +835,54 @@
   align-items: center;
   gap: 0.3rem;
   min-width: 0;
-  color: #c8c8c8;
-  font-size: 0.85rem;
+  color: var(--ds-ink-2);
+  font-size: 0.84rem;
 }
 
 /* A class and an element, so this wins over the padding of .input in QrGen.module.css. */
 .offsetField input {
   min-width: 0;
   padding: 0.3rem 0.4rem;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive breakpoints down to 320 px
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 960px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .viewport {
+    position: relative;
+    top: 0;
+    height: 62vh;
+    min-height: 320px;
+  }
+  .viewportFullscreen {
+    height: 100vh;
+  }
+  .teachingGrid,
+  .guideGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .main {
+    padding: 14px 12px 48px;
+  }
+  .hero {
+    padding: 32px 16px 28px;
+  }
+  .hero h2 {
+    font-size: 1.38rem;
+  }
+  .guideCard,
+  .card {
+    padding: 14px 14px;
+  }
+  .saveGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

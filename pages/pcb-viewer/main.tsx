@@ -1,45 +1,114 @@
 import Head from 'next/head';
-import Link from 'next/link';
 import React from 'react';
 
-import HomeIcon from '../../components/icons/home';
-import PcbViewer from '../../components/PcbViewer/PcbViewer';
-import styles from '../../styles/QrGen.module.css';
+import PcbViewer, { PCB_FORMATS } from '../../components/PcbViewer/PcbViewer';
+import ToolHeader, { WorkspaceTab } from '../../components/UI/ToolHeader';
+import { useI18n } from '../../lib/ui/i18n';
+import { useDesignSystemPage } from '../../lib/ui/theme';
+import styles from '../../styles/PcbViewer.module.css';
+
+type WorkspaceId = 'workbench' | 'guide';
 
 export default function PcbViewerPage() {
+  useDesignSystemPage('#65a30d', '#9ccc3c');
+  const { t } = useI18n();
+  const [workspace, setWorkspace] = React.useState<WorkspaceId>('workbench');
+
+  const workspaces: readonly WorkspaceTab<WorkspaceId>[] = [
+    { id: 'workbench', label: t('pcb.workbench') },
+    { id: 'guide', label: t('pcb.guide') },
+  ];
+
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-ds="v2">
       <Head>
-        <title>PCB viewer</title>
+        <title>{t('pcb.pageTitle')}</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <style jsx global>{`
-        html,
-        body {
-          margin: 0;
-          padding: 0;
-          background: #2b2b2b;
-        }
-        * {
-          box-sizing: border-box;
-        }
-      `}</style>
 
-      <header className={styles.header}>
-        <Link href="/" className={styles.homeLink} aria-label="Home"><HomeIcon /></Link>
-        <h1 className={styles.title}>PCB viewer</h1>
-      </header>
-      <p className={styles.lead}>
-        View the Gerber and drill files or the KiCad, Altium, PADS or EAGLE board of a circuit board layer by layer, or
-        as the board looks with its solder mask, finish, silkscreen and holes, from the top or the bottom, with the parts
-        of a pick-and-place file marked on Gerber files. Click a pad, track or part to see its net and component,
-        highlight a net or a component on every layer, measure between pads and holes, and save the view as PNG or SVG,
-        the layers as a PDF at 1:1, the outline and holes or the layers as DXF, a board&apos;s BOM and pick-and-place
-        file, or an Altium, PADS or EAGLE board as a KiCad board. Everything runs in your browser; the files never leave
-        this page.
-      </p>
+      <ToolHeader<WorkspaceId>
+        title={t('pcb.title')}
+        workspaces={workspaces}
+        activeWorkspace={workspace}
+        onWorkspaceChange={setWorkspace}
+        showExperienceMode
+      />
 
-      <PcbViewer />
+      <main className={styles.main}>
+        {/* Kept mounted so an opened board is never lost when reading the guide. */}
+        <section
+          className={styles.workspacePanel}
+          hidden={workspace !== 'workbench'}
+          aria-label={t('pcb.workbench')}
+        >
+          <p className={styles.lead}>{t('pcb.lead')}</p>
+          <PcbViewer onOpenGuide={() => setWorkspace('guide')} />
+        </section>
+
+        <section
+          className={styles.workspacePanel}
+          hidden={workspace !== 'guide'}
+          aria-label={t('pcb.guide')}
+        >
+          <div className={styles.guideLayout}>
+            <div className={styles.guideHeader}>
+              <div>
+                <h2>{t('pcb.guide.title')}</h2>
+                <p>{t('pcb.guide.lead')}</p>
+              </div>
+              <button
+                type="button"
+                className={styles.buttonSmall}
+                onClick={() => setWorkspace('workbench')}
+              >
+                {t('pcb.guide.backToWorkbench')}
+              </button>
+            </div>
+
+            <article className={styles.guideCard}>
+              <h3>{t('pcb.guide.formatsTitle')}</h3>
+              <dl className={styles.formatList}>
+                {PCB_FORMATS.map((g) => (
+                  <div key={g.title} className={styles.formatItem}>
+                    <dt>{g.title}</dt>
+                    <dd>
+                      {g.formats}
+                      {g.note && <small>{g.note}</small>}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </article>
+
+            <div className={styles.guideGrid}>
+              <article className={styles.guideCard}>
+                <h3>{t('pcb.guide.viewsTitle')}</h3>
+                <ul className={styles.guideList}>
+                  <li><strong>Layer view:</strong> Show or hide individual copper, mask, silkscreen, paste, drill, and fabrication layers, reorder draw order, and customize layer colours.</li>
+                  <li><strong>Realistic view:</strong> Preview solder mask, silkscreen, copper finish (ENIG / HASL / bare), and drilled holes from Top or mirrored Bottom.</li>
+                  <li><strong>Navigation:</strong> Drag to pan, scroll or pinch to zoom, press <code>F</code> to fit the board, arrow keys to pan, <code>+</code>/<code>−</code> to zoom, and <code>Esc</code> to clear overlays.</li>
+                  <li><strong>Units:</strong> Switch live cursor readout, board dimensions, and measurements between <code>mm</code> and <code>inch</code>.</li>
+                </ul>
+              </article>
+
+              <article className={styles.guideCard}>
+                <h3>{t('pcb.guide.inspectTitle')}</h3>
+                <ul className={styles.guideList}>
+                  <li><strong>Click to inspect:</strong> Click any pad, track, via, hole, or component to view its layer, size, net, and footprint (click the same spot again to cycle stacked items).</li>
+                  <li><strong>Net &amp; part highlight:</strong> Search components or nets in the sidebar to highlight them across every layer and zoom right in.</li>
+                  <li><strong>Precision measure:</strong> Enable <code>Measure</code> to snap to pad centres and drill holes for ΔX, ΔY, and straight-line distance.</li>
+                  <li><strong>Exports:</strong> Save views as <code>PNG</code> or <code>SVG</code>, print-ready 1:1 <code>PDF</code>, outline or layer <code>DXF</code>, <code>BOM / Pick-and-place CSV</code>, or convert Altium/PADS/EAGLE boards to <code>.kicad_pcb</code>.</li>
+                </ul>
+              </article>
+            </div>
+
+            <article className={styles.guideCard}>
+              <h3>{t('pcb.guide.privacyTitle')}</h3>
+              <p>{t('pcb.guide.privacyBody')}</p>
+            </article>
+          </div>
+        </section>
+      </main>
     </div>
   );
 }
