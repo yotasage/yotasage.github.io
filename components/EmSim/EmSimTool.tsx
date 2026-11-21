@@ -1,92 +1,105 @@
-// The EM simulation page (M2.1a): the state (the `Setup` of lib/emsim/setup.ts), the link (the whole setup in the
-// query string, read after mount, written back with history.replaceState), undo and redo, the preferences (theme,
-// units, digits in localStorage, read after mount), the bar with the section nav, and the sections.
+// The EM simulation page (M2.1a, Design System v2): the state (`Setup` of lib/emsim/setup.ts), the link (whole setup in
+// the query string, read after mount, written back with history.replaceState), undo and redo, preferences (units, digits
+// in localStorage, read after mount), frosted ToolHeader with non-destructive workspaces (Workbench, Examples, Theory &
+// References) and Workbench pill tabs (Stackup, Trace, Via, Waves, Export).
 //
-// For later page steps: `commit(next | (cur) => next, group)` is the one place a new setup arrives; edits with the same
-// non-empty group within GROUP_MS are one undo step (a field's keystrokes). The shown unit is also in the link (`u`,
-// not a setup parameter: stripped before decodeLink), so a shared link shows the same numbers.
+// `commit(next | (cur) => next, group)` is the one place a new setup arrives; edits with the same non-empty group within
+// GROUP_MS are one undo step (a field's keystrokes). The shown unit is also in the link (`u`, not a setup parameter:
+// stripped before decodeLink), so a shared link shows the same numbers.
 
-import Link from 'next/link';
 import { useRouter } from 'next/router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { BibEntry } from '../../lib/bibtex';
 import type Bibliography from '../Bibliography';
+import KatexSpan from '../KatexSpan';
+import PillTabs, { PillTabItem } from '../UI/PillTabs';
+import TeachingCallout from '../UI/TeachingCallout';
+import ToolHeader, { WorkspaceTab } from '../UI/ToolHeader';
 import { decodeLink, encodeLink } from '../../lib/emsim/link';
+import type { Decoded } from '../../lib/emsim/link';
 import { PROJECT_MAX_BYTES, openProject } from '../../lib/emsim/project';
 import type { Opened } from '../../lib/emsim/project';
 import { defaultSetup, sameSetup } from '../../lib/emsim/setup';
 import type { Setup } from '../../lib/emsim/setup';
-import type { Decoded } from '../../lib/emsim/link';
 import { issue } from '../../lib/emsim/stackup';
 import type { Issue } from '../../lib/emsim/stackup';
 import { UNIT_TEXT } from '../../lib/emsim/units';
-import styles from '../../styles/EmSim.module.css';
-import HomeIcon from '../icons/home';
+import { useI18n } from '../../lib/ui/i18n';
+import { useExperienceMode } from '../../lib/ui/mode';
+import { useDesignSystemPage } from '../../lib/ui/theme';
 import useReplayHighlight from '../../lib/useReplayHighlight';
+import styles from '../../styles/EmSim.module.css';
 import { DEFAULT_DIGITS, DIGIT_CHOICES, SHOWN_UNITS } from './format';
+import type { ShownUnit } from './format';
 import { errorText, jlcLoaded, jlcResolve, loadJlc } from './jlcData';
 import type { OpenText, OpenedNote } from './exportFeed';
-import type { ShownUnit } from './format';
 import StackupSection, { IssueList, NO_KICAD } from './StackupSection';
-import { Status } from './Status';
 import type { Commit, KicadState } from './StackupSection';
+import { Status } from './Status';
 import TraceSection from './TraceSection';
 import { EqEnv } from './eqLinks';
 import { Why, Whys } from './Why';
 
-export type Theme = 'light' | 'dark';
-
-export const THEME_KEY = 'emsim.theme';
 export const UNIT_KEY = 'emsim.units';
 export const DIGITS_KEY = 'emsim.digits';
-export const WHYS_KEY = 'emsim.whys';
 const UNIT_PARAM = 'u';
 const HISTORY = 200;
 const GROUP_MS = 1500;
 
-// The sections that exist (plan.md: Stackup · Trace · Via · Waves · Theory · Examples · Report · Export · References).
-const SECTIONS: readonly { id: string; label: string }[] = [{ id: 'stackup', label: 'Stackup' }, { id: 'trace', label: 'Trace' }, { id: 'via', label: 'Via' }, { id: 'waves', label: 'Waves' }, { id: 'export', label: 'Export' }, { id: 'examples', label: 'Examples' }, { id: 'theory', label: 'Theory' }, { id: 'references', label: 'References' }];
+type WorkspaceId = 'workbench' | 'examples' | 'theory';
+type WorkbenchTabId = 'stackup' | 'trace' | 'via' | 'waves' | 'export';
+type TheoryTabId = 'theory' | 'references';
 
-// M2.4c: the Theory and References (Theory.tsx with KaTeX and the equations) load when they come within LOAD_MARGIN of
-// the window or a link points at an id outside the tool's sections; until then the sections are empty frames.
+// Lazy-loaded chunks triggered on demand when their workspace/tab or hash route becomes active.
 type TheoryMod = typeof import('./Theory');
-const LOAD_MARGIN = '400px 0px';
-const TOOL_IDS = new Set(['', 'stackup', 'trace', 'via', 'waves', 'export', 'examples']);
-// M4.3b: the worked examples' anchors (ex-…) belong to the Examples chunk, not the theory.
-const notTheory = (id: string) => TOOL_IDS.has(id) || id.startsWith('ex-');
-// M3.1a: the Via section (ViaSection.tsx, its drawings and results) loads the same way: near, or by the link #via.
 type ViaMod = typeof import('./ViaSection');
-// M8.1b: the Export section (ExportSection.tsx with the figure model and fflate) the same way: near, or by #export.
 type ExportMod = typeof import('./ExportSection');
-// M7.1a: the Waves section (WavesSection.tsx with the full-wave client and lib/emsim/fullwave.ts) the same way.
 type WavesMod = typeof import('./WavesSection');
-// M4.3b: the Examples section (Examples.tsx with lib/emsim/examples.ts) the same way: near, by #examples or an example's id.
 type ExamplesMod = typeof import('./Examples');
 
-/** Loads a section's chunk when its box comes within LOAD_MARGIN or the link's fragment is its id. */
-function useNearLoad<M>(id: string, get: () => Promise<M>, prefix = ''): [M | null, React.RefObject<HTMLElement | null>] {
+interface HashRoute {
+  workspace: WorkspaceId;
+  wbTab?: WorkbenchTabId;
+  theoryTab?: TheoryTabId;
+  needsStandard?: boolean;
+}
+
+function routeForHash(rawHash: string): HashRoute | null {
+  let id = '';
+  try {
+    id = decodeURIComponent(rawHash.replace(/^#/, ''));
+  } catch {
+    id = rawHash.replace(/^#/, '');
+  }
+  if (!id) return null;
+  if (id === 'stackup' || id === 'stackup-h') return { workspace: 'workbench', wbTab: 'stackup' };
+  if (id === 'trace' || id === 'trace-h') return { workspace: 'workbench', wbTab: 'trace' };
+  if (id === 'via' || id === 'via-h') return { workspace: 'workbench', wbTab: 'via', needsStandard: true };
+  if (id === 'waves' || id === 'waves-h') return { workspace: 'workbench', wbTab: 'waves', needsStandard: true };
+  if (id === 'export' || id === 'export-h') return { workspace: 'workbench', wbTab: 'export', needsStandard: true };
+  if (id === 'examples' || id === 'examples-h' || id.startsWith('ex-')) return { workspace: 'examples' };
+  if (id === 'references' || id === 'references-h' || id.startsWith('ref-')) {
+    return { workspace: 'theory', theoryTab: 'references' };
+  }
+  return { workspace: 'theory', theoryTab: 'theory' };
+}
+
+/** Loads a section's chunk immediately on first activation (tab switch or hash navigation). */
+function useLazyModule<M>(active: boolean, loadFn: () => Promise<M>): M | null {
   const [mod, setMod] = useState<M | null>(null);
-  const box = useRef<HTMLElement>(null);
+  const started = useRef(false);
   useEffect(() => {
-    let asked = false;
-    let io: IntersectionObserver | null = null;
-    const load = () => {
-      if (asked) return;
-      asked = true;
-      void get().then((m) => { setMod(() => m); io?.disconnect(); }, () => { asked = false; });
-    };
-    const fromHash = () => { const h = decodeURIComponent(window.location.hash.slice(1)); if (h === id || (prefix && h.startsWith(prefix))) load(); };
-    fromHash();
-    window.addEventListener('hashchange', fromHash);
-    io = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) load(); }, { rootMargin: LOAD_MARGIN });
-    if (!io) load();
-    else if (box.current) io.observe(box.current);
-    return () => { window.removeEventListener('hashchange', fromHash); io?.disconnect(); };
-    // get is a constant import
+    if (!active || started.current) return;
+    started.current = true;
+    void loadFn().then(
+      (m) => setMod(() => m),
+      () => { started.current = false; },
+    );
+    // loadFn is a static dynamic import
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, prefix]);
-  return [mod, box];
+  }, [active]);
+  return mod;
 }
 
 // The page's own parameters taken out of a query; the rest is the setup's.
@@ -108,107 +121,142 @@ function splitQuery(search: string): { setupPart: string; unit: ShownUnit | null
 }
 
 const Svg = ({ children }: { children: React.ReactNode }) => (
-  <svg width={18} height={18} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
+  <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
 );
 const UndoIcon = () => <Svg><path d="M5.5 3.5L2.5 6.5l3 3" /><path d="M2.5 6.5h7a4 4 0 0 1 0 8h-2" /></Svg>;
 const RedoIcon = () => <Svg><path d="M10.5 3.5l3 3-3 3" /><path d="M13.5 6.5h-7a4 4 0 0 0 0 8h2" /></Svg>;
-const SunIcon = () => <Svg><circle cx={8} cy={8} r={2.8} /><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" /></Svg>;
-const WhyIcon = () => <Svg><circle cx={8} cy={8} r={6.2} /><path d="M6.2 6.2a1.8 1.8 0 1 1 2.6 1.6c-.5.3-.8.7-.8 1.3v.4" /><path d="M8 11.6v.1" /></Svg>;
-const MoonIcon = () => <Svg><path d="M13.2 9.6A5.6 5.6 0 0 1 6.4 2.8a5.6 5.6 0 1 0 6.8 6.8z" /></Svg>;
 
-export default function EmSimTool({ references, onTheme }: { references: BibEntry[]; onTheme?: (t: Theme | null) => void }) {
-  // ---- the theory, loaded when needed; one Bibliography for the page, numbered in the order of its citations ----
+export default function EmSimTool({ references }: { references: BibEntry[] }) {
+  useDesignSystemPage('#0d9488', '#2fb3a0');
   useReplayHighlight();
-  const [th, setTh] = useState<TheoryMod | null>(null);
-  const thBox = useRef<HTMLElement>(null), refBox = useRef<HTMLElement>(null);
+
+  const { t } = useI18n();
+  const { mode: expMode, setMode: setExpMode } = useExperienceMode();
+  const expModeRef = useRef(expMode);
+  expModeRef.current = expMode;
+
+  const [workspace, setWorkspace] = useState<WorkspaceId>('workbench');
+  const [wbTab, setWbTab] = useState<WorkbenchTabId>('stackup');
+  const [theoryTab, setTheoryTab] = useState<TheoryTabId>('theory');
   const jumpTo = useRef('');
+
+  // Keep workbench sub-tab valid when switching into Quick mode.
   useEffect(() => {
-    let asked = false;
-    let io: IntersectionObserver | null = null;
-    const load = () => {
-      if (asked) return;
-      asked = true;
-      // @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
-      void import('./Theory').then((m: TheoryMod) => { setTh(() => m); io?.disconnect(); }, () => { asked = false; }); // loaded: no more intersections to compute per frame
-    };
-    const fromHash = () => {
-      const id = decodeURIComponent(window.location.hash.slice(1));
-      if (notTheory(id)) return;
-      if (!document.getElementById(id)) jumpTo.current = id;
-      load();
-    };
-    fromHash();
-    window.addEventListener('hashchange', fromHash);
-    io = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) load(); }, { rootMargin: LOAD_MARGIN });
-    if (!io) load();
-    for (const el of [thBox.current, refBox.current]) if (el && io) io.observe(el);
-    return () => { window.removeEventListener('hashchange', fromHash); io?.disconnect(); };
-  }, []);
-  const [vm, setVm] = useState<ViaMod | null>(null);
-  const viaBox = useRef<HTMLElement>(null);
-  useEffect(() => {
-    let asked = false;
-    let io: IntersectionObserver | null = null;
-    const load = () => {
-      if (asked) return;
-      asked = true;
-      // @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
-      void import('./ViaSection').then((m: ViaMod) => { setVm(() => m); io?.disconnect(); }, () => { asked = false; });
-    };
-    const fromHash = () => { if (decodeURIComponent(window.location.hash.slice(1)) === 'via') load(); };
-    fromHash();
-    window.addEventListener('hashchange', fromHash);
-    io = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) load(); }, { rootMargin: LOAD_MARGIN });
-    if (!io) load();
-    else if (viaBox.current) io.observe(viaBox.current);
-    return () => { window.removeEventListener('hashchange', fromHash); io?.disconnect(); };
-  }, []);
+    if (expMode === 'quick' && wbTab !== 'stackup' && wbTab !== 'trace') {
+      setWbTab('stackup');
+    }
+  }, [expMode, wbTab]);
+
+  // On-demand lazy loading for Via, Waves, Export, Examples, and Theory chunks.
   // @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
-  const [xm, exportBox] = useNearLoad<ExportMod>('export', () => import('./ExportSection'));
+  const vm = useLazyModule<ViaMod>(workspace === 'workbench' && wbTab === 'via', () => import('./ViaSection'));
   // @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
-  const [wm, wavesBox] = useNearLoad<WavesMod>('waves', () => import('./WavesSection'));
+  const wm = useLazyModule<WavesMod>(workspace === 'workbench' && wbTab === 'waves', () => import('./WavesSection'));
   // @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
-  const [em, examplesBox] = useNearLoad<ExamplesMod>('examples', () => import('./Examples'), 'ex-');
+  const xm = useLazyModule<ExportMod>(workspace === 'workbench' && wbTab === 'export', () => import('./ExportSection'));
+  // @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
+  const em = useLazyModule<ExamplesMod>(workspace === 'examples', () => import('./Examples'));
+  // @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
+  const th = useLazyModule<TheoryMod>(workspace === 'theory', () => import('./Theory'));
+
   const bib = useMemo<Bibliography | null>(() => (th ? th.bibOf(references) : null), [th, references]);
   // M4.3a: what the equation panel cites from (eqLinks.tsx).
   const eqEnv = useMemo(() => ({ references, bib }), [references, bib]);
-  // A link into the theory that arrived before it was loaded: shown once it is there, by the same fragment navigation
-  // again (no hashchange, no history entry), so the topic also becomes the :target and gets its highlight (M2.4d).
+
+  const scrollTarget = useCallback((id: string) => {
+    if (!id) return false;
+    const el = document.getElementById(id);
+    if (!el || el.closest('[hidden]')) return false;
+    let currentHash = '';
+    try { currentHash = decodeURIComponent(window.location.hash.slice(1)); } catch { currentHash = window.location.hash.slice(1); }
+    if (currentHash === id) window.location.replace(`#${encodeURIComponent(id)}`);
+    else el.scrollIntoView({ block: 'start' });
+    return true;
+  }, []);
+
+  const applyHash = useCallback((rawHash: string) => {
+    const route = routeForHash(rawHash);
+    if (!route) return;
+    if (route.needsStandard && expModeRef.current === 'quick') {
+      setExpMode('standard');
+    }
+    setWorkspace(route.workspace);
+    if (route.wbTab) setWbTab(route.wbTab);
+    if (route.theoryTab) setTheoryTab(route.theoryTab);
+
+    let id = '';
+    try { id = decodeURIComponent(rawHash.replace(/^#/, '')); } catch { id = rawHash.replace(/^#/, ''); }
+    if (!id) return;
+    jumpTo.current = id;
+    window.requestAnimationFrame(() => {
+      if (jumpTo.current === id && scrollTarget(id)) {
+        jumpTo.current = '';
+      }
+    });
+  }, [scrollTarget, setExpMode]);
+
+  useEffect(() => {
+    if (window.location.hash) applyHash(window.location.hash);
+    const onHash = () => applyHash(window.location.hash);
+    const onClick = (e: MouseEvent) => {
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = (e.target as Element | null)?.closest<HTMLAnchorElement>('a[href^="#"]');
+      if (!a) return;
+      const href = a.getAttribute('href');
+      if (href && href.length > 1) applyHash(href);
+    };
+    window.addEventListener('hashchange', onHash);
+    document.addEventListener('click', onClick);
+    return () => {
+      window.removeEventListener('hashchange', onHash);
+      document.removeEventListener('click', onClick);
+    };
+  }, [applyHash]);
+
+  // Complete deferred scrolls once lazy-loaded chunks or active tabs finish rendering.
   useEffect(() => {
     const id = jumpTo.current;
-    if (!th || !id) return;
-    jumpTo.current = '';
-    window.requestAnimationFrame(() => {
-      if (!document.getElementById(id)) return;
-      if (decodeURIComponent(window.location.hash.slice(1)) === id) window.location.replace(`#${encodeURIComponent(id)}`);
-      else document.getElementById(id)?.scrollIntoView();
+    if (!id) return;
+    const raf = window.requestAnimationFrame(() => {
+      if (jumpTo.current === id && scrollTarget(id)) {
+        jumpTo.current = '';
+      }
     });
-  }, [th]);
+    return () => window.cancelAnimationFrame(raf);
+  }, [th, em, vm, wm, xm, workspace, wbTab, theoryTab, scrollTarget]);
+
+  const openTheory = useCallback((topicId?: string) => {
+    setWorkspace('theory');
+    setTheoryTab('theory');
+    if (topicId) {
+      jumpTo.current = topicId;
+      window.requestAnimationFrame(() => {
+        if (jumpTo.current === topicId && scrollTarget(topicId)) {
+          jumpTo.current = '';
+        }
+      });
+    }
+  }, [scrollTarget]);
 
   // M9.1b: a control that Tab moves the focus to, off screen or under the sticky bar, is scrolled into view a frame
-  // later, for engines that do not do it themselves (Playwright's WebKit leaves the page where it was); where the
-  // browser scrolls, the control is already in view and nothing happens. Only after Tab: a focus given back by the
-  // browser (Firefox's Back restores the scroll after it) is left where the browser puts the page. The bar's own
-  // controls are always in view.
+  // later, for engines that do not do it themselves (Playwright's WebKit leaves the page where it was).
   useEffect(() => {
-    let tabbing = false; // between a Tab key's keydown and keyup: the focus that moves then is the Tab's
+    let tabbing = false;
     const down = (e: KeyboardEvent) => { if (e.key === 'Tab') tabbing = true; };
     const up = (e: KeyboardEvent) => { if (e.key === 'Tab') tabbing = false; };
     const on = (e: FocusEvent) => {
       if (!tabbing) return;
       tabbing = false;
-      const t = e.target;
+      const target = e.target;
       const head = document.querySelector('header');
-      if (!(t instanceof HTMLElement || t instanceof SVGElement) || head?.contains(t) || t.closest('dialog')) return;
-      // A frame later, so a part laid out as the focus enters it is in place; only if nothing scrolled the page
-      // meanwhile (the browser's own focus scroll, or a Back right after the Tab).
+      if (!(target instanceof HTMLElement || target instanceof SVGElement) || head?.contains(target) || target.closest('dialog')) return;
       const y0 = window.scrollY;
       window.requestAnimationFrame(() => {
-        if (document.activeElement !== t || Math.abs(window.scrollY - y0) > 1) return;
-        const r = t.getBoundingClientRect();
+        if (document.activeElement !== target || Math.abs(window.scrollY - y0) > 1) return;
+        const r = target.getBoundingClientRect();
         if (r.width === 0 && r.height === 0) return;
         const bar = head ? head.getBoundingClientRect().bottom : 0;
-        if (r.bottom <= bar + 1 || r.top >= window.innerHeight - 1) t.scrollIntoView({ block: 'nearest' });
+        if (r.bottom <= bar + 1 || r.top >= window.innerHeight - 1) target.scrollIntoView({ block: 'nearest' });
       });
     };
     document.addEventListener('keydown', down, true);
@@ -226,14 +274,14 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
     const cur = now.current;
     const n = typeof next === 'function' ? next(cur) : next;
     if (!n || sameSetup(cur, n)) return;
-    const h = hist.current, t = performance.now();
-    if (!(group && group === h.group && t - h.at < GROUP_MS)) {
+    const h = hist.current, nowMs = performance.now();
+    if (!(group && group === h.group && nowMs - h.at < GROUP_MS)) {
       h.past.push(cur);
       if (h.past.length > HISTORY) h.past.shift();
     }
     h.future = [];
     h.group = group;
-    h.at = t;
+    h.at = nowMs;
     now.current = n;
     setSetup(n);
   }, []);
@@ -243,6 +291,7 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
     if (!from.length) return;
     to.push(now.current);
     const n = from.pop();
+    if (!n) return;
     h.group = '';
     now.current = n;
     setSetup(n);
@@ -251,35 +300,27 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
   const canUndo = hist.current.past.length > 0, canRedo = hist.current.future.length > 0;
 
   // ---- preferences and the link, read after mount (the static page has the defaults) ----
-  const [theme, setTheme] = useState<Theme | null>(null);
   const [unit, setUnit] = useState<ShownUnit>('mm');
   const [digits, setDigits] = useState(DEFAULT_DIGITS);
-  const [whys, setWhys] = useState(true);
   const [linkIssues, setLinkIssues] = useState<Issue[]>([]);
   const [ready, setReady] = useState(false);
   const [kicad, setKicad] = useState<KicadState>(NO_KICAD);
   useEffect(() => {
-    let storedTheme: string | null = null, storedUnit: string | null = null, storedDigits: string | null = null, storedWhys: string | null = null;
+    let storedUnit: string | null = null, storedDigits: string | null = null;
     try {
-      storedTheme = window.localStorage.getItem(THEME_KEY);
       storedUnit = window.localStorage.getItem(UNIT_KEY);
       storedDigits = window.localStorage.getItem(DIGITS_KEY);
-      storedWhys = window.localStorage.getItem(WHYS_KEY);
     } catch { /* Storage can be blocked; the defaults stand. */ }
-    if (storedTheme === 'light' || storedTheme === 'dark') setTheme(storedTheme);
-    if (storedWhys === 'off') setWhys(false);
     const d = Number(storedDigits);
     if (DIGIT_CHOICES.includes(d)) setDigits(d);
     const q = splitQuery(window.location.search);
-    setUnit(q.unit ?? ((SHOWN_UNITS as readonly string[]).includes(storedUnit) ? (storedUnit as ShownUnit) : 'mm'));
+    setUnit(q.unit ?? (storedUnit && (SHOWN_UNITS as readonly string[]).includes(storedUnit) ? (storedUnit as ShownUnit) : 'mm'));
     const done = (r: Decoded | null) => {
       if (r?.linked) { now.current = r.setup; setSetup(r.setup); }
       setLinkIssues([...q.issues, ...(r?.issues ?? [])]);
       setReady(true);
     };
     if (!q.setupPart) { done(null); return; }
-    // A JLCPCB list stackup in the link (its key) needs the list: loaded first, then the link is read again; when it
-    // cannot be loaded, the stackup is the default with the reason as an issue.
     let asked = false;
     const r = decodeLink(q.setupPart, (key) => { asked = true; return jlcResolve(key); });
     if (!asked || jlcLoaded()) { done(r); return; }
@@ -293,10 +334,8 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
     );
     return () => { live = false; };
   }, []);
-  useEffect(() => { onTheme?.(theme); }, [theme, onTheme]);
 
-  // The setup goes back into the link without a new history entry; not before the router is ready (Next.js gives a
-  // static page its query after hydration with a replaceState of the link as loaded, which would undo a first write).
+  // The setup goes back into the link without a new history entry; not before the router is ready.
   const router = useRouter();
   const search = useMemo(() => `${encodeLink(setup, jlcResolve)}${unit !== 'mm' ? `&${UNIT_PARAM}=${unit}` : ''}`, [setup, unit]);
   useEffect(() => {
@@ -324,23 +363,29 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
       if (value === null) window.localStorage.removeItem(key); else window.localStorage.setItem(key, value);
     } catch { /* Kept for this visit. */ }
   };
-  const toggleTheme = () => {
-    const system: Theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    const next: Theme = (theme ?? system) === 'dark' ? 'light' : 'dark';
-    // Back on the system's theme, the page follows the system again.
-    setTheme(next === system ? null : next);
-    save(THEME_KEY, next === system ? null : next);
-  };
+
   // ---- M8.2a: a project file, opened by the Data group's picker or dropped anywhere on the page ----
-  // The setup arrives as one undo step; a JLCPCB list key in it loads the list first, as the link does. A refused file
-  // or one with issues brings the Data group's note into view when it was dropped.
   const [opened, setOpened] = useState<OpenedNote | null>(null);
+  const showExportNote = useCallback(() => {
+    if (expModeRef.current === 'quick') setExpMode('standard');
+    setWorkspace('workbench');
+    setWbTab('export');
+    jumpTo.current = 'export';
+    window.requestAnimationFrame(() => {
+      const note = document.querySelector('[data-project-note]');
+      if (note && !note.closest('[hidden]')) {
+        jumpTo.current = '';
+        note.scrollIntoView({ block: 'center' });
+      }
+    });
+  }, [setExpMode]);
+
   const openText: OpenText = useCallback((text, name, dropped = false) => {
     const finish = (r: Opened) => {
       if (r.setup) commit(r.setup);
       setOpened({ name, ok: !!r.setup, message: r.message, issues: r.issues, at: Date.now() });
       if (dropped && (!r.setup || r.issues.length)) {
-        window.requestAnimationFrame(() => (document.querySelector('[data-project-note]') ?? document.getElementById('export'))?.scrollIntoView({ block: 'center' }));
+        showExportNote();
       }
     };
     let asked = false;
@@ -350,15 +395,33 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
       () => finish(openProject(text, jlcResolve)),
       (e) => { const why = errorText(e); finish(openProject(text, () => { throw new Error(`JLCPCB’s stackup list could not be loaded: ${why}`); })); },
     );
-  }, [commit]);
-  // ---- M4.3b: an example's link applied in place: read as the page reads its own link (a JLCPCB list key loads the
-  // list first), committed as one undo step (the address follows), with its issues shown as the link's ----
+  }, [commit, showExportNote]);
+
+  // Once the Export chunk finishes loading after a dropped project note, scroll directly to [data-project-note].
+  useEffect(() => {
+    if (!xm || !opened || workspace !== 'workbench' || wbTab !== 'export') return;
+    if (!opened.ok || opened.issues.length > 0) {
+      const raf = window.requestAnimationFrame(() => {
+        document.querySelector('[data-project-note]')?.scrollIntoView({ block: 'center' });
+      });
+      return () => window.cancelAnimationFrame(raf);
+    }
+  }, [xm, opened, workspace, wbTab]);
+
+  // ---- M4.3b: an example's link applied in place, switching cleanly back to Workbench (Trace or Via) ----
   const applyLink = useCallback((query: string, then: () => void) => {
     const q = splitQuery(query);
+    const targetTab: WorkbenchTabId = /(^|&)via=/.test(query) ? 'via' : 'trace';
     const finish = (r: Decoded) => {
       commit(r.setup);
       setLinkIssues([...q.issues, ...r.issues]);
       if (q.unit) setUnit(q.unit);
+      if (targetTab === 'via' && expModeRef.current === 'quick') {
+        setExpMode('standard');
+      }
+      setWorkspace('workbench');
+      setWbTab(targetTab);
+      jumpTo.current = targetTab;
       then();
     };
     let asked = false;
@@ -368,7 +431,8 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
       () => finish(decodeLink(q.setupPart, jlcResolve)),
       (e) => { const why = errorText(e); finish(decodeLink(q.setupPart, () => { throw new Error(`JLCPCB’s stackup list could not be loaded: ${why}`); })); },
     );
-  }, [commit]);
+  }, [commit, setExpMode]);
+
   useEffect(() => {
     const files = (e: DragEvent) => !!e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files');
     const over = (e: DragEvent) => { if (!e.defaultPrevented && files(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } };
@@ -377,14 +441,17 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
       e.preventDefault();
       const f = e.dataTransfer.files[0];
       if (!f) return;
-      const no = (message: string) => { setOpened({ name: f.name, ok: false, message, issues: [], at: Date.now() }); document.getElementById('export')?.scrollIntoView(); };
+      const no = (message: string) => {
+        setOpened({ name: f.name, ok: false, message, issues: [], at: Date.now() });
+        showExportNote();
+      };
       if (f.size > PROJECT_MAX_BYTES) { no('The file is too large to be a project of this tool.'); return; }
-      f.text().then((t) => openText(t, f.name, true), () => no('The file could not be read.'));
+      f.text().then((txt) => openText(txt, f.name, true), () => no('The file could not be read.'));
     };
     window.addEventListener('dragover', over);
     window.addEventListener('drop', drop);
     return () => { window.removeEventListener('dragover', over); window.removeEventListener('drop', drop); };
-  }, [openText]);
+  }, [openText, showExportNote]);
 
   const [copied, setCopied] = useState(false);
   const copyLink = () => {
@@ -392,84 +459,345 @@ export default function EmSimTool({ references, onTheme }: { references: BibEntr
     navigator.clipboard?.writeText(window.location.href).then(done, () => { /* The address bar has the same link. */ });
   };
 
+  const workspaces: readonly WorkspaceTab<WorkspaceId>[] = useMemo(
+    () => [
+      { id: 'workbench', label: t('emsim.workbench') },
+      { id: 'examples', label: t('emsim.examples') },
+      { id: 'theory', label: t('emsim.theory') },
+    ],
+    [t],
+  );
+
+  const workbenchTabs: readonly PillTabItem<WorkbenchTabId>[] = useMemo(() => {
+    const items: PillTabItem<WorkbenchTabId>[] = [
+      { id: 'stackup', label: t('emsim.tab.stackup') },
+      { id: 'trace', label: t('emsim.tab.trace') },
+    ];
+    if (expMode !== 'quick') {
+      items.push(
+        { id: 'via', label: t('emsim.tab.via') },
+        { id: 'waves', label: t('emsim.tab.waves') },
+        { id: 'export', label: t('emsim.tab.export') },
+      );
+    }
+    return items;
+  }, [expMode, t]);
+
+  const theoryTabs: readonly PillTabItem<TheoryTabId>[] = useMemo(
+    () => [
+      { id: 'theory', label: t('emsim.theoryTab.theory') },
+      { id: 'references', label: t('emsim.theoryTab.references') },
+    ],
+    [t],
+  );
+
+  const undoRedoActions = (
+    <div className={styles.headerActions}>
+      <button
+        type="button"
+        className={styles.headerActionBtn}
+        onClick={() => step(-1)}
+        disabled={!canUndo}
+        aria-label={t('common.undo')}
+        title={t('emsim.undoTitle')}
+        data-undo=""
+      >
+        <UndoIcon />
+      </button>
+      <button
+        type="button"
+        className={styles.headerActionBtn}
+        onClick={() => step(1)}
+        disabled={!canRedo}
+        aria-label={t('common.redo')}
+        title={t('emsim.redoTitle')}
+        data-redo=""
+      >
+        <RedoIcon />
+      </button>
+    </div>
+  );
+
   return (
-    <div className={styles.root} data-theme={theme ?? undefined} data-ready={ready} data-whys={whys ? 'on' : 'off'}>
-      <header className={styles.bar}>
-        <div className={styles.barInner}>
-          <Link href="/" className={styles.home} aria-label="Home" title="All tools"><HomeIcon width={17} height={19} color="currentColor" /></Link>
-          <h1 className={styles.title}>EM simulation</h1>
-          <nav className={styles.nav} aria-label="Sections">
-            {SECTIONS.map((s) => <a key={s.id} href={`#${s.id}`}>{s.label}</a>)}
-          </nav>
-          <span className={styles.barSpace} />
-          <button type="button" className={styles.iconButton} onClick={() => step(-1)} disabled={!canUndo} aria-label="Undo" title="Undo (Ctrl+Z)" data-undo><UndoIcon /></button>
-          <button type="button" className={styles.iconButton} onClick={() => step(1)} disabled={!canRedo} aria-label="Redo" title="Redo (Ctrl+Shift+Z)" data-redo><RedoIcon /></button>
-          <button type="button" className={styles.iconButton} aria-pressed={whys} onClick={() => { const next = !whys; setWhys(next); save(WHYS_KEY, next ? null : 'off'); }} aria-label="Short lines beside the controls" title={whys ? 'Hide the short lines' : 'Show the short lines'} data-whys-toggle><WhyIcon /></button>
-          <button type="button" className={styles.iconButton} onClick={toggleTheme} aria-label="Switch between light and dark" title="Light or dark" data-theme-toggle>
-            <span className={styles.moon}><MoonIcon /></span>
-            <span className={styles.sun}><SunIcon /></span>
-          </button>
-        </div>
-      </header>
+    <div
+      className={styles.root}
+      data-ds="v2"
+      data-ready={ready}
+      data-whys={expMode === 'teaching' ? 'on' : 'off'}
+    >
+      <ToolHeader<WorkspaceId>
+        title={t('emsim.title')}
+        workspaces={workspaces}
+        activeWorkspace={workspace}
+        onWorkspaceChange={setWorkspace}
+        showExperienceMode
+        actions={undoRedoActions}
+      />
 
       <EqEnv.Provider value={eqEnv}>
-      <main className={styles.main}>
-        <Status />
-        <Whys ks="status home nav undo whys theme" />
-        <div className={styles.prefs}>
-          <div className={styles.pref} role="group" aria-label="Units">
-            Units
-            <span className={styles.seg}>
-              {SHOWN_UNITS.map((u) => (
-                <button key={u} type="button" aria-pressed={unit === u} data-unit={u} onClick={() => { setUnit(u); save(UNIT_KEY, u === 'mm' ? null : u); }}>{UNIT_TEXT[u]}</button>
-              ))}
-            </span>
+        <main className={styles.main}>
+          {/* ================================================================
+              WORKSPACE 1: WORKBENCH (Non-Destructive Sub-Tool Tabs)
+             ================================================================ */}
+          <div role="tabpanel" className={styles.workspacePanel} hidden={workspace !== 'workbench'}>
+            <Status />
+            <Whys ks="status home nav undo whys theme" />
+
+            <div className={styles.prefsBar}>
+              <div className={styles.prefs}>
+                <div className={styles.pref} role="group" aria-label={t('emsim.prefs.unitsAria')}>
+                  <span className={styles.prefLabel}>{t('emsim.prefs.units')}</span>
+                  <span className={styles.seg}>
+                    {SHOWN_UNITS.map((u) => (
+                      <button
+                        key={u}
+                        type="button"
+                        aria-pressed={unit === u}
+                        data-unit={u}
+                        onClick={() => { setUnit(u); save(UNIT_KEY, u === 'mm' ? null : u); }}
+                      >
+                        {UNIT_TEXT[u]}
+                      </button>
+                    ))}
+                  </span>
+                </div>
+                <div className={styles.pref} role="group" aria-label={t('emsim.prefs.digitsAria')}>
+                  <span className={styles.prefLabel}>{t('emsim.prefs.digits')}</span>
+                  <span className={styles.seg}>
+                    {DIGIT_CHOICES.map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        aria-pressed={digits === d}
+                        data-digits={d}
+                        onClick={() => { setDigits(d); save(DIGITS_KEY, d === DEFAULT_DIGITS ? null : String(d)); }}
+                      >
+                        {d}
+                      </button>
+                    ))}
+                  </span>
+                </div>
+              </div>
+              <button type="button" className={styles.button} onClick={copyLink} data-copy-link="">
+                {copied ? t('emsim.prefs.linkCopied') : t('emsim.prefs.copyLink')}
+              </button>
+            </div>
+            <Whys ks="units digits copy-link" />
+
+            {linkIssues.length > 0 && (
+              <div className={styles.notice} data-link-issues="">
+                <h3 className={styles.h3}>The link</h3>
+                <Why k="link-issues" bare />
+                <IssueList issues={linkIssues} />
+              </div>
+            )}
+
+            {expMode === 'quick' && (
+              <aside className={styles.quickBanner} aria-label={t('emsim.quick.badge')}>
+                <div className={styles.quickBannerText}>
+                  <span className={styles.quickBadge}>{t('emsim.quick.badge')}</span>
+                  <p>{t('emsim.quick.bannerText')}</p>
+                </div>
+                <div className={styles.quickBannerActions}>
+                  <button
+                    type="button"
+                    className={styles.quickBtnPrimary}
+                    onClick={() => setExpMode('standard')}
+                  >
+                    {t('emsim.quick.switchStandard')}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.quickBtnGhost}
+                    onClick={() => setExpMode('teaching')}
+                  >
+                    {t('emsim.quick.switchTeaching')}
+                  </button>
+                </div>
+              </aside>
+            )}
+
+            <div className={styles.tabBarCard}>
+              <PillTabs<WorkbenchTabId>
+                items={workbenchTabs}
+                value={wbTab}
+                onChange={setWbTab}
+                ariaLabel={t('emsim.tabsAria')}
+                idPrefix="emsim-wb"
+              />
+            </div>
+
+            <div className={styles.tabStack}>
+              <div
+                role="tabpanel"
+                id="emsim-wb-panel-stackup"
+                aria-labelledby="emsim-wb-tab-stackup"
+                className={styles.panelCard}
+                hidden={wbTab !== 'stackup'}
+              >
+                <TeachingCallout
+                  title={t('emsim.teaching.stackupTitle')}
+                  formula={<KatexSpan text={'Z_0 \\approx \\frac{87}{\\sqrt{\\varepsilon_r + 1.41}}\\ln\\!\\left(\\frac{5.98\\,h}{0.8\\,w + t}\\right)'} />}
+                  onTheoryClick={() => openTheory('structures')}
+                  className={styles.panelCallout}
+                >
+                  <p>{t('emsim.teaching.stackupBody')}</p>
+                </TeachingCallout>
+                <StackupSection setup={setup} commit={commit} unit={unit} digits={digits} kicad={kicad} setKicad={setKicad} />
+              </div>
+
+              <div
+                role="tabpanel"
+                id="emsim-wb-panel-trace"
+                aria-labelledby="emsim-wb-tab-trace"
+                className={styles.panelCard}
+                hidden={wbTab !== 'trace'}
+              >
+                <TeachingCallout
+                  title={t('emsim.teaching.traceTitle')}
+                  formula={<KatexSpan text={'Z_0 = \\sqrt{\\frac{L}{C}}, \\quad v_p = \\frac{1}{\\sqrt{LC}} = \\frac{c_0}{\\sqrt{\\varepsilon_{\\mathrm{eff}}}}'} />}
+                  onTheoryClick={() => openTheory('transmission-lines')}
+                  className={styles.panelCallout}
+                >
+                  <p>{t('emsim.teaching.traceBody')}</p>
+                </TeachingCallout>
+                <TraceSection setup={setup} commit={commit} unit={unit} digits={digits} kicad={kicad} />
+              </div>
+
+              <section
+                id="via"
+                role="tabpanel"
+                aria-labelledby="via-h"
+                className={styles.panelCard}
+                hidden={wbTab !== 'via'}
+                data-loaded={vm ? 'true' : 'false'}
+              >
+                <h2 id="via-h" className={styles.h2}>{t('emsim.tab.via')}</h2>
+                <TeachingCallout
+                  title={t('emsim.teaching.viaTitle')}
+                  formula={<KatexSpan text={'Z_{\\mathrm{sec}} = \\sqrt{\\frac{L_{\\mathrm{sec}}}{C_{\\mathrm{sec}}}}, \\quad f_{\\mathrm{stub}} \\approx \\frac{c_0}{4\\,\\ell_{\\mathrm{stub}}\\,\\sqrt{\\varepsilon_r}}'} />}
+                  onTheoryClick={() => openTheory('via-line')}
+                  className={styles.panelCallout}
+                >
+                  <p>{t('emsim.teaching.viaBody')}</p>
+                </TeachingCallout>
+                {vm ? (
+                  <vm.default setup={setup} commit={commit} unit={unit} digits={digits} />
+                ) : (
+                  <p className={styles.lede}>{t('emsim.loading.via')}</p>
+                )}
+              </section>
+
+              <section
+                id="waves"
+                role="tabpanel"
+                aria-labelledby="waves-h"
+                className={styles.panelCard}
+                hidden={wbTab !== 'waves'}
+                data-loaded={wm ? 'true' : 'false'}
+              >
+                <h2 id="waves-h" className={styles.h2}>{t('emsim.tab.waves')}</h2>
+                <TeachingCallout
+                  title={t('emsim.teaching.wavesTitle')}
+                  formula={<KatexSpan text={'\\nabla \\times \\mathbf{E} = -\\mu\\frac{\\partial \\mathbf{H}}{\\partial t}, \\quad \\nabla \\times \\mathbf{H} = \\varepsilon\\frac{\\partial \\mathbf{E}}{\\partial t} + \\sigma\\mathbf{E}'} />}
+                  onTheoryClick={() => openTheory('full-wave')}
+                  className={styles.panelCallout}
+                >
+                  <p>{t('emsim.teaching.wavesBody')}</p>
+                </TeachingCallout>
+                {wm ? (
+                  <wm.default setup={setup} unit={unit} />
+                ) : (
+                  <p className={styles.lede}>{t('emsim.loading.waves')}</p>
+                )}
+              </section>
+
+              <section
+                id="export"
+                role="tabpanel"
+                aria-labelledby="export-h"
+                className={styles.panelCard}
+                hidden={wbTab !== 'export'}
+                data-loaded={xm ? 'true' : 'false'}
+              >
+                <h2 id="export-h" className={styles.h2}>{t('emsim.tab.export')}</h2>
+                {xm ? (
+                  <xm.default setup={setup} unit={unit} digits={digits} opened={opened} openText={openText} />
+                ) : (
+                  <p className={styles.lede}>{t('emsim.loading.export')}</p>
+                )}
+              </section>
+            </div>
           </div>
-          <div className={styles.pref} role="group" aria-label="Significant digits">
-            Digits
-            <span className={styles.seg}>
-              {DIGIT_CHOICES.map((d) => (
-                <button key={d} type="button" aria-pressed={digits === d} data-digits={d} onClick={() => { setDigits(d); save(DIGITS_KEY, d === DEFAULT_DIGITS ? null : String(d)); }}>{d}</button>
-              ))}
-            </span>
+
+          {/* ================================================================
+              WORKSPACE 2: EXAMPLES
+             ================================================================ */}
+          <div role="tabpanel" className={styles.workspacePanel} hidden={workspace !== 'examples'}>
+            <section
+              id="examples"
+              className={styles.panelCard}
+              aria-labelledby="examples-h"
+              data-loaded={em ? 'true' : 'false'}
+            >
+              <h2 id="examples-h" className={styles.h2}>{t('emsim.examples')}</h2>
+              {em ? (
+                <em.default apply={applyLink} />
+              ) : (
+                <p className={styles.lede}>{t('emsim.loading.examples')}</p>
+              )}
+            </section>
           </div>
-          <button type="button" className={styles.button} onClick={copyLink} data-copy-link>{copied ? 'Link copied' : 'Copy link'}</button>
-        </div>
-        <Whys ks="units digits copy-link" />
-        {linkIssues.length > 0 && (
-          <div className={styles.notice} data-link-issues>
-            <h3 className={styles.h3}>The link</h3>
-            <Why k="link-issues" bare />
-            <IssueList issues={linkIssues} />
+
+          {/* ================================================================
+              WORKSPACE 3: THEORY & REFERENCES (Non-Destructive Tabs)
+             ================================================================ */}
+          <div role="tabpanel" className={styles.workspacePanel} hidden={workspace !== 'theory'}>
+            <div className={styles.tabBarCard}>
+              <PillTabs<TheoryTabId>
+                items={theoryTabs}
+                value={theoryTab}
+                onChange={setTheoryTab}
+                ariaLabel={t('emsim.theoryTabsAria')}
+                idPrefix="emsim-theory"
+              />
+            </div>
+
+            <div className={styles.tabStack}>
+              <section
+                id="theory"
+                role="tabpanel"
+                className={th ? `${styles.panelCard} ${styles.offscreen}` : styles.panelCard}
+                aria-labelledby="theory-h"
+                hidden={theoryTab !== 'theory'}
+                data-loaded={th ? 'true' : 'false'}
+              >
+                <h2 id="theory-h" className={styles.h2}>{t('emsim.theoryTab.theory')}</h2>
+                {th && bib ? (
+                  <th.default bib={bib} unit={unit} digits={digits} />
+                ) : (
+                  <p className={styles.lede}>{t('emsim.loading.theory')}</p>
+                )}
+              </section>
+
+              {/* Mounted right after Theory in the same render pass so Bibliography numbering stays deterministic. */}
+              <section
+                id="references"
+                role="tabpanel"
+                className={th ? `${styles.panelCard} ${styles.offscreen}` : styles.panelCard}
+                aria-labelledby="references-h"
+                hidden={theoryTab !== 'references'}
+              >
+                <h2 id="references-h" className={styles.h2}>{t('emsim.theoryTab.references')}</h2>
+                {th && bib ? (
+                  <th.References bib={bib} />
+                ) : (
+                  <p className={styles.lede}>{t('emsim.loading.references')}</p>
+                )}
+              </section>
+            </div>
           </div>
-        )}
-        <StackupSection setup={setup} commit={commit} unit={unit} digits={digits} kicad={kicad} setKicad={setKicad} />
-        <TraceSection setup={setup} commit={commit} unit={unit} digits={digits} kicad={kicad} />
-        <section id="via" ref={viaBox} className={styles.section} aria-labelledby="via-h" data-loaded={vm ? 'true' : 'false'}>
-          <h2 id="via-h" className={styles.h2}>Via</h2>
-          {vm ? <vm.default setup={setup} commit={commit} unit={unit} digits={digits} /> : <p className={styles.lede}>The via editor loads as you come near it.</p>}
-        </section>
-        <section id="waves" ref={wavesBox} className={styles.section} aria-labelledby="waves-h" data-loaded={wm ? 'true' : 'false'}>
-          <h2 id="waves-h" className={styles.h2}>Waves</h2>
-          {wm ? <wm.default setup={setup} unit={unit} /> : <p className={styles.lede}>The full-wave runs load as you come near them.</p>}
-        </section>
-        <section id="export" ref={exportBox} className={styles.section} aria-labelledby="export-h" data-loaded={xm ? 'true' : 'false'}>
-          <h2 id="export-h" className={styles.h2}>Export</h2>
-          {xm ? <xm.default setup={setup} unit={unit} digits={digits} opened={opened} openText={openText} /> : <p className={styles.lede}>The export loads as you come near it.</p>}
-        </section>
-        <section id="examples" ref={examplesBox} className={styles.section} aria-labelledby="examples-h" data-loaded={em ? 'true' : 'false'}>
-          <h2 id="examples-h" className={styles.h2}>Examples</h2>
-          {em ? <em.default apply={applyLink} /> : <p className={styles.lede}>The worked examples load as you come near them.</p>}
-        </section>
-        <section id="theory" ref={thBox} className={th ? `${styles.section} ${styles.offscreen}` : styles.section} aria-label="Theory" data-loaded={th ? 'true' : 'false'}>
-          <h2 id="theory-h" className={styles.h2}>Theory</h2>
-          {th && bib ? <th.default bib={bib} unit={unit} digits={digits} /> : <p className={styles.lede}>The theory loads as you come near it.</p>}
-        </section>
-        <section id="references" ref={refBox} className={th ? `${styles.section} ${styles.offscreen}` : styles.section} aria-label="References">
-          <h2 id="references-h" className={styles.h2}>References</h2>
-          {th && bib ? <th.References bib={bib} /> : <p className={styles.lede}>The sources the theory cites, listed once it has loaded.</p>}
-        </section>
-      </main>
+        </main>
       </EqEnv.Provider>
     </div>
   );

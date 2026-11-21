@@ -385,6 +385,59 @@ export const en = {
   'smith.teaching.equationsTitle': 'Live equations & cross-highlighting',
   'smith.teaching.equationsBody':
     'Hover or focus any variable to highlight its arc, node, or readout row on the chart. Click a derivation link to inspect the full algebraic steps.',
+
+  // EM simulation namespace
+  'emsim.pageTitle': 'EM Simulation · yotasage',
+  'emsim.title': 'EM Simulation',
+  'emsim.workbench': 'Workbench',
+  'emsim.examples': 'Examples',
+  'emsim.theory': 'Theory & References',
+
+  'emsim.tabsAria': 'Workbench sections',
+  'emsim.tab.stackup': 'Stackup',
+  'emsim.tab.trace': 'Trace',
+  'emsim.tab.via': 'Via',
+  'emsim.tab.waves': 'Waves',
+  'emsim.tab.export': 'Export',
+
+  'emsim.theoryTabsAria': 'Theory and reference sections',
+  'emsim.theoryTab.theory': 'Theory',
+  'emsim.theoryTab.references': 'References',
+
+  'emsim.prefs.units': 'Units',
+  'emsim.prefs.unitsAria': 'Length units',
+  'emsim.prefs.digits': 'Digits',
+  'emsim.prefs.digitsAria': 'Significant digits',
+  'emsim.prefs.copyLink': 'Copy link',
+  'emsim.prefs.linkCopied': 'Link copied',
+  'emsim.undoTitle': 'Undo (Ctrl+Z)',
+  'emsim.redoTitle': 'Redo (Ctrl+Shift+Z)',
+
+  'emsim.loading.via': 'Loading the 3D via editor and solver…',
+  'emsim.loading.waves': 'Loading the WebGPU / CPU full-wave FDTD solver…',
+  'emsim.loading.export': 'Loading figure, data, and report export…',
+  'emsim.loading.examples': 'Loading worked examples…',
+  'emsim.loading.theory': 'Loading theory, equations, and references…',
+  'emsim.loading.references': 'The sources the theory cites appear once the theory has loaded.',
+
+  'emsim.quick.badge': 'Quick mode',
+  'emsim.quick.bannerText':
+    'Showing Stackup and Trace. Switch to Standard for 3D Vias, Full-Wave FDTD, and TikZ / Touchstone Export.',
+  'emsim.quick.switchStandard': 'Switch to Standard',
+  'emsim.quick.switchTeaching': 'Try Teaching mode',
+
+  'emsim.teaching.stackupTitle': 'Why the board stackup sets impedance',
+  'emsim.teaching.stackupBody':
+    'Characteristic impedance is governed primarily by dielectric height (h), relative permittivity (εr), and copper thickness. Start from a JLCPCB stackup or drop a KiCad .kicad_pcb + .kicad_pro to import real tolerances and net classes.',
+  'emsim.teaching.traceTitle': '2D quasi-TEM field solver & live handles',
+  'emsim.teaching.traceBody':
+    'Drag the handles on the cross-section to tune width, spacing, or height interactively. The 2D boundary-element solver computes per-unit-length L and C matrices including solder mask and trapezoidal etch — click any underlined result to inspect its exact equation.',
+  'emsim.teaching.viaTitle': 'Via capacitance, inductance & stub resonance',
+  'emsim.teaching.viaBody':
+    'A via transition behaves like a short lumped section of impedance √(L/C): pads and tight antipads add capacitance while the barrel and distant return vias add inductance. Any unused stub beyond the exit layer creates a quarter-wave resonance notch.',
+  'emsim.teaching.wavesTitle': 'When to run 3D full-wave FDTD',
+  'emsim.teaching.wavesBody':
+    'Quasi-static models hold well below λ/8 where transverse fields dominate. Run the in-browser WebGPU / CPU FDTD solver when edge speeds are very fast, stubs resonate near the signal band, or return vias sit far from the barrel.',
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -772,6 +825,59 @@ export const nb: Record<TranslationKey, string> = {
   'smith.teaching.equationsTitle': 'Levende ligninger og kryssmarkering',
   'smith.teaching.equationsBody':
     'Hold over eller fokuser på en variabel for å utheve buen, noden eller avlesningen på diagrammet. Klikk på en utledningslenke for å se hele utregningen.',
+
+  // EM simulation namespace
+  'emsim.pageTitle': 'EM-simulering · yotasage',
+  'emsim.title': 'EM-simulering',
+  'emsim.workbench': 'Arbeidsbenk',
+  'emsim.examples': 'Eksempler',
+  'emsim.theory': 'Teori og referanser',
+
+  'emsim.tabsAria': 'Verktøy i arbeidsbenken',
+  'emsim.tab.stackup': 'Lagoppbygging',
+  'emsim.tab.trace': 'Bane',
+  'emsim.tab.via': 'Via',
+  'emsim.tab.waves': 'Bølger',
+  'emsim.tab.export': 'Eksport',
+
+  'emsim.theoryTabsAria': 'Teori- og referanseseksjoner',
+  'emsim.theoryTab.theory': 'Teori',
+  'emsim.theoryTab.references': 'Referanser',
+
+  'emsim.prefs.units': 'Enheter',
+  'emsim.prefs.unitsAria': 'Lengdeenheter',
+  'emsim.prefs.digits': 'Siffer',
+  'emsim.prefs.digitsAria': 'Gjeldende siffer',
+  'emsim.prefs.copyLink': 'Kopier lenke',
+  'emsim.prefs.linkCopied': 'Lenke kopiert',
+  'emsim.undoTitle': 'Angre (Ctrl+Z)',
+  'emsim.redoTitle': 'Gjør om (Ctrl+Shift+Z)',
+
+  'emsim.loading.via': 'Laster 3D via-editor og beregningsmotor…',
+  'emsim.loading.waves': 'Laster fullbølge FDTD-løser (WebGPU / CPU)…',
+  'emsim.loading.export': 'Laster figur-, data- og rapporteksport…',
+  'emsim.loading.examples': 'Laster gjennomgåtte eksempler…',
+  'emsim.loading.theory': 'Laster teori, ligninger og referanser…',
+  'emsim.loading.references': 'Kildene teorien siterer vises så snart teorien er lastet.',
+
+  'emsim.quick.badge': 'Rask modus',
+  'emsim.quick.bannerText':
+    'Viser Lagoppbygging og Bane. Bytt til Standard for 3D-viaer, fullbølge-FDTD og eksport til TikZ / Touchstone.',
+  'emsim.quick.switchStandard': 'Bytt til Standard',
+  'emsim.quick.switchTeaching': 'Prøv Læringsmodus',
+
+  'emsim.teaching.stackupTitle': 'Hvorfor lagoppbyggingen styrer impedansen',
+  'emsim.teaching.stackupBody':
+    'Karakteristisk impedans bestemmes hovedsakelig av dielektrisk høyde (h), relativ permittivitet (εr) og kobbertykkelse. Start med en JLCPCB-mal eller slipp en KiCad .kicad_pcb + .kicad_pro for å hente reelle toleranser og nettklasser.',
+  'emsim.teaching.traceTitle': '2D kvasi-TEM feltløser og håndtak',
+  'emsim.teaching.traceBody':
+    'Dra i håndtakene på tverrsnittet for å justere bredde, avstand eller høyde direkte. 2D-feltløseren beregner L- og C-matriser per lengdeenhet inkludert loddemaske og trapesetsing — klikk på et understreket resultat for å se ligningen.',
+  'emsim.teaching.viaTitle': 'Via-kapasitans, induktans og stub-resonans',
+  'emsim.teaching.viaBody':
+    'En via-overgang oppfører seg som en kort seksjon med impedans √(L/C): pader og trange antipader øker kapasitansen, mens sylinder og fjerne returviaer øker induktansen. En ubrukt stub etter utgangslaget gir kvartbølge-resonans.',
+  'emsim.teaching.wavesTitle': 'Når bør du kjøre 3D fullbølge-FDTD',
+  'emsim.teaching.wavesBody':
+    'Kvasi-statiske modeller er nøyaktige langt under λ/8. Kjør 3D FDTD-løseren (WebGPU / CPU) i nettleseren når stigetidene er svært korte, en stub resonerer nær signalbåndet, eller returviaene ligger langt fra signalviaen.',
 };
 
 export const TRANSLATIONS: Record<Locale, Record<TranslationKey, string>> = {

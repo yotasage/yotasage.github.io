@@ -54,12 +54,15 @@ export function colorsOf(el: HTMLElement): Via3DColors {
   return { bg: g('--air', '#e8eff4'), copper: g('--copper', '#c8773a'), core: g('--core', '#d6c688'), prepreg: g('--prepreg', '#e9dfb2'), mask: g('--mask', '#2f7d4f'), ghost: g('--ink-3', '#6c6861') };
 }
 
-/** Follows the theme (the page root's data-theme, the system's scheme) with the view's colours; returns the undo. */
+/** Follows the theme (html's data-ds-theme, root's data-theme, and system scheme) with the view's colours; returns the undo. */
 export function followTheme(el: HTMLElement, view: Via3D): () => void {
   const again = () => view.setColors(colorsOf(el));
   const root = el.closest('[data-whys]') ?? document.documentElement;
   const mo = new MutationObserver(again);
-  mo.observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+  mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-ds-theme'] });
+  if (root !== document.documentElement) {
+    mo.observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+  }
   const mq = window.matchMedia('(prefers-color-scheme: dark)');
   mq.addEventListener('change', again);
   return () => { mo.disconnect(); mq.removeEventListener('change', again); };
