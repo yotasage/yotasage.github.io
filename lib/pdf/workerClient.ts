@@ -13,13 +13,17 @@ import {
   RemoveAnnotationsResult,
 } from './annotations';
 import { inspectPdfSizeBreakdown, PdfSizeBreakdown } from './breakdown';
+import { grayscalePdf, GrayscaleOptions, GrayscaleResult } from './color';
 import { compressPdf, CompressOptions, CompressResult } from './compress';
+import { cropPdf, CropOptions, getPageBoxes, PageBoxInfo } from './crop';
 import { extractImagesFromPdf, ExtractImagesOptions, ExtractImagesResult } from './extractImages';
 import { OutputFile } from './files';
 import { MergeInput, mergePdfs } from './merge';
 import { PdfMetadata, PdfMetadataEdit, readPdfMetadata, writePdfMetadata } from './metadata';
+import { bookletPdf, BookletOptions, nupPdf, NupOptions } from './nup';
 import { addPageNumbers, PageNumberOptions } from './pageNumbers';
 import { buildPdfFromPages, extractPagesPdf, LoadSource, PageSpec, removePagesPdf, rotatePdf } from './pages';
+import { resizePdf, ResizeOptions } from './resize';
 import { CleanOptions, cleanPdf, Finding, inspectPdf } from './sanitize';
 import { inspectSecurity, ProtectOptions, protectPdf, SecurityInfo, unlockPdf, UnlockResult } from './security';
 import { SplitBySizeResult, SplitPart, splitPdfBySize, splitPdfParts } from './split';
@@ -348,5 +352,71 @@ export function runAddWatermark(
   return dispatch<Uint8Array>(
     (id) => ({ id, task: 'addWatermark', bytes, opts, password }),
     () => addWatermark(bytes, opts, password),
+  );
+}
+
+export function runGetPageBoxes(bytes: Uint8Array, password?: string): Promise<PageBoxInfo[]> {
+  return dispatch<PageBoxInfo[]>(
+    (id) => ({ id, task: 'getPageBoxes', bytes, password }),
+    () => getPageBoxes(bytes, password),
+  );
+}
+
+export function runCropPdf(
+  bytes: Uint8Array,
+  opts: CropOptions,
+  password?: string,
+): Promise<Uint8Array> {
+  return dispatch<Uint8Array>(
+    (id) => ({ id, task: 'crop', bytes, opts, password }),
+    () => cropPdf(bytes, opts, password),
+  );
+}
+
+export function runResizePdf(
+  bytes: Uint8Array,
+  opts: ResizeOptions,
+  password?: string,
+): Promise<Uint8Array> {
+  return dispatch<Uint8Array>(
+    (id) => ({ id, task: 'resize', bytes, opts, password }),
+    () => resizePdf(bytes, opts, password),
+  );
+}
+
+export function runNupPdf(
+  bytes: Uint8Array,
+  opts: NupOptions,
+  password?: string,
+): Promise<Uint8Array> {
+  return dispatch<Uint8Array>(
+    (id) => ({ id, task: 'nup', bytes, opts, password }),
+    () => nupPdf(bytes, opts, password),
+  );
+}
+
+export function runBookletPdf(
+  bytes: Uint8Array,
+  opts: BookletOptions,
+  password?: string,
+): Promise<Uint8Array> {
+  return dispatch<Uint8Array>(
+    (id) => ({ id, task: 'booklet', bytes, opts, password }),
+    () => bookletPdf(bytes, opts, password),
+  );
+}
+
+export function runGrayscalePdf(
+  bytes: Uint8Array,
+  opts?: GrayscaleOptions,
+  password?: string,
+): Promise<GrayscaleResult> {
+  // Function callbacks cannot be structured-cloned into a Web Worker, so run on the main thread when provided.
+  if (opts?.convertJpegToGray) {
+    return grayscalePdf(bytes, opts, password);
+  }
+  return dispatch<GrayscaleResult>(
+    (id) => ({ id, task: 'grayscale', bytes, password }),
+    () => grayscalePdf(bytes, opts, password),
   );
 }

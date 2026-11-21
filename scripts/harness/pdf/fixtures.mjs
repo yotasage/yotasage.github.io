@@ -708,3 +708,43 @@ export async function makeAnnotatedFormPdf() {
 
   return doc.save();
 }
+
+/**
+ * 1-page PDF containing colored vector operators (rg, RG, k, K, /DeviceRGB cs + sc, literal string with
+ * fake "1 0 0 rg" text that must NOT be rewritten), a Flate-compressed DeviceRGB image (16x16),
+ * and an embedded DCTDecode JPEG (16x16) for grayscale conversion checks.
+ */
+export async function makeColorAndImagePdf() {
+  const doc = await PDFDocument.create();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  await font.embed();
+  const ctx = doc.context;
+
+  const page = doc.addPage([420, 560]);
+
+  // Embedded 16x16 RGB PNG (stored by pdf-lib as FlateDecode DeviceRGB + SMask)
+  const png = makeRgbaPng(16, 16);
+  const pngImg = await doc.embedPng(png);
+  // Embedded 16x16 JPEG (DCTDecode)
+  const jpeg = makeMinimalJpeg(16, 16);
+  const jpgImg = await doc.embedJpg(jpeg);
+
+  page.drawImage(pngImg, { x: 40, y: 360, width: 100, height: 100 });
+  page.drawImage(jpgImg, { x: 180, y: 360, width: 100, height: 100 });
+  page.drawText('Color literal 1 0 0 rg stays intact', { x: 40, y: 500, size: 14, font });
+
+  const colorOps = [
+    'q',
+    '1 0 0 rg 0 0 1 RG 2 w 40 240 120 60 re B',
+    '0 1 1 0 k 1 0 1 0 K 1.5 w 190 240 120 60 re B',
+    '/DeviceRGB cs 0.2 0.7 0.3 sc 40 140 100 50 re f',
+    '/DeviceCMYK CS 0.8 0.2 0 0.1 SC 180 140 100 50 re S',
+    'Q',
+  ].join('\n');
+  const colorRef = ctx.register(ctx.flateStream(colorOps));
+  const existing = page.node.get(PDFName.of('Contents'));
+  const existingRefs = existing instanceof PDFArray ? existing.asArray() : existing ? [existing] : [];
+  page.node.set(PDFName.of('Contents'), ctx.obj([...existingRefs, colorRef]));
+
+  return doc.save();
+}

@@ -9,13 +9,17 @@ import {
   removeAnnotations,
 } from './annotations';
 import { inspectPdfSizeBreakdown } from './breakdown';
+import { grayscalePdf, GrayscaleOptions } from './color';
 import { compressPdf, CompressOptions } from './compress';
+import { cropPdf, CropOptions, getPageBoxes } from './crop';
 import { extractImagesFromPdf, ExtractImagesOptions } from './extractImages';
 import { isPasswordError } from './files';
 import { MergeInput, mergePdfs } from './merge';
 import { PdfMetadataEdit, readPdfMetadata, writePdfMetadata } from './metadata';
+import { bookletPdf, BookletOptions, nupPdf, NupOptions } from './nup';
 import { addPageNumbers, PageNumberOptions } from './pageNumbers';
 import { buildPdfFromPages, extractPagesPdf, LoadSource, PageSpec, removePagesPdf, rotatePdf } from './pages';
+import { resizePdf, ResizeOptions } from './resize';
 import { CleanOptions, cleanPdf, inspectPdf } from './sanitize';
 import { inspectSecurity, ProtectOptions, protectPdf, unlockPdf } from './security';
 import { SplitPart, splitPdfBySize, splitPdfParts } from './split';
@@ -49,7 +53,13 @@ export type WorkerRequest =
   | { id: number; task: 'removeAnnotations'; bytes: Uint8Array; opts: RemoveAnnotationsOptions; password?: string }
   | { id: number; task: 'flatten'; bytes: Uint8Array; opts: FlattenOptions; password?: string }
   | { id: number; task: 'addPageNumbers'; bytes: Uint8Array; opts: PageNumberOptions; password?: string }
-  | { id: number; task: 'addWatermark'; bytes: Uint8Array; opts: WatermarkOptions; password?: string };
+  | { id: number; task: 'addWatermark'; bytes: Uint8Array; opts: WatermarkOptions; password?: string }
+  | { id: number; task: 'getPageBoxes'; bytes: Uint8Array; password?: string }
+  | { id: number; task: 'crop'; bytes: Uint8Array; opts: CropOptions; password?: string }
+  | { id: number; task: 'resize'; bytes: Uint8Array; opts: ResizeOptions; password?: string }
+  | { id: number; task: 'nup'; bytes: Uint8Array; opts: NupOptions; password?: string }
+  | { id: number; task: 'booklet'; bytes: Uint8Array; opts: BookletOptions; password?: string }
+  | { id: number; task: 'grayscale'; bytes: Uint8Array; opts?: Omit<GrayscaleOptions, 'convertJpegToGray'>; password?: string };
 
 export type WorkerResponse =
   | { id: number; type: 'progress'; fraction: number; label: string }
@@ -121,6 +131,18 @@ async function handleTask(req: WorkerRequest, postProgress: (fraction: number, l
       return addPageNumbers(req.bytes, req.opts, req.password);
     case 'addWatermark':
       return addWatermark(req.bytes, req.opts, req.password);
+    case 'getPageBoxes':
+      return getPageBoxes(req.bytes, req.password);
+    case 'crop':
+      return cropPdf(req.bytes, req.opts, req.password);
+    case 'resize':
+      return resizePdf(req.bytes, req.opts, req.password);
+    case 'nup':
+      return nupPdf(req.bytes, req.opts, req.password);
+    case 'booklet':
+      return bookletPdf(req.bytes, req.opts, req.password);
+    case 'grayscale':
+      return grayscalePdf(req.bytes, req.opts, req.password);
   }
 }
 

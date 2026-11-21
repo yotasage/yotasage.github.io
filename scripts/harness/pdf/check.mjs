@@ -1,11 +1,12 @@
 // Node verification harness for framework-free lib/pdf/* modules.
 //   npm run check   (tsx check.mjs)
 
-import { PDFDocument, PDFName } from '@cantoo/pdf-lib';
+import { decodePDFRawStream, PDFArray, PDFDocument, PDFName, PDFRawStream } from '@cantoo/pdf-lib';
 
 import {
   makeAnnotatedFormPdf,
   makeBookmarkedPdf,
+  makeColorAndImagePdf,
   makeCompressiblePdf,
   makeEncryptedPdf,
   makeImagePdf,
@@ -20,16 +21,20 @@ import {
 
 import * as annotationsMod from '../../../lib/pdf/annotations.ts';
 import * as breakdownMod from '../../../lib/pdf/breakdown.ts';
+import * as colorMod from '../../../lib/pdf/color.ts';
 import * as compressMod from '../../../lib/pdf/compress.ts';
+import * as cropMod from '../../../lib/pdf/crop.ts';
 import * as detectFiguresMod from '../../../lib/pdf/detectFigures.ts';
 import * as extractImagesMod from '../../../lib/pdf/extractImages.ts';
 import * as extractVectorsMod from '../../../lib/pdf/extractVectors.ts';
 import * as mergeMod from '../../../lib/pdf/merge.ts';
 import * as metadataMod from '../../../lib/pdf/metadata.ts';
+import * as nupMod from '../../../lib/pdf/nup.ts';
 import * as pageNumbersMod from '../../../lib/pdf/pageNumbers.ts';
 import * as pagesMod from '../../../lib/pdf/pages.ts';
 import * as pdfToSvgMod from '../../../lib/pdf/pdfToSvg.ts';
 import * as readerMod from '../../../lib/pdf/reader.ts';
+import * as resizeMod from '../../../lib/pdf/resize.ts';
 import * as sanitizeMod from '../../../lib/pdf/sanitize.ts';
 import * as securityMod from '../../../lib/pdf/security.ts';
 import * as splitMod from '../../../lib/pdf/split.ts';
@@ -38,16 +43,20 @@ import * as watermarkMod from '../../../lib/pdf/watermark.ts';
 const unwrap = (x) => x.default ?? x;
 const { inspectAnnotations, removeAnnotations, flattenPdf } = unwrap(annotationsMod);
 const { inspectPdfSizeBreakdown } = unwrap(breakdownMod);
+const { grayscalePdf, transformRgbaPixels } = unwrap(colorMod);
 const { compressPdf } = unwrap(compressMod);
+const { getPageBoxes, cropPdf } = unwrap(cropMod);
 const { analyzePageVectors, detectFiguresOnPage, tightenRegionToContent } = unwrap(detectFiguresMod);
 const { extractImagesFromPdf } = unwrap(extractImagesMod);
 const { extractFormXObjects, extractRegionAsPdf } = unwrap(extractVectorsMod);
 const { parsePageRanges, mergePdfs } = unwrap(mergeMod);
 const { readPdfMetadata, writePdfMetadata } = unwrap(metadataMod);
+const { nupPdf, computeBookletOrder, bookletPdf } = unwrap(nupMod);
 const { addPageNumbers } = unwrap(pageNumbersMod);
 const { formatPageRanges, buildPdfFromPages, rotatePdf, removePagesPdf, extractPagesPdf } = unwrap(pagesMod);
 const { pdfBytesToSvg } = unwrap(pdfToSvgMod);
 const { findTextMatches, splitItemWithMatches } = unwrap(readerMod);
+const { RESIZE_PRESETS, resizePdf } = unwrap(resizeMod);
 const { inspectPdf, cleanPdf, PRESETS } = unwrap(sanitizeMod);
 const { inspectSecurity, protectPdf, unlockPdf } = unwrap(securityMod);
 const { parseSplitGroups, splitByEveryN, splitByBreakPoints, splitByBookmarks, splitPdfParts, splitPdfBySize } = unwrap(splitMod);
@@ -966,6 +975,408 @@ await runCheck('20. watermark.ts (text single/tiled, over/under, rotated, PNG im
   } finally {
     await t3.destroy();
   }
+});
+
+// 21. lib/pdf/crop.ts (getPageBoxes & cropPdf on unrotated + 90°-rotated pages + resetCrop)
+await runCheck('21. crop.ts (getPageBoxes, unrotated & 90°-rotated crop, resetCrop)', async () => {
+  const rotPdf = await makeRotatedPdf(); // p1: 300x400 rot 0; p2: 320x415 rot 90 (visual 415x320)
+  const boxes = await getPageBoxes(rotPdf);
+  assert(boxes.length === 4, `expected 4 page boxes, got ${boxes.length}`);
+  assert(boxes[0].rotation === 0 && boxes[0].visualWidth === 300 && boxes[0].visualHeight === 400, `p1 box mismatch: ${JSON.stringify(boxes[0])}`);
+  assert(boxes[1].rotation === 90 && boxes[1].visualWidth === 415 && boxes[1].visualHeight === 320, `p2 box mismatch: ${JSON.stringify(boxes[1])}`);
+
+  // Crop page 1 with normalized visual rect [0.1..0.9, 0.2..0.8] and page 2 (rot=90) with [0.1..0.6, 0.25..0.75]
+  const croppedBytes = await cropPdf(rotPdf, {
+    perPageCrops: {
+      1: { left: 0.1, top: 0.2, right: 0.9, bottom: 0.8 },
+      2: { left: 0.1, top: 0.25, right: 0.6, bottom: 0.75 },
+    },
+  });
+  const afterBoxes = await getPageBoxes(croppedBytes);
+
+  // Page 1 (rot 0, 300x400): x = 30..270 (w=240), y = 400-320..400-80 = 80..320 (h=240)
+  const b0 = afterBoxes[0];
+  assert(
+    Math.abs(b0.cropBox.x - 30) < 0.5 &&
+      Math.abs(b0.cropBox.y - 80) < 0.5 &&
+      Math.abs(b0.cropBox.width - 240) < 0.5 &&
+      Math.abs(b0.cropBox.height - 240) < 0.5,
+    `p1 cropped box unexpected: ${JSON.stringify(b0.cropBox)}`,
+  );
+
+  // Page 2 (rot 90, raw 320x415, visual 415x320):
+  // rx = 41.5, rw = 207.5 (50% of 415); ry = 80, rh = 160 (50% of 320)
+  // For rot=90: raw px = [vx0 + ry, vx0 + ry + rh] = [80, 240] (w=160); raw py = [vy0 + rx, vy0 + rx + rw] = [41.5, 249] (h=207.5)
+  const b1 = afterBoxes[1];
+  assert(
+    Math.abs(b1.cropBox.x - 80) < 0.5 &&
+      Math.abs(b1.cropBox.y - 41.5) < 0.5 &&
+      Math.abs(b1.cropBox.width - 160) < 0.5 &&
+      Math.abs(b1.cropBox.height - 207.5) < 0.5 &&
+      Math.abs(b1.visualWidth - 207.5) < 0.5 &&
+      Math.abs(b1.visualHeight - 160) < 0.5,
+    `p2 (rot=90) cropped box unexpected: ${JSON.stringify(b1)}`,
+  );
+
+  // Page 3 & 4 untouched
+  assert(afterBoxes[2].visualWidth === boxes[2].visualWidth, 'page 3 should be untouched');
+
+  // Uniform margin crop on page 1: trim 20pt left/right, 30pt top/bottom
+  const marginCropped = await cropPdf(rotPdf, {
+    margins: { left: 20, right: 20, top: 30, bottom: 30 },
+    pageRange: '1',
+  });
+  const mb0 = (await getPageBoxes(marginCropped))[0];
+  assert(
+    Math.abs(mb0.visualWidth - 260) < 0.5 && Math.abs(mb0.visualHeight - 340) < 0.5,
+    `margin crop p1 expected 260x340, got ${mb0.visualWidth}x${mb0.visualHeight}`,
+  );
+
+  // resetCrop restores CropBox back to MediaBox
+  const resetBytes = await cropPdf(croppedBytes, { resetCrop: true });
+  const resetBoxes = await getPageBoxes(resetBytes);
+  assert(
+    Math.abs(resetBoxes[0].cropBox.width - resetBoxes[0].mediaBox.width) < 0.1 &&
+      Math.abs(resetBoxes[0].cropBox.height - resetBoxes[0].mediaBox.height) < 0.1 &&
+      Math.abs(resetBoxes[1].cropBox.width - resetBoxes[1].mediaBox.width) < 0.1 &&
+      Math.abs(resetBoxes[1].cropBox.height - resetBoxes[1].mediaBox.height) < 0.1,
+    `resetCrop must restore MediaBox on all pages: ${JSON.stringify(resetBoxes.slice(0, 2))}`,
+  );
+
+  // Cropping an encrypted PDF with password produces a clean unencrypted PDF
+  const encPdf = await makeEncryptedPdf('secret', 'owner');
+  const croppedEnc = await cropPdf(encPdf, { margins: { left: 10, right: 10, top: 10, bottom: 10 } }, 'secret');
+  const croppedEncBoxes = await getPageBoxes(croppedEnc);
+  assert(croppedEncBoxes.length === 4, 'cropped encrypted PDF should open without password and have 4 pages');
+});
+
+// 22. lib/pdf/resize.ts (A4 portrait/landscape/auto, fit/fill/center, rotated source, selectable text)
+await runCheck('22. resize.ts (A4 portrait/landscape/auto, fit/fill/center, rotated, text)', async () => {
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  // Stamp visually upright labels onto makeRotatedPdf (rot 0, 90, 180, 270) so we can verify both
+  // original content orientation fidelity AND visually upright text remaining upright after /Rotate baking.
+  const rotPdf = await addPageNumbers(await makeRotatedPdf(), {
+    position: 'bottom-right',
+    format: 'UPRIGHT_{page}',
+    marginX: 20,
+    marginY: 20,
+  });
+
+  // A4 auto orientation: portrait pages -> 595x842, landscape (rot 90/270) -> 842x595
+  const autoA4 = await resizePdf(rotPdf, { preset: 'a4', orientation: 'auto', fitMode: 'fit', margin: 18 });
+  const autoSizes = await pageSizes(autoA4);
+  assert(autoSizes.length === 4, `expected 4 resized pages, got ${autoSizes.length}`);
+  assert(
+    Math.abs(autoSizes[0].width - Math.round(RESIZE_PRESETS.a4.widthPt)) <= 1 &&
+      Math.abs(autoSizes[0].height - Math.round(RESIZE_PRESETS.a4.heightPt)) <= 1 &&
+      autoSizes[0].rotation === 0,
+    `p1 auto A4 should be portrait: ${JSON.stringify(autoSizes[0])}`,
+  );
+  assert(
+    Math.abs(autoSizes[1].width - Math.round(RESIZE_PRESETS.a4.heightPt)) <= 1 &&
+      Math.abs(autoSizes[1].height - Math.round(RESIZE_PRESETS.a4.widthPt)) <= 1 &&
+      autoSizes[1].rotation === 0,
+    `p2 (rot 90) auto A4 should be landscape upright: ${JSON.stringify(autoSizes[1])}`,
+  );
+
+  // Compare source vs resized visual text directions and verify UPRIGHT_1..4 stay upright & bottom-right!
+  const srcTask = pdfjs.getDocument({ data: rotPdf.slice(), verbosity: 0 });
+  const dstTask = pdfjs.getDocument({ data: autoA4.slice(), verbosity: 0 });
+  try {
+    const srcDoc = await srcTask.promise;
+    const dstDoc = await dstTask.promise;
+    const expectedLabels = ['Rot 0', 'Rot 90', 'Rot 180', 'Rot 270'];
+    for (let i = 0; i < 4; i++) {
+      const srcPage = await srcDoc.getPage(i + 1);
+      const dstPage = await dstDoc.getPage(i + 1);
+      const srcVp = srcPage.getViewport({ scale: 1 });
+      const dstVp = dstPage.getViewport({ scale: 1 });
+      const srcTc = await srcPage.getTextContent();
+      const dstTc = await dstPage.getTextContent();
+      const joined = dstTc.items.map((it) => it.str).join(' ');
+
+      assert(joined.includes(expectedLabels[i]), `resized page ${i + 1} missing "${expectedLabels[i]}" in "${joined}"`);
+      assert(joined.includes(`UPRIGHT_${i + 1}`), `resized page ${i + 1} missing "UPRIGHT_${i + 1}" in "${joined}"`);
+
+      // Original text visual direction must match source visual direction exactly
+      const srcRotItem = srcTc.items.find((it) => it.str.includes('Rot'));
+      const dstRotItem = dstTc.items.find((it) => it.str.includes('Rot'));
+      const srcTx = pdfjs.Util.transform(srcVp.transform, srcRotItem.transform);
+      const dstTx = pdfjs.Util.transform(dstVp.transform, dstRotItem.transform);
+      const srcNorm = Math.hypot(srcTx[0], srcTx[1]);
+      const dstNorm = Math.hypot(dstTx[0], dstTx[1]);
+      const dot = (srcTx[0] * dstTx[0] + srcTx[1] * dstTx[1]) / (srcNorm * dstNorm);
+      assert(dot > 0.999, `resized page ${i + 1} visual orientation drifted from source (dot=${dot.toFixed(4)})`);
+
+      // Visually upright stamp must remain upright (tx[0] > 0, |tx[1]| ~ 0) in bottom-right visual quadrant
+      const upItem = dstTc.items.find((it) => it.str.includes(`UPRIGHT_${i + 1}`));
+      const upTx = pdfjs.Util.transform(dstVp.transform, upItem.transform);
+      assert(
+        upTx[0] > 0 && Math.abs(upTx[1]) < 0.1,
+        `resized page ${i + 1} UPRIGHT stamp should remain upright (tx=${JSON.stringify(upTx)})`,
+      );
+      assert(
+        upTx[4] > dstVp.width * 0.5 && upTx[5] > dstVp.height * 0.7,
+        `resized page ${i + 1} UPRIGHT stamp should stay near bottom-right (${upTx[4].toFixed(1)}, ${upTx[5].toFixed(1)} in ${dstVp.width.toFixed(0)}x${dstVp.height.toFixed(0)})`,
+      );
+    }
+  } finally {
+    await srcTask.destroy();
+    await dstTask.destroy();
+  }
+
+  // Forced portrait & landscape + fill/center modes + pageRange subset
+  const forcedLandscape = await resizePdf(rotPdf, {
+    preset: 'a4',
+    orientation: 'landscape',
+    fitMode: 'fill',
+    pageRange: '1-2',
+  });
+  const flSizes = await pageSizes(forcedLandscape);
+  assert(flSizes[0].width > flSizes[0].height && flSizes[1].width > flSizes[1].height, 'pages 1-2 must be landscape');
+  assert(flSizes[2].width === 340 && flSizes[2].rotation === 180, 'unselected page 3 must be copied unchanged');
+
+  const centeredCustom = await resizePdf(rotPdf, {
+    preset: 'custom',
+    customWidth: 200,
+    customHeight: 250,
+    customUnit: 'mm',
+    orientation: 'portrait',
+    fitMode: 'center',
+  });
+  const ccSizes = await pageSizes(centeredCustom);
+  assert(
+    Math.abs(ccSizes[0].width - Math.round((200 * 72) / 25.4)) <= 1 &&
+      Math.abs(ccSizes[0].height - Math.round((250 * 72) / 25.4)) <= 1,
+    `custom mm dimensions mismatch: ${JSON.stringify(ccSizes[0])}`,
+  );
+});
+
+// 23. lib/pdf/nup.ts (2-up & 4-up, computeBookletOrder & bookletPdf short-edge/long-edge)
+await runCheck('23. nup.ts (2-up, 4-up, computeBookletOrder, bookletPdf short/long-edge)', async () => {
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const src6 = await makeMultiPagePdf(6, { labelPrefix: 'Slide' });
+
+  // 2-up of 6 pages -> ceil(6/2) = 3 landscape A4 sheets
+  const twoUp = await nupPdf(src6, { perSheet: 2, paperSize: 'a4', orientation: 'auto', drawBorder: true });
+  const twoSizes = await pageSizes(twoUp);
+  assert(twoSizes.length === 3, `2-up of 6 pages expected 3 sheets, got ${twoSizes.length}`);
+  assert(twoSizes[0].width > twoSizes[0].height, `2-up auto of portrait pages should be landscape: ${JSON.stringify(twoSizes[0])}`);
+
+  // 4-up of 6 pages -> ceil(6/4) = 2 portrait A4 sheets, all 6 Slide texts preserved
+  const fourUp = await nupPdf(src6, { perSheet: 4, paperSize: 'a4', readingOrder: 'lr-tb' });
+  const fourSizes = await pageSizes(fourUp);
+  assert(fourSizes.length === 2, `4-up of 6 pages expected 2 sheets, got ${fourSizes.length}`);
+  const tFour = pdfjs.getDocument({ data: fourUp.slice(), verbosity: 0 });
+  try {
+    const pdoc = await tFour.promise;
+    const s1 = (await (await pdoc.getPage(1)).getTextContent()).items.map((it) => it.str).join(' ');
+    const s2 = (await (await pdoc.getPage(2)).getTextContent()).items.map((it) => it.str).join(' ');
+    for (let n = 1; n <= 4; n++) assert(s1.includes(`Slide ${n}`), `4-up sheet 1 missing Slide ${n}`);
+    for (let n = 5; n <= 6; n++) assert(s2.includes(`Slide ${n}`), `4-up sheet 2 missing Slide ${n}`);
+  } finally {
+    await tFour.destroy();
+  }
+
+  // computeBookletOrder pure unit checks
+  assertDeepEqual(computeBookletOrder(4, 'left'), [[4, 1], [2, 3]], 'booklet 4-page LTR');
+  assertDeepEqual(computeBookletOrder(4, 'right'), [[1, 4], [3, 2]], 'booklet 4-page RTL');
+  assertDeepEqual(
+    computeBookletOrder(6, 'left'),
+    [[null, 1], [2, null], [6, 3], [4, 5]],
+    'booklet 6-page LTR',
+  );
+  assertDeepEqual(
+    computeBookletOrder(6, 'right'),
+    [[1, null], [null, 2], [3, 6], [5, 4]],
+    'booklet 6-page RTL',
+  );
+
+  // bookletPdf on 4 pages (short-edge: 2 landscape sides, upright backs)
+  const src4 = await makeMultiPagePdf(4, { labelPrefix: 'Bk' });
+  const bk4Short = await bookletPdf(src4, { binding: 'left', duplexEdge: 'short-edge', paperSize: 'a4' });
+  const bk4Sizes = await pageSizes(bk4Short);
+  assert(bk4Sizes.length === 2 && bk4Sizes[0].width > bk4Sizes[0].height, `4-page booklet expected 2 landscape sides, got ${JSON.stringify(bk4Sizes)}`);
+  const tBk4 = pdfjs.getDocument({ data: bk4Short.slice(), verbosity: 0 });
+  try {
+    const pdoc = await tBk4.promise;
+    const frontText = (await (await pdoc.getPage(1)).getTextContent()).items.map((it) => it.str).join(' ');
+    const backPage = await pdoc.getPage(2);
+    const backVp = backPage.getViewport({ scale: 1 });
+    const backTc = await backPage.getTextContent();
+    const backText = backTc.items.map((it) => it.str).join(' ');
+    assert(frontText.includes('Bk 4') && frontText.includes('Bk 1'), `booklet front missing Bk 4 / Bk 1: "${frontText}"`);
+    assert(backText.includes('Bk 2') && backText.includes('Bk 3'), `booklet back missing Bk 2 / Bk 3: "${backText}"`);
+    const backItem = backTc.items.find((it) => it.str.includes('Bk 2'));
+    const backTx = pdfjs.Util.transform(backVp.transform, backItem.transform);
+    assert(backTx[0] > 0, `short-edge duplex back side should be upright (tx=${JSON.stringify(backTx)})`);
+  } finally {
+    await tBk4.destroy();
+  }
+
+  // bookletPdf on 6 pages (long-edge: 4 landscape sides, back sides rotated 180°)
+  const bk6Long = await bookletPdf(src6, { binding: 'left', duplexEdge: 'long-edge', paperSize: 'letter' });
+  const bk6Sizes = await pageSizes(bk6Long);
+  assert(bk6Sizes.length === 4, `6-page booklet expected 4 sides, got ${bk6Sizes.length}`);
+  const tBk6 = pdfjs.getDocument({ data: bk6Long.slice(), verbosity: 0 });
+  try {
+    const pdoc = await tBk6.promise;
+    const s1Front = (await (await pdoc.getPage(1)).getTextContent()).items.map((it) => it.str).join(' ');
+    const s1BackPage = await pdoc.getPage(2);
+    const s1BackVp = s1BackPage.getViewport({ scale: 1 });
+    const s1BackTc = await s1BackPage.getTextContent();
+    const s1Back = s1BackTc.items.map((it) => it.str).join(' ');
+    const s2Front = (await (await pdoc.getPage(3)).getTextContent()).items.map((it) => it.str).join(' ');
+    const s2Back = (await (await pdoc.getPage(4)).getTextContent()).items.map((it) => it.str).join(' ');
+
+    assert(s1Front.includes('Slide 1') && !s1Front.includes('Slide 6'), `sheet 1 front should only have Slide 1: "${s1Front}"`);
+    assert(s1Back.includes('Slide 2'), `sheet 1 back missing Slide 2: "${s1Back}"`);
+    assert(s2Front.includes('Slide 6') && s2Front.includes('Slide 3'), `sheet 2 front missing Slide 6 & 3: "${s2Front}"`);
+    assert(s2Back.includes('Slide 4') && s2Back.includes('Slide 5'), `sheet 2 back missing Slide 4 & 5: "${s2Back}"`);
+
+    // Long-edge duplex rotates back sides 180° -> text x-scale is negative
+    const backItem = s1BackTc.items.find((it) => it.str.includes('Slide 2'));
+    const backTx = pdfjs.Util.transform(s1BackVp.transform, backItem.transform);
+    assert(backTx[0] < 0, `long-edge duplex back side should be rotated 180° (tx=${JSON.stringify(backTx)})`);
+  } finally {
+    await tBk6.destroy();
+  }
+});
+
+// 24. lib/pdf/color.ts (grayscalePdf on RGB/CMYK vector operators + Flate RGB image + skipped JPEG)
+await runCheck('24. color.ts (grayscalePdf vectors + Flate RGB image + pdfjs open)', async () => {
+  const colorFixture = await makeColorAndImagePdf();
+  const res = await grayscalePdf(colorFixture);
+
+  assert(res.convertedImages >= 1, `expected >=1 converted Flate RGB image, got ${res.convertedImages}`);
+  assert(res.skippedJpegImages === 1, `expected 1 skipped JPEG without callback, got ${res.skippedJpegImages}`);
+  assert(res.rewrittenStreams >= 1, `expected >=1 rewritten content stream, got ${res.rewrittenStreams}`);
+  assert(res.convertedOperators >= 8, `expected >=8 converted color operators (rg/RG/k/K/cs/sc/CS/SC), got ${res.convertedOperators}`);
+
+  // Inspect output PDF structure: Flate image XObject must now be /ColorSpace /DeviceGray,
+  // and content stream must have no rg/RG/k/K color ops while preserving literal text "(Color literal 1 0 0 rg stays intact)".
+  const outDoc = await PDFDocument.load(res.bytes, { updateMetadata: false });
+  let foundDeviceGrayFlateImg = false;
+  let foundRawRgbFlateImg = false;
+  for (const [, obj] of outDoc.context.enumerateIndirectObjects()) {
+    if (obj instanceof PDFRawStream && obj.dict.lookup(PDFName.of('Subtype')) === PDFName.of('Image')) {
+      const flt = obj.dict.lookup(PDFName.of('Filter'));
+      const cs = obj.dict.lookup(PDFName.of('ColorSpace'));
+      if (flt === PDFName.of('FlateDecode')) {
+        if (cs === PDFName.of('DeviceGray')) foundDeviceGrayFlateImg = true;
+        if (cs === PDFName.of('DeviceRGB')) foundRawRgbFlateImg = true;
+      }
+    }
+  }
+  assert(foundDeviceGrayFlateImg && !foundRawRgbFlateImg, 'Flate RGB image must be converted to DeviceGray');
+
+  // Decode page content streams and verify vector color operators were rewritten to g/G
+  const p0 = outDoc.getPage(0);
+  const contentsObj = p0.node.lookup(PDFName.of('Contents'));
+  const streams = contentsObj instanceof PDFArray
+    ? contentsObj.asArray().map((ref) => outDoc.context.lookup(ref))
+    : [contentsObj];
+  const combinedText = streams
+    .filter((s) => s instanceof PDFRawStream)
+    .map((s) => new TextDecoder('latin1').decode(decodePDFRawStream(s).decode()))
+    .join('\n');
+
+  assert(!/\b[0-9.]+\s+[0-9.]+\s+[0-9.]+\s+RG\b/.test(combinedText), `RG operator should be rewritten: ${combinedText}`);
+  assert(!/\b[0-9.]+\s+[0-9.]+\s+[0-9.]+\s+[0-9.]+\s+[kK]\b/.test(combinedText), `k/K operator should be rewritten: ${combinedText}`);
+  assert(/\b0\.2126\s+g\b/.test(combinedText), `pure red (1 0 0 rg) should become 0.2126 g in: ${combinedText}`);
+  assert(/\b0\.0722\s+G\b/.test(combinedText), `pure blue (0 0 1 RG) should become 0.0722 G in: ${combinedText}`);
+  assert(/\/DeviceGray\s+cs\b/.test(combinedText), `/DeviceRGB cs should become /DeviceGray cs`);
+
+  // Verify output PDF opens cleanly in pdfjs-dist and preserves the literal text untouched!
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const task = pdfjs.getDocument({ data: res.bytes.slice(), verbosity: 0 });
+  try {
+    const pdoc = await task.promise;
+    assert(pdoc.numPages === 1, 'grayscale PDF should have 1 page');
+    const page = await pdoc.getPage(1);
+    const text = (await page.getTextContent()).items.map((it) => it.str).join(' ');
+    assert(
+      text.includes('Color literal 1 0 0 rg stays intact'),
+      `literal string containing "1 0 0 rg" must not be corrupted: "${text}"`,
+    );
+  } finally {
+    await task.destroy();
+  }
+});
+
+// 25. lib/pdf/color.ts (transformRgbaPixels for grayscale, invert, smart-dark, warm-dark, custom)
+await runCheck('25. color.ts (transformRgbaPixels: grayscale, invert, smart-dark, warm-dark, custom)', async () => {
+  // Test pixels: [white (255,255,255,255), black (0,0,0,200), pure blue (0,0,255,128), pure red (255,0,0,255)]
+  const makeSample = () =>
+    new Uint8ClampedArray([
+      255, 255, 255, 255,
+      0, 0, 0, 200,
+      0, 0, 255, 128,
+      255, 0, 0, 255,
+    ]);
+
+  // 1) grayscale (BT.709)
+  const gray = transformRgbaPixels(makeSample(), 'grayscale');
+  assert(gray[0] === 255 && gray[1] === 255 && gray[2] === 255 && gray[3] === 255, 'grayscale white');
+  assert(gray[4] === 0 && gray[5] === 0 && gray[6] === 0 && gray[7] === 200, 'grayscale black + alpha preserved');
+  assert(gray[8] === 18 && gray[9] === 18 && gray[10] === 18 && gray[11] === 128, `grayscale pure blue expected 18, got ${gray[8]}`);
+  assert(gray[12] === 54 && gray[13] === 54 && gray[14] === 54, `grayscale pure red expected 54, got ${gray[12]}`);
+
+  // 2) invert
+  const inv = transformRgbaPixels(makeSample(), 'invert');
+  assert(inv[0] === 0 && inv[1] === 0 && inv[2] === 0 && inv[3] === 255, 'invert white -> black');
+  assert(inv[4] === 255 && inv[5] === 255 && inv[6] === 255 && inv[7] === 200, 'invert black -> white + alpha');
+  assert(inv[8] === 255 && inv[9] === 255 && inv[10] === 0 && inv[11] === 128, 'invert blue -> yellow + alpha');
+
+  // 3) smart-dark: white -> #171717 (23), black -> #ededed (237), pure blue keeps blue hue!
+  const smart = transformRgbaPixels(makeSample(), 'smart-dark');
+  assert(
+    Math.abs(smart[0] - 23) <= 1 && Math.abs(smart[1] - 23) <= 1 && Math.abs(smart[2] - 23) <= 1,
+    `smart-dark white should map to #171717 (23), got (${smart[0]},${smart[1]},${smart[2]})`,
+  );
+  assert(
+    Math.abs(smart[4] - 237) <= 1 && Math.abs(smart[5] - 237) <= 1 && Math.abs(smart[6] - 237) <= 1 && smart[7] === 200,
+    `smart-dark black should map to #ededed (237), got (${smart[4]},${smart[5]},${smart[6]})`,
+  );
+  assert(
+    smart[10] > 240 && smart[8] < 20 && smart[9] < 20 && smart[11] === 128,
+    `smart-dark pure blue must keep blue hue (B>>R,G), got (${smart[8]},${smart[9]},${smart[10]})`,
+  );
+  assert(
+    smart[12] > 240 && smart[13] < 20 && smart[14] < 20,
+    `smart-dark pure red must keep red hue (R>>G,B), got (${smart[12]},${smart[13]},${smart[14]})`,
+  );
+
+  // 4) warm-dark: white -> #1e1b17 (30,27,23), black -> #e8dec8 (232,222,200), blue stays blue-dominant
+  const warm = transformRgbaPixels(makeSample(), 'warm-dark');
+  assert(
+    warm[0] === 30 && warm[1] === 27 && warm[2] === 23,
+    `warm-dark white should be #1e1b17 (30,27,23), got (${warm[0]},${warm[1]},${warm[2]})`,
+  );
+  assert(
+    warm[4] === 232 && warm[5] === 222 && warm[6] === 200,
+    `warm-dark black should be #e8dec8 (232,222,200), got (${warm[4]},${warm[5]},${warm[6]})`,
+  );
+  assert(warm[10] > warm[8] + 100 && warm[10] > warm[9] + 100, `warm-dark blue should stay blue-dominant: (${warm[8]},${warm[9]},${warm[10]})`);
+
+  // 5) custom: white -> exact backgroundHex (#102030), black -> exact foregroundHex (#f0e0d0)
+  const custom = transformRgbaPixels(makeSample(), 'custom', {
+    backgroundHex: '#102030',
+    foregroundHex: '#f0e0d0',
+    preserveHue: true,
+  });
+  assert(
+    custom[0] === 0x10 && custom[1] === 0x20 && custom[2] === 0x30,
+    `custom white should be #102030, got (${custom[0]},${custom[1]},${custom[2]})`,
+  );
+  assert(
+    custom[4] === 0xf0 && custom[5] === 0xe0 && custom[6] === 0xd0 && custom[7] === 200,
+    `custom black should be #f0e0d0, got (${custom[4]},${custom[5]},${custom[6]})`,
+  );
+  assert(
+    custom[10] > custom[8] + 100 && custom[10] > custom[9] + 100,
+    `custom preserveHue=true should preserve blue hue: (${custom[8]},${custom[9]},${custom[10]})`,
+  );
 });
 
 // Print summary table
