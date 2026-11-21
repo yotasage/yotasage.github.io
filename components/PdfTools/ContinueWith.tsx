@@ -4,12 +4,15 @@ import React from 'react';
 import { HandoffFile, setHandoff } from '../../lib/pdf/handoff';
 import {
   COMPRESS,
+  CROP,
   EDIT_METADATA,
   EXTRACT_IMAGES,
   EXTRACT_PAGES,
   FLATTEN,
   MERGE,
+  NUP,
   ORGANIZE,
+  PAGE_NUMBERS,
   PDF_TO_IMAGES,
   PdfTool,
   PROTECT,
@@ -17,15 +20,22 @@ import {
   REMOVE_ANNOTATIONS,
   REMOVE_METADATA,
   REMOVE_PAGES,
+  RESIZE,
   ROTATE,
   SPLIT,
   UNLOCK,
+  WATERMARK,
 } from '../../lib/pdf/tools';
 import styles from '../../styles/PdfTools.module.css';
 
 const PDF_TARGETS: PdfTool[] = [
   READER,
   COMPRESS,
+  CROP,
+  RESIZE,
+  PAGE_NUMBERS,
+  WATERMARK,
+  NUP,
   EDIT_METADATA,
   FLATTEN,
   REMOVE_ANNOTATIONS,

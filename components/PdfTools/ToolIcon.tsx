@@ -147,6 +147,44 @@ const ICONS: Record<ToolIconName, React.ReactNode> = {
       <path d="M21 13h6m-2-2 2 2-2 2" />
     </>
   ),
+  'page-numbers': (
+    <>
+      <Doc x={7} y={4} w={26} h={34} />
+      <path d="M13 15h14M13 21h10" />
+      <rect x={24} y={28} width={18} height={15} rx={3} />
+      <path d="M33 32v7m-2-5.5L33 32m-2 7h4" />
+    </>
+  ),
+  watermark: (
+    <>
+      <Doc x={8} y={4} w={32} h={40} />
+      <circle cx={24} cy={26} r={9} strokeDasharray="3 3" />
+      <path d="M15 33l18-14M19 36l14-11" />
+    </>
+  ),
+  crop: (
+    <>
+      <path d="M13 5v28a2 2 0 0 0 2 2h28" />
+      <path d="M5 13h28a2 2 0 0 1 2 2v28" />
+      <rect x={19} y={19} width={10} height={10} rx={1} strokeDasharray="3 3" />
+    </>
+  ),
+  resize: (
+    <>
+      <rect x={6} y={6} width={36} height={36} rx={3} />
+      <rect x={6} y={23} width={19} height={19} rx={2} />
+      <path d="M28 20l9-9M31 11h6v6M34 20h-6v-6" />
+    </>
+  ),
+  nup: (
+    <>
+      <rect x={4} y={9} width={40} height={30} rx={3} />
+      <rect x={9} y={14} width={12} height={8} rx={1} />
+      <rect x={27} y={14} width={12} height={8} rx={1} />
+      <rect x={9} y={26} width={12} height={8} rx={1} />
+      <rect x={27} y={26} width={12} height={8} rx={1} />
+    </>
+  ),
 };
 
 export default function ToolIcon({ name, color, size = 48 }: { name: ToolIconName; color: string; size?: number }) {

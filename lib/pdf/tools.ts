@@ -16,7 +16,12 @@ export type ToolIconName =
   | 'rotate'
   | 'remove-pages'
   | 'extract-pages'
-  | 'organize';
+  | 'organize'
+  | 'page-numbers'
+  | 'watermark'
+  | 'crop'
+  | 'resize'
+  | 'nup';
 
 export interface PdfTool {
   id: string;
@@ -185,11 +190,56 @@ export const ORGANIZE: PdfTool = {
   color: '#f07c3a',
 };
 
+export const PAGE_NUMBERS: PdfTool = {
+  id: 'page-numbers',
+  title: 'Add page numbers',
+  description: 'Stamp customizable page numbers with format templates, fonts, margins, skip-cover and duplex mirroring.',
+  href: '/pdf/page-numbers',
+  icon: 'page-numbers',
+  color: '#4da3ff',
+};
+
+export const WATERMARK: PdfTool = {
+  id: 'watermark',
+  title: 'Add watermark',
+  description: 'Place single or tiled text and image watermarks over or under PDF pages with custom rotation and opacity.',
+  href: '/pdf/watermark',
+  icon: 'watermark',
+  color: '#9b7bf0',
+};
+
+export const CROP: PdfTool = {
+  id: 'crop',
+  title: 'Crop PDF',
+  description: 'Trim page margins visually with an interactive crop box or exact point values across all or selected pages.',
+  href: '/pdf/crop',
+  icon: 'crop',
+  color: '#e59a3a',
+};
+
+export const RESIZE: PdfTool = {
+  id: 'resize',
+  title: 'Resize pages',
+  description: 'Resize PDF pages to A4, Letter, A3, A5 or custom dimensions with fit, fill, stretch or actual-size scaling.',
+  href: '/pdf/resize',
+  icon: 'resize',
+  color: '#2fae6b',
+};
+
+export const NUP: PdfTool = {
+  id: 'nup',
+  title: 'Pages per sheet & booklet',
+  description: 'Impose 2, 4, 6, 9, 16 or custom pages per sheet, or create ready-to-print saddle-stitch duplex booklets.',
+  href: '/pdf/nup',
+  icon: 'nup',
+  color: '#f07c3a',
+};
+
 export const TOOL_CATEGORIES: ToolCategory[] = [
   { title: 'View', tools: [READER] },
   { title: 'Organize', tools: [MERGE, SPLIT, ORGANIZE, ROTATE, REMOVE_PAGES, EXTRACT_PAGES] },
   { title: 'Optimize', tools: [COMPRESS] },
-  { title: 'Edit & annotate', tools: [EDIT_METADATA, FLATTEN, REMOVE_ANNOTATIONS] },
+  { title: 'Edit & annotate', tools: [PAGE_NUMBERS, WATERMARK, CROP, RESIZE, NUP, EDIT_METADATA, FLATTEN, REMOVE_ANNOTATIONS] },
   { title: 'Convert to PDF', tools: [IMAGES_TO_PDF] },
   { title: 'Convert from PDF', tools: [PDF_TO_IMAGES, EXTRACT_IMAGES] },
   { title: 'Security', tools: [PROTECT, UNLOCK, REMOVE_METADATA] },
