@@ -84,7 +84,7 @@ export interface AxisMark {
 
 export const THEMES: Record<Theme, { background: [string, string]; grid: [number, number]; edges: string }> = {
   dark: { background: ['#3b4048', '#1b1d21'], grid: [0x6a7380, 0x3d434c], edges: '#15181c' },
-  light: { background: ['#ffffff', '#d5dae0'], grid: [0x8d96a1, 0xc3c9d0], edges: '#20252b' },
+  light: { background: ['#f5f7fb', '#dde3ec'], grid: [0x8d96a1, 0xc3c9d0], edges: '#20252b' },
 };
 
 // Directions from the model towards the camera. With Z up, the front looks along +Y (the convention of most CAD

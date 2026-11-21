@@ -14,7 +14,7 @@ import {
   defaultColor, defaultStyle, Finish, finishFromName, FINISHES, MASK_COLORS, MaskColor, maskFromName, RealisticStyle, realisticColors, SILK_COLORS, SilkColor,
   silkFromName,
 } from '../../lib/pcb/render/colors';
-import { BoardView, LayerStyle, ViewMode } from '../../lib/pcb/render/view';
+import { BACKGROUND_DARK, BACKGROUND_LIGHT, BoardView, LayerStyle, ViewMode } from '../../lib/pcb/render/view';
 import styles from '../../styles/PcbViewer.module.css';
 import qrStyles from '../../styles/QrGen.module.css';
 import { Field, Select } from '../QrGen/fields';
@@ -198,6 +198,7 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
   const [mode, setMode] = React.useState<ViewMode>('layers');
   const [realistic, setRealistic] = React.useState<RealisticStyle>(() => styleFromStackup(null));
   const [units, setUnits] = React.useState<Units>('mm');
+  const [canvasTheme, setCanvasTheme] = React.useState<'dark' | 'light'>('dark');
   const [status, setStatus] = React.useState<Status>({ kind: 'loading', text: 'Reading…' });
   const [busy, setBusy] = React.useState(false);
   const [fullscreen, setFullscreen] = React.useState(false);
@@ -331,6 +332,9 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
   React.useEffect(() => {
     view?.setMode(mode, realisticColors(realistic));
   }, [view, mode, realistic]);
+  React.useEffect(() => {
+    view?.setBackground(canvasTheme === 'light' ? BACKGROUND_LIGHT : BACKGROUND_DARK);
+  }, [view, canvasTheme]);
   React.useEffect(() => {
     if (view && fitPending.current && board) {
       fitPending.current = false;
@@ -570,7 +574,14 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
 
   return (
     <DropZone onFiles={(f) => open(f, false)} className={styles.workspace} overClassName={styles.workspaceDropOver}>
-      <div ref={viewport} className={[styles.viewport, fullscreen ? styles.viewportFullscreen : ''].join(' ')}>
+      <div
+        ref={viewport}
+        className={[
+          styles.viewport,
+          fullscreen ? styles.viewportFullscreen : '',
+          canvasTheme === 'light' ? styles.viewportLight : '',
+        ].join(' ')}
+      >
         <div className={styles.toolbar} role="toolbar" aria-label="View">
           <button type="button" className={styles.toolButton} disabled={!ready} onClick={() => view?.fit()} title="Show the whole board">Fit</button>
           <span className={styles.segmented} role="group" aria-label="Side">
@@ -589,6 +600,15 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
             <button type="button" className={styles.toolButton} aria-pressed={units === 'mm'} onClick={() => setUnits('mm')}>mm</button>
             <button type="button" className={styles.toolButton} aria-pressed={units === 'in'} onClick={() => setUnits('in')}>inch</button>
           </span>
+          <button
+            type="button"
+            className={styles.toolButton}
+            aria-pressed={canvasTheme === 'light'}
+            onClick={() => setCanvasTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+            title="Switch board canvas between dark (default, best for copper and silkscreen) and light backdrop"
+          >
+            {canvasTheme === 'light' ? 'Canvas: Light' : 'Canvas: Dark'}
+          </button>
           {typeof document !== 'undefined' && document.fullscreenEnabled && (
             <button type="button" className={styles.toolButton} aria-pressed={fullscreen} onClick={toggleFullscreen}>{fullscreen ? 'Exit full screen' : 'Full screen'}</button>
           )}

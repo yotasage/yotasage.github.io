@@ -42,7 +42,9 @@ export interface SideLayers {
   holes: Layer[];
 }
 
-export const BACKGROUND = '#16181c';
+export const BACKGROUND_DARK = '#16181c';
+export const BACKGROUND_LIGHT = '#e8edf3';
+export const BACKGROUND = BACKGROUND_DARK;
 // After the last wheel or pointer movement, how long to wait before drawing the layers again.
 const SETTLE_MS = 200;
 // Time spent drawing layers before letting the browser show a frame.
@@ -105,6 +107,7 @@ export class BoardView {
   private order: string[] = [];
   private flipped = false;
   private mode: ViewMode = 'layers';
+  private background = BACKGROUND_DARK;
   private colors: RealisticColors | null = null;
   private shape: PreparedShape | null = null;
   // The highlighted items and the selection, per layer id; the generation is part of their canvas keys, so a new
@@ -244,6 +247,29 @@ export class BoardView {
     this.mode = mode;
     this.colors = colors;
     this.requestRender(0);
+  }
+
+  // Changes the canvas backdrop colour and redraws the composite immediately.
+  setBackground(color: string) {
+    if (color === this.background) return;
+    this.background = color;
+    if (this.frameView) {
+      this.composite(this.frame, this.background);
+      if (this.rafId === null) {
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        this.ctx.globalAlpha = 1;
+        this.ctx.globalCompositeOperation = 'copy';
+        this.ctx.drawImage(this.frame.canvas, 0, 0);
+        this.ctx.globalCompositeOperation = 'source-over';
+      }
+    } else {
+      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+      this.ctx.globalAlpha = 1;
+      this.ctx.globalCompositeOperation = 'source-over';
+      this.ctx.fillStyle = this.background;
+      this.ctx.fillRect(0, 0, this.width, this.height);
+      this.requestRender(0);
+    }
   }
 
   // A highlighted net or component: per layer id, a layer with only its items (lib/pcb/inspect.ts highlightLayers).
@@ -491,7 +517,7 @@ export class BoardView {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
-      ctx.fillStyle = BACKGROUND;
+      ctx.fillStyle = this.background;
       ctx.fillRect(0, 0, this.width, this.height);
       const fv = this.frameView;
       if (!fv || this.frameFlipped !== this.flipped) return;
@@ -577,7 +603,7 @@ export class BoardView {
       freeSurface(lc);
       this.layerCanvases.delete(id);
     }
-    this.composite(this.frame, BACKGROUND);
+    this.composite(this.frame, this.background);
     this.frameView = { ...this.view };
     this.frameFlipped = this.flipped;
     if (this.rafId !== null) {
@@ -648,7 +674,7 @@ export class BoardView {
   async snapshot(transparent: boolean): Promise<HTMLCanvasElement> {
     await this.whenDrawn();
     const out = newSurface(this.width, this.height);
-    this.composite(out, transparent ? null : BACKGROUND, false);
+    this.composite(out, transparent ? null : this.background, false);
     return out.canvas;
   }
 

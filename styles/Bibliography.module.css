@@ -20,21 +20,29 @@
   padding: 0.15rem 0.25rem;
   border-radius: 4px;
   line-height: 1.5;
-  scroll-margin-top: 1rem;
+  scroll-margin-top: calc(var(--ds-header-h, 60px) + 16px);
 }
 
 /* The reference that a citation link jumped to lights up and fades out over 3 seconds. */
 @keyframes targetHighlight {
   from {
-    box-shadow: inset 0 0 0 100vmax rgba(77, 163, 255, 0.25);
+    box-shadow: inset 0 0 0 100vmax color-mix(in srgb, var(--ds-accent, #4da3ff) 24%, transparent);
   }
   to {
-    box-shadow: inset 0 0 0 100vmax rgba(77, 163, 255, 0);
+    box-shadow: inset 0 0 0 100vmax transparent;
   }
 }
 
 .item:target {
   animation: targetHighlight 3s ease-in forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item:target {
+    animation: none;
+    background: color-mix(in srgb, var(--ds-accent, #4da3ff) 14%, transparent);
+    box-shadow: inset 3px 0 0 var(--ds-accent, #4da3ff);
+  }
 }
 
 .number {

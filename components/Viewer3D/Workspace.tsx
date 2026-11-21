@@ -2,6 +2,7 @@ import React from 'react';
 import type { Object3D, Vector3 } from 'three';
 
 import { baseName, download, errorMessage, formatBytes } from '../../lib/pdf/files';
+import { useTheme } from '../../lib/ui/theme';
 import { EXPORT_FORMATS, ExportFormat, exportModel } from '../../lib/viewer3d/export';
 import { formatCount, formatNumber, withUnit } from '../../lib/viewer3d/format';
 import { LoadedModel, loadModel } from '../../lib/viewer3d/load';
@@ -72,14 +73,21 @@ function ModelInfo({ stats, units }: { stats: ModelStats; units: string | null }
 }
 
 export default function Workspace({ files, onOpen }: { files: File[]; onOpen: (files: File[]) => void }) {
+  const { theme: siteTheme } = useTheme();
   const container = React.useRef<HTMLDivElement>(null);
   const viewport = React.useRef<HTMLDivElement>(null);
+  const backdropLocked = React.useRef(false);
   const [viewer, setViewer] = React.useState<Viewer | null>(null);
   const [status, setStatus] = React.useState<Status>({ kind: 'loading', text: 'Starting the 3D view…' });
   const [model, setModel] = React.useState<LoadedModel | null>(null);
   const [stats, setStats] = React.useState<ModelStats | null>(null);
   const [quality, setQuality] = React.useState<MeshQuality>('normal');
-  const [display, setDisplay] = React.useState<Display>({ shading: 'shaded', singleColor: null, grid: true, theme: 'dark' });
+  const [display, setDisplay] = React.useState<Display>(() => ({
+    shading: 'shaded',
+    singleColor: null,
+    grid: true,
+    theme: siteTheme === 'light' ? 'light' : 'dark',
+  }));
   const [pickedColor, setPickedColor] = React.useState(DEFAULT_SINGLE_COLOR);
   const [gridCell, setGridCell] = React.useState<number | null>(null);
   const [zUp, setZUp] = React.useState(true);
@@ -180,6 +188,13 @@ export default function Workspace({ files, onOpen }: { files: File[]; onOpen: (f
       cancelled = true;
     };
   }, [viewer, files, quality]);
+
+  // Keep the 3D backdrop in sync with the site theme until the user manually chooses one.
+  React.useEffect(() => {
+    if (backdropLocked.current) return;
+    const next: Theme = siteTheme === 'light' ? 'light' : 'dark';
+    setDisplay((d) => (d.theme === next ? d : { ...d, theme: next }));
+  }, [siteTheme]);
 
   React.useEffect(() => {
     if (!viewer) return;
@@ -284,6 +299,11 @@ export default function Workspace({ files, onOpen }: { files: File[]; onOpen: (f
     }
   }
 
+  function chooseBackdrop(next: Theme) {
+    backdropLocked.current = true;
+    setDisplay((d) => ({ ...d, theme: next }));
+  }
+
   function toggleFullscreen() {
     if (document.fullscreenElement) void document.exitFullscreen();
     else void viewport.current?.requestFullscreen();
@@ -324,6 +344,15 @@ export default function Workspace({ files, onOpen }: { files: File[]; onOpen: (f
           </button>
           <button type="button" className={styles.toolButton} disabled={!ready} aria-pressed={tool === 'measure'} onClick={() => setTool((t) => (t === 'measure' ? 'select' : 'measure'))}>
             Measure
+          </button>
+          <button
+            type="button"
+            className={styles.toolButton}
+            aria-pressed={display.theme === 'light'}
+            title="Switch 3D studio backdrop between Dark and Light"
+            onClick={() => chooseBackdrop(display.theme === 'light' ? 'dark' : 'light')}
+          >
+            {display.theme === 'light' ? 'Backdrop: Light' : 'Backdrop: Dark'}
           </button>
           {typeof document !== 'undefined' && document.fullscreenEnabled && (
             <button type="button" className={styles.toolButton} aria-pressed={fullscreen} onClick={toggleFullscreen}>{fullscreen ? 'Exit full screen' : 'Full screen'}</button>
@@ -461,7 +490,7 @@ export default function Workspace({ files, onOpen }: { files: File[]; onOpen: (f
                 </Field>
               )}
               <Field label="Background">
-                <Select<Theme> value={display.theme} onChange={(t) => setDisplay((d) => ({ ...d, theme: t }))} options={[['dark', 'Dark'], ['light', 'Light']]} />
+                <Select<Theme> value={display.theme} onChange={chooseBackdrop} options={[['dark', 'Dark'], ['light', 'Light']]} />
               </Field>
             </div>
             <Checkbox label="Grid under the model" checked={display.grid} onChange={(grid) => setDisplay((d) => ({ ...d, grid }))} />

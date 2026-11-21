@@ -477,6 +477,11 @@
   border: 2px solid var(--ds-border);
 }
 
+.viewportLight,
+:global(html[data-ds-theme="hc"]) .viewport.viewportLight {
+  background: #e8edf3;
+}
+
 .viewportFullscreen {
   height: 100vh;
   border: none;
@@ -562,6 +567,11 @@
 
 :global(html[data-ds-theme="hc"]) .canvasBox {
   background: #000000;
+}
+
+.viewportLight .canvasBox,
+:global(html[data-ds-theme="hc"]) .viewportLight .canvasBox {
+  background: #e8edf3;
 }
 
 .canvas {
@@ -942,6 +952,22 @@
   line-height: 1.35;
   pointer-events: none;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+}
+
+.viewportLight .viewHint {
+  color: rgba(15, 23, 42, 0.72);
+  text-shadow: none;
+}
+
+.viewportLight .coords {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0f172a;
+}
+
+.viewportLight .busy {
+  border-color: rgba(15, 23, 42, 0.2);
+  border-top-color: var(--ds-accent);
 }
 
 .touchHint {

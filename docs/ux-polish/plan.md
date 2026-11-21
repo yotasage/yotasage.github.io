@@ -1,3 +1,6 @@
+> [!NOTE]
+> **Superseded (2026-11-21):** This plan has been superseded by the site-wide Modern High-Polish SaaS Design System v2 redesign in [docs/ui-redesign/plan.md](../ui-redesign/plan.md) (all 48 routes migrated) plus the follow-up cleanup pass (`ux-polish-followup`). Do not execute this plan or revert `--ds-*` v2 tokens; it is kept only as historical context.
+
 # Site-wide UX polish and theme unification – plan
 
 Bring the older tools and site shell up to the visual, theme, and accessibility baseline established by the newer

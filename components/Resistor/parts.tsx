@@ -37,10 +37,8 @@ export const CloseIcon = () => <Svg><path d="M4 4l8 8M12 4l-8 8" /></Svg>;
 export const UpIcon = () => <Svg size={14}><path d="M4 10l4-4 4 4" /></Svg>;
 export const DownIcon = () => <Svg size={14}><path d="M4 6l4 4 4-4" /></Svg>;
 export const InfoIcon = () => <Svg><circle cx={8} cy={8} r={6} /><path d="M8 7.2v3.6M8 5.1v.1" /></Svg>;
-export const SunIcon = () => <Svg><circle cx={8} cy={8} r={2.8} /><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" /></Svg>;
 export const TurnIcon = () => <Svg size={14}><path d="M2.5 5.5h10l-2.6-2.6M13.5 10.5h-10l2.6 2.6" /></Svg>;
 export const SaveIcon = () => <Svg size={14}><path d="M8 2.5v8M4.8 7.6L8 10.8l3.2-3.2M3 13.5h10" /></Svg>;
-export const MoonIcon = () => <Svg><path d="M13.2 9.6A5.6 5.6 0 0 1 6.4 2.8a5.6 5.6 0 1 0 6.8 6.8z" /></Svg>;
 
 async function copyText(text: string): Promise<boolean> {
   try {

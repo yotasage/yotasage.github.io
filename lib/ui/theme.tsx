@@ -12,6 +12,7 @@ export type ThemePreference = 'system' | 'light' | 'dark' | 'hc';
 export type ResolvedTheme = 'light' | 'dark' | 'hc';
 
 const STORAGE_KEY = 'site.theme';
+const LEGACY_STORAGE_KEYS = ['resistor.theme', 'smith.theme', 'emsim.theme'] as const;
 
 const THEME_COLORS: Record<ResolvedTheme, string> = {
   light: '#f5f7fb',
@@ -28,7 +29,15 @@ function isStoredTheme(value: string | null): value is ResolvedTheme {
 function readStoredPreference(): ThemePreference {
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
-    return isStoredTheme(stored) ? stored : 'system';
+    if (isStoredTheme(stored)) return stored;
+    for (const key of LEGACY_STORAGE_KEYS) {
+      const legacy = window.localStorage.getItem(key);
+      if (legacy === 'light' || legacy === 'dark') {
+        window.localStorage.setItem(STORAGE_KEY, legacy);
+        return legacy;
+      }
+    }
+    return 'system';
   } catch {
     return 'system';
   }
@@ -92,6 +101,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     try {
       if (next === 'system') {
         window.localStorage.removeItem(STORAGE_KEY);
+        for (const key of LEGACY_STORAGE_KEYS) window.localStorage.removeItem(key);
       } else {
         window.localStorage.setItem(STORAGE_KEY, next);
       }
