@@ -211,7 +211,54 @@ const qr = zxingDir ? [{
 ${APACHE}`,
 }] : [];
 
+// Native C++ libraries compiled to WebAssembly and language models served from public/pdf-wasm and public/ocr
+// (see copy-pdf-wasm-assets.mjs). Their JS wrappers (@neslinesli93/qpdf-wasm, tesseract.js, tesseract.js-core)
+// are collected automatically above.
+const LEPTONICA_BSD = `Copyright (C) 2001 Leptonica. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
+following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following
+   disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following
+   disclaimer in the documentation and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL ANY CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
+OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.`;
+
+const qpdfDir = resolvePackage('@neslinesli93/qpdf-wasm', root);
+const tessCoreDir = resolvePackage('tesseract.js-core', root);
+const pdfWasm = [];
+if (qpdfDir) {
+  pdfWasm.push({
+    name: 'QPDF (compiled into @neslinesli93/qpdf-wasm)',
+    license: 'Apache-2.0',
+    url: 'https://github.com/qpdf/qpdf',
+    text: `Copyright (c) 2005-2021 Jay Berkenbilt and 2022-2026 QPDF contributors\n\n${APACHE}`,
+  });
+}
+if (tessCoreDir) {
+  pdfWasm.push({
+    name: 'Tesseract OCR & Leptonica (compiled into tesseract.js-core)',
+    license: 'Apache-2.0 AND BSD-2-Clause',
+    url: 'https://github.com/tesseract-ocr/tesseract',
+    text: `Tesseract OCR (https://github.com/tesseract-ocr/tesseract) — Apache-2.0:\n\n${APACHE}\n\n---\n\nLeptonica (https://github.com/DanBloomberg/leptonica) — BSD-2-Clause:\n\n${LEPTONICA_BSD}`,
+  });
+  pdfWasm.push({
+    name: 'Tesseract tessdata_fast language models (eng, nor, swe, dan, deu, fra, spa)',
+    license: 'Apache-2.0',
+    url: 'https://github.com/tesseract-ocr/tessdata_fast',
+    text: `Bundled language models: eng, nor, swe, dan, deu, fra, spa (packaged via @tesseract.js-data/*, MIT).\n\n${APACHE}`,
+  });
+}
+
 const out = join(root, 'lib', 'generated');
 mkdirSync(out, { recursive: true });
-writeFileSync(join(out, 'third-party-licenses.json'), JSON.stringify({ packages: list, assets, viewer, pcb, qr }, null, 1));
-console.log(`Collected the licences of ${list.length} packages, ${assets.length} pdf.js data files, ${viewer.length} 3D viewer files, ${pcb.length} PCB viewer files and ${qr.length} QR code reader file.`);
+writeFileSync(join(out, 'third-party-licenses.json'), JSON.stringify({ packages: list, assets, pdfWasm, viewer, pcb, qr }, null, 1));
+console.log(`Collected the licences of ${list.length} packages, ${assets.length} pdf.js data files, ${pdfWasm.length} PDF WASM/OCR entries, ${viewer.length} 3D viewer files, ${pcb.length} PCB viewer files and ${qr.length} QR code reader file.`);

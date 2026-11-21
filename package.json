@@ -4,10 +4,18 @@
     "dev": "next dev -H 0.0.0.0 -p 3020",
     "build": "next build",
     "start": "next start -H 0.0.0.0",
-    "postinstall": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-3d-assets.mjs && node scripts/copy-qr-assets.mjs && node scripts/collect-licenses.mjs"
+    "postinstall": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-pdf-wasm-assets.mjs && node scripts/copy-3d-assets.mjs && node scripts/copy-qr-assets.mjs && node scripts/collect-licenses.mjs"
   },
   "dependencies": {
     "@cantoo/pdf-lib": "^2.11.1",
+    "@neslinesli93/qpdf-wasm": "^0.3.1",
+    "@tesseract.js-data/dan": "^1.0.0",
+    "@tesseract.js-data/deu": "^1.0.0",
+    "@tesseract.js-data/eng": "^1.0.0",
+    "@tesseract.js-data/fra": "^1.0.0",
+    "@tesseract.js-data/nor": "^1.0.0",
+    "@tesseract.js-data/spa": "^1.0.0",
+    "@tesseract.js-data/swe": "^1.0.0",
     "@types/katex": "^0.16.8",
     "@types/react-dom": "^19.3.0",
     "altiumts": "0.0.95",
@@ -19,6 +27,7 @@
     "pdfjs-dist": "^6.4.299",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "tesseract.js": "^7.0.0",
     "three": "^0.186.1",
     "zxing-wasm": "3.1.6"
   },

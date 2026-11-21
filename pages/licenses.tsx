@@ -36,6 +36,7 @@ function Entries({ entries }: { entries: Entry[] }) {
 export default function Licenses() {
   const packages = data.packages as Entry[];
   const assets = data.assets as Entry[];
+  const pdfWasm = (data as { pdfWasm?: Entry[] }).pdfWasm ?? [];
   const viewer = data.viewer as Entry[];
   const pcb = (data as { pcb?: Entry[] }).pcb ?? [];
   const qr = (data as { qr?: Entry[] }).qr ?? [];
@@ -105,6 +106,17 @@ export default function Licenses() {
         <h2>Fonts and decoders used by the PDF tools</h2>
         <p className={styles.lead}>Data files from pdf.js that the PDF tools load to display and convert PDFs.</p>
         <Entries entries={assets} />
+
+        {pdfWasm.length > 0 && (
+          <>
+            <h2>PDF processing and OCR WebAssembly modules</h2>
+            <p className={styles.lead}>
+              QPDF (for PDF repair, encryption, linearization and inspection) and Tesseract OCR with bundled
+              tessdata_fast language models, served directly from this site and run locally in the browser.
+            </p>
+            <Entries entries={pdfWasm} />
+          </>
+        )}
 
         <h2>Readers and decoders used by the 3D viewer</h2>
         <p className={styles.lead}>

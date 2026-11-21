@@ -4,7 +4,7 @@
   "description": "Synthetic fixture checks for lib/pdf and browser checks for /pdf/* pages. Not part of the site.",
   "type": "module",
   "scripts": {
-    "check": "tsx check.mjs",
+    "check": "tsx check.mjs && tsx check-p4.mjs",
     "ui": "tsx ui.mjs"
   },
   "devDependencies": {

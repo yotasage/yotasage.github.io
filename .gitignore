@@ -27,6 +27,12 @@ yarn-error.log*
 # pdf.js assets, copied from node_modules on install
 /public/pdfjs/
 
+# QPDF WebAssembly assets, copied from node_modules on install
+/public/pdf-wasm/
+
+# Tesseract.js OCR worker, WASM cores and tessdata_fast models, copied from node_modules on install
+/public/ocr/
+
 # 3D viewer assets (Open CASCADE, Draco, Basis Universal), copied from node_modules on install
 /public/3d/
 
