@@ -219,6 +219,15 @@ const ICONS: Record<ToolIconName, React.ReactNode> = {
       <path d="M32 33l10-10 3 3-10 10-4.5 1.5z" />
     </>
   ),
+  edit: (
+    <>
+      <Doc x={5} y={4} w={28} h={40} />
+      <path d="M11 14h12M11 20h14" />
+      <rect x={11} y={26} width={11} height={8} rx={1.5} />
+      <path d="M27 36l2.5-8.5L40 17l5 5-10.5 10.5L27 36z" />
+      <path d="M37 20l5 5" />
+    </>
+  ),
 };
 
 export default function ToolIcon({ name, color, size = 48 }: { name: ToolIconName; color: string; size?: number }) {

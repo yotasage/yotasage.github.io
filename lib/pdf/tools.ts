@@ -25,7 +25,8 @@ export type ToolIconName =
   | 'grayscale'
   | 'invert'
   | 'fill-forms'
-  | 'sign';
+  | 'sign'
+  | 'edit';
 
 export interface PdfTool {
   id: string;
@@ -275,11 +276,20 @@ export const SIGN: PdfTool = {
   color: '#2fae6b',
 };
 
+export const EDIT: PdfTool = {
+  id: 'edit',
+  title: 'Edit PDF',
+  description: 'Add text boxes, highlights, shapes, arrows, freehand drawings, whiteout blocks and images directly onto PDF pages without rasterizing.',
+  href: '/pdf/edit',
+  icon: 'edit',
+  color: '#4da3ff',
+};
+
 export const TOOL_CATEGORIES: ToolCategory[] = [
   { title: 'View', tools: [READER] },
   { title: 'Organize', tools: [MERGE, SPLIT, ORGANIZE, ROTATE, REMOVE_PAGES, EXTRACT_PAGES] },
   { title: 'Optimize', tools: [COMPRESS] },
-  { title: 'Edit & annotate', tools: [SIGN, FILL_FORMS, PAGE_NUMBERS, WATERMARK, CROP, RESIZE, NUP, GRAYSCALE, INVERT, EDIT_METADATA, FLATTEN, REMOVE_ANNOTATIONS] },
+  { title: 'Edit & annotate', tools: [EDIT, SIGN, FILL_FORMS, PAGE_NUMBERS, WATERMARK, CROP, RESIZE, NUP, GRAYSCALE, INVERT, EDIT_METADATA, FLATTEN, REMOVE_ANNOTATIONS] },
   { title: 'Convert to PDF', tools: [IMAGES_TO_PDF] },
   { title: 'Convert from PDF', tools: [PDF_TO_IMAGES, EXTRACT_IMAGES] },
   { title: 'Security', tools: [PROTECT, UNLOCK, REMOVE_METADATA] },

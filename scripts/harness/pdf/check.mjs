@@ -26,6 +26,7 @@ import * as colorMod from '../../../lib/pdf/color.ts';
 import * as compressMod from '../../../lib/pdf/compress.ts';
 import * as cropMod from '../../../lib/pdf/crop.ts';
 import * as detectFiguresMod from '../../../lib/pdf/detectFigures.ts';
+import * as editPdfMod from '../../../lib/pdf/editPdf.ts';
 import * as extractImagesMod from '../../../lib/pdf/extractImages.ts';
 import * as extractVectorsMod from '../../../lib/pdf/extractVectors.ts';
 import * as formsMod from '../../../lib/pdf/forms.ts';
@@ -50,6 +51,7 @@ const { grayscalePdf, transformRgbaPixels } = unwrap(colorMod);
 const { compressPdf } = unwrap(compressMod);
 const { getPageBoxes, cropPdf } = unwrap(cropMod);
 const { analyzePageVectors, detectFiguresOnPage, tightenRegionToContent } = unwrap(detectFiguresMod);
+const { applyEditsToPdf } = unwrap(editPdfMod);
 const { extractImagesFromPdf } = unwrap(extractImagesMod);
 const { extractFormXObjects, extractRegionAsPdf } = unwrap(extractVectorsMod);
 const { inspectFormFields, fillFormPdf } = unwrap(formsMod);
@@ -1615,6 +1617,245 @@ await runCheck('27. sign.ts (applySignaturesToPdf: assetId reuse, rotated page t
   assert(signedEnc.placedCount === 1 && signedEnc.pagesModified === 1, 'encrypted sign counts');
   const encDoc = await PDFDocument.load(signedEnc.bytes, { updateMetadata: false });
   assert(!encDoc.context.trailerInfo.Encrypt, 'signed encrypted PDF should save unencrypted');
+});
+
+// 28. lib/pdf/editPdf.ts (all 8 item kinds, word-wrap + bg, Multiply highlight, rotated page, assetId reuse, encrypted)
+await runCheck('28. editPdf.ts (all 8 kinds, Multiply highlight, rotated page, assetId reuse, encrypted)', async () => {
+  const rotPdf = await makeRotatedPdf(); // 4 pages: rot 0, 90, 180, 270
+  const stampPng = makeRgbaPng(40, 24);
+
+  const res = await applyEditsToPdf(rotPdf, [
+    {
+      id: 'ed-text-p0',
+      pageIndex: 0,
+      kind: 'text',
+      left: 0.08,
+      top: 0.12,
+      width: 0.36,
+      height: 0.18,
+      text: 'Callout banner with wrapped editorial note',
+      font: 'helvetica-bold',
+      fontSize: 12,
+      color: '#111827',
+      backgroundColor: '#ffffff',
+      opacity: 1,
+    },
+    {
+      id: 'ed-hi-p0',
+      pageIndex: 0,
+      kind: 'highlight',
+      left: 0.1,
+      top: 0.36,
+      width: 0.5,
+      height: 0.05,
+      color: '#fde047',
+      opacity: 0.4,
+    },
+    {
+      id: 'ed-rect-p0',
+      pageIndex: 0,
+      kind: 'rect',
+      left: 0.52,
+      top: 0.12,
+      width: 0.34,
+      height: 0.14,
+      strokeColor: '#dc2626',
+      strokeWidth: 2,
+      fillColor: '#fee2e2',
+      opacity: 0.9,
+    },
+    {
+      id: 'ed-ellipse-p0',
+      pageIndex: 0,
+      kind: 'ellipse',
+      left: 0.52,
+      top: 0.32,
+      width: 0.3,
+      height: 0.16,
+      strokeColor: '#2563eb',
+      strokeWidth: 2.5,
+      fillColor: null,
+      opacity: 1,
+    },
+    {
+      id: 'ed-line-p0',
+      pageIndex: 0,
+      kind: 'line',
+      x1: 0.1,
+      y1: 0.55,
+      x2: 0.45,
+      y2: 0.62,
+      strokeColor: '#16a34a',
+      strokeWidth: 2,
+      opacity: 1,
+    },
+    {
+      id: 'ed-arrow-p0',
+      pageIndex: 0,
+      kind: 'arrow',
+      x1: 0.15,
+      y1: 0.72,
+      x2: 0.48,
+      y2: 0.68,
+      strokeColor: '#9333ea',
+      strokeWidth: 3,
+      opacity: 1,
+    },
+    {
+      id: 'ed-ink-p0',
+      pageIndex: 0,
+      kind: 'ink',
+      points: [
+        { x: 0.55, y: 0.6 },
+        { x: 0.62, y: 0.66 },
+        { x: 0.72, y: 0.58 },
+        { x: 0.8, y: 0.67 },
+      ],
+      strokeColor: '#111827',
+      strokeWidth: 2.5,
+      opacity: 0.85,
+    },
+    {
+      id: 'ed-img-p0',
+      pageIndex: 0,
+      kind: 'image',
+      assetId: 'shared-logo-1',
+      imageBytes: stampPng,
+      imageType: 'png',
+      left: 0.1,
+      top: 0.8,
+      width: 0.25,
+      height: 0.1,
+      opacity: 0.95,
+    },
+    {
+      id: 'ed-img-p1',
+      pageIndex: 1, // 90°-rotated page reusing same assetId
+      kind: 'image',
+      assetId: 'shared-logo-1',
+      imageBytes: stampPng,
+      imageType: 'png',
+      left: 0.1,
+      top: 0.12,
+      width: 0.24,
+      height: 0.12,
+      opacity: 1,
+    },
+    {
+      id: 'ed-text-p1',
+      pageIndex: 1, // 90°-rotated page text
+      kind: 'text',
+      left: 0.55,
+      top: 0.72,
+      width: 0.36,
+      height: 0.14,
+      text: 'Rotated Edit Check',
+      font: 'times-bold',
+      fontSize: 14,
+      color: '#1d4ed8',
+      backgroundColor: '#fef08a',
+      opacity: 1,
+    },
+  ]);
+
+  assert(res.appliedCount === 10, `expected appliedCount=10, got ${res.appliedCount}`);
+  assert(res.pagesModified === 2, `expected pagesModified=2, got ${res.pagesModified}`);
+
+  // Inspect output PDF structure: Multiply ExtGState on page 0 and deduplicated image XObject across page 0 & 1
+  const outDoc = await PDFDocument.load(res.bytes, { updateMetadata: false });
+  const p0Res = outDoc.getPage(0).node.Resources();
+  const extGStates = p0Res?.lookup(PDFName.of('ExtGState'));
+  assert(Boolean(extGStates), 'page 0 missing ExtGState dictionary');
+  let foundMultiply = false;
+  for (const key of extGStates.keys()) {
+    const gs = extGStates.lookup(key);
+    const bm = gs?.lookup?.(PDFName.of('BM'));
+    const ca = gs?.lookup?.(PDFName.of('ca'));
+    if (bm === PDFName.of('Multiply') && ca && Math.abs(ca.asNumber() - 0.4) < 0.02) {
+      foundMultiply = true;
+    }
+  }
+  assert(foundMultiply, 'page 0 highlight must register an ExtGState with /BM /Multiply and /ca 0.4');
+
+  const getEditImgRefs = (pIdx) => {
+    const resDict = outDoc.getPage(pIdx).node.Resources();
+    const xobjs = resDict?.lookup(PDFName.of('XObject'));
+    if (!xobjs) return [];
+    return xobjs
+      .keys()
+      .filter((k) => k.decodeText().startsWith('EditImg'))
+      .map((k) => xobjs.get(k));
+  };
+  const p0Imgs = getEditImgRefs(0);
+  const p1Imgs = getEditImgRefs(1);
+  assert(p0Imgs.length === 1 && p1Imgs.length === 1, `expected 1 EditImg ref on p0 & p1, got ${p0Imgs.length}, ${p1Imgs.length}`);
+  assert(p0Imgs[0].toString() === p1Imgs[0].toString(), `shared assetId must reuse one PDFRef (${p0Imgs[0]} vs ${p1Imgs[0]})`);
+
+  // Verify with pdfjs-dist: opens cleanly, extracts wrapped text on page 1 and upright text on 90°-rotated page 2
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const task = pdfjs.getDocument({ data: res.bytes.slice(), verbosity: 0 });
+  try {
+    const pdoc = await task.promise;
+    assert(pdoc.numPages === 4, `expected 4 pages, got ${pdoc.numPages}`);
+
+    const p1 = await pdoc.getPage(1);
+    const p1Text = (await p1.getTextContent()).items.map((it) => it.str).join(' ');
+    assert(p1Text.includes('Callout') && p1Text.includes('editorial') && p1Text.includes('note'), `page 1 missing wrapped text in "${p1Text}"`);
+    const p1Ops = await p1.getOperatorList();
+    assert(
+      p1Ops.fnArray.some((fn) => fn === pdfjs.OPS.paintImageXObject || fn === pdfjs.OPS.paintInlineImageXObject),
+      'page 1 missing image paint operator',
+    );
+
+    const p2 = await pdoc.getPage(2);
+    const vp2 = p2.getViewport({ scale: 1 });
+    const p2Tc = await p2.getTextContent();
+    const p2Joined = p2Tc.items.map((it) => it.str).join(' ');
+    assert(p2Joined.includes('Rotated') && p2Joined.includes('Check'), `rotated page 2 missing edited text in "${p2Joined}"`);
+
+    const rotTextItem = p2Tc.items.find((it) => it.str.includes('Rotated'));
+    assert(Boolean(rotTextItem), 'missing Rotated text item on page 2');
+    const tx = pdfjs.Util.transform(vp2.transform, rotTextItem.transform);
+    assert(tx[0] > 0 && Math.abs(tx[1]) < 0.1, `text on 90°-rotated page 2 must be upright (tx=${JSON.stringify(tx)})`);
+    assert(
+      tx[4] > vp2.width * 0.5 && tx[5] > vp2.height * 0.65,
+      `text on rotated page 2 should sit in bottom-right visual area (vx=${tx[4].toFixed(1)}/${vp2.width}, vy=${tx[5].toFixed(1)}/${vp2.height})`,
+    );
+
+    const p2Ops = await p2.getOperatorList();
+    assert(
+      p2Ops.fnArray.some((fn) => fn === pdfjs.OPS.paintImageXObject || fn === pdfjs.OPS.paintInlineImageXObject),
+      'rotated page 2 missing image paint operator',
+    );
+  } finally {
+    await task.destroy();
+  }
+
+  // Verify editing an encrypted PDF with password produces a clean unencrypted PDF
+  const encPdf = await makeEncryptedPdf('secret', 'owner');
+  const editedEnc = await applyEditsToPdf(
+    encPdf,
+    [
+      {
+        id: 'enc-edit-1',
+        pageIndex: 0,
+        kind: 'text',
+        left: 0.1,
+        top: 0.2,
+        width: 0.4,
+        height: 0.1,
+        text: 'Decrypted Edit OK',
+        font: 'courier',
+        fontSize: 12,
+        color: '#111827',
+        opacity: 1,
+      },
+    ],
+    'secret',
+  );
+  assert(editedEnc.appliedCount === 1 && editedEnc.pagesModified === 1, 'encrypted edit counts');
+  const encOut = await PDFDocument.load(editedEnc.bytes, { updateMetadata: false });
+  assert(!encOut.context.trailerInfo.Encrypt, 'edited encrypted PDF must save unencrypted');
 });
 
 // Print summary table

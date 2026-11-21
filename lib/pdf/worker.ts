@@ -12,6 +12,7 @@ import { inspectPdfSizeBreakdown } from './breakdown';
 import { grayscalePdf, GrayscaleOptions } from './color';
 import { compressPdf, CompressOptions } from './compress';
 import { cropPdf, CropOptions, getPageBoxes } from './crop';
+import { applyEditsToPdf, PdfEditItem } from './editPdf';
 import { extractImagesFromPdf, ExtractImagesOptions } from './extractImages';
 import { isPasswordError } from './files';
 import { FillFormOptions, fillFormPdf, FormFieldValue, inspectFormFields } from './forms';
@@ -64,7 +65,8 @@ export type WorkerRequest =
   | { id: number; task: 'grayscale'; bytes: Uint8Array; opts?: Omit<GrayscaleOptions, 'convertJpegToGray'>; password?: string }
   | { id: number; task: 'inspectFormFields'; bytes: Uint8Array; password?: string }
   | { id: number; task: 'fillForm'; bytes: Uint8Array; values: Record<string, FormFieldValue>; opts?: FillFormOptions; password?: string }
-  | { id: number; task: 'applySignatures'; bytes: Uint8Array; placements: SignaturePlacement[]; password?: string };
+  | { id: number; task: 'applySignatures'; bytes: Uint8Array; placements: SignaturePlacement[]; password?: string }
+  | { id: number; task: 'applyEdits'; bytes: Uint8Array; items: PdfEditItem[]; password?: string };
 
 export type WorkerResponse =
   | { id: number; type: 'progress'; fraction: number; label: string }
@@ -154,6 +156,8 @@ async function handleTask(req: WorkerRequest, postProgress: (fraction: number, l
       return fillFormPdf(req.bytes, req.values, req.opts, req.password);
     case 'applySignatures':
       return applySignaturesToPdf(req.bytes, req.placements, req.password);
+    case 'applyEdits':
+      return applyEditsToPdf(req.bytes, req.items, req.password);
   }
 }
 

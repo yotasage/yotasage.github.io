@@ -16,6 +16,7 @@ import { inspectPdfSizeBreakdown, PdfSizeBreakdown } from './breakdown';
 import { grayscalePdf, GrayscaleOptions, GrayscaleResult } from './color';
 import { compressPdf, CompressOptions, CompressResult } from './compress';
 import { cropPdf, CropOptions, getPageBoxes, PageBoxInfo } from './crop';
+import { applyEditsToPdf, ApplyEditsResult, PdfEditItem } from './editPdf';
 import { extractImagesFromPdf, ExtractImagesOptions, ExtractImagesResult } from './extractImages';
 import { OutputFile } from './files';
 import {
@@ -457,5 +458,16 @@ export function runApplySignatures(
   return dispatch<ApplySignaturesResult>(
     (id) => ({ id, task: 'applySignatures', bytes, placements, password }),
     () => applySignaturesToPdf(bytes, placements, password),
+  );
+}
+
+export function runApplyEdits(
+  bytes: Uint8Array,
+  items: PdfEditItem[],
+  password?: string,
+): Promise<ApplyEditsResult> {
+  return dispatch<ApplyEditsResult>(
+    (id) => ({ id, task: 'applyEdits', bytes, items, password }),
+    () => applyEditsToPdf(bytes, items, password),
   );
 }

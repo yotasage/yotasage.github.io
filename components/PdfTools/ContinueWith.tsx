@@ -5,6 +5,7 @@ import { HandoffFile, setHandoff } from '../../lib/pdf/handoff';
 import {
   COMPRESS,
   CROP,
+  EDIT,
   EDIT_METADATA,
   EXTRACT_IMAGES,
   EXTRACT_PAGES,
@@ -34,6 +35,7 @@ import styles from '../../styles/PdfTools.module.css';
 
 const PDF_TARGETS: PdfTool[] = [
   READER,
+  EDIT,
   COMPRESS,
   CROP,
   RESIZE,
