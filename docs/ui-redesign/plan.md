@@ -52,12 +52,12 @@ Status: ✅ done · 🔄 in progress · 📋 planned
 
 | Step | Scope | Status | Commit |
 | --- | --- | :-: | --- |
-| U1 | Self-hosted fonts (`public/fonts/`), `styles/design-system.css`, `lib/ui/` (theme, mode, i18n), shared `components/UI/` (`ToolHeader`, `PillTabs`, `TeachingCallout`), themed `SiteFooter`, `_app.tsx` & `_document.tsx` FOUC guard | 📋 | — |
-| U2 | Home page (`/`) redesign with Modern High-Polish SaaS header, ambient hero, live search + category filter pills, scannable cards, Light/Dark/HC & EN/NB | 📋 | — |
-| U3 | Simulation setup (`/simsetup/main`) redesign: Hybrid Split + Mode Tabs (`Workbench` / `Examples & Guide` / `Theory`), Quick/Standard/Teaching modes, presets, EN/NB | 📋 | — |
-| U4 | Resistor lookup (`/resistor/main`) redesign: Hybrid Split + Mode Tabs (`Workbench` with sticky left hero + tabbed right `Lookup` / `Bands & SMD` / `Combinations` / `Design`, plus `Examples` and `Theory & Reference`), Quick/Standard/Teaching, EN/NB, harness update | 📋 | — |
-| U5 | Smith chart (`/smith-chart/main`) redesign: Hybrid Split + Mode Tabs (`Workbench` with sticky chart + tabbed right `Circuit` / `Solver` / `Sweep` / `Equations` / `Export`, plus `Learn & Challenges` and `Theory & References`), Quick/Standard/Teaching, EN/NB, preserving 60 fps drag engine | 📋 | — |
-| U6 | Full verification (`npx tsc --noEmit`, `npm run build`, engine checks, Playwright desktop & 390 px visual audit across Light/Dark/HC/Modes/EN/NB), `CLAUDE.md` & plan status update | 📋 | — |
+| U1 | Self-hosted fonts (`public/fonts/`), `styles/design-system.css`, `lib/ui/` (theme, mode, i18n), shared `components/UI/` (`ToolHeader`, `PillTabs`, `TeachingCallout`), themed `SiteFooter`, `_app.tsx` & `_document.tsx` FOUC guard | ✅ | `36e3760` |
+| U2 | Home page (`/`) redesign with Modern High-Polish SaaS header, ambient hero, live search + category filter pills, scannable cards, Light/Dark/HC & EN/NB | ✅ | `3719999` |
+| U3 | Simulation setup (`/simsetup/main`) redesign: Hybrid Split + Mode Tabs (`Workbench` / `Examples & Guide` / `Theory`), Quick/Standard/Teaching modes, presets, EN/NB | ✅ | `bd5d504` |
+| U4 | Resistor lookup (`/resistor/main`) redesign: Hybrid Split + Mode Tabs (`Workbench` with sticky left hero + tabbed right `Lookup` / `Bands & SMD` / `Combinations` / `Design`, plus `Examples` and `Theory & Reference`), Quick/Standard/Teaching, EN/NB, harness update | ✅ | `523956a` |
+| U5 | Smith chart (`/smith-chart/main`) redesign: Hybrid Split + Mode Tabs (`Workbench` with sticky chart + tabbed right `Circuit` / `Solver` / `Sweep` / `Equations` / `Export`, plus `Learn & Challenges` and `Theory & References`), Quick/Standard/Teaching, EN/NB, preserving 60 fps drag engine | ✅ | `0e12806` |
+| U6 | Full verification (`npx tsc --noEmit`, `npm run build`, engine checks, Playwright desktop & 390 px visual audit across Light/Dark/HC/Modes/EN/NB), `CLAUDE.md` & plan status update | ✅ | pending |
 
 ---
 

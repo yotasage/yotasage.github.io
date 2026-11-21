@@ -731,17 +731,21 @@
 }
 
 .buttonRow {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
+}
+
+.buttonRow:has(> :nth-child(6):last-child) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .buttonRow .buttonGhost {
   height: 30px;
-  padding: 0 10px;
+  padding: 0 6px;
   font-family: var(--ds-font-mono);
   font-size: 0.78rem;
-  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .helperFooter {

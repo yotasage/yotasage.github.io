@@ -34,9 +34,10 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 - CI runs on Ubuntu with Node 22 (`npm ci`); development is on Windows with a newer Node. Import paths must match
   file name case exactly.
 - `postinstall` runs [scripts/copy-pdfjs-assets.mjs](scripts/copy-pdfjs-assets.mjs) (→ `public/pdfjs/`),
-  [scripts/copy-3d-assets.mjs](scripts/copy-3d-assets.mjs) (→ `public/3d/`), [scripts/copy-qr-assets.mjs](scripts/copy-qr-assets.mjs) (→ `public/qr/`) and
+  [scripts/copy-3d-assets.mjs](scripts/copy-3d-assets.mjs) (→ `public/3d/`), [scripts/copy-qr-assets.mjs](scripts/copy-qr-assets.mjs) (→ `public/qr/`),
+  [scripts/copy-fonts.mjs](scripts/copy-fonts.mjs) (→ `public/fonts/`, self-hosted Inter Variable and JetBrains Mono Variable) and
   [scripts/collect-licenses.mjs](scripts/collect-licenses.mjs) (→ `lib/generated/third-party-licenses.json`, shown by
-  `/licenses`; the list is found by scanning imports in `pages/`, `components/`, `lib/`). All four outputs are
+  `/licenses`; the list is found by scanning imports in `pages/`, `components/`, `lib/`). All outputs are
   git-ignored. After adding or removing a dependency, run `npm install` so the licence list follows.
 
 ## Verifying changes
@@ -230,6 +231,7 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   `later.md`, and the `notes-<step>.md` each step leaves.
 - [docs/agent-workflow.md](docs/agent-workflow.md): how to run large work with Claude agents cheaply and safely, with
   the measured cost of the PCB viewer build.
+- [docs/ui-redesign/plan.md](docs/ui-redesign/plan.md): Modern High-Polish SaaS Design System v2 spec (`styles/design-system.css`, `lib/ui/{theme,mode,i18n,translations}.*`, `components/UI/{ToolHeader,PillTabs,TeachingCallout}.tsx`, self-hosted Inter & JetBrains Mono fonts) and flagship redesign status (`/`, `/simsetup/main`, `/resistor/main`, `/smith-chart/main`).
 - [docs/BACKLOG.md](docs/BACKLOG.md): wanted but not scheduled, for every tool (ids `BL<n>`, never reused). Work left out
   of a step goes here.
 

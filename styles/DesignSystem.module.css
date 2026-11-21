@@ -578,5 +578,24 @@
   .headerRight {
     width: 100%;
     justify-content: space-between;
+    gap: 4px;
+  }
+
+  .segBtn {
+    font-size: 0.69rem;
+    padding: 0 6px;
+    height: 25px;
+  }
+
+  .segBtnIcon {
+    padding: 0 5px;
+    min-width: 24px;
+  }
+
+  .langBtn {
+    height: 29px;
+    padding: 0 6px;
+    font-size: 0.66rem;
+    gap: 2px;
   }
 }
