@@ -3,6 +3,7 @@ import React from 'react';
 
 import { HandoffFile, setHandoff } from '../../lib/pdf/handoff';
 import {
+  COMPARE,
   COMPRESS,
   CROP,
   EDIT,
@@ -37,6 +38,7 @@ import styles from '../../styles/PdfTools.module.css';
 
 const PDF_TARGETS: PdfTool[] = [
   READER,
+  COMPARE,
   EDIT,
   COMPRESS,
   LINEARIZE,

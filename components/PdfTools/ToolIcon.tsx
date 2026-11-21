@@ -16,6 +16,15 @@ const ICONS: Record<ToolIconName, React.ReactNode> = {
       <path d="M11 16.5h8M11 22.5h8M11 28.5h6M29 16.5h8M29 22.5h8M29 28.5h6" />
     </>
   ),
+  compare: (
+    <>
+      <Doc x={4} y={6} w={18} h={30} />
+      <Doc x={26} y={12} w={18} h={30} />
+      <path d="M9 18h8M9 24h6M9 30h8" />
+      <path d="M31 24h8M31 30h8M35 20v8" />
+      <path d="M20 10h6m-2-2 2 2-2 2" />
+    </>
+  ),
   merge: (
     <>
       <Doc x={4} y={4} w={16} h={20} />

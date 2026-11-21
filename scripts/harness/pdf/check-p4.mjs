@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { zlibSync } from 'fflate';
 
 import { makeMultiPagePdf } from './fixtures.mjs';
+import * as compareMod from '../../../lib/pdf/compare.ts';
 import * as compressMod from '../../../lib/pdf/compress.ts';
 import * as compressContentMod from '../../../lib/pdf/compressContent.ts';
 import * as linearizeMod from '../../../lib/pdf/linearize.ts';
@@ -33,6 +34,13 @@ const {
 
 const { checkQpdf, runQpdf } = qpdfMod.default ?? qpdfMod;
 const { OCR_ASSET_PATHS, OCR_LANGUAGES } = ocrRuntimeMod.default ?? ocrRuntimeMod;
+const {
+  assembleLinesFromTextItems,
+  computePixelDiff,
+  diffTextLines,
+  diffWords,
+  formatTextDiffSummary,
+} = compareMod.default ?? compareMod;
 const { compressPdf } = compressMod.default ?? compressMod;
 const { hasLinearizedHeader, inspectLinearization, linearizePdf } = linearizeMod.default ?? linearizeMod;
 const { diagnosePdf, repairPdf } = repairMod.default ?? repairMod;
@@ -515,6 +523,133 @@ await check('32. P4.3 repair.ts (corrupt xref + trailing junk, leading garbage +
   assert(checkC.ok === true, `case C checkQpdf failed: ${checkC.stderr}`);
   const reloadC = await PDFDocument.load(repairC.bytes, { updateMetadata: false });
   assert(reloadC.getPageCount() === 3, `case C reloaded doc expected 3 pages, got ${reloadC.getPageCount()}`);
+});
+
+await check('33. P4.4 compare.ts (reading-order lines, text/word LCS diff, RGBA pixel diff + changedBoxes, text report)', async () => {
+  // 33a. Reading-order line reconstruction from unordered positioned items across 3 lines
+  const unorderedItems = [
+    { str: 'Line 3 end.', x: 80, y: 660, width: 55, height: 12 },
+    { str: 'World', x: 52, y: 700, width: 32, height: 12 },
+    { str: 'Second', x: 10, y: 680.5, width: 40, height: 12 },
+    { str: 'Hello', x: 10, y: 700, width: 30, height: 12 },
+    { str: 'line', x: 56, y: 680, width: 20, height: 12 },
+    { str: 'Line 3', x: 10, y: 660.4, width: 34, height: 12 },
+    { str: 'here', x: 82, y: 679.8, width: 24, height: 12 },
+    { str: '!', x: 84.5, y: 700, width: 4, height: 12 },
+  ];
+  const assembled = assembleLinesFromTextItems(unorderedItems);
+  assert(assembled.length === 3, `expected 3 assembled lines, got ${assembled.length}: ${JSON.stringify(assembled)}`);
+  assert(assembled[0] === 'Hello World!', `unexpected line 0: "${assembled[0]}"`);
+  assert(assembled[1] === 'Second line here', `unexpected line 1: "${assembled[1]}"`);
+  assert(assembled[2] === 'Line 3 Line 3 end.', `unexpected line 2: "${assembled[2]}"`);
+
+  // 33b. diffTextLines & diffWords: identical arrays
+  const sameDiff = diffTextLines(['Alpha', 'Beta', 'Gamma'], ['Alpha', 'Beta', 'Gamma']);
+  assert(sameDiff.hasChanges === false, 'identical lines must report hasChanges=false');
+  assert(sameDiff.addedLines === 0 && sameDiff.removedLines === 0, 'identical lines must have 0 added/removed');
+  assert(sameDiff.unchangedLines === 3, `expected 3 unchangedLines, got ${sameDiff.unchangedLines}`);
+
+  // 33c. diffTextLines & diffWords: modified paragraph with inline word highlights
+  const linesA = [
+    'Project Overview',
+    'The quick brown fox jumps over the lazy dog.',
+    'Budget: 1000 USD',
+    'End of section.',
+  ];
+  const linesB = [
+    'Project Overview',
+    'The quick red fox leaps over the lazy dog.',
+    'Budget: 1250 USD',
+    'Approved by review.',
+    'End of section.',
+  ];
+  const modDiff = diffTextLines(linesA, linesB);
+  assert(modDiff.hasChanges === true, 'modified paragraph must report hasChanges=true');
+  assert(modDiff.removedLines === 2, `expected 2 removedLines, got ${modDiff.removedLines}`);
+  assert(modDiff.addedLines === 3, `expected 3 addedLines, got ${modDiff.addedLines}`);
+  assert(modDiff.unchangedLines === 2, `expected 2 unchangedLines, got ${modDiff.unchangedLines}`);
+
+  const removedFox = modDiff.lines.find((l) => l.type === 'removed' && l.text.includes('brown'));
+  const addedFox = modDiff.lines.find((l) => l.type === 'added' && l.text.includes('red'));
+  assert(removedFox?.chunks && addedFox?.chunks, 'paired removed/added lines must include inline word chunks');
+  assert(
+    removedFox.chunks.some((c) => c.type === 'removed' && c.text.includes('brown')),
+    `expected "brown" highlighted as removed in chunks: ${JSON.stringify(removedFox.chunks)}`,
+  );
+  assert(
+    addedFox.chunks.some((c) => c.type === 'added' && c.text.includes('red')),
+    `expected "red" highlighted as added in chunks: ${JSON.stringify(addedFox.chunks)}`,
+  );
+
+  const directWords = diffWords('Version 1.0 draft', 'Version 2.0 final');
+  assert(
+    directWords.chunksA.some((c) => c.type === 'removed' && c.text.includes('1')) &&
+      directWords.chunksB.some((c) => c.type === 'added' && c.text.includes('2')),
+    'diffWords must highlight exact changed tokens',
+  );
+
+  // 33d. computePixelDiff: identical 64x64 RGBA buffers
+  const w = 64;
+  const h = 64;
+  const whiteA = new Uint8ClampedArray(w * h * 4).fill(255);
+  const whiteB = new Uint8ClampedArray(w * h * 4).fill(255);
+  const samePx = computePixelDiff(whiteA, w, h, whiteB, w, h);
+  assert(samePx.changedPixels === 0, `expected 0 changedPixels on identical images, got ${samePx.changedPixels}`);
+  assert(samePx.changedPercent === 0, `expected 0 changedPercent, got ${samePx.changedPercent}`);
+  assert(samePx.changedBoxes.length === 0, `expected 0 changedBoxes, got ${samePx.changedBoxes.length}`);
+
+  // 33e. computePixelDiff: modified 12x12 dark patch in B on white background
+  const patchedB = whiteB.slice();
+  for (let y = 20; y < 32; y++) {
+    for (let x = 24; x < 36; x++) {
+      const p = (y * w + x) * 4;
+      patchedB[p] = 20;
+      patchedB[p + 1] = 20;
+      patchedB[p + 2] = 20;
+      patchedB[p + 3] = 255;
+    }
+  }
+  const patchPx = computePixelDiff(whiteA, w, h, patchedB, w, h);
+  assert(patchPx.changedPixels === 144, `expected 144 changedPixels for 12x12 patch, got ${patchPx.changedPixels}`);
+  assert(patchPx.changedBoxes.length >= 1, `expected >= 1 changedBox, got ${patchPx.changedBoxes.length}`);
+  const centerIdx = (26 * w + 30) * 4;
+  assert(
+    patchPx.rgba[centerIdx] === 30 &&
+      patchPx.rgba[centerIdx + 1] === 128 &&
+      patchPx.rgba[centerIdx + 2] === 232 &&
+      patchPx.rgba[centerIdx + 3] === 255,
+    `expected blue (30,128,232) inside added dark patch, got (${patchPx.rgba[centerIdx]},${patchPx.rgba[centerIdx + 1]},${patchPx.rgba[centerIdx + 2]},${patchPx.rgba[centerIdx + 3]})`,
+  );
+
+  // 33f. computePixelDiff: mismatched dimensions (64x64 vs 80x64)
+  const wideB = new Uint8ClampedArray(80 * 64 * 4).fill(255);
+  const mismatchPx = computePixelDiff(whiteA, 64, 64, wideB, 80, 64);
+  assert(
+    mismatchPx.width === 80 && mismatchPx.height === 64,
+    `expected mismatched output 80x64, got ${mismatchPx.width}x${mismatchPx.height}`,
+  );
+  assert(mismatchPx.changedPixels === 0, `white-padded mismatched images should have 0 changedPixels, got ${mismatchPx.changedPixels}`);
+
+  // 33g. formatTextDiffSummary produces expected headers and +/- markers
+  const report = formatTextDiffSummary('orig.pdf', 'rev.pdf', [
+    {
+      page: 1,
+      addedLines: modDiff.addedLines,
+      removedLines: modDiff.removedLines,
+      hasChanges: modDiff.hasChanges,
+      diff: modDiff,
+    },
+    {
+      page: 2,
+      addedLines: 0,
+      removedLines: 0,
+      hasChanges: false,
+      diff: sameDiff,
+    },
+  ]);
+  assert(report.includes('--- orig.pdf') && report.includes('+++ rev.pdf'), 'report missing file headers');
+  assert(report.includes('@@ Page 1 (+3 / -2 lines) @@'), 'report missing page hunk header');
+  assert(report.includes('- Budget: 1000 USD') && report.includes('+ Budget: 1250 USD'), 'report missing +/- diff lines');
 });
 
 // Print summary table

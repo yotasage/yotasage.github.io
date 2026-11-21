@@ -1,6 +1,7 @@
 // The tools listed on /pdf/main. See docs/pdf-tools-plan.md for the tools planned next.
 export type ToolIconName =
   | 'reader'
+  | 'compare'
   | 'merge'
   | 'split'
   | 'compress'
@@ -50,6 +51,15 @@ export const READER: PdfTool = {
   description: 'Open and read PDFs in your browser with text selection, search, table of contents, thumbnails, zoom, dark-mode reading and keyboard shortcuts.',
   href: '/pdf/reader',
   icon: 'reader',
+  color: '#4da3ff',
+};
+
+export const COMPARE: PdfTool = {
+  id: 'compare',
+  title: 'Compare PDFs',
+  description: 'Compare two PDF documents visually with pixel overlay, side-by-side and swipe curtain views, plus reading-order text diffs and downloadable reports.',
+  href: '/pdf/compare',
+  icon: 'compare',
   color: '#4da3ff',
 };
 
@@ -306,7 +316,7 @@ export const EDIT: PdfTool = {
 };
 
 export const TOOL_CATEGORIES: ToolCategory[] = [
-  { title: 'View', tools: [READER] },
+  { title: 'View', tools: [READER, COMPARE] },
   { title: 'Organize', tools: [MERGE, SPLIT, ORGANIZE, ROTATE, REMOVE_PAGES, EXTRACT_PAGES] },
   { title: 'Optimize', tools: [COMPRESS, LINEARIZE, REPAIR] },
   { title: 'Edit & annotate', tools: [EDIT, SIGN, FILL_FORMS, PAGE_NUMBERS, WATERMARK, CROP, RESIZE, NUP, GRAYSCALE, INVERT, EDIT_METADATA, FLATTEN, REMOVE_ANNOTATIONS] },
