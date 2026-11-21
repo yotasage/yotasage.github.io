@@ -23,6 +23,7 @@ import { buildPdfFromPages, extractPagesPdf, LoadSource, PageSpec, removePagesPd
 import { resizePdf, ResizeOptions } from './resize';
 import { CleanOptions, cleanPdf, inspectPdf } from './sanitize';
 import { inspectSecurity, ProtectOptions, protectPdf, unlockPdf } from './security';
+import { applySignaturesToPdf, SignaturePlacement } from './sign';
 import { SplitPart, splitPdfBySize, splitPdfParts } from './split';
 import { addWatermark, WatermarkOptions } from './watermark';
 
@@ -62,7 +63,8 @@ export type WorkerRequest =
   | { id: number; task: 'booklet'; bytes: Uint8Array; opts: BookletOptions; password?: string }
   | { id: number; task: 'grayscale'; bytes: Uint8Array; opts?: Omit<GrayscaleOptions, 'convertJpegToGray'>; password?: string }
   | { id: number; task: 'inspectFormFields'; bytes: Uint8Array; password?: string }
-  | { id: number; task: 'fillForm'; bytes: Uint8Array; values: Record<string, FormFieldValue>; opts?: FillFormOptions; password?: string };
+  | { id: number; task: 'fillForm'; bytes: Uint8Array; values: Record<string, FormFieldValue>; opts?: FillFormOptions; password?: string }
+  | { id: number; task: 'applySignatures'; bytes: Uint8Array; placements: SignaturePlacement[]; password?: string };
 
 export type WorkerResponse =
   | { id: number; type: 'progress'; fraction: number; label: string }
@@ -150,6 +152,8 @@ async function handleTask(req: WorkerRequest, postProgress: (fraction: number, l
       return inspectFormFields(req.bytes, req.password);
     case 'fillForm':
       return fillFormPdf(req.bytes, req.values, req.opts, req.password);
+    case 'applySignatures':
+      return applySignaturesToPdf(req.bytes, req.placements, req.password);
   }
 }
 

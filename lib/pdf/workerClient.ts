@@ -34,6 +34,7 @@ import { buildPdfFromPages, extractPagesPdf, LoadSource, PageSpec, removePagesPd
 import { resizePdf, ResizeOptions } from './resize';
 import { CleanOptions, cleanPdf, Finding, inspectPdf } from './sanitize';
 import { inspectSecurity, ProtectOptions, protectPdf, SecurityInfo, unlockPdf, UnlockResult } from './security';
+import { applySignaturesToPdf, ApplySignaturesResult, SignaturePlacement } from './sign';
 import { SplitBySizeResult, SplitPart, splitPdfBySize, splitPdfParts } from './split';
 import { addWatermark, WatermarkOptions } from './watermark';
 import type { WorkerRequest, WorkerResponse } from './worker';
@@ -445,5 +446,16 @@ export function runFillFormPdf(
   return dispatch<FillFormResult>(
     (id) => ({ id, task: 'fillForm', bytes, values, opts, password }),
     () => fillFormPdf(bytes, values, opts, password),
+  );
+}
+
+export function runApplySignatures(
+  bytes: Uint8Array,
+  placements: SignaturePlacement[],
+  password?: string,
+): Promise<ApplySignaturesResult> {
+  return dispatch<ApplySignaturesResult>(
+    (id) => ({ id, task: 'applySignatures', bytes, placements, password }),
+    () => applySignaturesToPdf(bytes, placements, password),
   );
 }

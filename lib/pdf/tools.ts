@@ -24,7 +24,8 @@ export type ToolIconName =
   | 'nup'
   | 'grayscale'
   | 'invert'
-  | 'fill-forms';
+  | 'fill-forms'
+  | 'sign';
 
 export interface PdfTool {
   id: string;
@@ -265,11 +266,20 @@ export const FILL_FORMS: PdfTool = {
   color: '#34b3a0',
 };
 
+export const SIGN: PdfTool = {
+  id: 'sign',
+  title: 'Sign PDF',
+  description: 'Draw, type or upload a signature and place signatures, initials, dates and text stamps anywhere on your PDF pages.',
+  href: '/pdf/sign',
+  icon: 'sign',
+  color: '#2fae6b',
+};
+
 export const TOOL_CATEGORIES: ToolCategory[] = [
   { title: 'View', tools: [READER] },
   { title: 'Organize', tools: [MERGE, SPLIT, ORGANIZE, ROTATE, REMOVE_PAGES, EXTRACT_PAGES] },
   { title: 'Optimize', tools: [COMPRESS] },
-  { title: 'Edit & annotate', tools: [FILL_FORMS, PAGE_NUMBERS, WATERMARK, CROP, RESIZE, NUP, GRAYSCALE, INVERT, EDIT_METADATA, FLATTEN, REMOVE_ANNOTATIONS] },
+  { title: 'Edit & annotate', tools: [SIGN, FILL_FORMS, PAGE_NUMBERS, WATERMARK, CROP, RESIZE, NUP, GRAYSCALE, INVERT, EDIT_METADATA, FLATTEN, REMOVE_ANNOTATIONS] },
   { title: 'Convert to PDF', tools: [IMAGES_TO_PDF] },
   { title: 'Convert from PDF', tools: [PDF_TO_IMAGES, EXTRACT_IMAGES] },
   { title: 'Security', tools: [PROTECT, UNLOCK, REMOVE_METADATA] },

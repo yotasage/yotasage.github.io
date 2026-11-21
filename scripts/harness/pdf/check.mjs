@@ -39,6 +39,7 @@ import * as readerMod from '../../../lib/pdf/reader.ts';
 import * as resizeMod from '../../../lib/pdf/resize.ts';
 import * as sanitizeMod from '../../../lib/pdf/sanitize.ts';
 import * as securityMod from '../../../lib/pdf/security.ts';
+import * as signMod from '../../../lib/pdf/sign.ts';
 import * as splitMod from '../../../lib/pdf/split.ts';
 import * as watermarkMod from '../../../lib/pdf/watermark.ts';
 
@@ -62,6 +63,7 @@ const { findTextMatches, splitItemWithMatches } = unwrap(readerMod);
 const { RESIZE_PRESETS, resizePdf } = unwrap(resizeMod);
 const { inspectPdf, cleanPdf, PRESETS } = unwrap(sanitizeMod);
 const { inspectSecurity, protectPdf, unlockPdf } = unwrap(securityMod);
+const { applySignaturesToPdf } = unwrap(signMod);
 const { parseSplitGroups, splitByEveryN, splitByBreakPoints, splitByBookmarks, splitPdfParts, splitPdfBySize } = unwrap(splitMod);
 const { addWatermark } = unwrap(watermarkMod);
 
@@ -1490,6 +1492,129 @@ await runCheck('26. forms.ts (inspectFormFields, rotated widgets, fillFormPdf, f
   } finally {
     await flatTask.destroy();
   }
+});
+
+// 27. lib/pdf/sign.ts (applySignaturesToPdf: multi-page PNG assetId reuse, 90°-rotated text stamp, encrypted input)
+await runCheck('27. sign.ts (applySignaturesToPdf: assetId reuse, rotated page text, pdfjs)', async () => {
+  const rotPdf = await makeRotatedPdf(); // 4 pages: rot 0, 90, 180, 270
+  const sigPng = makeRgbaPng(48, 24);
+
+  const res = await applySignaturesToPdf(rotPdf, [
+    {
+      id: 'sig-p1',
+      pageIndex: 0,
+      kind: 'image',
+      assetId: 'hand-sig-1',
+      imageBytes: sigPng,
+      imageType: 'png',
+      left: 0.1,
+      top: 0.72,
+      width: 0.3,
+      height: 0.12,
+      opacity: 0.95,
+    },
+    {
+      id: 'sig-p2',
+      pageIndex: 1,
+      kind: 'image',
+      assetId: 'hand-sig-1', // Same assetId on page 2 -> must reuse a single embedded image XObject
+      imageBytes: sigPng,
+      imageType: 'png',
+      left: 0.12,
+      top: 0.75,
+      width: 0.28,
+      height: 0.12,
+    },
+    {
+      id: 'date-p2',
+      pageIndex: 1, // 90°-rotated page
+      kind: 'text',
+      text: '2026-11-21',
+      font: 'helvetica-bold',
+      fontSize: 14,
+      color: '#1d4ed8',
+      left: 0.62,
+      top: 0.8,
+      width: 0.28,
+      height: 0.08,
+    },
+  ]);
+
+  assert(res.placedCount === 3, `expected placedCount=3, got ${res.placedCount}`);
+  assert(res.pagesModified === 2, `expected pagesModified=2, got ${res.pagesModified}`);
+
+  // Confirm single embedded image XObject reuse across page 0 and page 1
+  const outDoc = await PDFDocument.load(res.bytes, { updateMetadata: false });
+  const getSigImgRefs = (pIdx) => {
+    const resDict = outDoc.getPage(pIdx).node.Resources();
+    const xobjs = resDict?.lookup(PDFName.of('XObject'));
+    if (!xobjs) return [];
+    return xobjs
+      .keys()
+      .filter((k) => k.decodeText().startsWith('SigImg'))
+      .map((k) => xobjs.get(k));
+  };
+  const p0Refs = getSigImgRefs(0);
+  const p1Refs = getSigImgRefs(1);
+  assert(p0Refs.length === 1 && p1Refs.length === 1, `expected 1 SigImg ref on p0 & p1, got ${p0Refs.length}, ${p1Refs.length}`);
+  assert(p0Refs[0].toString() === p1Refs[0].toString(), `same assetId must reuse one PDFRef (${p0Refs[0]} vs ${p1Refs[0]})`);
+
+  // Verify with pdfjs-dist: opens cleanly, image paint ops exist on signed pages, and date text on rotated page 2 is upright in bottom-right!
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const task = pdfjs.getDocument({ data: res.bytes.slice(), verbosity: 0 });
+  try {
+    const pdoc = await task.promise;
+    assert(pdoc.numPages === 4, `expected 4 pages, got ${pdoc.numPages}`);
+
+    for (const pageNum of [1, 2]) {
+      const page = await pdoc.getPage(pageNum);
+      const ops = await page.getOperatorList();
+      const hasImageOp = ops.fnArray.some(
+        (fn) => fn === pdfjs.OPS.paintImageXObject || fn === pdfjs.OPS.paintInlineImageXObject,
+      );
+      assert(hasImageOp, `signed page ${pageNum} missing image paint operator`);
+    }
+
+    // Check rotated page 2 (rot=90) date stamp text, upright orientation, and visual position
+    const p2 = await pdoc.getPage(2);
+    const vp = p2.getViewport({ scale: 1 });
+    const tc = await p2.getTextContent();
+    const joined = tc.items.map((it) => it.str).join(' ');
+    assert(joined.includes('2026-11-21'), `rotated page 2 missing date stamp "2026-11-21" in "${joined}"`);
+
+    const dateItem = tc.items.find((it) => it.str.includes('2026-11-21'));
+    assert(Boolean(dateItem), 'missing date text item on rotated page 2');
+    const tx = pdfjs.Util.transform(vp.transform, dateItem.transform);
+    assert(tx[0] > 0 && Math.abs(tx[1]) < 0.1, `date stamp on rotated page 2 must be upright (tx=${JSON.stringify(tx)})`);
+    assert(
+      tx[4] > vp.width * 0.5 && tx[5] > vp.height * 0.7,
+      `date stamp on rotated page 2 must sit in visual bottom-right (vx=${tx[4].toFixed(1)}/${vp.width}, vy=${tx[5].toFixed(1)}/${vp.height})`,
+    );
+  } finally {
+    await task.destroy();
+  }
+
+  // Also verify signing an encrypted PDF with password saves cleanly without unused encryption objects
+  const encPdf = await makeEncryptedPdf('secret', 'owner');
+  const signedEnc = await applySignaturesToPdf(
+    encPdf,
+    [
+      {
+        id: 'enc-text',
+        pageIndex: 0,
+        kind: 'text',
+        text: 'Signed OK',
+        left: 0.1,
+        top: 0.8,
+        width: 0.25,
+        height: 0.06,
+      },
+    ],
+    'secret',
+  );
+  assert(signedEnc.placedCount === 1 && signedEnc.pagesModified === 1, 'encrypted sign counts');
+  const encDoc = await PDFDocument.load(signedEnc.bytes, { updateMetadata: false });
+  assert(!encDoc.context.trailerInfo.Encrypt, 'signed encrypted PDF should save unencrypted');
 });
 
 // Print summary table
