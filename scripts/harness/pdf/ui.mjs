@@ -12,11 +12,15 @@ import { unzipSync } from 'fflate';
 import { chromium } from 'playwright-core';
 
 import {
+  makeAnnotatedFormPdf,
   makeBookmarkedPdf,
+  makeColorAndImagePdf,
   makeCompressiblePdf,
   makeEncryptedPdf,
+  makeFillableFormPdf,
   makeImagePdf,
   makeInlineVectorPdf,
+  makeMetadataPdf,
   makeMultiPagePdf,
   makeReaderPdf,
   makeVectorFormPdf,
@@ -140,11 +144,22 @@ async function main() {
 
   const pageErrors = [];
   const consoleErrors = [];
+  const failedRequests = [];
   const outsideRequests = [];
 
   page.on('pageerror', (err) => pageErrors.push(err.message));
   page.on('console', (msg) => {
     if (msg.type() === 'error') consoleErrors.push(msg.text());
+  });
+  page.on('requestfailed', (req) => {
+    const errText = req.failure()?.errorText ?? 'failed';
+    if (errText === 'net::ERR_ABORTED') return;
+    failedRequests.push(`${req.url()} (${errText})`);
+  });
+  page.on('response', (res) => {
+    if (res.status() >= 400) {
+      failedRequests.push(`${res.url()} (HTTP ${res.status()})`);
+    }
   });
   page.on('request', (req) => {
     const raw = req.url();
@@ -167,13 +182,17 @@ async function main() {
   const { bytes: imagePdf } = await makeImagePdf();
   const compressiblePdf = await makeCompressiblePdf();
   const encryptedPdf = await makeEncryptedPdf('secret', 'owner');
+  const metadataPdf = await makeMetadataPdf();
+  const annotatedFormPdf = await makeAnnotatedFormPdf();
+  const colorAndImagePdf = await makeColorAndImagePdf();
+  const fillableFormPdf = await makeFillableFormPdf();
   const vectorFormPdf = await makeVectorFormPdf();
   const inlineVectorPdf = await makeInlineVectorPdf();
   const readerPdf = await makeReaderPdf();
 
-  // 1. Hub shows all 12 tools and every route returns 200.
-  await runTest('1. /pdf/main lists all 12 tools and every route returns HTTP 200', async () => {
-    assert(ALL_TOOLS.length === 12, `Expected 12 registered tools, found ${ALL_TOOLS.length}`);
+  // 1. Hub shows all 27 tools and every route returns 200.
+  await runTest('1. /pdf/main lists all 27 tools and every route returns HTTP 200', async () => {
+    assert(ALL_TOOLS.length === 27, `Expected 27 registered tools, found ${ALL_TOOLS.length}`);
     const hubRes = await page.goto(`${baseUrl}/pdf/main`, { waitUntil: 'networkidle' });
     assert(hubRes && hubRes.status() === 200, `/pdf/main returned ${hubRes?.status()}`);
     for (const tool of ALL_TOOLS) {
@@ -186,18 +205,10 @@ async function main() {
     }
   });
 
-  // 2. Phone layout (390x844) overflow check.
-  await runTest('2. Phone layout (390x844) has no horizontal overflow', async () => {
+  // 2. Phone layout (390x844) overflow check across /pdf/main and all 27 tool routes.
+  await runTest('2. Phone layout (390x844) has no horizontal overflow across /pdf/main and all 27 tools', async () => {
     await page.setViewportSize({ width: 390, height: 844 });
-    const phoneRoutes = [
-      '/pdf/main',
-      '/pdf/reader',
-      '/pdf/rotate',
-      '/pdf/organize',
-      '/pdf/split',
-      '/pdf/compress',
-      '/pdf/extract-images',
-    ];
+    const phoneRoutes = ['/pdf/main', ...ALL_TOOLS.map((t) => t.href)];
     for (const route of phoneRoutes) {
       await page.goto(`${baseUrl}${route}`, { waitUntil: 'networkidle' });
       const { scrollWidth, innerWidth } = await page.evaluate(() => ({
@@ -205,7 +216,7 @@ async function main() {
         innerWidth: window.innerWidth,
       }));
       assert(
-        scrollWidth <= innerWidth + 2,
+        scrollWidth <= innerWidth + 1,
         `${route} overflowed at 390px: scrollWidth=${scrollWidth}, innerWidth=${innerWidth}`,
       );
     }
@@ -578,10 +589,401 @@ async function main() {
     await page.getByText('/ 4').waitFor({ timeout: 10000 });
   });
 
-  // 16. Zero runtime errors and zero third-party network requests.
-  await runTest('16. Zero pageerror, console.error, and third-party requests', async () => {
+  // 16. Protect PDF (encrypt with password and verify encrypted download).
+  await runTest('16. Protect PDF (AES-256 password encryption + verified download)', async () => {
+    await page.goto(`${baseUrl}/pdf/protect`, { waitUntil: 'networkidle' });
+    await page.locator('input[type="file"]').setInputFiles(pdfUpload('plain.pdf', pdf2));
+    await page.getByText('Unencrypted').waitFor({ timeout: 15000 });
+
+    await page.locator('input[placeholder="Enter open password"]').fill('pass123');
+    await page.getByRole('button', { name: 'Protect PDF', exact: true }).click();
+
+    const dlBtn = page.getByRole('button', { name: /^Download plain-protected\.pdf$/ });
+    await dlBtn.waitFor({ timeout: 20000 });
+    const { bytes } = await readDownloadBytes(page, () => dlBtn.click());
+    assert(new TextDecoder().decode(bytes.slice(0, 5)) === '%PDF-', 'protected PDF missing %PDF- header');
+
+    let rejectedWithoutPassword = false;
+    try {
+      await PDFDocument.load(bytes, { updateMetadata: false });
+    } catch {
+      rejectedWithoutPassword = true;
+    }
+    assert(rejectedWithoutPassword, 'expected protected PDF to reject loading without password');
+
+    const unlockedDoc = await PDFDocument.load(bytes, { password: 'pass123', updateMetadata: false });
+    assert(unlockedDoc.getPageCount() === 2, `expected 2 pages in protected PDF, got ${unlockedDoc.getPageCount()}`);
+  });
+
+  // 17. Unlock PDF (decrypt encrypted fixture and verify unencrypted download).
+  await runTest('17. Unlock PDF (decrypt fixture + unencrypted 4-page download)', async () => {
+    await page.goto(`${baseUrl}/pdf/unlock`, { waitUntil: 'networkidle' });
+    await page.locator('input[type="file"]').setInputFiles(pdfUpload('locked.pdf', encryptedPdf));
+    await page.getByText(/Password required/).waitFor({ timeout: 15000 });
+
+    await page.locator('input[placeholder="Enter PDF password"]').fill('secret');
+    await page.getByRole('button', { name: 'Unlock PDF', exact: true }).click();
+
+    const dlBtn = page.getByRole('button', { name: /^Download locked-unlocked\.pdf$/ });
+    await dlBtn.waitFor({ timeout: 20000 });
+    const { bytes } = await readDownloadBytes(page, () => dlBtn.click());
+    assert(new TextDecoder().decode(bytes.slice(0, 5)) === '%PDF-', 'unlocked PDF missing %PDF- header');
+
+    const outDoc = await PDFDocument.load(bytes, { updateMetadata: false });
+    assert(!outDoc.isEncrypted, 'expected unlocked PDF to be unencrypted');
+    assert(outDoc.getPageCount() === 4, `expected 4 pages in unlocked PDF, got ${outDoc.getPageCount()}`);
+  });
+
+  // 18. Edit metadata (load existing metadata, edit Title, save & verify).
+  await runTest('18. Edit metadata (inspect existing fields, edit Title, save & verify)', async () => {
+    await page.goto(`${baseUrl}/pdf/edit-metadata`, { waitUntil: 'networkidle' });
+    await page.locator('input[type="file"]').setInputFiles(pdfUpload('meta.pdf', metadataPdf));
+
+    const titleInput = page.locator('input[placeholder="Document title"]');
+    await titleInput.waitFor({ timeout: 15000 });
+    assert(
+      (await titleInput.inputValue()) === 'Confidential Brief',
+      `expected existing title "Confidential Brief", got "${await titleInput.inputValue()}"`,
+    );
+
+    await titleInput.fill('Updated Quarterly Report');
+    await page.getByRole('button', { name: 'Save metadata', exact: true }).click();
+
+    const dlBtn = page.getByRole('button', { name: /^Download meta-metadata\.pdf$/ });
+    await dlBtn.waitFor({ timeout: 20000 });
+    const { bytes } = await readDownloadBytes(page, () => dlBtn.click());
+    assert(new TextDecoder().decode(bytes.slice(0, 5)) === '%PDF-', 'metadata PDF missing %PDF- header');
+
+    const outDoc = await PDFDocument.load(bytes, { updateMetadata: false });
+    assert(
+      outDoc.getTitle() === 'Updated Quarterly Report',
+      `expected saved Title "Updated Quarterly Report", got "${outDoc.getTitle()}"`,
+    );
+  });
+
+  // 19. Remove annotations (inspect breakdown, strip all, verify download).
+  await runTest('19. Remove annotations (breakdown renders + strip all annotations)', async () => {
+    await page.goto(`${baseUrl}/pdf/remove-annotations`, { waitUntil: 'networkidle' });
+    await page.locator('input[type="file"]').setInputFiles(pdfUpload('annots.pdf', annotatedFormPdf));
+
+    await page.getByRole('heading', { name: 'Annotation breakdown' }).waitFor({ timeout: 15000 });
+    await page.getByText('Highlights', { exact: true }).waitFor({ timeout: 10000 });
+    await page.getByRole('button', { name: /^Remove \d+ annotations?$/ }).click();
+
+    const dlBtn = page.getByRole('button', { name: /^Download annots-no-annotations\.pdf$/ });
+    await dlBtn.waitFor({ timeout: 20000 });
+    const { bytes } = await readDownloadBytes(page, () => dlBtn.click());
+    assert(new TextDecoder().decode(bytes.slice(0, 5)) === '%PDF-', 'no-annotations PDF missing %PDF- header');
+
+    const outDoc = await PDFDocument.load(bytes, { updateMetadata: false });
+    assert(outDoc.getPageCount() === 2, `expected 2 pages, got ${outDoc.getPageCount()}`);
+  });
+
+  // 20. Flatten PDF (form/annotation summary renders + flatten forms/annotations).
+  await runTest('20. Flatten PDF (form/annotation summary + flattened PDF download)', async () => {
+    await page.goto(`${baseUrl}/pdf/flatten`, { waitUntil: 'networkidle' });
+    await page.locator('input[type="file"]').setInputFiles(pdfUpload('form-annots.pdf', annotatedFormPdf));
+
+    await page.getByText('Form fields detected').waitFor({ timeout: 15000 });
+    const flattenBtn = page.getByRole('button', { name: 'Flatten PDF', exact: true });
+    await flattenBtn.waitFor({ timeout: 15000 });
+    await page.waitForFunction(() => {
+      const btn = [...document.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Flatten PDF');
+      return Boolean(btn && !btn.disabled);
+    }, null, { timeout: 15000 });
+    await flattenBtn.click();
+
+    const dlBtn = page.getByRole('button', { name: /^Download form-annots-flattened\.pdf$/ });
+    await dlBtn.waitFor({ timeout: 20000 });
+    const { bytes } = await readDownloadBytes(page, () => dlBtn.click());
+    assert(new TextDecoder().decode(bytes.slice(0, 5)) === '%PDF-', 'flattened PDF missing %PDF- header');
+
+    const outDoc = await PDFDocument.load(bytes, { updateMetadata: false });
+    assert(outDoc.getPageCount() === 2, `expected 2 pages, got ${outDoc.getPageCount()}`);
+    assert(outDoc.getForm().getFields().length === 0, `expected 0 remaining form fields, got ${outDoc.getForm().getFields().length}`);
+  });
+
+  // 21. Add page numbers (preview canvas renders + apply & download).
+  await runTest('21. Add page numbers (live preview canvas + numbered 3-page download)', async () => {
+    await page.goto(`${baseUrl}/pdf/page-numbers`, { waitUntil: 'networkidle' });
+    await page.locator('input[type="file"]').setInputFiles(pdfUpload('report.pdf', pdf3));
+
+    await page.waitForFunction(() => {
+      const c = document.querySelector('canvas');
+      return Boolean(c && c.width > 0 && c.height > 0);
+    }, null, { timeout: 20000 });
+
+    await page.getByRole('button', { name: 'Page 1 of 12', exact: true }).click();
+    await page.getByText('Label: “Page 1 of 3”').waitFor({ timeout: 10000 });
+    await page.getByRole('button', { name: 'Add numbers to 3 pages', exact: true }).click();
+
+    const dlBtn = page.getByRole('button', { name: /^Download report-numbered\.pdf$/ });
+    await dlBtn.waitFor({ timeout: 20000 });
+    const { bytes } = await readDownloadBytes(page, () => dlBtn.click());
+    assert(new TextDecoder().decode(bytes.slice(0, 5)) === '%PDF-', 'numbered PDF missing %PDF- header');
+
+    const outDoc = await PDFDocument.load(bytes, { updateMetadata: false });
+    assert(outDoc.getPageCount() === 3, `expected 3 numbered pages, got ${outDoc.getPageCount()}`);
+  });
+
+  // 22. Add watermark (preview renders + text watermark download).
+  await runTest('22. Add watermark (live preview overlay + text watermark download)', async () => {
+    await page.goto(`${baseUrl}/pdf/watermark`, { waitUntil: 'networkidle' });
+    await page.locator('input[type="file"][accept*="pdf"]').setInputFiles(pdfUpload('draft.pdf', pdf3));
+
+    await page.waitForFunction(() => {
+      const c = document.querySelector('canvas');
+      return Boolean(c && c.width > 0 && c.height > 0);
+    }, null, { timeout: 20000 });
+    await page.locator('svg text', { hasText: 'CONFIDENTIAL' }).first().waitFor({ timeout: 10000 });
+
+    await page.getByRole('button', { name: 'Watermark 3 pages', exact: true }).click();
+
+    const dlBtn = page.getByRole('button', { name: /^Download draft-watermarked\.pdf$/ });
+    await dlBtn.waitFor({ timeout: 20000 });
+    const { bytes } = await readDownloadBytes(page, () => dlBtn.click());
+    assert(new TextDecoder().decode(bytes.slice(0, 5)) === '%PDF-', 'watermarked PDF missing %PDF- header');
+
+    const outDoc = await PDFDocument.load(bytes, { updateMetadata: false });
+    assert(outDoc.getPageCount() === 3, `expected 3 watermarked pages, got ${outDoc.getPageCount()}`);
+  });
+
+  // 23. Crop PDF (CropCanvas renders, Trim 10% preset, crop & verify reduced box).
+  await runTest('23. Crop PDF (CropCanvas + Trim 10% preset + cropped download)', async () => {
+    await page.goto(`${baseUrl}/pdf/crop`, { waitUntil: 'networkidle' });
+    await page.locator('input[type="file"]').setInputFiles(pdfUpload('margins.pdf', pdf2));
+
+    await page.waitForFunction(() => {
+      const c = document.querySelector('canvas');
+      return Boolean(c && c.width > 0 && c.height > 0);
+    }, null, { timeout: 20000 });
+    await page.locator('[role="region"][aria-label^="Crop selection"]').waitFor({ timeout: 10000 });
+
+    await page.getByRole('button', { name: 'Trim 10%', exact: true }).click();
+    await page.getByRole('button', { name: 'Crop 2 pages', exact: true }).click();
+
+    const dlBtn = page.getByRole('button', { name: /^Download margins-cropped\.pdf$/ });
+    await dlBtn.waitFor({ timeout: 20000 });
+    const { bytes } = await readDownloadBytes(page, () => dlBtn.click());
+    assert(new TextDecoder().decode(bytes.slice(0, 5)) === '%PDF-', 'cropped PDF missing %PDF- header');
+
+    const outDoc = await PDFDocument.load(bytes, { updateMetadata: false });
+    assert(outDoc.getPageCount() === 2, `expected 2 cropped pages, got ${outDoc.getPageCount()}`);
+    const cropBox = outDoc.getPage(0).getCropBox();
+    const origW = pageDimensionsFor(0, 200).width;
+    assert(
+      Math.abs(cropBox.width - origW * 0.8) < 2,
+      `expected cropped width ~${origW * 0.8}, got ${cropBox.width}`,
+    );
+  });
+
+  // 24. Resize pages (dimensions/preview render + resize to Letter).
+  await runTest('24. Resize pages (SVG preview + resize to US Letter download)', async () => {
+    await page.goto(`${baseUrl}/pdf/resize`, { waitUntil: 'networkidle' });
+    await page.locator('input[type="file"]').setInputFiles(pdfUpload('small.pdf', pdf2));
+
+    await page.getByRole('heading', { name: 'Layout preview (Page 1 sample)' }).waitFor({ timeout: 15000 });
+    await page.getByText(/^Source: /).waitFor({ timeout: 15000 });
+
+    await page.locator('select').first().selectOption('letter');
+    await page.getByRole('button', { name: 'Resize PDF', exact: true }).click();
+
+    const dlBtn = page.getByRole('button', { name: /^Download small-resized\.pdf$/ });
+    await dlBtn.waitFor({ timeout: 20000 });
+    const { bytes } = await readDownloadBytes(page, () => dlBtn.click());
+    assert(new TextDecoder().decode(bytes.slice(0, 5)) === '%PDF-', 'resized PDF missing %PDF- header');
+
+    const outDoc = await PDFDocument.load(bytes, { updateMetadata: false });
+    assert(outDoc.getPageCount() === 2, `expected 2 resized pages, got ${outDoc.getPageCount()}`);
+    assert(Math.abs(outDoc.getPage(0).getWidth() - 612) < 2, `expected Letter width 612, got ${outDoc.getPage(0).getWidth()}`);
+    assert(Math.abs(outDoc.getPage(0).getHeight() - 792) < 2, `expected Letter height 792, got ${outDoc.getPage(0).getHeight()}`);
+  });
+
+  // 25. Pages per sheet & Booklet (N-up download + switch to Booklet preview & download).
+  await runTest('25. Pages per sheet & Booklet (2x2 N-up + duplex booklet imposition)', async () => {
+    await page.goto(`${baseUrl}/pdf/nup`, { waitUntil: 'networkidle' });
+    await page.locator('input[type="file"]').setInputFiles(pdfUpload('handout.pdf', pdf4));
+
+    await page.locator('svg[aria-label^="N-up sheet 1"]').waitFor({ timeout: 15000 });
+    await page.getByRole('button', { name: 'Create 2×2 PDF (1 sheet)', exact: true }).click();
+
+    const nupDl = page.getByRole('button', { name: /^Download handout-nup\.pdf$/ });
+    await nupDl.waitFor({ timeout: 20000 });
+    const { bytes: nupBytes } = await readDownloadBytes(page, () => nupDl.click());
+    assert(new TextDecoder().decode(nupBytes.slice(0, 5)) === '%PDF-', 'N-up PDF missing %PDF- header');
+    const nupDoc = await PDFDocument.load(nupBytes, { updateMetadata: false });
+    assert(nupDoc.getPageCount() === 1, `expected 1 N-up sheet, got ${nupDoc.getPageCount()}`);
+
+    await page.getByRole('button', { name: 'Booklet (duplex)', exact: true }).click();
+    await page.locator('svg[aria-label^="Booklet side:"]').first().waitFor({ timeout: 10000 });
+    await page.getByRole('button', { name: 'Create booklet (1 duplex sheet)', exact: true }).click();
+
+    const bookletDl = page.getByRole('button', { name: /^Download handout-booklet\.pdf$/ });
+    await bookletDl.waitFor({ timeout: 20000 });
+    const { bytes: bookletBytes } = await readDownloadBytes(page, () => bookletDl.click());
+    assert(new TextDecoder().decode(bookletBytes.slice(0, 5)) === '%PDF-', 'booklet PDF missing %PDF- header');
+    const bookletDoc = await PDFDocument.load(bookletBytes, { updateMetadata: false });
+    assert(bookletDoc.getPageCount() === 2, `expected 2 booklet sides, got ${bookletDoc.getPageCount()}`);
+  });
+
+  // 26. Grayscale PDF (live preview renders + lossless grayscale stats & download).
+  await runTest('26. Grayscale PDF (live preview + lossless grayscale stats & download)', async () => {
+    await page.goto(`${baseUrl}/pdf/grayscale`, { waitUntil: 'networkidle' });
+    await page.locator('input[type="file"]').setInputFiles(pdfUpload('color.pdf', colorAndImagePdf));
+
+    await page.waitForFunction(() => {
+      const c = document.querySelector('canvas');
+      return Boolean(c && c.width > 0 && c.height > 0);
+    }, null, { timeout: 20000 });
+
+    await page.getByRole('button', { name: 'Convert PDF to grayscale', exact: true }).click();
+    await page.getByRole('heading', { name: 'Your grayscale PDF is ready' }).waitFor({ timeout: 25000 });
+    await page.getByText(/^\d+ colour operators?$/).waitFor({ timeout: 10000 });
+
+    const dlBtn = page.getByRole('button', { name: /^Download color-grayscale\.pdf$/ });
+    const { bytes } = await readDownloadBytes(page, () => dlBtn.click());
+    assert(new TextDecoder().decode(bytes.slice(0, 5)) === '%PDF-', 'grayscale PDF missing %PDF- header');
+    const outDoc = await PDFDocument.load(bytes, { updateMetadata: false });
+    assert(outDoc.getPageCount() === 1, `expected 1 grayscale page, got ${outDoc.getPageCount()}`);
+  });
+
+  // 27. Invert colours / Dark mode (live preview + Smart dark mode download).
+  await runTest('27. Invert colours / Dark mode (live preview + Smart dark mode download)', async () => {
+    await page.goto(`${baseUrl}/pdf/invert`, { waitUntil: 'networkidle' });
+    await page.locator('input[type="file"]').setInputFiles(pdfUpload('bright.pdf', colorAndImagePdf));
+
+    await page.waitForFunction(() => {
+      const c = document.querySelector('canvas');
+      return Boolean(c && c.width > 0 && c.height > 0);
+    }, null, { timeout: 20000 });
+
+    await page.getByRole('radio', { name: /Smart dark mode/ }).click();
+    await page.locator('select').first().selectOption('100');
+    await page.getByRole('button', { name: 'Apply smart dark mode to PDF', exact: true }).click();
+
+    const dlBtn = page.getByRole('button', { name: /^Download bright-dark\.pdf$/ });
+    await dlBtn.waitFor({ timeout: 25000 });
+    const { bytes } = await readDownloadBytes(page, () => dlBtn.click());
+    assert(new TextDecoder().decode(bytes.slice(0, 5)) === '%PDF-', 'dark-mode PDF missing %PDF- header');
+    const outDoc = await PDFDocument.load(bytes, { updateMetadata: false });
+    assert(outDoc.getPageCount() === 1, `expected 1 dark-mode page, got ${outDoc.getPageCount()}`);
+  });
+
+  // 28. Fill PDF forms (overlay + sidebar fields render, edit text & toggle checkbox, save & verify).
+  await runTest('28. Fill PDF forms (overlays + sidebar fields, edit text & checkbox, verify)', async () => {
+    await page.goto(`${baseUrl}/pdf/fill-forms`, { waitUntil: 'networkidle' });
+    await page.locator('input[type="file"]').setInputFiles(pdfUpload('application.pdf', fillableFormPdf));
+
+    await page.waitForFunction(() => {
+      const c = document.querySelector('canvas');
+      return Boolean(c && c.width > 0 && c.height > 0);
+    }, null, { timeout: 20000 });
+    await page.getByText('6 fillable fields').waitFor({ timeout: 15000 });
+
+    const nameInputs = page.locator('input[aria-label="Full Legal Name"]');
+    assert((await nameInputs.count()) === 2, `expected both sidebar and overlay inputs for Full Legal Name, got ${await nameInputs.count()}`);
+    await nameInputs.first().fill('Grace Hopper');
+
+    const subCheckbox = page.locator('button[role="checkbox"][aria-label="Subscribe to updates"]');
+    await subCheckbox.waitFor({ timeout: 10000 });
+    await subCheckbox.click();
+    assert((await subCheckbox.getAttribute('aria-checked')) === 'true', 'Subscribe checkbox did not toggle on');
+
+    await page.getByRole('button', { name: 'Save filled PDF', exact: true }).click();
+    const dlBtn = page.getByRole('button', { name: /^Download application-filled\.pdf$/ });
+    await dlBtn.waitFor({ timeout: 20000 });
+    const { bytes } = await readDownloadBytes(page, () => dlBtn.click());
+    assert(new TextDecoder().decode(bytes.slice(0, 5)) === '%PDF-', 'filled form PDF missing %PDF- header');
+
+    const outDoc = await PDFDocument.load(bytes, { updateMetadata: false });
+    const outForm = outDoc.getForm();
+    assert(
+      outForm.getTextField('fullName').getText() === 'Grace Hopper',
+      `expected filled fullName "Grace Hopper", got "${outForm.getTextField('fullName').getText()}"`,
+    );
+    assert(outForm.getCheckBox('subscribe').isChecked(), 'expected subscribe checkbox to be checked in output PDF');
+  });
+
+  // 29. Sign PDF (SignaturePad Type tab -> place signature + Today's date -> save & download).
+  await runTest('29. Sign PDF (Type signature, place on canvas + Today\'s date, save & download)', async () => {
+    await page.goto(`${baseUrl}/pdf/sign`, { waitUntil: 'networkidle' });
+    await page.locator('input[type="file"][accept*="pdf"]').setInputFiles(pdfUpload('contract.pdf', pdf2));
+
+    await page.waitForFunction(() => {
+      const c = document.querySelector('canvas[class*="previewCanvas"]');
+      return Boolean(c && c.width > 0 && c.height > 0);
+    }, null, { timeout: 20000 });
+
+    await page.getByRole('tab', { name: 'Type', exact: true }).click();
+    await page.locator('input[aria-label="Typed signature text"]').fill('Ada Lovelace');
+    await page.getByRole('button', { name: 'Save signature', exact: true }).click();
+
+    await page.getByText(/Click anywhere on the page to place/).waitFor({ timeout: 10000 });
+    const canvasEl = page.locator('canvas[class*="previewCanvas"]').first();
+    await canvasEl.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'nearest' }));
+    const box = await canvasEl.boundingBox();
+    assert(box && box.width > 100 && box.height > 100, `invalid sign canvas bbox: ${JSON.stringify(box)}`);
+    await page.mouse.click(box.x + box.width * 0.45, box.y + box.height * 0.65);
+
+    await page.locator('[aria-label="Placed signature"]').waitFor({ timeout: 10000 });
+    await page.getByRole('button', { name: "+ Today's date", exact: true }).click();
+
+    await page.getByRole('button', { name: 'Sign & save PDF (2 items)', exact: true }).click();
+    const dlBtn = page.getByRole('button', { name: /^Download contract-signed\.pdf$/ });
+    await dlBtn.waitFor({ timeout: 20000 });
+    const { bytes } = await readDownloadBytes(page, () => dlBtn.click());
+    assert(new TextDecoder().decode(bytes.slice(0, 5)) === '%PDF-', 'signed PDF missing %PDF- header');
+
+    const outDoc = await PDFDocument.load(bytes, { updateMetadata: false });
+    assert(outDoc.getPageCount() === 2, `expected 2 signed pages, got ${outDoc.getPageCount()}`);
+  });
+
+  // 30. Edit PDF (select Text + Rect tool, add items on page canvas, save & verify download).
+  await runTest('30. Edit PDF (place Text + draw Rect on canvas, save & verify download)', async () => {
+    await page.goto(`${baseUrl}/pdf/edit`, { waitUntil: 'networkidle' });
+    await page.locator('input[type="file"][accept*="pdf"]').setInputFiles(pdfUpload('notes.pdf', pdf2));
+
+    await page.waitForFunction(() => {
+      const c = document.querySelector('canvas');
+      return Boolean(c && c.width > 0 && c.height > 0);
+    }, null, { timeout: 20000 });
+
+    // Place a text box and type into the inline textarea
+    await page.getByRole('button', { name: 'Text', exact: true }).click();
+    const overlay = page.locator('[class*="editHtmlOverlay"]').first();
+    await overlay.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'nearest' }));
+    let box = await overlay.boundingBox();
+    assert(box && box.width > 100 && box.height > 100, `invalid edit overlay bbox: ${JSON.stringify(box)}`);
+    await page.mouse.click(box.x + box.width * 0.25, box.y + box.height * 0.3);
+    const inlineTa = page.locator('textarea[placeholder="Type text…"]').first();
+    await inlineTa.waitFor({ timeout: 10000 });
+    await inlineTa.fill('Reviewed and approved');
+    await inlineTa.press('Escape');
+
+    // Draw a rectangle on the page
+    await page.getByRole('button', { name: 'Rect', exact: true }).click();
+    await overlay.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'nearest' }));
+    box = await overlay.boundingBox();
+    assert(box && box.width > 100 && box.height > 100, `invalid edit overlay bbox after Rect: ${JSON.stringify(box)}`);
+    await page.mouse.move(box.x + box.width * 0.25, box.y + box.height * 0.55);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 0.65, box.y + box.height * 0.72, { steps: 5 });
+    await page.mouse.up();
+
+    const saveBtn = page.getByRole('button', { name: 'Save & download (2 edits)', exact: true });
+    await saveBtn.waitFor({ timeout: 10000 });
+    const { bytes } = await readDownloadBytes(page, () => saveBtn.click());
+    assert(new TextDecoder().decode(bytes.slice(0, 5)) === '%PDF-', 'edited PDF missing %PDF- header');
+
+    const outDoc = await PDFDocument.load(bytes, { updateMetadata: false });
+    assert(outDoc.getPageCount() === 2, `expected 2 edited pages, got ${outDoc.getPageCount()}`);
+  });
+
+  // 31. Zero runtime errors, failed requests, and third-party network requests.
+  await runTest('31. Zero pageerror, console.error, failed requests, and third-party requests', async () => {
     assert(pageErrors.length === 0, `pageerror(s): ${pageErrors.slice(0, 3).join(' | ')}`);
     assert(consoleErrors.length === 0, `console.error(s): ${consoleErrors.slice(0, 3).join(' | ')}`);
+    assert(failedRequests.length === 0, `failed request(s): ${failedRequests.slice(0, 3).join(' | ')}`);
     assert(outsideRequests.length === 0, `third-party request(s): ${outsideRequests.slice(0, 3).join(' | ')}`);
   });
 }

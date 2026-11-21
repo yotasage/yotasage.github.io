@@ -458,7 +458,8 @@ export default function GrayscalePdfPage() {
         }
         sidebar={
           <>
-            <Field label="Conversion mode">
+            <div className={qrStyles.field}>
+              <span>Conversion mode</span>
               <div className={styles.levels} role="radiogroup" aria-label="Grayscale conversion mode">
                 <label className={[styles.level, mode === 'lossless' ? styles.levelSelected : ''].join(' ')}>
                   <input
@@ -491,7 +492,7 @@ export default function GrayscalePdfPage() {
                   </div>
                 </label>
               </div>
-            </Field>
+            </div>
 
             {mode === 'lossless' && (
               <p className={styles.infoNote}>

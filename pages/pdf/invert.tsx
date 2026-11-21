@@ -490,7 +490,8 @@ export default function InvertPdfPage() {
         }
         sidebar={
           <>
-            <Field label="Colour mode">
+            <div className={qrStyles.field}>
+              <span>Colour mode</span>
               <div className={styles.modeCardList} role="radiogroup" aria-label="Dark mode preset">
                 {MODE_PRESETS.map((preset) => {
                   const selected = mode === preset.id;
@@ -523,7 +524,7 @@ export default function InvertPdfPage() {
                   );
                 })}
               </div>
-            </Field>
+            </div>
 
             {mode === 'custom' && (
               <>
