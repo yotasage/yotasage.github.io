@@ -1531,3 +1531,223 @@
     margin-top: -8px;
   }
 }
+
+/* Pack A tools: security, metadata editor, annotations, flatten */
+
+.passwordInputRow {
+  display: flex;
+  align-items: stretch;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.passwordInputRow > input {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.passwordToggle {
+  flex: none;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid #6a6a6a;
+  border-radius: 6px;
+  background: #2b2b2b;
+  color: #e0e0e0;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.passwordToggle:hover,
+.passwordToggle:focus-visible {
+  border-color: #0070f3;
+  color: #ffffff;
+}
+
+.cardPasswordBox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+}
+
+.cardPasswordActions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.cardPasswordActions > button {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.lockThumb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.75rem;
+  color: #f3d796;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.metaCard {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid #444;
+  border-radius: 10px;
+  background: #2b2b2b;
+}
+
+.metaCard h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem 1rem;
+}
+
+.metaWide {
+  grid-column: 1 / -1;
+}
+
+.dateInputRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.dateInputRow > input {
+  flex: 1 1 0;
+  min-width: 0;
+  color-scheme: dark;
+}
+
+.customFieldList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.customFieldRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.customFieldHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.chipGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 0.6rem;
+}
+
+.annotChip {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #555;
+  border-radius: 8px;
+  background: #2b2b2b;
+  cursor: pointer;
+  min-width: 0;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.annotChip:hover {
+  border-color: #9a9a9a;
+}
+
+.annotChipSelected {
+  border-color: #e59a3a;
+  background: rgba(229, 154, 58, 0.12);
+}
+
+.annotChipInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.annotChipTitle {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #ffffff;
+  overflow-wrap: anywhere;
+}
+
+.annotChipSub {
+  font-size: 0.75rem;
+  color: #9a9a9a;
+}
+
+.annotChipCount {
+  flex: none;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  background: #3c3c3c;
+  color: #e8e8e8;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.annotChipSelected .annotChipCount {
+  background: rgba(229, 154, 58, 0.25);
+  color: #fbd096;
+}
+
+.badgeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.subCheck {
+  margin-left: 1.45rem;
+}
+
+@media (max-width: 600px) {
+  .metaCard {
+    padding: 0.8rem;
+  }
+  .metaGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .customFieldRow {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0.6rem;
+    border: 1px solid #444;
+    border-radius: 8px;
+    background: #242424;
+  }
+  .chipGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .dateInputRow {
+    flex-wrap: wrap;
+  }
+}

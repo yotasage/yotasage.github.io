@@ -8,6 +8,11 @@ export type ToolIconName =
   | 'pdf-to-images'
   | 'extract-images'
   | 'sanitize'
+  | 'protect'
+  | 'unlock'
+  | 'edit-metadata'
+  | 'remove-annotations'
+  | 'flatten'
   | 'rotate'
   | 'remove-pages'
   | 'extract-pages'
@@ -99,6 +104,51 @@ export const REMOVE_METADATA: PdfTool = {
   color: '#9b7bf0',
 };
 
+export const PROTECT: PdfTool = {
+  id: 'protect',
+  title: 'Protect PDF',
+  description: 'Encrypt PDFs with AES-256 or AES-128 passwords and set permissions for printing, copying, editing and filling forms.',
+  href: '/pdf/protect',
+  icon: 'protect',
+  color: '#e06060',
+};
+
+export const UNLOCK: PdfTool = {
+  id: 'unlock',
+  title: 'Unlock PDF',
+  description: 'Remove password protection and permission restrictions from encrypted PDFs when you know the password.',
+  href: '/pdf/unlock',
+  icon: 'unlock',
+  color: '#2fae6b',
+};
+
+export const EDIT_METADATA: PdfTool = {
+  id: 'edit-metadata',
+  title: 'Edit metadata',
+  description: 'View and edit PDF title, author, subject, keywords, dates and custom properties, with optional stale XMP removal.',
+  href: '/pdf/edit-metadata',
+  icon: 'edit-metadata',
+  color: '#34b3a0',
+};
+
+export const REMOVE_ANNOTATIONS: PdfTool = {
+  id: 'remove-annotations',
+  title: 'Remove annotations',
+  description: 'Inspect and selectively strip comments, highlights, links, form fields and other annotations by type or page range.',
+  href: '/pdf/remove-annotations',
+  icon: 'remove-annotations',
+  color: '#e59a3a',
+};
+
+export const FLATTEN: PdfTool = {
+  id: 'flatten',
+  title: 'Flatten PDF',
+  description: 'Bake interactive form fields and visual annotations permanently into static page content so they cannot be edited.',
+  href: '/pdf/flatten',
+  icon: 'flatten',
+  color: '#3aa0e8',
+};
+
 export const ROTATE: PdfTool = {
   id: 'rotate',
   title: 'Rotate PDF',
@@ -139,7 +189,8 @@ export const TOOL_CATEGORIES: ToolCategory[] = [
   { title: 'View', tools: [READER] },
   { title: 'Organize', tools: [MERGE, SPLIT, ORGANIZE, ROTATE, REMOVE_PAGES, EXTRACT_PAGES] },
   { title: 'Optimize', tools: [COMPRESS] },
+  { title: 'Edit & annotate', tools: [EDIT_METADATA, FLATTEN, REMOVE_ANNOTATIONS] },
   { title: 'Convert to PDF', tools: [IMAGES_TO_PDF] },
   { title: 'Convert from PDF', tools: [PDF_TO_IMAGES, EXTRACT_IMAGES] },
-  { title: 'Security', tools: [REMOVE_METADATA] },
+  { title: 'Security', tools: [PROTECT, UNLOCK, REMOVE_METADATA] },
 ];

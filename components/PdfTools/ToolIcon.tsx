@@ -74,6 +74,48 @@ const ICONS: Record<ToolIconName, React.ReactNode> = {
       <path d="M31 32l3 3 5-6" />
     </>
   ),
+  protect: (
+    <>
+      <Doc x={5} y={4} w={24} h={32} />
+      <path d="M11 16h12M11 22h8" />
+      <rect x={25} y={26} width={18} height={16} rx={2.5} />
+      <path d="M29 26v-5a5 5 0 0 1 10 0v5" />
+      <circle cx={34} cy={34} r={1.8} />
+    </>
+  ),
+  unlock: (
+    <>
+      <Doc x={5} y={4} w={24} h={32} />
+      <path d="M11 16h12M11 22h8" />
+      <rect x={25} y={26} width={18} height={16} rx={2.5} />
+      <path d="M29 26v-5a5 5 0 0 1 9.8-1.5" />
+      <circle cx={34} cy={34} r={1.8} />
+    </>
+  ),
+  'edit-metadata': (
+    <>
+      <Doc x={5} y={4} w={24} h={32} />
+      <path d="M11 16h12M11 22h8M11 28h6" />
+      <path d="M25 39l2-7 12-12 5 5-12 12-7 2z" />
+      <path d="M36 23l5 5" />
+    </>
+  ),
+  'remove-annotations': (
+    <>
+      <Doc x={4} y={4} w={24} h={32} />
+      <path d="M10 16h12M10 22h10" />
+      <path d="M23 24h19a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H31l-5 4v-4h-3a2 2 0 0 1-2-2V26a2 2 0 0 1 2-2z" />
+      <path d="M29 29l7 6M36 29l-7 6" />
+    </>
+  ),
+  flatten: (
+    <>
+      <path d="M24 5v10m-4-4 4 4 4-4" />
+      <path d="M8 22l16-6 16 6-16 6z" />
+      <path d="M8 31l16 6 16-6" />
+      <path d="M8 38h32" />
+    </>
+  ),
   rotate: (
     <>
       <Doc x={11} y={12} w={22} h={28} />
