@@ -1,11 +1,9 @@
 import Head from 'next/head';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
 import React, { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 
 import Bibliography from '../../components/Bibliography';
-import HomeIcon from '../../components/icons/home';
-import { MoonIcon, SunIcon } from '../../components/Resistor/parts';
+import KatexSpan from '../../components/KatexSpan';
 import Chart from '../../components/Smith/Chart';
 import Derivation from '../../components/Smith/Derivation';
 import ExportPanel from '../../components/Smith/ExportPanel';
@@ -27,14 +25,18 @@ import { Status } from '../../components/Smith/Status';
 import type { Outcome } from '../../components/Smith/SolvePanel';
 import Strip from '../../components/Smith/Strip';
 import type { StripLock } from '../../components/Smith/Strip';
-import Theory from '../../components/Smith/Theory';
-import { Why } from '../../components/Smith/Why';
+import Theory, { TOPICS } from '../../components/Smith/Theory';
+import { Why, followTopic, onBeforeFollowTopic, onReturnFromTopic } from '../../components/Smith/Why';
+import { DIRTY_VIEW } from '../../components/Smith/chartView';
 import type { ChartView } from '../../components/Smith/chartView';
 import { writeLive } from '../../components/Smith/live';
 import { PathLayer, SEL_NODE, SEL_NONE, SEL_PART } from '../../components/Smith/pathLayer';
 import { SolveLayer } from '../../components/Smith/solveLayer';
 import { TraceLayer } from '../../components/Smith/traceLayer';
 import type { CircleShape } from '../../components/Smith/solveLayer';
+import PillTabs, { PillTabItem } from '../../components/UI/PillTabs';
+import TeachingCallout from '../../components/UI/TeachingCallout';
+import ToolHeader, { WorkspaceTab } from '../../components/UI/ToolHeader';
 import { BibEntry } from '../../lib/bibtex';
 import { loadReferences } from '../../lib/references';
 import { makeChallenge } from '../../lib/smith/challenge';
@@ -49,6 +51,9 @@ import { PROJECT_MAX_BYTES, TOO_LARGE, openProject } from '../../lib/smith/expor
 import type { ExportSettings, Opened } from '../../lib/smith/export/project';
 import { choiceFromText, choiceToText, defaultChoice } from '../../lib/smith/values';
 import type { ValueChoice } from '../../lib/smith/values';
+import { useI18n } from '../../lib/ui/i18n';
+import { useExperienceMode } from '../../lib/ui/mode';
+import { useDesignSystemPage } from '../../lib/ui/theme';
 import useReplayHighlight from '../../lib/useReplayHighlight';
 import styles from '../../styles/Smith.module.css';
 import theoryCss from '../../styles/SmithTheory.module.css';
@@ -80,20 +85,41 @@ export async function getStaticProps() {
   return { props: { references: loadReferences() } };
 }
 
-/** The sections of the page, in the order of the nav. */
-const SECTIONS = [{ id: 'tool', label: 'Tool' }, { id: 'learn', label: 'Learn' }, { id: 'theory', label: 'Theory' }, { id: 'references', label: 'References' }];
+type WorkspaceId = 'workbench' | 'learn' | 'theory';
+type InspectorTabId = 'circuit' | 'solver' | 'sweep' | 'equations' | 'export';
+type TheoryTabId = 'theory' | 'references';
+
+const TOPIC_ID_SET = new Set(TOPICS.map((t) => t.id));
+
+interface HashRoute {
+  workspace: WorkspaceId;
+  inspectorTab?: InspectorTabId;
+  theoryTab?: TheoryTabId;
+}
+
+function routeForHash(rawHash: string): HashRoute | null {
+  const id = decodeURIComponent(rawHash.replace(/^#/, ''));
+  if (!id) return null;
+  if (id === 'tool') return { workspace: 'workbench' };
+  if (id === 'export' || id === 'smith-export') return { workspace: 'workbench', inspectorTab: 'export' };
+  if (id === 'learn' || id === 'learn-title') return { workspace: 'learn' };
+  if (id === 'references' || id === 'references-title' || id.startsWith('ref-')) {
+    return { workspace: 'theory', theoryTab: 'references' };
+  }
+  if (id === 'theory' || id === 'theory-title' || id.startsWith('th-') || TOPIC_ID_SET.has(id)) {
+    return { workspace: 'theory', theoryTab: 'theory' };
+  }
+  return null;
+}
 
 const MODES = [{ mode: MODE_Z, name: 'Z', title: 'Impedance grid: r and x circles' },
   { mode: MODE_Y, name: 'Y', title: 'Admittance grid: g and b circles' },
   { mode: MODE_ZY, name: 'ZY', title: 'Both grids' }];
 
-type Theme = 'light' | 'dark';
-const THEME_KEY = 'smith.theme';
 /** The value lists per kind (D17), values.ts's text form; the link's vl wins over it. */
 const LISTS_KEY = 'smith.lists';
 /** The digits setting (M5.1), read after mount. */
 const DIGITS_KEY = 'smith.digits';
-// What lies outside the tool's own element in the two themes (page background and the site footer of _app.tsx).
 /** Steps kept for undo, and the longest pause between a handle's arrow keys that still makes one step. */
 const HISTORY = 200;
 const GROUP_MS = 1000;
@@ -113,25 +139,93 @@ const NONE_FIXED: readonly boolean[] = [];
 const LESSON_WHY = 'locked by the lesson’s link (Leave the lesson unlocks it).';
 const CHALLENGE_WHY = 'fixed by the challenge (Close it to change).';
 
-const LIGHT = { bg: '#f6f4ee', rule: '#e3dfd5', quiet: '#6c6861', link: '#55524b', ink: '#1d1c19' };
-const DARK = { bg: '#2b2b2b', rule: '#3a3a38', quiet: '#a6a49c', link: '#b7b4ab', ink: '#edebe5' };
-
 export default function SmithChart({ references }: { references: BibEntry[] }) {
+  useDesignSystemPage('#be185d', '#f472b6');
+  const { t } = useI18n();
+  const { mode: expMode, setMode: setExpMode } = useExperienceMode();
+  const expModeRef = useRef(expMode);
+  expModeRef.current = expMode;
+
+  const [workspace, setWorkspace] = useState<WorkspaceId>('workbench');
+  const [inspectorTab, setInspectorTab] = useState<InspectorTabId>('circuit');
+  const [theoryTab, setTheoryTab] = useState<TheoryTabId>('theory');
+
   // One list of sources for the whole page, numbered by first citation (components/Bibliography.tsx).
   const bib = useMemo(() => new Bibliography(references), [references]);
   useReplayHighlight();
-  // The nav shows the section at the top of the window.
-  const [section, setSection] = useState('tool');
-  useEffect(() => {
-    const observer = new IntersectionObserver((entries) => {
-      for (const entry of entries) if (entry.isIntersecting) setSection(entry.target.id);
-    }, { rootMargin: '-15% 0px -75% 0px' });
-    for (const { id } of SECTIONS) {
-      const element = document.getElementById(id);
-      if (element) observer.observe(element);
+
+  const applyHash = useCallback((rawHash: string) => {
+    const route = routeForHash(rawHash);
+    if (!route) return;
+    setWorkspace(route.workspace);
+    if (route.inspectorTab) setInspectorTab(route.inspectorTab);
+    if (route.theoryTab) setTheoryTab(route.theoryTab);
+    const id = decodeURIComponent(rawHash.replace(/^#/, ''));
+    if (id) {
+      requestAnimationFrame(() => {
+        document.getElementById(id)?.scrollIntoView({ block: 'start' });
+      });
     }
-    return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (window.location.hash) applyHash(window.location.hash);
+    const onHash = () => applyHash(window.location.hash);
+    const onClick = (e: MouseEvent) => {
+      const a = (e.target as Element | null)?.closest<HTMLAnchorElement>('a[href^="#"]');
+      if (!a) return;
+      const href = a.getAttribute('href');
+      if (href && href.length > 1) applyHash(href);
+    };
+    window.addEventListener('hashchange', onHash);
+    document.addEventListener('click', onClick);
+    return () => {
+      window.removeEventListener('hashchange', onHash);
+      document.removeEventListener('click', onClick);
+    };
+  }, [applyHash]);
+
+  // Intercept Why "→ theory" links so the Theory workspace becomes visible before Theory.tsx opens and focuses the topic.
+  useEffect(() => {
+    onBeforeFollowTopic((topic) => {
+      setWorkspace('theory');
+      setTheoryTab('theory');
+      requestAnimationFrame(() => {
+        document.getElementById(topic)?.scrollIntoView({ block: 'start' });
+      });
+    });
+    onReturnFromTopic((fromEl) => {
+      if (fromEl?.closest('#learn')) {
+        setWorkspace('learn');
+      } else if (fromEl?.closest('#export') || fromEl?.closest('[data-tab-panel="export"]')) {
+        setWorkspace('workbench');
+        setInspectorTab('export');
+      } else if (fromEl?.closest('[data-tab-panel="solver"]')) {
+        setWorkspace('workbench');
+        setInspectorTab('solver');
+      } else if (fromEl?.closest('[data-tab-panel="sweep"]')) {
+        setWorkspace('workbench');
+        setInspectorTab('sweep');
+      } else if (fromEl?.closest('[data-tab-panel="equations"]')) {
+        setWorkspace('workbench');
+        setInspectorTab('equations');
+      } else {
+        setWorkspace('workbench');
+        setInspectorTab('circuit');
+      }
+    });
+    return () => {
+      onBeforeFollowTopic(null);
+      onReturnFromTopic(null);
+    };
+  }, []);
+
+  const openTheoryTopic = useCallback((topicId: string) => {
+    setWorkspace('theory');
+    setTheoryTab('theory');
+    followTopic(topicId, null);
+  }, []);
+
   const [mode, setMode] = useState(MODE_Z);
   const [circuit, setCircuit] = useState<Circuit>(defaultCircuit);
   // The theory (3,600 nodes) follows in a deferred, time-sliced render: the commit that ends a drag renders the tool
@@ -333,7 +427,9 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     setPartSel(-1);
     setNodeSel(-1);
     setGuide({ id, seq: ++seq.current });
-    tool.current?.scrollIntoView({ block: 'start' });
+    setWorkspace('workbench');
+    setInspectorTab('circuit');
+    requestAnimationFrame(() => tool.current?.scrollIntoView({ block: 'start' }));
   };
   const loadRef = useRef(loadExample);
   loadRef.current = loadExample;
@@ -354,7 +450,9 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     setChallenge(run);
     setGuide(null);
     saveRef.current(addProgress(progressRef.current, kind, { t: 'tried' }));
-    tool.current?.scrollIntoView({ block: 'start' });
+    setWorkspace('workbench');
+    setInspectorTab('circuit');
+    requestAnimationFrame(() => tool.current?.scrollIntoView({ block: 'start' }));
   };
   const startRef = useRef(startChallenge);
   startRef.current = startChallenge;
@@ -383,6 +481,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     const what = o.version === 0 ? 'the link in' : 'the project';
     const left = o.issues.length ? `; ${o.issues.length === 1 ? 'one thing' : `${o.issues.length} things`} could not be used (listed under Circuit)` : '';
     setFileNote({ ok: true, seq: n, text: `Opened ${what} ${name}${left}. Undo takes the circuit back.` });
+    setWorkspace('workbench');
   };
   const openFile = async (file: File) => {
     if (file.size > PROJECT_MAX_BYTES) { applyOpened({ project: null, issues: [], version: null, message: TOO_LARGE }, file.name); return; }
@@ -521,14 +620,36 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   const getChart = useCallback(() => chartView.current, []);
   useEffect(() => () => traceLayer.current?.dispose(), []);
   useEffect(() => { path.current?.setCircuit(circuit); solveLayer.current?.setGoal(circuit); }, [circuit]);
+  // Repaint the chart cleanly when switching back to the Workbench from Learn or Theory.
+  useEffect(() => {
+    if (workspace !== 'workbench') return undefined;
+    const raf = requestAnimationFrame(() => chartView.current?.request(DIRTY_VIEW));
+    return () => cancelAnimationFrame(raf);
+  }, [workspace]);
+
   // "Show equation" (M5.2) sets the selection without the node table's toggle; the link's queries stay in the tool.
   useEffect(() => {
     mathLink.scope = tool.current;
     mathLink.select = (s) => {
       if (s.t === 'part') { setPartSel(s.i); setNodeSel(-1); } else if (s.t === 'node') setNodeSel(s.k);
     };
-    return () => { mathLink.scope = null; mathLink.select = null; mathLink.path = null; };
-  }, []);
+    mathLink.onShow = () => {
+      setWorkspace('workbench');
+      if (expModeRef.current === 'quick') setExpMode('standard');
+      setInspectorTab('equations');
+    };
+    mathLink.onBack = () => {
+      setWorkspace('workbench');
+      setInspectorTab('circuit');
+    };
+    return () => {
+      mathLink.scope = null;
+      mathLink.select = null;
+      mathLink.onShow = null;
+      mathLink.onBack = null;
+      mathLink.path = null;
+    };
+  }, [setExpMode]);
   useEffect(() => { path.current?.setLists(lists); }, [lists]);
   useEffect(() => { if (path.current) path.current.snap = snap; }, [snap]);
   useEffect(() => { path.current?.arm(drawKind); }, [drawKind]);
@@ -561,7 +682,51 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   useEffect(() => {
     if (noSolve) { solved.current = null; solveLayer.current?.setResult(null, null); }
   }, [noSolve]);
-  const side = (
+  // Keep inspectorTab valid across Quick mode and lesson/challenge restrictions.
+  useEffect(() => {
+    if (expMode === 'quick' && inspectorTab !== 'circuit' && inspectorTab !== 'export') {
+      setInspectorTab('circuit');
+    } else if (noSolve && inspectorTab === 'solver') {
+      setInspectorTab('circuit');
+    } else if (noRead && (inspectorTab === 'equations' || inspectorTab === 'export')) {
+      setInspectorTab('circuit');
+    }
+  }, [expMode, inspectorTab, noSolve, noRead]);
+
+  const workspaces: readonly WorkspaceTab<WorkspaceId>[] = useMemo(
+    () => [
+      { id: 'workbench', label: t('smith.workbench') },
+      { id: 'learn', label: t('smith.learn') },
+      { id: 'theory', label: t('smith.theory') },
+    ],
+    [t],
+  );
+
+  const inspectorTabs: readonly PillTabItem<InspectorTabId>[] = useMemo(() => {
+    if (expMode === 'quick') {
+      const quickTabs: PillTabItem<InspectorTabId>[] = [{ id: 'circuit', label: t('smith.tab.circuit') }];
+      if (!noRead) quickTabs.push({ id: 'export', label: t('smith.tab.export') });
+      return quickTabs;
+    }
+    const tabs: PillTabItem<InspectorTabId>[] = [{ id: 'circuit', label: t('smith.tab.circuit') }];
+    if (!noSolve) tabs.push({ id: 'solver', label: t('smith.tab.solver') });
+    tabs.push({ id: 'sweep', label: t('smith.tab.sweep'), badge: sweep ? '●' : undefined });
+    if (!noRead) {
+      tabs.push({ id: 'equations', label: t('smith.tab.equations') });
+      tabs.push({ id: 'export', label: t('smith.tab.export') });
+    }
+    return tabs;
+  }, [expMode, noSolve, noRead, sweep, t]);
+
+  const theoryTabs: readonly PillTabItem<TheoryTabId>[] = useMemo(
+    () => [
+      { id: 'theory', label: t('smith.theoryTab.theory') },
+      { id: 'references', label: t('smith.theoryTab.references') },
+    ],
+    [t],
+  );
+
+  const sideTop = (
     <>
       {lesson && <LessonBox key={lesson.seq} lesson={lesson.lesson} onLeave={stable.leave} />}
       {challenge
@@ -569,21 +734,64 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
           fixed={!!lesson?.lesson.locks.length} onApply={stable.apply} onNew={stable.start} onClose={stable.closeChallenge}
           onCircles={stable.circles} onProgress={stable.progress} />
         : guide && <Guide key={guide.seq} id={guide.id} circuit={circuit} grid={grid} digits={digits} onLoad={stable.load} onClose={stable.closeGuide} />}
+      {expMode === 'quick' && (
+        <aside className={styles.quickBanner} aria-label={t('smith.quick.badge')}>
+          <div className={styles.quickBannerText}>
+            <span className={styles.quickBadge}>{t('smith.quick.badge')}</span>
+            <p>{t('smith.quick.bannerText')}</p>
+          </div>
+          <div className={styles.quickBannerActions}>
+            <button type="button" className={styles.quickBtnPrimary} onClick={() => setExpMode('standard')}>
+              {t('smith.quick.switchStandard')}
+            </button>
+            <button type="button" className={styles.quickBtnGhost} onClick={() => setExpMode('teaching')}>
+              {t('smith.quick.switchTeaching')}
+            </button>
+          </div>
+        </aside>
+      )}
+      <div className={styles.inspectorTabsCard}>
+        <PillTabs<InspectorTabId>
+          items={inspectorTabs}
+          value={inspectorTab}
+          onChange={setInspectorTab}
+          ariaLabel={t('smith.inspectorTabsAria')}
+          size="sm"
+          idPrefix="smith-inspector"
+        />
+      </div>
+    </>
+  );
+
+  // Circuit tab content above the Readout (non-destructively mounted so live.ts direct DOM writes always stay valid).
+  const side = (
+    <div
+      className={styles.tabPanel}
+      data-tab-panel="circuit"
+      role="tabpanel"
+      id="smith-inspector-panel-circuit"
+      aria-labelledby="smith-inspector-tab-circuit"
+      hidden={inspectorTab !== 'circuit'}
+    >
+      <TeachingCallout
+        title={t('smith.teaching.circuitTitle')}
+        formula={<KatexSpan text={'z = r + jx,\\; y = g + jb'} />}
+        onTheoryClick={() => openTheoryTopic('moving-on-the-chart')}
+        className={styles.calloutSlot}
+      >
+        <p>{t('smith.teaching.circuitBody')}</p>
+      </TeachingCallout>
       <Strip circuit={circuit} onChange={commit} issues={issues} issuesOf={issuesOf} selected={part} onSelect={selectPart}
         revision={revision} drawKind={drawKind} onDraw={setDrawKind}
         onHover={(i) => { path.current?.hover(SEL_PART, i); mathLink.fromPage(SEL_PART, i); }} digits={digits} bib={bib}
         lock={lock} noSolve={noSolve} noRead={noRead} />
-      {!noSolve && (
-        <SolvePanel circuit={circuit} onChange={stable.commit} revision={revision} busy={stable.busy} onResult={stable.result}
-          onPreview={stable.preview} lists={lists} onLists={stable.lists} noSuggest={noSuggest} />
-      )}
-      <SweepPanel sweep={sweep} f0={circuit.f0} onChange={setSweep} revision={revision} />
       {!noRead && (
         <Nodes circuit={circuit} selected={node} onSelect={(k) => setNodeSel(k === node ? -1 : k)}
           onHover={(k) => { path.current?.hover(SEL_NODE, k); mathLink.fromPage(SEL_NODE, k); }} digits={digits} />
       )}
-    </>
+    </div>
   );
+
   // The Learn section's props, the same objects between commits (the section is memoised).
   const blocked = lesson?.lesson.locks.length
     ? 'The lesson’s locks hold the circuit: Leave the lesson (above the circuit) to load an example or start a challenge.' : '';
@@ -591,50 +799,107 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     [challenge, progress, stable, blocked]);
   const makerProps = useMemo(() => ({ circuit, lists: listsText, challenge: challenge ? { kind: challenge.ch.kind, seed: challenge.ch.seed } : null }),
     [circuit, listsText, challenge]);
-  // The equation panel (M5.1) under the readout: the selected node, else the selected (or last) part, else the load.
+  // The equation panel (M5.1): the selected node, else the selected (or last) part, else the load.
   // The same object while the selection stays, so the memoised panel skips the page's other renders.
   const subject = useMemo<Subject>(() => (node >= 0 ? { t: 'node', k: node } : part >= 0 ? { t: 'part', i: part } : { t: 'node', k: 0 }), [node, part]);
   const math = <MathPanel circuit={circuit} subject={subject} digits={digits} live={mathLive} />;
+
+  // Remaining non-destructive inspector tabs (below Readout inside .side).
+  const inspectorAfter = (
+    <>
+      {expMode === 'teaching' && (
+        <div className={styles.tabPanel} hidden={inspectorTab !== 'circuit'}>
+          <TeachingCallout
+            title={t('smith.teaching.gridTitle')}
+            onTheoryClick={() => openTheoryTopic('reading-the-chart')}
+            className={styles.calloutSlot}
+          >
+            <p>{t('smith.teaching.gridBody')}</p>
+          </TeachingCallout>
+        </div>
+      )}
+      {!noSolve && (
+        <div
+          className={styles.tabPanel}
+          data-tab-panel="solver"
+          role="tabpanel"
+          id="smith-inspector-panel-solver"
+          aria-labelledby="smith-inspector-tab-solver"
+          hidden={inspectorTab !== 'solver'}
+        >
+          <TeachingCallout
+            title={t('smith.teaching.solverTitle')}
+            onTheoryClick={() => openTheoryTopic('two-one-or-none')}
+            className={styles.calloutSlot}
+          >
+            <p>{t('smith.teaching.solverBody')}</p>
+          </TeachingCallout>
+          <SolvePanel circuit={circuit} onChange={stable.commit} revision={revision} busy={stable.busy} onResult={stable.result}
+            onPreview={stable.preview} lists={lists} onLists={stable.lists} noSuggest={noSuggest} />
+        </div>
+      )}
+      <div
+        className={styles.tabPanel}
+        data-tab-panel="sweep"
+        role="tabpanel"
+        id="smith-inspector-panel-sweep"
+        aria-labelledby="smith-inspector-tab-sweep"
+        hidden={inspectorTab !== 'sweep'}
+      >
+        <TeachingCallout
+          title={t('smith.teaching.sweepTitle')}
+          formula={<KatexSpan text={'Q = \\frac{|x|}{r} = \\frac{|b|}{g}'} />}
+          onTheoryClick={() => openTheoryTopic('q-and-bandwidth')}
+          className={styles.calloutSlot}
+        >
+          <p>{t('smith.teaching.sweepBody')}</p>
+        </TeachingCallout>
+        <SweepPanel sweep={sweep} f0={circuit.f0} onChange={setSweep} revision={revision} />
+      </div>
+      {!noRead && (
+        <div
+          className={styles.tabPanel}
+          data-tab-panel="equations"
+          role="tabpanel"
+          id="smith-inspector-panel-equations"
+          aria-labelledby="smith-inspector-tab-equations"
+          hidden={inspectorTab !== 'equations'}
+        >
+          <TeachingCallout
+            title={t('smith.teaching.equationsTitle')}
+            onTheoryClick={() => openTheoryTopic('gamma-z-y')}
+            className={styles.calloutSlot}
+          >
+            <p>{t('smith.teaching.equationsBody')}</p>
+          </TeachingCallout>
+          {math}
+        </div>
+      )}
+      {!noRead && (
+        <div
+          className={styles.tabPanel}
+          data-tab-panel="export"
+          role="tabpanel"
+          id="smith-inspector-panel-export"
+          aria-labelledby="smith-inspector-tab-export"
+          hidden={inspectorTab !== 'export'}
+        >
+          <ExportPanel circuit={circuit} sweep={sweep} outcome={outcome} chart={getChart} busy={stable.busy}
+            search={search} lists={lists} digits={digits} opened={opened} onOpen={openStable} />
+        </div>
+      )}
+    </>
+  );
+
   // The same element while the theory's circuit stays, so the page's renders during a drag (a pick, a selection) skip
-  // the sections and the reference list entirely.
+  // the theory body entirely. Both Theory and References stay mounted so bib.list() citation numbering stays deterministic.
   // M7.4b: the sweep for the theory's topics 11–12, deferred as its circuit is (a marker moved renders them after).
   const theorySweep = useDeferredValue(noRead ? null : sweep);
-  const sections = useMemo(() => (
-    <div className={theoryCss.sections}>
-      <section id="theory" className={theoryCss.section} aria-label="Theory">
-        <h2 className={theoryCss.sectionHead} id="theory-title">Theory</h2>
-        <Theory bib={bib} circuit={noRead ? START : theoryCircuit} outcome={theoryOutcome} lists={lists} sweep={theorySweep} layer={getTrace} />
-      </section>
-      {/* After the last citation: the list is numbered while the page above it is drawn. */}
-      <section id="references" className={theoryCss.section} aria-label="References">
-        <h2 className={theoryCss.sectionHead} id="references-title">References</h2>
-        <div className={theoryCss.refs} data-references="">
-          <p className={theoryCss.lead}>The sources of the theory on this page, in the order they are first cited.</p>
-          {bib.list()}
-        </div>
-      </section>
-    </div>
-  ), [bib, theoryCircuit, theoryOutcome, lists, noRead, theorySweep, getTrace]);
-  // null: follow the system. Read after mount, so the static page and the first render agree.
-  const [theme, setTheme] = useState<Theme | null>(null);
-  useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(THEME_KEY);
-      if (stored === 'light' || stored === 'dark') setTheme(stored);
-    } catch { /* Storage can be blocked; the theme then follows the system. */ }
-  }, []);
-  const toggleTheme = () => {
-    const system: Theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    const next: Theme = (theme ?? system) === 'dark' ? 'light' : 'dark';
-    // Back on the system's theme, the page follows the system again.
-    setTheme(next === system ? null : next);
-    try {
-      if (next === system) window.localStorage.removeItem(THEME_KEY);
-      else window.localStorage.setItem(THEME_KEY, next);
-    } catch { /* The switch still works for this visit. */ }
-  };
-  const day = theme === 'dark' ? DARK : LIGHT;
-  const night = theme === 'light' ? LIGHT : DARK;
+  const theoryNode = useMemo(
+    () => <Theory bib={bib} circuit={noRead ? START : theoryCircuit} outcome={theoryOutcome} lists={lists} sweep={theorySweep} layer={getTrace} />,
+    [bib, theoryCircuit, theoryOutcome, lists, noRead, theorySweep, getTrace],
+  );
+  const refsNode = useMemo(() => bib.list(), [bib, theoryCircuit, theoryOutcome, lists, noRead, theorySweep]);
 
   const modes = (
     <>
@@ -664,7 +929,17 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
       </span>
       {/* Not while the draw tool is armed: its button takes this place, so the toolbar keeps its rows and the chart does
           not move under the pointer. */}
-      {!noRead && drawKind < 0 && <a className={`${styles.button} ${styles.toolLink}`} href="#export" data-export-link="" title="The chart as a figure (TikZ, SVG, PNG), the data (CSV, Touchstone), the project file and the link">Export</a>}
+      {!noRead && drawKind < 0 && (
+        <button
+          type="button"
+          className={`${styles.button} ${styles.toolLink}`}
+          data-export-link=""
+          onClick={() => { setWorkspace('workbench'); setInspectorTab('export'); }}
+          title="The chart as a figure (TikZ, SVG, PNG), the data (CSV, Touchstone), the project file and the link"
+        >
+          {t('smith.tab.export')}
+        </button>
+      )}
       {drawKind >= 0 && (
         <button type="button" className={`${styles.button} ${styles.toggle}`} aria-pressed="true" data-draw-stop="" onClick={stopDraw}
           title="Drag from the input (In) on the chart to add the part at the source end; this button or Escape stops">Drawing {KIND_SHORT[drawKind]} ×</button>
@@ -673,52 +948,13 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   );
 
   return (
-    <div className={styles.root} data-theme={theme ?? undefined}>
+    <div className={styles.root} data-ds="v2">
       <Head>
-        <title>Smith chart</title>
+        <title>{t('smith.pageTitle')}</title>
         <meta name="description" content="Build a matching circuit of series and shunt R, L and C, transmission lines, stubs and λ/4 transformers on a zoomable Smith chart with impedance, admittance or combined grids: type or drag the values with snapping, read z, Γ, VSWR and return loss at every node, follow 16 worked examples step by step, try challenges of five kinds with a ladder of hints, make lesson links with locked values, let the solver find one or two missing values for a match or a circle, undo and redo, and keep the circuit in the link." />
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <style jsx global>{`
-        html,
-        body {
-          margin: 0;
-          padding: 0;
-          background: ${day.bg};
-        }
-        #__next > footer {
-          background: ${day.bg};
-          border-top-color: ${day.rule};
-          color: ${day.quiet};
-        }
-        #__next > footer a {
-          color: ${day.link};
-        }
-        #__next > footer a:hover,
-        #__next > footer a:focus {
-          color: ${day.ink};
-        }
-        @media (prefers-color-scheme: dark) {
-          html,
-          body {
-            background: ${night.bg};
-          }
-          #__next > footer {
-            background: ${night.bg};
-            border-top-color: ${night.rule};
-            color: ${night.quiet};
-          }
-          #__next > footer a {
-            color: ${night.link};
-          }
-          #__next > footer a:hover,
-          #__next > footer a:focus {
-            color: ${night.ink};
-          }
-        }
-        * {
-          box-sizing: border-box;
-        }
         @page {
           margin: 12mm;
         }
@@ -733,39 +969,86 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
         }
       `}</style>
 
-      <header className={styles.bar}>
-        <div className={styles.barInner}>
-          <Link href="/" className={styles.home} aria-label="Home" title="All tools"><HomeIcon width={17} height={19} color="currentColor" /></Link>
-          <h1 className={styles.title}>Smith chart</h1>
-          <nav className={theoryCss.nav} aria-label="Sections">
-            {SECTIONS.map(({ id, label }) => (
-              <a key={id} href={`#${id}`} className={theoryCss.navLink} aria-current={section === id ? 'true' : undefined} onClick={() => setSection(id)}>{label}</a>
-            ))}
-          </nav>
-          <span className={styles.barSpace} />
-          <button type="button" className={styles.iconButton} onClick={toggleTheme} aria-label="Switch between the light and the dark theme" title="Light or dark">
-            <span className={styles.moon}><MoonIcon /></span>
-            <span className={styles.sun}><SunIcon /></span>
-          </button>
-        </div>
-      </header>
+      <ToolHeader<WorkspaceId>
+        title={t('smith.title')}
+        workspaces={workspaces}
+        activeWorkspace={workspace}
+        onWorkspaceChange={setWorkspace}
+        showExperienceMode
+      />
 
       <main>
-        <Status />
-        <div id="tool" ref={tool} className={`${styles.layout} ${theoryCss.tool}`}>
-          <Chart mode={mode} tools={modes} z0={circuit.z0} side={side} onView={onView} after={noRead ? null : math}
-            onReadout={stableRead} digits={digits} onDigits={setDigits} noReadout={noRead}
-            below={sweep && !noRead ? <SweepPlot layer={getTrace} sweep={sweep} circuit={circuit} digits={digits} onChange={setSweep} revision={revision} /> : null} />
-          {!noRead && <Derivation circuit={circuit} digits={digits} />}
+        {/* WORKSPACE 1: WORKBENCH (Hybrid Split + Non-Destructive Inspector Tabs) */}
+        <div role="tabpanel" className={styles.workspacePanel} hidden={workspace !== 'workbench'}>
+          <Status />
+          <div id="tool" ref={tool} className={`${styles.layout} ${theoryCss.tool}`}>
+            <Chart
+              mode={mode}
+              tools={modes}
+              z0={circuit.z0}
+              sideTop={sideTop}
+              side={side}
+              onView={onView}
+              after={inspectorAfter}
+              onReadout={stableRead}
+              digits={digits}
+              onDigits={setDigits}
+              noReadout={noRead}
+              readoutHidden={inspectorTab !== 'circuit'}
+              below={sweep && !noRead ? <SweepPlot layer={getTrace} sweep={sweep} circuit={circuit} digits={digits} onChange={setSweep} revision={revision} /> : null}
+            />
+            {!noRead && <Derivation circuit={circuit} digits={digits} />}
+          </div>
         </div>
+
         {/* M7.3: outside #tool, so a drag's live writes (scoped to #tool) never walk it; off screen it is not laid out. */}
         {!noRead && <Report circuit={circuit} sweep={sweep} digits={digits} search={search} layer={getTrace} chart={getChart} />}
-        {/* M8.3a: the figure export; reached from the toolbar's Export link (the nav keeps its four tabs). Builds nothing
-            until it is near the screen, never in a drag. Not in a "read this point" challenge (it would show the answer). */}
-        {!noRead && <ExportPanel circuit={circuit} sweep={sweep} outcome={outcome} chart={getChart} busy={stable.busy}
-          search={search} lists={lists} digits={digits} opened={opened} onOpen={openStable} />}
-        <LearnSection open={guide?.id ?? ''} onLoad={stable.load} challenges={challengesProps} maker={makerProps} />
-        {sections}
+
+        {/* WORKSPACE 2: LEARN & CHALLENGES */}
+        <div role="tabpanel" className={styles.workspacePanel} hidden={workspace !== 'learn'}>
+          <LearnSection open={guide?.id ?? ''} onLoad={stable.load} challenges={challengesProps} maker={makerProps} />
+        </div>
+
+        {/* WORKSPACE 3: THEORY & REFERENCES (Non-destructive tabs so bib.list() numbering stays deterministic) */}
+        <div role="tabpanel" className={styles.workspacePanel} hidden={workspace !== 'theory'}>
+          <div className={styles.theoryWorkspaceWrap}>
+            <div className={styles.theoryTabBar}>
+              <PillTabs<TheoryTabId>
+                items={theoryTabs}
+                value={theoryTab}
+                onChange={setTheoryTab}
+                ariaLabel={t('smith.theoryTabsAria')}
+                idPrefix="smith-theory"
+              />
+            </div>
+            <div className={theoryCss.sections}>
+              <section
+                id="theory"
+                role="tabpanel"
+                className={`${theoryCss.section} ${styles.theorySection}`}
+                aria-labelledby="theory-title"
+                hidden={theoryTab !== 'theory'}
+              >
+                <h2 className={theoryCss.sectionHead} id="theory-title">{t('smith.theoryTab.theory')}</h2>
+                {theoryNode}
+              </section>
+              {/* After the last citation: the list is numbered while the page above it is drawn. */}
+              <section
+                id="references"
+                role="tabpanel"
+                className={`${theoryCss.section} ${styles.theorySection}`}
+                aria-labelledby="references-title"
+                hidden={theoryTab !== 'references'}
+              >
+                <h2 className={theoryCss.sectionHead} id="references-title">{t('smith.theoryTab.references')}</h2>
+                <div className={theoryCss.refs} data-references="">
+                  <p className={theoryCss.lead}>{t('smith.referencesLead')}</p>
+                  {refsNode}
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
       </main>
       {/* M8.3b: a file dragged over the page, and the message of the last file opened (wherever the visitor is). */}
       {dropping && <div className={styles.dropZone} aria-hidden="true" data-drop-zone="">Drop a project file (.smith.json) or a saved link to open it</div>}

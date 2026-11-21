@@ -15,10 +15,21 @@ import { WHYS } from './whys';
 
 type Follow = (topic: string, from: HTMLElement | null) => void;
 let follower: Follow | null = null;
+let beforeFollower: Follow | null = null;
+let returnHandler: ((from: HTMLElement | null) => void) | null = null;
 /** The Theory registers here (null when it unmounts). */
 export const onFollowTopic = (f: Follow | null): void => { follower = f; };
+/** The page registers here to activate the Theory workspace before Theory opens and focuses a topic. */
+export const onBeforeFollowTopic = (f: Follow | null): void => { beforeFollower = f; };
+/** The page registers here to restore the originating workspace when Theory's Back button is pressed. */
+export const onReturnFromTopic = (f: ((from: HTMLElement | null) => void) | null): void => { returnHandler = f; };
 /** A "→ theory" link was followed from `from`. */
-export const followTopic = (topic: string, from: HTMLElement | null): void => { follower?.(topic, from); };
+export const followTopic = (topic: string, from: HTMLElement | null): void => {
+  beforeFollower?.(topic, from);
+  follower?.(topic, from);
+};
+/** Returning from a Theory topic back to the element that linked to it. */
+export const returnFromTopic = (from: HTMLElement | null): void => { returnHandler?.(from); };
 
 let closeOpen: (() => void) | null = null;
 

@@ -28,7 +28,7 @@ import KatexSpan from '../KatexSpan';
 import { openDerivation } from './Derivation';
 import { hasDerivation } from './derive';
 import { GOAL_VSWR } from './pathLayer';
-import { onFollowTopic } from './Why';
+import { onFollowTopic, returnFromTopic } from './Why';
 import { markWide, watchWide } from '../Equations/wide';
 import { complexText } from './readout';
 import type { Outcome } from './SolvePanel';
@@ -212,10 +212,13 @@ function Theory({ bib, circuit: c, outcome, lists, sweep, layer }: Props) {
     const el = from.current;
     setBack(null);
     from.current = null;
-    if (el?.isConnected) {
-      el.scrollIntoView({ block: 'center' });
-      el.focus({ preventScroll: true });
-    } else document.getElementById('tool')?.scrollIntoView();
+    returnFromTopic(el);
+    requestAnimationFrame(() => {
+      if (el?.isConnected) {
+        el.scrollIntoView({ block: 'center' });
+        el.focus({ preventScroll: true });
+      } else document.getElementById('tool')?.scrollIntoView();
+    });
   };
 
   // Citations: "[n, §x]", linked to the entry; numbered by the page's Bibliography in the order they are made here.

@@ -1,54 +1,52 @@
-/* Smith chart. Every colour is a variable on .root; the themes are the blocks below (light; dark by the system unless
-   data-theme says light; dark by data-theme), after Resistor.module.css. The tokens are listed in
-   docs/smith-chart/notes-M2.3.md. Dark --bg is #2b2b2b, the site's dark background. */
+/* Smith chart — Modern High-Polish SaaS Design System v2.
+   All surface, ink, border, accent and font tokens inherit from design-system.css (--ds-*),
+   while chart grid & 8-part palettes adapt cleanly across Light, Dark, and High Contrast AAA. */
 
 .root {
-  --bg: #f6f4ee;
-  --field: #fffefb;
-  --raise: #ece9e0;
-  --ink: #1d1c19;
-  --ink-2: #55524b;
-  --ink-3: #6c6861;
-  --rule: #e3dfd5;
-  --rule-strong: #cbc6ba;
-  --edge: #968b73;
-  --accent: #0b6a5f;
-  --accent-soft: rgba(11, 106, 95, 0.1);
-  --warn: #8a4b08;
+  --bg: var(--ds-bg);
+  --field: var(--ds-surface-solid);
+  --raise: var(--ds-well);
+  --ink: var(--ds-ink);
+  --ink-2: var(--ds-ink-2);
+  --ink-3: var(--ds-ink-3);
+  --rule: var(--ds-border);
+  --rule-strong: var(--ds-border-strong);
+  --edge: var(--ds-border-strong);
+  --accent: var(--ds-accent);
+  --accent-soft: var(--ds-accent-soft);
+  --warn: var(--ds-warn);
 
-  --chart-bg: var(--field);
-  --grid-axis: #6e6a61;
-  --grid-z-major: rgba(29, 28, 25, 0.48);
-  --grid-z-minor: rgba(29, 28, 25, 0.14);
-  --grid-y-major: rgba(11, 106, 95, 0.65);
-  --grid-y-minor: rgba(11, 106, 95, 0.18);
-  --grid-scale: #979287;
-  --grid-label: #4a4741;
-  --grid-y-ink: #0b6a5f;
-  --grid-scale-ink: #6c6860;
+  --chart-bg: #ffffff;
+  --grid-axis: #64748b;
+  --grid-z-major: rgba(15, 23, 42, 0.44);
+  --grid-z-minor: rgba(15, 23, 42, 0.13);
+  --grid-y-major: rgba(13, 148, 136, 0.62);
+  --grid-y-minor: rgba(13, 148, 136, 0.18);
+  --grid-scale: #94a3b8;
+  --grid-label: #334155;
+  --grid-y-ink: #0f766e;
+  --grid-scale-ink: #64748b;
 
   /* Part colours for M3 (arcs, strip, equations), in the order parts take them. */
-  --part-1: #186ab7;
-  --part-2: #ba3e0d;
-  --part-3: #c2255c;
-  --part-4: #257736;
-  --part-5: #7048e8;
-  --part-6: #816500;
-  --part-7: #0a7384;
-  --part-8: #c72a2a;
+  --part-1: #1d4ed8;
+  --part-2: #c2410c;
+  --part-3: #be185d;
+  --part-4: #15803d;
+  --part-5: #6d28d9;
+  --part-6: #a16207;
+  --part-7: #0e7490;
+  --part-8: #b91c1c;
 
-  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-num: ui-monospace, 'Cascadia Mono', 'Cascadia Code', 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
-  --bar-h: 52px;
-  --page-w: 1600px;
-  --gutter: 32px;
-  --side-w: 340px;
-  --radius: 10px;
-  --quick: 120ms;
+  --font-ui: var(--ds-font-ui);
+  --font-num: var(--ds-font-mono);
+  --bar-h: var(--ds-header-h, 60px);
+  --page-w: 1560px;
+  --gutter: 24px;
+  --side-w: clamp(350px, 29vw, 420px);
+  --radius: var(--ds-radius-card, 16px);
+  --quick: 130ms;
 
-  color-scheme: light;
   min-height: 100vh;
-  background: var(--bg);
   color: var(--ink);
   font-family: var(--font-ui);
   font-size: 0.9375rem;
@@ -58,74 +56,71 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .root:not([data-theme='light']) {
-    --bg: #2b2b2b;
-    --field: #313130;
-    --raise: #3a3a38;
-    --ink: #edebe5;
-    --ink-2: #bdbab1;
-    --ink-3: #a6a49c;
-    --rule: #3d3d3a;
-    --rule-strong: #54544f;
-    --edge: #7b7b73;
-    --accent: #72d1c0;
-    --accent-soft: rgba(114, 209, 192, 0.13);
-    --warn: #f0b26b;
-    --grid-axis: #a19e95;
-    --grid-z-major: rgba(237, 235, 229, 0.42);
-    --grid-z-minor: rgba(237, 235, 229, 0.13);
-    --grid-y-major: rgba(114, 209, 192, 0.52);
-    --grid-y-minor: rgba(114, 209, 192, 0.17);
-    --grid-scale: #7e7b72;
-    --grid-label: #cfccc3;
-    --grid-y-ink: #72d1c0;
-    --grid-scale-ink: #a6a49c;
-    --part-1: #74c0fc;
-    --part-2: #ffa94d;
-    --part-3: #f783ac;
-    --part-4: #8ce99a;
-    --part-5: #b197fc;
-    --part-6: #ffd43b;
-    --part-7: #66d9e8;
-    --part-8: #ff8787;
-    color-scheme: dark;
+  :global(html:not([data-ds-theme])) .root {
+    --chart-bg: #111115;
+    --grid-axis: #94a3b8;
+    --grid-z-major: rgba(244, 244, 245, 0.40);
+    --grid-z-minor: rgba(244, 244, 245, 0.12);
+    --grid-y-major: rgba(45, 212, 191, 0.56);
+    --grid-y-minor: rgba(45, 212, 191, 0.16);
+    --grid-scale: #71717a;
+    --grid-label: #d4d4d8;
+    --grid-y-ink: #2dd4bf;
+    --grid-scale-ink: #a1a1aa;
+    --part-1: #60a5fa;
+    --part-2: #fb923c;
+    --part-3: #f472b6;
+    --part-4: #4ade80;
+    --part-5: #c084fc;
+    --part-6: #facc15;
+    --part-7: #22d3ee;
+    --part-8: #f87171;
   }
 }
 
-.root[data-theme='dark'] {
-  --bg: #2b2b2b;
-  --field: #313130;
-  --raise: #3a3a38;
-  --ink: #edebe5;
-  --ink-2: #bdbab1;
-  --ink-3: #a6a49c;
-  --rule: #3d3d3a;
-  --rule-strong: #54544f;
-    --edge: #7b7b73;
-  --accent: #72d1c0;
-  --accent-soft: rgba(114, 209, 192, 0.13);
-  --warn: #f0b26b;
-  --grid-axis: #a19e95;
-  --grid-z-major: rgba(237, 235, 229, 0.42);
-  --grid-z-minor: rgba(237, 235, 229, 0.13);
-  --grid-y-major: rgba(114, 209, 192, 0.52);
-  --grid-y-minor: rgba(114, 209, 192, 0.17);
-  --grid-scale: #7e7b72;
-  --grid-label: #cfccc3;
-  --grid-y-ink: #72d1c0;
-  --grid-scale-ink: #a6a49c;
-  --part-1: #74c0fc;
-  --part-2: #ffa94d;
-  --part-3: #f783ac;
-  --part-4: #8ce99a;
-  --part-5: #b197fc;
-  --part-6: #ffd43b;
-  --part-7: #66d9e8;
-  --part-8: #ff8787;
-  color-scheme: dark;
+:global(html[data-ds-theme='dark']) .root {
+  --chart-bg: #111115;
+  --grid-axis: #94a3b8;
+  --grid-z-major: rgba(244, 244, 245, 0.40);
+  --grid-z-minor: rgba(244, 244, 245, 0.12);
+  --grid-y-major: rgba(45, 212, 191, 0.56);
+  --grid-y-minor: rgba(45, 212, 191, 0.16);
+  --grid-scale: #71717a;
+  --grid-label: #d4d4d8;
+  --grid-y-ink: #2dd4bf;
+  --grid-scale-ink: #a1a1aa;
+  --part-1: #60a5fa;
+  --part-2: #fb923c;
+  --part-3: #f472b6;
+  --part-4: #4ade80;
+  --part-5: #c084fc;
+  --part-6: #facc15;
+  --part-7: #22d3ee;
+  --part-8: #f87171;
 }
 
-.root button {
+:global(html[data-ds-theme='hc']) .root {
+  --chart-bg: #000000;
+  --grid-axis: #ffffff;
+  --grid-z-major: #ffffff;
+  --grid-z-minor: rgba(255, 255, 255, 0.42);
+  --grid-y-major: #38bdf8;
+  --grid-y-minor: rgba(56, 189, 248, 0.42);
+  --grid-scale: #d4d4d4;
+  --grid-label: #ffffff;
+  --grid-y-ink: #38bdf8;
+  --grid-scale-ink: #f5f5f5;
+  --part-1: #7dd3fc;
+  --part-2: #fdba74;
+  --part-3: #f9a8d4;
+  --part-4: #86efac;
+  --part-5: #d8b4fe;
+  --part-6: #fde047;
+  --part-7: #67e8f9;
+  --part-8: #fca5a5;
+}
+
+:where(.root) button {
   font: inherit;
   color: inherit;
   background: none;
@@ -136,7 +131,7 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.root :focus-visible {
+:where(.root) :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -153,77 +148,12 @@
   }
 }
 
-/* ---- the bar ---- */
-
-.bar {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  background: var(--bg);
-  border-bottom: 1px solid var(--rule);
-}
-
-.barInner {
-  max-width: var(--page-w);
-  margin: 0 auto;
-  height: var(--bar-h);
-  padding: 0 var(--gutter);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.home {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  margin-left: -7px;
-  border-radius: 6px;
-  color: var(--ink-2);
-  transition: color var(--quick), background var(--quick);
-}
-
-.home:hover {
-  color: var(--ink);
-  background: var(--raise);
-}
-
-.title {
-  margin: 0;
-  font-size: 0.9375rem;
-  font-weight: 650;
-  letter-spacing: -0.005em;
-  white-space: nowrap;
-}
-
-/* Narrow phones: the four section links do not fit beside the title, so the bar wraps into two rows (home, title,
-   theme; then the nav as four equal tabs, SmithTheory.module.css). --bar-h follows, for the scroll margins. */
-@media (max-width: 480px) {
-  .root { --bar-h: 97px; }
-
-  .barInner {
-    flex-wrap: wrap;
-    height: auto;
-    row-gap: 0;
-  }
-
-  .title {
-    display: flex;
-    align-items: center;
-    height: 52px;
-  }
-}
-
-.barSpace { flex: 1; }
-
 .root .iconButton {
   display: grid;
   place-items: center;
   width: 32px;
   height: 32px;
-  margin-right: -7px;
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--ink-2);
   transition: color var(--quick), background var(--quick);
 }
@@ -233,15 +163,159 @@
   background: var(--raise);
 }
 
-.sun { display: none; }
-
-@media (prefers-color-scheme: dark) {
-  .root:not([data-theme='light']) .sun { display: block; }
-  .root:not([data-theme='light']) .moon { display: none; }
+/* Non-destructive workspace & inspector tab panels */
+.workspacePanel[hidden],
+.tabPanel[hidden],
+.panel[hidden],
+.theorySection[hidden] {
+  display: none !important;
 }
 
-.root[data-theme='dark'] .sun { display: block; }
-.root[data-theme='dark'] .moon { display: none; }
+.workspacePanel {
+  min-width: 0;
+}
+
+.inspectorTabsCard {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.inspectorTabsCard::-webkit-scrollbar { display: none; }
+
+.tabPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.calloutSlot {
+  margin: 0;
+}
+
+/* Quick mode banner */
+.quickBanner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+}
+
+.quickBannerText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.quickBannerText p {
+  margin: 0;
+  font-size: 0.83rem;
+  color: var(--ds-ink-2);
+  line-height: 1.45;
+}
+
+.quickBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-accent-soft);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  color: var(--ds-accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.quickBannerActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.root .quickBtnPrimary,
+.root .quickBtnGhost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--ds-radius-sm);
+  font-family: var(--ds-font-ui);
+  font-size: 0.81rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background-color var(--quick), border-color var(--quick), color var(--quick), opacity var(--quick);
+}
+
+.root .quickBtnPrimary {
+  background: var(--ds-ink);
+  color: var(--ds-surface-solid);
+  border: var(--ds-border-w) solid transparent;
+}
+
+.root .quickBtnPrimary:hover {
+  opacity: 0.88;
+}
+
+.root .quickBtnGhost {
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+}
+
+.root .quickBtnGhost:hover {
+  background: var(--ds-well-hover);
+  border-color: var(--ds-ink-3);
+}
+
+:global(html[data-ds-theme='hc']) .root .quickBtnPrimary {
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  border-color: var(--ds-accent);
+}
+
+/* Theory workspace header bar */
+.theoryWorkspaceWrap {
+  max-width: var(--page-w);
+  margin: 0 auto;
+  padding: 20px var(--gutter) 56px;
+}
+
+.theoryTabBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 10px 14px;
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+}
+
+.theorySection {
+  min-width: 0;
+}
 
 /* ---- the status note above the tool (components/Smith/Status.tsx) ---- */
 
@@ -289,25 +363,39 @@
 .layout {
   max-width: var(--page-w);
   margin: 0 auto;
-  padding: 16px var(--gutter) 40px;
+  padding: 18px var(--gutter) 44px;
 }
 
 .work {
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--side-w);
-  gap: 28px;
+  gap: 22px;
   align-items: start;
 }
 
-.stage { min-width: 0; }
+.stage {
+  min-width: 0;
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  padding: 14px 16px 14px;
+}
+
+@media (min-width: 960px) {
+  .stage {
+    position: sticky;
+    top: calc(var(--bar-h) + 16px);
+  }
+}
 
 .toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 12px;
-  min-height: 34px;
-  margin-bottom: 10px;
+  gap: 8px 10px;
+  min-height: 36px;
+  margin-bottom: 12px;
   font-size: 0.875rem;
 }
 
@@ -321,26 +409,29 @@
 
 .modes {
   display: inline-flex;
+  align-items: center;
+  gap: 2px;
   margin: 0;
-  padding: 0;
-  border: 1px solid var(--rule-strong);
-  border-radius: 7px;
-  overflow: hidden;
-  background: var(--field);
+  padding: 3px;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-well);
 }
 
 .modes label {
   position: relative;
-  min-width: 40px;
-  padding: 5px 12px;
+  min-width: 38px;
+  padding: 4px 11px;
+  border-radius: var(--ds-radius-pill);
   text-align: center;
   cursor: pointer;
   color: var(--ink-2);
+  font-size: 0.8125rem;
   font-weight: 550;
-  transition: color var(--quick), background var(--quick);
+  line-height: 1.25;
+  transition: color var(--quick), background var(--quick), box-shadow var(--quick);
 }
 
-.modes label + label { border-left: 1px solid var(--rule-strong); }
 .modes label:hover { color: var(--ink); }
 
 .modes input {
@@ -352,14 +443,21 @@
 }
 
 .modes label:has(input:checked) {
-  background: var(--accent-soft);
+  background: var(--ds-surface-solid);
   color: var(--accent);
   font-weight: 650;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+:global(html[data-ds-theme='hc']) .modes label:has(input:checked) {
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  box-shadow: none;
 }
 
 .modes label:has(input:focus-visible) {
   outline: 2px solid var(--accent);
-  outline-offset: -2px;
+  outline-offset: 1px;
 }
 
 .zoom {
@@ -374,24 +472,29 @@
 
 .root .button {
   color: var(--ink);
-  background: var(--field);
-  border: 1px solid var(--rule-strong);
-  border-radius: 7px;
-  padding: 5px 12px;
+  background: var(--ds-surface-solid);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: 9px;
+  padding: 5px 11px;
+  font-size: 0.8125rem;
+  font-weight: 550;
   line-height: 1.3;
-  transition: background var(--quick), border-color var(--quick);
+  transition: background var(--quick), border-color var(--quick), color var(--quick);
 }
 
-.root .button:hover { background: var(--raise); }
+.root .button:hover {
+  background: var(--ds-well-hover);
+  border-color: var(--ds-ink-3);
+}
 
 /* touch-action pan-y (D14): one finger moving vertically scrolls the page, two fingers and sideways go to the chart.
-   The height leaves the bar, the toolbar and the hint in view on a wide screen. */
+   The height leaves the header, the toolbar and the hint in view on a wide screen. */
 .chart {
   position: relative;
-  height: clamp(440px, calc(100vh - var(--bar-h) - 112px), 1240px);
+  height: clamp(420px, calc(100vh - var(--bar-h) - 148px), 980px);
   background: var(--chart-bg);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: 12px;
   overflow: hidden;
   touch-action: pan-y;
   cursor: crosshair;
@@ -419,15 +522,22 @@
 }
 
 .side {
-  position: sticky;
-  top: calc(var(--bar-h) + 16px);
-  display: grid;
-  gap: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   min-width: 0;
-  padding-top: 44px;
 }
 
 .panel { min-width: 0; }
+
+.side .panel {
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  padding: 16px 18px 18px;
+  margin-top: 0;
+}
 
 .panelTitle {
   display: flex;
@@ -500,24 +610,22 @@
 
 .work[data-read] .readEmpty { display: none; }
 
-/* Tablets and phones: one column, the readout below the chart. */
+/* Tablets and phones: one column, inspector tabs below the chart. */
 @media (max-width: 959px) {
-  .work { grid-template-columns: minmax(0, 1fr); gap: 20px; }
-  .side { position: static; padding-top: 0; }
-  .chart { height: clamp(300px, calc(100vw - 2 * var(--gutter) + 24px), 80vh); }
-  .readout { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+  .work { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .stage { position: static; }
+  .chart { height: clamp(300px, calc(100vw - 2 * var(--gutter) + 16px), 76vh); }
+  .readout { grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); }
 }
 
-/* Phones: the chart runs from edge to edge. */
+/* Phones: compact gutters and clean edge-friendly stage. */
 @media (max-width: 599px) {
-  .root { --gutter: 16px; }
-  .layout { padding-top: 12px; }
+  .root { --gutter: 12px; }
+  .layout { padding-top: 12px; padding-bottom: 32px; }
+  .stage { padding: 10px 10px 12px; }
+  .side .panel { padding: 14px 14px 16px; }
   .chart {
-    height: clamp(300px, calc(100vw + 24px), 78vh);
-    margin: 0 calc(-1 * var(--gutter));
-    border-left: 0;
-    border-right: 0;
-    border-radius: 0;
+    height: clamp(290px, calc(100vw - 12px), 74vh);
   }
 }
 
@@ -587,17 +695,6 @@
 }
 
 /* ---- the circuit panel (M3.1): parameters, strip, part card, add row, circuit input ---- */
-
-/* Wide screens: the side column is sticky under the bar and scrolls on its own when the circuit is long. */
-@media (min-width: 960px) {
-  .side {
-    max-height: calc(100vh - var(--bar-h) - 24px);
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding: 44px 4px 12px;
-    margin: 0 -4px;
-  }
-}
 
 .params {
   display: grid;

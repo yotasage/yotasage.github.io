@@ -44,17 +44,25 @@
 }
 
 .section {
-  max-width: var(--page-w);
-  margin: 0 auto;
-  padding: 0 var(--gutter);
-  scroll-margin-top: calc(var(--bar-h) + 16px);
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  padding: 24px 28px 32px;
+  scroll-margin-top: calc(var(--bar-h) + 20px);
 }
 
-.section + .section { margin-top: 72px; }
+@media (max-width: 599px) {
+  .section {
+    padding: 18px 16px 24px;
+  }
+}
+
+.section + .section { margin-top: 0; }
 
 .sections {
-  padding: 56px 0 64px;
-  border-top: 1px solid var(--rule);
+  padding: 0;
+  border-top: 0;
 }
 
 /* Off screen the sections are not laid out or painted, so they cost the chart's frames nothing (ui-chart.mjs measures

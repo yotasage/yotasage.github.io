@@ -344,11 +344,47 @@ export const en = {
   'resistor.examples.eia96.desc':
     'Compact 0603 1% precision marking: code 01 maps to 100 in the E96 table, multiplied by C (×100) = 10 kΩ.',
 
-  // Smith chart namespace (ready for U5)
+  // Smith chart namespace
+  'smith.pageTitle': 'Smith Chart · yotasage',
   'smith.title': 'Smith Chart',
   'smith.workbench': 'Workbench',
   'smith.learn': 'Learn & Challenges',
   'smith.theory': 'Theory & References',
+
+  'smith.inspectorTabsAria': 'Inspector tools',
+  'smith.tab.circuit': 'Circuit',
+  'smith.tab.solver': 'Solver',
+  'smith.tab.sweep': 'Sweep',
+  'smith.tab.equations': 'Equations',
+  'smith.tab.export': 'Export',
+
+  'smith.theoryTabsAria': 'Theory and reference sections',
+  'smith.theoryTab.theory': 'Theory',
+  'smith.theoryTab.references': 'References',
+  'smith.referencesLead':
+    'The sources of the theory on this page, in the order they are first cited.',
+
+  'smith.quick.badge': 'Quick mode',
+  'smith.quick.bannerText':
+    'Showing Circuit and Export. Switch to Standard for the Solver, Frequency Sweep, and live Equations.',
+  'smith.quick.switchStandard': 'Switch to Standard',
+  'smith.quick.switchTeaching': 'Try Teaching mode',
+
+  'smith.teaching.gridTitle': 'Reading Z and Y circles',
+  'smith.teaching.gridBody':
+    'Constant-resistance (r) circles are tangent at the right open-circuit point (Γ = +1), while constant-conductance (g) circles mirror them on the left (Γ = −1). Switch between Z, Y, and ZY grids to read impedance and admittance together.',
+  'smith.teaching.circuitTitle': 'Matching with series vs. shunt arcs',
+  'smith.teaching.circuitBody':
+    'A series reactance walks along a constant-r circle (inductor clockwise, capacitor counter-clockwise). A shunt susceptance walks along a constant-g circle. Drag any handle on the chart to steer a node onto r = 1 or g = 1.',
+  'smith.teaching.solverTitle': 'Solver construction circles',
+  'smith.teaching.solverBody':
+    'Mark one or two parts as unknown and choose a target (such as VSWR = 1). The solver intersects the forward locus from the load with the reverse locus from the goal — yielding two, one, or zero exact matches.',
+  'smith.teaching.sweepTitle': 'Frequency sweep bandwidth & Q',
+  'smith.teaching.sweepBody':
+    'Lumped elements match at f₀ and spread into a frequency trace across the band. Higher intermediate Q = |x|/r narrows the VSWR bandwidth; place markers to inspect return loss and impedance at the band edges.',
+  'smith.teaching.equationsTitle': 'Live equations & cross-highlighting',
+  'smith.teaching.equationsBody':
+    'Hover or focus any variable to highlight its arc, node, or readout row on the chart. Click a derivation link to inspect the full algebraic steps.',
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -695,11 +731,47 @@ export const nb: Record<TranslationKey, string> = {
   'resistor.examples.eia96.desc':
     'Kompakt 0603 1 % presisjonsmerking: kode 01 tilsvarer 100 i E96-tabellen, multiplisert med C (×100) = 10 kΩ.',
 
-  // Smith chart namespace (ready for U5)
+  // Smith chart namespace
+  'smith.pageTitle': 'Smith-diagram · yotasage',
   'smith.title': 'Smith-diagram',
   'smith.workbench': 'Arbeidsbenk',
   'smith.learn': 'Lær og oppgaver',
   'smith.theory': 'Teori og referanser',
+
+  'smith.inspectorTabsAria': 'Inspektørverktøy',
+  'smith.tab.circuit': 'Krets',
+  'smith.tab.solver': 'Løser',
+  'smith.tab.sweep': 'Sveip',
+  'smith.tab.equations': 'Ligninger',
+  'smith.tab.export': 'Eksport',
+
+  'smith.theoryTabsAria': 'Teori- og referanseseksjoner',
+  'smith.theoryTab.theory': 'Teori',
+  'smith.theoryTab.references': 'Referanser',
+  'smith.referencesLead':
+    'Kildene til teorien på denne siden, i rekkefølgen de først siteres.',
+
+  'smith.quick.badge': 'Rask modus',
+  'smith.quick.bannerText':
+    'Viser Krets og Eksport. Bytt til Standard for automatisk løser, frekvenssveip og sanntidsligninger.',
+  'smith.quick.switchStandard': 'Bytt til Standard',
+  'smith.quick.switchTeaching': 'Prøv Læringsmodus',
+
+  'smith.teaching.gridTitle': 'Lese Z- og Y-sirkler',
+  'smith.teaching.gridBody':
+    'Sirkler med konstant resistans (r) tangerer åpen-krets-punktet til høyre (Γ = +1), mens konstant konduktans (g) speiler dem til venstre (Γ = −1). Bytt mellom Z-, Y- og ZY-rutenett for å lese impedans og admittans samtidig.',
+  'smith.teaching.circuitTitle': 'Tilpasning med serie- og parallellbuer',
+  'smith.teaching.circuitBody':
+    'En seriereaktans følger en konstant r-sirkel (spole med klokken, kondensator mot klokken). En parallellsusceptans følger en konstant g-sirkel. Dra et håndtak på diagrammet for å styre en node inn på r = 1 eller g = 1.',
+  'smith.teaching.solverTitle': 'Konstruksjonssirkler i løseren',
+  'smith.teaching.solverBody':
+    'Marker én eller to komponenter som ukjente og velg et mål (for eksempel VSWR = 1). Løseren skjærer sirkelen fra lasten med sirkelen fra målet — og gir to, én eller ingen eksakte løsninger.',
+  'smith.teaching.sweepTitle': 'Frekvenssveip, båndbredde og Q',
+  'smith.teaching.sweepBody':
+    'Diskrete komponenter tilpasser ved f₀ og sprer seg til et frekvensspor over båndet. Høyere Q = |x|/r gir smalere VSWR-båndbredde; legg til markører for å måle refleksjonstap og impedans ved båndkantene.',
+  'smith.teaching.equationsTitle': 'Levende ligninger og kryssmarkering',
+  'smith.teaching.equationsBody':
+    'Hold over eller fokuser på en variabel for å utheve buen, noden eller avlesningen på diagrammet. Klikk på en utledningslenke for å se hele utregningen.',
 };
 
 export const TRANSLATIONS: Record<Locale, Record<TranslationKey, string>> = {

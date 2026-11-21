@@ -262,10 +262,13 @@ function MathPanel({ circuit, subject: selected, digits, live }: MathPanelProps)
     const r = req;
     setReq(null);
     if (!r) return;
-    const el = r.from?.isConnected ? r.from : document.querySelector<HTMLElement>(`[data-show-eq="${r.key}"]`);
-    if (!el) return;
-    el.scrollIntoView({ block: 'center' });
-    el.focus({ preventScroll: true });
+    mathLink.onBack?.(r);
+    requestAnimationFrame(() => {
+      const el = r.from?.isConnected ? r.from : document.querySelector<HTMLElement>(`[data-show-eq="${r.key}"]`);
+      if (!el) return;
+      el.scrollIntoView({ block: 'center' });
+      el.focus({ preventScroll: true });
+    });
   };
 
   // A new subject: what was pointed at in the panel is gone.

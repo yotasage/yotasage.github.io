@@ -3,24 +3,23 @@
    theme), sized in mm by its own attributes. Hidden in print by Smith.module.css (only the report prints). */
 
 .export {
-  max-width: var(--page-w);
-  margin: 0 auto;
-  padding: 8px var(--gutter) 40px;
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  padding: 16px 18px 20px;
   min-width: 0;
-  scroll-margin-top: calc(var(--bar-h) + 8px);
+  scroll-margin-top: calc(var(--bar-h) + 16px);
 }
 .title { align-items: center; }
 .head { display: inline-flex; align-items: center; gap: 4px; }
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
-  gap: 16px 32px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
   align-items: start;
   margin-top: 10px;
-}
-@media (max-width: 860px) {
-  .layout { grid-template-columns: minmax(0, 1fr); }
 }
 
 .options { display: grid; gap: 14px; min-width: 0; }

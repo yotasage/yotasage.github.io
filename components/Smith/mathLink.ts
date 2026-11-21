@@ -46,6 +46,9 @@ export class MathLink {
   select: ((s: Subject) => void) | null = null;
   /** The panel's handler of a request (MathPanel registers it) and its rows' list. */
   shower: ((r: ShowRequest) => void) | null = null;
+  /** The page's hooks when a "Show equation" request opens or returns to its caller (tab switching). */
+  onShow: ((r: ShowRequest) => void) | null = null;
+  onBack: ((r: ShowRequest) => void) | null = null;
   rows: HTMLElement | null = null;
   /** M5.3: the derivation dialog while it is open; its variables are lit with the panel's. */
   extra: HTMLElement | null = null;
@@ -99,6 +102,7 @@ export class MathLink {
   }
 
   show(r: ShowRequest): void {
+    this.onShow?.(r);
     if (r.subject.t !== 'point') this.select?.(r.subject);
     this.shower?.(r);
   }

@@ -1,11 +1,13 @@
 /* The Smith chart's Learn section and guide panel (step M6.3a, components/Smith/Learn.tsx). The theme's variables
    come from Smith.module.css's .root. */
 
-/* ---- the Learn section (between the tool and the theory) ---- */
+/* ---- the Learn workspace ---- */
 
 .wrap {
-  padding: 44px 0 8px;
-  border-top: 1px solid var(--rule);
+  max-width: var(--page-w);
+  margin: 0 auto;
+  padding: 20px var(--gutter) 52px;
+  border-top: 0;
 }
 
 /* Laid out always (16 buttons): content-visibility would move the info bubbles of its lines when it renders. */
@@ -71,10 +73,11 @@
 /* No containment: it would make the guide the containing block of the info bubbles (position: fixed). */
 .guide {
   min-width: 0;
-  padding: 10px 12px 12px;
-  border: 1px solid var(--accent);
-  border-radius: var(--radius);
-  background: var(--field);
+  padding: 14px 16px 16px;
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-surface);
+  box-shadow: var(--ds-shadow-card);
 }
 
 .head {

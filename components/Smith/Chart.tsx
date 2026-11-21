@@ -13,6 +13,8 @@ export interface ChartProps {
   z0?: number;
   /** Controls at the start of the chart's toolbar (the grid switch). */
   tools?: ReactNode;
+  /** Persistent top of the side panel (active lesson/challenge/guide banner and inspector tabs). */
+  sideTop?: ReactNode;
   /** The side panel's content above the readout (M3: the circuit strip and the part cards). */
   side?: ReactNode;
   /** Receives the controller once it exists (M3 adds its layers and handles through it). */
@@ -26,6 +28,8 @@ export interface ChartProps {
   onDigits?: (digits: number) => void;
   /** No readout at all (M6.3b: a "read this point" challenge; the grid and its labels stay). */
   noReadout?: boolean;
+  /** Non-destructively hides the readout card when another inspector tab is active (keeps DOM refs mounted for live writes). */
+  readoutHidden?: boolean;
   /** Under the chart, in its column (M7.2b: the sweep's plot, figures and markers); on wide screens the chart is then lower. */
   below?: ReactNode;
 }
@@ -47,7 +51,7 @@ const HINTS: Partial<Record<(typeof READOUT_FIELDS)[number], string>> = {
  * top <svg>, the gesture hint, and the side panel with the readout (beside the chart on wide screens, below it on
  * phones). Everything that changes with the pointer is written by ChartView in its frame loop; React renders this once.
  */
-export default function Chart({ mode, z0 = 50, tools, side, onView, after, onReadout, digits, onDigits, noReadout, below }: ChartProps) {
+export default function Chart({ mode, z0 = 50, tools, sideTop, side, onView, after, onReadout, digits, onDigits, noReadout, readoutHidden, below }: ChartProps) {
   const box = useRef<HTMLDivElement>(null);
   const gridSvg = useRef<SVGSVGElement>(null);
   const top = useRef<SVGSVGElement>(null);
@@ -115,8 +119,9 @@ export default function Chart({ mode, z0 = 50, tools, side, onView, after, onRea
         {below}
       </section>
       <aside className={styles.side}>
+        {sideTop}
         {side}
-        {!noReadout && <section className={styles.panel} aria-labelledby="smith-readout" data-readout="">
+        {!noReadout && <section className={styles.panel} aria-labelledby="smith-readout" data-readout="" hidden={readoutHidden}>
           <h2 className={styles.panelTitle} id="smith-readout">
             <span>Readout<Why k="show-eq" /></span>
             {onDigits && (
