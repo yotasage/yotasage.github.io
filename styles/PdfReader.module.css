@@ -1,0 +1,630 @@
+/* Full-featured client-side PDF Reader layout and layers.
+   Designed to match the site's dark #2b2b2b palette with zero horizontal overflow at 390px phone width. */
+
+.readerShell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  height: calc(100vh - 105px);
+  min-height: 460px;
+  border: 1px solid #484848;
+  border-radius: 12px;
+  background: #1f1f1f;
+  overflow: hidden;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.readerShell:fullscreen {
+  height: 100vh;
+  border: none;
+  border-radius: 0;
+}
+
+.readerDropOver {
+  border-color: #0070f3;
+  box-shadow: inset 0 0 0 2px rgba(0, 112, 243, 0.45);
+}
+
+/* Toolbar */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  padding: 0.45rem 0.65rem;
+  border-bottom: 1px solid #3c3c3c;
+  background: #282828;
+  max-width: 100%;
+}
+
+.toolGroup {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.toolSep {
+  width: 1px;
+  height: 1.35rem;
+  background: #444;
+  margin: 0 0.1rem;
+}
+
+.toolSpacer {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.toolBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  height: 2rem;
+  padding: 0 0.55rem;
+  border: 1px solid #555;
+  border-radius: 7px;
+  background: #323232;
+  color: #f0f0f0;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.toolBtn:hover:not(:disabled),
+.toolBtn:focus-visible {
+  border-color: #4da3ff;
+  color: #ffffff;
+  background: #3a3a3a;
+  outline: none;
+}
+
+.toolBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.toolBtnActive {
+  border-color: #0070f3;
+  background: rgba(0, 112, 243, 0.24);
+  color: #8cc2ff;
+}
+
+.toolBtnIcon {
+  composes: toolBtn;
+  min-width: 2rem;
+  padding: 0 0.45rem;
+}
+
+.pageInput {
+  width: 3.1rem;
+  height: 2rem;
+  padding: 0 0.35rem;
+  border: 1px solid #555;
+  border-radius: 7px;
+  background: #1c1c1c;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.pageInput:focus {
+  outline: none;
+  border-color: #0070f3;
+}
+
+.pageTotal {
+  color: #b0b0b0;
+  font-size: 0.84rem;
+  white-space: nowrap;
+  padding-right: 0.15rem;
+}
+
+.toolSelect {
+  height: 2rem;
+  max-width: 100%;
+  padding: 0 0.45rem;
+  border: 1px solid #555;
+  border-radius: 7px;
+  background: #1c1c1c;
+  color: #f0f0f0;
+  font: inherit;
+  font-size: 0.83rem;
+  cursor: pointer;
+}
+
+.toolSelect:focus {
+  outline: none;
+  border-color: #0070f3;
+}
+
+/* Search bar */
+
+.searchBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.65rem;
+  border-bottom: 1px solid #3c3c3c;
+  background: #232323;
+  max-width: 100%;
+}
+
+.searchInput {
+  flex: 1 1 160px;
+  min-width: 0;
+  max-width: 320px;
+  height: 2rem;
+  padding: 0 0.6rem;
+  border: 1px solid #555;
+  border-radius: 7px;
+  background: #181818;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: #0070f3;
+}
+
+.searchCount {
+  color: #c0c0c0;
+  font-size: 0.83rem;
+  min-width: 4.5rem;
+  white-space: nowrap;
+}
+
+/* Main reader body: sidebar + viewport */
+
+.body {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 268px;
+  flex: 0 0 268px;
+  border-right: 1px solid #3c3c3c;
+  background: #242424;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sidebarBackdrop {
+  display: none;
+}
+
+@media (max-width: 899px) {
+  .sidebar {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: min(290px, 86%);
+    z-index: 25;
+    box-shadow: 6px 0 24px rgba(0, 0, 0, 0.55);
+  }
+
+  .sidebarBackdrop {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    background: rgba(0, 0, 0, 0.48);
+    border: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+  }
+}
+
+.sidebarTabs {
+  display: flex;
+  border-bottom: 1px solid #3c3c3c;
+  background: #292929;
+  flex-shrink: 0;
+}
+
+.sidebarTab {
+  flex: 1 1 0;
+  padding: 0.55rem 0.35rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #b0b0b0;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.sidebarTab:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.sidebarTabActive {
+  color: #4da3ff;
+  border-bottom-color: #0070f3;
+  background: rgba(0, 112, 243, 0.08);
+}
+
+.sidebarContent {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.75rem;
+  min-height: 0;
+}
+
+/* Thumbnails tab */
+
+.thumbList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.thumbButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.5rem;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: #2c2c2c;
+  color: #d8d8d8;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.thumbButton:hover {
+  border-color: #6a6a6a;
+}
+
+.thumbButtonActive {
+  border-color: #0070f3;
+  background: rgba(0, 112, 243, 0.14);
+  color: #ffffff;
+}
+
+.thumbBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 148px;
+  min-height: 110px;
+  max-height: 210px;
+  background: #1a1a1a;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.thumbBox img {
+  display: block;
+  max-width: 100%;
+  max-height: 210px;
+  height: auto;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+
+.thumbPlaceholder {
+  color: #777;
+  font-size: 0.78rem;
+  padding: 2.2rem 0.5rem;
+}
+
+/* Outline / Contents tab */
+
+.outlineList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.outlineNested {
+  margin: 0.15rem 0 0.15rem 0.85rem;
+  padding: 0 0 0 0.45rem;
+  border-left: 1px solid #3e3e3e;
+  list-style: none;
+}
+
+.outlineRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.2rem;
+}
+
+.outlineToggle {
+  flex: 0 0 1.25rem;
+  height: 1.5rem;
+  border: none;
+  background: transparent;
+  color: #9a9a9a;
+  font-size: 0.72rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.outlineToggle:hover {
+  color: #ffffff;
+}
+
+.outlineSpacer {
+  flex: 0 0 1.25rem;
+}
+
+.outlineBtn {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.3rem 0.4rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #e0e0e0;
+  font: inherit;
+  font-size: 0.84rem;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.outlineBtn:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #4da3ff;
+}
+
+.outlineBtnTitle {
+  overflow-wrap: anywhere;
+}
+
+.outlinePageNum {
+  flex: 0 0 auto;
+  color: #8f8f8f;
+  font-size: 0.76rem;
+}
+
+.emptyTab {
+  color: #9a9a9a;
+  font-size: 0.88rem;
+  text-align: center;
+  padding: 2rem 0.5rem;
+  line-height: 1.45;
+}
+
+/* Info & Tools tab */
+
+.infoSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.infoList {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.infoItem dt {
+  color: #9a9a9a;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.1rem;
+}
+
+.infoItem dd {
+  margin: 0;
+  color: #ececec;
+  font-size: 0.86rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.infoDivider {
+  border: none;
+  border-top: 1px solid #3c3c3c;
+  margin: 0;
+}
+
+/* Scrollable Page Viewport */
+
+.viewport {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background: #171717;
+  padding: 16px;
+  scroll-behavior: auto;
+}
+
+.pageColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  min-width: fit-content;
+  margin: 0 auto;
+}
+
+.spreadRow {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 16px;
+  min-width: fit-content;
+  margin: 0 auto;
+}
+
+.pageSlot {
+  position: relative;
+  flex: 0 0 auto;
+  background: #ffffff;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+
+.pageSlotDark {
+  background: #1d1d1d;
+}
+
+.pageCanvas {
+  display: block;
+}
+
+.pageCanvasDark {
+  filter: invert(0.88) hue-rotate(180deg);
+}
+
+.pagePlaceholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #2b2b2b;
+  color: #888;
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+
+/* Selectable Text Layer */
+
+.textLayer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  line-height: 1;
+  user-select: text;
+  -webkit-user-select: text;
+  z-index: 2;
+}
+
+.textSpan {
+  position: absolute;
+  white-space: pre;
+  color: transparent;
+  transform-origin: 0 0;
+  cursor: text;
+}
+
+.textLayer ::selection {
+  background: rgba(0, 112, 243, 0.35);
+  color: transparent;
+}
+
+.searchMark {
+  background: rgba(255, 214, 40, 0.48);
+  color: transparent;
+  border-radius: 2px;
+}
+
+.searchMarkActive {
+  background: rgba(255, 128, 0, 0.68);
+  color: transparent;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(255, 145, 0, 0.95);
+}
+
+/* Link Annotations Layer */
+
+.annotationLayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.linkAnnot {
+  position: absolute;
+  display: block;
+  pointer-events: auto;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 2px;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.linkAnnot:hover,
+.linkAnnot:focus-visible {
+  background: rgba(0, 112, 243, 0.18);
+  outline: 1px solid rgba(77, 163, 255, 0.65);
+}
+
+/* Mobile adjustments for 390px phone screens */
+
+@media (max-width: 600px) {
+  .readerShell {
+    height: calc(100vh - 96px);
+    min-height: 420px;
+    border-radius: 8px;
+  }
+
+  .toolbar {
+    padding: 0.4rem 0.45rem;
+    gap: 0.3rem;
+  }
+
+  .toolSep {
+    display: none;
+  }
+
+  .toolBtn {
+    padding: 0 0.45rem;
+    font-size: 0.8rem;
+  }
+
+  .toolSelect {
+    font-size: 0.8rem;
+    padding: 0 0.35rem;
+  }
+
+  .viewport {
+    padding: 8px;
+  }
+
+  .pageColumn {
+    gap: 10px;
+  }
+
+  .hideOnPhone {
+    display: none;
+  }
+}

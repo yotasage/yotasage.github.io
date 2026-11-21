@@ -10,6 +10,7 @@ import {
   ORGANIZE,
   PDF_TO_IMAGES,
   PdfTool,
+  READER,
   REMOVE_METADATA,
   REMOVE_PAGES,
   ROTATE,
@@ -18,6 +19,7 @@ import {
 import styles from '../../styles/PdfTools.module.css';
 
 const PDF_TARGETS: PdfTool[] = [
+  READER,
   COMPRESS,
   REMOVE_METADATA,
   ORGANIZE,

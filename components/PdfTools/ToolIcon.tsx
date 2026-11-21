@@ -9,6 +9,13 @@ function Doc({ x, y, w = 18, h = 24 }: { x: number; y: number; w?: number; h?: n
 }
 
 const ICONS: Record<ToolIconName, React.ReactNode> = {
+  reader: (
+    <>
+      <path d="M24 12c-4.5-3.2-10.5-4-18-3.5v28.5c7.5-.5 13.5.3 18 3.5 4.5-3.2 10.5-4 18-3.5V8.5C34.5 8 28.5 8.8 24 12z" />
+      <path d="M24 12v28.5" />
+      <path d="M11 16.5h8M11 22.5h8M11 28.5h6M29 16.5h8M29 22.5h8M29 28.5h6" />
+    </>
+  ),
   merge: (
     <>
       <Doc x={4} y={4} w={16} h={20} />

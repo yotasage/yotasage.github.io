@@ -1,5 +1,6 @@
 // The tools listed on /pdf/main. See docs/pdf-tools-plan.md for the tools planned next.
 export type ToolIconName =
+  | 'reader'
   | 'merge'
   | 'split'
   | 'compress'
@@ -25,6 +26,15 @@ export interface ToolCategory {
   title: string;
   tools: PdfTool[];
 }
+
+export const READER: PdfTool = {
+  id: 'reader',
+  title: 'Read PDF',
+  description: 'Open and read PDFs in your browser with text selection, search, table of contents, thumbnails, zoom, dark-mode reading and keyboard shortcuts.',
+  href: '/pdf/reader',
+  icon: 'reader',
+  color: '#4da3ff',
+};
 
 export const MERGE: PdfTool = {
   id: 'merge',
@@ -126,6 +136,7 @@ export const ORGANIZE: PdfTool = {
 };
 
 export const TOOL_CATEGORIES: ToolCategory[] = [
+  { title: 'View', tools: [READER] },
   { title: 'Organize', tools: [MERGE, SPLIT, ORGANIZE, ROTATE, REMOVE_PAGES, EXTRACT_PAGES] },
   { title: 'Optimize', tools: [COMPRESS] },
   { title: 'Convert to PDF', tools: [IMAGES_TO_PDF] },
