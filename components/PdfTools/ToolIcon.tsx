@@ -39,6 +39,20 @@ const ICONS: Record<ToolIconName, React.ReactNode> = {
       <path d="M18 22h12M18 27h12M18 32h8" />
     </>
   ),
+  linearize: (
+    <>
+      <Doc x={6} y={4} w={26} h={36} />
+      <path d="M12 16h12M12 22h9M12 28h7" />
+      <path d="M35 16l-8 13h7l-3 13 11-16h-7l4-10z" />
+    </>
+  ),
+  repair: (
+    <>
+      <Doc x={5} y={4} w={26} h={36} />
+      <path d="M11 16h12M11 22h8" />
+      <path d="M39 23a6.5 6.5 0 0 1-8.4 6.2L22 37.8a2.5 2.5 0 0 1-3.5-3.5l8.6-8.6A6.5 6.5 0 0 1 35.5 18l-3.3 3.3 2.5 2.5L38 20.5A6.5 6.5 0 0 1 39 23z" />
+    </>
+  ),
   images: (
     <>
       <rect x={4} y={8} width={26} height={22} rx={2} />

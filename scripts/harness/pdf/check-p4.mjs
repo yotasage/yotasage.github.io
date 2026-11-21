@@ -11,8 +11,10 @@ import { zlibSync } from 'fflate';
 import { makeMultiPagePdf } from './fixtures.mjs';
 import * as compressMod from '../../../lib/pdf/compress.ts';
 import * as compressContentMod from '../../../lib/pdf/compressContent.ts';
+import * as linearizeMod from '../../../lib/pdf/linearize.ts';
 import * as ocrRuntimeMod from '../../../lib/pdf/ocrRuntime.ts';
 import * as qpdfMod from '../../../lib/pdf/qpdf.ts';
+import * as repairMod from '../../../lib/pdf/repair.ts';
 
 // Load @cantoo/pdf-lib via CJS require so PDFDocument/PDFRawStream class identities match lib/pdf/*.ts under tsx.
 const require = createRequire(import.meta.url);
@@ -32,6 +34,8 @@ const {
 const { checkQpdf, runQpdf } = qpdfMod.default ?? qpdfMod;
 const { OCR_ASSET_PATHS, OCR_LANGUAGES } = ocrRuntimeMod.default ?? ocrRuntimeMod;
 const { compressPdf } = compressMod.default ?? compressMod;
+const { hasLinearizedHeader, inspectLinearization, linearizePdf } = linearizeMod.default ?? linearizeMod;
+const { diagnosePdf, repairPdf } = repairMod.default ?? repairMod;
 const {
   computeOtsuThreshold,
   decodeAnyImageToRgba,
@@ -423,6 +427,94 @@ await check('30. P4.2 stronger compression (CTM image sizing, dedup, CMYK/Indexe
     `1-bit Otsu (t=${threshold}): ${rawRgbSize} -> ${bw1Bit.length} B; ` +
     `compressPdf+QPDF: ${dupBeforeBytes.length} -> ${compRes.bytes.length} B (qpdfSaved=${compRes.qpdfSavedBytes ?? 0} B)`,
   );
+});
+
+await check('31. P4.3 linearize.ts (inspect, linearize with object streams + recompress, verify Fast Web View)', async () => {
+  const syntheticPdf = await makeMultiPagePdf(3);
+
+  const before = await inspectLinearization(syntheticPdf);
+  assert(before.ok, `inspectLinearization should report ok=true on valid synthetic PDF (errors: ${before.errors.join('; ')})`);
+  assert(before.isLinearized === false, 'fresh synthetic PDF must report isLinearized=false');
+  assert(before.pdfVersion && /^\d+\.\d+$/.test(before.pdfVersion), `expected valid pdfVersion, got ${before.pdfVersion}`);
+  assert(before.isEncrypted === false, 'synthetic PDF must not be marked encrypted');
+
+  const result = await linearizePdf(syntheticPdf, {
+    objectStreams: true,
+    recompressStreams: true,
+  });
+  assert(result.isLinearized === true, 'linearizePdf result.isLinearized must be true');
+  assert(hasLinearizedHeader(result.bytes) === true, 'hasLinearizedHeader must return true on linearized output');
+  assert(result.beforeBytes === syntheticPdf.length, 'beforeBytes mismatch');
+  assert(result.afterBytes === result.bytes.length, 'afterBytes mismatch');
+
+  const verify = await checkQpdf(result.bytes);
+  assert(verify.ok === true, `checkQpdf failed on linearized PDF: ${verify.stderr}`);
+  assert(verify.isLinearized === true, 'checkQpdf must report isLinearized=true on linearized output');
+
+  const reloaded = await PDFDocument.load(result.bytes, { updateMetadata: false });
+  assert(reloaded.getPageCount() === 3, `expected 3 pages after linearization, got ${reloaded.getPageCount()}`);
+});
+
+await check('32. P4.3 repair.ts (corrupt xref + trailing junk, leading garbage + truncated EOF, explicit pdflib strategy)', async () => {
+  // Build a classic 3-page PDF without object streams so it has a textual xref table we can corrupt cleanly.
+  const basePdfBytes = await makeMultiPagePdf(3);
+  const baseDoc = await PDFDocument.load(basePdfBytes, { updateMetadata: false });
+  const classicPdf = await baseDoc.save({ useObjectStreams: false });
+
+  // Case A: Corrupt xref table offsets (leaving binary streams untouched) + append trailing junk bytes after %%EOF
+  const latin1 = new TextDecoder('latin1').decode(classicPdf);
+  const xrefPos = latin1.indexOf('xref\n');
+  assert(xrefPos > 0, 'classic PDF fixture must contain textual xref table');
+  const xrefTail = latin1.slice(xrefPos);
+  const corruptedTail = xrefTail.replace(/\d{10} 00000 n/g, '0000009999 00000 n');
+  assert(corruptedTail !== xrefTail, 'failed to mutate xref table entries for test case A');
+  const tailWithJunk = `${corruptedTail}\nTRAILING_GARBAGE_BYTES_AFTER_EOF_1234567890`;
+  const tailBytes = new TextEncoder().encode(tailWithJunk);
+  const caseA = new Uint8Array(xrefPos + tailBytes.length);
+  caseA.set(classicPdf.subarray(0, xrefPos), 0);
+  caseA.set(tailBytes, xrefPos);
+
+  const diagA = await diagnosePdf(caseA);
+  assert(diagA.needsRepair === true, 'case A diagnosePdf must flag needsRepair=true');
+  assert(diagA.trailingGarbageBytes > 0, `case A must detect trailing garbage, got ${diagA.trailingGarbageBytes}`);
+  assert(diagA.issues.length > 0, 'case A must report issues');
+
+  const repairA = await repairPdf(caseA);
+  assert(repairA.strategyUsed === 'qpdf', `case A expected strategyUsed="qpdf", got "${repairA.strategyUsed}"`);
+  assert(repairA.verifiedOk === true, `case A expected verifiedOk=true (warnings: ${repairA.warnings.join('; ')})`);
+  assert(repairA.pagesRecovered === 3, `case A expected 3 pagesRecovered, got ${repairA.pagesRecovered}`);
+  const reloadA = await PDFDocument.load(repairA.bytes, { updateMetadata: false });
+  assert(reloadA.getPageCount() === 3, `case A reloaded doc expected 3 pages, got ${reloadA.getPageCount()}`);
+
+  // Case B: Prepend 128 bytes of garbage before %PDF- and truncate %%EOF
+  const eofIdx = latin1.lastIndexOf('%%EOF');
+  assert(eofIdx > 0, 'classic PDF fixture must contain %%EOF');
+  const truncated = classicPdf.subarray(0, eofIdx);
+  const caseB = new Uint8Array(128 + truncated.length);
+  caseB.fill(0x58, 0, 128); // 128 'X' bytes of leading junk
+  caseB.set(truncated, 128);
+
+  const diagB = await diagnosePdf(caseB);
+  assert(diagB.hasHeader === true, 'case B should still locate %PDF- header after leading junk');
+  assert(diagB.headerOffset === 128, `case B expected headerOffset=128, got ${diagB.headerOffset}`);
+  assert(diagB.hasEof === false, 'case B must detect missing %%EOF');
+  assert(diagB.needsRepair === true, 'case B must flag needsRepair=true');
+
+  const repairB = await repairPdf(caseB);
+  assert(repairB.verifiedOk === true, `case B expected verifiedOk=true (warnings: ${repairB.warnings.join('; ')})`);
+  assert(repairB.pagesRecovered === 3, `case B expected 3 pagesRecovered, got ${repairB.pagesRecovered}`);
+  const reloadB = await PDFDocument.load(repairB.bytes, { updateMetadata: false });
+  assert(reloadB.getPageCount() === 3, `case B reloaded doc expected 3 pages, got ${reloadB.getPageCount()}`);
+
+  // Case C: Explicit strategy='pdflib' recovers all 3 pages cleanly into a valid PDF
+  const repairC = await repairPdf(caseB, { strategy: 'pdflib' });
+  assert(repairC.strategyUsed === 'pdflib', `case C expected strategyUsed="pdflib", got "${repairC.strategyUsed}"`);
+  assert(repairC.verifiedOk === true, `case C expected verifiedOk=true (warnings: ${repairC.warnings.join('; ')})`);
+  assert(repairC.pagesRecovered === 3, `case C expected 3 pagesRecovered, got ${repairC.pagesRecovered}`);
+  const checkC = await checkQpdf(repairC.bytes);
+  assert(checkC.ok === true, `case C checkQpdf failed: ${checkC.stderr}`);
+  const reloadC = await PDFDocument.load(repairC.bytes, { updateMetadata: false });
+  assert(reloadC.getPageCount() === 3, `case C reloaded doc expected 3 pages, got ${reloadC.getPageCount()}`);
 });
 
 // Print summary table

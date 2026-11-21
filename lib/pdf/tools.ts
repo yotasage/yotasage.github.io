@@ -4,6 +4,8 @@ export type ToolIconName =
   | 'merge'
   | 'split'
   | 'compress'
+  | 'linearize'
+  | 'repair'
   | 'images'
   | 'pdf-to-images'
   | 'extract-images'
@@ -76,6 +78,24 @@ export const COMPRESS: PdfTool = {
   href: '/pdf/compress',
   icon: 'compress',
   color: '#2fae6b',
+};
+
+export const LINEARIZE: PdfTool = {
+  id: 'linearize',
+  title: 'Optimize for web',
+  description: 'Linearize PDFs for Fast Web View so the first page streams and displays immediately over the network, with optional object stream compression.',
+  href: '/pdf/linearize',
+  icon: 'linearize',
+  color: '#34b3a0',
+};
+
+export const REPAIR: PdfTool = {
+  id: 'repair',
+  title: 'Repair PDF',
+  description: 'Diagnose and fix damaged or malformed PDFs using lossless QPDF structural rebuild, tolerant page recovery, or visual page rescue.',
+  href: '/pdf/repair',
+  icon: 'repair',
+  color: '#e59a3a',
 };
 
 export const IMAGES_TO_PDF: PdfTool = {
@@ -288,7 +308,7 @@ export const EDIT: PdfTool = {
 export const TOOL_CATEGORIES: ToolCategory[] = [
   { title: 'View', tools: [READER] },
   { title: 'Organize', tools: [MERGE, SPLIT, ORGANIZE, ROTATE, REMOVE_PAGES, EXTRACT_PAGES] },
-  { title: 'Optimize', tools: [COMPRESS] },
+  { title: 'Optimize', tools: [COMPRESS, LINEARIZE, REPAIR] },
   { title: 'Edit & annotate', tools: [EDIT, SIGN, FILL_FORMS, PAGE_NUMBERS, WATERMARK, CROP, RESIZE, NUP, GRAYSCALE, INVERT, EDIT_METADATA, FLATTEN, REMOVE_ANNOTATIONS] },
   { title: 'Convert to PDF', tools: [IMAGES_TO_PDF] },
   { title: 'Convert from PDF', tools: [PDF_TO_IMAGES, EXTRACT_IMAGES] },
