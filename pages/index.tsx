@@ -1,214 +1,572 @@
 import Head from 'next/head';
 import Link from 'next/link';
-import React from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import ToolIcon, { HomeIconName } from '../components/Home/ToolIcon';
 import PdfToolIcon from '../components/PdfTools/ToolIcon';
+import PillTabs, { PillTabItem } from '../components/UI/PillTabs';
+import ToolHeader from '../components/UI/ToolHeader';
 import { PdfTool, TOOL_CATEGORIES } from '../lib/pdf/tools';
+import { TranslationKey, useI18n } from '../lib/ui/i18n';
+import { useDesignSystemPage } from '../lib/ui/theme';
 import styles from '../styles/Home.module.css';
 
+type CategoryGroupId = 'electronics' | 'documents' | 'utilities';
+type CategoryFilterId = 'all' | CategoryGroupId;
+
 interface SiteTool {
+  id: string;
   href: string;
-  title: string;
-  category: string;
-  description: React.ReactNode;
+  group: CategoryGroupId;
+  titleKey: TranslationKey;
+  categoryKey: TranslationKey;
+  descKey: TranslationKey;
   icon: HomeIconName;
-  color: string;
-  // Keywords shown as chips under the description.
-  tags?: string[];
-  // Links straight to the tools of a hub, shown instead of tags.
-  subTools?: PdfTool[];
+  accentLight: string;
+  accentDark: string;
+  tags?: readonly string[];
+  searchKeywords?: readonly string[];
+  subTools?: readonly PdfTool[];
+  wide?: boolean;
 }
 
+const ALL_PDF_TOOLS: readonly PdfTool[] = TOOL_CATEGORIES.flatMap((category) => category.tools);
+
 // Every tool on the site has a card here.
-const TOOLS: SiteTool[] = [
+const TOOLS: readonly SiteTool[] = [
   {
+    id: 'simsetup',
     href: '/simsetup/main',
-    title: 'Simulation setup',
-    category: 'Signal processing',
-    description: <>Find f<sub>0</sub>, F<sub>S</sub>, N<sub>cyc</sub> and N<sub>pts</sub> for FFTs and simulations, and check them against the rules for coherent sampling.</>,
+    group: 'electronics',
+    titleKey: 'home.tool.simsetup.title',
+    categoryKey: 'home.tool.simsetup.category',
+    descKey: 'home.tool.simsetup.desc',
     icon: 'simsetup',
-    color: '#3cc4dc',
-    tags: ['Coherent sampling', 'Powers of 2', 'Prime numbers'],
+    accentLight: '#0891b2',
+    accentDark: '#3cc4dc',
+    tags: ['Coherent sampling', 'FFT', 'Powers of 2', 'Prime ratios'],
+    searchKeywords: ['f0', 'fs', 'ncyc', 'npts', 'sampling', 'nyquist', 'signal', 'dsp'],
   },
   {
-    href: '/qrcode/main',
-    title: 'QR code generator',
-    category: 'Codes',
-    description: 'Make QR codes with full control over version, error correction, mask and encoding.',
-    icon: 'qrcode',
-    color: '#e8b23a',
-    tags: ['Model 1 and 2', 'Micro QR', 'rMQR', 'PNG · SVG · PDF'],
-  },
-  {
-    href: '/qr-reader/main',
-    title: 'QR code reader',
-    category: 'Codes',
-    description: 'Read QR codes with your camera or from images, screenshots and PDFs, and see what they hold: Wi-Fi networks, eSIMs, links, contacts, events, payments and sign-in codes, with the raw text, the bytes and the symbol.',
-    icon: 'qrreader',
-    color: '#2ec5a6',
-    tags: ['Camera', 'Images · PDF · paste', 'Micro QR · rMQR', 'Wi-Fi · eSIM', 'Links · contacts · events', 'Payments · 2FA', 'Raw text · hex'],
-  },
-  {
-    href: '/pdf/main',
-    title: 'PDF tools',
-    category: 'Documents',
-    description: 'Merge, compress and clean up PDFs, and turn images into PDFs, without uploading them anywhere.',
-    icon: 'pdf',
-    color: '#ef6a50',
-    subTools: TOOL_CATEGORIES.flatMap((category) => category.tools),
-  },
-  {
-    href: '/base64-image/main',
-    title: 'Base64 image converter',
-    category: 'Images',
-    description: 'Turn an image into Base64 or a data URL, and Base64 back into an image you can view, download or copy.',
-    icon: 'base64',
-    color: '#3dbb78',
-    tags: ['Data URL', 'HTML · CSS · Markdown', 'PNG · JPEG · WebP'],
-  },
-  {
-    href: '/text-case/main',
-    title: 'Text case converter',
-    category: 'Text',
-    description: 'Change the case of text as you type, or turn it into names for code, with character, word and line counts.',
-    icon: 'textcase',
-    color: '#a585ff',
-    tags: ['Sentence case', 'Title Case', 'UPPER CASE', 'camelCase', 'snake_case', 'kebab-case'],
-  },
-  {
-    href: '/3d-viewer/main',
-    title: '3D viewer',
-    category: '3D models',
-    description: 'View CAD and mesh files, cut through them, measure them and save them as STL, OBJ, PLY or GLB.',
-    icon: 'viewer3d',
-    color: '#f08c3c',
-    tags: ['STEP · IGES', 'STL · 3MF · OBJ', 'glTF · FBX · USDZ', 'Section view', 'Measure'],
-  },
-  {
-    href: '/pcb-viewer/main',
-    title: 'PCB viewer',
-    category: 'Electronics',
-    description: 'View the Gerber and drill files or the KiCad, Altium, PADS or EAGLE board of a circuit board layer by layer or as it looks, mark the parts of a pick-and-place file on it, find its nets and components, measure it, save it as PNG, SVG, PDF at 1:1 or DXF, or as a BOM and pick-and-place file, and turn an Altium, PADS or EAGLE board into a KiCad board.',
-    icon: 'pcb',
-    color: '#9ccc3c',
-    tags: ['Gerber RS-274X · X2', 'Excellon drill', 'KiCad 4 to 10', 'Altium PcbDoc', 'PADS ASCII', 'EAGLE · Fusion 360', 'Pick-and-place', 'Realistic view', 'Nets and components', 'Measure', 'PNG · SVG · PDF · DXF · CSV', 'To KiCad'],
-  },
-  {
+    id: 'resistor',
     href: '/resistor/main',
-    title: 'Resistor lookup',
-    category: 'Electronics',
-    description: 'Type a resistance, an SMD marking or band colours and get the nearest standard values in every E-series with their errors, the colour bands and the SMD markings. Click the bands of the drawing or type a chip marking to decode a part, and save the drawing as SVG, PNG, JPG or WebP, or as TikZ for LaTeX. Find the series and parallel combinations of 1 to 4 standard values, or of the values you have, that come closest to a value. Design a resistor for a current or a voltage, a voltage divider, a feedback or gain ratio or a current-sense shunt: the values that stay inside an allowed deviation over tolerance and temperature, with worst case, RSS and power at each temperature. Read the theory behind it, from the E-series and tolerances to derating, noise and current sensing, with the numbers for your own value and every source cited.',
+    group: 'electronics',
+    titleKey: 'home.tool.resistor.title',
+    categoryKey: 'home.tool.resistor.category',
+    descKey: 'home.tool.resistor.desc',
     icon: 'resistor',
-    color: '#5aa2f0',
-    tags: ['E3 to E192', '4k7 · 4,7 kΩ · 472', 'Colour code', 'SMD codes · EIA-96', 'Clickable drawings', 'SVG · PNG · JPG · WebP', 'Series · parallel combinations', 'Own value lists', 'Design over temperature', 'Worst case · RSS', 'Reference tables', 'Every result is a link'],
+    accentLight: '#2563eb',
+    accentDark: '#5aa2f0',
+    tags: ['E3–E192', 'Colour bands', 'SMD · EIA-96', 'Combinations', 'Temp design'],
+    searchKeywords: ['ohm', 'divider', 'shunt', 'tolerance', 'rss', 'tikz', 'e24', 'e96', 'motstand'],
   },
   {
+    id: 'smith',
     href: '/smith-chart/main',
-    title: 'Smith chart',
-    category: 'Electronics',
-    description: 'Build a matching circuit from the load to the source out of series and shunt R, L and C, transmission lines, stubs and λ/4 transformers, and see its path on a Smith chart with an impedance, admittance or combined grid that zooms and pans. Type the values or drag them on the chart, snapping to the grid circles and to standard values, and read z, Γ, VSWR and return loss at every node. Mark one or two values as unknown and it finds them for a match, a point or a VSWR circle, with the construction circles on the chart and the nearest standard values; with nothing marked it suggests which values to change. Sweep the frequency with markers and a plot, print a report, export the chart as TikZ, SVG or PNG and the data as CSV or Touchstone, and save the project as a file. Undo and redo, and the whole circuit is in the link.',
+    group: 'electronics',
+    titleKey: 'home.tool.smith.title',
+    categoryKey: 'home.tool.smith.category',
+    descKey: 'home.tool.smith.desc',
     icon: 'smith',
-    color: '#e0679a',
-    tags: ['Z · Y · ZY grids', 'Series · shunt R, L, C', 'Lines · stubs · λ/4', 'Drag with snapping', 'Undo · redo', 'Every circuit is a link'],
+    accentLight: '#db2777',
+    accentDark: '#e0679a',
+    tags: ['Z · Y · ZY grids', 'Drag & snap', 'Auto-solver', 'Freq sweep', 'SVG · TikZ · S1P'],
+    searchKeywords: ['vswr', 'impedance', 'admittance', 'stub', 'matching', 'touchstone', 's1p', 'rf'],
   },
   {
+    id: 'pcb',
+    href: '/pcb-viewer/main',
+    group: 'electronics',
+    titleKey: 'home.tool.pcb.title',
+    categoryKey: 'home.tool.pcb.category',
+    descKey: 'home.tool.pcb.desc',
+    icon: 'pcb',
+    accentLight: '#65a30d',
+    accentDark: '#9ccc3c',
+    tags: ['Gerber · Excellon', 'KiCad · Altium', 'PADS · EAGLE', 'Realistic view', 'To KiCad'],
+    searchKeywords: ['rs-274x', 'x2', 'drill', 'pcbdoc', 'fusion 360', 'bom', 'pick and place', 'dxf', 'nets'],
+  },
+  {
+    id: 'emsim',
     href: '/em-sim/main',
-    title: 'EM simulation',
-    category: 'Electronics',
-    description: 'Work out the impedance of PCB traces and differential pairs with a field solver, on a stackup you type, any JLCPCB stackup or the stackup of a KiCad board, with the fields drawn: drag the sizes in the drawing, find the width for a target impedance, sweep an input, see which tolerance matters most, compare with closed-form calculators and read the theory behind it. Vias too, from the side, from above and in 3D, and full-wave runs on your graphics card with their waves played on a slice and in 3D.',
+    group: 'electronics',
+    titleKey: 'home.tool.emsim.title',
+    categoryKey: 'home.tool.emsim.category',
+    descKey: 'home.tool.emsim.desc',
     icon: 'emsim',
-    color: '#2fb3a0',
-    tags: ['2D field solver', 'Z0 · Zdiff · Zcm', 'Every JLCPCB stackup', 'KiCad stackups', 'Microstrip · stripline · coplanar', 'Edge- and broadside-coupled pairs', 'Fields', 'Target · sweep · tolerance', 'Every setup is a link'],
+    accentLight: '#0d9488',
+    accentDark: '#2fb3a0',
+    tags: ['2D / 3D solver', 'Z0 · Zdiff · Zcm', 'JLCPCB · KiCad', 'Vias', 'Field plots'],
+    searchKeywords: ['microstrip', 'stripline', 'coplanar', 'differential', 'stackup', 'trace', 'fdtd', 'impedance'],
+  },
+  {
+    id: 'pdf',
+    href: '/pdf/main',
+    group: 'documents',
+    titleKey: 'home.tool.pdf.title',
+    categoryKey: 'home.tool.pdf.category',
+    descKey: 'home.tool.pdf.desc',
+    icon: 'pdf',
+    accentLight: '#dc2626',
+    accentDark: '#ef6a50',
+    subTools: ALL_PDF_TOOLS,
+    wide: true,
+    searchKeywords: ['merge', 'split', 'compress', 'ocr', 'sign', 'redact', 'watermark', 'pdfa', 'metadata', 'forms'],
+  },
+  {
+    id: 'viewer3d',
+    href: '/3d-viewer/main',
+    group: 'documents',
+    titleKey: 'home.tool.viewer3d.title',
+    categoryKey: 'home.tool.viewer3d.category',
+    descKey: 'home.tool.viewer3d.desc',
+    icon: 'viewer3d',
+    accentLight: '#ea580c',
+    accentDark: '#f08c3c',
+    tags: ['STEP · IGES', 'STL · 3MF · OBJ', 'glTF · FBX · USDZ', 'Section cut', 'Measure'],
+    searchKeywords: ['cad', 'mesh', 'ply', 'glb', 'model', '3d'],
+  },
+  {
+    id: 'qrcode',
+    href: '/qrcode/main',
+    group: 'utilities',
+    titleKey: 'home.tool.qrcode.title',
+    categoryKey: 'home.tool.qrcode.category',
+    descKey: 'home.tool.qrcode.desc',
+    icon: 'qrcode',
+    accentLight: '#ca8a04',
+    accentDark: '#e8b23a',
+    tags: ['Model 1 & 2', 'Micro QR · rMQR', 'Custom mask', 'PNG · SVG · PDF'],
+    searchKeywords: ['qr', 'barcode', 'error correction', 'encoding'],
+  },
+  {
+    id: 'qrreader',
+    href: '/qr-reader/main',
+    group: 'utilities',
+    titleKey: 'home.tool.qrreader.title',
+    categoryKey: 'home.tool.qrreader.category',
+    descKey: 'home.tool.qrreader.desc',
+    icon: 'qrreader',
+    accentLight: '#0d9488',
+    accentDark: '#2ec5a6',
+    tags: ['Camera · PDF · paste', 'Micro QR · rMQR', 'Wi-Fi · eSIM', '2FA · Payments', 'Raw hex'],
+    searchKeywords: ['scan', 'scanner', 'totp', 'otp', 'vcard', 'calendar', 'decode'],
+  },
+  {
+    id: 'base64',
+    href: '/base64-image/main',
+    group: 'utilities',
+    titleKey: 'home.tool.base64.title',
+    categoryKey: 'home.tool.base64.category',
+    descKey: 'home.tool.base64.desc',
+    icon: 'base64',
+    accentLight: '#16a34a',
+    accentDark: '#3dbb78',
+    tags: ['Data URL', 'HTML · CSS · MD', 'PNG · JPEG · WebP', 'Live preview'],
+    searchKeywords: ['encode', 'decode', 'image', 'inline', 'markdown'],
+  },
+  {
+    id: 'textcase',
+    href: '/text-case/main',
+    group: 'utilities',
+    titleKey: 'home.tool.textcase.title',
+    categoryKey: 'home.tool.textcase.category',
+    descKey: 'home.tool.textcase.desc',
+    icon: 'textcase',
+    accentLight: '#7c3aed',
+    accentDark: '#a585ff',
+    tags: ['Sentence · Title', 'UPPER · lower', 'camelCase', 'snake_case', 'kebab-case'],
+    searchKeywords: ['pascal', 'slug', 'word count', 'character count', 'string'],
   },
 ];
 
-const PROMISES = ['Runs in your browser', 'Files never leave your device', 'No ads or tracking', 'No sign-up'];
+const CATEGORY_GROUPS: readonly { id: CategoryGroupId; labelKey: TranslationKey }[] = [
+  { id: 'electronics', labelKey: 'home.cat.electronics' },
+  { id: 'documents', labelKey: 'home.cat.documents' },
+  { id: 'utilities', labelKey: 'home.cat.utilities' },
+];
 
-function Check() {
+const PROMISE_KEYS: readonly TranslationKey[] = [
+  'home.promise.browser',
+  'home.promise.local',
+  'home.promise.noAds',
+  'home.promise.noSignup',
+];
+
+function BrandEmblem() {
   return (
-    <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="#3dbb78" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polygon points="12 2.5 20.5 7.25 20.5 16.75 12 21.5 3.5 16.75 3.5 7.25" />
+      <path d="M12 2.5V12l8.5-4.75" opacity={0.55} />
+      <path d="M12 12L3.5 7.25" opacity={0.55} />
+      <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg width={14} height={14} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M3 8.5l3 3 7-7" />
     </svg>
   );
 }
 
-function ToolCard({ tool }: { tool: SiteTool }) {
+function SearchIcon() {
   return (
-    <li className={styles.card} style={{ '--accent': tool.color } as React.CSSProperties}>
-      <span className={styles.iconChip}><ToolIcon name={tool.icon} color={tool.color} size={40} /></span>
-      <span className={styles.category}>{tool.category}</span>
-      <h2>
-        {/* Its ::after covers the card, so the whole card is a link. The links in .tags sit above it. */}
+    <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </svg>
+  );
+}
+
+function ClearIcon() {
+  return (
+    <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </svg>
+  );
+}
+
+function matchesSubTool(sub: PdfTool, q: string): boolean {
+  return (
+    sub.title.toLowerCase().includes(q) ||
+    sub.description.toLowerCase().includes(q) ||
+    sub.id.toLowerCase().includes(q)
+  );
+}
+
+interface ToolCardProps {
+  tool: SiteTool;
+  query: string;
+}
+
+function ToolCard({ tool, query }: ToolCardProps) {
+  const { t } = useI18n();
+  const title = t(tool.titleKey);
+  const category = t(tool.categoryKey);
+  const description = t(tool.descKey);
+
+  const orderedSubTools = useMemo(() => {
+    if (!tool.subTools) return null;
+    if (!query) return tool.subTools;
+    const matched: PdfTool[] = [];
+    const rest: PdfTool[] = [];
+    for (const sub of tool.subTools) {
+      if (matchesSubTool(sub, query)) {
+        matched.push(sub);
+      } else {
+        rest.push(sub);
+      }
+    }
+    return matched.length > 0 ? [...matched, ...rest] : tool.subTools;
+  }, [tool.subTools, query]);
+
+  const cardClass = [styles.card, tool.wide ? styles.cardWide : ''].filter(Boolean).join(' ');
+
+  return (
+    <li
+      className={cardClass}
+      style={
+        {
+          '--accent-light': tool.accentLight,
+          '--accent-dark': tool.accentDark,
+        } as React.CSSProperties
+      }
+    >
+      <div className={styles.cardTop}>
+        <span className={styles.iconChip}>
+          <ToolIcon name={tool.icon} color="currentColor" size={28} />
+        </span>
+        <span className={styles.category}>{category}</span>
+      </div>
+
+      <h3 className={styles.cardTitle}>
+        {/* Its ::after covers the card, so the whole card is a link. Sub-tool links sit above it. */}
         <Link href={tool.href} className={styles.cardLink}>
-          {tool.title}
-          <span className={styles.arrow} aria-hidden>&rarr;</span>
+          <span>{title}</span>
+          <span className={styles.arrow} aria-hidden="true">
+            &rarr;
+          </span>
         </Link>
-      </h2>
-      <p>{tool.description}</p>
-      {tool.subTools ? (
-        <ul className={styles.tags} aria-label={tool.title}>
-          {tool.subTools.map((sub) => (
-            <li key={sub.id}>
-              <Link
-                href={sub.href}
-                className={[styles.tag, styles.subLink].join(' ')}
-                style={{ '--sub-accent': sub.color } as React.CSSProperties}
-              >
-                <PdfToolIcon name={sub.icon} color={sub.color} size={16} />
-                {sub.title}
-              </Link>
-            </li>
-          ))}
-        </ul>
+      </h3>
+
+      <p className={styles.cardDesc}>{description}</p>
+
+      {orderedSubTools ? (
+        <div className={styles.subToolsWrap}>
+          <div className={styles.subToolsHeader}>
+            <span>{t('home.pdfSubToolsCount', { count: orderedSubTools.length })}</span>
+          </div>
+          <ul className={styles.subTools} aria-label={title}>
+            {orderedSubTools.map((sub) => {
+              const isMatch = query.length > 0 && matchesSubTool(sub, query);
+              return (
+                <li key={sub.id}>
+                  <Link
+                    href={sub.href}
+                    className={[styles.tag, styles.subLink, isMatch ? styles.subLinkMatch : ''].filter(Boolean).join(' ')}
+                    style={{ '--sub-accent': sub.color } as React.CSSProperties}
+                  >
+                    <PdfToolIcon name={sub.icon} color={sub.color} size={14} />
+                    <span>{sub.title}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       ) : (
-        <ul className={styles.tags}>
-          {tool.tags.map((tag) => <li key={tag} className={styles.tag}>{tag}</li>)}
-        </ul>
+        tool.tags && (
+          <ul className={styles.tags}>
+            {tool.tags.map((tag) => (
+              <li key={tag} className={styles.tag}>
+                {tag}
+              </li>
+            ))}
+          </ul>
+        )
       )}
     </li>
   );
 }
 
 export default function Home() {
+  useDesignSystemPage('#2563eb', '#60a5fa');
+  const { t } = useI18n();
+
+  const [activeCategory, setActiveCategory] = useState<CategoryFilterId>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      searchInputRef.current?.focus();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+
+  const categoryCounts = useMemo(() => {
+    const counts: Record<CategoryFilterId, number> = {
+      all: TOOLS.length,
+      electronics: 0,
+      documents: 0,
+      utilities: 0,
+    };
+    for (const tool of TOOLS) {
+      counts[tool.group] += 1;
+    }
+    return counts;
+  }, []);
+
+  const categoryTabs = useMemo<readonly PillTabItem<CategoryFilterId>[]>(
+    () => [
+      { id: 'all', label: t('home.cat.all'), badge: categoryCounts.all },
+      { id: 'electronics', label: t('home.cat.electronics'), badge: categoryCounts.electronics },
+      { id: 'documents', label: t('home.cat.documents'), badge: categoryCounts.documents },
+      { id: 'utilities', label: t('home.cat.utilities'), badge: categoryCounts.utilities },
+    ],
+    [t, categoryCounts],
+  );
+
+  const filteredTools = useMemo(() => {
+    return TOOLS.filter((tool) => {
+      if (activeCategory !== 'all' && tool.group !== activeCategory) return false;
+      if (!normalizedQuery) return true;
+
+      const haystack = [
+        t(tool.titleKey),
+        t(tool.categoryKey),
+        t(tool.descKey),
+        ...(tool.tags ?? []),
+        ...(tool.searchKeywords ?? []),
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      if (haystack.includes(normalizedQuery)) return true;
+      if (tool.subTools?.some((sub) => matchesSubTool(sub, normalizedQuery))) return true;
+      return false;
+    });
+  }, [activeCategory, normalizedQuery, t]);
+
+  const showGroupedSections = activeCategory === 'all' && normalizedQuery === '';
+
+  const resetFilters = () => {
+    setActiveCategory('all');
+    setSearchQuery('');
+    searchInputRef.current?.focus();
+  };
+
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-ds="v2">
       <Head>
-        <title>Tools · yotasage</title>
-        <meta name="description" content="Small tools that run entirely in your browser: no ads, no uploads, no sign-up." />
-        <meta name="theme-color" content="#2b2b2b" />
+        <title>{t('home.pageTitle')}</title>
+        <meta name="description" content={t('home.metaDescription')} />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <style jsx global>{`
-        html,
-        body {
-          margin: 0;
-          padding: 0;
-          background: #2b2b2b;
-        }
-        * {
-          box-sizing: border-box;
-        }
-      `}</style>
 
-      <header className={styles.intro}>
-        <p className={styles.eyebrow}>yotasage.github.io</p>
-        <h1 className={styles.title}>Tools that run in your browser</h1>
-        <p className={styles.lead}>
-          My own collection of tools, so I don't have to search other people's websites for one that is good enough,
-          without ads and bad design. There is no server: everything runs on your device, and the files you give a tool
-          never leave it.
-        </p>
-        <ul className={styles.promises}>
-          {PROMISES.map((promise) => <li key={promise}><Check />{promise}</li>)}
-        </ul>
-      </header>
+      <ToolHeader
+        isHome
+        title="yotasage"
+        brandIcon={<BrandEmblem />}
+        showExperienceMode={false}
+      />
 
-      <nav aria-label="Tools">
-        <ul className={styles.grid}>
-          {TOOLS.map((tool) => <ToolCard key={tool.href} tool={tool} />)}
-        </ul>
-      </nav>
+      <main className={styles.main}>
+        <section className={styles.hero} aria-labelledby="home-hero-title">
+          <div className={styles.eyebrow}>
+            <span className={styles.eyebrowDot} aria-hidden="true" />
+            <span>{t('home.eyebrow')}</span>
+          </div>
+
+          <h2 id="home-hero-title" className={styles.heroTitle}>
+            {t('home.title')}
+          </h2>
+
+          <p className={styles.lead}>{t('home.heroLead')}</p>
+
+          <ul className={styles.promises}>
+            {PROMISE_KEYS.map((key) => (
+              <li key={key} className={styles.promiseChip}>
+                <span className={styles.promiseIcon}>
+                  <CheckIcon />
+                </span>
+                <span>{t(key)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className={styles.catalog} aria-label={t('home.toolsNavAria')}>
+          <div className={styles.discovery}>
+            <div className={styles.filterWrap}>
+              <PillTabs<CategoryFilterId>
+                items={categoryTabs}
+                value={activeCategory}
+                onChange={(id) => setActiveCategory(id)}
+                ariaLabel={t('home.filterAria')}
+              />
+            </div>
+
+            <div className={styles.searchWrap}>
+              <span className={styles.searchIcon}>
+                <SearchIcon />
+              </span>
+              <input
+                ref={searchInputRef}
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    if (searchQuery) {
+                      setSearchQuery('');
+                    } else {
+                      searchInputRef.current?.blur();
+                    }
+                  }
+                }}
+                placeholder={t('home.searchPlaceholder')}
+                aria-label={t('home.searchAria')}
+                className={styles.searchInput}
+                autoComplete="off"
+                spellCheck={false}
+              />
+              {searchQuery ? (
+                <button
+                  type="button"
+                  className={styles.clearBtn}
+                  onClick={() => {
+                    setSearchQuery('');
+                    searchInputRef.current?.focus();
+                  }}
+                  aria-label={t('home.searchClear')}
+                  title={t('home.searchClear')}
+                >
+                  <ClearIcon />
+                </button>
+              ) : (
+                !searchFocused && (
+                  <kbd className={styles.kbdHint} aria-hidden="true">
+                    /
+                  </kbd>
+                )
+              )}
+            </div>
+          </div>
+
+          {normalizedQuery && filteredTools.length > 0 && (
+            <p className={styles.resultsStatus} role="status" aria-live="polite">
+              {t('home.resultsCount', { count: filteredTools.length, total: TOOLS.length })}
+            </p>
+          )}
+
+          {showGroupedSections ? (
+            <div className={styles.sections}>
+              {CATEGORY_GROUPS.map((group) => {
+                const groupTools = TOOLS.filter((tool) => tool.group === group.id);
+                return (
+                  <section
+                    key={group.id}
+                    className={styles.groupSection}
+                    aria-labelledby={`group-${group.id}`}
+                  >
+                    <div className={styles.groupHeader}>
+                      <h2 id={`group-${group.id}`} className={styles.groupTitle}>
+                        {t(group.labelKey)}
+                      </h2>
+                      <span className={styles.groupCount}>{groupTools.length}</span>
+                      <span className={styles.groupRule} aria-hidden="true" />
+                    </div>
+                    <ul className={styles.grid}>
+                      {groupTools.map((tool) => (
+                        <ToolCard key={tool.id} tool={tool} query="" />
+                      ))}
+                    </ul>
+                  </section>
+                );
+              })}
+            </div>
+          ) : filteredTools.length > 0 ? (
+            <ul className={styles.grid}>
+              {filteredTools.map((tool) => (
+                <ToolCard key={tool.id} tool={tool} query={normalizedQuery} />
+              ))}
+            </ul>
+          ) : (
+            <div className={styles.emptyState} role="status" aria-live="polite">
+              <p className={styles.emptyTitle}>
+                {t('home.noResults', { query: searchQuery.trim() })}
+              </p>
+              <p className={styles.emptyHint}>{t('home.noResultsHint')}</p>
+              <button type="button" className={styles.resetBtn} onClick={resetFilters}>
+                {t('home.resetFilters')}
+              </button>
+            </div>
+          )}
+        </section>
+      </main>
     </div>
   );
 }
