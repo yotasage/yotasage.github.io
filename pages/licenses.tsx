@@ -1,10 +1,11 @@
 import Head from 'next/head';
-import Link from 'next/link';
 import React from 'react';
 
-import HomeIcon from '../components/icons/home';
+import ToolHeader from '../components/UI/ToolHeader';
 // Generated on `npm install` by scripts/collect-licenses.mjs.
 import data from '../lib/generated/third-party-licenses.json';
+import { useI18n } from '../lib/ui/i18n';
+import { useDesignSystemPage } from '../lib/ui/theme';
 import styles from '../styles/Licenses.module.css';
 
 interface Entry {
@@ -17,7 +18,7 @@ interface Entry {
 
 const anchor = (e: Entry) => `${e.name}${e.version ? `-${e.version}` : ''}`.replace(/[^\w.-]+/g, '-');
 
-function Entries({ entries }: { entries: Entry[] }) {
+function Entries({ entries, noText }: { entries: Entry[]; noText: string }) {
   return (
     <>
       {entries.map((e) => (
@@ -25,7 +26,7 @@ function Entries({ entries }: { entries: Entry[] }) {
           <summary>{e.name}<span>{e.version && `${e.version} · `}{e.license}</span></summary>
           <div className={styles.entryBody}>
             <p><a href={e.url} target="_blank" rel="noopener noreferrer">{e.url}</a></p>
-            <pre className={styles.text}>{e.text || 'No licence text was found for this package.'}</pre>
+            <pre className={styles.text}>{e.text || noText}</pre>
           </div>
         </details>
       ))}
@@ -34,6 +35,9 @@ function Entries({ entries }: { entries: Entry[] }) {
 }
 
 export default function Licenses() {
+  useDesignSystemPage('#2563eb', '#60a5fa');
+  const { t } = useI18n();
+
   const packages = data.packages as Entry[];
   const assets = data.assets as Entry[];
   const pdfWasm = (data as { pdfWasm?: Entry[] }).pdfWasm ?? [];
@@ -53,110 +57,104 @@ export default function Licenses() {
     return () => window.removeEventListener('hashchange', open);
   }, []);
 
+  const noText = t('licenses.noText');
+
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-ds="v2">
       <Head>
-        <title>Licenses</title>
+        <title>{t('licenses.pageTitle')}</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <style jsx global>{`
-        html,
-        body {
-          margin: 0;
-          padding: 0;
-          background: #2b2b2b;
-        }
-        * {
-          box-sizing: border-box;
-        }
-      `}</style>
 
-      <header className={styles.header}>
-        <Link href="/" className={styles.homeLink} aria-label="Home"><HomeIcon /></Link>
-        <h1 className={styles.title}>Licenses</h1>
-      </header>
+      <ToolHeader title={t('licenses.title')} showExperienceMode={false} />
 
-      <div className={styles.content}>
-        <p className={styles.lead}>
-          This site is built with and includes open-source software. The copyright notices and licence texts of
-          those projects are listed below, as their licences require. The list is generated from the installed
-          packages each time the site is built.
-        </p>
-        <p className={styles.lead}>
-          The site itself is licensed under the GNU Affero General Public License v3.0 (
-          <a href="https://github.com/yotasage/yotasage.github.io/blob/main/LICENSE.md" target="_blank" rel="noopener noreferrer">LICENSE.md</a>
-          ), and its complete source code is on{' '}
-          <a href="https://github.com/yotasage/yotasage.github.io" target="_blank" rel="noopener noreferrer">GitHub</a>.
-        </p>
-
-        <h2>Software packages</h2>
-        <table className={styles.table}>
-          <thead>
-            <tr><th>Package</th><th>Version</th><th>License</th></tr>
-          </thead>
-          <tbody>
-            {packages.map((p) => (
-              <tr key={anchor(p)}>
-                <td><a href={`#${anchor(p)}`}>{p.name}</a></td>
-                <td>{p.version}</td>
-                <td>{p.license}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <Entries entries={packages} />
-
-        <h2>Fonts and decoders used by the PDF tools</h2>
-        <p className={styles.lead}>Data files from pdf.js that the PDF tools load to display and convert PDFs.</p>
-        <Entries entries={assets} />
-
-        {pdfWasm.length > 0 && (
-          <>
-            <h2>PDF processing and OCR WebAssembly modules</h2>
+      <main className={styles.main}>
+        <div className={styles.content}>
+          <section className={styles.introCard}>
+            <p className={styles.lead}>{t('licenses.lead1')}</p>
             <p className={styles.lead}>
-              QPDF (for PDF repair, encryption, linearization and inspection), Ghostscript (AGPL-3.0, for
-              vector-preserving maximum compression and PDF/A conversion, served unmodified from{' '}
-              <code>/pdf-wasm/gs/</code> and loaded lazily on demand), and Tesseract OCR with bundled tessdata_fast
-              language models, all served directly from this site and run locally in the browser.
+              {t('licenses.lead2Prefix')}
+              <a href="https://github.com/yotasage/yotasage.github.io/blob/main/LICENSE.md" target="_blank" rel="noopener noreferrer">LICENSE.md</a>
+              {t('licenses.lead2Mid')}
+              <a href="https://github.com/yotasage/yotasage.github.io" target="_blank" rel="noopener noreferrer">GitHub</a>
+              {t('licenses.lead2Suffix')}
             </p>
-            <Entries entries={pdfWasm} />
-          </>
-        )}
+          </section>
 
-        <h2>Readers and decoders used by the 3D viewer</h2>
-        <p className={styles.lead}>
-          Files the 3D viewer loads to read CAD and compressed glTF files, and libraries that three.js includes in its
-          file loaders. occt-import-js and Open CASCADE are covered by the GNU Lesser General Public License 2.1: they
-          are served unmodified as separate files, and their source code is linked below.
-        </p>
-        <Entries entries={viewer} />
+          <section className={styles.sectionCard}>
+            <h2>{t('licenses.section.packages')}</h2>
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>{t('licenses.table.package')}</th>
+                    <th>{t('licenses.table.version')}</th>
+                    <th>{t('licenses.table.license')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {packages.map((p) => (
+                    <tr key={anchor(p)}>
+                      <td><a href={`#${anchor(p)}`}>{p.name}</a></td>
+                      <td>{p.version}</td>
+                      <td>{p.license}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <Entries entries={packages} noText={noText} />
+          </section>
 
-        <h2>Font and code used by the PCB viewer</h2>
-        <p className={styles.lead}>
-          The PCB viewer draws the text of design files with Newstroke, KiCad&apos;s stroke font, using code adapted from
-          KiCanvas. The glyphs are generated from the font author&apos;s own release, which he put under CC0. Both are
-          part of the site&apos;s source.
-        </p>
-        <Entries entries={pcb} />
+          <section className={styles.sectionCard}>
+            <h2>{t('licenses.section.pdfAssets')}</h2>
+            <p className={styles.lead}>{t('licenses.section.pdfAssetsLead')}</p>
+            <Entries entries={assets} noText={noText} />
+          </section>
 
-        <h2>Reader used by the QR code reader</h2>
-        <p className={styles.lead}>
-          The QR code reader finds and decodes codes with ZXing-C++, compiled to WebAssembly by zxing-wasm (listed above)
-          and served from this site.
-        </p>
-        <Entries entries={qr} />
+          {pdfWasm.length > 0 && (
+            <section className={styles.sectionCard}>
+              <h2>{t('licenses.section.pdfWasm')}</h2>
+              <p className={styles.lead}>
+                {t('licenses.section.pdfWasmLeadPre')}
+                <code>/pdf-wasm/gs/</code>
+                {t('licenses.section.pdfWasmLeadPost')}
+              </p>
+              <Entries entries={pdfWasm} noText={noText} />
+            </section>
+          )}
 
-        {fonts.length > 0 && (
-          <>
-            <h2>Site fonts</h2>
-            <p className={styles.lead}>
-              Self-hosted variable fonts served directly from <code>/fonts/</code> under the SIL Open Font License 1.1,
-              with zero external font CDN requests.
-            </p>
-            <Entries entries={fonts} />
-          </>
-        )}
-      </div>
+          <section className={styles.sectionCard}>
+            <h2>{t('licenses.section.viewer')}</h2>
+            <p className={styles.lead}>{t('licenses.section.viewerLead')}</p>
+            <Entries entries={viewer} noText={noText} />
+          </section>
+
+          <section className={styles.sectionCard}>
+            <h2>{t('licenses.section.pcb')}</h2>
+            <p className={styles.lead}>{t('licenses.section.pcbLead')}</p>
+            <Entries entries={pcb} noText={noText} />
+          </section>
+
+          <section className={styles.sectionCard}>
+            <h2>{t('licenses.section.qr')}</h2>
+            <p className={styles.lead}>{t('licenses.section.qrLead')}</p>
+            <Entries entries={qr} noText={noText} />
+          </section>
+
+          {fonts.length > 0 && (
+            <section className={styles.sectionCard}>
+              <h2>{t('licenses.section.fonts')}</h2>
+              <p className={styles.lead}>
+                {t('licenses.section.fontsLeadPre')}
+                <code>/fonts/</code>
+                {t('licenses.section.fontsLeadPost')}
+              </p>
+              <Entries entries={fonts} noText={noText} />
+            </section>
+          )}
+        </div>
+      </main>
     </div>
   );
 }

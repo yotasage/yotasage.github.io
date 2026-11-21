@@ -1,13 +1,104 @@
-/* The page frame, cards, fields and buttons come from QrGen.module.css; this file has what is special to this tool. */
+/* ==========================================================================
+   Text Case Converter (/text-case/main) — Design System v2
+   Uses --ds-* tokens exclusively for Light, Dark, and High Contrast AAA.
+   ========================================================================== */
 
-/* The case buttons span the page above the two text boxes. On a phone they go between them, in the order of use. */
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.page a {
+  color: var(--ds-accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.page a:hover,
+.page a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.main {
+  width: 100%;
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 20px 20px 64px;
+  flex: 1;
+}
+
+.workspacePanel[hidden] {
+  display: none;
+}
+
+.lead {
+  margin: 0 0 18px;
+  max-width: 78ch;
+  color: var(--ds-ink-2);
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+/* --------------------------------------------------------------------------
+   Quick Mode Banner
+   -------------------------------------------------------------------------- */
+
+.quickBanner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-radius: var(--ds-radius-ctrl);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  background: var(--ds-accent-soft);
+  color: var(--ds-ink);
+  font-size: 0.875rem;
+}
+
+.quickBannerText {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.45;
+  color: var(--ds-ink-2);
+}
+
+.quickBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.quickActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* --------------------------------------------------------------------------
+   Workspace Grid (Case selector spans top on desktop; between boxes on phone)
+   -------------------------------------------------------------------------- */
+
 .workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   grid-template-areas:
     'case case'
     'input result';
-  gap: 1.25rem;
+  gap: 18px;
   align-items: start;
 }
 
@@ -23,6 +114,13 @@
   grid-area: result;
 }
 
+.teachingGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
 @media (max-width: 900px) {
   .workspace {
     grid-template-columns: minmax(0, 1fr);
@@ -31,109 +129,374 @@
       'case'
       'result';
   }
+
+  .teachingGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .main {
+    padding: 14px 12px 48px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Cards & Dropzone State
+   -------------------------------------------------------------------------- */
+
+.card {
+  padding: 20px 22px;
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  min-width: 0;
+}
+
+@media (max-width: 520px) {
+  .card {
+    padding: 16px 14px;
+  }
+}
+
+.card h2 {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+  font-weight: 650;
+  letter-spacing: -0.016em;
+  color: var(--ds-ink);
+}
+
+.card h3 {
+  margin: 18px 0 10px;
+  font-size: 0.94rem;
+  font-weight: 600;
+  color: var(--ds-ink);
 }
 
 .panel {
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-/* Two classes, so it wins over the border of the card. */
 .panel.dropOver {
-  border-color: #0070f3;
-  background-color: rgba(0, 112, 243, 0.08);
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  box-shadow: var(--ds-focus-ring);
 }
+
+/* --------------------------------------------------------------------------
+   Case Selector Pills
+   -------------------------------------------------------------------------- */
 
 .groups {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem 2.5rem;
+  gap: 14px 28px;
 }
 
 .group {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 8px;
   min-width: 0;
 }
 
 .groupLabel {
-  font-size: 0.85rem;
-  color: #c8c8c8;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ds-ink-3);
 }
 
 .buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 7px;
 }
 
-/* Inside .buttons, so these win over .button in QrGen.module.css, also on hover. */
-.buttons .caseButton {
-  font-weight: normal;
+.caseButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0.35rem 0.85rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
 
-.buttons .caseButton.selected,
-.buttons .caseButton.selected:hover {
-  border-color: #0070f3;
-  background: #0070f3;
-  color: white;
+.caseButton:hover {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
 }
 
-.buttons .caseButton:focus-visible {
-  outline: 2px solid #4da3ff;
-  outline-offset: 2px;
+.caseButton:active {
+  transform: translateY(1px);
 }
 
-.buttons .code {
-  font-family: Menlo, Monaco, Lucida Console, Liberation Mono, DejaVu Sans Mono, Courier New, monospace;
-  font-size: 0.9rem;
+.caseButton.selected,
+.caseButton.selected:hover {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  font-weight: 600;
 }
 
-/* Room for two lines, so the text boxes below do not move when another case is chosen. Inside .panel, so it wins over
-   .card p in QrGen.module.css. */
-.panel .description {
-  min-height: 3em;
-  margin: 0.75rem 0 0;
-  color: #c8c8c8;
+.code {
+  font-family: var(--ds-font-mono);
+  font-size: 0.82rem;
+}
+
+.description {
+  min-height: 2.8em;
+  margin: 12px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--ds-border);
+  color: var(--ds-ink-2);
+  font-size: 0.88rem;
   line-height: 1.5;
 }
 
-/* Inside .panel, so these win over .textarea in QrGen.module.css. */
-.panel .text {
-  min-height: 18rem;
-  font-family: inherit;
-  font-size: 1rem;
-  line-height: 1.5;
+/* --------------------------------------------------------------------------
+   Textareas, Stats, Buttons & Options
+   -------------------------------------------------------------------------- */
+
+.textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 17rem;
+  padding: 0.65rem 0.8rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-ctrl);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-ui);
+  font-size: 0.96rem;
+  line-height: 1.55;
+  resize: vertical;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.panel .codeText {
-  font-family: Menlo, Monaco, Lucida Console, Liberation Mono, DejaVu Sans Mono, Courier New, monospace;
-  font-size: 0.9rem;
+.textarea:hover:not(:disabled) {
+  border-color: var(--ds-accent);
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.codeText {
+  font-family: var(--ds-font-mono);
+  font-size: 0.86rem;
 }
 
 @media (max-width: 900px) {
-  .panel .text {
-    min-height: 12rem;
+  .textarea {
+    min-height: 11.5rem;
   }
 }
 
-.panel .terms {
-  min-height: 6rem;
+.terms {
+  min-height: 5.5rem;
+  font-family: var(--ds-font-mono);
+  font-size: 0.84rem;
+}
+
+.stats {
+  margin: 8px 0 0;
+  font-size: 0.8rem;
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ds-ink-3);
+}
+
+.help {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: var(--ds-ink-3);
+  line-height: 1.45;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0.45rem 0.95rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.button:hover:not(:disabled),
+.button:focus-visible {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  color: var(--ds-ink);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.primaryButton {
+  composes: button;
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+}
+
+.primaryButton:hover:not(:disabled),
+.primaryButton:focus-visible {
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  filter: brightness(1.06);
+}
+
+.buttonSmall {
+  composes: button;
+  min-height: 30px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.8rem;
+}
+
+.buttonRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.warning {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--ds-warn);
+  border-radius: 0 var(--ds-radius-sm) var(--ds-radius-sm) 0;
+  background: var(--ds-warn-soft);
+  color: var(--ds-ink);
+  font-size: 0.84rem;
+  line-height: 1.45;
 }
 
 .options {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 12px;
 }
 
 .option {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 2px;
 }
 
-/* Lined up with the label, after the checkbox. */
 .option > small {
   padding-left: 1.6rem;
+  font-size: 0.78rem;
+  color: var(--ds-ink-3);
+  line-height: 1.45;
+}
+
+/* --------------------------------------------------------------------------
+   Guide & Naming Conventions
+   -------------------------------------------------------------------------- */
+
+.guideLayout {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.guideHeader h2 {
+  margin: 0 0 6px;
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--ds-ink);
+}
+
+.guideHeader p {
+  margin: 0;
+  color: var(--ds-ink-2);
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+.guideGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 720px) {
+  .guideGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.guideCard p {
+  margin: 0.45rem 0;
+  color: var(--ds-ink-2);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.guideTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+  margin-top: 10px;
+}
+
+.guideTable th,
+.guideTable td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--ds-border);
+  text-align: left;
+  color: var(--ds-ink);
+  vertical-align: top;
+}
+
+.guideTable th {
+  color: var(--ds-ink-2);
+  font-weight: 600;
+  background: var(--ds-well);
+}
+
+.guideTable tr:last-child td {
+  border-bottom: none;
+}
+
+/* --------------------------------------------------------------------------
+   High Contrast AAA Overrides
+   -------------------------------------------------------------------------- */
+
+:global(html[data-ds-theme="hc"]) .warning {
+  border-left-width: 4px;
+  border-color: #fde047;
 }

@@ -1,80 +1,563 @@
-/* The page frame, cards, fields and buttons come from QrGen.module.css; this file has what is special to this tool. */
+/* ==========================================================================
+   Base64 Image Converter (/base64-image/main) — Design System v2
+   Uses --ds-* tokens exclusively for Light, Dark, and High Contrast AAA.
+   ========================================================================== */
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.page a {
+  color: var(--ds-accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.page a:hover,
+.page a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.main {
+  width: 100%;
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 20px 20px 64px;
+  flex: 1;
+}
+
+.workspacePanel[hidden],
+.tabPanel[hidden] {
+  display: none;
+}
+
+.lead {
+  margin: 0 0 18px;
+  max-width: 78ch;
+  color: var(--ds-ink-2);
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+/* --------------------------------------------------------------------------
+   Hybrid Split, Quick Tabs & Guide Layouts
+   -------------------------------------------------------------------------- */
+
+.layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.quickContainer {
+  max-width: 820px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.quickTabBar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  max-width: 820px;
+  margin: 0 auto 14px;
+}
+
+.teachingGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.guideLayout {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.guideHeader h2 {
+  margin: 0 0 6px;
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--ds-ink);
+}
+
+.guideHeader p {
+  margin: 0;
+  color: var(--ds-ink-2);
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+.guideGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 960px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .teachingGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .guideGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .main {
+    padding: 14px 12px 48px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Quick Mode Banner
+   -------------------------------------------------------------------------- */
+
+.quickBanner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-radius: var(--ds-radius-ctrl);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  background: var(--ds-accent-soft);
+  color: var(--ds-ink);
+  font-size: 0.875rem;
+}
+
+.quickBannerText {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.45;
+  color: var(--ds-ink-2);
+}
+
+.quickBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.quickActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* --------------------------------------------------------------------------
+   Cards & Panels
+   -------------------------------------------------------------------------- */
+
+.card {
+  padding: 20px 22px;
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  min-width: 0;
+}
+
+@media (max-width: 520px) {
+  .card {
+    padding: 16px 14px;
+  }
+}
+
+.card h2 {
+  margin: 0 0 14px;
+  font-size: 1.12rem;
+  font-weight: 650;
+  letter-spacing: -0.016em;
+  color: var(--ds-ink);
+}
+
+.card h3 {
+  margin: 18px 0 10px;
+  font-size: 0.94rem;
+  font-weight: 600;
+  color: var(--ds-ink);
+}
+
+.card p {
+  margin: 0.45rem 0;
+  line-height: 1.55;
+  color: var(--ds-ink-2);
+  font-size: 0.9rem;
+}
 
 .panel {
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-/* Two classes, so it wins over the border of the card. */
 .panel.dropOver {
-  border-color: #0070f3;
-  background-color: rgba(0, 112, 243, 0.08);
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  box-shadow: var(--ds-focus-ring);
 }
+
+/* --------------------------------------------------------------------------
+   Dropzone & Checkerboard Preview
+   -------------------------------------------------------------------------- */
 
 .empty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
-  padding: 3rem 1rem;
-  border: 2px dashed #6a6a6a;
-  border-radius: 10px;
+  justify-content: center;
+  gap: 10px;
+  padding: 44px 16px;
+  border: 2px dashed var(--ds-border-strong);
+  border-radius: var(--ds-radius-ctrl);
+  background: var(--ds-well);
   text-align: center;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.empty:hover {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+}
+
+.preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  border-radius: var(--ds-radius-ctrl);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background-color: var(--ds-well);
+  background-image:
+    linear-gradient(45deg, var(--ds-well-hover) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--ds-well-hover) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--ds-well-hover) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--ds-well-hover) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
 }
 
 .image {
   display: block;
   max-width: 100%;
-  min-height: 64px;
+  min-height: 48px;
   max-height: 360px;
   object-fit: contain;
+  border-radius: 4px;
 }
 
 .noPreview {
-  color: #c8c8c8;
-  font-size: 0.9rem;
+  color: var(--ds-ink-2);
+  font-size: 0.88rem;
   text-align: center;
 }
 
-.info {
-  margin-top: 0.75rem;
+/* --------------------------------------------------------------------------
+   Form Controls, Textareas & Buttons
+   -------------------------------------------------------------------------- */
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px 14px;
 }
 
-/* Inside .panel, so these win over the same rules in QrGen.module.css. */
-.panel .info th {
-  width: 30%;
+.help {
+  font-size: 0.8rem;
+  color: var(--ds-ink-3);
+  line-height: 1.45;
 }
 
-.breakAll {
-  word-break: break-all;
+.input,
+.textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 0.5rem 0.65rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
+  font-size: 0.9rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.panel .text {
+.textarea {
   min-height: 10rem;
+  resize: vertical;
+  font-family: var(--ds-font-mono);
+  font-size: 0.82rem;
+  line-height: 1.45;
   word-break: break-all;
 }
 
-.spaced {
-  margin-top: 0.75rem;
+.input:hover:not(:disabled),
+.textarea:hover:not(:disabled) {
+  border-color: var(--ds-accent);
 }
 
-.saveRow {
+.input:focus,
+.textarea:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.color {
+  width: 100%;
+  height: 2.35rem;
+  padding: 3px;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  cursor: pointer;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0.45rem 0.95rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.button:hover:not(:disabled),
+.button:focus-visible {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  color: var(--ds-ink);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.primaryButton {
+  composes: button;
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+}
+
+.primaryButton:hover:not(:disabled),
+.primaryButton:focus-visible {
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  filter: brightness(1.06);
+}
+
+.buttonSmall {
+  composes: button;
+  min-height: 30px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.8rem;
+}
+
+.buttonRow {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 0.5rem 0.75rem;
-  margin-top: 0.75rem;
-}
-
-.saveRow > label {
-  flex: 1 1 12rem;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .linkButton {
   padding: 0;
   border: none;
   background: none;
-  color: #4da3ff;
+  color: var(--ds-accent);
   font: inherit;
+  font-weight: 600;
   text-decoration: underline;
+  text-underline-offset: 2px;
   cursor: pointer;
+}
+
+.linkButton:hover,
+.linkButton:focus-visible {
+  opacity: 0.85;
+}
+
+/* --------------------------------------------------------------------------
+   Info Table, Alerts & Save Row
+   -------------------------------------------------------------------------- */
+
+.info {
+  width: 100%;
+  margin-top: 12px;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.info th,
+.info td {
+  padding: 6px 8px 6px 0;
+  border-bottom: 1px solid var(--ds-border);
+  text-align: left;
+  vertical-align: top;
+  color: var(--ds-ink);
+}
+
+.info tr:last-child th,
+.info tr:last-child td {
+  border-bottom: none;
+}
+
+.info th {
+  width: 30%;
+  color: var(--ds-ink-2);
+  font-weight: 550;
+}
+
+.breakAll {
+  word-break: break-all;
+}
+
+.spaced {
+  margin-top: 12px;
+}
+
+.saveRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 10px;
+  margin-top: 14px;
+}
+
+.saveRow > label {
+  flex: 1 1 12rem;
+}
+
+.error {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border: var(--ds-border-w) solid var(--ds-bad);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-bad-soft);
+  color: var(--ds-bad);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.warning {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--ds-warn);
+  border-radius: 0 var(--ds-radius-sm) var(--ds-radius-sm) 0;
+  background: var(--ds-warn-soft);
+  color: var(--ds-ink);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+/* --------------------------------------------------------------------------
+   Guide Tables & Code Blocks
+   -------------------------------------------------------------------------- */
+
+.codeBlock {
+  margin: 10px 0 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.guideTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin-top: 10px;
+}
+
+.guideTable th,
+.guideTable td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--ds-border);
+  text-align: left;
+  color: var(--ds-ink);
+}
+
+.guideTable th {
+  color: var(--ds-ink-2);
+  font-weight: 600;
+  background: var(--ds-well);
+}
+
+.guideTable tr:last-child td {
+  border-bottom: none;
+}
+
+.formulaPill {
+  display: inline-block;
+  font-family: var(--ds-font-mono);
+  font-size: 0.84rem;
+}
+
+/* --------------------------------------------------------------------------
+   High Contrast AAA Overrides
+   -------------------------------------------------------------------------- */
+
+:global(html[data-ds-theme="hc"]) .preview {
+  background-image: none;
+  background-color: #121212;
+  border: 2px solid #ffffff;
+}
+
+:global(html[data-ds-theme="hc"]) .empty {
+  border: 2px dashed #ffffff;
+}
+
+:global(html[data-ds-theme="hc"]) .warning {
+  border-left-width: 4px;
+  border-color: #fde047;
 }

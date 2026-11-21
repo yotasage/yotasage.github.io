@@ -6,8 +6,8 @@ import { detectFormat, formatForMime, normalizeMime } from '../../lib/base64imag
 import { toPngBlob } from '../../lib/base64image/image';
 import { download, errorMessage, formatBytes, isImage, safeFileName } from '../../lib/pdf/files';
 import { groupDigits } from '../../lib/simsetup/numbers';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Base64Image.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
 import { DropTarget, FilePickerButton } from '../PdfTools/ToolPage';
 import { Field } from '../QrGen/fields';
 
@@ -18,6 +18,7 @@ const UNKNOWN = { mime: 'application/octet-stream', ext: 'bin', name: 'Unknown',
 type Preview = { url: string; width: number; height: number } | { url: string; failed: true };
 
 export default function Decoder() {
+  const { t } = useI18n();
   const [text, setText] = React.useState('');
   const [fileName, setFileName] = React.useState('image');
   const [notice, setNotice] = React.useState<string | null>(null);
@@ -104,11 +105,11 @@ export default function Decoder() {
   }
 
   return (
-    <DropTarget onFiles={openFile} className={[qrStyles.card, styles.panel].join(' ')} overClassName={styles.dropOver}>
-      <h2>Base64 to image</h2>
+    <DropTarget onFiles={openFile} className={[styles.card, styles.panel].join(' ')} overClassName={styles.dropOver}>
+      <h2>{t('base64.decoder.title')}</h2>
       <Field label="Base64 or data URL" help="Standard or URL-safe Base64, with or without padding and line breaks, or a data URL. A data URL inside HTML, CSS, Markdown or JSON is found too.">
         <textarea
-          className={[qrStyles.textarea, styles.text].join(' ')}
+          className={styles.textarea}
           value={text}
           spellCheck={false}
           autoComplete="off"
@@ -116,20 +117,24 @@ export default function Decoder() {
           onChange={(e) => setText(e.target.value)}
         />
       </Field>
-      <div className={qrStyles.buttonRow}>
-        {clipboard.read && <button type="button" className={qrStyles.buttonSmall} onClick={paste}>Paste</button>}
-        <FilePickerButton accept="text/*,.txt,.b64,.base64,.json,.html,.css,.md" multiple={false} onFiles={openFile} className={qrStyles.buttonSmall}>Open text file</FilePickerButton>
-        <button type="button" className={qrStyles.buttonSmall} disabled={!text} onClick={() => setText('')}>Clear</button>
+      <div className={styles.buttonRow}>
+        {clipboard.read && <button type="button" className={styles.buttonSmall} onClick={paste}>{t('base64.decoder.paste')}</button>}
+        <FilePickerButton accept="text/*,.txt,.b64,.base64,.json,.html,.css,.md" multiple={false} onFiles={openFile} className={styles.buttonSmall}>
+          {t('base64.decoder.openFile')}
+        </FilePickerButton>
+        <button type="button" className={styles.buttonSmall} disabled={!text} onClick={() => setText('')}>
+          {t('base64.decoder.clear')}
+        </button>
       </div>
-      {notice && <p className={qrStyles.warning}>{notice}</p>}
-      {text !== input && <p className={qrStyles.help}>Decoding…</p>}
-      {error && text === input && <div className={[qrStyles.error, styles.spaced].join(' ')}>{error}</div>}
+      {notice && <p className={styles.warning}>{notice}</p>}
+      {text !== input && <p className={styles.help}>Decoding…</p>}
+      {error && text === input && <div className={styles.error}>{error}</div>}
 
       {decoded && (
         <>
-          <h3>Image</h3>
+          <h3>{t('base64.decoder.imageSection')}</h3>
           {format.image && (
-            <div className={qrStyles.preview}>
+            <div className={styles.preview}>
               {url && (
                 <img
                   key={url}
@@ -145,8 +150,8 @@ export default function Decoder() {
               )}
             </div>
           )}
-          {warnings.map((w) => <p key={w} className={qrStyles.warning}>{w}</p>)}
-          <table className={[qrStyles.infoTable, styles.info].join(' ')}>
+          {warnings.map((w) => <p key={w} className={styles.warning}>{w}</p>)}
+          <table className={styles.info}>
             <tbody>
               <tr><th>Type</th><td>{format.name} ({format.mime})</td></tr>
               {shown && 'width' in shown && <tr><th>Size</th><td>{shown.width} × {shown.height} px</td></tr>}
@@ -154,18 +159,22 @@ export default function Decoder() {
               {decoded.declaredType && <tr><th>Data URL type</th><td>{decoded.declaredType}</td></tr>}
             </tbody>
           </table>
-          {decoded.notes.map((n) => <p key={n} className={qrStyles.help}>{n}</p>)}
+          {decoded.notes.map((n) => <p key={n} className={styles.help}>{n}</p>)}
 
           <div className={styles.saveRow}>
             <Field label="File name">
-              <input className={qrStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
+              <input className={styles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
             </Field>
-            <button type="button" className={qrStyles.button} onClick={() => download(decoded.bytes, downloadName, format.mime)}>Download {downloadName}</button>
+            <button type="button" className={styles.primaryButton} onClick={() => download(decoded.bytes, downloadName, format.mime)}>
+              Download {downloadName}
+            </button>
             {clipboard.image && format.image && shown && 'width' in shown && (
-              <button type="button" className={qrStyles.button} onClick={copy}>{copied ? 'Copied ✓' : 'Copy image'}</button>
+              <button type="button" className={styles.button} onClick={copy}>
+                {copied ? t('base64.decoder.copied') : t('base64.decoder.copyImage')}
+              </button>
             )}
           </div>
-          {actionError && <p className={qrStyles.warning}>{actionError}</p>}
+          {actionError && <p className={styles.warning}>{actionError}</p>}
         </>
       )}
     </DropTarget>

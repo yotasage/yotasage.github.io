@@ -517,6 +517,162 @@ export const en = {
   'qrread.guide.title': 'Supported Formats & Privacy',
   'qrread.guide.lead':
     'Every barcode symbology, structured content parser, and client-side privacy guarantee built into this reader.',
+
+  // Base64 image converter namespace
+  'base64.pageTitle': 'Base64 Image Converter · yotasage',
+  'base64.title': 'Base64 Image Converter',
+  'base64.workbench': 'Workbench',
+  'base64.guide': 'Guide & Theory',
+
+  'base64.tabsAria': 'Conversion direction',
+  'base64.tab.encode': 'Image → Base64',
+  'base64.tab.decode': 'Base64 → Image',
+
+  'base64.lead':
+    'Turn an image into Base64, a data URL, or a ready-made HTML, CSS, or Markdown snippet, and decode Base64 back into an image. Everything runs locally in your browser.',
+
+  'base64.quick.badge': 'Quick mode',
+  'base64.quick.bannerText':
+    'Focused single-panel view with Encode / Decode tabs. Switch to Standard for side-by-side split view, or Teaching for Base64 theory tips.',
+  'base64.quick.switchStandard': 'Switch to Standard',
+  'base64.quick.switchTeaching': 'Try Teaching mode',
+
+  'base64.encoder.title': 'Image to Base64',
+  'base64.encoder.selectImage': 'Select image',
+  'base64.encoder.dropHint': 'or drop an image here, or paste one (Ctrl+V)',
+  'base64.encoder.chooseAnother': 'Choose another image',
+  'base64.encoder.remove': 'Remove',
+  'base64.encoder.imageSection': 'Image',
+  'base64.encoder.outputSection': 'Output',
+  'base64.encoder.copy': 'Copy',
+  'base64.encoder.copied': 'Copied ✓',
+  'base64.encoder.downloadTxt': 'Download .txt',
+
+  'base64.decoder.title': 'Base64 to image',
+  'base64.decoder.paste': 'Paste',
+  'base64.decoder.openFile': 'Open text file',
+  'base64.decoder.clear': 'Clear',
+  'base64.decoder.imageSection': 'Image',
+  'base64.decoder.copyImage': 'Copy image',
+  'base64.decoder.copied': 'Copied ✓',
+
+  'base64.teaching.overheadTitle': 'Why Base64 is ~33% larger than binary',
+  'base64.teaching.overheadBody':
+    'Base64 packs every 3 bytes (24 bits) into 4 printable 6-bit ASCII characters, with up to two = padding characters at the end. Raw text output is therefore roughly 4/3 the original byte size (before HTTP gzip/Brotli).',
+  'base64.teaching.dataUrlTitle': 'Anatomy of a Data URL',
+  'base64.teaching.dataUrlBody':
+    'A data URL starts with data:<mime>;base64,<payload> (for example data:image/png;base64,iVBORw0…). For SVG, percent-encoded UTF-8 text is often shorter and easier to read than Base64.',
+  'base64.teaching.inlineTitle': 'When to inline vs serve external files',
+  'base64.teaching.inlineBody':
+    'Inline tiny icons, placeholders, or single-file HTML emails (< 4–10 KB) to save an HTTP request. Keep photos and larger assets as normal image files so browsers can cache them independently and avoid bloating HTML/CSS.',
+
+  'base64.guide.title': 'Base64 Image Guide & Theory',
+  'base64.guide.lead':
+    'How Base64 encoding works, the ~33% size overhead math, MIME types, ready-made snippets, and privacy.',
+  'base64.guide.encodingTitle': 'How Base64 encoding works',
+  'base64.guide.encodingBody':
+    'Binary files contain arbitrary byte values (0–255) that break text formats like HTML, CSS, JSON, and email. Base64 splits the bit stream into 6-bit groups (64 symbols: A–Z, a–z, 0–9, plus + / in standard Base64 or - _ in URL-safe Base64) so any image can travel safely as plain ASCII text.',
+  'base64.guide.overheadTitle': 'The ~33% size overhead',
+  'base64.guide.overheadBody':
+    'Three 8-bit bytes (24 bits) always become four 6-bit Base64 characters. If the byte length is not a multiple of 3, one or two = padding characters complete the final 4-character block. Resizing or converting to WebP/JPEG before encoding often saves far more than Base64 adds.',
+  'base64.guide.mimeTitle': 'Data URLs & MIME types',
+  'base64.guide.mimeBody':
+    'Browsers identify an inlined image by the MIME type in the data URL prefix — or by inspecting the file magic bytes when decoding raw Base64.',
+  'base64.guide.snippetsTitle': 'HTML, CSS & Markdown snippets',
+  'base64.guide.snippetsBody':
+    'Pick a snippet format in the encoder to wrap the data URL directly for web pages, stylesheets, or Markdown documents.',
+  'base64.guide.privacyTitle': '100% client-side & private',
+  'base64.guide.privacyBody':
+    'All file reading, canvas format conversion, Base64 encoding, and decoding run locally in your browser. Images and text never leave your device, and converting to PNG/JPEG/WebP strips EXIF and GPS metadata.',
+
+  // Text case converter namespace
+  'textcase.pageTitle': 'Text Case Converter · yotasage',
+  'textcase.title': 'Text Case Converter',
+  'textcase.workbench': 'Workbench',
+  'textcase.guide': 'Naming & Case Guide',
+
+  'textcase.lead':
+    'Convert text between prose styles (Sentence case, Title Case, UPPER CASE) and code identifiers (camelCase, PascalCase, snake_case, kebab-case) locally in your browser.',
+
+  'textcase.quick.badge': 'Quick mode',
+  'textcase.quick.bannerText':
+    'Streamlined Input, Case selector, and Result. Switch to Standard for Title Case style (Chicago/APA), acronym preservation, custom fixed capitals, and ASCII options.',
+  'textcase.quick.switchStandard': 'Switch to Standard',
+  'textcase.quick.switchTeaching': 'Try Teaching mode',
+
+  'textcase.input.title': 'Input',
+  'textcase.input.placeholder': 'Type or paste text here, or drop a text file.',
+  'textcase.input.paste': 'Paste',
+  'textcase.input.openFile': 'Open text file',
+  'textcase.input.clear': 'Clear',
+
+  'textcase.case.aria': 'Case',
+  'textcase.case.textGroup': 'Text',
+  'textcase.case.codeGroup': 'Names in code',
+
+  'textcase.result.title': 'Result',
+  'textcase.result.placeholder': 'The result appears here.',
+  'textcase.result.copy': 'Copy',
+  'textcase.result.copied': 'Copied ✓',
+  'textcase.result.download': 'Download',
+  'textcase.result.useAsInput': 'Use as input',
+  'textcase.result.options': 'Options',
+
+  'textcase.teaching.titleCaseTitle': 'Chicago vs APA Title Case rules',
+  'textcase.teaching.titleCaseBody':
+    'Both styles capitalize the first and last word, nouns, verbs, and adjectives. Chicago lowercases all prepositions regardless of length (between, through, with), whereas APA capitalizes prepositions and conjunctions of 4+ letters.',
+  'textcase.teaching.codeNamesTitle': 'Code identifier conventions & smart splitting',
+  'textcase.teaching.codeNamesBody':
+    'Use camelCase for JS/TS variables, PascalCase for types/components, snake_case for Python/SQL/Rust, CONSTANT_CASE for environment variables, and kebab-case for URLs and CSS classes. Smart splitting breaks acronyms like XMLHttpRequest cleanly into XML · Http · Request.',
+
+  'textcase.guide.title': 'Naming & Capitalization Guide',
+  'textcase.guide.lead':
+    'Prose capitalization standards (Sentence case, Chicago vs APA Title Case) and code identifier conventions.',
+  'textcase.guide.proseTitle': 'Prose capitalization styles',
+  'textcase.guide.proseBody':
+    'Sentence case is preferred in modern UI copy and technical documentation because lowercase word shapes are faster to scan. You can preserve proper nouns, technical acronyms (NASA, MHz, iPhone), and disable English "I" capitalization when writing Norwegian or Swedish where "i" is a preposition.',
+  'textcase.guide.titleRulesTitle': 'Chicago vs APA Title Case',
+  'textcase.guide.titleRulesBody':
+    'Both guides keep articles (a, an, the) and short coordinating conjunctions (and, but, for, or, nor) lowercase unless first or last. They differ on longer prepositions:',
+  'textcase.guide.codeTitle': 'Code naming conventions',
+  'textcase.guide.codeBody':
+    'Each line in the input becomes one identifier. Words are split on whitespace, punctuation, and case transitions (including acronym boundaries like HTMLParser → html_parser).',
+  'textcase.guide.asciiTitle': 'ASCII transliteration & saved terms',
+  'textcase.guide.asciiBody':
+    'Enable ASCII-only mode to fold diacritics and Nordic letters (é → e, æ → ae, ø → o, å → a) into portable identifiers. Custom fixed-capital terms (such as GitHub, iPhone, or NTNU) are stored locally in your browser.',
+
+  // Licenses page namespace
+  'licenses.pageTitle': 'Licenses · yotasage',
+  'licenses.title': 'Licenses',
+  'licenses.lead1':
+    'This site is built with and includes open-source software. The copyright notices and licence texts of those projects are listed below, as their licences require. The list is generated from the installed packages each time the site is built.',
+  'licenses.lead2Prefix': 'The site itself is licensed under the GNU Affero General Public License v3.0 (',
+  'licenses.lead2Mid': '), and its complete source code is on ',
+  'licenses.lead2Suffix': '.',
+  'licenses.section.packages': 'Software packages',
+  'licenses.table.package': 'Package',
+  'licenses.table.version': 'Version',
+  'licenses.table.license': 'License',
+  'licenses.section.pdfAssets': 'Fonts and decoders used by the PDF tools',
+  'licenses.section.pdfAssetsLead': 'Data files from pdf.js that the PDF tools load to display and convert PDFs.',
+  'licenses.section.pdfWasm': 'PDF processing and OCR WebAssembly modules',
+  'licenses.section.pdfWasmLeadPre':
+    'QPDF (for PDF repair, encryption, linearization and inspection), Ghostscript (AGPL-3.0, for vector-preserving maximum compression and PDF/A conversion, served unmodified from ',
+  'licenses.section.pdfWasmLeadPost':
+    ' and loaded lazily on demand), and Tesseract OCR with bundled tessdata_fast language models, all served directly from this site and run locally in the browser.',
+  'licenses.section.viewer': 'Readers and decoders used by the 3D viewer',
+  'licenses.section.viewerLead':
+    'Files the 3D viewer loads to read CAD and compressed glTF files, and libraries that three.js includes in its file loaders. occt-import-js and Open CASCADE are covered by the GNU Lesser General Public License 2.1: they are served unmodified as separate files, and their source code is linked below.',
+  'licenses.section.pcb': 'Font and code used by the PCB viewer',
+  'licenses.section.pcbLead':
+    "The PCB viewer draws the text of design files with Newstroke, KiCad's stroke font, using code adapted from KiCanvas. The glyphs are generated from the font author's own release, which he put under CC0. Both are part of the site's source.",
+  'licenses.section.qr': 'Reader used by the QR code reader',
+  'licenses.section.qrLead':
+    'The QR code reader finds and decodes codes with ZXing-C++, compiled to WebAssembly by zxing-wasm (listed above) and served from this site.',
+  'licenses.section.fonts': 'Site fonts',
+  'licenses.section.fontsLeadPre': 'Self-hosted variable fonts served directly from ',
+  'licenses.section.fontsLeadPost': ' under the SIL Open Font License 1.1, with zero external font CDN requests.',
+  'licenses.noText': 'No licence text was found for this package.',
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -1036,6 +1192,162 @@ export const nb: Record<TranslationKey, string> = {
   'qrread.guide.title': 'Støttede formater og personvern',
   'qrread.guide.lead':
     'Alle strekkodesymboler, strukturerte innholdstolkere og lokale personverngarantier i denne leseren.',
+
+  // Base64 image converter namespace
+  'base64.pageTitle': 'Base64-bildekonverterer · yotasage',
+  'base64.title': 'Base64-bildekonverterer',
+  'base64.workbench': 'Arbeidsbenk',
+  'base64.guide': 'Guide og teori',
+
+  'base64.tabsAria': 'Konverteringsretning',
+  'base64.tab.encode': 'Bilde → Base64',
+  'base64.tab.decode': 'Base64 → Bilde',
+
+  'base64.lead':
+    'Gjør et bilde om til Base64, en data-URL eller en ferdig HTML-, CSS- eller Markdown-kodebit, og dekod Base64 tilbake til et bilde. Alt kjører lokalt i nettleseren din.',
+
+  'base64.quick.badge': 'Rask modus',
+  'base64.quick.bannerText':
+    'Fokusert enkeltvisning med faner for Koding / Dekoding. Bytt til Standard for side-ved-side arbeidsbenk, eller Læring for Base64-teori.',
+  'base64.quick.switchStandard': 'Bytt til Standard',
+  'base64.quick.switchTeaching': 'Prøv Læringsmodus',
+
+  'base64.encoder.title': 'Bilde til Base64',
+  'base64.encoder.selectImage': 'Velg bilde',
+  'base64.encoder.dropHint': 'eller slipp et bilde her, eller lim inn (Ctrl+V)',
+  'base64.encoder.chooseAnother': 'Velg et annet bilde',
+  'base64.encoder.remove': 'Fjern',
+  'base64.encoder.imageSection': 'Bilde',
+  'base64.encoder.outputSection': 'Utdata',
+  'base64.encoder.copy': 'Kopier',
+  'base64.encoder.copied': 'Kopiert ✓',
+  'base64.encoder.downloadTxt': 'Last ned .txt',
+
+  'base64.decoder.title': 'Base64 til bilde',
+  'base64.decoder.paste': 'Lim inn',
+  'base64.decoder.openFile': 'Åpne tekstfil',
+  'base64.decoder.clear': 'Tøm',
+  'base64.decoder.imageSection': 'Bilde',
+  'base64.decoder.copyImage': 'Kopier bilde',
+  'base64.decoder.copied': 'Kopiert ✓',
+
+  'base64.teaching.overheadTitle': 'Hvorfor Base64 er ~33 % større enn binærdata',
+  'base64.teaching.overheadBody':
+    'Base64 pakker hver gruppe på 3 byte (24 bit) inn i 4 skrivbare 6-bit ASCII-tegn, med inntil to = som fylltegn til slutt. Råtekst blir derfor omtrent 4/3 av opprinnelig bytestørrelse (før HTTP gzip/Brotli).',
+  'base64.teaching.dataUrlTitle': 'Oppbygningen av en Data-URL',
+  'base64.teaching.dataUrlBody':
+    'En data-URL starter med data:<mime>;base64,<data> (for eksempel data:image/png;base64,iVBORw0…). For SVG er prosentkodet UTF-8-tekst ofte kortere og lettere å lese enn Base64.',
+  'base64.teaching.inlineTitle': 'Når bør du bygge inn vs bruke eksterne filer',
+  'base64.teaching.inlineBody':
+    'Bygg inn små ikoner, plassholdere eller enkeltfil-eposter (< 4–10 KB) for å spare en HTTP-forespørsel. Behold bilder og større grafikk som egne bildefiler slik at nettleseren kan mellomlagre dem uten å blåse opp HTML/CSS.',
+
+  'base64.guide.title': 'Guide og teori for Base64-bilder',
+  'base64.guide.lead':
+    'Hvordan Base64-koding fungerer, matematikken bak ~33 % størrelsesøkning, MIME-typer, kodeeksempler og personvern.',
+  'base64.guide.encodingTitle': 'Hvordan Base64-koding fungerer',
+  'base64.guide.encodingBody':
+    'Binærfiler inneholder byteverdier (0–255) som ødelegger tekstformater som HTML, CSS, JSON og e-post. Base64 deler bitstrømmen i 6-bit grupper (64 tegn: A–Z, a–z, 0–9, pluss + / i standard Base64 eller - _ i URL-sikker Base64) slik at et bilde kan sendes trygt som ren ASCII-tekst.',
+  'base64.guide.overheadTitle': 'Størrelsesøkningen på ~33 %',
+  'base64.guide.overheadBody':
+    'Tre 8-bit byte (24 bit) blir alltid fire 6-bit Base64-tegn. Hvis lengden ikke går opp i 3, fylles siste 4-tegnsblokk ut med ett eller to =-tegn. Skalering eller konvertering til WebP/JPEG før koding sparer ofte langt mer enn Base64 legger til.',
+  'base64.guide.mimeTitle': 'Data-URL-er og MIME-typer',
+  'base64.guide.mimeBody':
+    'Nettlesere identifiserer innebygde bilder fra MIME-typen i data-URL-prefikset — eller fra filens magiske byte ved dekoding av ren Base64.',
+  'base64.guide.snippetsTitle': 'HTML-, CSS- og Markdown-kodebiter',
+  'base64.guide.snippetsBody':
+    'Velg ønsket utdataformat i koderen for å pakke data-URL-en ferdig for nettsider, stilark eller Markdown-dokumenter.',
+  'base64.guide.privacyTitle': '100 % lokalt og privat',
+  'base64.guide.privacyBody':
+    'All fillesing, bildekonvertering, Base64-koding og dekoding kjører lokalt i nettleseren din. Bilder og tekst forlater aldri enheten, og konvertering til PNG/JPEG/WebP fjerner EXIF- og GPS-metadata.',
+
+  // Text case converter namespace
+  'textcase.pageTitle': 'Tekstformatkonverterer · yotasage',
+  'textcase.title': 'Tekstformatkonverterer',
+  'textcase.workbench': 'Arbeidsbenk',
+  'textcase.guide': 'Navne- og skriveregelguide',
+
+  'textcase.lead':
+    'Konverter tekst mellom prosastiler (Setningsformat, Tittelformat, STORE BOKSTAVER) og kodenavn (camelCase, PascalCase, snake_case, kebab-case) lokalt i nettleseren.',
+
+  'textcase.quick.badge': 'Rask modus',
+  'textcase.quick.bannerText':
+    'Strømlinjeformet Inndata, Formatvelger og Resultat. Bytt til Standard for tittelstil (Chicago/APA), bevaring av akronymer, faste skrivemåter og ASCII-valg.',
+  'textcase.quick.switchStandard': 'Bytt til Standard',
+  'textcase.quick.switchTeaching': 'Prøv Læringsmodus',
+
+  'textcase.input.title': 'Inndata',
+  'textcase.input.placeholder': 'Skriv eller lim inn tekst her, eller slipp en tekstfil.',
+  'textcase.input.paste': 'Lim inn',
+  'textcase.input.openFile': 'Åpne tekstfil',
+  'textcase.input.clear': 'Tøm',
+
+  'textcase.case.aria': 'Tekstformat',
+  'textcase.case.textGroup': 'Tekst',
+  'textcase.case.codeGroup': 'Navn i kode',
+
+  'textcase.result.title': 'Resultat',
+  'textcase.result.placeholder': 'Resultatet vises her.',
+  'textcase.result.copy': 'Kopier',
+  'textcase.result.copied': 'Kopiert ✓',
+  'textcase.result.download': 'Last ned',
+  'textcase.result.useAsInput': 'Bruk som inndata',
+  'textcase.result.options': 'Innstillinger',
+
+  'textcase.teaching.titleCaseTitle': 'Chicago kontra APA for tittelformat',
+  'textcase.teaching.titleCaseBody':
+    'Begge stilene bruker stor forbokstav på første og siste ord, substantiv, verb og adjektiv. Chicago bruker små bokstaver på alle preposisjoner uansett lengde (between, through, with), mens APA bruker stor forbokstav på preposisjoner og konjunksjoner med 4 eller flere bokstaver.',
+  'textcase.teaching.codeNamesTitle': 'Navnekonvensjoner i kode og smart orddeling',
+  'textcase.teaching.codeNamesBody':
+    'Bruk camelCase for JS/TS-variabler, PascalCase for typer/komponenter, snake_case for Python/SQL/Rust, CONSTANT_CASE for miljøvariabler og kebab-case for URL-er og CSS-klasser. Smart deling skiller akronymer som XMLHttpRequest rent til XML · Http · Request.',
+
+  'textcase.guide.title': 'Guide til navnekonvensjoner og bokstavstørrelse',
+  'textcase.guide.lead':
+    'Skriveregler for prosa (setningsformat, Chicago vs APA tittelformat) og navnestandarder i programmering.',
+  'textcase.guide.proseTitle': 'Prosastiler',
+  'textcase.guide.proseBody':
+    'Setningsformat foretrekkes i moderne brukergrensesnitt og norsk fagtekst fordi ordformer med små bokstaver leses raskere. Du kan bevare egennavn og forkortelser (NASA, MHz, iPhone), samt slå av engelsk stor «I» når du skriver norsk eller svensk der «i» er en preposisjon.',
+  'textcase.guide.titleRulesTitle': 'Chicago kontra APA tittelformat',
+  'textcase.guide.titleRulesBody':
+    'Begge stilmanualene holder artikler (a, an, the) og korte konjunksjoner (and, but, for, or, nor) med små bokstaver når de ikke står først eller sist. Forskjellen ligger i lengre preposisjoner:',
+  'textcase.guide.codeTitle': 'Navnekonvensjoner i kode',
+  'textcase.guide.codeBody':
+    'Hver linje i inndata blir ett navn. Ord deles ved mellomrom, tegnsetting og skifte i bokstavstørrelse (inkludert akronymgrenser som HTMLParser → html_parser).',
+  'textcase.guide.asciiTitle': 'ASCII-translitterering og lagrede ord',
+  'textcase.guide.asciiBody':
+    'Slå på kun ASCII for å gjøre om aksenter og nordiske bokstaver (é → e, æ → ae, ø → o, å → a) til portable kodenavn. Ord med fast skrivemåte (som GitHub, iPhone eller NTNU) lagres lokalt i nettleseren din.',
+
+  // Licenses page namespace
+  'licenses.pageTitle': 'Lisenser · yotasage',
+  'licenses.title': 'Lisenser',
+  'licenses.lead1':
+    'Denne nettsiden er bygget med og inkluderer åpen kildekode. Opphavsrettsmerknader og lisenstekster for disse prosjektene er oppført nedenfor slik lisensene krever. Listen genereres automatisk fra installerte pakker ved hvert bygg.',
+  'licenses.lead2Prefix': 'Selve nettsiden er lisensiert under GNU Affero General Public License v3.0 (',
+  'licenses.lead2Mid': '), og hele kildekoden ligger på ',
+  'licenses.lead2Suffix': '.',
+  'licenses.section.packages': 'Programvarepakker',
+  'licenses.table.package': 'Pakke',
+  'licenses.table.version': 'Versjon',
+  'licenses.table.license': 'Lisens',
+  'licenses.section.pdfAssets': 'Skrifttyper og dekodere brukt av PDF-verktøyene',
+  'licenses.section.pdfAssetsLead': 'Datafiler fra pdf.js som PDF-verktøyene laster for å vise og konvertere PDF-er.',
+  'licenses.section.pdfWasm': 'WebAssembly-moduler for PDF-behandling og OCR',
+  'licenses.section.pdfWasmLeadPre':
+    'QPDF (for reparasjon, kryptering, linearisering og inspeksjon), Ghostscript (AGPL-3.0, for vektorbevarende maksimal komprimering og PDF/A-konvertering, servert uendret fra ',
+  'licenses.section.pdfWasmLeadPost':
+    ' og lastet ved behov), og Tesseract OCR med medfølgende tessdata_fast-språkmodeller — alt servert direkte fra denne siden og kjørt lokalt i nettleseren.',
+  'licenses.section.viewer': 'Lesere og dekodere brukt av 3D-viseren',
+  'licenses.section.viewerLead':
+    'Filer som 3D-viseren laster for å lese CAD- og komprimerte glTF-filer, samt biblioteker som three.js inkluderer i sine fillastere. occt-import-js og Open CASCADE er dekket av GNU Lesser General Public License 2.1: de serveres uendret som egne filer med lenke til kildekoden nedenfor.',
+  'licenses.section.pcb': 'Skrifttype og kode brukt av PCB-viseren',
+  'licenses.section.pcbLead':
+    'PCB-viseren tegner tekst fra designfiler med Newstroke, KiCads strekskrift, med kode tilpasset fra KiCanvas. Glyfene er generert fra skaperens egen CC0-utgivelse. Begge deler er del av sidens kildekode.',
+  'licenses.section.qr': 'Leser brukt av QR-kodeleseren',
+  'licenses.section.qrLead':
+    'QR-kodeleseren finner og dekoder koder med ZXing-C++, kompilert til WebAssembly av zxing-wasm (oppført over) og servert fra denne siden.',
+  'licenses.section.fonts': 'Nettstedets skrifttyper',
+  'licenses.section.fontsLeadPre': 'Selvhostede variable skrifttyper servert direkte fra ',
+  'licenses.section.fontsLeadPost': ' under SIL Open Font License 1.1, uten eksterne CDN-forespørsler.',
+  'licenses.noText': 'Ingen lisenstekst ble funnet for denne pakken.',
 };
 
 export const TRANSLATIONS: Record<Locale, Record<TranslationKey, string>> = {

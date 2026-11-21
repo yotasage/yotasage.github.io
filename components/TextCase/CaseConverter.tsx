@@ -6,7 +6,7 @@ import { groupDigits } from '../../lib/simsetup/numbers';
 import { CaseId, CaseInfo, CODE_CASES, convertCase, PROSE_CASES, TEXT_CASES } from '../../lib/textcase/cases';
 import { TitleStyle } from '../../lib/textcase/prose';
 import { textStats } from '../../lib/textcase/stats';
-import qrStyles from '../../styles/QrGen.module.css';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/TextCase.module.css';
 import { DropTarget, FilePickerButton } from '../PdfTools/ToolPage';
 import { Checkbox, Field, Select } from '../QrGen/fields';
@@ -41,7 +41,7 @@ function CaseButtons({ label, cases, value, onChange, code }: {
             key={c.id}
             type="button"
             aria-pressed={c.id === value}
-            className={[qrStyles.button, styles.caseButton, code ? styles.code : '', c.id === value ? styles.selected : ''].join(' ')}
+            className={[styles.caseButton, code ? styles.code : '', c.id === value ? styles.selected : ''].filter(Boolean).join(' ')}
             onClick={() => onChange(c.id)}
           >
             {c.label}
@@ -56,12 +56,13 @@ function Option({ label, help, checked, onChange }: { label: string; help: strin
   return (
     <div className={styles.option}>
       <Checkbox label={label} checked={checked} onChange={onChange} />
-      <small className={qrStyles.help}>{help}</small>
+      <small>{help}</small>
     </div>
   );
 }
 
-export default function CaseConverter() {
+export default function CaseConverter({ hideOptions = false }: { hideOptions?: boolean }) {
+  const { t } = useI18n();
   const [text, setText] = React.useState('');
   const [file, setFile] = React.useState({ name: 'text', ext: '.txt' });
   const [caseId, setCaseId] = React.useState<CaseId>('sentence');
@@ -158,56 +159,64 @@ export default function CaseConverter() {
 
   return (
     <div className={styles.workspace}>
-      <DropTarget onFiles={openFile} className={[qrStyles.card, styles.panel, styles.inputCard].join(' ')} overClassName={styles.dropOver}>
-        <h2>Input</h2>
+      <DropTarget onFiles={openFile} className={[styles.card, styles.panel, styles.inputCard].join(' ')} overClassName={styles.dropOver}>
+        <h2>{t('textcase.input.title')}</h2>
         <textarea
-          className={[qrStyles.textarea, styles.text].join(' ')}
+          className={styles.textarea}
           value={text}
-          aria-label="Input"
-          placeholder="Type or paste text here, or drop a text file."
+          aria-label={t('textcase.input.title')}
+          placeholder={t('textcase.input.placeholder')}
           onChange={(e) => setText(e.target.value)}
         />
-        <p className={qrStyles.help}>
+        <p className={styles.stats}>
           {plural(stats.characters, 'character')} · {plural(stats.words, 'word')} · {plural(stats.lines, 'line')}
         </p>
-        <div className={qrStyles.buttonRow}>
-          {canPaste && <button type="button" className={qrStyles.buttonSmall} onClick={paste}>Paste</button>}
-          <FilePickerButton accept={TEXT_FILES} multiple={false} onFiles={openFile} className={qrStyles.buttonSmall}>Open text file</FilePickerButton>
-          <button type="button" className={qrStyles.buttonSmall} disabled={!text} onClick={clear}>Clear</button>
+        <div className={styles.buttonRow}>
+          {canPaste && <button type="button" className={styles.buttonSmall} onClick={paste}>{t('textcase.input.paste')}</button>}
+          <FilePickerButton accept={TEXT_FILES} multiple={false} onFiles={openFile} className={styles.buttonSmall}>
+            {t('textcase.input.openFile')}
+          </FilePickerButton>
+          <button type="button" className={styles.buttonSmall} disabled={!text} onClick={clear}>
+            {t('textcase.input.clear')}
+          </button>
         </div>
-        {notice && <p className={qrStyles.warning}>{notice}</p>}
+        {notice && <p className={styles.warning}>{notice}</p>}
       </DropTarget>
 
-      <section className={[qrStyles.card, styles.panel, styles.caseCard].join(' ')} aria-label="Case">
+      <section className={[styles.card, styles.panel, styles.caseCard].join(' ')} aria-label={t('textcase.case.aria')}>
         <div className={styles.groups}>
-          <CaseButtons label="Text" cases={TEXT_CASES} value={caseId} onChange={setCaseId} />
-          <CaseButtons label="Names in code" cases={CODE_CASES} value={caseId} onChange={setCaseId} code />
+          <CaseButtons label={t('textcase.case.textGroup')} cases={TEXT_CASES} value={caseId} onChange={setCaseId} />
+          <CaseButtons label={t('textcase.case.codeGroup')} cases={CODE_CASES} value={caseId} onChange={setCaseId} code />
         </div>
         <p className={styles.description}>{info.description}</p>
       </section>
 
-      <section className={[qrStyles.card, styles.panel, styles.resultCard].join(' ')}>
-        <h2>Result</h2>
+      <section className={[styles.card, styles.panel, styles.resultCard].join(' ')}>
+        <h2>{t('textcase.result.title')}</h2>
         <textarea
-          className={[qrStyles.textarea, styles.text, isCode ? styles.codeText : ''].join(' ')}
+          className={[styles.textarea, isCode ? styles.codeText : ''].filter(Boolean).join(' ')}
           value={result}
           readOnly
           spellCheck={false}
-          aria-label="Result"
-          placeholder="The result appears here."
+          aria-label={t('textcase.result.title')}
+          placeholder={t('textcase.result.placeholder')}
         />
-        <div className={qrStyles.buttonRow}>
-          <button type="button" className={qrStyles.button} disabled={!result} onClick={copy}>{copied ? 'Copied ✓' : 'Copy'}</button>
-          <button type="button" className={qrStyles.button} disabled={!result} onClick={() => download(new Blob([result], { type: 'text/plain;charset=utf-8' }), downloadName)}>
-            Download {file.ext}
+        <div className={styles.buttonRow}>
+          <button type="button" className={styles.primaryButton} disabled={!result} onClick={copy}>
+            {copied ? t('textcase.result.copied') : t('textcase.result.copy')}
           </button>
-          <button type="button" className={qrStyles.button} disabled={!result || result === text} onClick={() => setText(result)}>Use as input</button>
+          <button type="button" className={styles.button} disabled={!result} onClick={() => download(new Blob([result], { type: 'text/plain;charset=utf-8' }), downloadName)}>
+            {t('textcase.result.download')} {file.ext}
+          </button>
+          <button type="button" className={styles.button} disabled={!result || result === text} onClick={() => setText(result)}>
+            {t('textcase.result.useAsInput')}
+          </button>
         </div>
-        {copyError && <p className={qrStyles.warning}>{copyError}</p>}
+        {copyError && <p className={styles.warning}>{copyError}</p>}
 
-        {PROSE_CASES.has(caseId) && (
+        {!hideOptions && PROSE_CASES.has(caseId) && (
           <>
-            <h3>Options</h3>
+            <h3>{t('textcase.result.options')}</h3>
             <div className={styles.options}>
               {caseId === 'title' && (
                 <Field label="Small words in lower case" help={TITLE_STYLE_HELP[titleStyle]}>
@@ -249,7 +258,7 @@ export default function CaseConverter() {
                 help="One per line, such as iPhone, GitHub or New York. They are always written like this, also at the start of a sentence. Saved in this browser."
               >
                 <textarea
-                  className={[qrStyles.textarea, styles.terms].join(' ')}
+                  className={[styles.textarea, styles.terms].join(' ')}
                   value={termsText}
                   spellCheck={false}
                   onChange={(e) => changeTerms(e.target.value)}
@@ -258,12 +267,12 @@ export default function CaseConverter() {
             </div>
           </>
         )}
-        {isCode && (
+        {!hideOptions && isCode && (
           <>
-            <h3>Options</h3>
+            <h3>{t('textcase.result.options')}</h3>
             <div className={styles.options}>
               <Checkbox label="Only ASCII letters and digits (é → e, æ → ae, ø → o)" checked={ascii} onChange={setAscii} />
-              <p className={qrStyles.help}>
+              <p className={styles.help}>
                 Each line becomes one name. Words are split at spaces, punctuation and changes of case, so XMLHttpRequest is
                 XML, Http and Request.
               </p>

@@ -1,113 +1,183 @@
+/* ==========================================================================
+   Licenses (/licenses) — Design System v2
+   Uses --ds-* tokens for Light, Dark, and High Contrast AAA.
+   Legacy .footer and .fixed rules at the bottom MUST stay intact for
+   components/SiteFooter.tsx on untouched legacy pages!
+   ========================================================================== */
+
 .page {
   min-height: 100vh;
-  padding: 1rem 1rem 3rem;
-  background-color: #2B2B2B;
-  color: white;
-  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans,
-    Helvetica Neue, sans-serif;
+  display: flex;
+  flex-direction: column;
 }
 
 .page a {
-  color: #4da3ff;
+  color: var(--ds-accent);
+  text-decoration: none;
+  font-weight: 500;
 }
 
-.header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+.page a:hover,
+.page a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
-.homeLink {
-  display: inline-flex;
-  padding: 0.75rem;
-  border: 1px solid #ffffff;
-  border-radius: 10px;
-  transition: border-color 0.15s ease;
+.main {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 24px 20px 64px;
+  flex: 1;
 }
 
-.homeLink:hover,
-.homeLink:focus {
-  border-color: #0070f3;
-}
-
-.title {
-  margin: 0;
-  font-size: 2.4rem;
-  line-height: 1.15;
+@media (max-width: 600px) {
+  .main {
+    padding: 16px 12px 48px;
+  }
 }
 
 .content {
-  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.introCard,
+.sectionCard {
+  padding: 20px 22px;
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  min-width: 0;
+}
+
+@media (max-width: 520px) {
+  .introCard,
+  .sectionCard {
+    padding: 16px 14px;
+  }
 }
 
 .lead {
-  margin: 0.75rem 0;
-  color: #c8c8c8;
-  line-height: 1.55;
+  margin: 0.45rem 0;
+  color: var(--ds-ink-2);
+  font-size: 0.93rem;
+  line-height: 1.6;
 }
 
-.content h2 {
-  margin: 2rem 0 0.75rem;
-  font-size: 1.35rem;
+.lead:first-child {
+  margin-top: 0;
+}
+
+.lead:last-child {
+  margin-bottom: 0;
+}
+
+.sectionCard h2 {
+  margin: 0 0 10px;
+  font-size: 1.2rem;
+  font-weight: 650;
+  letter-spacing: -0.018em;
+  color: var(--ds-ink);
+}
+
+.tableWrap {
+  margin: 12px 0 14px;
+  overflow-x: auto;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-ctrl);
+  background: var(--ds-surface-solid);
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: 0.87rem;
 }
 
 .table th,
 .table td {
-  padding: 0.4rem 0.75rem 0.4rem 0;
-  border-bottom: 1px solid #444;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--ds-border);
   text-align: left;
+  color: var(--ds-ink);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
 }
 
 .table th {
-  color: #c8c8c8;
+  color: var(--ds-ink-2);
   font-weight: 600;
+  background: var(--ds-well);
+}
+
+.table td:nth-child(2) {
+  font-family: var(--ds-font-mono);
+  font-size: 0.82rem;
+  color: var(--ds-ink-2);
 }
 
 .entry {
-  margin-top: 0.6rem;
-  border: 1px solid #555;
-  border-radius: 8px;
-  scroll-margin-top: 1rem;
+  margin-top: 8px;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-ctrl);
+  background: var(--ds-surface-solid);
+  scroll-margin-top: 76px;
+  transition: border-color 0.15s ease;
+}
+
+.entry:hover {
+  border-color: var(--ds-border-strong);
+}
+
+.entry[open] {
+  border-color: var(--ds-accent-border);
 }
 
 .entry summary {
-  padding: 0.6rem 0.9rem;
+  padding: 11px 14px;
   cursor: pointer;
   font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--ds-ink);
+  list-style-position: outside;
 }
 
 .entry summary span {
-  margin-left: 0.5rem;
-  color: #9a9a9a;
-  font-weight: normal;
+  margin-left: 8px;
+  color: var(--ds-ink-3);
+  font-weight: 450;
+  font-size: 0.84rem;
+  font-family: var(--ds-font-mono);
 }
 
 .entryBody {
-  padding: 0 0.9rem 0.9rem;
+  padding: 0 14px 14px;
+  border-top: 1px solid var(--ds-border);
 }
 
 .entryBody p {
-  margin: 0 0 0.6rem;
-  font-size: 0.9rem;
+  margin: 10px 0 8px;
+  font-size: 0.85rem;
+  word-break: break-all;
 }
 
 .text {
   max-height: 24rem;
   margin: 0;
-  padding: 0.75rem;
+  padding: 12px 14px;
   overflow: auto;
-  border-radius: 6px;
-  background: #1f1f1f;
-  color: #d8d8d8;
-  font-family: Menlo, Monaco, Lucida Console, Liberation Mono, DejaVu Sans Mono, Courier New, monospace;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
   font-size: 0.78rem;
-  line-height: 1.45;
+  line-height: 1.5;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }

@@ -6,8 +6,8 @@ import { detectFormat, FileFormat, formatForMime } from '../../lib/base64image/f
 import { ConvertType, convertImage, imageSize, loadImage } from '../../lib/base64image/image';
 import { baseName, download, errorMessage, formatBytes, isImage, readBytes, safeFileName } from '../../lib/pdf/files';
 import { groupDigits } from '../../lib/simsetup/numbers';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Base64Image.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
 import { DropTarget, FilePickerButton } from '../PdfTools/ToolPage';
 import { Checkbox, Field, NumberInput, Select } from '../QrGen/fields';
 
@@ -64,6 +64,7 @@ function utf8OrNull(bytes: Uint8Array): string | null {
 }
 
 export default function Encoder() {
+  const { t } = useI18n();
   const [source, setSource] = React.useState<Source | null>(null);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [imageMode, setImageMode] = React.useState<ImageMode>('original');
@@ -190,24 +191,26 @@ export default function Encoder() {
     : null;
 
   return (
-    <DropTarget onFiles={(files) => load(files[0])} className={[qrStyles.card, styles.panel].join(' ')} overClassName={styles.dropOver}>
-      <h2>Image to Base64</h2>
+    <DropTarget onFiles={(files) => load(files[0])} className={[styles.card, styles.panel].join(' ')} overClassName={styles.dropOver}>
+      <h2>{t('base64.encoder.title')}</h2>
       {!source && (
         <div className={styles.empty}>
-          <FilePickerButton accept="image/*" multiple={false} onFiles={(files) => load(files[0])} className={qrStyles.button}>Select image</FilePickerButton>
-          <span className={qrStyles.help}>or drop an image here, or paste one (Ctrl+V)</span>
+          <FilePickerButton accept="image/*" multiple={false} onFiles={(files) => load(files[0])} className={styles.primaryButton}>
+            {t('base64.encoder.selectImage')}
+          </FilePickerButton>
+          <span className={styles.help}>{t('base64.encoder.dropHint')}</span>
         </div>
       )}
-      {loadError && <div className={qrStyles.error}>{loadError}</div>}
+      {loadError && <div className={styles.error}>{loadError}</div>}
 
       {source && (
         <>
-          <div className={qrStyles.preview}>
+          <div className={styles.preview}>
             {source.image
               ? <img src={source.url} alt="" className={styles.image} />
               : <span className={styles.noPreview}>{source.format.image ? `This browser cannot show ${source.format.name} images.` : 'Not an image.'}</span>}
           </div>
-          <table className={[qrStyles.infoTable, styles.info].join(' ')}>
+          <table className={styles.info}>
             <tbody>
               <tr><th>File</th><td className={styles.breakAll}>{source.name}</td></tr>
               <tr><th>Type</th><td>{source.format.name} ({source.format.mime})</td></tr>
@@ -215,13 +218,17 @@ export default function Encoder() {
               <tr><th>File size</th><td>{formatBytes(source.bytes.length)} ({count(source.bytes.length)} bytes)</td></tr>
             </tbody>
           </table>
-          <div className={qrStyles.buttonRow}>
-            <FilePickerButton accept="image/*" multiple={false} onFiles={(files) => load(files[0])} className={qrStyles.buttonSmall}>Choose another image</FilePickerButton>
-            <button type="button" className={qrStyles.buttonSmall} onClick={() => setSource(null)}>Remove</button>
+          <div className={styles.buttonRow}>
+            <FilePickerButton accept="image/*" multiple={false} onFiles={(files) => load(files[0])} className={styles.buttonSmall}>
+              {t('base64.encoder.chooseAnother')}
+            </FilePickerButton>
+            <button type="button" className={styles.buttonSmall} onClick={() => setSource(null)}>
+              {t('base64.encoder.remove')}
+            </button>
           </div>
 
-          <h3>Image</h3>
-          <div className={qrStyles.fieldGrid}>
+          <h3>{t('base64.encoder.imageSection')}</h3>
+          <div className={styles.fieldGrid}>
             <Field label="Image data" help={canConvert ? 'Converting can make the text much shorter, and removes metadata such as EXIF and GPS.' : 'This browser cannot open the file, so it can only be encoded as it is.'}>
               <Select value={canConvert ? imageMode : 'original'} disabled={!canConvert} onChange={setImageMode} options={IMAGE_OPTIONS} />
             </Field>
@@ -235,26 +242,26 @@ export default function Encoder() {
                 )}
                 {imageMode === 'jpeg' && (
                   <Field label="Background (for transparent areas)">
-                    <input className={qrStyles.color} type="color" value={background} onChange={(e) => setBackground(e.target.value)} />
+                    <input className={styles.color} type="color" value={background} onChange={(e) => setBackground(e.target.value)} />
                   </Field>
                 )}
               </>
             )}
           </div>
           {converting && data && data.format.mime !== `image/${imageMode}` && (
-            <p className={qrStyles.warning}>This browser cannot write {imageMode.toUpperCase()} images, so it made a {data.format.name} image.</p>
+            <p className={styles.warning}>This browser cannot write {imageMode.toUpperCase()} images, so it made a {data.format.name} image.</p>
           )}
           {converting && data && (
-            <p className={qrStyles.help}>
+            <p className={styles.help}>
               Converted: {data.format.name}, {data.width} × {data.height} px, {formatBytes(data.bytes.length)}
               {' '}({data.bytes.length <= source.bytes.length ? `${Math.round(100 - (100 * data.bytes.length) / source.bytes.length)} % smaller` : `${Math.round((100 * data.bytes.length) / source.bytes.length - 100)} % larger`} than the original).
               {' '}<button type="button" className={styles.linkButton} onClick={() => download(data.bytes, `${name}.${data.format.ext}`, data.format.mime)}>Download it</button>
             </p>
           )}
-          {convertError && <div className={qrStyles.error}>{convertError}</div>}
+          {convertError && <div className={styles.error}>{convertError}</div>}
 
-          <h3>Output</h3>
-          <div className={qrStyles.fieldGrid}>
+          <h3>{t('base64.encoder.outputSection')}</h3>
+          <div className={styles.fieldGrid}>
             <Field label="Format">
               <Select value={output} onChange={setOutput} options={OUTPUT_OPTIONS} />
             </Field>
@@ -279,26 +286,30 @@ export default function Encoder() {
           {data ? (
             <>
               <textarea
-                className={[qrStyles.textarea, styles.text, styles.spaced].join(' ')}
+                className={[styles.textarea, styles.spaced].join(' ')}
                 readOnly
                 spellCheck={false}
                 aria-label="Output"
                 value={text.length > SHOWN_CHARACTERS ? `${text.slice(0, SHOWN_CHARACTERS)}…` : text}
                 onFocus={(e) => e.currentTarget.select()}
               />
-              <p className={qrStyles.help}>
+              <p className={styles.help}>
                 {count(text.length)} characters for {count(data.bytes.length)} bytes
                 {data.bytes.length > 0 && ` (${Math.round((100 * text.length) / data.bytes.length - 100)} % longer)`}.
                 {text.length > SHOWN_CHARACTERS && ` The box shows the first ${count(SHOWN_CHARACTERS)}; Copy and Download use all of it.`}
               </p>
-              <div className={qrStyles.buttonRow}>
-                <button type="button" className={qrStyles.button} onClick={copy}>{copied ? 'Copied ✓' : 'Copy'}</button>
-                <button type="button" className={qrStyles.button} onClick={() => download(new Blob([text], { type: 'text/plain' }), `${name}.txt`)}>Download .txt</button>
+              <div className={styles.buttonRow}>
+                <button type="button" className={styles.primaryButton} onClick={copy}>
+                  {copied ? t('base64.encoder.copied') : t('base64.encoder.copy')}
+                </button>
+                <button type="button" className={styles.button} onClick={() => download(new Blob([text], { type: 'text/plain' }), `${name}.txt`)}>
+                  {t('base64.encoder.downloadTxt')}
+                </button>
               </div>
-              {copyError && <p className={qrStyles.warning}>{copyError}</p>}
+              {copyError && <p className={styles.warning}>{copyError}</p>}
             </>
           ) : (
-            !convertError && <p className={qrStyles.help}>Converting…</p>
+            !convertError && <p className={styles.help}>Converting…</p>
           )}
         </>
       )}
