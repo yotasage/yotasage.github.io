@@ -1,8 +1,9 @@
 import React from 'react';
 
+import { useI18n } from '../../lib/ui/i18n';
+import styles from '../../styles/SimSetup.module.css';
 import Bibliography from '../Bibliography';
 import { CheckText } from './CalcBox';
-import styles from '../../styles/SimSetup.module.css';
 
 interface Rule {
   statement: React.ReactNode;
@@ -73,28 +74,41 @@ const NOTES: React.ReactNode[] = [
 ];
 
 export default function CoherentSampling({ bib }: { bib: Bibliography }) {
+  const { t } = useI18n();
+
   return (
     <>
-      <h2 id="coherent-title">Coherent sampling</h2>
+      <h2 id="coherent-title" className={styles.sectionTitle}>
+        {t('simsetup.theory.coherentTitle')}
+      </h2>
 
       <ol className={styles.rules}>
         {RULES.map((rule, i) => (
           <li key={i} id={`rule-${i + 1}`} className={styles.rule}>
             <div className={styles.ruleNumber} aria-hidden="true">
-              <small>Rule</small>
+              <small>{t('simsetup.theory.rule')}</small>
               <span>{i + 1}</span>
             </div>
-            <div>
+            <div className={styles.ruleBody}>
               <p className={styles.ruleStatement}>
-                <span className={styles.visuallyHidden}>Rule {i + 1}: </span>
+                <span className={styles.visuallyHidden}>
+                  {t('simsetup.theory.rule')} {i + 1}:{' '}
+                </span>
                 {rule.statement}
               </p>
               {rule.explanation && <p className={styles.ruleExplanation}>{rule.explanation}</p>}
               <div className={styles.ruleChecks}>
-                {rule.checks
-                  ? <><span className={styles.ruleChecksLabel}>In the calculator:</span>{rule.checks}</>
-                  : <span className={styles.ruleChecksLabel}>Not checked by the calculator.</span>}
-                <span className={styles.source}>Source: {bib.cite(rule.source)}</span>
+                {rule.checks ? (
+                  <>
+                    <span className={styles.ruleChecksLabel}>{t('simsetup.theory.inCalculator')}</span>
+                    <span className={styles.ruleChecksList}>{rule.checks}</span>
+                  </>
+                ) : (
+                  <span className={styles.ruleChecksLabel}>{t('simsetup.theory.notCheckedByCalc')}</span>
+                )}
+                <span className={styles.source}>
+                  {t('simsetup.theory.source')} {bib.cite(rule.source)}
+                </span>
               </div>
             </div>
           </li>
@@ -102,13 +116,17 @@ export default function CoherentSampling({ bib }: { bib: Bibliography }) {
       </ol>
 
       <div className={styles.notesHeader}>
-        <h3 className={styles.groupHeading}>Notes</h3>
-        <span className={styles.source}>Source: {bib.cite(NOTES_SOURCE)}</span>
+        <h3 className={styles.groupHeading}>{t('simsetup.theory.notes')}</h3>
+        <span className={styles.source}>
+          {t('simsetup.theory.source')} {bib.cite(NOTES_SOURCE)}
+        </span>
       </div>
       <ol className={styles.notes}>
         {NOTES.map((note, i) => (
           <li key={i} id={`note-${i + 1}`} className={styles.note}>
-            <span className={styles.noteLabel} aria-hidden="true">Note {i + 1}</span>
+            <span className={styles.noteLabel} aria-hidden="true">
+              {t('simsetup.theory.note')} {i + 1}
+            </span>
             <p className={styles.noteText}>{note}</p>
           </li>
         ))}

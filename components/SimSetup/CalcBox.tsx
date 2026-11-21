@@ -1,7 +1,20 @@
 import React from 'react';
 
-import { BoxState, calculate, Check, CHECK_TONES, checkNcyc, checkNpts, InputKey, PARAMS, switchSolveFor, Tone, UNITS } from '../../lib/simsetup/calc';
+import {
+  BoxState,
+  calculate,
+  Check,
+  CHECK_TONES,
+  checkNcyc,
+  checkNpts,
+  InputKey,
+  PARAMS,
+  switchSolveFor,
+  Tone,
+  UNITS,
+} from '../../lib/simsetup/calc';
 import { DigitGrouping, formatQuantity, NumberFormat } from '../../lib/simsetup/numbers';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/SimSetup.module.css';
 
 export const SYMBOLS: Record<InputKey, React.ReactNode> = {
@@ -12,54 +25,98 @@ export const SYMBOLS: Record<InputKey, React.ReactNode> = {
   tstart: <>t<sub>start</sub></>,
 };
 
-const TONE_CLASSES: Record<Tone, string> = { good: styles.good, ok: styles.ok, bad: styles.bad, info: styles.info };
+const TONE_CLASSES: Record<Tone, string> = {
+  good: styles.badgeGood,
+  ok: styles.badgeOk,
+  bad: styles.badgeBad,
+  info: styles.badgeInfo,
+};
 
 const TONE_MARKS: Record<Tone, string> = { good: '✓', ok: '•', bad: '✗', info: '–' };
 
-/** A check result as the boxes show it: colored, with ✓, • or ✗ in front. */
+/** A check result as an accessible semantic pill: colored with ✓, •, ✗ or – in front. */
 export function CheckText({ tone, children }: { tone: Tone; children: React.ReactNode }) {
-  return <span className={TONE_CLASSES[tone]}><span aria-hidden="true">{TONE_MARKS[tone]}</span> {children}</span>;
+  return (
+    <span className={[styles.badge, TONE_CLASSES[tone]].join(' ')}>
+      <span aria-hidden="true">{TONE_MARKS[tone]}</span>
+      <span>{children}</span>
+    </span>
+  );
 }
 
-function checkLabel(check: Check): React.ReactNode {
+export function renderCheckLabel(
+  check: Check,
+  t: (key: string, vars?: Record<string, string | number>) => string,
+): React.ReactNode {
   switch (check.kind) {
-    case 'tooLarge': return 'Too large to check';
-    case 'notInteger': return 'Not an integer';
-    case 'prime': return 'Prime';
-    case 'odd': return 'Odd, not prime';
-    case 'even': return 'Even';
-    case 'coprime': return <>No common factor with N<sub>pts</sub></>;
-    case 'commonFactor': return <>Common factor {String(check.factor)} with N<sub>pts</sub></>;
-    case 'powerOfTwo': return <>Power of 2 (2<sup>{check.exponent}</sup>)</>;
-    case 'notPowerOfTwo': return 'Not a power of 2';
+    case 'tooLarge':
+      return t('simsetup.check.tooLarge');
+    case 'notInteger':
+      return t('simsetup.check.notInteger');
+    case 'prime':
+      return t('simsetup.check.prime');
+    case 'odd':
+      return t('simsetup.check.odd');
+    case 'even':
+      return t('simsetup.check.even');
+    case 'coprime':
+      return t('simsetup.check.coprime');
+    case 'commonFactor':
+      return t('simsetup.check.commonFactor', { factor: String(check.factor) });
+    case 'powerOfTwo':
+      return (
+        <>
+          {t('simsetup.check.powerOfTwo')} (2<sup>{check.exponent}</sup>)
+        </>
+      );
+    case 'notPowerOfTwo':
+      return t('simsetup.check.notPowerOfTwo');
   }
 }
 
-function Checks({ checks }: { checks: Check[] }) {
+export function CheckList({ checks }: { checks: Check[] }) {
+  const { t } = useI18n();
   if (checks.length === 0) return null;
   return (
     <ul className={styles.checks}>
       {checks.map((check) => (
-        <li key={check.kind}><CheckText tone={CHECK_TONES[check.kind]}>{checkLabel(check)}</CheckText></li>
+        <li key={check.kind}>
+          <CheckText tone={CHECK_TONES[check.kind]}>{renderCheckLabel(check, t)}</CheckText>
+        </li>
       ))}
     </ul>
   );
 }
 
-export default function CalcBox({ box, title, precision, format, grouping, canRemove, onChange, onDuplicate, onRemove }: {
+export default function CalcBox({
+  box,
+  title,
+  precision,
+  format,
+  grouping,
+  canRemove,
+  compact = false,
+  onChange,
+  onDuplicate,
+  onRemove,
+}: {
   box: BoxState;
   title: string;
   precision: number;
   format: NumberFormat;
   grouping: DigitGrouping;
   canRemove: boolean;
+  compact?: boolean;
   onChange: (box: BoxState) => void;
   onDuplicate: () => void;
   onRemove: () => void;
 }) {
   const id = React.useId();
+  const { t } = useI18n();
   const result = calculate(box);
   const { values, errors } = result;
+  const ncycChecks = checkNcyc(values.ncyc, values.npts);
+  const nptsChecks = checkNpts(values.npts);
 
   function show(value: number | null | undefined, unit: string) {
     return formatQuantity(value ?? null, unit, precision, format, grouping);
@@ -69,7 +126,9 @@ export default function CalcBox({ box, title, precision, format, grouping, canRe
     const error = errors[key];
     return (
       <React.Fragment key={key}>
-        <label htmlFor={`${id}-${key}`} className={styles.rowLabel}>{SYMBOLS[key]}</label>
+        <label htmlFor={`${id}-${key}`} className={styles.rowLabel}>
+          {SYMBOLS[key]}
+        </label>
         <div className={styles.fieldWithUnit}>
           <input
             id={`${id}-${key}`}
@@ -81,9 +140,13 @@ export default function CalcBox({ box, title, precision, format, grouping, canRe
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? `${id}-${key}-error` : undefined}
           />
-          <span className={styles.unit}>{UNITS[key]}</span>
+          {UNITS[key] && <span className={styles.unit}>{UNITS[key]}</span>}
         </div>
-        {error && <p id={`${id}-${key}-error`} className={styles.fieldError}>{error}</p>}
+        {error && (
+          <p id={`${id}-${key}-error`} className={styles.fieldError}>
+            {error}
+          </p>
+        )}
       </React.Fragment>
     );
   }
@@ -91,9 +154,15 @@ export default function CalcBox({ box, title, precision, format, grouping, canRe
   function outputRow(key: string, symbol: React.ReactNode, text: string, calculated = false) {
     return (
       <React.Fragment key={key}>
-        <label htmlFor={`${id}-${key}`} className={styles.rowLabel}>{symbol}</label>
-        {/* aria-live off: the values change on every key press and should not be read out each time. */}
-        <output id={`${id}-${key}`} aria-live="off" className={[styles.value, calculated ? styles.calculated : ''].join(' ')}>
+        <label htmlFor={`${id}-${key}`} className={styles.rowLabel}>
+          {symbol}
+        </label>
+        {/* aria-live off: values change on every key press and should not interrupt typing. */}
+        <output
+          id={`${id}-${key}`}
+          aria-live="off"
+          className={[styles.value, calculated ? styles.calculated : ''].filter(Boolean).join(' ')}
+        >
           {text}
         </output>
       </React.Fragment>
@@ -101,52 +170,91 @@ export default function CalcBox({ box, title, precision, format, grouping, canRe
   }
 
   return (
-    <section className={styles.box} aria-labelledby={`${id}-title`}>
+    <section
+      className={[styles.box, compact ? styles.boxCompact : ''].filter(Boolean).join(' ')}
+      aria-labelledby={`${id}-title`}
+    >
       <div className={styles.boxHeader}>
-        <h3 id={`${id}-title`}>{title}</h3>
-        <div className={styles.boxActions}>
-          <button type="button" className={styles.buttonSmall} onClick={onDuplicate} aria-label={`Duplicate ${title}`}>Duplicate</button>
-          <button type="button" className={styles.buttonSmall} onClick={onRemove} disabled={!canRemove} aria-label={`Remove ${title}`}>Remove</button>
-        </div>
+        <h3 id={`${id}-title`} className={styles.boxTitle}>
+          {title}
+        </h3>
+        {!compact && (
+          <div className={styles.boxActions}>
+            <button
+              type="button"
+              className={styles.buttonGhost}
+              onClick={onDuplicate}
+              aria-label={t('simsetup.calc.duplicateAria', { title })}
+            >
+              {t('simsetup.calc.duplicate')}
+            </button>
+            <button
+              type="button"
+              className={styles.buttonGhost}
+              onClick={onRemove}
+              disabled={!canRemove}
+              aria-label={t('simsetup.calc.removeAria', { title })}
+            >
+              {t('simsetup.calc.remove')}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className={styles.solveFor} role="radiogroup" aria-labelledby={`${id}-solve`}>
-        <span id={`${id}-solve`} className={styles.fieldLabel}>Calculate</span>
-        {PARAMS.map((p) => (
-          <label key={p} className={styles.segment}>
-            <input type="radio" name={`${id}-solve`} checked={box.solveFor === p} onChange={() => onChange(switchSolveFor(box, p, grouping))} />
-            <span>{SYMBOLS[p]}</span>
-          </label>
-        ))}
+        <span id={`${id}-solve`} className={styles.fieldLabel}>
+          {t('simsetup.calc.calculate')}
+        </span>
+        <div className={styles.segmentTrack}>
+          {PARAMS.map((p) => (
+            <label key={p} className={styles.segment}>
+              <input
+                type="radio"
+                name={`${id}-solve`}
+                checked={box.solveFor === p}
+                onChange={() => onChange(switchSolveFor(box, p, grouping))}
+              />
+              <span>{SYMBOLS[p]}</span>
+            </label>
+          ))}
+        </div>
       </div>
 
-      {/* The checks sit to the right of N_cyc and N_pts, in line with the right-hand column below. */}
       <div className={styles.mainRows}>
         {PARAMS.map((p) => (
           <React.Fragment key={p}>
             {p === box.solveFor ? outputRow(p, SYMBOLS[p], show(values[p], UNITS[p]), true) : inputRow(p)}
-            {p === 'ncyc' && <Checks checks={checkNcyc(values.ncyc, values.npts)} />}
-            {p === 'npts' && <Checks checks={checkNpts(values.npts)} />}
+            {p === 'ncyc' && <CheckList checks={ncycChecks} />}
+            {p === 'npts' && <CheckList checks={nptsChecks} />}
           </React.Fragment>
         ))}
       </div>
 
       <div className={styles.divider} />
 
-      <div className={styles.derived}>
-        <div className={styles.rows}>
-          {outputRow('T0', <>T<sub>0</sub></>, show(result.T0, 's'))}
-          {outputRow('Ts', <>T<sub>S</sub></>, show(result.Ts, 's'))}
-          {outputRow('fres', <>f<sub>res</sub></>, show(result.fres, 'Hz'))}
-          {outputRow('npts0', <>N<sub>pts0</sub></>, show(result.npts0, ''))}
+      {compact ? (
+        <div className={styles.derivedCompact}>
+          <div className={styles.rows}>
+            {inputRow('tstart')}
+            {outputRow('tstop', <>t<sub>stop</sub></>, show(result.tstop, 's'))}
+          </div>
         </div>
-        <div className={styles.rows}>
-          {inputRow('tstart')}
-          {outputRow('tstop', <>t<sub>stop</sub></>, show(result.tstop, 's'))}
-          {outputRow('fmin', <>f<sub>min</sub></>, show(result.fmin, 'Hz'))}
-          {outputRow('fmax', <>f<sub>max</sub></>, show(result.fmax, 'Hz'))}
+      ) : (
+        <div className={styles.derived}>
+          <div className={styles.rows}>
+            {outputRow('T0', <>T<sub>0</sub></>, show(result.T0, 's'))}
+            {outputRow('Ts', <>T<sub>S</sub></>, show(result.Ts, 's'))}
+            {outputRow('fres', <>f<sub>res</sub></>, show(result.fres, 'Hz'))}
+            {outputRow('npts0', <>N<sub>pts0</sub></>, show(result.npts0, ''))}
+          </div>
+          <div className={styles.rows}>
+            {inputRow('tstart')}
+            {outputRow('tstop', <>t<sub>stop</sub></>, show(result.tstop, 's'))}
+            {outputRow('fmin', <>f<sub>min</sub></>, show(result.fmin, 'Hz'))}
+            {outputRow('fmax', <>f<sub>max</sub></>, show(result.fmax, 'Hz'))}
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }

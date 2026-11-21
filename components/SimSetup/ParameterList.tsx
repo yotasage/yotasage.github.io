@@ -1,7 +1,8 @@
 import React from 'react';
 
-import KatexSpan from '../KatexSpan';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/SimSetup.module.css';
+import KatexSpan from '../KatexSpan';
 
 interface Parameter {
   symbol: string; // TeX
@@ -77,9 +78,11 @@ const GROUPS: { title: string; parameters: Parameter[] }[] = [
 ];
 
 export default function ParameterList() {
+  const { t } = useI18n();
+
   return (
     <>
-      <p>
+      <p className={styles.proseLead}>
         f<sub>0</sub>, F<sub>S</sub>, N<sub>cyc</sub> and N<sub>pts</sub> are related by this equation, and the calculator
         solves it for whichever of them you choose:
       </p>
@@ -89,10 +92,10 @@ export default function ParameterList() {
 
       <div className={styles.parameterTable}>
         <div className={[styles.parameterRow, styles.parameterHeader].join(' ')} aria-hidden="true">
-          <span>Symbol</span>
-          <span>Description</span>
-          <span>Calculated as</span>
-          <span className={styles.parameterUnit}>Unit</span>
+          <span>{t('simsetup.theory.symbol')}</span>
+          <span>{t('simsetup.theory.description')}</span>
+          <span>{t('simsetup.theory.calculatedAs')}</span>
+          <span className={styles.parameterUnit}>{t('simsetup.theory.unit')}</span>
         </div>
 
         {GROUPS.map((group) => (
@@ -101,7 +104,9 @@ export default function ParameterList() {
             <dl className={styles.parameterList}>
               {group.parameters.map((p) => (
                 <div key={p.symbol} className={styles.parameterRow}>
-                  <dt className={styles.parameterSymbol}><KatexSpan text={`\\rm ${p.symbol}`} /></dt>
+                  <dt className={styles.parameterSymbol}>
+                    <KatexSpan text={`\\rm ${p.symbol}`} />
+                  </dt>
                   <dd className={styles.parameterDescription}>
                     {p.description}
                     {p.alias && <span className={styles.parameterAlias}>Also called {p.alias}</span>}
@@ -109,15 +114,17 @@ export default function ParameterList() {
                   <dd className={styles.parameterFormula}>
                     {p.formula ? (
                       <>
-                        <span className={styles.visuallyHidden}>Calculated as </span>
+                        <span className={styles.visuallyHidden}>{t('simsetup.theory.calculatedAs')} </span>
                         {/* Shown on phones, where there is no column heading. */}
                         <span className={styles.parameterEquals} aria-hidden="true">= </span>
                         <KatexSpan text={`\\displaystyle\\rm ${p.formula}`} />
                       </>
-                    ) : <span className={styles.parameterInput}>Typed in</span>}
+                    ) : (
+                      <span className={styles.parameterInput}>{t('simsetup.theory.typedIn')}</span>
+                    )}
                   </dd>
                   <dd className={styles.parameterUnit}>
-                    <span className={styles.visuallyHidden}>Unit: </span>
+                    <span className={styles.visuallyHidden}>{t('simsetup.theory.unit')}: </span>
                     {p.unit === '—' ? <span title="No unit">—</span> : p.unit}
                   </dd>
                 </div>
