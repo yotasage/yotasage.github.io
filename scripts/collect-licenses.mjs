@@ -274,7 +274,30 @@ if (tessCoreDir) {
   });
 }
 
+// Self-hosted site fonts copied to public/fonts (see copy-fonts.mjs).
+const SITE_FONTS = [
+  ['@fontsource-variable/inter', 'Inter (@fontsource-variable/inter)', 'https://rsms.me/inter/'],
+  ['@fontsource-variable/jetbrains-mono', 'JetBrains Mono (@fontsource-variable/jetbrains-mono)', 'https://www.jetbrains.com/lp/mono/'],
+];
+const fonts = [];
+for (const [pkgName, displayName, url] of SITE_FONTS) {
+  const dir = resolvePackage(pkgName, root);
+  if (!dir) {
+    console.warn(`collect-licenses: ${pkgName} is not installed; font licence skipped.`);
+    continue;
+  }
+  const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+  const texts = licenseTexts(dir);
+  fonts.push({
+    name: displayName,
+    version: pkg.version,
+    license: 'SIL OFL-1.1',
+    url,
+    text: texts.join('\n\n'),
+  });
+}
+
 const out = join(root, 'lib', 'generated');
 mkdirSync(out, { recursive: true });
-writeFileSync(join(out, 'third-party-licenses.json'), JSON.stringify({ packages: list, assets, pdfWasm, viewer, pcb, qr }, null, 1));
-console.log(`Collected the licences of ${list.length} packages, ${assets.length} pdf.js data files, ${pdfWasm.length} PDF WASM/OCR entries, ${viewer.length} 3D viewer files, ${pcb.length} PCB viewer files and ${qr.length} QR code reader file.`);
+writeFileSync(join(out, 'third-party-licenses.json'), JSON.stringify({ packages: list, assets, pdfWasm, viewer, pcb, qr, fonts }, null, 1));
+console.log(`Collected the licences of ${list.length} packages, ${assets.length} pdf.js data files, ${pdfWasm.length} PDF WASM/OCR entries, ${viewer.length} 3D viewer files, ${pcb.length} PCB viewer files, ${qr.length} QR code reader file and ${fonts.length} site fonts.`);

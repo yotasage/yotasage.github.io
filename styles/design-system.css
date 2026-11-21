@@ -1,0 +1,405 @@
+/* ==========================================================================
+   Design System v2 — Modern High-Polish SaaS
+   Strictly scoped to [data-ds="v2"] and html[data-ds-page="v2"] so untouched
+   legacy tools keep their exact appearance and styles unaffected.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Self-hosted variable fonts (copied to /fonts/ on postinstall)
+   -------------------------------------------------------------------------- */
+
+/* inter-latin-ext-wght-normal */
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('/fonts/inter-latin-ext-wght-normal.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* inter-latin-wght-normal */
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('/fonts/inter-latin-wght-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191,
+    U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* inter-latin-wght-italic */
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: italic;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('/fonts/inter-latin-wght-italic.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191,
+    U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* jetbrains-mono-latin-ext-wght-normal */
+@font-face {
+  font-family: 'JetBrains Mono Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url('/fonts/jetbrains-mono-latin-ext-wght-normal.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* jetbrains-mono-latin-wght-normal */
+@font-face {
+  font-family: 'JetBrains Mono Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url('/fonts/jetbrains-mono-latin-wght-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191,
+    U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* --------------------------------------------------------------------------
+   Light Theme Tokens (Default)
+   -------------------------------------------------------------------------- */
+
+html[data-ds-page="v2"],
+[data-ds="v2"],
+html[data-ds-theme="light"][data-ds-page="v2"],
+html[data-ds-theme="light"] [data-ds="v2"],
+[data-ds="v2"][data-ds-theme="light"] {
+  color-scheme: light;
+
+  --ds-bg: #f5f7fb;
+  --ds-surface: rgba(255, 255, 255, 0.92);
+  --ds-surface-solid: #ffffff;
+  --ds-surface-elevated: #ffffff;
+  --ds-well: #eef2f8;
+  --ds-well-hover: #e4eaf4;
+
+  --ds-border: rgba(15, 23, 42, 0.085);
+  --ds-border-strong: rgba(15, 23, 42, 0.17);
+  --ds-border-w: 1px;
+
+  --ds-ink: #0f172a;
+  --ds-ink-2: #475569;
+  --ds-ink-3: #64748b;
+
+  --ds-accent: var(--ds-accent-light, #2563eb);
+  --ds-accent-ink: #ffffff;
+  --ds-accent-soft: color-mix(in srgb, var(--ds-accent) 11%, transparent);
+  --ds-accent-border: color-mix(in srgb, var(--ds-accent) 28%, transparent);
+
+  --ds-good: #059669;
+  --ds-good-soft: rgba(5, 150, 105, 0.11);
+  --ds-warn: #d97706;
+  --ds-warn-soft: rgba(217, 119, 6, 0.11);
+  --ds-bad: #dc2626;
+  --ds-bad-soft: rgba(220, 38, 38, 0.11);
+
+  --ds-shadow-card: 0 4px 20px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --ds-shadow-elev: 0 12px 32px rgba(15, 23, 42, 0.10);
+  --ds-header-bg: rgba(255, 255, 255, 0.78);
+  --ds-focus-ring: 0 0 0 3px color-mix(in srgb, var(--ds-accent) 32%, transparent);
+
+  --ds-radius-card: 16px;
+  --ds-radius-ctrl: 12px;
+  --ds-radius-sm: 8px;
+  --ds-radius-pill: 999px;
+
+  --ds-font-ui: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --ds-font-mono: 'JetBrains Mono Variable', ui-monospace, 'Cascadia Mono', 'SF Mono', Consolas, monospace;
+}
+
+/* --------------------------------------------------------------------------
+   OS Dark Fallback (only when no explicit data-ds-theme is set)
+   -------------------------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-ds-theme])[data-ds-page="v2"],
+  html:not([data-ds-theme]) [data-ds="v2"] {
+    color-scheme: dark;
+
+    --ds-bg: #09090b;
+    --ds-surface: rgba(24, 24, 27, 0.84);
+    --ds-surface-solid: #131316;
+    --ds-surface-elevated: #18181c;
+    --ds-well: #1c1c21;
+    --ds-well-hover: #26262e;
+
+    --ds-border: rgba(255, 255, 255, 0.095);
+    --ds-border-strong: rgba(255, 255, 255, 0.20);
+    --ds-border-w: 1px;
+
+    --ds-ink: #fafafa;
+    --ds-ink-2: #a1a1aa;
+    --ds-ink-3: #71717a;
+
+    --ds-accent: var(--ds-accent-dark, #60a5fa);
+    --ds-accent-ink: #081221;
+    --ds-accent-soft: color-mix(in srgb, var(--ds-accent) 16%, transparent);
+    --ds-accent-border: color-mix(in srgb, var(--ds-accent) 34%, transparent);
+
+    --ds-good: #34d399;
+    --ds-good-soft: rgba(52, 211, 153, 0.14);
+    --ds-warn: #fbbf24;
+    --ds-warn-soft: rgba(251, 191, 36, 0.14);
+    --ds-bad: #f87171;
+    --ds-bad-soft: rgba(248, 113, 113, 0.14);
+
+    --ds-shadow-card: 0 8px 30px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    --ds-shadow-elev: 0 16px 40px rgba(0, 0, 0, 0.56);
+    --ds-header-bg: rgba(9, 9, 11, 0.74);
+    --ds-focus-ring: 0 0 0 3px color-mix(in srgb, var(--ds-accent) 38%, transparent);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Explicit Dark Theme
+   -------------------------------------------------------------------------- */
+
+html[data-ds-theme="dark"][data-ds-page="v2"],
+html[data-ds-theme="dark"] [data-ds="v2"],
+[data-ds="v2"][data-ds-theme="dark"] {
+  color-scheme: dark;
+
+  --ds-bg: #09090b;
+  --ds-surface: rgba(24, 24, 27, 0.84);
+  --ds-surface-solid: #131316;
+  --ds-surface-elevated: #18181c;
+  --ds-well: #1c1c21;
+  --ds-well-hover: #26262e;
+
+  --ds-border: rgba(255, 255, 255, 0.095);
+  --ds-border-strong: rgba(255, 255, 255, 0.20);
+  --ds-border-w: 1px;
+
+  --ds-ink: #fafafa;
+  --ds-ink-2: #a1a1aa;
+  --ds-ink-3: #71717a;
+
+  --ds-accent: var(--ds-accent-dark, #60a5fa);
+  --ds-accent-ink: #081221;
+  --ds-accent-soft: color-mix(in srgb, var(--ds-accent) 16%, transparent);
+  --ds-accent-border: color-mix(in srgb, var(--ds-accent) 34%, transparent);
+
+  --ds-good: #34d399;
+  --ds-good-soft: rgba(52, 211, 153, 0.14);
+  --ds-warn: #fbbf24;
+  --ds-warn-soft: rgba(251, 191, 36, 0.14);
+  --ds-bad: #f87171;
+  --ds-bad-soft: rgba(248, 113, 113, 0.14);
+
+  --ds-shadow-card: 0 8px 30px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --ds-shadow-elev: 0 16px 40px rgba(0, 0, 0, 0.56);
+  --ds-header-bg: rgba(9, 9, 11, 0.74);
+  --ds-focus-ring: 0 0 0 3px color-mix(in srgb, var(--ds-accent) 38%, transparent);
+}
+
+/* --------------------------------------------------------------------------
+   High Contrast Theme (WCAG AAA)
+   -------------------------------------------------------------------------- */
+
+html[data-ds-theme="hc"][data-ds-page="v2"],
+html[data-ds-theme="hc"] [data-ds="v2"],
+[data-ds="v2"][data-ds-theme="hc"] {
+  color-scheme: dark;
+
+  --ds-bg: #000000;
+  --ds-surface: #000000;
+  --ds-surface-solid: #000000;
+  --ds-surface-elevated: #000000;
+  --ds-well: #121212;
+  --ds-well-hover: #222222;
+
+  --ds-border: #ffffff;
+  --ds-border-strong: #ffe600;
+  --ds-border-w: 2px;
+
+  --ds-ink: #ffffff;
+  --ds-ink-2: #f5f5f5;
+  --ds-ink-3: #d4d4d4;
+
+  --ds-accent: #ffe600;
+  --ds-accent-ink: #000000;
+  --ds-accent-soft: #242000;
+  --ds-accent-border: #ffe600;
+
+  --ds-good: #4ade80;
+  --ds-good-soft: #062814;
+  --ds-warn: #fde047;
+  --ds-warn-soft: #292000;
+  --ds-bad: #ff6b6b;
+  --ds-bad-soft: #2c0808;
+
+  --ds-shadow-card: none;
+  --ds-shadow-elev: none;
+  --ds-header-bg: #000000;
+  --ds-focus-ring: 0 0 0 3px #ffe600;
+}
+
+/* --------------------------------------------------------------------------
+   Scoped Page & Surface Base
+   -------------------------------------------------------------------------- */
+
+html[data-ds-page="v2"],
+html[data-ds-page="v2"] body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--ds-bg);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-ui);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+[data-ds="v2"] {
+  min-height: 100vh;
+  background-color: var(--ds-bg);
+  background-image: radial-gradient(
+    ellipse 85% 420px at 50% -110px,
+    color-mix(in srgb, var(--ds-accent) 13%, transparent),
+    transparent 72%
+  );
+  background-repeat: no-repeat;
+  color: var(--ds-ink);
+  font-family: var(--ds-font-ui);
+  line-height: 1.5;
+}
+
+html[data-ds-theme="hc"] [data-ds="v2"],
+[data-ds="v2"][data-ds-theme="hc"] {
+  background-image: none;
+}
+
+[data-ds="v2"],
+[data-ds="v2"] *,
+[data-ds="v2"] *::before,
+[data-ds="v2"] *::after {
+  box-sizing: border-box;
+}
+
+[data-ds="v2"] code,
+[data-ds="v2"] pre,
+[data-ds="v2"] kbd,
+[data-ds="v2"] samp {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+[data-ds="v2"] :focus-visible,
+html[data-ds-page="v2"] #__next > footer :focus-visible {
+  outline: 2px solid var(--ds-accent);
+  outline-offset: 2px;
+  box-shadow: var(--ds-focus-ring);
+}
+
+/* --------------------------------------------------------------------------
+   Global SiteFooter Styling on v2 Pages
+   -------------------------------------------------------------------------- */
+
+html[data-ds-page="v2"] #__next > footer {
+  background: var(--ds-header-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: var(--ds-border-w) solid var(--ds-border);
+  color: var(--ds-ink-3);
+  font-family: var(--ds-font-ui);
+  font-size: 0.84rem;
+  padding: 0.9rem 1.25rem;
+}
+
+html[data-ds-page="v2"] #__next > footer a {
+  color: var(--ds-ink-2);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+html[data-ds-page="v2"] #__next > footer a:hover,
+html[data-ds-page="v2"] #__next > footer a:focus-visible {
+  color: var(--ds-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+html[data-ds-page="v2"][data-ds-theme="hc"] #__next > footer {
+  background: #000000;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-top: 2px solid #ffffff;
+  color: #f5f5f5;
+}
+
+html[data-ds-page="v2"][data-ds-theme="hc"] #__next > footer a {
+  color: #ffffff;
+  text-decoration: underline;
+}
+
+html[data-ds-page="v2"][data-ds-theme="hc"] #__next > footer a:hover,
+html[data-ds-page="v2"][data-ds-theme="hc"] #__next > footer a:focus-visible {
+  color: #ffe600;
+}
+
+/* --------------------------------------------------------------------------
+   Reduced Motion
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  [data-ds="v2"],
+  [data-ds="v2"] *,
+  [data-ds="v2"] *::before,
+  [data-ds="v2"] *::after,
+  html[data-ds-page="v2"] #__next > footer,
+  html[data-ds-page="v2"] #__next > footer * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Print
+   -------------------------------------------------------------------------- */
+
+@media print {
+  html[data-ds-page="v2"],
+  html[data-ds-page="v2"] body,
+  [data-ds="v2"] {
+    background: #ffffff !important;
+    background-image: none !important;
+    color: #000000 !important;
+    min-height: auto;
+  }
+
+  [data-ds="v2"] {
+    --ds-bg: #ffffff;
+    --ds-surface: #ffffff;
+    --ds-surface-solid: #ffffff;
+    --ds-surface-elevated: #ffffff;
+    --ds-well: #f4f4f5;
+    --ds-border: #d4d4d8;
+    --ds-border-strong: #71717a;
+    --ds-ink: #000000;
+    --ds-ink-2: #27272a;
+    --ds-ink-3: #52525b;
+    --ds-shadow-card: none;
+    --ds-shadow-elev: none;
+  }
+
+  [data-ds="v2"] .ds-no-print,
+  html[data-ds-page="v2"] #__next > footer {
+    display: none !important;
+  }
+}

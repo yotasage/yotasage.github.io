@@ -1,0 +1,582 @@
+/* ==========================================================================
+   Shared Design System v2 UI Components (ToolHeader, PillTabs, TeachingCallout)
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   ToolHeader
+   -------------------------------------------------------------------------- */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  width: 100%;
+  background: var(--ds-header-bg);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+}
+
+:global(html[data-ds-theme="hc"]) .header {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.headerInner {
+  max-width: 1360px;
+  margin: 0 auto;
+  min-height: 58px;
+  padding: 8px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+.homePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 11px 0 9px;
+  border-radius: var(--ds-radius-pill);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  color: var(--ds-ink-2);
+  font-size: 0.8125rem;
+  font-weight: 550;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
+}
+
+.homePill:hover {
+  background: var(--ds-well-hover);
+  border-color: var(--ds-border-strong);
+  color: var(--ds-ink);
+}
+
+.homePill:active {
+  transform: scale(0.98);
+}
+
+.homeLabel {
+  line-height: 1;
+}
+
+.brandMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-accent-soft);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  color: var(--ds-accent);
+  flex-shrink: 0;
+}
+
+.separator {
+  color: var(--ds-ink-3);
+  font-size: 0.9rem;
+  opacity: 0.55;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.titleGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.accentDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ds-accent);
+  box-shadow: 0 0 0 3px var(--ds-accent-soft);
+  flex-shrink: 0;
+}
+
+:global(html[data-ds-theme="hc"]) .accentDot {
+  box-shadow: none;
+}
+
+.title {
+  margin: 0;
+  font-size: 0.975rem;
+  font-weight: 650;
+  letter-spacing: -0.018em;
+  color: var(--ds-ink);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.headerCenter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.actionsSlot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Segmented Pill Controls (Mode & Theme) */
+
+.segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-well);
+  border: var(--ds-border-w) solid var(--ds-border);
+  flex-shrink: 0;
+}
+
+.segBtn {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ds-ink-2);
+  font-family: var(--ds-font-ui);
+  font-size: 0.76rem;
+  font-weight: 550;
+  line-height: 1;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: var(--ds-radius-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.14s ease, color 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+.segBtn:hover {
+  color: var(--ds-ink);
+}
+
+.segBtnIcon {
+  padding: 0 8px;
+  min-width: 30px;
+}
+
+.segBtnActive {
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  border-color: var(--ds-border);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  font-weight: 600;
+}
+
+:global(html[data-ds-theme="dark"]) .segBtnActive {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+:global(html[data-ds-theme="hc"]) .segBtnActive {
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  border-color: var(--ds-accent);
+  box-shadow: none;
+  font-weight: 700;
+}
+
+.hcLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+/* Language Toggle Pill */
+
+.langBtn {
+  appearance: none;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: var(--ds-radius-pill);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  color: var(--ds-ink-3);
+  font-family: var(--ds-font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.langBtn:hover {
+  background: var(--ds-well-hover);
+  border-color: var(--ds-border-strong);
+}
+
+.langActive {
+  color: var(--ds-ink);
+  font-weight: 700;
+}
+
+:global(html[data-ds-theme="hc"]) .langActive {
+  color: var(--ds-accent);
+}
+
+.langSep {
+  opacity: 0.45;
+}
+
+/* --------------------------------------------------------------------------
+   PillTabs
+   -------------------------------------------------------------------------- */
+
+.pillTabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-well);
+  border: var(--ds-border-w) solid var(--ds-border);
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.pillTabs::-webkit-scrollbar {
+  display: none;
+}
+
+.pillTabsSubtle {
+  background: transparent;
+  border-color: transparent;
+  padding: 0;
+  gap: 4px;
+}
+
+.pillTab {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ds-ink-2);
+  font-family: var(--ds-font-ui);
+  font-size: 0.83rem;
+  font-weight: 550;
+  line-height: 1;
+  height: 30px;
+  padding: 0 13px;
+  border-radius: var(--ds-radius-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background-color 0.14s ease, color 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+.pillTabSm {
+  font-size: 0.77rem;
+  height: 26px;
+  padding: 0 10px;
+}
+
+.pillTab:hover:not(:disabled) {
+  color: var(--ds-ink);
+  background: color-mix(in srgb, var(--ds-surface-solid) 45%, transparent);
+}
+
+.pillTab:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.pillTabActive {
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  border-color: var(--ds-border);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  font-weight: 600;
+}
+
+.pillTabActive:hover:not(:disabled) {
+  background: var(--ds-surface-solid);
+}
+
+:global(html[data-ds-theme="dark"]) .pillTabActive {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+:global(html[data-ds-theme="hc"]) .pillTabActive {
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  border-color: var(--ds-accent);
+  box-shadow: none;
+  font-weight: 700;
+}
+
+.pillTabSubtleActive {
+  background: var(--ds-accent-soft);
+  color: var(--ds-accent);
+  border-color: var(--ds-accent-border);
+  box-shadow: none;
+}
+
+:global(html[data-ds-theme="hc"]) .pillTabSubtleActive {
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  border-color: var(--ds-accent);
+}
+
+.pillTabIcon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.pillTabBadge {
+  font-family: var(--ds-font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-accent-soft);
+  color: var(--ds-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+:global(html[data-ds-theme="hc"]) .pillTabActive .pillTabBadge {
+  background: #000000;
+  color: #ffe600;
+}
+
+/* --------------------------------------------------------------------------
+   TeachingCallout
+   -------------------------------------------------------------------------- */
+
+.callout {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: var(--ds-radius-ctrl);
+  background: var(--ds-accent-soft);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  border-left: 3px solid var(--ds-accent);
+  color: var(--ds-ink);
+}
+
+.calloutHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.calloutIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  color: var(--ds-accent);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.calloutTitleWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.calloutBadge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ds-accent);
+  line-height: 1.1;
+}
+
+.calloutTitle {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--ds-ink);
+  line-height: 1.3;
+}
+
+.calloutBody {
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--ds-ink-2);
+}
+
+.calloutBody > p:first-child {
+  margin-top: 0;
+}
+
+.calloutBody > p:last-child {
+  margin-bottom: 0;
+}
+
+.calloutFormula {
+  padding: 10px 12px;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  border: var(--ds-border-w) solid var(--ds-border);
+  font-family: var(--ds-font-mono);
+  font-size: 0.84rem;
+  color: var(--ds-ink);
+  overflow-x: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.calloutFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.calloutAction {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 2px 0;
+  color: var(--ds-accent);
+  font-family: var(--ds-font-ui);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+
+.calloutAction:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive Header Layout (Tablets & Phones down to 320px)
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 1020px) {
+  .headerInner {
+    flex-wrap: wrap;
+    padding: 8px 16px;
+    gap: 8px 12px;
+  }
+
+  .headerCenter {
+    order: 3;
+    flex: 1 0 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .headerInner {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .headerLeft {
+    gap: 7px;
+  }
+
+  .headerRight {
+    gap: 6px;
+  }
+
+  .segBtn {
+    font-size: 0.72rem;
+    padding: 0 7px;
+    height: 26px;
+  }
+
+  .segBtnIcon {
+    padding: 0 6px;
+    min-width: 26px;
+  }
+
+  .langBtn {
+    height: 30px;
+    padding: 0 8px;
+    font-size: 0.69rem;
+  }
+
+  .homePill {
+    height: 30px;
+    padding: 0 9px 0 8px;
+    font-size: 0.78rem;
+  }
+
+  .title {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 440px) {
+  .homeLabel {
+    display: none;
+  }
+
+  .homePill {
+    padding: 0 8px;
+  }
+
+  .separator {
+    display: none;
+  }
+
+  .headerRight {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

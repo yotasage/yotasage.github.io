@@ -40,6 +40,7 @@ export default function Licenses() {
   const viewer = data.viewer as Entry[];
   const pcb = (data as { pcb?: Entry[] }).pcb ?? [];
   const qr = (data as { qr?: Entry[] }).qr ?? [];
+  const fonts = (data as { fonts?: Entry[] }).fonts ?? [];
 
   // A link from the table opens the licence it points to.
   React.useEffect(() => {
@@ -144,6 +145,17 @@ export default function Licenses() {
           and served from this site.
         </p>
         <Entries entries={qr} />
+
+        {fonts.length > 0 && (
+          <>
+            <h2>Site fonts</h2>
+            <p className={styles.lead}>
+              Self-hosted variable fonts served directly from <code>/fonts/</code> under the SIL Open Font License 1.1,
+              with zero external font CDN requests.
+            </p>
+            <Entries entries={fonts} />
+          </>
+        )}
       </div>
     </div>
   );
