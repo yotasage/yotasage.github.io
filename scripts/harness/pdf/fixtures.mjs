@@ -600,3 +600,111 @@ export async function makeReaderPdf() {
 
   return doc.save();
 }
+
+/**
+ * 2-page PDF with interactive AcroForm fields (TextField + CheckBox) and mixed annotations:
+ *  - Page 1: 2 Widgets (fullName='Ada Lovelace', agreed=checked), 1 Highlight with /AP/N,
+ *            1 Text sticky-note without /AP, 1 Link annotation
+ *  - Page 2: 1 Square with offset /BBox + /Matrix /AP/N, 1 Text note without /AP
+ */
+export async function makeAnnotatedFormPdf() {
+  const doc = await PDFDocument.create();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const ctx = doc.context;
+
+  const p1 = doc.addPage([500, 650]);
+  p1.drawText('Annotated Form Fixture', { x: 40, y: 600, size: 18, font });
+
+  const p2 = doc.addPage([500, 650]);
+  p2.drawText('Second Annotated Page', { x: 40, y: 600, size: 18, font });
+
+  // Interactive AcroForm fields on page 1
+  const form = doc.getForm();
+  const nameField = form.createTextField('fullName');
+  nameField.setText('Ada Lovelace');
+  nameField.addToPage(p1, { x: 50, y: 520, width: 200, height: 24 });
+
+  const agreeField = form.createCheckBox('agreed');
+  agreeField.check();
+  agreeField.addToPage(p1, { x: 50, y: 480, width: 18, height: 18 });
+
+  form.updateFieldAppearances(font);
+
+  // Page 1 Highlight annotation with /AP /N Form XObject
+  const hlStream = ctx.stream(new TextEncoder().encode('q 1 0.95 0.2 rg 0 0 140 18 re f Q'), {
+    Type: 'XObject',
+    Subtype: 'Form',
+    FormType: 1,
+    BBox: [0, 0, 140, 18],
+    Matrix: [1, 0, 0, 1, 0, 0],
+    Resources: {},
+  });
+  const hlApRef = ctx.register(hlStream);
+  const hlAnnot = ctx.register(
+    ctx.obj({
+      Type: 'Annot',
+      Subtype: 'Highlight',
+      Rect: [50, 420, 190, 438],
+      Contents: PDFString.of('Highlighted passage'),
+      AP: { N: hlApRef },
+    }),
+  );
+
+  // Page 1 Text sticky-note annotation WITHOUT /AP
+  const note1Annot = ctx.register(
+    ctx.obj({
+      Type: 'Annot',
+      Subtype: 'Text',
+      Rect: [260, 420, 284, 444],
+      Contents: PDFString.of('Review note without appearance'),
+    }),
+  );
+
+  // Page 1 Link annotation
+  const linkAnnot = ctx.register(
+    ctx.obj({
+      Type: 'Annot',
+      Subtype: 'Link',
+      Rect: [50, 360, 180, 380],
+      A: { S: 'URI', URI: PDFString.of('https://example.com') },
+    }),
+  );
+
+  p1.node.addAnnot(hlAnnot);
+  p1.node.addAnnot(note1Annot);
+  p1.node.addAnnot(linkAnnot);
+
+  // Page 2 Square annotation with non-zero /BBox and translating /Matrix
+  const sqStream = ctx.stream(new TextEncoder().encode('q 0.9 0.2 0.2 RG 2 w 12 12 96 46 re S Q'), {
+    Type: 'XObject',
+    Subtype: 'Form',
+    FormType: 1,
+    BBox: [10, 10, 110, 60],
+    Matrix: [1, 0, 0, 1, -10, -10],
+    Resources: {},
+  });
+  const sqApRef = ctx.register(sqStream);
+  const sqAnnot = ctx.register(
+    ctx.obj({
+      Type: 'Annot',
+      Subtype: 'Square',
+      Rect: [60, 400, 160, 450],
+      AP: { N: sqApRef },
+    }),
+  );
+
+  // Page 2 Text sticky-note WITHOUT /AP
+  const note2Annot = ctx.register(
+    ctx.obj({
+      Type: 'Annot',
+      Subtype: 'Text',
+      Rect: [200, 400, 224, 424],
+      Contents: PDFString.of('Second note'),
+    }),
+  );
+
+  p2.node.addAnnot(sqAnnot);
+  p2.node.addAnnot(note2Annot);
+
+  return doc.save();
+}

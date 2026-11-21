@@ -1,9 +1,10 @@
 // Node verification harness for framework-free lib/pdf/* modules.
 //   npm run check   (tsx check.mjs)
 
-import { PDFDocument } from '@cantoo/pdf-lib';
+import { PDFDocument, PDFName } from '@cantoo/pdf-lib';
 
 import {
+  makeAnnotatedFormPdf,
   makeBookmarkedPdf,
   makeCompressiblePdf,
   makeEncryptedPdf,
@@ -11,35 +12,46 @@ import {
   makeInlineVectorPdf,
   makeMetadataPdf,
   makeMultiPagePdf,
+  makeRgbaPng,
   makeRotatedPdf,
   makeVectorFormPdf,
   pageDimensionsFor,
 } from './fixtures.mjs';
 
+import * as annotationsMod from '../../../lib/pdf/annotations.ts';
 import * as breakdownMod from '../../../lib/pdf/breakdown.ts';
 import * as compressMod from '../../../lib/pdf/compress.ts';
 import * as detectFiguresMod from '../../../lib/pdf/detectFigures.ts';
 import * as extractImagesMod from '../../../lib/pdf/extractImages.ts';
 import * as extractVectorsMod from '../../../lib/pdf/extractVectors.ts';
 import * as mergeMod from '../../../lib/pdf/merge.ts';
+import * as metadataMod from '../../../lib/pdf/metadata.ts';
+import * as pageNumbersMod from '../../../lib/pdf/pageNumbers.ts';
 import * as pagesMod from '../../../lib/pdf/pages.ts';
 import * as pdfToSvgMod from '../../../lib/pdf/pdfToSvg.ts';
 import * as readerMod from '../../../lib/pdf/reader.ts';
 import * as sanitizeMod from '../../../lib/pdf/sanitize.ts';
+import * as securityMod from '../../../lib/pdf/security.ts';
 import * as splitMod from '../../../lib/pdf/split.ts';
+import * as watermarkMod from '../../../lib/pdf/watermark.ts';
 
 const unwrap = (x) => x.default ?? x;
+const { inspectAnnotations, removeAnnotations, flattenPdf } = unwrap(annotationsMod);
 const { inspectPdfSizeBreakdown } = unwrap(breakdownMod);
 const { compressPdf } = unwrap(compressMod);
 const { analyzePageVectors, detectFiguresOnPage, tightenRegionToContent } = unwrap(detectFiguresMod);
 const { extractImagesFromPdf } = unwrap(extractImagesMod);
 const { extractFormXObjects, extractRegionAsPdf } = unwrap(extractVectorsMod);
 const { parsePageRanges, mergePdfs } = unwrap(mergeMod);
+const { readPdfMetadata, writePdfMetadata } = unwrap(metadataMod);
+const { addPageNumbers } = unwrap(pageNumbersMod);
 const { formatPageRanges, buildPdfFromPages, rotatePdf, removePagesPdf, extractPagesPdf } = unwrap(pagesMod);
 const { pdfBytesToSvg } = unwrap(pdfToSvgMod);
 const { findTextMatches, splitItemWithMatches } = unwrap(readerMod);
 const { inspectPdf, cleanPdf, PRESETS } = unwrap(sanitizeMod);
+const { inspectSecurity, protectPdf, unlockPdf } = unwrap(securityMod);
 const { parseSplitGroups, splitByEveryN, splitByBreakPoints, splitByBookmarks, splitPdfParts, splitPdfBySize } = unwrap(splitMod);
+const { addWatermark } = unwrap(watermarkMod);
 
 const results = [];
 
@@ -548,6 +560,412 @@ await runCheck('15. lib/pdf/reader.ts (findTextMatches & splitItemWithMatches)',
     ],
     'splitItemWithMatches partial boundary overlap',
   );
+});
+
+// 16. lib/pdf/security.ts (inspectSecurity, protectPdf AES-256 & AES-128, unlockPdf)
+await runCheck('16. security.ts (inspectSecurity, protectPdf, unlockPdf)', async () => {
+  const plain = await makeMultiPagePdf(3);
+  const plainInfo = await inspectSecurity(plain);
+  assert(!plainInfo.isEncrypted && !plainInfo.needsPassword && plainInfo.passwordAccepted, 'plain PDF should not be encrypted');
+
+  const enc256 = await protectPdf(plain, {
+    userPassword: 'user-pass',
+    ownerPassword: 'owner-pass',
+    algorithm: 'aes256',
+    permissions: {
+      printing: 'lowResolution',
+      modifying: false,
+      copying: false,
+      annotating: false,
+      fillingForms: true,
+      contentAccessibility: true,
+      documentAssembly: false,
+    },
+  });
+
+  const encInfoNoPw = await inspectSecurity(enc256);
+  assert(encInfoNoPw.isEncrypted && encInfoNoPw.needsPassword && !encInfoNoPw.passwordAccepted, 'AES-256 PDF should require password');
+  assert(encInfoNoPw.algorithm === 'AES-256', `expected AES-256, got ${encInfoNoPw.algorithm}`);
+
+  const encInfoGoodPw = await inspectSecurity(enc256, 'user-pass');
+  assert(encInfoGoodPw.passwordAccepted, 'inspectSecurity should accept userPassword');
+
+  // Verify loading without password fails in @cantoo/pdf-lib
+  let loadFailed = false;
+  try {
+    await PDFDocument.load(enc256);
+  } catch {
+    loadFailed = true;
+  }
+  assert(loadFailed, 'loading encrypted PDF without password must fail');
+
+  // Verify opening with userPassword and ownerPassword works in @cantoo/pdf-lib
+  const userSizes = await pageSizes(enc256, 'user-pass');
+  const ownerSizes = await pageSizes(enc256, 'owner-pass');
+  assert(userSizes.length === 3 && ownerSizes.length === 3, 'user and owner passwords must unlock 3 pages');
+
+  // Verify pdfjs-dist rejects without password and opens with userPassword & ownerPassword
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  let pdfjsNoPwFailed = false;
+  const badTask = pdfjs.getDocument({ data: enc256.slice(), verbosity: 0 });
+  try {
+    await badTask.promise;
+  } catch {
+    pdfjsNoPwFailed = true;
+  } finally {
+    await badTask.destroy();
+  }
+  assert(pdfjsNoPwFailed, 'pdfjs-dist must reject encrypted PDF without password');
+
+  for (const pw of ['user-pass', 'owner-pass']) {
+    const okTask = pdfjs.getDocument({ data: enc256.slice(), password: pw, verbosity: 0 });
+    try {
+      const doc = await okTask.promise;
+      assert(doc.numPages === 3, `pdfjs-dist expected 3 pages with ${pw}`);
+      const p1 = await doc.getPage(1);
+      const tc = await p1.getTextContent();
+      const joined = tc.items.map((it) => it.str).join(' ');
+      assert(joined.includes('Page 1'), `expected "Page 1" text via pdfjs-dist with ${pw}`);
+    } finally {
+      await okTask.destroy();
+    }
+  }
+
+  // AES-128 with omitted ownerPassword (auto-generates random owner password when permissions restricted)
+  const enc128 = await protectPdf(plain, {
+    userPassword: 'u128',
+    algorithm: 'aes128',
+    permissions: { copying: false },
+  });
+  const info128 = await inspectSecurity(enc128, 'u128');
+  assert(info128.isEncrypted && info128.algorithm === 'AES-128' && info128.passwordAccepted, `expected AES-128 accepted, got ${JSON.stringify(info128)}`);
+
+  // Unlock encrypted PDF -> opens without password and is no longer encrypted
+  const unlocked = await unlockPdf(enc256, 'user-pass');
+  assert(unlocked.wasEncrypted === true, 'unlockPdf should report wasEncrypted=true');
+  const unlockedInfo = await inspectSecurity(unlocked.bytes);
+  assert(!unlockedInfo.isEncrypted && !unlockedInfo.needsPassword, 'unlocked PDF must not be encrypted');
+  const unlockedSizes = await pageSizes(unlocked.bytes);
+  assert(unlockedSizes.length === 3, 'unlocked PDF should open without password and keep 3 pages');
+
+  const unlockedTask = pdfjs.getDocument({ data: unlocked.bytes.slice(), verbosity: 0 });
+  try {
+    const doc = await unlockedTask.promise;
+    assert(doc.numPages === 3, 'pdfjs-dist should open unlocked PDF without password');
+  } finally {
+    await unlockedTask.destroy();
+  }
+
+  // Unlocking an already unencrypted PDF reports wasEncrypted=false
+  const noopUnlock = await unlockPdf(unlocked.bytes, '');
+  assert(noopUnlock.wasEncrypted === false, 'unlockPdf on plain PDF should report wasEncrypted=false');
+});
+
+// 17. lib/pdf/metadata.ts (readPdfMetadata & writePdfMetadata round-trip + XMP control)
+await runCheck('17. metadata.ts (readPdfMetadata & writePdfMetadata + XMP)', async () => {
+  const dirty = await makeMetadataPdf();
+  const initial = await readPdfMetadata(dirty);
+  assert(initial.title === 'Confidential Brief', `unexpected initial title: ${initial.title}`);
+  assert(initial.author === 'Alice Example', `unexpected initial author: ${initial.author}`);
+  assert(initial.subject === 'Internal Review', `unexpected initial subject: ${initial.subject}`);
+  assert(initial.keywords.includes('secret') && initial.keywords.includes('draft'), `unexpected initial keywords: ${initial.keywords}`);
+  assert(initial.creator === 'FixtureCreator 1.0', `unexpected initial creator: ${initial.creator}`);
+  assert(initial.producer === 'FixtureProducer 2.0', `unexpected initial producer: ${initial.producer}`);
+  assert(initial.hasXmp === true, 'expected initial XMP to be present');
+
+  const targetDate = '2025-06-15T10:30:00.000Z';
+  const updatedBytes = await writePdfMetadata(dirty, {
+    title: 'Updated Spec',
+    author: 'Ada Lovelace',
+    subject: '', // clear subject cleanly
+    keywords: 'rf, antenna, v2',
+    creator: 'Editor 2.0',
+    producer: 'PDF Tools',
+    creationDate: targetDate,
+    modificationDate: null,
+    customFields: [
+      { key: 'Department', value: 'RF Lab' },
+      { key: 'ProjectCode', value: 'EM-42' },
+    ],
+    clearXmp: true,
+  });
+
+  const roundTrip = await readPdfMetadata(updatedBytes);
+  assert(roundTrip.title === 'Updated Spec', `round-trip title: ${roundTrip.title}`);
+  assert(roundTrip.author === 'Ada Lovelace', `round-trip author: ${roundTrip.author}`);
+  assert(roundTrip.subject === '', `expected cleared subject, got "${roundTrip.subject}"`);
+  assert(roundTrip.keywords === 'rf, antenna, v2', `round-trip keywords: ${roundTrip.keywords}`);
+  assert(roundTrip.creator === 'Editor 2.0', `round-trip creator: ${roundTrip.creator}`);
+  assert(roundTrip.producer === 'PDF Tools', `round-trip producer: ${roundTrip.producer}`);
+  assert(roundTrip.creationDate === targetDate, `round-trip creationDate: ${roundTrip.creationDate}`);
+  assert(roundTrip.modificationDate === null, `expected cleared modificationDate, got ${roundTrip.modificationDate}`);
+  assert(roundTrip.hasXmp === false, 'expected XMP stream cleared when clearXmp=true');
+  assertDeepEqual(
+    roundTrip.customFields,
+    [
+      { key: 'Department', value: 'RF Lab' },
+      { key: 'ProjectCode', value: 'EM-42' },
+    ],
+    'custom fields round-trip',
+  );
+
+  // Verify clearXmp: false preserves XMP stream
+  const keptXmpBytes = await writePdfMetadata(dirty, { title: 'Keep XMP', clearXmp: false });
+  const keptXmp = await readPdfMetadata(keptXmpBytes);
+  assert(keptXmp.title === 'Keep XMP' && keptXmp.hasXmp === true, 'clearXmp=false must retain catalog XMP');
+});
+
+// 18. lib/pdf/annotations.ts (inspectAnnotations, removeAnnotations, flattenPdf)
+await runCheck('18. annotations.ts (inspect, selective remove, flatten)', async () => {
+  const annotPdf = await makeAnnotatedFormPdf();
+  const summary = await inspectAnnotations(annotPdf);
+  assert(summary.totalCount === 7, `expected 7 annotations, got ${summary.totalCount}`);
+  assert(summary.pagesWithAnnotations === 2, `expected 2 pages with annotations, got ${summary.pagesWithAnnotations}`);
+  assert(summary.acroFormFieldCount === 2 && summary.hasAcroForm, `expected 2 AcroForm fields, got ${summary.acroFormFieldCount}`);
+
+  const bySubtype = Object.fromEntries(summary.subtypes.map((s) => [s.subtype, s.count]));
+  assert(bySubtype.Widget === 2, `expected 2 Widgets, got ${bySubtype.Widget}`);
+  assert(bySubtype.Text === 2, `expected 2 Text notes, got ${bySubtype.Text}`);
+  assert(bySubtype.Highlight === 1, `expected 1 Highlight, got ${bySubtype.Highlight}`);
+  assert(bySubtype.Square === 1, `expected 1 Square, got ${bySubtype.Square}`);
+  assert(bySubtype.Link === 1, `expected 1 Link, got ${bySubtype.Link}`);
+
+  // Selective removal: remove Text and Square while preserving Link, Highlight, and Widgets
+  const selRes = await removeAnnotations(annotPdf, { subtypes: ['Text', 'Square'] });
+  assert(selRes.removedCount === 3 && selRes.remainingCount === 4, `selective removal counts: ${JSON.stringify(selRes)}`);
+  const afterSel = await inspectAnnotations(selRes.bytes);
+  const selMap = Object.fromEntries(afterSel.subtypes.map((s) => [s.subtype, s.count]));
+  assert(!selMap.Text && !selMap.Square && selMap.Link === 1 && selMap.Highlight === 1 && selMap.Widget === 2, `unexpected subtypes after selective remove: ${JSON.stringify(selMap)}`);
+
+  // Full removal: removes all annotations and cleans /AcroForm
+  const allRes = await removeAnnotations(annotPdf, { removeAcroFormIfEmpty: true });
+  assert(allRes.removedCount === 7 && allRes.remainingCount === 0, `full removal counts: ${JSON.stringify(allRes)}`);
+  const afterAll = await inspectAnnotations(allRes.bytes);
+  assert(afterAll.totalCount === 0 && !afterAll.hasAcroForm, `expected 0 annotations & no AcroForm after full removal, got ${JSON.stringify(afterAll)}`);
+
+  // Flatten: flattens AcroForm fields + Highlight/Square /AP/N, keeps Link, skips 2 Text notes without /AP
+  const flatRes = await flattenPdf(annotPdf, {
+    flattenForms: true,
+    flattenAnnotations: true,
+    keepLinks: true,
+  });
+  assert(flatRes.flattenedFormFields === 2, `expected 2 flattenedFormFields, got ${flatRes.flattenedFormFields}`);
+  assert(flatRes.flattenedAnnotations === 2, `expected 2 flattenedAnnotations, got ${flatRes.flattenedAnnotations}`);
+  assert(flatRes.skippedWithoutAppearance === 2, `expected 2 skippedWithoutAppearance, got ${flatRes.skippedWithoutAppearance}`);
+  assert(flatRes.keptAnnotations === 3, `expected 3 keptAnnotations (1 Link + 2 skipped Text), got ${flatRes.keptAnnotations}`);
+
+  const afterFlat = await inspectAnnotations(flatRes.bytes);
+  assert(!afterFlat.hasAcroForm && afterFlat.acroFormFieldCount === 0, 'AcroForm must be removed after flatten');
+  const flatMap = Object.fromEntries(afterFlat.subtypes.map((s) => [s.subtype, s.count]));
+  assert(flatMap.Link === 1 && !flatMap.Highlight && !flatMap.Square && !flatMap.Widget, `unexpected remaining subtypes after flatten: ${JSON.stringify(flatMap)}`);
+
+  // Verify FlatAnnot XObjects were registered on both pages and form value text is static via pdfjs-dist
+  const flatDoc = await PDFDocument.load(flatRes.bytes, { updateMetadata: false });
+  for (let pIdx = 0; pIdx < 2; pIdx++) {
+    const resDict = flatDoc.getPage(pIdx).node.Resources();
+    const xobjs = resDict?.lookup(PDFName.of('XObject'));
+    const keys = xobjs ? xobjs.keys().map((k) => k.decodeText()) : [];
+    assert(keys.some((k) => k.startsWith('FlatAnnot')), `page ${pIdx + 1} missing FlatAnnot XObject in ${keys.join(', ')}`);
+  }
+
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const flatTask = pdfjs.getDocument({ data: flatRes.bytes.slice(), verbosity: 0 });
+  try {
+    const pdoc = await flatTask.promise;
+    const p1 = await pdoc.getPage(1);
+    const tc = await p1.getTextContent();
+    const text = tc.items.map((it) => it.str).join(' ');
+    assert(text.includes('Ada Lovelace'), `expected flattened form text "Ada Lovelace" in page 1 content, got "${text}"`);
+  } finally {
+    await flatTask.destroy();
+  }
+});
+
+// 19. lib/pdf/pageNumbers.ts (unrotated + rotated pages, skipFirstPage, startNumber, mirrorEvenPages, pageRange)
+await runCheck('19. pageNumbers.ts (rotated pages, skipFirst, startNumber, pageRange)', async () => {
+  const rotPdf = await makeRotatedPdf(); // 4 pages with /Rotate 0, 90, 180, 270
+  const stamped = await addPageNumbers(rotPdf, {
+    position: 'bottom-right',
+    format: 'Page {n} of {total} ({page}/{pages})',
+    font: 'helvetica-bold',
+    fontSize: 12,
+    color: '#112233',
+    marginX: 24,
+    marginY: 20,
+    startNumber: 10,
+    skipFirstPage: true,
+    mirrorEvenPages: true,
+  });
+
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const task = pdfjs.getDocument({ data: stamped.slice(), verbosity: 0 });
+  try {
+    const pdoc = await task.promise;
+    assert(pdoc.numPages === 4, 'expected 4 pages');
+
+    // Page 1 was skipped
+    const p1 = await pdoc.getPage(1);
+    const t1 = (await p1.getTextContent()).items.map((i) => i.str).join(' ');
+    assert(!t1.includes('Page '), `page 1 should be skipped, got "${t1}"`);
+
+    const expectedSpecs = [
+      { pageNum: 2, label: 'Page 10 of 3 (2/4)', side: 'left' },  // even -> mirrored to bottom-left
+      { pageNum: 3, label: 'Page 11 of 3 (3/4)', side: 'right' }, // odd -> bottom-right
+      { pageNum: 4, label: 'Page 12 of 3 (4/4)', side: 'left' },  // even -> mirrored to bottom-left
+    ];
+
+    for (const spec of expectedSpecs) {
+      const page = await pdoc.getPage(spec.pageNum);
+      const vp = page.getViewport({ scale: 1 });
+      const tc = await page.getTextContent();
+      const joined = tc.items.map((i) => i.str).join(' ');
+      assert(joined.includes(spec.label), `page ${spec.pageNum} missing "${spec.label}" in "${joined}"`);
+
+      // Confirm the stamped text item sits in the visual bottom half and expected left/right half, upright!
+      const matchItem = tc.items.find((i) => i.str.includes('Page '));
+      assert(Boolean(matchItem), `page ${spec.pageNum} missing text item for position check`);
+      const tx = pdfjs.Util.transform(vp.transform, matchItem.transform);
+      const vx = tx[4];
+      const vy = tx[5]; // viewport Y grows downward: bottom of page has vy close to vp.height
+      assert(vy > vp.height * 0.7, `page ${spec.pageNum} number should be near visual bottom (vy=${vy.toFixed(1)}, H=${vp.height})`);
+      if (spec.side === 'left') {
+        assert(vx < vp.width * 0.5, `page ${spec.pageNum} number should be on visual left (vx=${vx.toFixed(1)}, W=${vp.width})`);
+      } else {
+        assert(vx > vp.width * 0.4, `page ${spec.pageNum} number should be on visual right (vx=${vx.toFixed(1)}, W=${vp.width})`);
+      }
+      // Check upright orientation in viewport space: tx[0] > 0 and |tx[1]| ~ 0
+      assert(tx[0] > 0 && Math.abs(tx[1]) < 0.1, `page ${spec.pageNum} number should be upright (tx=${JSON.stringify(tx)})`);
+    }
+  } finally {
+    await task.destroy();
+  }
+
+  // Test pageRange subset
+  const plain4 = await makeMultiPagePdf(4);
+  const ranged = await addPageNumbers(plain4, {
+    format: 'NUM_{n}',
+    pageRange: '2-3',
+    startNumber: 5,
+  });
+  const rTask = pdfjs.getDocument({ data: ranged.slice(), verbosity: 0 });
+  try {
+    const pdoc = await rTask.promise;
+    const texts = [];
+    for (let i = 1; i <= 4; i++) {
+      const p = await pdoc.getPage(i);
+      texts.push((await p.getTextContent()).items.map((it) => it.str).join(' '));
+    }
+    assert(!texts[0].includes('NUM_'), 'page 1 outside pageRange must not be numbered');
+    assert(texts[1].includes('NUM_5'), `page 2 expected NUM_5 in "${texts[1]}"`);
+    assert(texts[2].includes('NUM_6'), `page 3 expected NUM_6 in "${texts[2]}"`);
+    assert(!texts[3].includes('NUM_'), 'page 4 outside pageRange must not be numbered');
+  } finally {
+    await rTask.destroy();
+  }
+});
+
+// 20. lib/pdf/watermark.ts (text single/tiled, over/under, rotated pages, PNG image watermark)
+await runCheck('20. watermark.ts (text single/tiled, over/under, rotated, PNG image)', async () => {
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+
+  // A. Single text watermark on rotated PDF ('over')
+  const rotPdf = await makeRotatedPdf();
+  const singleTextWm = await addWatermark(rotPdf, {
+    kind: 'text',
+    text: 'CONFIDENTIAL',
+    font: 'helvetica-bold',
+    fontSize: 36,
+    color: '#cc2222',
+    layout: 'single',
+    position: 'center',
+    rotation: -45,
+    opacity: 0.3,
+    layer: 'over',
+  });
+
+  const t1 = pdfjs.getDocument({ data: singleTextWm.slice(), verbosity: 0 });
+  try {
+    const pdoc = await t1.promise;
+    for (let i = 1; i <= 4; i++) {
+      const page = await pdoc.getPage(i);
+      const tc = await page.getTextContent();
+      const joined = tc.items.map((it) => it.str).join(' ');
+      assert(joined.includes('CONFIDENTIAL'), `rotated page ${i} missing CONFIDENTIAL watermark`);
+    }
+  } finally {
+    await t1.destroy();
+  }
+
+  // B. Tiled text watermark with layer='under' and pageRange='1-2'
+  const multi3 = await makeMultiPagePdf(3);
+  const tiledUnderWm = await addWatermark(multi3, {
+    kind: 'text',
+    text: 'DRAFT',
+    fontSize: 22,
+    layout: 'tiled',
+    tileGapX: 80,
+    tileGapY: 80,
+    rotation: 30,
+    opacity: 0.2,
+    layer: 'under',
+    pageRange: '1-2',
+  });
+
+  const t2 = pdfjs.getDocument({ data: tiledUnderWm.slice(), verbosity: 0 });
+  try {
+    const pdoc = await t2.promise;
+    const p1Items = (await (await pdoc.getPage(1)).getTextContent()).items.map((it) => it.str);
+    const p2Items = (await (await pdoc.getPage(2)).getTextContent()).items.map((it) => it.str);
+    const p3Items = (await (await pdoc.getPage(3)).getTextContent()).items.map((it) => it.str);
+
+    const p1Drafts = p1Items.filter((s) => s.includes('DRAFT'));
+    assert(p1Drafts.length >= 2, `expected tiled watermark to repeat >=2 times on page 1, got ${p1Drafts.length}`);
+    assert(p2Items.some((s) => s.includes('DRAFT')), 'page 2 should contain DRAFT watermark');
+    assert(!p3Items.some((s) => s.includes('DRAFT')), 'page 3 outside pageRange should not contain DRAFT');
+
+    // Verify layer='under' drew DRAFT BEFORE original 'Page 1' text!
+    const firstDraftIdx = p1Items.findIndex((s) => s.includes('DRAFT'));
+    const page1TextIdx = p1Items.findIndex((s) => s.includes('Page 1'));
+    assert(
+      firstDraftIdx >= 0 && page1TextIdx > firstDraftIdx,
+      `expected layer='under' to place DRAFT (${firstDraftIdx}) before Page 1 (${page1TextIdx})`,
+    );
+  } finally {
+    await t2.destroy();
+  }
+
+  // C. PNG image watermark
+  const pngBytes = makeRgbaPng(32, 24);
+  const multi2 = await makeMultiPagePdf(2);
+  const imgWm = await addWatermark(multi2, {
+    kind: 'image',
+    imageBytes: pngBytes,
+    imageType: 'png',
+    imageScale: 0.35,
+    layout: 'single',
+    position: 'bottom-right',
+    rotation: 0,
+    opacity: 0.4,
+    layer: 'over',
+  });
+
+  const imgDocSizes = await pageSizes(imgWm);
+  assert(imgDocSizes.length === 2, 'image-watermarked PDF must remain valid 2-page PDF');
+
+  const t3 = pdfjs.getDocument({ data: imgWm.slice(), verbosity: 0 });
+  try {
+    const pdoc = await t3.promise;
+    for (let i = 1; i <= 2; i++) {
+      const page = await pdoc.getPage(i);
+      const ops = await page.getOperatorList();
+      const hasImageOp = ops.fnArray.some(
+        (fn) => fn === pdfjs.OPS.paintImageXObject || fn === pdfjs.OPS.paintInlineImageXObject,
+      );
+      assert(hasImageOp, `page ${i} missing image paint operator after PNG watermark`);
+    }
+  } finally {
+    await t3.destroy();
+  }
 });
 
 // Print summary table

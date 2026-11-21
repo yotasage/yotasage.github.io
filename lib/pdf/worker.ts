@@ -1,14 +1,25 @@
 // Web Worker for heavy off-main-thread pdf-lib work (merge, lossless compress, sanitize, page operations,
 // split, image extraction, and size breakdown). Canvas / pdf.js tasks stay on the main thread.
 
+import {
+  FlattenOptions,
+  flattenPdf,
+  inspectAnnotations,
+  RemoveAnnotationsOptions,
+  removeAnnotations,
+} from './annotations';
 import { inspectPdfSizeBreakdown } from './breakdown';
 import { compressPdf, CompressOptions } from './compress';
 import { extractImagesFromPdf, ExtractImagesOptions } from './extractImages';
 import { isPasswordError } from './files';
 import { MergeInput, mergePdfs } from './merge';
+import { PdfMetadataEdit, readPdfMetadata, writePdfMetadata } from './metadata';
+import { addPageNumbers, PageNumberOptions } from './pageNumbers';
 import { buildPdfFromPages, extractPagesPdf, LoadSource, PageSpec, removePagesPdf, rotatePdf } from './pages';
 import { CleanOptions, cleanPdf, inspectPdf } from './sanitize';
+import { inspectSecurity, ProtectOptions, protectPdf, unlockPdf } from './security';
 import { SplitPart, splitPdfBySize, splitPdfParts } from './split';
+import { addWatermark, WatermarkOptions } from './watermark';
 
 export type WorkerRequest =
   | { id: number; task: 'merge'; inputs: MergeInput[] }
@@ -28,7 +39,17 @@ export type WorkerRequest =
   | { id: number; task: 'splitParts'; bytes: Uint8Array; parts: SplitPart[]; opts: { sourceName: string; password?: string } }
   | { id: number; task: 'splitBySize'; bytes: Uint8Array; maxBytes: number; opts: { sourceName: string; password?: string } }
   | { id: number; task: 'extractImages'; bytes: Uint8Array; opts: ExtractImagesOptions }
-  | { id: number; task: 'breakdown'; bytes: Uint8Array; password?: string };
+  | { id: number; task: 'breakdown'; bytes: Uint8Array; password?: string }
+  | { id: number; task: 'inspectSecurity'; bytes: Uint8Array; password?: string }
+  | { id: number; task: 'protect'; bytes: Uint8Array; opts: ProtectOptions; password?: string }
+  | { id: number; task: 'unlock'; bytes: Uint8Array; password: string }
+  | { id: number; task: 'readMetadata'; bytes: Uint8Array; password?: string }
+  | { id: number; task: 'writeMetadata'; bytes: Uint8Array; fields: PdfMetadataEdit; password?: string }
+  | { id: number; task: 'inspectAnnotations'; bytes: Uint8Array; password?: string }
+  | { id: number; task: 'removeAnnotations'; bytes: Uint8Array; opts: RemoveAnnotationsOptions; password?: string }
+  | { id: number; task: 'flatten'; bytes: Uint8Array; opts: FlattenOptions; password?: string }
+  | { id: number; task: 'addPageNumbers'; bytes: Uint8Array; opts: PageNumberOptions; password?: string }
+  | { id: number; task: 'addWatermark'; bytes: Uint8Array; opts: WatermarkOptions; password?: string };
 
 export type WorkerResponse =
   | { id: number; type: 'progress'; fraction: number; label: string }
@@ -80,6 +101,26 @@ async function handleTask(req: WorkerRequest, postProgress: (fraction: number, l
       return extractImagesFromPdf(req.bytes, req.opts, postProgress);
     case 'breakdown':
       return inspectPdfSizeBreakdown(req.bytes, req.password);
+    case 'inspectSecurity':
+      return inspectSecurity(req.bytes, req.password);
+    case 'protect':
+      return protectPdf(req.bytes, req.opts, req.password);
+    case 'unlock':
+      return unlockPdf(req.bytes, req.password);
+    case 'readMetadata':
+      return readPdfMetadata(req.bytes, req.password);
+    case 'writeMetadata':
+      return writePdfMetadata(req.bytes, req.fields, req.password);
+    case 'inspectAnnotations':
+      return inspectAnnotations(req.bytes, req.password);
+    case 'removeAnnotations':
+      return removeAnnotations(req.bytes, req.opts, req.password);
+    case 'flatten':
+      return flattenPdf(req.bytes, req.opts, req.password);
+    case 'addPageNumbers':
+      return addPageNumbers(req.bytes, req.opts, req.password);
+    case 'addWatermark':
+      return addWatermark(req.bytes, req.opts, req.password);
   }
 }
 

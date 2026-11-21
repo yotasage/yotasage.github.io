@@ -2,14 +2,28 @@
 // transparently to running on the main thread if Web Workers are unavailable or fail to initialize.
 // Caller-owned Uint8Arrays are never transferred (so caller buffers are never neutered).
 
+import {
+  AnnotationSummary,
+  FlattenOptions,
+  flattenPdf,
+  FlattenResult,
+  inspectAnnotations,
+  RemoveAnnotationsOptions,
+  removeAnnotations,
+  RemoveAnnotationsResult,
+} from './annotations';
 import { inspectPdfSizeBreakdown, PdfSizeBreakdown } from './breakdown';
 import { compressPdf, CompressOptions, CompressResult } from './compress';
 import { extractImagesFromPdf, ExtractImagesOptions, ExtractImagesResult } from './extractImages';
 import { OutputFile } from './files';
 import { MergeInput, mergePdfs } from './merge';
+import { PdfMetadata, PdfMetadataEdit, readPdfMetadata, writePdfMetadata } from './metadata';
+import { addPageNumbers, PageNumberOptions } from './pageNumbers';
 import { buildPdfFromPages, extractPagesPdf, LoadSource, PageSpec, removePagesPdf, rotatePdf } from './pages';
 import { CleanOptions, cleanPdf, Finding, inspectPdf } from './sanitize';
+import { inspectSecurity, ProtectOptions, protectPdf, SecurityInfo, unlockPdf, UnlockResult } from './security';
 import { SplitBySizeResult, SplitPart, splitPdfBySize, splitPdfParts } from './split';
+import { addWatermark, WatermarkOptions } from './watermark';
 import type { WorkerRequest, WorkerResponse } from './worker';
 
 type ProgressFn = (fraction: number, label: string) => void;
@@ -244,5 +258,95 @@ export function runInspectPdfSizeBreakdown(bytes: Uint8Array, password?: string)
   return dispatch<PdfSizeBreakdown>(
     (id) => ({ id, task: 'breakdown', bytes, password }),
     () => inspectPdfSizeBreakdown(bytes, password),
+  );
+}
+
+export function runInspectSecurity(bytes: Uint8Array, password?: string): Promise<SecurityInfo> {
+  return dispatch<SecurityInfo>(
+    (id) => ({ id, task: 'inspectSecurity', bytes, password }),
+    () => inspectSecurity(bytes, password),
+  );
+}
+
+export function runProtectPdf(bytes: Uint8Array, opts: ProtectOptions, password?: string): Promise<Uint8Array> {
+  return dispatch<Uint8Array>(
+    (id) => ({ id, task: 'protect', bytes, opts, password }),
+    () => protectPdf(bytes, opts, password),
+  );
+}
+
+export function runUnlockPdf(bytes: Uint8Array, password: string): Promise<UnlockResult> {
+  return dispatch<UnlockResult>(
+    (id) => ({ id, task: 'unlock', bytes, password }),
+    () => unlockPdf(bytes, password),
+  );
+}
+
+export function runReadPdfMetadata(bytes: Uint8Array, password?: string): Promise<PdfMetadata> {
+  return dispatch<PdfMetadata>(
+    (id) => ({ id, task: 'readMetadata', bytes, password }),
+    () => readPdfMetadata(bytes, password),
+  );
+}
+
+export function runWritePdfMetadata(
+  bytes: Uint8Array,
+  fields: PdfMetadataEdit,
+  password?: string,
+): Promise<Uint8Array> {
+  return dispatch<Uint8Array>(
+    (id) => ({ id, task: 'writeMetadata', bytes, fields, password }),
+    () => writePdfMetadata(bytes, fields, password),
+  );
+}
+
+export function runInspectAnnotations(bytes: Uint8Array, password?: string): Promise<AnnotationSummary> {
+  return dispatch<AnnotationSummary>(
+    (id) => ({ id, task: 'inspectAnnotations', bytes, password }),
+    () => inspectAnnotations(bytes, password),
+  );
+}
+
+export function runRemoveAnnotations(
+  bytes: Uint8Array,
+  opts: RemoveAnnotationsOptions,
+  password?: string,
+): Promise<RemoveAnnotationsResult> {
+  return dispatch<RemoveAnnotationsResult>(
+    (id) => ({ id, task: 'removeAnnotations', bytes, opts, password }),
+    () => removeAnnotations(bytes, opts, password),
+  );
+}
+
+export function runFlattenPdf(
+  bytes: Uint8Array,
+  opts: FlattenOptions,
+  password?: string,
+): Promise<FlattenResult> {
+  return dispatch<FlattenResult>(
+    (id) => ({ id, task: 'flatten', bytes, opts, password }),
+    () => flattenPdf(bytes, opts, password),
+  );
+}
+
+export function runAddPageNumbers(
+  bytes: Uint8Array,
+  opts: PageNumberOptions,
+  password?: string,
+): Promise<Uint8Array> {
+  return dispatch<Uint8Array>(
+    (id) => ({ id, task: 'addPageNumbers', bytes, opts, password }),
+    () => addPageNumbers(bytes, opts, password),
+  );
+}
+
+export function runAddWatermark(
+  bytes: Uint8Array,
+  opts: WatermarkOptions,
+  password?: string,
+): Promise<Uint8Array> {
+  return dispatch<Uint8Array>(
+    (id) => ({ id, task: 'addWatermark', bytes, opts, password }),
+    () => addWatermark(bytes, opts, password),
   );
 }
