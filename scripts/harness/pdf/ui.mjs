@@ -16,7 +16,10 @@ import {
   makeCompressiblePdf,
   makeEncryptedPdf,
   makeImagePdf,
+  makeInlineVectorPdf,
   makeMultiPagePdf,
+  makeReaderPdf,
+  makeVectorFormPdf,
   pageDimensionsFor,
 } from './fixtures.mjs';
 
@@ -164,10 +167,13 @@ async function main() {
   const { bytes: imagePdf } = await makeImagePdf();
   const compressiblePdf = await makeCompressiblePdf();
   const encryptedPdf = await makeEncryptedPdf('secret', 'owner');
+  const vectorFormPdf = await makeVectorFormPdf();
+  const inlineVectorPdf = await makeInlineVectorPdf();
+  const readerPdf = await makeReaderPdf();
 
-  // 1. Hub shows all 11 tools and every route returns 200.
-  await runTest('1. /pdf/main lists all 11 tools and every route returns HTTP 200', async () => {
-    assert(ALL_TOOLS.length === 11, `Expected 11 registered tools, found ${ALL_TOOLS.length}`);
+  // 1. Hub shows all 12 tools and every route returns 200.
+  await runTest('1. /pdf/main lists all 12 tools and every route returns HTTP 200', async () => {
+    assert(ALL_TOOLS.length === 12, `Expected 12 registered tools, found ${ALL_TOOLS.length}`);
     const hubRes = await page.goto(`${baseUrl}/pdf/main`, { waitUntil: 'networkidle' });
     assert(hubRes && hubRes.status() === 200, `/pdf/main returned ${hubRes?.status()}`);
     for (const tool of ALL_TOOLS) {
@@ -183,7 +189,15 @@ async function main() {
   // 2. Phone layout (390x844) overflow check.
   await runTest('2. Phone layout (390x844) has no horizontal overflow', async () => {
     await page.setViewportSize({ width: 390, height: 844 });
-    const phoneRoutes = ['/pdf/main', '/pdf/rotate', '/pdf/organize', '/pdf/split', '/pdf/compress', '/pdf/extract-images'];
+    const phoneRoutes = [
+      '/pdf/main',
+      '/pdf/reader',
+      '/pdf/rotate',
+      '/pdf/organize',
+      '/pdf/split',
+      '/pdf/compress',
+      '/pdf/extract-images',
+    ];
     for (const route of phoneRoutes) {
       await page.goto(`${baseUrl}${route}`, { waitUntil: 'networkidle' });
       const { scrollWidth, innerWidth } = await page.evaluate(() => ({
@@ -386,8 +400,186 @@ async function main() {
     await page.getByText('4 pages ·').waitFor({ timeout: 10000 });
   });
 
-  // 12. Zero runtime errors and zero third-party network requests.
-  await runTest('12. Zero pageerror, console.error, and third-party requests', async () => {
+  // 12. Extract images & vectors — Embedded vectors tab (Form XObjects SVG + PDF downloads).
+  await runTest('12. Extract vectors (Embedded vectors tab: 2 previews + SVG/PDF downloads)', async () => {
+    await page.goto(`${baseUrl}/pdf/extract-images`, { waitUntil: 'networkidle' });
+    await page.locator('input[type="file"]').setInputFiles(pdfUpload('vectors.pdf', vectorFormPdf));
+
+    const vectorsTab = page.getByRole('tab', { name: /Embedded vectors/ });
+    await vectorsTab.waitFor({ timeout: 15000 });
+    await vectorsTab.click();
+
+    await page.waitForFunction(
+      () => document.querySelectorAll('ul li img[src^="blob:"]').length === 2,
+      null,
+      { timeout: 25000 },
+    );
+
+    const previews = await page.evaluate(async () => {
+      const imgs = [...document.querySelectorAll('ul li img[src^="blob:"]')];
+      await Promise.all(
+        imgs.map((img) =>
+          img.complete
+            ? Promise.resolve()
+            : new Promise((res) => {
+                img.onload = res;
+                img.onerror = res;
+              }),
+        ),
+      );
+      return imgs.map((img) => ({ w: img.naturalWidth, h: img.naturalHeight }));
+    });
+    assert(previews.length === 2 && previews.every((d) => d.w > 0 && d.h > 0), `SVG previews failed: ${JSON.stringify(previews)}`);
+
+    const firstCard = page.locator('ul li').first();
+    const { bytes: svgBytes } = await readDownloadBytes(page, () =>
+      firstCard.getByRole('button', { name: 'SVG', exact: true }).click(),
+    );
+    const svgText = new TextDecoder().decode(svgBytes);
+    assert(svgText.includes('<svg') && svgText.includes('<path'), 'downloaded vector SVG missing <svg>/<path>');
+
+    const { bytes: pdfBytes } = await readDownloadBytes(page, () =>
+      firstCard.getByRole('button', { name: 'PDF', exact: true }).click(),
+    );
+    const pdfHead = new TextDecoder().decode(pdfBytes.slice(0, 5));
+    assert(pdfHead === '%PDF-', `downloaded vector PDF header was ${JSON.stringify(pdfHead)}`);
+    const formDoc = await PDFDocument.load(pdfBytes, { updateMetadata: false });
+    assert(formDoc.getPageCount() === 1, `expected 1-page Form XObject PDF, got ${formDoc.getPageCount()}`);
+  });
+
+  // 13. Extract images & vectors — Detect & crop figures (auto-detect, drag-a-box, delete, SVG & PDF downloads).
+  await runTest('13. Detect & crop figures (auto-detect 2 -> drag 3rd -> delete -> SVG/PDF downloads)', async () => {
+    await page.goto(`${baseUrl}/pdf/extract-images`, { waitUntil: 'networkidle' });
+    await page.locator('input[type="file"]').setInputFiles(pdfUpload('inline.pdf', inlineVectorPdf));
+
+    const cropTab = page.getByRole('tab', { name: /Detect & crop figures/ });
+    await cropTab.waitFor({ timeout: 15000 });
+    await cropTab.click();
+
+    const overlay = page.locator('[aria-label="Page figure selection canvas"]');
+    await overlay.waitFor({ timeout: 20000 });
+    await page.waitForFunction(() => {
+      const c = document.querySelector('canvas');
+      return Boolean(c && c.width > 0 && c.height > 0);
+    }, null, { timeout: 20000 });
+
+    await page.getByRole('button', { name: 'Auto-detect page', exact: true }).click();
+    await page.getByRole('heading', { name: 'Figures (2)' }).waitFor({ timeout: 20000 });
+
+    // Scroll the canvas overlay into view and drag a new box on the empty top-right region
+    // (x ~ 72%..90%, y ~ 18%..32%, cleanly outside the top schematic which ends at x ~ 57%).
+    await overlay.evaluate((el) => el.scrollIntoView({ block: 'start', inline: 'nearest' }));
+    const box = await overlay.boundingBox();
+    assert(box && box.width > 100 && box.height > 100, `invalid canvas overlay bbox: ${JSON.stringify(box)}`);
+    const x1 = box.x + box.width * 0.72;
+    const y1 = box.y + box.height * 0.18;
+    const x2 = box.x + box.width * 0.90;
+    const y2 = box.y + box.height * 0.32;
+    await page.mouse.move(x1, y1);
+    await page.mouse.down();
+    await page.mouse.move(x2, y2, { steps: 6 });
+    await page.mouse.up();
+
+    await page.getByRole('heading', { name: 'Figures (3)' }).waitFor({ timeout: 10000 });
+
+    // Delete the newly drawn (selected) 3rd box -> back to 2
+    await page.getByRole('button', { name: 'Delete', exact: true }).click();
+    await page.getByRole('heading', { name: 'Figures (2)' }).waitFor({ timeout: 10000 });
+
+    // Select the first detected box and test individual SVG & PDF downloads
+    await page.getByRole('button', { name: /^Fig p1-1\b/ }).click();
+    const { bytes: cropSvgBytes } = await readDownloadBytes(page, () =>
+      page.getByRole('button', { name: 'Download SVG', exact: true }).click(),
+    );
+    const cropSvg = new TextDecoder().decode(cropSvgBytes);
+    assert(cropSvg.includes('<svg') && cropSvg.includes('<path'), 'cropped figure SVG missing <svg>/<path>');
+
+    const { bytes: cropPdfBytes } = await readDownloadBytes(page, () =>
+      page.getByRole('button', { name: 'Download PDF', exact: true }).click(),
+    );
+    assert(new TextDecoder().decode(cropPdfBytes.slice(0, 5)) === '%PDF-', 'cropped figure PDF missing %PDF- header');
+    const croppedDoc = await PDFDocument.load(cropPdfBytes, { updateMetadata: false });
+    assert(croppedDoc.getPageCount() === 1, `expected 1-page cropped PDF, got ${croppedDoc.getPageCount()}`);
+  });
+
+  // 14. Read PDF (render canvas + text layer, outline jump, search + <mark>, dark paper, layout, Continue with… handoff).
+  await runTest('14. Read PDF (canvas + text layer, Contents jump, Search highlight, dark mode, handoff)', async () => {
+    await page.goto(`${baseUrl}/pdf/reader`, { waitUntil: 'networkidle' });
+    await page.locator('input[type="file"]').setInputFiles(pdfUpload('manual.pdf', readerPdf));
+
+    // Verify page 1 canvas renders with non-zero dimensions and text layer renders selectable text
+    await page.waitForFunction(() => {
+      const c = document.querySelector('canvas[aria-label="Page 1"]');
+      return Boolean(c && c.width > 0 && c.height > 0);
+    }, null, { timeout: 25000 });
+    await page.locator('[data-page="1"]').getByText('ALPHA_HEADING').waitFor({ timeout: 15000 });
+
+    // Open Contents sidebar tab and click bookmark pointing to page 3
+    await page.getByRole('tab', { name: 'Contents', exact: true }).click();
+    await page.getByRole('button', { name: /Gamma Quantum/ }).click();
+
+    const pageInput = page.locator('input[aria-label="Current page"]');
+    await page.waitForFunction(
+      () => document.querySelector('input[aria-label="Current page"]')?.value === '3',
+      null,
+      { timeout: 10000 },
+    );
+    assert((await pageInput.inputValue()) === '3', `expected current page 3 after outline jump, got ${await pageInput.inputValue()}`);
+
+    // Open search with Ctrl+F, search QUANTUM_MARKER, verify match count and <mark> on page 3
+    await page.keyboard.press('Control+f');
+    const searchInput = page.locator('input[aria-label="Search query"]');
+    await searchInput.waitFor({ timeout: 10000 });
+    await searchInput.fill('QUANTUM_MARKER');
+
+    await page.getByText('1 / 1').waitFor({ timeout: 15000 });
+    const mark = page.locator('[data-page="3"] mark', { hasText: 'QUANTUM_MARKER' });
+    await mark.first().waitFor({ timeout: 15000 });
+    await page.keyboard.press('Escape');
+
+    // Toggle dark-mode reading paper and view modes without errors
+    const darkBtn = page.locator('button[aria-label="Toggle dark paper mode"]');
+    await darkBtn.click();
+    assert((await darkBtn.getAttribute('aria-pressed')) === 'true', 'dark paper toggle did not activate');
+
+    const layoutSelect = page.locator('select[aria-label="Page layout"]');
+    await layoutSelect.selectOption('single');
+    await layoutSelect.selectOption('two-page');
+    await layoutSelect.selectOption('continuous');
+
+    // Two-way Continue with… handoff: Info tab -> Rotate PDF -> opens /pdf/rotate with document loaded in memory
+    await page.getByRole('tab', { name: 'Info', exact: true }).click();
+    await page.getByRole('button', { name: 'Rotate PDF', exact: true }).click();
+    await page.waitForURL('**/pdf/rotate', { timeout: 15000 });
+    await page.locator('img[src^="blob:"]').first().waitFor({ timeout: 20000 });
+    await page.getByText('4 pages ·').waitFor({ timeout: 10000 });
+  });
+
+  // 15. Read PDF encrypted unlock flow (wrong password -> error, right password -> unlocks & renders).
+  await runTest('15. Read PDF encrypted unlock (wrong password error + unlock 4 pages)', async () => {
+    await page.goto(`${baseUrl}/pdf/reader`, { waitUntil: 'networkidle' });
+    await page.locator('input[type="file"]').setInputFiles(pdfUpload('locked-reader.pdf', encryptedPdf));
+
+    const pwInput = page.locator('input[type="password"]');
+    await pwInput.waitFor({ timeout: 15000 });
+
+    await pwInput.fill('wrong');
+    await page.getByRole('button', { name: 'Unlock' }).click();
+    await page.getByText('Incorrect password. Try again.').waitFor({ timeout: 15000 });
+    assert(await pwInput.isVisible(), 'password prompt disappeared after wrong password on /pdf/reader');
+
+    await pwInput.fill('secret');
+    await page.getByRole('button', { name: 'Unlock' }).click();
+    await pwInput.waitFor({ state: 'hidden', timeout: 15000 });
+    await page.waitForFunction(() => {
+      const c = document.querySelector('canvas[aria-label="Page 1"]');
+      return Boolean(c && c.width > 0 && c.height > 0);
+    }, null, { timeout: 25000 });
+    await page.getByText('/ 4').waitFor({ timeout: 10000 });
+  });
+
+  // 16. Zero runtime errors and zero third-party network requests.
+  await runTest('16. Zero pageerror, console.error, and third-party requests', async () => {
     assert(pageErrors.length === 0, `pageerror(s): ${pageErrors.slice(0, 3).join(' | ')}`);
     assert(consoleErrors.length === 0, `console.error(s): ${consoleErrors.slice(0, 3).join(' | ')}`);
     assert(outsideRequests.length === 0, `third-party request(s): ${outsideRequests.slice(0, 3).join(' | ')}`);

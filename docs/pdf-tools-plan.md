@@ -77,7 +77,8 @@ Status: ✅ done · 🔜 next phase · 📋 planned · 🔬 needs research · �
 | Organize / rearrange pages | ✔ | ✔ | ✅ | Grid of every page from one or more PDFs; drag/touch reorder, rotate, delete, duplicate, insert blank pages, reverse, undo/redo. Shared grid (`PageGrid`) used by Remove, Extract and Rotate. |
 | Rotate PDF | ✔ | ✔ | ✅ | Set `/Rotate` in-place per page, for selected pages, or for all pages (keeps bookmarks and metadata). |
 | PDF to images (JPG/PNG) | ✔ | ✔ | ✅ | Render all or selected pages with pdf.js at a chosen DPI (72/150/300/custom) and JPEG quality (`lib/pdf/pdfToImages.ts`); single image or ZIP download. |
-| Extract images | ✔ | ✔ (as PDF to JPG option) | ✅ | Walk page and Form XObject image resources (`lib/pdf/extractImages.ts`); JPEGs are extracted verbatim, raw/indexed/SMask streams are encoded as lossless PNG (`lib/pdf/imageDecode.ts`), with thumbnail grid, min-size filter and single/ZIP download. |
+| Extract images & vectors | ✔ | ✔ (as PDF to JPG option) | ✅ | Three-tab workspace (`pages/pdf/extract-images.tsx`, `components/PdfTools/VectorTabs.tsx`, `components/PdfTools/FigureCanvas.tsx`): **Raster images** walks page and Form XObject image resources (`lib/pdf/extractImages.ts`, verbatim JPEGs & lossless PNGs via `lib/pdf/imageDecode.ts`), **Embedded vectors** extracts `/Subtype /Form` XObjects as lossless standalone `.pdf`s (`lib/pdf/extractVectors.ts`) and editable `.svg`s (`lib/pdf/pdfToSvg.ts`), and **Detect & crop figures** auto-detects inline vector drawings (`lib/pdf/detectFigures.ts`) or lets users draw/resize/tighten boxes on a page canvas and export as `.svg`, lossless cropped `.pdf`, or high-DPI `.png` (single or ZIP). |
+| Read PDF | ✔ (PDF Reader) | – | ✅ | Full client-side viewer (`pages/pdf/reader.tsx`, `components/PdfTools/PdfReader.tsx`, `lib/pdf/reader.ts`): virtualised HiDPI canvas rendering with bounded canvas memory, selectable text layer, Ctrl+F in-document search with `<mark>` highlights, collapsible sidebar (lazy thumbnails, nested table of contents, document info + *Continue with…* handoff), continuous / single / two-page layouts, zoom presets, view rotation, dark-mode reading paper, print, download, fullscreen, keyboard shortcuts, and encrypted PDF unlock. |
 | Add blank pages / insert PDF into PDF | ✔ | – | ✅ | Built into Organize pages (`+ Blank page`, per-page `+`, and `+ Add PDFs`). |
 
 ### Phase 3 – edit and annotate
@@ -148,14 +149,16 @@ Status: ✅ done · 🔜 next phase · 📋 planned · 🔬 needs research · �
   `styles/QrGen.module.css`; the site-wide [UX polish plan](ux-polish/plan.md) moves these to shared light/dark themed
   components (`ToolShell` and `components/ui/Fields.tsx`).
 - **Offline use / PWA.** A service worker would make every tool work offline once loaded.
-- **Verification harness (`scripts/harness/pdf/`).** ✅ Implemented (`fixtures.mjs`, `check.mjs`, `ui.mjs`). Generates synthetic test PDFs in Node with `@cantoo/pdf-lib` and `fflate` (multi-page, embedded JPEG/RGBA PNG, metadata/EXIF, rotated pages, bookmarks, compressible streams, encrypted) and verifies all framework-free `lib/pdf/*` modules plus headless Edge/Chrome interactive flows, phone layout, and zero third-party requests. Re-run when bumping `pdfjs-dist` (`BL203`).
+- **Verification harness (`scripts/harness/pdf/`).** ✅ Implemented (`fixtures.mjs`, `check.mjs`, `ui.mjs`). Generates synthetic test PDFs in Node with `@cantoo/pdf-lib` and `fflate` (multi-page, embedded JPEG/RGBA PNG, Form XObject vectors, inline vector figures with background/rule/prose, metadata/EXIF, rotated pages, bookmarks, reader fixture, compressible streams, encrypted) and verifies all framework-free `lib/pdf/*` modules plus headless Edge/Chrome interactive flows (all 12 tools, vector extraction, figure auto-detect & drag-a-box, Read PDF reader/outline/search/handoff, phone layout, and zero third-party requests). Re-run when bumping `pdfjs-dist` (`BL203`).
 
 ## Module map
 
 ### `lib/pdf/`
 - `breakdown.ts` — Estimates how a PDF's bytes split across images, fonts, page content, metadata/attachments, and structure.
 - `compress.ts` — Lossless stream re-deflation, unused-object removal, image downsampling/recompression, and optional rasterization.
+- `detectFigures.ts` — Spatial operator/text indexer (`analyzePageVectors`), inline vector figure clustering (`detectFiguresOnPage`) ignoring page backgrounds/borders/rules/prose, and tighten-to-content snapping (`tightenRegionToContent`).
 - `extractImages.ts` — Extracts embedded JPEGs verbatim and raw/indexed/SMask image streams as lossless PNGs.
+- `extractVectors.ts` — Extracts qualifying `/Subtype /Form` XObjects as lossless standalone single-page PDFs (`extractFormXObjects`) and crops arbitrary viewport rectangles into lossless vector PDFs (`extractRegionAsPdf`, `extractRegionsAsPdfs`), accounting for `/CropBox` and `/Rotate`.
 - `files.ts` — File I/O, downloads, ZIP bundling (`fflate`), safe filenames, password-error detection, and formatting helpers.
 - `handoff.ts` — In-memory transfer buffer for passing generated PDFs between tools via *Continue with…*.
 - `imageDecode.ts` — Shared raw PDF image stream decoding, PNG/TIFF predictor reversal, colour-space inspection, and pure-JS RGBA→PNG encoding.
@@ -166,6 +169,8 @@ Status: ✅ done · 🔜 next phase · 📋 planned · 🔬 needs research · �
 - `pages.ts` — Page range formatting, multi-source page builder (`buildPdfFromPages`), in-place rotation, removal, and extraction.
 - `pdfjs.ts` — Lazy `pdfjs-dist` loader (self-hosted worker/cmaps/fonts), page rendering, and card thumbnails.
 - `pdfToImages.ts` — Renders all or selected PDF pages via pdf.js into JPG or lossless PNG images at a chosen DPI.
+- `pdfToSvg.ts` — Converts PDF pages, Form XObjects, and cropped viewport regions into standalone editable SVGs (`pdfPageRegionToSvg`, `pdfBytesToSvg`) supporting paths, colors, opacity, clip paths, embedded images, and text labels.
+- `reader.ts` — Framework-free PDF reader helpers: nested outline extraction (`readOutlineTree`), document metadata (`readDocInfo`), positioned text layout (`extractPageTextLayout`), search text extraction & matching (`findTextMatches`, `splitItemWithMatches`), and link annotation mapping (`extractPageLinks`).
 - `sanitize.ts` — Metadata and hidden-data inspector (`inspectPdf`) and cleaner (`cleanPdf`) with *Metadata only*, *Anonymize*, and *Maximum* presets.
 - `split.ts` — Range-group, every-N, breakpoint, top-level bookmark, and target-size PDF splitting.
 - `thumbs.ts` — Lazy page-thumbnail pool (`PdfThumbPool`) with concurrency control, LRU Blob URL eviction, and `page.cleanup()`.
@@ -175,28 +180,36 @@ Status: ✅ done · 🔜 next phase · 📋 planned · 🔬 needs research · �
 
 ### `components/PdfTools/`
 - `ContinueWith.tsx` — *Continue with…* bar handing generated PDFs in memory to other PDF tools.
+- `FigureCanvas.tsx` — Interactive HiDPI PDF page canvas with drag-to-draw, move, 8-handle resize, tighten, keyboard nudging, and deletion for figure crop boxes.
 - `FileGrid.tsx` — Sortable/static file thumbnail grid (`FileGrid`) and `FileCard` for multi-file tools.
 - `PageGrid.tsx` — Virtualised page thumbnail grid (`PageGrid`), drag/touch/arrow reordering, split-cut indicators, and bulk `PageSelectionBar`.
 - `PasswordPrompt.tsx` — Inline password prompt for unlocking encrypted PDFs.
+- `PdfReader.tsx` — Full client-side PDF reader component (toolbar, Ctrl+F search bar, collapsible Thumbnails/Contents/Info sidebar, virtualised page canvas/text/link layers, print, fullscreen, dark paper mode).
 - `ToolIcon.tsx` — Inline SVG icons for every PDF tool tile and workspace header.
 - `ToolPage.tsx` — Shared page frame (`PdfPage`), drop-zone/sidebar layout (`ToolWorkspace`), and progress indicator (`Progress`).
+- `VectorTabs.tsx` — Embedded vectors (Form XObjects) and Detect & crop figures panels, sidebars, and SVG/PDF/PNG export orchestration for `/pdf/extract-images`.
+
+### `styles/`
+- `PdfTools.module.css` — Shared workspace, card grid, tab bar, and interactive figure-crop canvas styles.
+- `PdfReader.module.css` — Reader shell, toolbar, search bar, collapsible sidebar, text/link overlay, and dark-mode reading styles.
 
 ### `pages/pdf/`
-- `main.tsx` — Hub page listing all 11 PDF tools grouped by category.
+- `main.tsx` — Hub page listing all 12 PDF tools grouped by category.
+- `reader.tsx` — Read PDF viewer with encrypted-input unlock and *Continue with…* handoff support.
 - `merge.tsx`, `split.tsx`, `organize.tsx`, `rotate.tsx`, `remove-pages.tsx`, `extract-pages.tsx` — Organize tools.
 - `compress.tsx` — Compress PDF with pre-compression size breakdown.
-- `images-to-pdf.tsx`, `pdf-to-images.tsx`, `extract-images.tsx` — Image conversion and extraction tools.
+- `images-to-pdf.tsx`, `pdf-to-images.tsx`, `extract-images.tsx` — Image & vector conversion and extraction tools.
 - `remove-metadata.tsx` — Metadata / anonymize inspector and cleaner.
 
 ### `scripts/harness/pdf/`
 - `package.json` — Isolated harness package (`playwright-core`, `tsx`, `check` and `ui` scripts; not part of the site).
-- `fixtures.mjs` — Synthetic in-memory PDF, RGBA PNG, and EXIF JPEG generators.
+- `fixtures.mjs` — Synthetic in-memory PDF (multi-page, images, Form XObjects, inline vectors, metadata/EXIF, rotated, bookmarked, reader, compressible, encrypted), RGBA PNG, and EXIF JPEG generators.
 - `check.mjs` — Node verification suite (`npm run check`) for all framework-free `lib/pdf/*` modules.
-- `ui.mjs` — Headless Edge/Chrome Playwright suite (`npm run ui`) for routes, phone layout, interactive flows, encrypted unlock, and zero third-party requests.
+- `ui.mjs` — Headless Edge/Chrome Playwright suite (`npm run ui`) for all 12 routes, phone layout, interactive flows, vector/figure extraction, Read PDF, encrypted unlock, and zero third-party requests.
 
-## Phase 2 execution history (complete)
+## Phase 2 & vector/reader execution history (complete)
 
-All Phase 2 steps completed using only `@cantoo/pdf-lib`, `pdfjs-dist`, and `fflate` (zero new dependencies):
+All Phase 2, vector extraction, and PDF reader steps completed using only `@cantoo/pdf-lib`, `pdfjs-dist`, and `fflate` (zero new dependencies):
 
 | Step | Scope | Status |
 | --- | --- | :-: |
@@ -205,6 +218,10 @@ All Phase 2 steps completed using only `@cantoo/pdf-lib`, `pdfjs-dist`, and `ffl
 | P2.3 | **Split PDF** (by ranges, every N pages, target size, or top-level bookmarks; ZIP output) | ✅ |
 | P2.4 | **PDF to images** (JPG/PNG at chosen DPI, ZIP) and **Extract images** (lossless JPEG extraction + PNG re-encode, reusing `lib/pdf/imageDecode.ts`) | ✅ |
 | P2.5 | Cross-cutting polish: Web Worker for heavy PDF jobs, encrypted-input password prompt, in-memory *"Continue with…"* tool chaining, size breakdown inspector, and `scripts/harness/pdf/` verification harness | ✅ |
+| V1 | Core vector extraction & figure detection engines (`lib/pdf/extractVectors.ts`, `lib/pdf/pdfToSvg.ts`, `lib/pdf/detectFigures.ts`) | ✅ |
+| V2 | **Extract images & vectors** 3-tab UI upgrade (`pages/pdf/extract-images.tsx`, `components/PdfTools/VectorTabs.tsx`, `components/PdfTools/FigureCanvas.tsx`) | ✅ |
+| R1 | **Read PDF** client-side viewer (`lib/pdf/reader.ts`, `components/PdfTools/PdfReader.tsx`, `styles/PdfReader.module.css`, `pages/pdf/reader.tsx`) | ✅ |
+| V3 | Verification harness & docs QA (`scripts/harness/pdf/*`, `docs/pdf-tools-plan.md`) covering Form XObjects, SVG conversion, region cropping, inline figure auto-detection/drag-a-box, and Read PDF | ✅ |
 
 ### Remove metadata improvements
 

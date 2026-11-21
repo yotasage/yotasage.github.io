@@ -1,5 +1,5 @@
 // Synthetic PDF, PNG, and JPEG fixtures generated in memory with @cantoo/pdf-lib and fflate.
-import { degrees, PDFDocument, PDFName, PDFNumber, PDFString, StandardFonts } from '@cantoo/pdf-lib';
+import { degrees, PDFArray, PDFDocument, PDFName, PDFNumber, PDFString, StandardFonts } from '@cantoo/pdf-lib';
 import { zlibSync } from 'fflate';
 
 function concatBytes(parts) {
@@ -359,4 +359,244 @@ export async function makeCompressiblePdf() {
   doc.context.register(doc.context.stream(junk));
 
   return doc.save({ useObjectStreams: false });
+}
+
+/**
+ * 1-page PDF containing 3 /Subtype /Form XObjects:
+ *  - FmChart: non-zero /BBox [10, 20, 170, 140] (160x120 pt) with filled/stroked vector paths and text
+ *  - FmScaled: /BBox [0, 0, 100, 60] with /Matrix [1.5, 0, 0, 2, 20, 10] (transformed 150x120 pt)
+ *  - FmTiny: tiny 8x8 Form XObject skipped by default minSizePt = 16
+ */
+export async function makeVectorFormPdf({ userPassword, ownerPassword } = {}) {
+  const doc = await PDFDocument.create();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  await font.embed();
+  const ctx = doc.context;
+
+  // 1) Qualifying Form XObject with non-zero /BBox, vector paths (fill+stroke), and a text label.
+  const chartOps = [
+    '0.12 0.38 0.72 rg',
+    '0.05 0.15 0.35 RG',
+    '1.5 w',
+    '20 30 140 90 re B',
+    '0.85 0.25 0.20 RG',
+    '2 w',
+    '30 50 m 70 105 115 45 150 100 c S',
+    'BT',
+    '0 0 0 rg',
+    '/F1 12 Tf',
+    '36 124 Td',
+    '(Vector Chart) Tj',
+    'ET',
+  ].join('\n');
+  const chartForm = ctx.stream(new TextEncoder().encode(chartOps), {
+    Type: 'XObject',
+    Subtype: 'Form',
+    FormType: 1,
+    BBox: [10, 20, 170, 140],
+    Resources: { Font: { F1: font.ref } },
+  });
+  const chartRef = ctx.register(chartForm);
+
+  // 2) Qualifying Form XObject with /Matrix scaling + translation (100x60 -> 150x120).
+  const scaledOps = [
+    '0.15 0.62 0.38 rg',
+    '0.08 0.30 0.18 RG',
+    '1 w',
+    '5 5 90 50 re B',
+    '10 10 m 90 50 l 10 50 m 90 10 l S',
+  ].join('\n');
+  const scaledForm = ctx.stream(new TextEncoder().encode(scaledOps), {
+    Type: 'XObject',
+    Subtype: 'Form',
+    FormType: 1,
+    BBox: [0, 0, 100, 60],
+    Matrix: [1.5, 0, 0, 2, 20, 10],
+    Resources: {},
+  });
+  const scaledRef = ctx.register(scaledForm);
+
+  // 3) Tiny 8x8 Form XObject (should be skipped when minSizePt = 16).
+  const tinyOps = '0 0 0 rg 0 0 8 8 re f';
+  const tinyForm = ctx.stream(new TextEncoder().encode(tinyOps), {
+    Type: 'XObject',
+    Subtype: 'Form',
+    FormType: 1,
+    BBox: [0, 0, 8, 8],
+    Resources: {},
+  });
+  const tinyRef = ctx.register(tinyForm);
+
+  const page = doc.addPage([595, 842]);
+  page.drawText('Embedded Vector XObjects Fixture', { x: 40, y: 800, size: 14, font });
+
+  const pageResources = page.node.lookup(PDFName.of('Resources'));
+  pageResources.set(
+    PDFName.of('XObject'),
+    ctx.obj({
+      FmChart: chartRef,
+      FmScaled: scaledRef,
+      FmTiny: tinyRef,
+    }),
+  );
+
+  const drawFormsOps = [
+    'q 1 0 0 1 50 560 cm /FmChart Do Q',
+    'q 1 0 0 1 60 320 cm /FmScaled Do Q',
+    'q 1 0 0 1 40 200 cm /FmTiny Do Q',
+  ].join('\n');
+  const drawRef = ctx.register(ctx.stream(new TextEncoder().encode(drawFormsOps)));
+  const existing = page.node.get(PDFName.of('Contents'));
+  const existingRefs = existing instanceof PDFArray ? existing.asArray() : existing ? [existing] : [];
+  page.node.set(PDFName.of('Contents'), ctx.obj([...existingRefs, drawRef]));
+
+  if (userPassword) {
+    await doc.encrypt({ userPassword, ownerPassword: ownerPassword ?? 'owner' });
+  }
+
+  return doc.save();
+}
+
+/**
+ * 1-page A4 (595x842) PDF with inline vector graphics:
+ *  - Full-page white background fill + full-width header rule (ignored by auto-detect)
+ *  - Top schematic-like cluster (x: 80..340, vpY: 132..272) with short labels
+ *  - Wide prose paragraph between them (vpY: 352..402, must not merge into either figure)
+ *  - Bottom plot-like axes + curve cluster (x: 90..350, vpY: 532..692) with short labels
+ *  - Empty right-side region (x: 420..550, vpY: 540..700) for empty tighten & drag-a-box tests
+ */
+export async function makeInlineVectorPdf() {
+  const doc = await PDFDocument.create();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  await font.embed();
+  const ctx = doc.context;
+
+  const page = doc.addPage([595, 842]);
+
+  // Draw prose paragraph & short labels first via pdf-lib so font resources are attached cleanly.
+  // Top figure short labels (PDF y = 570..710 => vpY = 132..272)
+  page.drawText('Vin', { x: 86, y: 646, size: 10, font });
+  page.drawText('R1', { x: 164, y: 668, size: 10, font });
+  page.drawText('C1', { x: 244, y: 618, size: 10, font });
+  page.drawText('Vout', { x: 306, y: 646, size: 10, font });
+
+  // Wide prose paragraph in the middle (PDF y = 445..485 => vpY = 357..397)
+  page.drawText(
+    'This is a wide body prose paragraph describing the schematic diagram above and the measured response curve below in full detail.',
+    { x: 40, y: 478, size: 9, font },
+  );
+  page.drawText(
+    'Auto-detection should keep wide narrative text completely separate from both vector illustrations on the page without merging.',
+    { x: 40, y: 462, size: 9, font },
+  );
+
+  // Bottom figure short labels (PDF y = 150..310 => vpY = 532..692)
+  page.drawText('Gain (dB)', { x: 96, y: 294, size: 10, font });
+  page.drawText('Freq (MHz)', { x: 210, y: 156, size: 10, font });
+
+  // Vector operators: background fill, header rule, top schematic, bottom plot.
+  const vecOps = [
+    // Full-page white background fill (role: background)
+    'q 1 1 1 rg 0 0 595 842 re f Q',
+    // Full-width header separator rule (role: rule; width 535 > 50% of 595, lineWidth 1)
+    'q 0.25 0.25 0.25 RG 1 w 30 790 m 565 790 l S Q',
+
+    // Top figure: schematic-like blocks + wires (x: 84..336, pdfY: 576..704 => vpY: 138..266)
+    'q 0.1 0.25 0.55 RG 0.92 0.96 1.0 rg 1.5 w',
+    '84 624 44 40 re B',
+    '152 624 48 40 re B',
+    '228 604 44 60 re B',
+    '296 624 40 40 re B',
+    // Connecting wires and feedback loop
+    '128 644 m 152 644 l S',
+    '200 644 m 228 644 l S',
+    '272 644 m 296 644 l S',
+    '176 664 m 176 696 l 316 696 l 316 664 l S',
+    '106 624 m 106 584 l 250 584 l 250 604 l S',
+    'Q',
+
+    // Bottom figure: plot axes + ticks + curve (x: 96..344, pdfY: 170..296 => vpY: 546..672)
+    'q 0.15 0.15 0.15 RG 1.5 w',
+    // Y-axis & X-axis
+    '112 292 m 112 174 l 340 174 l S',
+    // Tick marks along axes
+    '106 214 m 112 214 l S',
+    '106 254 m 112 254 l S',
+    '170 168 m 170 174 l S',
+    '230 168 m 230 174 l S',
+    '290 168 m 290 174 l S',
+    // Response curve
+    '0.80 0.20 0.22 RG 2 w',
+    '116 186 m 168 282 238 278 334 196 c S',
+    // Secondary dashed trace
+    '0.15 0.55 0.35 RG [4 3] 0 d 1.5 w',
+    '116 202 m 180 232 l 248 248 l 334 222 l S',
+    'Q',
+  ].join('\n');
+
+  const bgAndVecRef = ctx.register(ctx.stream(new TextEncoder().encode(vecOps)));
+  const existing = page.node.get(PDFName.of('Contents'));
+  const existingRefs = existing instanceof PDFArray ? existing.asArray() : existing ? [existing] : [];
+  // Place background & vectors BEFORE text so white fill does not obscure labels.
+  page.node.set(PDFName.of('Contents'), ctx.obj([bgAndVecRef, ...existingRefs]));
+
+  return doc.save();
+}
+
+/**
+ * 4-page bookmarked PDF with distinct searchable markers on different pages for Read PDF tests.
+ */
+export async function makeReaderPdf() {
+  const doc = await PDFDocument.create();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+
+  doc.setTitle('Reader Verification Manual');
+  doc.setAuthor('PDF Harness');
+
+  const pageSpecs = [
+    { heading: 'ALPHA_HEADING', body: 'Introduction to client-side reading on page one.' },
+    { heading: 'BETA_SECTION', body: 'Second page notes and reference overview.' },
+    { heading: 'GAMMA_SECTION', body: 'Unique search target: QUANTUM_MARKER appears on page three.' },
+    { heading: 'DELTA_APPENDIX', body: 'Final appendix page of the reader fixture.' },
+  ];
+
+  const pages = [];
+  for (let i = 0; i < pageSpecs.length; i++) {
+    const page = doc.addPage([500, 650]);
+    page.drawText(pageSpecs[i].heading, { x: 40, y: 580, size: 20, font });
+    page.drawText(pageSpecs[i].body, { x: 40, y: 530, size: 13, font });
+    page.drawText(`Page ${i + 1} of ${pageSpecs.length}`, { x: 40, y: 40, size: 10, font });
+    pages.push(page);
+  }
+
+  const ctx = doc.context;
+  const outlinesRef = ctx.nextRef();
+  const itemSpecs = [
+    { title: 'Alpha Overview', pageIndex: 0, ref: ctx.nextRef() },
+    { title: 'Gamma Quantum', pageIndex: 2, ref: ctx.nextRef() },
+    { title: 'Delta Appendix', pageIndex: 3, ref: ctx.nextRef() },
+  ];
+
+  for (let i = 0; i < itemSpecs.length; i++) {
+    const spec = itemSpecs[i];
+    const dict = ctx.obj({
+      Title: PDFString.of(spec.title),
+      Parent: outlinesRef,
+      Dest: [pages[spec.pageIndex].ref, PDFName.of('Fit')],
+    });
+    if (i > 0) dict.set(PDFName.of('Prev'), itemSpecs[i - 1].ref);
+    if (i + 1 < itemSpecs.length) dict.set(PDFName.of('Next'), itemSpecs[i + 1].ref);
+    ctx.assign(spec.ref, dict);
+  }
+
+  const outlinesDict = ctx.obj({
+    Type: 'Outlines',
+    First: itemSpecs[0].ref,
+    Last: itemSpecs[itemSpecs.length - 1].ref,
+    Count: PDFNumber.of(itemSpecs.length),
+  });
+  ctx.assign(outlinesRef, outlinesDict);
+  doc.catalog.set(PDFName.of('Outlines'), outlinesRef);
+
+  return doc.save();
 }

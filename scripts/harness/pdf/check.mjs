@@ -8,26 +8,36 @@ import {
   makeCompressiblePdf,
   makeEncryptedPdf,
   makeImagePdf,
+  makeInlineVectorPdf,
   makeMetadataPdf,
   makeMultiPagePdf,
   makeRotatedPdf,
+  makeVectorFormPdf,
   pageDimensionsFor,
 } from './fixtures.mjs';
 
 import * as breakdownMod from '../../../lib/pdf/breakdown.ts';
 import * as compressMod from '../../../lib/pdf/compress.ts';
+import * as detectFiguresMod from '../../../lib/pdf/detectFigures.ts';
 import * as extractImagesMod from '../../../lib/pdf/extractImages.ts';
+import * as extractVectorsMod from '../../../lib/pdf/extractVectors.ts';
 import * as mergeMod from '../../../lib/pdf/merge.ts';
 import * as pagesMod from '../../../lib/pdf/pages.ts';
+import * as pdfToSvgMod from '../../../lib/pdf/pdfToSvg.ts';
+import * as readerMod from '../../../lib/pdf/reader.ts';
 import * as sanitizeMod from '../../../lib/pdf/sanitize.ts';
 import * as splitMod from '../../../lib/pdf/split.ts';
 
 const unwrap = (x) => x.default ?? x;
 const { inspectPdfSizeBreakdown } = unwrap(breakdownMod);
 const { compressPdf } = unwrap(compressMod);
+const { analyzePageVectors, detectFiguresOnPage, tightenRegionToContent } = unwrap(detectFiguresMod);
 const { extractImagesFromPdf } = unwrap(extractImagesMod);
+const { extractFormXObjects, extractRegionAsPdf } = unwrap(extractVectorsMod);
 const { parsePageRanges, mergePdfs } = unwrap(mergeMod);
 const { formatPageRanges, buildPdfFromPages, rotatePdf, removePagesPdf, extractPagesPdf } = unwrap(pagesMod);
+const { pdfBytesToSvg } = unwrap(pdfToSvgMod);
+const { findTextMatches, splitItemWithMatches } = unwrap(readerMod);
 const { inspectPdf, cleanPdf, PRESETS } = unwrap(sanitizeMod);
 const { parseSplitGroups, splitByEveryN, splitByBreakPoints, splitByBookmarks, splitPdfParts, splitPdfBySize } = unwrap(splitMod);
 
@@ -316,6 +326,228 @@ await runCheck('10. inspectPdfSizeBreakdown', async () => {
   assert(imgCat && imgCat.bytes > 0, `expected images > 0, got ${imgCat?.bytes}`);
   const sum = breakdown.categories.reduce((acc, c) => acc + c.bytes, 0);
   assert(sum === breakdown.totalBytes, `category sum (${sum}) !== totalBytes (${breakdown.totalBytes})`);
+});
+
+// 11. extractFormXObjects (2 qualifying forms, skips 8x8, valid standalone PDFs, encrypted input)
+await runCheck('11. extractFormXObjects (BBox, Matrix, minSize, encrypted)', async () => {
+  const vectorPdf = await makeVectorFormPdf();
+  const forms = await extractFormXObjects(vectorPdf, { sourceName: 'diagrams.pdf', minSizePt: 16 });
+  assert(forms.length === 2, `expected 2 qualifying Form XObjects, got ${forms.length}`);
+
+  const chart = forms.find((f) => f.name.includes('FmChart'));
+  const scaled = forms.find((f) => f.name.includes('FmScaled'));
+  assert(Boolean(chart), `missing FmChart form in ${forms.map((f) => f.name).join(', ')}`);
+  assert(Boolean(scaled), `missing FmScaled form in ${forms.map((f) => f.name).join(', ')}`);
+
+  assert(Math.round(chart.widthPt) === 160 && Math.round(chart.heightPt) === 120, `FmChart dims ${chart.widthPt}x${chart.heightPt}`);
+  assert(Math.round(scaled.widthPt) === 150 && Math.round(scaled.heightPt) === 120, `FmScaled dims ${scaled.widthPt}x${scaled.heightPt}`);
+
+  const chartSizes = await pageSizes(chart.pdfBytes);
+  assert(chartSizes.length === 1 && chartSizes[0].width === 160 && chartSizes[0].height === 120, 'FmChart standalone PDF page size');
+  const scaledSizes = await pageSizes(scaled.pdfBytes);
+  assert(scaledSizes.length === 1 && scaledSizes[0].width === 150 && scaledSizes[0].height === 120, 'FmScaled standalone PDF page size');
+
+  // Encrypted PDF with Form XObjects
+  const encVectorPdf = await makeVectorFormPdf({ userPassword: 'vpass', ownerPassword: 'vown' });
+  const encForms = await extractFormXObjects(encVectorPdf, {
+    sourceName: 'locked-diagrams.pdf',
+    password: 'vpass',
+    minSizePt: 16,
+  });
+  assert(encForms.length === 2, `expected 2 forms from encrypted PDF, got ${encForms.length}`);
+  const unlockedSizes = await pageSizes(encForms[0].pdfBytes);
+  assert(unlockedSizes.length === 1, 'extracted form PDF from encrypted input should open without password');
+});
+
+// 12. pdfBytesToSvg (extracted Form XObject PDF & cropped inline page region)
+await runCheck('12. pdfBytesToSvg (Form XObject & page region -> valid SVG)', async () => {
+  const vectorPdf = await makeVectorFormPdf();
+  const forms = await extractFormXObjects(vectorPdf, { sourceName: 'diagrams.pdf', minSizePt: 16 });
+  const chart = forms.find((f) => f.name.includes('FmChart'));
+  assert(Boolean(chart), 'missing FmChart for SVG conversion');
+
+  const formSvg = await pdfBytesToSvg(chart.pdfBytes);
+  assert(formSvg.svg.startsWith('<svg '), 'Form SVG must start with <svg');
+  assert(formSvg.svg.trim().endsWith('</svg>'), 'Form SVG must end with </svg>');
+  assert(formSvg.pathCount >= 2 && formSvg.svg.includes('<path '), `expected >=2 paths, got ${formSvg.pathCount}`);
+  assert(formSvg.textCount >= 1 && formSvg.svg.includes('<text ') && formSvg.svg.includes('Vector Chart'), 'expected text label in Form SVG');
+
+  const openG = (formSvg.svg.match(/<g[\s>]/g) ?? []).length;
+  const closeG = (formSvg.svg.match(/<\/g>/g) ?? []).length;
+  assert(openG > 0 && openG === closeG, `unbalanced <g> tags in Form SVG (${openG} open vs ${closeG} close)`);
+
+  // Page region conversion on inline vector PDF (top schematic cluster)
+  const inlinePdf = await makeInlineVectorPdf();
+  const regionSvg = await pdfBytesToSvg(inlinePdf, {
+    pageIndex: 0,
+    rect: { x: 75, y: 128, width: 272, height: 150 },
+  });
+  assert(regionSvg.svg.startsWith('<svg '), 'Region SVG must start with <svg');
+  assert(regionSvg.pathCount >= 4, `expected >=4 paths in top schematic region, got ${regionSvg.pathCount}`);
+  assert(regionSvg.textCount >= 1 && regionSvg.svg.includes('Vin'), 'expected schematic label text in region SVG');
+  assert(!regionSvg.svg.includes('wide body prose'), 'region SVG should exclude prose outside crop box');
+
+  const rOpenG = (regionSvg.svg.match(/<g[\s>]/g) ?? []).length;
+  const rCloseG = (regionSvg.svg.match(/<\/g>/g) ?? []).length;
+  assert(rOpenG > 0 && rOpenG === rCloseG, `unbalanced <g> tags in Region SVG (${rOpenG} open vs ${rCloseG} close)`);
+});
+
+// 13. extractRegionAsPdf (unrotated page & 90° rotated page)
+await runCheck('13. extractRegionAsPdf (unrotated & 90° rotated page)', async () => {
+  const inlinePdf = await makeInlineVectorPdf();
+  const unrotCropped = await extractRegionAsPdf(inlinePdf, {
+    pageIndex: 0,
+    rect: { x: 75, y: 128, width: 270, height: 150 },
+  });
+  const unrotSizes = await pageSizes(unrotCropped);
+  assert(
+    unrotSizes.length === 1 && unrotSizes[0].width === 270 && unrotSizes[0].height === 150 && unrotSizes[0].rotation === 0,
+    `unexpected unrotated crop size: ${JSON.stringify(unrotSizes)}`,
+  );
+
+  // Page index 1 of makeRotatedPdf() has /Rotate 90 and raw 320x415 => upright viewport 415x320.
+  const rotPdf = await makeRotatedPdf();
+  const rotCropped = await extractRegionAsPdf(rotPdf, {
+    pageIndex: 1,
+    rect: { x: 40, y: 30, width: 180, height: 120 },
+  });
+  const rotSizes = await pageSizes(rotCropped);
+  assert(
+    rotSizes.length === 1 && rotSizes[0].rotation === 90 && rotSizes[0].width === 120 && rotSizes[0].height === 180,
+    `unexpected raw rotated crop box: ${JSON.stringify(rotSizes)}`,
+  );
+
+  // Confirm upright rendered viewport dimensions via pdf.js are exactly 180x120.
+  const pdfjs = await import('pdfjs-dist');
+  const task = pdfjs.getDocument({ data: rotCropped.slice(), verbosity: 0 });
+  try {
+    const doc = await task.promise;
+    const page = await doc.getPage(1);
+    const vp = page.getViewport({ scale: 1 });
+    assert(
+      Math.round(vp.width) === 180 && Math.round(vp.height) === 120,
+      `expected upright rotated crop viewport 180x120, got ${vp.width}x${vp.height}`,
+    );
+  } finally {
+    await task.destroy();
+  }
+});
+
+// 14. analyzePageVectors, detectFiguresOnPage & tightenRegionToContent
+await runCheck('14. analyzePageVectors, detectFiguresOnPage & tightenRegionToContent', async () => {
+  const inlinePdf = await makeInlineVectorPdf();
+  const pdfjs = await import('pdfjs-dist');
+  const task = pdfjs.getDocument({ data: inlinePdf.slice(), verbosity: 0 });
+  let index;
+  try {
+    const doc = await task.promise;
+    const page = await doc.getPage(1);
+    index = await analyzePageVectors(page, pdfjs.OPS);
+  } finally {
+    await task.destroy();
+  }
+
+  assert(index.primitives.some((p) => p.role === 'background'), 'expected full-page white background to be classified as background');
+  assert(index.primitives.some((p) => p.role === 'rule'), 'expected header line to be classified as rule');
+
+  const detected = detectFiguresOnPage(index);
+  assert(detected.length === 2, `expected 2 detected inline figures, got ${detected.length}`);
+
+  const [topFig, botFig] = detected;
+  // Top figure sits above prose (vpY ~ 138..266); prose sits at vpY ~ 352..402; bottom figure sits below (vpY ~ 532..692).
+  assert(
+    topFig.rect.y < 160 && topFig.rect.y + topFig.rect.height < 320,
+    `top figure rect leaked out of top band: ${JSON.stringify(topFig.rect)}`,
+  );
+  assert(
+    botFig.rect.y > 490 && botFig.rect.y + botFig.rect.height > 640,
+    `bottom figure rect out of bottom band: ${JSON.stringify(botFig.rect)}`,
+  );
+  assert(topFig.textCount >= 1 && botFig.textCount >= 1, 'expected short labels attached to both figures');
+
+  // tightenRegionToContent shrinks an oversized box tightly around top figure
+  const oversized = { x: 20, y: 80, width: 420, height: 240 };
+  const tightened = tightenRegionToContent(index, oversized, 4);
+  assert(Boolean(tightened), 'tightenRegionToContent should return a rect for box containing top figure');
+  assert(
+    tightened.width < oversized.width - 80 && tightened.height < oversized.height - 40,
+    `expected tightened box (${JSON.stringify(tightened)}) to shrink substantially from ${JSON.stringify(oversized)}`,
+  );
+
+  // tightenRegionToContent returns null on empty space (ignoring background fill)
+  const emptyRect = { x: 420, y: 540, width: 130, height: 160 };
+  const emptyTight = tightenRegionToContent(index, emptyRect, 4);
+  assert(emptyTight === null, `expected null on empty space, got ${JSON.stringify(emptyTight)}`);
+});
+
+// 15. lib/pdf/reader.ts helpers (findTextMatches & splitItemWithMatches)
+await runCheck('15. lib/pdf/reader.ts (findTextMatches & splitItemWithMatches)', async () => {
+  const insensitive = findTextMatches('Alpha alpha ALPHA', 'alpha', false, 2);
+  assertDeepEqual(
+    insensitive,
+    [
+      { pageNumber: 2, start: 0, end: 5 },
+      { pageNumber: 2, start: 6, end: 11 },
+      { pageNumber: 2, start: 12, end: 17 },
+    ],
+    'case-insensitive matches',
+  );
+
+  const sensitive = findTextMatches('Alpha alpha ALPHA', 'alpha', true, 2);
+  assertDeepEqual(sensitive, [{ pageNumber: 2, start: 6, end: 11 }], 'case-sensitive match');
+
+  const nonOverlapping = findTextMatches('aaaaa', 'aa', false, 1);
+  assertDeepEqual(
+    nonOverlapping,
+    [
+      { pageNumber: 1, start: 0, end: 2 },
+      { pageNumber: 1, start: 2, end: 4 },
+    ],
+    'non-overlapping matches',
+  );
+
+  assertDeepEqual(findTextMatches('hello', '', false, 1), [], 'empty query');
+
+  const item = {
+    str: 'Hello QUANTUM world QUANTUM!',
+    startOffset: 10,
+    endOffset: 38,
+    left: 0,
+    top: 0,
+    fontSize: 12,
+    angle: 0,
+    targetWidth: 100,
+    fontFamily: 'sans-serif',
+  };
+  const spans = [
+    { start: 0, end: 5, globalIndex: 0 }, // before item
+    { start: 16, end: 23, globalIndex: 1 }, // first QUANTUM
+    { start: 30, end: 37, globalIndex: 2 }, // second QUANTUM
+    { start: 50, end: 55, globalIndex: 3 }, // after item
+  ];
+  const segments = splitItemWithMatches(item, spans);
+  assertDeepEqual(
+    segments,
+    [
+      { text: 'Hello ', matchIndex: null },
+      { text: 'QUANTUM', matchIndex: 1 },
+      { text: ' world ', matchIndex: null },
+      { text: 'QUANTUM', matchIndex: 2 },
+      { text: '!', matchIndex: null },
+    ],
+    'splitItemWithMatches segments',
+  );
+
+  // Partial boundary overlap clips cleanly
+  const clipped = splitItemWithMatches(item, [{ start: 8, end: 15, globalIndex: 7 }]);
+  assertDeepEqual(
+    clipped,
+    [
+      { text: 'Hello', matchIndex: 7 },
+      { text: ' QUANTUM world QUANTUM!', matchIndex: null },
+    ],
+    'splitItemWithMatches partial boundary overlap',
+  );
 });
 
 // Print summary table
