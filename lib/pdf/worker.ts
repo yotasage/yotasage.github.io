@@ -14,6 +14,7 @@ import { compressPdf, CompressOptions } from './compress';
 import { cropPdf, CropOptions, getPageBoxes } from './crop';
 import { extractImagesFromPdf, ExtractImagesOptions } from './extractImages';
 import { isPasswordError } from './files';
+import { FillFormOptions, fillFormPdf, FormFieldValue, inspectFormFields } from './forms';
 import { MergeInput, mergePdfs } from './merge';
 import { PdfMetadataEdit, readPdfMetadata, writePdfMetadata } from './metadata';
 import { bookletPdf, BookletOptions, nupPdf, NupOptions } from './nup';
@@ -59,7 +60,9 @@ export type WorkerRequest =
   | { id: number; task: 'resize'; bytes: Uint8Array; opts: ResizeOptions; password?: string }
   | { id: number; task: 'nup'; bytes: Uint8Array; opts: NupOptions; password?: string }
   | { id: number; task: 'booklet'; bytes: Uint8Array; opts: BookletOptions; password?: string }
-  | { id: number; task: 'grayscale'; bytes: Uint8Array; opts?: Omit<GrayscaleOptions, 'convertJpegToGray'>; password?: string };
+  | { id: number; task: 'grayscale'; bytes: Uint8Array; opts?: Omit<GrayscaleOptions, 'convertJpegToGray'>; password?: string }
+  | { id: number; task: 'inspectFormFields'; bytes: Uint8Array; password?: string }
+  | { id: number; task: 'fillForm'; bytes: Uint8Array; values: Record<string, FormFieldValue>; opts?: FillFormOptions; password?: string };
 
 export type WorkerResponse =
   | { id: number; type: 'progress'; fraction: number; label: string }
@@ -143,6 +146,10 @@ async function handleTask(req: WorkerRequest, postProgress: (fraction: number, l
       return bookletPdf(req.bytes, req.opts, req.password);
     case 'grayscale':
       return grayscalePdf(req.bytes, req.opts, req.password);
+    case 'inspectFormFields':
+      return inspectFormFields(req.bytes, req.password);
+    case 'fillForm':
+      return fillFormPdf(req.bytes, req.values, req.opts, req.password);
   }
 }
 

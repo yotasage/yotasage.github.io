@@ -23,7 +23,8 @@ export type ToolIconName =
   | 'resize'
   | 'nup'
   | 'grayscale'
-  | 'invert';
+  | 'invert'
+  | 'fill-forms';
 
 export interface PdfTool {
   id: string;
@@ -255,11 +256,20 @@ export const INVERT: PdfTool = {
   color: '#7c8cf8',
 };
 
+export const FILL_FORMS: PdfTool = {
+  id: 'fill-forms',
+  title: 'Fill PDF forms',
+  description: 'Fill interactive PDF form fields (text, checkboxes, radio buttons, dropdowns and lists) directly on the page or in the field panel, with optional flattening.',
+  href: '/pdf/fill-forms',
+  icon: 'fill-forms',
+  color: '#34b3a0',
+};
+
 export const TOOL_CATEGORIES: ToolCategory[] = [
   { title: 'View', tools: [READER] },
   { title: 'Organize', tools: [MERGE, SPLIT, ORGANIZE, ROTATE, REMOVE_PAGES, EXTRACT_PAGES] },
   { title: 'Optimize', tools: [COMPRESS] },
-  { title: 'Edit & annotate', tools: [PAGE_NUMBERS, WATERMARK, CROP, RESIZE, NUP, GRAYSCALE, INVERT, EDIT_METADATA, FLATTEN, REMOVE_ANNOTATIONS] },
+  { title: 'Edit & annotate', tools: [FILL_FORMS, PAGE_NUMBERS, WATERMARK, CROP, RESIZE, NUP, GRAYSCALE, INVERT, EDIT_METADATA, FLATTEN, REMOVE_ANNOTATIONS] },
   { title: 'Convert to PDF', tools: [IMAGES_TO_PDF] },
   { title: 'Convert from PDF', tools: [PDF_TO_IMAGES, EXTRACT_IMAGES] },
   { title: 'Security', tools: [PROTECT, UNLOCK, REMOVE_METADATA] },

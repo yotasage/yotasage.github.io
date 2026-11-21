@@ -9,6 +9,7 @@ import {
   makeColorAndImagePdf,
   makeCompressiblePdf,
   makeEncryptedPdf,
+  makeFillableFormPdf,
   makeImagePdf,
   makeInlineVectorPdf,
   makeMetadataPdf,
@@ -27,6 +28,7 @@ import * as cropMod from '../../../lib/pdf/crop.ts';
 import * as detectFiguresMod from '../../../lib/pdf/detectFigures.ts';
 import * as extractImagesMod from '../../../lib/pdf/extractImages.ts';
 import * as extractVectorsMod from '../../../lib/pdf/extractVectors.ts';
+import * as formsMod from '../../../lib/pdf/forms.ts';
 import * as mergeMod from '../../../lib/pdf/merge.ts';
 import * as metadataMod from '../../../lib/pdf/metadata.ts';
 import * as nupMod from '../../../lib/pdf/nup.ts';
@@ -49,6 +51,7 @@ const { getPageBoxes, cropPdf } = unwrap(cropMod);
 const { analyzePageVectors, detectFiguresOnPage, tightenRegionToContent } = unwrap(detectFiguresMod);
 const { extractImagesFromPdf } = unwrap(extractImagesMod);
 const { extractFormXObjects, extractRegionAsPdf } = unwrap(extractVectorsMod);
+const { inspectFormFields, fillFormPdf } = unwrap(formsMod);
 const { parsePageRanges, mergePdfs } = unwrap(mergeMod);
 const { readPdfMetadata, writePdfMetadata } = unwrap(metadataMod);
 const { nupPdf, computeBookletOrder, bookletPdf } = unwrap(nupMod);
@@ -1377,6 +1380,116 @@ await runCheck('25. color.ts (transformRgbaPixels: grayscale, invert, smart-dark
     custom[10] > custom[8] + 100 && custom[10] > custom[9] + 100,
     `custom preserveHue=true should preserve blue hue: (${custom[8]},${custom[9]},${custom[10]})`,
   );
+});
+
+// 26. lib/pdf/forms.ts (inspectFormFields with rotated page & /Annots fallback, fillFormPdf round-trip, flatten)
+await runCheck('26. forms.ts (inspectFormFields, rotated widgets, fillFormPdf, flatten)', async () => {
+  const formPdf = await makeFillableFormPdf();
+  const inspected = await inspectFormFields(formPdf);
+  assert(inspected.pageCount === 2, `expected 2 pages, got ${inspected.pageCount}`);
+  assert(inspected.unsupportedCount === 0, `expected 0 unsupported fields, got ${inspected.unsupportedCount}`);
+  assert(inspected.fields.length === 6, `expected 6 fields, got ${inspected.fields.length}`);
+
+  const byName = Object.fromEntries(inspected.fields.map((f) => [f.name, f]));
+  assert(byName.fullName.type === 'text' && byName.fullName.label === 'Full Legal Name' && byName.fullName.maxLength === 60 && byName.fullName.value === 'Jane Doe', `unexpected fullName: ${JSON.stringify(byName.fullName)}`);
+  assert(byName.notes.type === 'multiline' && byName.notes.label === 'Additional Notes' && byName.notes.value === 'Initial note', `unexpected notes: ${JSON.stringify(byName.notes)}`);
+  assert(byName.subscribe.type === 'checkbox' && byName.subscribe.value === false && byName.subscribe.widgets.length === 1 && byName.subscribe.widgets[0].pageIndex === 0, `subscribe widget without /P should resolve to page 0: ${JSON.stringify(byName.subscribe)}`);
+  assert(byName.plan.type === 'radio' && byName.plan.value === 'Starter' && byName.plan.widgets.length === 2, `unexpected plan: ${JSON.stringify(byName.plan)}`);
+  assertDeepEqual(byName.plan.widgets.map((w) => w.optionValue), ['Starter', 'Pro'], 'radio widget optionValues');
+  assert(byName.country.type === 'dropdown' && byName.country.value === 'Norway', `unexpected country: ${JSON.stringify(byName.country)}`);
+  assert(byName.topics.type === 'optionList' && byName.topics.multiSelect === true && byName.topics.widgets.length === 1 && byName.topics.widgets[0].pageIndex === 1, `unexpected topics: ${JSON.stringify(byName.topics)}`);
+  assertDeepEqual(byName.topics.value, ['RF'], 'initial optionList value');
+
+  // Verify every widget rect is normalized inside [0, 1]
+  for (const field of inspected.fields) {
+    assert(field.widgets.length > 0, `field ${field.name} has no widgets`);
+    for (const w of field.widgets) {
+      assert(
+        w.left >= 0 && w.top >= 0 && w.width > 0 && w.height > 0 && w.left + w.width <= 1.001 && w.top + w.height <= 1.001,
+        `invalid normalized rect on ${field.name}: ${JSON.stringify(w)}`,
+      );
+    }
+  }
+
+  // Cross-check the 90°-rotated page widget normalized rect directly against pdfjs-dist viewport math
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const vpTask = pdfjs.getDocument({ data: formPdf.slice(), verbosity: 0 });
+  try {
+    const pdoc = await vpTask.promise;
+    const p2 = await pdoc.getPage(2);
+    const vp = p2.getViewport({ scale: 1 });
+    const p2Annots = await p2.getAnnotations();
+    const [rx0, ry0, rx1, ry1] = p2Annots[0].rect;
+    const [a, b, c, d, e, f] = vp.transform;
+    const vx0 = a * rx0 + c * ry0 + e;
+    const vy0 = b * rx0 + d * ry0 + f;
+    const vx1 = a * rx1 + c * ry1 + e;
+    const vy1 = b * rx1 + d * ry1 + f;
+    const expLeft = Math.min(vx0, vx1) / vp.width;
+    const expTop = Math.min(vy0, vy1) / vp.height;
+    const expWidth = Math.abs(vx1 - vx0) / vp.width;
+    const expHeight = Math.abs(vy1 - vy0) / vp.height;
+    const w = byName.topics.widgets[0];
+    assert(
+      Math.abs(w.left - expLeft) < 0.002 &&
+        Math.abs(w.top - expTop) < 0.002 &&
+        Math.abs(w.width - expWidth) < 0.002 &&
+        Math.abs(w.height - expHeight) < 0.002,
+      `rotated widget rect mismatch: got ${JSON.stringify(w)}, expected (${expLeft.toFixed(4)}, ${expTop.toFixed(4)}, ${expWidth.toFixed(4)}, ${expHeight.toFixed(4)})`,
+    );
+  } finally {
+    await vpTask.destroy();
+  }
+
+  // Fill all 6 fields without flattening and verify every value round-trips via inspectFormFields
+  const filled = await fillFormPdf(formPdf, {
+    fullName: 'Ada Lovelace',
+    notes: 'First line\nSecond line',
+    subscribe: true,
+    plan: 'Pro',
+    country: 'Sweden',
+    topics: ['Antennas', 'DSP'],
+  });
+  assert(filled.filledCount === 6 && filled.flattened === false, `unexpected fill result: filledCount=${filled.filledCount}, flattened=${filled.flattened}`);
+
+  const afterFill = await inspectFormFields(filled.bytes);
+  const afterMap = Object.fromEntries(afterFill.fields.map((f) => [f.name, f]));
+  assert(afterMap.fullName.value === 'Ada Lovelace', `round-trip fullName: ${afterMap.fullName.value}`);
+  assert(afterMap.notes.value === 'First line\nSecond line', `round-trip notes: ${afterMap.notes.value}`);
+  assert(afterMap.subscribe.value === true, `round-trip subscribe: ${afterMap.subscribe.value}`);
+  assert(afterMap.plan.value === 'Pro', `round-trip plan: ${afterMap.plan.value}`);
+  assert(afterMap.country.value === 'Sweden', `round-trip country: ${afterMap.country.value}`);
+  assertDeepEqual(afterMap.topics.value, ['Antennas', 'DSP'], 'round-trip topics');
+
+  // Fill + flatten -> 0 remaining interactive fields and pdfjs-dist extracts filled static text
+  const flatRes = await fillFormPdf(
+    formPdf,
+    {
+      fullName: 'Grace Hopper',
+      notes: 'Flattened memo',
+      subscribe: true,
+      plan: 'Pro',
+      country: 'Denmark',
+      topics: ['PCB', 'RF'],
+    },
+    { flatten: true },
+  );
+  assert(flatRes.flattened === true && flatRes.filledCount === 6, `expected flattened=true, filledCount=6`);
+
+  const afterFlat = await inspectFormFields(flatRes.bytes);
+  assert(afterFlat.fields.length === 0, `expected 0 fields after flatten, got ${afterFlat.fields.length}`);
+
+  const flatTask = pdfjs.getDocument({ data: flatRes.bytes.slice(), verbosity: 0 });
+  try {
+    const pdoc = await flatTask.promise;
+    const p1 = await pdoc.getPage(1);
+    const t1 = (await p1.getTextContent()).items.map((it) => it.str).join(' ');
+    assert(t1.includes('Grace Hopper'), `flattened page 1 missing "Grace Hopper" in "${t1}"`);
+    assert(t1.includes('Flattened memo'), `flattened page 1 missing "Flattened memo" in "${t1}"`);
+    assert(t1.includes('Denmark'), `flattened page 1 missing "Denmark" in "${t1}"`);
+  } finally {
+    await flatTask.destroy();
+  }
 });
 
 // Print summary table

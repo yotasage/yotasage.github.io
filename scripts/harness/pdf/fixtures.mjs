@@ -748,3 +748,71 @@ export async function makeColorAndImagePdf() {
 
   return doc.save();
 }
+
+/**
+ * 2-page fillable AcroForm fixture containing all 6 supported field types:
+ *  - Page 1 (500x650, unrotated):
+ *    1. fullName (TextField, /TU='Full Legal Name', maxLength=60, value='Jane Doe')
+ *    2. notes (Multiline TextField, /TU='Additional Notes', value='Initial note')
+ *    3. subscribe (CheckBox, /TU='Subscribe to updates', unchecked, /P removed to verify /Annots fallback)
+ *    4. plan (RadioGroup, /TU='Plan Tier', options=['Starter','Pro'], selected='Starter')
+ *    5. country (Dropdown, /TU='Country', options=['Norway','Sweden','Denmark'], selected='Norway')
+ *  - Page 2 (400x600, /Rotate 90 -> visual 600x400):
+ *    6. topics (OptionList multiselect, /TU='Topics of Interest', options=['RF','Antennas','PCB','DSP'], selected=['RF'])
+ */
+export async function makeFillableFormPdf() {
+  const doc = await PDFDocument.create();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+
+  const p1 = doc.addPage([500, 650]);
+  p1.drawText('Fillable Form Page 1', { x: 40, y: 605, size: 18, font });
+
+  const p2 = doc.addPage([400, 600]);
+  p2.setRotation(degrees(90));
+  p2.drawText('Rotated Form Page 2', { x: 40, y: 540, size: 16, font });
+
+  const form = doc.getForm();
+
+  const fullName = form.createTextField('fullName');
+  fullName.setMaxLength(60);
+  fullName.setText('Jane Doe');
+  fullName.addToPage(p1, { x: 50, y: 540, width: 220, height: 26 });
+  fullName.acroField.dict.set(PDFName.of('TU'), PDFString.of('Full Legal Name'));
+
+  const notes = form.createTextField('notes');
+  notes.enableMultiline();
+  notes.setText('Initial note');
+  notes.addToPage(p1, { x: 50, y: 440, width: 260, height: 70 });
+  notes.acroField.dict.set(PDFName.of('TU'), PDFString.of('Additional Notes'));
+
+  const subscribe = form.createCheckBox('subscribe');
+  subscribe.uncheck();
+  subscribe.addToPage(p1, { x: 50, y: 390, width: 20, height: 20 });
+  subscribe.acroField.dict.set(PDFName.of('TU'), PDFString.of('Subscribe to updates'));
+  // Remove /P from subscribe's widget to verify /Annots fallback page resolution.
+  for (const widget of subscribe.acroField.getWidgets()) {
+    widget.dict.delete(PDFName.of('P'));
+  }
+
+  const plan = form.createRadioGroup('plan');
+  plan.addOptionToPage('Starter', p1, { x: 50, y: 330, width: 20, height: 20 });
+  plan.addOptionToPage('Pro', p1, { x: 140, y: 330, width: 20, height: 20 });
+  plan.select('Starter');
+  plan.acroField.dict.set(PDFName.of('TU'), PDFString.of('Plan Tier'));
+
+  const country = form.createDropdown('country');
+  country.setOptions(['Norway', 'Sweden', 'Denmark']);
+  country.select('Norway');
+  country.addToPage(p1, { x: 50, y: 270, width: 180, height: 26 });
+  country.acroField.dict.set(PDFName.of('TU'), PDFString.of('Country'));
+
+  const topics = form.createOptionList('topics');
+  topics.enableMultiselect();
+  topics.setOptions(['RF', 'Antennas', 'PCB', 'DSP']);
+  topics.select(['RF']);
+  topics.addToPage(p2, { x: 60, y: 120, width: 120, height: 180 });
+  topics.acroField.dict.set(PDFName.of('TU'), PDFString.of('Topics of Interest'));
+
+  form.updateFieldAppearances(font);
+  return doc.save();
+}

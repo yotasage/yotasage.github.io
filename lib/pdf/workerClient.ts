@@ -18,6 +18,14 @@ import { compressPdf, CompressOptions, CompressResult } from './compress';
 import { cropPdf, CropOptions, getPageBoxes, PageBoxInfo } from './crop';
 import { extractImagesFromPdf, ExtractImagesOptions, ExtractImagesResult } from './extractImages';
 import { OutputFile } from './files';
+import {
+  FillFormOptions,
+  fillFormPdf,
+  FillFormResult,
+  FormFieldValue,
+  FormInspection,
+  inspectFormFields,
+} from './forms';
 import { MergeInput, mergePdfs } from './merge';
 import { PdfMetadata, PdfMetadataEdit, readPdfMetadata, writePdfMetadata } from './metadata';
 import { bookletPdf, BookletOptions, nupPdf, NupOptions } from './nup';
@@ -418,5 +426,24 @@ export function runGrayscalePdf(
   return dispatch<GrayscaleResult>(
     (id) => ({ id, task: 'grayscale', bytes, password }),
     () => grayscalePdf(bytes, opts, password),
+  );
+}
+
+export function runInspectFormFields(bytes: Uint8Array, password?: string): Promise<FormInspection> {
+  return dispatch<FormInspection>(
+    (id) => ({ id, task: 'inspectFormFields', bytes, password }),
+    () => inspectFormFields(bytes, password),
+  );
+}
+
+export function runFillFormPdf(
+  bytes: Uint8Array,
+  values: Record<string, FormFieldValue>,
+  opts?: FillFormOptions,
+  password?: string,
+): Promise<FillFormResult> {
+  return dispatch<FillFormResult>(
+    (id) => ({ id, task: 'fillForm', bytes, values, opts, password }),
+    () => fillFormPdf(bytes, values, opts, password),
   );
 }

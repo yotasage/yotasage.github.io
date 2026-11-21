@@ -199,6 +199,17 @@ const ICONS: Record<ToolIconName, React.ReactNode> = {
       <path d="M31 18.5v3M29.5 20h3" />
     </>
   ),
+  'fill-forms': (
+    <>
+      <Doc x={6} y={4} w={30} h={40} />
+      <rect x={12} y={14} width={18} height={6} rx={1.5} />
+      <rect x={12} y={24} width={6} height={6} rx={1} />
+      <path d="M13.5 27l1.3 1.4 2.4-2.8" />
+      <path d="M22 27h8" />
+      <rect x={12} y={34} width={18} height={5} rx={1.5} />
+      <path d="M35 31l7-7 3 3-7 7-4 1z" />
+    </>
+  ),
 };
 
 export default function ToolIcon({ name, color, size = 48 }: { name: ToolIconName; color: string; size?: number }) {
