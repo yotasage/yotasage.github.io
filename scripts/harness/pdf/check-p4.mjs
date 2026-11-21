@@ -14,6 +14,7 @@ import * as compressMod from '../../../lib/pdf/compress.ts';
 import * as compressContentMod from '../../../lib/pdf/compressContent.ts';
 import * as ghostscriptMod from '../../../lib/pdf/ghostscript.ts';
 import * as linearizeMod from '../../../lib/pdf/linearize.ts';
+import * as ocrMod from '../../../lib/pdf/ocr.ts';
 import * as ocrRuntimeMod from '../../../lib/pdf/ocrRuntime.ts';
 import * as pdfaMod from '../../../lib/pdf/pdfa.ts';
 import * as qpdfMod from '../../../lib/pdf/qpdf.ts';
@@ -25,6 +26,7 @@ const require = createRequire(import.meta.url);
 const {
   concatTransformationMatrix,
   decodePDFRawStream,
+  degrees,
   drawObject,
   PDFArray,
   PDFDocument,
@@ -40,6 +42,11 @@ const { checkQpdf, runQpdf } = qpdfMod.default ?? qpdfMod;
 const { inspectPdfA, convertToPdfA } = pdfaMod.default ?? pdfaMod;
 const { compressPdfWithGhostscript, runGhostscript } = ghostscriptMod.default ?? ghostscriptMod;
 const { OCR_ASSET_PATHS, OCR_LANGUAGES } = ocrRuntimeMod.default ?? ocrRuntimeMod;
+const {
+  extractWordsFromTesseractResult,
+  injectOcrTextLayer,
+  sanitizeWinAnsiText,
+} = ocrMod.default ?? ocrMod;
 const {
   assembleLinesFromTextItems,
   computePixelDiff,
@@ -1024,6 +1031,164 @@ await check('36. P4.6b pdfa.ts (inspectPdfA pre-flight + convertToPdfA for 1b, 2
     metrics.push(`${c.label}: ${res.beforeBytes}B -> ${res.afterBytes}B (fonts=${rep.totalFonts}, unembedded=0, qpdfOk=true)`);
   }
   console.log('  [Check 36 metrics] ' + metrics.join(' | '));
+});
+
+await check('37. P4.7 ocr.ts (WinAnsi sanitization, Tesseract v7 word extraction, 3 Tr invisible text-layer injection on 0° & 90° pages + pdfjs-dist extraction)', async () => {
+  // 37a. sanitizeWinAnsiText preserves Nordic/Latin-1, normalizes quotes/dashes/ligatures, strips non-WinAnsi safely
+  const nordic = sanitizeWinAnsiText('ÆØÅæøåéüÄÖÜß');
+  assert(nordic === 'ÆØÅæøåéüÄÖÜß', `expected Nordic/Latin-1 preserved, got "${nordic}"`);
+
+  const normalized = sanitizeWinAnsiText('“Hello” — ‘world’ \uFB01le \uFB02ow \uFB03ce');
+  assert(
+    normalized === '"Hello" - \'world\' file flow ffice',
+    `unexpected smart-quote/ligature normalization: "${normalized}"`,
+  );
+
+  const stripped = sanitizeWinAnsiText('Invoice 🚀 日本語 2026\x00\x07');
+  assert(
+    stripped.includes('Invoice') && stripped.includes('2026') && !stripped.includes('🚀') && !stripped.includes('日'),
+    `expected emoji/CJK/control stripped, got "${stripped}"`,
+  );
+
+  // Verify StandardFonts.Helvetica can encode all sanitized outputs without throwing
+  const fontCheckDoc = await PDFDocument.create();
+  const { StandardFonts } = require('@cantoo/pdf-lib');
+  const helv = await fontCheckDoc.embedFont(StandardFonts.Helvetica);
+  helv.encodeText(nordic);
+  helv.encodeText(normalized);
+  helv.encodeText(stripped);
+
+  // 37b. extractWordsFromTesseractResult on a mock tesseract.js@7.0.0 blocks -> paragraphs -> lines -> words tree
+  const mockV7Data = {
+    text: 'Invoice 2026 Blåbær',
+    confidence: 93,
+    blocks: [
+      {
+        paragraphs: [
+          {
+            lines: [
+              {
+                words: [
+                  { text: 'Invoice', confidence: 96, bbox: { x0: 80, y0: 100, x1: 240, y1: 140 } },
+                  { text: '   ', confidence: 10, bbox: { x0: 250, y0: 100, x1: 260, y1: 140 } },
+                  { text: '2026', confidence: 94, bbox: { x0: 270, y0: 100, x1: 360, y1: 140 } },
+                  { text: 'BadBox', confidence: 80, bbox: { x0: 370, y0: 100, x1: 370, y1: 140 } },
+                  { text: 'Blåbær', confidence: 91, bbox: { x0: 390, y0: 100, x1: 530, y1: 140 } },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+  const extracted = extractWordsFromTesseractResult(mockV7Data);
+  assert(extracted.length === 3, `expected 3 valid words from v7 tree, got ${extracted.length}: ${JSON.stringify(extracted)}`);
+  assert(
+    extracted[0].text === 'Invoice' && extracted[1].text === '2026' && extracted[2].text === 'Blåbær',
+    `unexpected extracted texts: ${JSON.stringify(extracted.map((w) => w.text))}`,
+  );
+  assert(
+    extracted[2].x0 === 390 && extracted[2].y1 === 140 && extracted[2].confidence === 91,
+    `unexpected word bbox/confidence: ${JSON.stringify(extracted[2])}`,
+  );
+
+  // 37c. injectOcrTextLayer on synthetic 2-page image-only/blank PDF (page 1 = 0°, page 2 = 90°)
+  const blankDoc = await PDFDocument.create();
+  blankDoc.addPage([612, 792]); // Page 1: unrotated (0°)
+  const page2 = blankDoc.addPage([612, 792]);
+  page2.setRotation(degrees(90)); // Page 2: rotated 90° clockwise
+  const blankBytes = await blankDoc.save({ useObjectStreams: false });
+
+  const pageWords = new Map([
+    [
+      0,
+      {
+        imageWidth: 1000,
+        imageHeight: 1294,
+        fullText: 'Invoice 2026 Blåbær',
+        avgConfidence: 93.7,
+        words: [
+          { text: 'Invoice', x0: 80, y0: 120, x1: 240, y1: 165, confidence: 96 },
+          { text: '2026', x0: 270, y0: 120, x1: 370, y1: 165, confidence: 94 },
+          { text: 'Blåbær', x0: 400, y0: 120, x1: 560, y1: 165, confidence: 91 },
+        ],
+      },
+    ],
+    [
+      1,
+      {
+        imageWidth: 1294,
+        imageHeight: 1000,
+        fullText: 'Rotated Scan',
+        avgConfidence: 95,
+        words: [
+          { text: 'Rotated', x0: 120, y0: 140, x1: 340, y1: 195, confidence: 96 },
+          { text: 'Scan', x0: 370, y0: 140, x1: 500, y1: 195, confidence: 94 },
+        ],
+      },
+    ],
+  ]);
+
+  const ocrBytes = await injectOcrTextLayer(blankBytes, pageWords);
+  const outDoc = await PDFDocument.load(ocrBytes, { updateMetadata: false });
+  assert(outDoc.getPageCount() === 2, `expected 2 pages in OCR output, got ${outDoc.getPageCount()}`);
+
+  const qpdfRes = await checkQpdf(ocrBytes);
+  assert(qpdfRes.ok === true, `OCR output failed checkQpdf: ${qpdfRes.stderr}`);
+
+  const readPageStream = (page) => {
+    const contents = page.node.Contents();
+    if (!contents) return '';
+    const streams = [];
+    if (contents instanceof PDFRawStream) {
+      streams.push(contents);
+    } else if (contents instanceof PDFArray) {
+      for (const ref of contents.asArray()) {
+        const obj = outDoc.context.lookup(ref);
+        if (obj instanceof PDFRawStream) streams.push(obj);
+      }
+    }
+    return streams
+      .map((s) => new TextDecoder('latin1').decode(decodePDFRawStream(s).decode()))
+      .join('\n');
+  };
+
+  const p1Stream = readPageStream(outDoc.getPage(0));
+  const p2Stream = readPageStream(outDoc.getPage(1));
+  assert(/\b3\s+Tr\b/.test(p1Stream), `page 1 OCR stream missing invisible text mode "3 Tr": ${p1Stream.slice(0, 300)}`);
+  assert(/\b3\s+Tr\b/.test(p2Stream), `page 2 OCR stream missing invisible text mode "3 Tr": ${p2Stream.slice(0, 300)}`);
+
+  // 37d. Extract text back via pdfjs-dist in Node and verify words on both 0° and 90° pages
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const loadingTask = pdfjs.getDocument({
+    data: ocrBytes.slice(),
+    useWorkerFetch: false,
+    isEvalSupported: false,
+    verbosity: 0,
+  });
+  const pdfDoc = await loadingTask.promise;
+  try {
+    assert(pdfDoc.numPages === 2, `pdfjs expected 2 pages, got ${pdfDoc.numPages}`);
+
+    const pdfPage1 = await pdfDoc.getPage(1);
+    const tc1 = await pdfPage1.getTextContent();
+    const p1Text = tc1.items.map((it) => ('str' in it ? it.str : '')).join(' ');
+    assert(
+      p1Text.includes('Invoice') && p1Text.includes('2026') && p1Text.includes('Blåbær'),
+      `pdfjs page 1 text missing expected words, got: "${p1Text}"`,
+    );
+
+    const pdfPage2 = await pdfDoc.getPage(2);
+    const tc2 = await pdfPage2.getTextContent();
+    const p2Text = tc2.items.map((it) => ('str' in it ? it.str : '')).join(' ');
+    assert(
+      p2Text.includes('Rotated') && p2Text.includes('Scan'),
+      `pdfjs page 2 (90°) text missing expected words, got: "${p2Text}"`,
+    );
+  } finally {
+    await loadingTask.destroy();
+  }
 });
 
 // Print summary table

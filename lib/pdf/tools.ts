@@ -7,6 +7,7 @@ export type ToolIconName =
   | 'compress'
   | 'linearize'
   | 'repair'
+  | 'ocr'
   | 'images'
   | 'pdf-to-images'
   | 'extract-images'
@@ -108,6 +109,15 @@ export const REPAIR: PdfTool = {
   href: '/pdf/repair',
   icon: 'repair',
   color: '#e59a3a',
+};
+
+export const OCR: PdfTool = {
+  id: 'ocr',
+  title: 'OCR PDF',
+  description: 'Recognize text in scanned PDFs with self-hosted Tesseract OCR and add an invisible selectable, searchable text layer.',
+  href: '/pdf/ocr',
+  icon: 'ocr',
+  color: '#9b7bf0',
 };
 
 export const IMAGES_TO_PDF: PdfTool = {
@@ -338,7 +348,7 @@ export const EDIT: PdfTool = {
 export const TOOL_CATEGORIES: ToolCategory[] = [
   { title: 'View', tools: [READER, COMPARE] },
   { title: 'Organize', tools: [MERGE, SPLIT, ORGANIZE, ROTATE, REMOVE_PAGES, EXTRACT_PAGES] },
-  { title: 'Optimize', tools: [COMPRESS, LINEARIZE, REPAIR] },
+  { title: 'Optimize', tools: [COMPRESS, LINEARIZE, REPAIR, OCR] },
   { title: 'Edit & annotate', tools: [EDIT, SIGN, FILL_FORMS, PAGE_NUMBERS, WATERMARK, CROP, RESIZE, NUP, GRAYSCALE, INVERT, EDIT_METADATA, FLATTEN, REMOVE_ANNOTATIONS] },
   { title: 'Convert to PDF', tools: [IMAGES_TO_PDF] },
   { title: 'Convert from PDF', tools: [PDF_TO_IMAGES, EXTRACT_IMAGES, PDFA] },

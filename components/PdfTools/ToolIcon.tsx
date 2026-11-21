@@ -62,6 +62,14 @@ const ICONS: Record<ToolIconName, React.ReactNode> = {
       <path d="M39 23a6.5 6.5 0 0 1-8.4 6.2L22 37.8a2.5 2.5 0 0 1-3.5-3.5l8.6-8.6A6.5 6.5 0 0 1 35.5 18l-3.3 3.3 2.5 2.5L38 20.5A6.5 6.5 0 0 1 39 23z" />
     </>
   ),
+  ocr: (
+    <>
+      <path d="M6 13V8a2 2 0 0 1 2-2h5M35 6h5a2 2 0 0 1 2 2v5M42 35v5a2 2 0 0 1-2 2h-5M13 42H8a2 2 0 0 1-2-2v-5" />
+      <path d="M10 24h28" strokeDasharray="3 3" />
+      <path d="M16 32l5-16 5 16M17.8 27h6.4" />
+      <path d="M30 18h5M30 29h6" />
+    </>
+  ),
   images: (
     <>
       <rect x={4} y={8} width={26} height={22} rx={2} />

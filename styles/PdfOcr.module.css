@@ -1,0 +1,249 @@
+/* OCR PDF specific styles (kept separate from styles/PdfTools.module.css). */
+
+.langSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.langHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.langTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #e2e2e2;
+}
+
+.langMeta {
+  font-size: 0.78rem;
+  color: #a4a4a4;
+}
+
+.langGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(126px, 1fr));
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.langChip {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  padding: 0.48rem 0.6rem;
+  border-radius: 7px;
+  border: 1px solid #444;
+  background: #262626;
+  color: #dcdcdc;
+  cursor: pointer;
+  user-select: none;
+  min-width: 0;
+  transition: border-color 0.14s ease, background-color 0.14s ease;
+}
+
+.langChip:hover {
+  border-color: #666;
+  background: #2d2d2d;
+}
+
+.langChipSelected {
+  border-color: #9b7bf0;
+  background: rgba(155, 123, 240, 0.15);
+  color: #ffffff;
+}
+
+.langChip input {
+  margin-top: 0.18rem;
+  accent-color: #9b7bf0;
+  flex-shrink: 0;
+}
+
+.langChipBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.langChipName {
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.langChipSize {
+  font-size: 0.72rem;
+  color: #a8a8a8;
+}
+
+.customLangRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.hiddenFileInput {
+  display: none;
+}
+
+.customLangChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.customChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid #9b7bf0;
+  background: rgba(155, 123, 240, 0.18);
+  color: #eee8ff;
+  font-size: 0.78rem;
+  max-width: 100%;
+}
+
+.customChipLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 11rem;
+}
+
+.customChipRemove {
+  background: transparent;
+  border: none;
+  color: #d4c6ff;
+  cursor: pointer;
+  padding: 0 0.15rem;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.customChipRemove:hover {
+  color: #ffffff;
+}
+
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.actionRow > :first-child {
+  flex: 1 1 11rem;
+}
+
+.cancelButton {
+  padding: 0.65rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #8a4a4a;
+  background: rgba(210, 76, 76, 0.16);
+  color: #ffb8b8;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.14s ease, border-color 0.14s ease;
+}
+
+.cancelButton:hover {
+  background: rgba(210, 76, 76, 0.28);
+  border-color: #c56767;
+  color: #ffffff;
+}
+
+.statsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.35rem 0 0.75rem;
+}
+
+.statPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  background: #242424;
+  border: 1px solid #3f3f3f;
+  color: #d7d7d7;
+  font-size: 0.78rem;
+}
+
+.downloadRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.55rem;
+}
+
+.textPreviewWrap {
+  margin-top: 0.85rem;
+  border: 1px solid #3f3f3f;
+  border-radius: 8px;
+  background: #1f1f1f;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.textPreviewHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.55rem 0.75rem;
+  background: #272727;
+  border-bottom: 1px solid #383838;
+  font-size: 0.84rem;
+  color: #d8d8d8;
+}
+
+.textPreviewPre {
+  margin: 0;
+  padding: 0.75rem;
+  max-height: 22rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  line-height: 1.48;
+  color: #e4e4e4;
+}
+
+@media (max-width: 480px) {
+  .langGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .actionRow {
+    flex-direction: column;
+  }
+
+  .actionRow > :first-child {
+    flex: none;
+    width: 100%;
+  }
+
+  .cancelButton {
+    width: 100%;
+  }
+}
