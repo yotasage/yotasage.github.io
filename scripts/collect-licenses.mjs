@@ -233,6 +233,7 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.`;
 
 const qpdfDir = resolvePackage('@neslinesli93/qpdf-wasm', root);
+const gsDir = resolvePackage('@wasmedia/wghostscript', root);
 const tessCoreDir = resolvePackage('tesseract.js-core', root);
 const pdfWasm = [];
 if (qpdfDir) {
@@ -241,6 +242,21 @@ if (qpdfDir) {
     license: 'Apache-2.0',
     url: 'https://github.com/qpdf/qpdf',
     text: `Copyright (c) 2005-2021 Jay Berkenbilt and 2022-2026 QPDF contributors\n\n${APACHE}`,
+  });
+}
+if (gsDir) {
+  const gsPkg = JSON.parse(readFileSync(join(gsDir, 'package.json'), 'utf8'));
+  const agplText = read(gsDir, 'LICENSE') ?? read(root, 'LICENSE.md') ?? '';
+  const gsNote = 'Served unmodified as separate files from /pdf-wasm/gs/ and loaded lazily on demand when Ghostscript '
+    + 'compression or PDF/A conversion is used.\n'
+    + 'Upstream Ghostscript source (10.08.0): https://github.com/ArtifexSoftware/ghostpdl\n'
+    + `WebAssembly build wrapper (@wasmedia/wghostscript ${gsPkg.version}): https://gitlab.com/wasmedia/wghostscript`;
+  pdfWasm.push({
+    name: 'Ghostscript (compiled into @wasmedia/wghostscript)',
+    version: '10.08.0',
+    license: 'AGPL-3.0',
+    url: 'https://github.com/ArtifexSoftware/ghostpdl',
+    text: `${gsNote}\n\nCopyright (C) Artifex Software, Inc.\n\n${agplText}`,
   });
 }
 if (tessCoreDir) {

@@ -8,10 +8,11 @@ import { fileURLToPath } from 'node:url';
 
 import { zlibSync } from 'fflate';
 
-import { makeMultiPagePdf } from './fixtures.mjs';
+import { makeCompressiblePdf, makeMultiPagePdf } from './fixtures.mjs';
 import * as compareMod from '../../../lib/pdf/compare.ts';
 import * as compressMod from '../../../lib/pdf/compress.ts';
 import * as compressContentMod from '../../../lib/pdf/compressContent.ts';
+import * as ghostscriptMod from '../../../lib/pdf/ghostscript.ts';
 import * as linearizeMod from '../../../lib/pdf/linearize.ts';
 import * as ocrRuntimeMod from '../../../lib/pdf/ocrRuntime.ts';
 import * as qpdfMod from '../../../lib/pdf/qpdf.ts';
@@ -35,6 +36,7 @@ const {
 } = require('@cantoo/pdf-lib');
 
 const { checkQpdf, runQpdf } = qpdfMod.default ?? qpdfMod;
+const { compressPdfWithGhostscript, runGhostscript } = ghostscriptMod.default ?? ghostscriptMod;
 const { OCR_ASSET_PATHS, OCR_LANGUAGES } = ocrRuntimeMod.default ?? ocrRuntimeMod;
 const {
   assembleLinesFromTextItems,
@@ -792,6 +794,172 @@ await check('34. P4.5 redact.ts (multi-span text/regex/PII matching, RGBA pixel 
   assert(/\bT[jJ]\b/.test(p1Stream), 'page 1 (unredacted) should retain lossless Tj/TJ text operators');
   assert(!/\bT[jJ]\b/.test(p2Stream), `page 2 (redacted) must contain NO Tj/TJ text operators, got: ${p2Stream.slice(0, 200)}`);
   assert(/\bT[jJ]\b/.test(p3Stream), 'page 3 (unredacted) should retain lossless Tj/TJ text operators');
+});
+
+await check('35. P4.6a AGPL-3.0 LICENSE.md, self-hosted Ghostscript WASM, compression & PDF/A-2 smoke test', async () => {
+  // 35a. Verbatim FSF AGPL-3.0 LICENSE.md at repo root
+  const licensePath = join(repoRoot, 'LICENSE.md');
+  assert(existsSync(licensePath), 'LICENSE.md missing at repo root');
+  const licenseSize = statSync(licensePath).size;
+  assert(licenseSize > 30000, `LICENSE.md too small (${licenseSize} bytes; expected full FSF AGPL-3.0 > 30 KB)`);
+  const licenseText = readFileSync(licensePath, 'utf8');
+  assert(licenseText.includes('GNU AFFERO GENERAL PUBLIC LICENSE'), 'LICENSE.md missing AGPL title');
+  assert(licenseText.includes('Version 3, 19 November 2007'), 'LICENSE.md missing Version 3, 19 November 2007');
+
+  // 35b. Self-hosted Ghostscript WASM assets in public/pdf-wasm/gs/
+  for (const rel of ['public/pdf-wasm/gs/wghostscript.wasm', 'public/pdf-wasm/gs/wghostscript.js']) {
+    const abs = join(repoRoot, rel);
+    assert(existsSync(abs), `missing Ghostscript asset: ${rel}`);
+    assert(statSync(abs).size > 0, `empty Ghostscript asset: ${rel}`);
+  }
+
+  // 35c. /licenses generated JSON includes Ghostscript AGPL-3.0 entry with upstream source URL
+  const licJsonPath = join(repoRoot, 'lib', 'generated', 'third-party-licenses.json');
+  assert(existsSync(licJsonPath), 'missing lib/generated/third-party-licenses.json');
+  const licData = JSON.parse(readFileSync(licJsonPath, 'utf8'));
+  const gsEntry = (licData.pdfWasm ?? []).find(
+    (entry) => /Ghostscript/i.test(entry.name) && /AGPL-3\.0/i.test(entry.license),
+  );
+  assert(gsEntry, 'missing Ghostscript AGPL-3.0 entry in third-party-licenses.json pdfWasm');
+  assert(
+    typeof gsEntry.url === 'string' && gsEntry.url.includes('ArtifexSoftware/ghostpdl'),
+    `unexpected Ghostscript upstream URL: ${gsEntry.url}`,
+  );
+  assert(
+    typeof gsEntry.text === 'string' && gsEntry.text.includes('GNU AFFERO GENERAL PUBLIC LICENSE'),
+    'Ghostscript licence entry missing verbatim AGPL-3.0 text',
+  );
+
+  // 35d. Ghostscript compression on image-heavy 2-page synthetic PDF ('screen' and 'ebook')
+  const imgDoc = await PDFDocument.create();
+  const imgW = 320;
+  const imgH = 320;
+  const rawRgb = new Uint8Array(imgW * imgH * 3);
+  for (let y = 0; y < imgH; y++) {
+    for (let x = 0; x < imgW; x++) {
+      const idx = (y * imgW + x) * 3;
+      rawRgb[idx] = (x * 255) / imgW;
+      rawRgb[idx + 1] = (y * 255) / imgH;
+      rawRgb[idx + 2] = ((x ^ y) * 3) & 0xff;
+    }
+  }
+  const flateRgb = zlibSync(rawRgb);
+  const imgStream = PDFRawStream.of(
+    imgDoc.context.obj({
+      Type: 'XObject',
+      Subtype: 'Image',
+      Width: imgW,
+      Height: imgH,
+      ColorSpace: 'DeviceRGB',
+      BitsPerComponent: 8,
+      Filter: 'FlateDecode',
+      Length: flateRgb.length,
+    }),
+    flateRgb,
+  );
+  const imgRef = imgDoc.context.register(imgStream);
+  for (let i = 0; i < 2; i++) {
+    const page = imgDoc.addPage([400, 400]);
+    page.node.setXObject(PDFName.of('Im0'), imgRef);
+    page.pushOperators(
+      pushGraphicsState(),
+      concatTransformationMatrix(200, 0, 0, 200, 100, 100),
+      drawObject(PDFName.of('Im0')),
+      popGraphicsState(),
+    );
+  }
+  const heavyPdfBytes = await imgDoc.save({ useObjectStreams: false });
+
+  const screenRes = await compressPdfWithGhostscript(heavyPdfBytes, { preset: 'screen' });
+  const screenHeader = new TextDecoder('ascii').decode(screenRes.bytes.subarray(0, 5));
+  assert(screenHeader === '%PDF-', `screen output missing %PDF- header: ${screenHeader}`);
+  const screenDoc = await PDFDocument.load(screenRes.bytes, { updateMetadata: false });
+  assert(screenDoc.getPageCount() === 2, `screen output expected 2 pages, got ${screenDoc.getPageCount()}`);
+  const screenQpdf = await checkQpdf(screenRes.bytes);
+  assert(screenQpdf.ok === true, `screen output failed checkQpdf: ${screenQpdf.stderr}`);
+  assert(
+    screenRes.bytes.length < heavyPdfBytes.length,
+    `expected Ghostscript screen preset (${screenRes.bytes.length} B) to be smaller than input (${heavyPdfBytes.length} B)`,
+  );
+
+  const ebookRes = await compressPdfWithGhostscript(heavyPdfBytes, { preset: 'ebook', colorMode: 'grayscale' });
+  const ebookHeader = new TextDecoder('ascii').decode(ebookRes.bytes.subarray(0, 5));
+  assert(ebookHeader === '%PDF-', `ebook output missing %PDF- header: ${ebookHeader}`);
+  const ebookDoc = await PDFDocument.load(ebookRes.bytes, { updateMetadata: false });
+  assert(ebookDoc.getPageCount() === 2, `ebook output expected 2 pages, got ${ebookDoc.getPageCount()}`);
+  const ebookQpdf = await checkQpdf(ebookRes.bytes);
+  assert(ebookQpdf.ok === true, `ebook output failed checkQpdf: ${ebookQpdf.stderr}`);
+
+  // Also exercise compressPdf({ ghostscriptPreset }) wrapper path with compressible fixture
+  const compressibleBytes = await makeCompressiblePdf();
+  const wrapperRes = await compressPdf(compressibleBytes, {
+    images: false,
+    maxDpi: 150,
+    quality: 75,
+    rasterize: false,
+    removeMetadata: true,
+    ghostscriptPreset: 'ebook',
+  });
+  const wrapperDoc = await PDFDocument.load(wrapperRes.bytes, { updateMetadata: false });
+  assert(wrapperDoc.getPageCount() === 2, `compressPdf(ghostscriptPreset) expected 2 pages, got ${wrapperDoc.getPageCount()}`);
+  assert(
+    wrapperRes.bytes.length < compressibleBytes.length,
+    `compressPdf(ghostscriptPreset) (${wrapperRes.bytes.length} B) should shrink compressible fixture (${compressibleBytes.length} B)`,
+  );
+
+  // 35e. Ghostscript -dPDFA=2 smoke test using extraFiles (verifies P4.6b readiness)
+  const pdfaSrc = await makeMultiPagePdf(2);
+  const iccRomPath = '%rom%iccprofiles/srgb.icc';
+  const pdfaDefPs = [
+    '[/_objdef {icc_PDFA} /type /stream /OBJ pdfmark',
+    '[{icc_PDFA} << /N 3 >> /PUT pdfmark',
+    `[{icc_PDFA} (${iccRomPath}) (r) file /PUT pdfmark`,
+    '[/_objdef {OutputIntent_PDFA} /type /dict /OBJ pdfmark',
+    '[{OutputIntent_PDFA} <<',
+    '  /Type /OutputIntent',
+    '  /S /GTS_PDFA1',
+    '  /DestOutputProfile {icc_PDFA}',
+    '  /OutputConditionIdentifier (sRGB)',
+    '>> /PUT pdfmark',
+    '[{Catalog} << /OutputIntents [ {OutputIntent_PDFA} ] >> /PUT pdfmark',
+  ].join('\n');
+
+  const pdfaRun = await runGhostscript(
+    pdfaSrc,
+    [
+      '-sDEVICE=pdfwrite',
+      '-dPDFA=2',
+      '-dPDFACompatibilityPolicy=1',
+      '-sColorConversionStrategy=RGB',
+      `--permit-file-read=${iccRomPath}`,
+      '-dNOPAUSE',
+      '-dQUIET',
+      '-dBATCH',
+      '-sOutputFile=$OUT',
+      '/PDFA_def.ps',
+      '$IN',
+    ],
+    { extraFiles: { '/PDFA_def.ps': pdfaDefPs } },
+  );
+  assert(pdfaRun.exitCode === 0, `PDFA=2 run exited with ${pdfaRun.exitCode}: ${pdfaRun.stderr}`);
+  assert(pdfaRun.output && pdfaRun.output.length > 0, 'PDFA=2 run produced no output bytes');
+  const pdfaHeader = new TextDecoder('ascii').decode(pdfaRun.output.subarray(0, 5));
+  assert(pdfaHeader === '%PDF-', `PDFA=2 output missing %PDF- header: ${pdfaHeader}`);
+  const pdfaOutDoc = await PDFDocument.load(pdfaRun.output, { updateMetadata: false });
+  assert(pdfaOutDoc.getPageCount() === 2, `PDFA=2 output expected 2 pages, got ${pdfaOutDoc.getPageCount()}`);
+  const pdfaQpdf = await checkQpdf(pdfaRun.output);
+  assert(pdfaQpdf.ok === true, `PDFA=2 output failed checkQpdf: ${pdfaQpdf.stderr}`);
+  const outputIntents = pdfaOutDoc.catalog.lookup(PDFName.of('OutputIntents'));
+  assert(outputIntents instanceof PDFArray && outputIntents.size() >= 1, 'PDFA=2 output missing /OutputIntents array in catalog');
+  const firstIntent = pdfaOutDoc.context.lookup(outputIntents.get(0));
+  assert(firstIntent && typeof firstIntent.lookup === 'function', 'PDFA=2 OutputIntent entry is not a dictionary');
+  assert(
+    firstIntent.lookup(PDFName.of('S')) === PDFName.of('GTS_PDFA1'),
+    `PDFA=2 OutputIntent /S expected /GTS_PDFA1, got ${String(firstIntent.lookup(PDFName.of('S')))}`,
+  );
+  assert(firstIntent.get(PDFName.of('DestOutputProfile')), 'PDFA=2 OutputIntent missing /DestOutputProfile');
+  const pdfaRawText = new TextDecoder('latin1').decode(pdfaRun.output);
+  assert(pdfaRawText.includes('pdfaid:part'), 'PDFA=2 output missing XMP pdfaid:part');
 });
 
 // Print summary table

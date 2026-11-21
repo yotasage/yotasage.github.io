@@ -8,6 +8,7 @@ import { Checkbox, Field, NumberInput, Select } from '../../components/QrGen/fie
 import { PdfSizeBreakdown } from '../../lib/pdf/breakdown';
 import { CompressColorMode, CompressOptions } from '../../lib/pdf/compress';
 import { baseName, download, errorMessage, formatBytes, isPasswordError, isPdf, OutputFile, readBytes, uid, zipFiles } from '../../lib/pdf/files';
+import { GhostscriptCompressPreset } from '../../lib/pdf/ghostscript';
 import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
 import { pdfPreview } from '../../lib/pdf/pdfjs';
 import { COMPRESS } from '../../lib/pdf/tools';
@@ -37,13 +38,27 @@ interface ItemResult {
   error?: string;
 }
 
-type Level = 'lossless' | 'recommended' | 'strong' | 'custom';
+type Level = 'lossless' | 'recommended' | 'strong' | 'ghostscript' | 'custom';
 
 const LEVELS: { id: Level; title: string; text: string; dpi: number; quality: number }[] = [
   { id: 'lossless', title: 'Lossless', text: 'Removes unused objects and recompresses streams. Nothing visible changes.', dpi: 150, quality: 75 },
   { id: 'recommended', title: 'Recommended', text: 'Images at up to 150 DPI, JPEG quality 75 %. Good for screens and office printing.', dpi: 150, quality: 75 },
   { id: 'strong', title: 'Strong', text: 'Images at up to 96 DPI, JPEG quality 50 %. Smallest files, visibly softer images.', dpi: 96, quality: 50 },
+  {
+    id: 'ghostscript',
+    title: 'Ghostscript (maximum)',
+    text: 'Deep vector-preserving compression with Ghostscript WebAssembly. Keeps selectable text and vector graphics; loaded locally on demand.',
+    dpi: 150,
+    quality: 75,
+  },
   { id: 'custom', title: 'Custom', text: 'Choose the image resolution and JPEG quality yourself.', dpi: 150, quality: 75 },
+];
+
+const GS_PRESETS: [GhostscriptCompressPreset, string][] = [
+  ['screen', 'Screen — 72 DPI (smallest)'],
+  ['ebook', 'eBook — 150 DPI (balanced)'],
+  ['printer', 'Printer — 300 DPI (high quality)'],
+  ['prepress', 'Prepress — 300 DPI (archival color)'],
 ];
 
 const COLOR_MODES: [CompressColorMode, string][] = [
@@ -103,6 +118,8 @@ export default function CompressPdf() {
   const [customDpi, setCustomDpi] = React.useState(150);
   const [customQuality, setCustomQuality] = React.useState(75);
   const [colorMode, setColorMode] = React.useState<CompressColorMode>('original');
+  const [gsPreset, setGsPreset] = React.useState<GhostscriptCompressPreset>('ebook');
+  const [gsGrayscale, setGsGrayscale] = React.useState(false);
   const [rasterize, setRasterize] = React.useState(false);
   const [removeMetadata, setRemoveMetadata] = React.useState(false);
   const [deduplicateObjects, setDeduplicateObjects] = React.useState(true);
@@ -119,11 +136,12 @@ export default function CompressPdf() {
   const dpi = level === 'custom' ? customDpi : preset.dpi;
   const quality = level === 'custom' ? customQuality : preset.quality;
   const lossless = level === 'lossless';
+  const isGhostscript = level === 'ghostscript';
 
   const ids = items.map((it) => it.id).join();
   React.useEffect(
     () => setResults({}),
-    [ids, level, dpi, quality, colorMode, rasterize, removeMetadata, deduplicateObjects, qpdfOptimize],
+    [ids, level, dpi, quality, colorMode, gsPreset, gsGrayscale, rasterize, removeMetadata, deduplicateObjects, qpdfOptimize],
   );
 
   const update = (id: string, patch: Partial<CompressItem>) => setItems((list) => list.map((it) => (it.id === id ? { ...it, ...patch } : it)));
@@ -203,16 +221,28 @@ export default function CompressPdf() {
   async function compress() {
     setBusy(true);
     setResults({});
-    const baseOpts: CompressOptions = {
-      images: !lossless,
-      maxDpi: dpi,
-      quality,
-      rasterize: rasterize && !lossless,
-      removeMetadata,
-      deduplicateObjects,
-      colorMode: lossless ? 'original' : colorMode,
-      qpdfOptimize,
-    };
+    const baseOpts: CompressOptions = isGhostscript
+      ? {
+          images: false,
+          maxDpi: dpi,
+          quality,
+          rasterize: false,
+          removeMetadata,
+          deduplicateObjects: false,
+          colorMode: gsGrayscale ? 'grayscale' : 'original',
+          qpdfOptimize,
+          ghostscriptPreset: gsPreset,
+        }
+      : {
+          images: !lossless,
+          maxDpi: dpi,
+          quality,
+          rasterize: rasterize && !lossless,
+          removeMetadata,
+          deduplicateObjects,
+          colorMode: lossless ? 'original' : colorMode,
+          qpdfOptimize,
+        };
     const out: Record<string, ItemResult> = {};
     for (let i = 0; i < ready.length; i++) {
       const item = ready[i];
@@ -273,21 +303,40 @@ export default function CompressPdf() {
               </div>
             )}
             <div className={styles.options}>
-              <Field label="Colour mode">
-                <Select<CompressColorMode>
-                  value={lossless ? 'original' : colorMode}
-                  disabled={lossless}
-                  onChange={setColorMode}
-                  options={COLOR_MODES}
-                />
-              </Field>
-              <Checkbox
-                label={`Convert every page to an image at ${dpi} DPI (best for scans; removes selectable text, links and forms)`}
-                checked={rasterize && !lossless}
-                disabled={lossless}
-                onChange={setRasterize}
-              />
-              <Checkbox label="Merge duplicate fonts & images" checked={deduplicateObjects} onChange={setDeduplicateObjects} />
+              {isGhostscript ? (
+                <>
+                  <Field label="Ghostscript preset">
+                    <Select<GhostscriptCompressPreset>
+                      value={gsPreset}
+                      onChange={setGsPreset}
+                      options={GS_PRESETS}
+                    />
+                  </Field>
+                  <Checkbox
+                    label="Convert colours to grayscale"
+                    checked={gsGrayscale}
+                    onChange={setGsGrayscale}
+                  />
+                </>
+              ) : (
+                <>
+                  <Field label="Colour mode">
+                    <Select<CompressColorMode>
+                      value={lossless ? 'original' : colorMode}
+                      disabled={lossless}
+                      onChange={setColorMode}
+                      options={COLOR_MODES}
+                    />
+                  </Field>
+                  <Checkbox
+                    label={`Convert every page to an image at ${dpi} DPI (best for scans; removes selectable text, links and forms)`}
+                    checked={rasterize && !lossless}
+                    disabled={lossless}
+                    onChange={setRasterize}
+                  />
+                  <Checkbox label="Merge duplicate fonts & images" checked={deduplicateObjects} onChange={setDeduplicateObjects} />
+                </>
+              )}
               <Checkbox label="Remove document metadata (title, author, XMP)" checked={removeMetadata} onChange={setRemoveMetadata} />
               <Checkbox label="Deep structure optimization (QPDF WebAssembly)" checked={qpdfOptimize} onChange={setQpdfOptimize} />
             </div>

@@ -1,5 +1,6 @@
 {
   "private": true,
+  "license": "AGPL-3.0-or-later",
   "scripts": {
     "dev": "next dev -H 0.0.0.0 -p 3020",
     "build": "next build",
@@ -18,6 +19,7 @@
     "@tesseract.js-data/swe": "^1.0.0",
     "@types/katex": "^0.16.8",
     "@types/react-dom": "^19.3.0",
+    "@wasmedia/wghostscript": "^0.2.0",
     "altiumts": "0.0.95",
     "clipper2-ts": "2.0.1",
     "fflate": "^0.8.3",

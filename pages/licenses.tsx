@@ -82,7 +82,9 @@ export default function Licenses() {
           packages each time the site is built.
         </p>
         <p className={styles.lead}>
-          The source code of the site itself is on{' '}
+          The site itself is licensed under the GNU Affero General Public License v3.0 (
+          <a href="https://github.com/yotasage/yotasage.github.io/blob/main/LICENSE.md" target="_blank" rel="noopener noreferrer">LICENSE.md</a>
+          ), and its complete source code is on{' '}
           <a href="https://github.com/yotasage/yotasage.github.io" target="_blank" rel="noopener noreferrer">GitHub</a>.
         </p>
 
@@ -111,8 +113,10 @@ export default function Licenses() {
           <>
             <h2>PDF processing and OCR WebAssembly modules</h2>
             <p className={styles.lead}>
-              QPDF (for PDF repair, encryption, linearization and inspection) and Tesseract OCR with bundled
-              tessdata_fast language models, served directly from this site and run locally in the browser.
+              QPDF (for PDF repair, encryption, linearization and inspection), Ghostscript (AGPL-3.0, for
+              vector-preserving maximum compression and PDF/A conversion, served unmodified from{' '}
+              <code>/pdf-wasm/gs/</code> and loaded lazily on demand), and Tesseract OCR with bundled tessdata_fast
+              language models, all served directly from this site and run locally in the browser.
             </p>
             <Entries entries={pdfWasm} />
           </>

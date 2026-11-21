@@ -2,6 +2,7 @@
 // so the site works as a static export with zero CDN requests. Runs on `npm install` / `npm ci`.
 //
 // - public/pdf-wasm/: QPDF compiled to WebAssembly (@neslinesli93/qpdf-wasm, ISC wrapper / Apache-2.0 QPDF).
+// - public/pdf-wasm/gs/: Ghostscript compiled to WebAssembly (@wasmedia/wghostscript, AGPL-3.0-or-later).
 // - public/ocr/worker.min.js: Tesseract.js browser worker (Apache-2.0).
 // - public/ocr/core/: Tesseract.js WASM core builds (standard, SIMD, relaxed-SIMD; LSTM and combined, Apache-2.0).
 // - public/ocr/tessdata/: Bundled tessdata_fast (4.0.0_best_int) language models (Apache-2.0 / MIT packaging).
@@ -13,6 +14,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const modules = join(root, 'node_modules');
 
 const QPDF_DEST = join(root, 'public', 'pdf-wasm');
+const GS_DEST = join(QPDF_DEST, 'gs');
 const OCR_DEST = join(root, 'public', 'ocr');
 
 const OCR_CORE_FILES = [
@@ -45,6 +47,18 @@ if (!existsSync(qpdfSrc)) {
   for (const file of ['qpdf.wasm', 'qpdf.js']) {
     const srcFile = join(qpdfSrc, file);
     if (existsSync(srcFile)) copyFileTracked(srcFile, join(QPDF_DEST, file));
+  }
+}
+
+// 1b. Ghostscript WASM + Emscripten ES module JS glue (served unmodified as separate files)
+const gsSrc = join(modules, '@wasmedia', 'wghostscript', 'dist');
+if (!existsSync(gsSrc)) {
+  console.warn('@wasmedia/wghostscript is not installed; skipping the copy of Ghostscript assets.');
+} else {
+  mkdirSync(GS_DEST, { recursive: true });
+  for (const file of ['wghostscript.wasm', 'wghostscript.js']) {
+    const srcFile = join(gsSrc, file);
+    if (existsSync(srcFile)) copyFileTracked(srcFile, join(GS_DEST, file));
   }
 }
 

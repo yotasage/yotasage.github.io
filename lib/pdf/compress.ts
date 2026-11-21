@@ -24,6 +24,7 @@ import {
   measureImageDisplaySizes,
 } from './compressContent';
 import { canvasToBytes, nextFrame } from './files';
+import { compressPdfWithGhostscript, GhostscriptCompressPreset } from './ghostscript';
 import { filterNames, N, num, removeUnusedObjects } from './objects';
 import { openPdf, renderPage } from './pdfjs';
 import { runQpdf } from './qpdf';
@@ -48,6 +49,8 @@ export interface CompressOptions {
   bwThreshold?: number;
   // Run QPDF WebAssembly structural optimization pass after saving (default false).
   qpdfOptimize?: boolean;
+  // When set (and not rasterizing), run Ghostscript WebAssembly vector-preserving compression.
+  ghostscriptPreset?: GhostscriptCompressPreset;
 }
 
 export interface CompressResult {
@@ -380,6 +383,42 @@ export async function compressPdf(bytes: Uint8Array, opts: CompressOptions, onPr
       out = opt.bytes;
       qpdfSavedBytes = opt.savedBytes;
     }
+    return {
+      bytes: out,
+      imagesRecompressed: 0,
+      duplicateImagesMerged: 0,
+      duplicateFontsMerged: 0,
+      qpdfSavedBytes,
+    };
+  }
+
+  if (opts.ghostscriptPreset) {
+    onProgress(0.1, 'Compressing with Ghostscript WebAssembly');
+    await nextFrame();
+    const gsRes = await compressPdfWithGhostscript(bytes, {
+      preset: opts.ghostscriptPreset,
+      colorMode: opts.colorMode === 'grayscale' ? 'grayscale' : 'original',
+      password: opts.password,
+    });
+    let out = gsRes.bytes;
+
+    if (opts.removeMetadata) {
+      onProgress(0.78, 'Removing metadata');
+      await nextFrame();
+      const doc = await PDFDocument.load(out, { updateMetadata: false });
+      removeMetadata(doc);
+      out = await doc.save({ useObjectStreams: true, addDefaultPage: false, updateFieldAppearances: false });
+    }
+
+    let qpdfSavedBytes = 0;
+    if (opts.qpdfOptimize) {
+      onProgress(0.9, 'Optimizing structure with QPDF');
+      await nextFrame();
+      const opt = await applyQpdfOptimization(out, undefined);
+      out = opt.bytes;
+      qpdfSavedBytes = opt.savedBytes;
+    }
+
     return {
       bytes: out,
       imagesRecompressed: 0,

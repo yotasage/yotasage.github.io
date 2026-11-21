@@ -153,8 +153,8 @@ export function runCompressPdf(
   opts: CompressOptions,
   onProgress?: ProgressFn,
 ): Promise<CompressResult> {
-  // Image recompression, page rasterization, and QPDF WASM script loading run on the main thread.
-  if (opts.images || opts.rasterize || opts.qpdfOptimize) {
+  // Image recompression, page rasterization, QPDF WASM, and Ghostscript (which uses its own worker) bypass lib/pdf/worker.ts.
+  if (opts.images || opts.rasterize || opts.qpdfOptimize || opts.ghostscriptPreset) {
     return compressPdf(bytes, opts, onProgress);
   }
   return dispatch<CompressResult>(
