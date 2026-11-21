@@ -15,12 +15,14 @@ import * as compressContentMod from '../../../lib/pdf/compressContent.ts';
 import * as linearizeMod from '../../../lib/pdf/linearize.ts';
 import * as ocrRuntimeMod from '../../../lib/pdf/ocrRuntime.ts';
 import * as qpdfMod from '../../../lib/pdf/qpdf.ts';
+import * as redactMod from '../../../lib/pdf/redact.ts';
 import * as repairMod from '../../../lib/pdf/repair.ts';
 
 // Load @cantoo/pdf-lib via CJS require so PDFDocument/PDFRawStream class identities match lib/pdf/*.ts under tsx.
 const require = createRequire(import.meta.url);
 const {
   concatTransformationMatrix,
+  decodePDFRawStream,
   drawObject,
   PDFArray,
   PDFDocument,
@@ -43,6 +45,7 @@ const {
 } = compareMod.default ?? compareMod;
 const { compressPdf } = compressMod.default ?? compressMod;
 const { hasLinearizedHeader, inspectLinearization, linearizePdf } = linearizeMod.default ?? linearizeMod;
+const { applyRedactions, burnRedactionsIntoRgba, findTextRedactMatches } = redactMod.default ?? redactMod;
 const { diagnosePdf, repairPdf } = repairMod.default ?? repairMod;
 const {
   computeOtsuThreshold,
@@ -650,6 +653,145 @@ await check('33. P4.4 compare.ts (reading-order lines, text/word LCS diff, RGBA 
   assert(report.includes('--- orig.pdf') && report.includes('+++ rev.pdf'), 'report missing file headers');
   assert(report.includes('@@ Page 1 (+3 / -2 lines) @@'), 'report missing page hunk header');
   assert(report.includes('- Budget: 1000 USD') && report.includes('+ Budget: 1250 USD'), 'report missing +/- diff lines');
+});
+
+await check('34. P4.5 redact.ts (multi-span text/regex/PII matching, RGBA pixel burn, lossless+flattened applyRedactions & metadata scrub)', async () => {
+  // 34a. Multi-span visual line matching: substring & case-insensitive
+  const spans = [
+    { str: 'Contact', x: 0.1, y: 0.1, width: 0.12, height: 0.02 },
+    { str: 'Secret', x: 0.24, y: 0.101, width: 0.1, height: 0.02 },
+    { str: 'Project', x: 0.36, y: 0.099, width: 0.12, height: 0.02 },
+    { str: 'alice@example.org', x: 0.1, y: 0.2, width: 0.25, height: 0.02 },
+    { str: 'Phone: +1 (555) 123-4567', x: 0.1, y: 0.3, width: 0.35, height: 0.02 },
+    { str: 'Visit https://secret.example.com/docs', x: 0.1, y: 0.4, width: 0.45, height: 0.02 },
+    { str: 'Date: 2026-11-21 Server: 192.168.1.42', x: 0.1, y: 0.5, width: 0.5, height: 0.02 },
+  ];
+
+  const subMatches = findTextRedactMatches(0, spans, { text: 'secret project', caseSensitive: false });
+  assert(subMatches.length === 1, `expected 1 cross-span match, got ${subMatches.length}`);
+  assert(
+    subMatches[0].x >= 0 &&
+      subMatches[0].y >= 0 &&
+      subMatches[0].x + subMatches[0].width <= 1 &&
+      subMatches[0].y + subMatches[0].height <= 1,
+    `cross-span match box out of [0,1]: ${JSON.stringify(subMatches[0])}`,
+  );
+  assert(
+    subMatches[0].x <= 0.24 && subMatches[0].x + subMatches[0].width >= 0.48,
+    `cross-span match box did not cover both spans: ${JSON.stringify(subMatches[0])}`,
+  );
+
+  const regexMatches = findTextRedactMatches(0, spans, { text: 'Server:\\s+\\d+\\.\\d+', regex: true });
+  assert(regexMatches.length === 1, `expected 1 regex match, got ${regexMatches.length}`);
+
+  for (const preset of ['emails', 'phones', 'urls', 'dates', 'ipv4']) {
+    const pii = findTextRedactMatches(0, spans, { preset });
+    assert(pii.length === 1, `expected 1 match for PII preset "${preset}", got ${pii.length}`);
+    assert(pii[0].source === 'pii', `expected source="pii" for "${preset}", got "${pii[0].source}"`);
+    assert(
+      pii[0].x >= 0 && pii[0].y >= 0 && pii[0].width > 0 && pii[0].height > 0 && pii[0].x + pii[0].width <= 1 && pii[0].y + pii[0].height <= 1,
+      `PII preset "${preset}" box out of bounds: ${JSON.stringify(pii[0])}`,
+    );
+  }
+
+  // 34b. burnRedactionsIntoRgba on 40x40 white RGBA buffer with centered 20x20 black box
+  const bufW = 40;
+  const bufH = 40;
+  const rgba = new Uint8ClampedArray(bufW * bufH * 4).fill(255);
+  const burned = burnRedactionsIntoRgba(
+    rgba,
+    bufW,
+    bufH,
+    [{ x: 0.25, y: 0.25, width: 0.5, height: 0.5 }],
+    [0, 0, 0],
+  );
+  assert(burned === 400, `expected exactly 400 burned pixels, got ${burned}`);
+  const centerOff = (20 * bufW + 20) * 4;
+  assert(
+    rgba[centerOff] === 0 && rgba[centerOff + 1] === 0 && rgba[centerOff + 2] === 0 && rgba[centerOff + 3] === 255,
+    `center pixel not opaque black: [${Array.from(rgba.slice(centerOff, centerOff + 4))}]`,
+  );
+  assert(
+    rgba[0] === 255 && rgba[1] === 255 && rgba[2] === 255 && rgba[3] === 255,
+    `corner pixel (0,0) was unexpectedly modified: [${Array.from(rgba.slice(0, 4))}]`,
+  );
+
+  // 34c. applyRedactions on 3-page synthetic PDF with metadata + injected renderPageRgba for page index 1 (page 2)
+  const baseBytes = await makeMultiPagePdf(3);
+  const metaDoc = await PDFDocument.load(baseBytes, { updateMetadata: false });
+  metaDoc.setTitle('SecretReport');
+  metaDoc.setAuthor('Confidential Author');
+  const srcBytes = await metaDoc.save();
+
+  const redactRes = await applyRedactions(
+    srcBytes,
+    [
+      {
+        id: 'box-1',
+        pageIndex: 1,
+        x: 0.1,
+        y: 0.1,
+        width: 0.5,
+        height: 0.15,
+        source: 'manual',
+      },
+    ],
+    {
+      fillColor: '#000000',
+      sanitizeMetadata: true,
+      renderPageRgba: async (_pageIdx, _dpi) => {
+        const w = 80;
+        const h = 100;
+        return {
+          rgba: new Uint8ClampedArray(w * h * 4).fill(255),
+          width: w,
+          height: h,
+          widthPt: 612,
+          heightPt: 792,
+        };
+      },
+    },
+  );
+
+  assert(
+    redactRes.redactedPages.length === 1 && redactRes.redactedPages[0] === 2,
+    `expected redactedPages=[2], got ${JSON.stringify(redactRes.redactedPages)}`,
+  );
+  assert(redactRes.boxesApplied === 1, `expected boxesApplied=1, got ${redactRes.boxesApplied}`);
+  assert(redactRes.metadataSanitized === true, 'expected metadataSanitized=true');
+
+  const outDoc = await PDFDocument.load(redactRes.bytes, { updateMetadata: false });
+  assert(outDoc.getPageCount() === 3, `expected 3 pages in redacted PDF, got ${outDoc.getPageCount()}`);
+  const outTitle = outDoc.getTitle();
+  assert(!outTitle, `expected metadata Title to be scrubbed, got "${outTitle}"`);
+
+  const qpdfVerify = await checkQpdf(redactRes.bytes);
+  assert(qpdfVerify.ok === true, `redacted PDF failed checkQpdf: ${qpdfVerify.stderr}`);
+
+  const readPageStreamText = (page) => {
+    const contents = page.node.Contents();
+    if (!contents) return '';
+    const streams = [];
+    if (contents instanceof PDFRawStream) {
+      streams.push(contents);
+    } else if (contents instanceof PDFArray) {
+      for (const ref of contents.asArray()) {
+        const obj = outDoc.context.lookup(ref);
+        if (obj instanceof PDFRawStream) streams.push(obj);
+      }
+    }
+    return streams
+      .map((s) => new TextDecoder('latin1').decode(decodePDFRawStream(s).decode()))
+      .join('\n');
+  };
+
+  const p1Stream = readPageStreamText(outDoc.getPage(0));
+  const p2Stream = readPageStreamText(outDoc.getPage(1));
+  const p3Stream = readPageStreamText(outDoc.getPage(2));
+
+  assert(/\bT[jJ]\b/.test(p1Stream), 'page 1 (unredacted) should retain lossless Tj/TJ text operators');
+  assert(!/\bT[jJ]\b/.test(p2Stream), `page 2 (redacted) must contain NO Tj/TJ text operators, got: ${p2Stream.slice(0, 200)}`);
+  assert(/\bT[jJ]\b/.test(p3Stream), 'page 3 (unredacted) should retain lossless Tj/TJ text operators');
 });
 
 // Print summary table

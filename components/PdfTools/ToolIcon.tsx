@@ -115,6 +115,16 @@ const ICONS: Record<ToolIconName, React.ReactNode> = {
       <circle cx={34} cy={34} r={1.8} />
     </>
   ),
+  redact: (
+    <>
+      <Doc x={8} y={4} w={32} h={40} />
+      <path d="M14 15h14" />
+      <rect x={14} y={20} width={20} height={5} rx={1} fill="currentColor" />
+      <path d="M14 30h8" />
+      <rect x={24} y={28} width={10} height={5} rx={1} fill="currentColor" />
+      <rect x={14} y={36} width={16} height={4} rx={1} fill="currentColor" />
+    </>
+  ),
   'edit-metadata': (
     <>
       <Doc x={5} y={4} w={24} h={32} />
@@ -255,7 +265,7 @@ const ICONS: Record<ToolIconName, React.ReactNode> = {
 
 export default function ToolIcon({ name, color, size = 48 }: { name: ToolIconName; color: string; size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" stroke={color} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" stroke={color} style={{ color }} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       {ICONS[name]}
     </svg>
   );

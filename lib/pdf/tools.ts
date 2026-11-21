@@ -13,6 +13,7 @@ export type ToolIconName =
   | 'sanitize'
   | 'protect'
   | 'unlock'
+  | 'redact'
   | 'edit-metadata'
   | 'remove-annotations'
   | 'flatten'
@@ -160,6 +161,15 @@ export const UNLOCK: PdfTool = {
   href: '/pdf/unlock',
   icon: 'unlock',
   color: '#2fae6b',
+};
+
+export const REDACT: PdfTool = {
+  id: 'redact',
+  title: 'Redact PDF',
+  description: 'Permanently remove sensitive text, PII and regions by flattening redacted pages and scrubbing metadata.',
+  href: '/pdf/redact',
+  icon: 'redact',
+  color: '#e06060',
 };
 
 export const EDIT_METADATA: PdfTool = {
@@ -322,5 +332,5 @@ export const TOOL_CATEGORIES: ToolCategory[] = [
   { title: 'Edit & annotate', tools: [EDIT, SIGN, FILL_FORMS, PAGE_NUMBERS, WATERMARK, CROP, RESIZE, NUP, GRAYSCALE, INVERT, EDIT_METADATA, FLATTEN, REMOVE_ANNOTATIONS] },
   { title: 'Convert to PDF', tools: [IMAGES_TO_PDF] },
   { title: 'Convert from PDF', tools: [PDF_TO_IMAGES, EXTRACT_IMAGES] },
-  { title: 'Security', tools: [PROTECT, UNLOCK, REMOVE_METADATA] },
+  { title: 'Security', tools: [PROTECT, UNLOCK, REDACT, REMOVE_METADATA] },
 ];
