@@ -4,7 +4,7 @@ import React from 'react';
 import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Checkbox, Field, NumberInput, Select } from '../../components/QrGen/fields';
+import { Checkbox, Field, NumberInput, Select } from '../../components/UI/Fields';
 import {
   baseName,
   download,
@@ -22,7 +22,7 @@ import { openPdf, renderPage } from '../../lib/pdf/pdfjs';
 import { PAGE_NUMBERS } from '../../lib/pdf/tools';
 import { runAddPageNumbers } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 interface LoadedDoc {
   name: string;
@@ -539,7 +539,7 @@ export default function PageNumbersPage() {
                 ))}
               </div>
               <input
-                className={qrStyles.input}
+                className={fieldStyles.input}
                 value={format}
                 placeholder="{n}"
                 onChange={(e) => setFormat(e.target.value)}
@@ -576,7 +576,7 @@ export default function PageNumbersPage() {
                   />
                   <input
                     type="text"
-                    className={qrStyles.input}
+                    className={fieldStyles.input}
                     aria-label="Page number hex color"
                     value={color}
                     onChange={(e) => setColor(e.target.value)}
@@ -616,7 +616,7 @@ export default function PageNumbersPage() {
               </Field>
               <Field label="Page range" help="Optional, e.g. 2-10">
                 <input
-                  className={qrStyles.input}
+                  className={fieldStyles.input}
                   value={pageRange}
                   placeholder="All pages"
                   onChange={(e) => setPageRange(e.target.value)}
@@ -631,13 +631,13 @@ export default function PageNumbersPage() {
               onChange={setMirrorEvenPages}
             />
 
-            {targetState.error && <p className={qrStyles.warning}>{targetState.error}</p>}
+            {targetState.error && <p className={fieldStyles.warning}>{targetState.error}</p>}
 
             <Field label="File name">
-              <input className={qrStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
+              <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
             </Field>
 
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
             {error && <div className={styles.error}>{error}</div>}
 
             <button

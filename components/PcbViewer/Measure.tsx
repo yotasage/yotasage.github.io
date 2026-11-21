@@ -4,7 +4,7 @@ import { Pt } from '../../lib/pcb/model';
 import { nearestPoint, PointKind, pointIndex } from '../../lib/pcb/points';
 import { BoardView } from '../../lib/pcb/render/view';
 import styles from '../../styles/PcbViewer.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 export interface MeasurePoint {
   p: Pt;
@@ -99,13 +99,13 @@ export function MeasureCard({ measuring, points, onToggle, onClear }: {
   ] as [string, number][] : [];
   return (
     <>
-      <p className={qrStyles.help}>
+      <p className={fieldStyles.help}>
         {measuring
           ? 'Click or tap two points; they snap to pad and hole centres and line ends nearby. A third starts a new measurement. Dragging still moves the board.'
           : 'Measure the distance between two points on the board, in mm and mil.'}
       </p>
       {rows.length > 0 && (
-        <table className={[qrStyles.infoTable, styles.info].join(' ')}>
+        <table className={[fieldStyles.infoTable, styles.info].join(' ')}>
           <tbody>
             {rows.map(([label, v]) => (
               <tr key={label}>
@@ -121,11 +121,11 @@ export function MeasureCard({ measuring, points, onToggle, onClear }: {
           {points.map((m, i) => `${i ? 'To' : 'From'} ${KIND_TEXT[m.kind]} at X ${m.p.x.toFixed(3)}, Y ${m.p.y.toFixed(3)} mm`).join('; ')}.
         </p>
       )}
-      <div className={qrStyles.buttonRow}>
-        <button type="button" className={qrStyles.buttonSmall} aria-pressed={measuring} onClick={onToggle}>
+      <div className={fieldStyles.buttonRow}>
+        <button type="button" className={fieldStyles.buttonSmall} aria-pressed={measuring} onClick={onToggle}>
           {measuring ? 'Stop measuring' : 'Start measuring'}
         </button>
-        {points.length > 0 && <button type="button" className={qrStyles.buttonSmall} onClick={onClear}>Clear</button>}
+        {points.length > 0 && <button type="button" className={fieldStyles.buttonSmall} onClick={onClear}>Clear</button>}
       </div>
     </>
   );

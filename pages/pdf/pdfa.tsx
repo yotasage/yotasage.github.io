@@ -4,7 +4,7 @@ import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { FileCard, FileGrid } from '../../components/PdfTools/FileGrid';
 import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Field, Select } from '../../components/QrGen/fields';
+import { Field, Select } from '../../components/UI/Fields';
 import {
   baseName,
   download,
@@ -31,7 +31,7 @@ import {
 import { pdfPreview } from '../../lib/pdf/pdfjs';
 import { PDFA } from '../../lib/pdf/tools';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 interface PdfAItem {
   id: string;
@@ -354,7 +354,7 @@ export default function PdfToPdfAPage() {
               <Field label="Document title (optional)" help="Leave blank to keep the original document title.">
                 <input
                   type="text"
-                  className={qrStyles.input}
+                  className={fieldStyles.input}
                   value={title}
                   disabled={busy}
                   placeholder="Keep original title"
@@ -367,7 +367,7 @@ export default function PdfToPdfAPage() {
               Powered by self-hosted Ghostscript 10.08.0 WebAssembly in a Web Worker. Unembedded fonts are substituted
               and embedded, an ICC OutputIntent is attached, and ISO XMP metadata is written without uploading your files.
             </p>
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
 
             <button
               type="button"

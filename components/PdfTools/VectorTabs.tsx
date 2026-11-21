@@ -21,8 +21,8 @@ import { formatPageRanges } from '../../lib/pdf/pages';
 import { openPdf, renderPage } from '../../lib/pdf/pdfjs';
 import { pdfBytesToSvg, pdfPageRegionToSvg } from '../../lib/pdf/pdfToSvg';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
-import { Field, NumberInput, Select } from '../QrGen/fields';
+import fieldStyles from '../../styles/Fields.module.css';
+import { Field, NumberInput, Select } from '../UI/Fields';
 import { FigureBox, FigureCanvas } from './FigureCanvas';
 import { Progress } from './ToolPage';
 
@@ -459,7 +459,7 @@ export function EmbeddedVectorsSidebar({
         <div className={styles.options}>
           <Field label="ZIP file name">
             <input
-              className={qrStyles.input}
+              className={fieldStyles.input}
               value={zipName}
               onChange={(e) => onZipNameChange(e.target.value)}
             />
@@ -731,7 +731,7 @@ export function DetectCropSidebar({
 
           <Field label="Label (filename)">
             <input
-              className={qrStyles.input}
+              className={fieldStyles.input}
               value={selectedBox.label}
               onChange={(e) => onLabelChange(selectedBox.id, e.target.value)}
             />
@@ -808,7 +808,7 @@ export function DetectCropSidebar({
         </div>
       )}
 
-      {notice && <p className={qrStyles.warning}>{notice}</p>}
+      {notice && <p className={fieldStyles.warning}>{notice}</p>}
 
       <div className={styles.options}>
         <h3>Figures ({boxes.length})</h3>

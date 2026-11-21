@@ -4,7 +4,7 @@ import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { FileCard, FileGrid } from '../../components/PdfTools/FileGrid';
 import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Field, NumberInput, Select } from '../../components/QrGen/fields';
+import { Field, NumberInput, Select } from '../../components/UI/Fields';
 import {
   baseName,
   download,
@@ -30,7 +30,7 @@ import {
 } from '../../lib/pdf/repair';
 import { REPAIR } from '../../lib/pdf/tools';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 interface RepairItem {
   id: string;
@@ -337,7 +337,7 @@ export default function RepairPdfPage() {
             <p className={styles.note}>
               Damaged PDFs are accepted even when thumbnail preview fails. Your files never leave your device.
             </p>
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
 
             <button
               type="button"

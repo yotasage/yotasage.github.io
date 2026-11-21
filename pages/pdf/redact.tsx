@@ -5,7 +5,7 @@ import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { RedactCanvas } from '../../components/PdfTools/RedactCanvas';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Checkbox, Field, Select } from '../../components/QrGen/fields';
+import { Checkbox, Field, Select } from '../../components/UI/Fields';
 import {
   baseName,
   download,
@@ -32,7 +32,7 @@ import {
 import { REDACT } from '../../lib/pdf/tools';
 import redactStyles from '../../styles/PdfRedact.module.css';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 interface LoadedDoc {
   name: string;
@@ -746,7 +746,7 @@ export default function RedactPdfPage() {
 
               <Field label="Overlay text (optional)" help="Centered text burned into each redaction box.">
                 <input
-                  className={qrStyles.input}
+                  className={fieldStyles.input}
                   value={overlayText}
                   placeholder="REDACTED"
                   onChange={(e) => setOverlayText(e.target.value)}
@@ -773,7 +773,7 @@ export default function RedactPdfPage() {
 
               <Field label="File name">
                 <input
-                  className={qrStyles.input}
+                  className={fieldStyles.input}
                   value={fileName}
                   onChange={(e) => setFileName(e.target.value)}
                 />
@@ -785,7 +785,7 @@ export default function RedactPdfPage() {
               text and graphics cannot be selected or recovered. Untouched pages are copied losslessly.
             </p>
 
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
             {error && <div className={styles.error}>{error}</div>}
             {progress && <Progress fraction={progress.fraction} label={progress.label} />}
 

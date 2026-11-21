@@ -1074,7 +1074,7 @@
   margin: 0.25rem 0 0.5rem;
 }
 
-/* Inside .card, so these win over the same rules in QrGen.module.css. */
+/* Inside .card, so these win over the same rules in Fields.module.css. */
 .card .info th {
   width: 42%;
 }

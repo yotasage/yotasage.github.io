@@ -1,8 +1,8 @@
 import React from 'react';
 
-import { Checkbox, Field } from '../QrGen/fields';
+import { Checkbox, Field } from '../UI/Fields';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 export interface SignatureAsset {
   id: string;
@@ -605,7 +605,7 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel }: SignaturePadP
           <div className={styles.sigControlsRow}>
             <div className={styles.sigTypeInputWrap}>
               <input
-                className={qrStyles.input}
+                className={fieldStyles.input}
                 type="text"
                 value={typedText}
                 maxLength={64}
@@ -734,7 +734,7 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel }: SignaturePadP
         <div className={styles.sigLabelInput}>
           <Field label="Label (optional)">
             <input
-              className={qrStyles.input}
+              className={fieldStyles.input}
               type="text"
               value={label}
               maxLength={40}
@@ -753,7 +753,7 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel }: SignaturePadP
         </button>
       </div>
 
-      {padError && <p className={qrStyles.warning}>{padError}</p>}
+      {padError && <p className={fieldStyles.warning}>{padError}</p>}
     </div>
   );
 }

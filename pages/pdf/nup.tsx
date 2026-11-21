@@ -3,7 +3,7 @@ import React from 'react';
 import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Checkbox, Field, NumberInput, Select } from '../../components/QrGen/fields';
+import { Checkbox, Field, NumberInput, Select } from '../../components/UI/Fields';
 import { PageBoxInfo } from '../../lib/pdf/crop';
 import {
   baseName,
@@ -29,7 +29,7 @@ import { RESIZE_PRESETS, ResizeUnit, toPoints } from '../../lib/pdf/resize';
 import { NUP } from '../../lib/pdf/tools';
 import { runBookletPdf, runGetPageBoxes, runNupPdf } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 type ImposeMode = 'nup' | 'booklet';
 type PerSheetChoice = '2' | '4' | '6' | '9' | '16' | 'custom';
@@ -681,21 +681,21 @@ export default function NupBookletPage() {
 
             <Field label="Page range (optional)" help="Blank = all pages. E.g. 1-8">
               <input
-                className={qrStyles.input}
+                className={fieldStyles.input}
                 value={pageRange}
                 placeholder="All pages"
                 onChange={(e) => setPageRange(e.target.value)}
               />
             </Field>
 
-            {paper.error && <p className={qrStyles.warning}>{paper.error}</p>}
-            {selectedState.error && <p className={qrStyles.warning}>{selectedState.error}</p>}
+            {paper.error && <p className={fieldStyles.warning}>{paper.error}</p>}
+            {selectedState.error && <p className={fieldStyles.warning}>{selectedState.error}</p>}
 
             <Field label="File name">
-              <input className={qrStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
+              <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
             </Field>
 
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
             {error && <div className={styles.error}>{error}</div>}
 
             <button

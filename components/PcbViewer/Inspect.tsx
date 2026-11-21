@@ -2,7 +2,7 @@ import React from 'react';
 
 import { Catalog, Description, HighlightTarget, NetEntry, PartEntry, sameTarget } from '../../lib/pcb/inspect';
 import styles from '../../styles/PcbViewer.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 // What a click or tap is on, over the board: the description, stepping through what lies there, and highlighting its
 // net or component.
@@ -119,7 +119,7 @@ export function PartsCard({ catalog, highlight, onPick, onClear, source }: {
         </button>
       </div>
       <input
-        className={[qrStyles.input, styles.search].join(' ')}
+        className={[fieldStyles.input, styles.search].join(' ')}
         type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
@@ -153,15 +153,15 @@ export function PartsCard({ catalog, highlight, onPick, onClear, source }: {
           })}
         </ul>
       ) : (
-        <p className={qrStyles.help}>{q ? 'Nothing matches.' : tab === 'parts' ? 'No components.' : 'No nets.'}</p>
+        <p className={fieldStyles.help}>{q ? 'Nothing matches.' : tab === 'parts' ? 'No components.' : 'No nets.'}</p>
       )}
       {list.length > LIMIT && <p className={styles.detailNote}>{`The first ${LIMIT} of ${list.length.toLocaleString('en-US')}; type to narrow the list.`}</p>}
       {highlight && (
-        <div className={qrStyles.buttonRow}>
-          <button type="button" className={qrStyles.buttonSmall} onClick={onClear}>Clear the highlight</button>
+        <div className={fieldStyles.buttonRow}>
+          <button type="button" className={fieldStyles.buttonSmall} onClick={onClear}>Clear the highlight</button>
         </div>
       )}
-      <p className={qrStyles.help}>
+      <p className={fieldStyles.help}>
         Pick one to highlight it on every layer and zoom to it.{source ? ` ${source}` : ''}
       </p>
     </>

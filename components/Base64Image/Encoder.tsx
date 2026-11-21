@@ -9,7 +9,7 @@ import { groupDigits } from '../../lib/simsetup/numbers';
 import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Base64Image.module.css';
 import { DropTarget, FilePickerButton } from '../PdfTools/ToolPage';
-import { Checkbox, Field, NumberInput, Select } from '../QrGen/fields';
+import { Checkbox, Field, NumberInput, Select } from '../UI/Fields';
 
 type Output = 'dataUrl' | 'base64' | 'html' | 'css' | 'markdown';
 

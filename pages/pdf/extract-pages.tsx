@@ -4,14 +4,14 @@ import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { PageGrid, PageGridItem, PageSelectionBar } from '../../components/PdfTools/PageGrid';
 import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Field, Select } from '../../components/QrGen/fields';
+import { Field, Select } from '../../components/UI/Fields';
 import { baseName, download, errorMessage, formatBytes, isPasswordError, isPdf, readBytes, safeFileName, zipFiles } from '../../lib/pdf/files';
 import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
 import { PdfThumbPool } from '../../lib/pdf/thumbs';
 import { EXTRACT_PAGES } from '../../lib/pdf/tools';
 import { runExtractPagesPdf } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 interface LoadedDoc {
   name: string;
@@ -215,13 +215,13 @@ export default function ExtractPagesPage() {
                 />
               </Field>
               <Field label={mode === 'single' || selectedIndices.length <= 1 ? 'File name' : 'ZIP file name'}>
-                <input className={qrStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
+                <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
               </Field>
             </div>
             <p className={styles.note}>
               Selected <strong>{selectedIndices.length}</strong> of {doc?.pageCount ?? 0} page{doc?.pageCount === 1 ? '' : 's'}.
             </p>
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
             <button type="button" className={styles.primary} disabled={!canRun} onClick={applyExtract}>
               Extract {selectedIndices.length || ''} page{selectedIndices.length === 1 ? '' : 's'}
             </button>

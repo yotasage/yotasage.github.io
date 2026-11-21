@@ -17,7 +17,7 @@ import {
   scanSourceFormVectors,
   SourcePdf,
 } from '../../components/PdfTools/VectorTabs';
-import { Checkbox, Field, NumberInput } from '../../components/QrGen/fields';
+import { Checkbox, Field, NumberInput } from '../../components/UI/Fields';
 import {
   analyzePageVectors,
   detectFiguresOnPage,
@@ -45,7 +45,7 @@ import { openPdf } from '../../lib/pdf/pdfjs';
 import { EXTRACT_IMAGES } from '../../lib/pdf/tools';
 import { runExtractImagesFromPdf } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 type ActiveTab = 'raster' | 'vectors' | 'crop';
 
@@ -867,7 +867,7 @@ export default function ExtractImagesPage() {
         {images.length > 1 && (
           <Field label="ZIP file name">
             <input
-              className={qrStyles.input}
+              className={fieldStyles.input}
               value={zipName}
               onChange={(e) => {
                 setZipName(e.target.value);
@@ -902,7 +902,7 @@ export default function ExtractImagesPage() {
           {totalSkipped} unsupported image{totalSkipped === 1 ? '' : 's'} (e.g. CMYK, JPEG 2000, JBIG2 or 1-bit masks) {totalSkipped === 1 ? 'was' : 'were'} skipped.
         </p>
       )}
-      {notice && <p className={qrStyles.warning}>{notice}</p>}
+      {notice && <p className={fieldStyles.warning}>{notice}</p>}
 
       <button
         type="button"

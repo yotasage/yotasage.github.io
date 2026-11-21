@@ -4,7 +4,7 @@ import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { FileCard, FileGrid } from '../../components/PdfTools/FileGrid';
 import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Checkbox } from '../../components/QrGen/fields';
+import { Checkbox } from '../../components/UI/Fields';
 import {
   baseName,
   download,
@@ -23,7 +23,7 @@ import { inspectLinearization, LinearizeInspection, linearizePdf } from '../../l
 import { pdfPreview } from '../../lib/pdf/pdfjs';
 import { LINEARIZE } from '../../lib/pdf/tools';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 interface LinearizeItem {
   id: string;
@@ -245,7 +245,7 @@ export default function LinearizePdfPage() {
             <p className={styles.note}>
               Linearization reorders objects losslessly without touching text, fonts, vectors, or image quality.
             </p>
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
 
             <button
               type="button"

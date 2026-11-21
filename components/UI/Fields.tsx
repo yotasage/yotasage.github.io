@@ -1,6 +1,6 @@
 import React from 'react';
 
-import styles from '../../styles/QrGen.module.css';
+import styles from '../../styles/Fields.module.css';
 
 export function Field({ label, help, wide, children }: { label: string; help?: string; wide?: boolean; children: React.ReactNode }) {
   return (

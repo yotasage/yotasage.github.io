@@ -5,7 +5,7 @@ import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { CropCanvas } from '../../components/PdfTools/CropCanvas';
 import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Checkbox, Field, NumberInput, Select } from '../../components/QrGen/fields';
+import { Checkbox, Field, NumberInput, Select } from '../../components/UI/Fields';
 import { CropOptions, NormalizedCropRect, PageBoxInfo } from '../../lib/pdf/crop';
 import {
   baseName,
@@ -23,7 +23,7 @@ import { openPdf } from '../../lib/pdf/pdfjs';
 import { CROP } from '../../lib/pdf/tools';
 import { runCropPdf, runGetPageBoxes } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 type CropScope = 'all' | 'current' | 'odd' | 'even' | 'range';
 
@@ -472,7 +472,7 @@ export default function CropPdfPage() {
             {scope === 'range' && (
               <Field label="Page range" help="1-based ranges such as 1-3, 5, 8-end.">
                 <input
-                  className={qrStyles.input}
+                  className={fieldStyles.input}
                   value={pageRange}
                   placeholder="1-3, 5"
                   onChange={(e) => setPageRange(e.target.value)}
@@ -503,13 +503,13 @@ export default function CropPdfPage() {
               </div>
             )}
 
-            {rangeValidation.error && <p className={qrStyles.warning}>{rangeValidation.error}</p>}
+            {rangeValidation.error && <p className={fieldStyles.warning}>{rangeValidation.error}</p>}
 
             <Field label="File name">
-              <input className={qrStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
+              <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
             </Field>
 
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
             {error && <div className={styles.error}>{error}</div>}
 
             <button

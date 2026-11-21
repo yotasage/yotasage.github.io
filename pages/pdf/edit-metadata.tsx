@@ -3,7 +3,7 @@ import React from 'react';
 import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Checkbox, Field } from '../../components/QrGen/fields';
+import { Checkbox, Field } from '../../components/UI/Fields';
 import {
   baseName,
   download,
@@ -21,7 +21,7 @@ import { pdfPreview } from '../../lib/pdf/pdfjs';
 import { EDIT_METADATA } from '../../lib/pdf/tools';
 import { runReadPdfMetadata, runWritePdfMetadata } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 interface LoadedDoc {
   name: string;
@@ -315,10 +315,10 @@ export default function EditMetadataPage() {
             </p>
 
             <Field label="File name">
-              <input className={qrStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
+              <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
             </Field>
 
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
             {error && <div className={styles.error}>{error}</div>}
 
             <button type="button" className={styles.primary} disabled={busy || !doc} onClick={saveMetadata}>
@@ -370,7 +370,7 @@ export default function EditMetadataPage() {
               <div className={styles.metaGrid}>
                 <Field label="Title">
                   <input
-                    className={qrStyles.input}
+                    className={fieldStyles.input}
                     value={title}
                     placeholder="Document title"
                     onChange={(e) => setTitle(e.target.value)}
@@ -378,7 +378,7 @@ export default function EditMetadataPage() {
                 </Field>
                 <Field label="Author">
                   <input
-                    className={qrStyles.input}
+                    className={fieldStyles.input}
                     value={author}
                     placeholder="Author name"
                     onChange={(e) => setAuthor(e.target.value)}
@@ -386,7 +386,7 @@ export default function EditMetadataPage() {
                 </Field>
                 <Field label="Subject" wide>
                   <input
-                    className={qrStyles.input}
+                    className={fieldStyles.input}
                     value={subject}
                     placeholder="Brief description or subject"
                     onChange={(e) => setSubject(e.target.value)}
@@ -394,7 +394,7 @@ export default function EditMetadataPage() {
                 </Field>
                 <Field label="Keywords" help="Comma- or semicolon-separated keywords." wide>
                   <input
-                    className={qrStyles.input}
+                    className={fieldStyles.input}
                     value={keywords}
                     placeholder="report, finance, 2026"
                     onChange={(e) => setKeywords(e.target.value)}
@@ -402,7 +402,7 @@ export default function EditMetadataPage() {
                 </Field>
                 <Field label="Creator (application)">
                   <input
-                    className={qrStyles.input}
+                    className={fieldStyles.input}
                     value={creator}
                     placeholder="e.g. LibreOffice Writer"
                     onChange={(e) => setCreator(e.target.value)}
@@ -410,7 +410,7 @@ export default function EditMetadataPage() {
                 </Field>
                 <Field label="Producer (PDF library)">
                   <input
-                    className={qrStyles.input}
+                    className={fieldStyles.input}
                     value={producer}
                     placeholder="e.g. pdf-lib"
                     onChange={(e) => setProducer(e.target.value)}
@@ -420,7 +420,7 @@ export default function EditMetadataPage() {
                   <div className={styles.dateInputRow}>
                     <input
                       type="datetime-local"
-                      className={qrStyles.input}
+                      className={fieldStyles.input}
                       value={creationDate}
                       onChange={(e) => setCreationDate(e.target.value)}
                     />
@@ -446,7 +446,7 @@ export default function EditMetadataPage() {
                   <div className={styles.dateInputRow}>
                     <input
                       type="datetime-local"
-                      className={qrStyles.input}
+                      className={fieldStyles.input}
                       value={modificationDate}
                       onChange={(e) => setModificationDate(e.target.value)}
                     />
@@ -487,14 +487,14 @@ export default function EditMetadataPage() {
                   {customRows.map((row) => (
                     <div key={row.id} className={styles.customFieldRow}>
                       <input
-                        className={qrStyles.input}
+                        className={fieldStyles.input}
                         placeholder="Field key (e.g. Department)"
                         aria-label="Custom field key"
                         value={row.key}
                         onChange={(e) => updateCustomRow(row.id, 'key', e.target.value)}
                       />
                       <input
-                        className={qrStyles.input}
+                        className={fieldStyles.input}
                         placeholder="Value"
                         aria-label="Custom field value"
                         value={row.value}
@@ -513,7 +513,7 @@ export default function EditMetadataPage() {
                 </div>
               )}
               {collidingKeys.length > 0 && (
-                <p className={qrStyles.warning}>
+                <p className={fieldStyles.warning}>
                   Standard field name{collidingKeys.length === 1 ? '' : 's'} ({collidingKeys.join(', ')}) cannot be set
                   as custom fields; edit them in the standard section above.
                 </p>

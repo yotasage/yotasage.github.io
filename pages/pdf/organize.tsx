@@ -4,7 +4,7 @@ import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { PageGrid, PageGridItem, PageSelectionBar } from '../../components/PdfTools/PageGrid';
 import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Field, Select } from '../../components/QrGen/fields';
+import { Field, Select } from '../../components/UI/Fields';
 import { baseName, download, errorMessage, formatBytes, isPasswordError, isPdf, readBytes, safeFileName, uid } from '../../lib/pdf/files';
 import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
 import { PAGE_SIZES } from '../../lib/pdf/images';
@@ -13,7 +13,7 @@ import { PdfThumbPool } from '../../lib/pdf/thumbs';
 import { ORGANIZE } from '../../lib/pdf/tools';
 import { runBuildPdfFromPages } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 const SOURCE_COLORS = ['#4da3ff', '#6fdc9c', '#f0a83a', '#d87bf0', '#ff7a9e', '#34d3c5'];
 
@@ -490,15 +490,15 @@ export default function OrganizePdfPage() {
               </button>
 
               <Field label="File name">
-                <input className={qrStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
+                <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
               </Field>
             </div>
 
             <p className={styles.note}>
               {sources.length} source PDF{sources.length === 1 ? '' : 's'} · <strong>{entries.length}</strong> page{entries.length === 1 ? '' : 's'} in output.
             </p>
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
-            {entries.length === 0 && sources.length > 0 && <p className={qrStyles.warning}>Add a page or click Undo before saving.</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
+            {entries.length === 0 && sources.length > 0 && <p className={fieldStyles.warning}>Add a page or click Undo before saving.</p>}
             <button type="button" className={styles.primary} disabled={!canSave} onClick={save}>
               Save organized PDF
             </button>

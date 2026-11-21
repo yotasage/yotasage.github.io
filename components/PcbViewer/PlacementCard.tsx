@@ -3,8 +3,8 @@ import React from 'react';
 import type { LoadedFile } from '../../lib/pcb/load';
 import { COLUMN_NAMES, defaultMapping, PnpColumn, PnpMapping, PnpUnits } from '../../lib/pcb/pnp';
 import styles from '../../styles/PcbViewer.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
-import { Checkbox, Field, NumberInput, Select } from '../QrGen/fields';
+import fieldStyles from '../../styles/Fields.module.css';
+import { Checkbox, Field, NumberInput, Select } from '../UI/Fields';
 
 const FROM_TEXT = {
   file: 'as the file gives them',
@@ -36,7 +36,7 @@ function PlacementFile({ file, onChange }: { file: LoadedFile; onChange: (mappin
   return (
     <div className={styles.pnpFile}>
       <p className={styles.boardName} title={file.source.path}>{file.source.name}</p>
-      <p className={st.from === 'guess' ? qrStyles.warning : styles.detailNote}>
+      <p className={st.from === 'guess' ? fieldStyles.warning : styles.detailNote}>
         {t.format}: {st.parts.toLocaleString('en-US')} parts, placed {FROM_TEXT[st.from]}
         {st.change ? ` (${st.change})` : ''}
         {st.onPads !== undefined ? `; ${percent(st.onPads)} lie on pads of their side` : ''}.
@@ -83,8 +83,8 @@ function PlacementFile({ file, onChange }: { file: LoadedFile; onChange: (mappin
         </div>
         <Checkbox label="The file gives bottom parts with X negated" checked={m.negateBottomX} onChange={(negateBottomX) => set({ negateBottomX })} />
         {st.from === 'user' && (
-          <div className={qrStyles.buttonRow}>
-            <button type="button" className={qrStyles.buttonSmall} onClick={() => onChange(null)}>Read it as found at first</button>
+          <div className={fieldStyles.buttonRow}>
+            <button type="button" className={fieldStyles.buttonSmall} onClick={() => onChange(null)}>Read it as found at first</button>
           </div>
         )}
         <p className={styles.detailNote}>
@@ -103,7 +103,7 @@ export default function PlacementCard({ files, onChange }: { files: LoadedFile[]
   const list = files.filter((f) => f.pnp && f.pnpState);
   return (
     <>
-      <p className={qrStyles.help}>
+      <p className={fieldStyles.help}>
         Each part is marked on the layer of its side (a ring, a stroke in the direction of its rotation, and its designator), and listed under Components. Click a
         marker to see the part; highlight it to see its pads where the Gerber files name them.
       </p>

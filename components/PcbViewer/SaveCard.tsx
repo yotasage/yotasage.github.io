@@ -14,8 +14,8 @@ import { shapeBox } from '../../lib/pcb/outline';
 import { RealisticColors } from '../../lib/pcb/render/paint';
 import { BACKGROUND, BoardView, LayerStyle, ViewMode } from '../../lib/pcb/render/view';
 import styles from '../../styles/PcbViewer.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
-import { Checkbox, Field, Select } from '../QrGen/fields';
+import fieldStyles from '../../styles/Fields.module.css';
+import { Checkbox, Field, Select } from '../UI/Fields';
 
 type Format = 'png' | 'svg' | 'pdf' | 'dxf' | 'kicad';
 type What = 'screen' | 'board';
@@ -206,7 +206,7 @@ export default function SaveCard({ view, board, mode, flipped, layerStyles, colo
 
       {(format === 'png' || format === 'svg') && (
         <>
-          <p className={qrStyles.help}>
+          <p className={fieldStyles.help}>
             {mode === 'realistic' ? `The realistic view of the ${side}` : `The shown layers${flipped ? ', seen from the bottom' : ''}`}
             {format === 'png' ? ', as an image.' : ', as vectors in millimetres at 1:1.'}
             {highlighted && ` With ${highlighted} highlighted, as on screen.`}
@@ -222,23 +222,23 @@ export default function SaveCard({ view, board, mode, flipped, layerStyles, colo
             )}
           </div>
           {format === 'png' && what === 'board' && size && (
-            <p className={size.fits ? styles.detailNote : qrStyles.warning}>
+            <p className={size.fits ? styles.detailNote : fieldStyles.warning}>
               {size.width.toLocaleString('en-US')} × {size.height.toLocaleString('en-US')} pixels{size.fits ? '' : ': too large, choose a lower resolution'}.
             </p>
           )}
           <Checkbox label="Transparent background" checked={transparent} onChange={setTransparent} />
-          <div className={qrStyles.buttonRow}>
+          <div className={fieldStyles.buttonRow}>
             {format === 'png'
-              ? <button type="button" className={qrStyles.buttonSmall} disabled={Boolean(busy) || (what === 'board' && !size?.fits)} onClick={savePng}>Save PNG</button>
-              : <button type="button" className={qrStyles.buttonSmall} disabled={Boolean(busy) || !box} onClick={saveSvg}>Save SVG</button>}
-            {busy && <button type="button" className={qrStyles.buttonSmall} onClick={() => abort.current?.abort()}>Cancel</button>}
+              ? <button type="button" className={fieldStyles.buttonSmall} disabled={Boolean(busy) || (what === 'board' && !size?.fits)} onClick={savePng}>Save PNG</button>
+              : <button type="button" className={fieldStyles.buttonSmall} disabled={Boolean(busy) || !box} onClick={saveSvg}>Save SVG</button>}
+            {busy && <button type="button" className={fieldStyles.buttonSmall} onClick={() => abort.current?.abort()}>Cancel</button>}
           </div>
         </>
       )}
 
       {format === 'pdf' && (
         <>
-          <p className={qrStyles.help}>
+          <p className={fieldStyles.help}>
             The layers shown in the layer list{mode === 'realistic' ? ' (not the realistic view)' : ''}, at exactly 1:1, with a title and a scale bar. Each layer can be
             shown and hidden in the PDF viewer. Print it at actual size (100 %).
           </p>
@@ -262,7 +262,7 @@ export default function SaveCard({ view, board, mode, flipped, layerStyles, colo
           </div>
           {outline && <Checkbox label="Board outline on every page" checked={outlineEach} onChange={setOutlineEach} />}
           {layout && box1 && (
-            <p className={layout.fits ? styles.detailNote : qrStyles.warning}>
+            <p className={layout.fits ? styles.detailNote : fieldStyles.warning}>
               {`The shown layers are ${mm(box1.maxX - box1.minX)} × ${mm(box1.maxY - box1.minY)} mm with a margin`}
               {layout.fits ? `; on ${paperLabel(paper)} (${mm(layout.w)} × ${mm(layout.h)} mm).` : `: at 1:1 they do not fit on ${paperLabel(paper)} and are cut off. Choose a larger paper or “Fitted to the board”.`}
             </p>
@@ -272,16 +272,16 @@ export default function SaveCard({ view, board, mode, flipped, layerStyles, colo
             {clear.length ? 'PDF has no clear polarity, so these layers are flattened with polygon booleans into filled outlines (curves within 2.5 µm), and the PDF stays all vectors.' : 'Everything is drawn as vectors: lines, arcs and pads as they are.'}
             {pages === 'one' && highlighted ? ` ${highlighted[0].toUpperCase()}${highlighted.slice(1)} is highlighted, as on screen.` : ''}
           </p>
-          <div className={qrStyles.buttonRow}>
-            <button type="button" className={qrStyles.buttonSmall} disabled={Boolean(busy) || !layerBox || !shown.length} onClick={savePdf}>Save PDF</button>
-            {busy && <button type="button" className={qrStyles.buttonSmall} onClick={() => abort.current?.abort()}>Cancel</button>}
+          <div className={fieldStyles.buttonRow}>
+            <button type="button" className={fieldStyles.buttonSmall} disabled={Boolean(busy) || !layerBox || !shown.length} onClick={savePdf}>Save PDF</button>
+            {busy && <button type="button" className={fieldStyles.buttonSmall} onClick={() => abort.current?.abort()}>Cancel</button>}
           </div>
         </>
       )}
 
       {format === 'dxf' && (
         <>
-          <p className={qrStyles.help}>
+          <p className={fieldStyles.help}>
             A drawing in millimetres for CAD programs: the board outline and its holes (for an enclosure or a mechanical drawing), or the layers shown in the layer
             list, each on a DXF layer of its own.
           </p>
@@ -303,16 +303,16 @@ export default function SaveCard({ view, board, mode, flipped, layerStyles, colo
               ? `${board.outline?.length ? (board.outlineFrom === 'copper' || board.outlineFrom === 'extent' ? 'There is no board outline, so the rectangle around the copper stands in for it' : `The outline: ${count(board.outline.length, 'closed shape')}, arcs as arcs`) : 'There is no board outline'}; ${count(holes, 'hole')} as circles (slots as their outlines), plated and non-plated on layers of their own.`
               : `${clearNote}Lines as polylines with their width, arcs as arcs of polylines, pads and regions as closed outlines, holes as circles.${clear.length ? ' DXF has no clear polarity, so the layers with clear areas are flattened with polygon booleans and written as the outlines of what remains.' : ''}`}
           </p>
-          <div className={qrStyles.buttonRow}>
-            <button type="button" className={qrStyles.buttonSmall} disabled={Boolean(busy) || (dxfKind === 'layers' ? !shown.length : !board.outline?.length && !holes)} onClick={saveDxf}>Save DXF</button>
-            {busy && <button type="button" className={qrStyles.buttonSmall} onClick={() => abort.current?.abort()}>Cancel</button>}
+          <div className={fieldStyles.buttonRow}>
+            <button type="button" className={fieldStyles.buttonSmall} disabled={Boolean(busy) || (dxfKind === 'layers' ? !shown.length : !board.outline?.length && !holes)} onClick={saveDxf}>Save DXF</button>
+            {busy && <button type="button" className={fieldStyles.buttonSmall} onClick={() => abort.current?.abort()}>Cancel</button>}
           </div>
         </>
       )}
 
       {format === 'kicad' && (
         <>
-          <p className={qrStyles.help}>
+          <p className={fieldStyles.help}>
             The design as a KiCad board (.kicad_pcb in KiCad 9’s format, which KiCad 9 and 10 open), to work on in KiCad: the layers with their names,
             nets, footprints with their pads, graphics and texts, tracks, vias, zones and the board outline.
           </p>
@@ -322,9 +322,9 @@ export default function SaveCard({ view, board, mode, flipped, layerStyles, colo
               {notes.map((n) => <li key={n}>{n}</li>)}
             </ul>
           </div>
-          <div className={qrStyles.buttonRow}>
-            <button type="button" className={qrStyles.buttonSmall} disabled={Boolean(busy)} onClick={saveKicad}>Save KiCad board</button>
-            {busy && <button type="button" className={qrStyles.buttonSmall} onClick={() => abort.current?.abort()}>Cancel</button>}
+          <div className={fieldStyles.buttonRow}>
+            <button type="button" className={fieldStyles.buttonSmall} disabled={Boolean(busy)} onClick={saveKicad}>Save KiCad board</button>
+            {busy && <button type="button" className={fieldStyles.buttonSmall} onClick={() => abort.current?.abort()}>Cancel</button>}
           </div>
         </>
       )}
@@ -335,7 +335,7 @@ export default function SaveCard({ view, board, mode, flipped, layerStyles, colo
           <div className={styles.progressBar}><div style={{ width: `${Math.round(busy.progress * 100)}%` }} /></div>
         </div>
       )}
-      {error && <p className={qrStyles.warning}>{error}</p>}
+      {error && <p className={fieldStyles.warning}>{error}</p>}
     </>
   );
 }

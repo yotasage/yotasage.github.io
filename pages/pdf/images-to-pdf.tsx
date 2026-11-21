@@ -3,12 +3,12 @@ import React from 'react';
 import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { FileCard, FileGrid } from '../../components/PdfTools/FileGrid';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Field, NumberInput, Select } from '../../components/QrGen/fields';
+import { Field, NumberInput, Select } from '../../components/UI/Fields';
 import { baseName, download, errorMessage, formatBytes, isImage, OutputFile, safeFileName, uid, zipFiles } from '../../lib/pdf/files';
 import { imagesToPdf, ImagesToPdfOptions, PAGE_SIZES, PageSizeId } from '../../lib/pdf/images';
 import { IMAGES_TO_PDF } from '../../lib/pdf/tools';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 interface ImageItem {
   id: string;
@@ -127,11 +127,11 @@ export default function ImagesToPdf() {
               </Field>
               {!(output === 'separate' && items.length === 1) && (
                 <Field label={output === 'single' ? 'File name' : 'ZIP file name'}>
-                  <input className={qrStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
+                  <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
                 </Field>
               )}
             </div>
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
             <button type="button" className={styles.primary} disabled={!canConvert} onClick={convert}>Convert to PDF</button>
             {busy && <Progress fraction={progress} label="Converting…" />}
             {error && <div className={styles.error}>{error}</div>}

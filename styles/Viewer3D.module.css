@@ -684,7 +684,7 @@
   margin: 0.25rem 0 0.5rem;
 }
 
-/* Inside .card, so these win over the same rules in QrGen.module.css. */
+/* Inside .card, so these win over the same rules in Fields.module.css. */
 .card .info th {
   width: 42%;
 }
@@ -839,7 +839,7 @@
   font-size: 0.84rem;
 }
 
-/* A class and an element, so this wins over the padding of .input in QrGen.module.css. */
+/* A class and an element, so this wins over the padding of .input in Fields.module.css. */
 .offsetField input {
   min-width: 0;
   padding: 0.3rem 0.4rem;

@@ -63,7 +63,7 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 - PDF tools: 11 client-side tools (Phase 1 & 2 complete: Merge, Split, Organize, Rotate, Remove/Extract pages, Compress,
   Images to PDF, PDF to images, Extract images, Remove metadata) registered in [lib/pdf/tools.ts](lib/pdf/tools.ts)
   (hub tiles on `/pdf/main`), using shared frames/grids/prompts in `components/PdfTools/` (`PageGrid`, `PasswordPrompt`,
-  `ContinueWith`) and shared form fields from `components/QrGen/fields.tsx`. Heavy pdf-lib jobs offload to
+  `ContinueWith`) and shared form fields from `components/UI/Fields.tsx`. Heavy pdf-lib jobs offload to
   `lib/pdf/worker.ts` via `lib/pdf/workerClient.ts`, `lib/pdf/handoff.ts` chains outputs between tools in memory, and
   `lib/pdf/breakdown.ts` inspects PDF size composition. Verify changes with `npm run check` and `npm run ui` in
   `scripts/harness/pdf/` and update the status table/module map in [docs/pdf-tools-plan.md](docs/pdf-tools-plan.md).

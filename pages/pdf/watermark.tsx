@@ -4,7 +4,7 @@ import React from 'react';
 import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { FilePickerButton, PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Field, NumberInput, Select } from '../../components/QrGen/fields';
+import { Field, NumberInput, Select } from '../../components/UI/Fields';
 import {
   baseName,
   canvasToBytes,
@@ -30,7 +30,7 @@ import {
 } from '../../lib/pdf/watermark';
 import { runAddWatermark } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 interface LoadedDoc {
   name: string;
@@ -665,7 +665,7 @@ export default function WatermarkPdfPage() {
               <>
                 <Field label="Watermark text">
                   <textarea
-                    className={qrStyles.input}
+                    className={fieldStyles.input}
                     rows={2}
                     value={text}
                     placeholder="CONFIDENTIAL"
@@ -702,7 +702,7 @@ export default function WatermarkPdfPage() {
                       />
                       <input
                         type="text"
-                        className={qrStyles.input}
+                        className={fieldStyles.input}
                         aria-label="Watermark hex color"
                         value={color}
                         onChange={(e) => setColor(e.target.value)}
@@ -737,7 +737,7 @@ export default function WatermarkPdfPage() {
                     )}
                   </div>
                 </Field>
-                {imageError && <p className={qrStyles.warning}>{imageError}</p>}
+                {imageError && <p className={fieldStyles.warning}>{imageError}</p>}
                 <label className={styles.sliderField}>
                   <span className={styles.sliderHeader}>
                     <span>Width scale (% of page width)</span>
@@ -885,19 +885,19 @@ export default function WatermarkPdfPage() {
 
             <Field label="Page range" help="Optional 1-based range (e.g. 1-3, 5). Blank = all pages.">
               <input
-                className={qrStyles.input}
+                className={fieldStyles.input}
                 value={pageRange}
                 placeholder="All pages"
                 onChange={(e) => setPageRange(e.target.value)}
               />
             </Field>
-            {targetState.error && <p className={qrStyles.warning}>{targetState.error}</p>}
+            {targetState.error && <p className={fieldStyles.warning}>{targetState.error}</p>}
 
             <Field label="File name">
-              <input className={qrStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
+              <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
             </Field>
 
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
             {error && <div className={styles.error}>{error}</div>}
 
             <button

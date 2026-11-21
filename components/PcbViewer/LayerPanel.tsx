@@ -6,8 +6,8 @@ import type { LoadedFile } from '../../lib/pcb/load';
 import { Layer, LayerKind, Side } from '../../lib/pcb/model';
 import type { LayerStyle } from '../../lib/pcb/render/view';
 import styles from '../../styles/PcbViewer.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
-import { Field, Select } from '../QrGen/fields';
+import fieldStyles from '../../styles/Fields.module.css';
+import { Field, Select } from '../UI/Fields';
 
 const IDENTIFIED: Record<string, string> = {
   x2: 'the X2 file function in the file',
@@ -47,7 +47,7 @@ function DrillFormatFields({ file, actions, id }: { file: LoadedFile; actions: L
   const digits = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => [String(from + i), String(from + i)] as [string, string]);
   return (
     <div className={styles.drillFormat}>
-      <p className={s.from === 'guess' ? qrStyles.warning : styles.detailNote}>
+      <p className={s.from === 'guess' ? fieldStyles.warning : styles.detailNote}>
         Format: {describeFormat(f, p)}, {FROM_TEXT[s.from]}
         {s.from === 'guess' && s.onPads !== undefined && ` (${Math.round(s.onPads * 100)}% of the holes land on pads)`}. {count(s.holes)} holes.
         {s.from === 'guess' && ' If the holes do not land on the pads, correct it here.'}
@@ -71,8 +71,8 @@ function DrillFormatFields({ file, actions, id }: { file: LoadedFile; actions: L
         )}
       </div>
       {s.from === 'user' && (
-        <div className={qrStyles.buttonRow} style={{ marginTop: 0 }}>
-          <button type="button" className={qrStyles.buttonSmall} onClick={() => actions.drillFormat(id, null)}>Use the file&apos;s format</button>
+        <div className={fieldStyles.buttonRow} style={{ marginTop: 0 }}>
+          <button type="button" className={fieldStyles.buttonSmall} onClick={() => actions.drillFormat(id, null)}>Use the file&apos;s format</button>
         </div>
       )}
     </div>
@@ -98,10 +98,10 @@ function Details({ layer, style, index, total, actions, file }: { layer: Layer; 
         <span>Opacity: {Math.round(style.opacity * 100)}%</span>
         <input type="range" min={10} max={100} value={Math.round(style.opacity * 100)} onChange={(e) => actions.opacity(layer.id, Number(e.target.value) / 100)} />
       </label>
-      <div className={qrStyles.buttonRow} style={{ marginTop: 0 }}>
-        <button type="button" className={qrStyles.buttonSmall} disabled={index === 0} onClick={() => actions.move(layer.id, -1)}>Move up</button>
-        <button type="button" className={qrStyles.buttonSmall} disabled={index === total - 1} onClick={() => actions.move(layer.id, 1)}>Move down</button>
-        <button type="button" className={qrStyles.buttonSmall} onClick={() => actions.only(layer.id)}>Show only this</button>
+      <div className={fieldStyles.buttonRow} style={{ marginTop: 0 }}>
+        <button type="button" className={fieldStyles.buttonSmall} disabled={index === 0} onClick={() => actions.move(layer.id, -1)}>Move up</button>
+        <button type="button" className={fieldStyles.buttonSmall} disabled={index === total - 1} onClick={() => actions.move(layer.id, 1)}>Move down</button>
+        <button type="button" className={fieldStyles.buttonSmall} onClick={() => actions.only(layer.id)}>Show only this</button>
       </div>
       {file?.drill && <DrillFormatFields file={file} actions={actions} id={layer.id} />}
       <p className={styles.detailNote}>
@@ -130,10 +130,10 @@ export default function LayerPanel({ layers, styles: layerStyles, actions, files
   return (
     <>
       <div className={styles.layerActions}>
-        <button type="button" className={qrStyles.buttonSmall} onClick={() => actions.showSet('all')}>All</button>
-        <button type="button" className={qrStyles.buttonSmall} onClick={() => actions.showSet('none')}>None</button>
-        <button type="button" className={qrStyles.buttonSmall} onClick={() => actions.showSet('top')}>Top side</button>
-        <button type="button" className={qrStyles.buttonSmall} onClick={() => actions.showSet('bottom')}>Bottom side</button>
+        <button type="button" className={fieldStyles.buttonSmall} onClick={() => actions.showSet('all')}>All</button>
+        <button type="button" className={fieldStyles.buttonSmall} onClick={() => actions.showSet('none')}>None</button>
+        <button type="button" className={fieldStyles.buttonSmall} onClick={() => actions.showSet('top')}>Top side</button>
+        <button type="button" className={fieldStyles.buttonSmall} onClick={() => actions.showSet('bottom')}>Bottom side</button>
       </div>
       <ul className={styles.layerList} aria-label="Layers">
         {layers.map((layer, i) => {

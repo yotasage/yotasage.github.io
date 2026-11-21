@@ -1,8 +1,8 @@
 import React from 'react';
 
 import { ContentType, FieldDef, Values } from '../../lib/qr/payloads';
-import styles from '../../styles/QrGen.module.css';
-import { Checkbox, Field, Select } from './fields';
+import styles from '../../styles/Fields.module.css';
+import { Checkbox, Field, Select } from '../UI/Fields';
 
 function Control({ def, value, onChange }: { def: FieldDef; value: string | boolean; onChange: (v: string | boolean) => void }) {
   switch (def.type) {

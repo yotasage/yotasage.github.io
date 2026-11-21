@@ -5,7 +5,7 @@ import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { FileCard, FileGrid } from '../../components/PdfTools/FileGrid';
 import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Checkbox, Field, Select } from '../../components/QrGen/fields';
+import { Checkbox, Field, Select } from '../../components/UI/Fields';
 import { InvertMode, transformRgbaPixels } from '../../lib/pdf/color';
 import { rasterTransformPdf } from '../../lib/pdf/colorRaster';
 import {
@@ -26,7 +26,7 @@ import { parsePageRanges } from '../../lib/pdf/merge';
 import { openPdf, pdfPreview, renderPage } from '../../lib/pdf/pdfjs';
 import { INVERT } from '../../lib/pdf/tools';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 type RasterFormat = 'jpeg' | 'png';
 type DpiChoice = '100' | '150' | '200' | '300';
@@ -490,7 +490,7 @@ export default function InvertPdfPage() {
         }
         sidebar={
           <>
-            <div className={qrStyles.field}>
+            <div className={fieldStyles.field}>
               <span>Colour mode</span>
               <div className={styles.modeCardList} role="radiogroup" aria-label="Dark mode preset">
                 {MODE_PRESETS.map((preset) => {
@@ -540,7 +540,7 @@ export default function InvertPdfPage() {
                       />
                       <input
                         type="text"
-                        className={qrStyles.input}
+                        className={fieldStyles.input}
                         aria-label="Custom background hex"
                         value={backgroundHex}
                         onChange={(e) => setBackgroundHex(e.target.value)}
@@ -558,7 +558,7 @@ export default function InvertPdfPage() {
                       />
                       <input
                         type="text"
-                        className={qrStyles.input}
+                        className={fieldStyles.input}
                         aria-label="Custom foreground hex"
                         value={foregroundHex}
                         onChange={(e) => setForegroundHex(e.target.value)}
@@ -620,7 +620,7 @@ export default function InvertPdfPage() {
             {items.length === 1 && (
               <Field label="Page range (optional)" help="e.g. 1-3, 5. Unselected pages stay unchanged.">
                 <input
-                  className={qrStyles.input}
+                  className={fieldStyles.input}
                   value={pageRange}
                   placeholder="All pages"
                   onChange={(e) => setPageRange(e.target.value)}
@@ -633,8 +633,8 @@ export default function InvertPdfPage() {
               preserving page dimensions.
             </p>
 
-            {rangeState.error && <p className={qrStyles.warning}>{rangeState.error}</p>}
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {rangeState.error && <p className={fieldStyles.warning}>{rangeState.error}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
 
             <button
               type="button"

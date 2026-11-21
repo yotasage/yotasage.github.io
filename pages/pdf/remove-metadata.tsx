@@ -11,7 +11,7 @@ import { CLEAN_OPTIONS, CleanOption, CleanOptions, Finding, FindingId, PRESETS }
 import { REMOVE_METADATA } from '../../lib/pdf/tools';
 import { runCleanPdf, runInspectPdf } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 interface Item {
   id: string;
@@ -234,7 +234,7 @@ export default function RemoveMetadata() {
               <input type="checkbox" checked={neutralNames} onChange={(e) => setNeutralNames(e.target.checked)} />
               <span><strong>Neutral file names</strong><small>Save as document.pdf (document-1.pdf, … for several files) instead of the original names.</small></span>
             </label>
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
             <button type="button" className={styles.primary} disabled={busy || ready.length === 0} onClick={clean}>
               Clean {ready.length > 1 ? `${ready.length} PDFs` : 'PDF'}
             </button>

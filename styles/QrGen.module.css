@@ -1,7 +1,5 @@
 /* ==========================================================================
    QR Code Generator (/qrcode/main) — Design System v2
-   Uses --ds-* tokens with safe dark fallbacks so components/QrGen/fields.tsx
-   remains 100% readable on legacy PDF tool pages until Step U10.
    ========================================================================== */
 
 .page {
@@ -214,8 +212,8 @@
 }
 
 /* --------------------------------------------------------------------------
-   Shared Form Fields (also imported by PDF tools via components/QrGen/fields.tsx)
-   Keep explicit dark fallbacks on every var(--ds-*, ...) declaration!
+   Form Layout & Controls
+   Shared field wrappers live in styles/Fields.module.css via components/UI/Fields.tsx.
    -------------------------------------------------------------------------- */
 
 .fieldGrid {
@@ -224,21 +222,8 @@
   gap: 12px 14px;
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  min-width: 0;
-}
-
 .fieldWide {
   grid-column: 1 / -1;
-}
-
-.field > span {
-  font-size: 0.82rem;
-  font-weight: 550;
-  color: var(--ds-ink-2, #c8c8c8);
 }
 
 .help {
@@ -294,24 +279,6 @@
 .textarea:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.checkbox {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.55rem;
-  font-size: 0.88rem;
-  line-height: 1.4;
-  color: var(--ds-ink, #ffffff);
-  cursor: pointer;
-}
-
-.checkbox input {
-  margin-top: 0.2rem;
-  width: 1rem;
-  height: 1rem;
-  flex: none;
-  accent-color: var(--ds-accent, #e8b23a);
 }
 
 .color {

@@ -16,8 +16,8 @@ import {
 } from '../../lib/pcb/render/colors';
 import { BACKGROUND_DARK, BACKGROUND_LIGHT, BoardView, LayerStyle, ViewMode } from '../../lib/pcb/render/view';
 import styles from '../../styles/PcbViewer.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
-import { Field, Select } from '../QrGen/fields';
+import fieldStyles from '../../styles/Fields.module.css';
+import { Field, Select } from '../UI/Fields';
 import AssemblyCard from './AssemblyCard';
 import FileList from './FileList';
 import { InspectPanel, PartsCard, targetLabel } from './Inspect';
@@ -75,7 +75,7 @@ function BoardInfo({ board, units, shown }: { board: Board; units: Units; shown:
   return (
     <>
       <p className={styles.boardName} title={board.name}>{board.name}</p>
-      <table className={[qrStyles.infoTable, styles.info].join(' ')}>
+      <table className={[fieldStyles.infoTable, styles.info].join(' ')}>
         <tbody>
           {d && <tr><th>File</th><td>{d.format}</td></tr>}
           {box && (
@@ -95,7 +95,7 @@ function BoardInfo({ board, units, shown }: { board: Board; units: Units; shown:
         </tbody>
       </table>
       {board.outlineFrom === 'copper' && <p className={styles.detailNote}>There is no board outline among the files, so the board is taken to be the rectangle around the copper.</p>}
-      {board.warnings.map((w) => <p key={w} className={qrStyles.warning}>{w}</p>)}
+      {board.warnings.map((w) => <p key={w} className={fieldStyles.warning}>{w}</p>)}
     </>
   );
 }
@@ -118,7 +118,7 @@ function RealisticFields({ value, onChange, board }: { value: RealisticStyle; on
           <Select<Finish> value={value.finish} onChange={(finish) => onChange({ ...value, finish })} options={Object.entries(FINISHES).map(([k, v]) => [k as Finish, v.label])} />
         </Field>
       </div>
-      <p className={qrStyles.help}>
+      <p className={fieldStyles.help}>
         {fromJob.length ? `${source} says: ${fromJob.join(', ')}.` : `${board.design ? 'The board file gives no colours' : 'No job file gives the colours'}; green mask, white silkscreen and ENIG are assumed.`}
         {' '}The view uses the copper, solder mask, silkscreen and drill layers of the side in view, whether they are shown in the layer list or not.
       </p>
@@ -565,10 +565,10 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
   const ready = status.kind === 'ready' && board;
   const shown = layersInOrder.filter((l) => layerStyles.get(l.id)?.visible).length;
   const openButtons = (
-    <div className={qrStyles.buttonRow}>
-      <PickButton onFiles={(f) => open(f, false)} className={qrStyles.buttonSmall}>Add files</PickButton>
-      {folders && <PickButton folder onFiles={(f) => open(f, false)} className={qrStyles.buttonSmall}>Add folder</PickButton>}
-      <PickButton onFiles={(f) => open(f, true)} className={qrStyles.buttonSmall}>Open other files</PickButton>
+    <div className={fieldStyles.buttonRow}>
+      <PickButton onFiles={(f) => open(f, false)} className={fieldStyles.buttonSmall}>Add files</PickButton>
+      {folders && <PickButton folder onFiles={(f) => open(f, false)} className={fieldStyles.buttonSmall}>Add folder</PickButton>}
+      <PickButton onFiles={(f) => open(f, true)} className={fieldStyles.buttonSmall}>Open other files</PickButton>
     </div>
   );
 
@@ -685,9 +685,9 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
 
       <aside className={styles.sidebar}>
         <Card title="Board">
-          {board ? <BoardInfo board={board} units={units} shown={shown} /> : <p className={qrStyles.help}>{status.kind === 'loading' ? 'Reading the files…' : 'No board.'}</p>}
+          {board ? <BoardInfo board={board} units={units} shown={shown} /> : <p className={fieldStyles.help}>{status.kind === 'loading' ? 'Reading the files…' : 'No board.'}</p>}
           {openButtons}
-          <p className={qrStyles.help}>
+          <p className={fieldStyles.help}>
             {board?.design
               ? 'The board is drawn from its design file. Adding another design file shows that one instead; Gerber and drill files are not added to a design.'
               : 'Add files adds layers to this board; drop files or folders on the page to do the same. A design file (KiCad, Altium, PADS, EAGLE) replaces the board.'}
@@ -722,7 +722,7 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
         {board && (
           <Card title={`Layers (${board.layers.length})`}>
             <LayerPanel layers={layersInOrder} styles={layerStyles} actions={actions} files={files} />
-            <p className={qrStyles.help}>The top of the list is drawn on top. Seen from the bottom, the layers of the two sides swap places.</p>
+            <p className={fieldStyles.help}>The top of the list is drawn on top. Seen from the bottom, the layers of the two sides swap places.</p>
           </Card>
         )}
 

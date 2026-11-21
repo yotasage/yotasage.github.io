@@ -9,7 +9,7 @@ import { textStats } from '../../lib/textcase/stats';
 import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/TextCase.module.css';
 import { DropTarget, FilePickerButton } from '../PdfTools/ToolPage';
-import { Checkbox, Field, Select } from '../QrGen/fields';
+import { Checkbox, Field, Select } from '../UI/Fields';
 
 // The terms are kept in this browser, so they do not have to be typed again.
 const TERMS_KEY = 'text-case-terms';

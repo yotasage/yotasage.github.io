@@ -23,8 +23,8 @@ import { openPdf, renderPage } from '../../lib/pdf/pdfjs';
 import { FILL_FORMS } from '../../lib/pdf/tools';
 import { runFillFormPdf, runInspectFormFields } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
-import { Checkbox, Field } from '../QrGen/fields';
+import fieldStyles from '../../styles/Fields.module.css';
+import { Checkbox, Field } from '../UI/Fields';
 import { ContinueWith } from './ContinueWith';
 import { PasswordPrompt } from './PasswordPrompt';
 import { Progress, ToolWorkspace } from './ToolPage';
@@ -642,7 +642,7 @@ export function FormFiller() {
                               {field.type === 'text' && (
                                 <input
                                   type="text"
-                                  className={qrStyles.input}
+                                  className={fieldStyles.input}
                                   aria-label={field.label}
                                   value={typeof val === 'string' ? val : ''}
                                   maxLength={field.maxLength}
@@ -721,7 +721,7 @@ export function FormFiller() {
 
                               {field.type === 'dropdown' && (
                                 <select
-                                  className={qrStyles.input}
+                                  className={fieldStyles.input}
                                   aria-label={field.label}
                                   value={typeof val === 'string' ? val : ''}
                                   disabled={field.readOnly}
@@ -800,10 +800,10 @@ export function FormFiller() {
                 />
 
                 <Field label="File name">
-                  <input className={qrStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
+                  <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
                 </Field>
 
-                {notice && <p className={qrStyles.warning}>{notice}</p>}
+                {notice && <p className={fieldStyles.warning}>{notice}</p>}
                 {error && <div className={styles.error}>{error}</div>}
 
                 <button

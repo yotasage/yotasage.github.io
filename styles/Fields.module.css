@@ -1,0 +1,366 @@
+/* ==========================================================================
+   Shared Form Fields, Controls, Buttons, Cards & Messages — Design System v2
+   Consumed by components/UI/Fields.tsx and tools across the site (PDF tools,
+   PCB viewer, 3D viewer, QR generator, Base64 image, Text case, etc.).
+   Supports Light, Dark, and High Contrast (AAA) themes via --ds-* tokens.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Cards & Containers
+   -------------------------------------------------------------------------- */
+
+.card {
+  padding: 20px 22px;
+  background: var(--ds-surface, #333333);
+  border: var(--ds-border-w, 1px) solid var(--ds-border, rgba(255, 255, 255, 0.14));
+  border-radius: var(--ds-radius-card, 14px);
+  box-shadow: var(--ds-shadow-card, none);
+  min-width: 0;
+}
+
+@media (max-width: 520px) {
+  .card {
+    padding: 16px 14px;
+  }
+}
+
+.card h2 {
+  margin: 0 0 14px;
+  font-size: 1.12rem;
+  font-weight: 650;
+  letter-spacing: -0.016em;
+  color: var(--ds-ink, #ffffff);
+}
+
+.card h3 {
+  margin: 18px 0 10px;
+  font-size: 0.94rem;
+  font-weight: 600;
+  color: var(--ds-ink, #ffffff);
+}
+
+.card p {
+  margin: 0.45rem 0;
+  line-height: 1.55;
+  color: var(--ds-ink-2, #d4d4d8);
+  font-size: 0.92rem;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.cardHeader h2 {
+  margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Form Layout & Field Wrappers
+   -------------------------------------------------------------------------- */
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 12px 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.fieldWide {
+  grid-column: 1 / -1;
+}
+
+.field > span {
+  font-size: 0.82rem;
+  font-weight: 550;
+  color: var(--ds-ink-2, #c8c8c8);
+}
+
+.help {
+  font-size: 0.78rem;
+  color: var(--ds-ink-3, #9a9a9a);
+  line-height: 1.45;
+}
+
+/* --------------------------------------------------------------------------
+   Inputs, Selects, Textareas, Checkboxes & Color Pickers
+   -------------------------------------------------------------------------- */
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0.48rem 0.65rem;
+  border: var(--ds-border-w, 1px) solid var(--ds-border-strong, #6a6a6a);
+  border-radius: var(--ds-radius-sm, 8px);
+  background: var(--ds-surface-solid, #1f1f1f);
+  color: var(--ds-ink, #ffffff);
+  font-family: var(--ds-font-ui, inherit);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input[type='number'] {
+  font-variant-numeric: tabular-nums;
+}
+
+.input[type='file'] {
+  padding: 0.4rem 0.55rem;
+  font-size: 0.84rem;
+}
+
+.textarea {
+  min-height: 5.5rem;
+  resize: vertical;
+  font-family: var(--ds-font-mono, Menlo, Monaco, Consolas, monospace);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.input:hover:not(:disabled),
+.select:hover:not(:disabled),
+.textarea:hover:not(:disabled) {
+  border-color: var(--ds-accent, #2563eb);
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: none;
+  border-color: var(--ds-accent, #2563eb);
+  box-shadow: var(--ds-focus-ring, 0 0 0 3px rgba(37, 99, 235, 0.3));
+}
+
+.input:focus-visible,
+.select:focus-visible,
+.textarea:focus-visible {
+  outline: 2px solid var(--ds-accent, #2563eb);
+  outline-offset: 1px;
+  border-color: var(--ds-accent, #2563eb);
+  box-shadow: var(--ds-focus-ring, 0 0 0 3px rgba(37, 99, 235, 0.3));
+}
+
+.input:disabled,
+.select:disabled,
+.textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  min-height: 32px;
+  padding: 0.25rem 0;
+  font-family: var(--ds-font-ui, inherit);
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: var(--ds-ink, #ffffff);
+  cursor: pointer;
+}
+
+.checkbox input {
+  margin-top: 0.18rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: none;
+  accent-color: var(--ds-accent, #2563eb);
+  cursor: pointer;
+}
+
+.checkbox input:focus-visible {
+  outline: 2px solid var(--ds-accent, #2563eb);
+  outline-offset: 2px;
+  box-shadow: var(--ds-focus-ring, 0 0 0 3px rgba(37, 99, 235, 0.3));
+}
+
+.checkbox input:disabled {
+  cursor: not-allowed;
+}
+
+.color {
+  width: 100%;
+  min-height: 36px;
+  height: 2.35rem;
+  padding: 3px;
+  border: var(--ds-border-w, 1px) solid var(--ds-border-strong, #6a6a6a);
+  border-radius: var(--ds-radius-sm, 8px);
+  background: var(--ds-surface-solid, #1f1f1f);
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.color:hover:not(:disabled) {
+  border-color: var(--ds-accent, #2563eb);
+}
+
+.color:focus-visible {
+  outline: 2px solid var(--ds-accent, #2563eb);
+  outline-offset: 1px;
+  box-shadow: var(--ds-focus-ring, 0 0 0 3px rgba(37, 99, 235, 0.3));
+}
+
+.color:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* --------------------------------------------------------------------------
+   Buttons
+   -------------------------------------------------------------------------- */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0.45rem 0.95rem;
+  border: var(--ds-border-w, 1px) solid var(--ds-border-strong, #ffffff);
+  border-radius: var(--ds-radius-sm, 8px);
+  background: var(--ds-surface-solid, transparent);
+  color: var(--ds-ink, #ffffff);
+  font-family: var(--ds-font-ui, inherit);
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.button:hover:not(:disabled),
+.button:focus-visible {
+  border-color: var(--ds-accent, #2563eb);
+  background: var(--ds-accent-soft, rgba(37, 99, 235, 0.12));
+  color: var(--ds-ink, #ffffff);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--ds-accent, #2563eb);
+  outline-offset: 2px;
+  box-shadow: var(--ds-focus-ring, 0 0 0 3px rgba(37, 99, 235, 0.3));
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.primaryButton {
+  composes: button;
+  background: var(--ds-accent, #2563eb);
+  border-color: var(--ds-accent, #2563eb);
+  color: var(--ds-accent-ink, #ffffff);
+}
+
+.primaryButton:hover:not(:disabled),
+.primaryButton:focus-visible {
+  background: var(--ds-accent, #2563eb);
+  border-color: var(--ds-accent, #2563eb);
+  color: var(--ds-accent-ink, #ffffff);
+  filter: brightness(1.06);
+}
+
+.buttonSmall {
+  composes: button;
+  min-height: 32px;
+  padding: 0.3rem 0.72rem;
+  font-size: 0.8rem;
+}
+
+.buttonRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* --------------------------------------------------------------------------
+   Info Tables, Monospace & Status Messages
+   -------------------------------------------------------------------------- */
+
+.infoTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.infoTable th,
+.infoTable td {
+  padding: 6px 8px 6px 0;
+  border-bottom: 1px solid var(--ds-border, #444444);
+  text-align: left;
+  vertical-align: top;
+  color: var(--ds-ink, #ffffff);
+}
+
+.infoTable tr:last-child th,
+.infoTable tr:last-child td {
+  border-bottom: none;
+}
+
+.infoTable th {
+  width: 38%;
+  color: var(--ds-ink-2, #c8c8c8);
+  font-weight: 500;
+}
+
+.mono {
+  font-family: var(--ds-font-mono, Menlo, Monaco, Consolas, monospace);
+  font-size: 0.8rem;
+  word-break: break-all;
+  font-variant-numeric: tabular-nums;
+}
+
+.error {
+  padding: 10px 14px;
+  border: var(--ds-border-w, 1px) solid var(--ds-bad, #ff6b6b);
+  border-radius: var(--ds-radius-sm, 8px);
+  background: var(--ds-bad-soft, rgba(255, 107, 107, 0.12));
+  color: var(--ds-bad, #ffb3b3);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.warning {
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--ds-warn, #f5a623);
+  border-radius: 0 var(--ds-radius-sm, 8px) var(--ds-radius-sm, 8px) 0;
+  background: var(--ds-warn-soft, rgba(245, 166, 35, 0.1));
+  color: var(--ds-ink, #f7d9a6);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+/* --------------------------------------------------------------------------
+   High Contrast AAA Overrides
+   -------------------------------------------------------------------------- */
+
+:global(html[data-ds-theme="hc"]) .warning {
+  border-left-width: 4px;
+  border-color: #fde047;
+}
+
+:global(html[data-ds-theme="hc"]) .error {
+  border-width: 2px;
+  border-color: #ff6b6b;
+}

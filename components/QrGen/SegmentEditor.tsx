@@ -2,7 +2,7 @@ import React from 'react';
 
 import { ManualSegment } from '../../lib/qr/encoder';
 import styles from '../../styles/QrGen.module.css';
-import { Select } from './fields';
+import { Select } from '../UI/Fields';
 
 const SEGMENT_MODES: [ManualSegment['mode'], string][] = [
   ['numeric', 'Numeric'],

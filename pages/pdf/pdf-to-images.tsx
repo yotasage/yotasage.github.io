@@ -3,14 +3,14 @@ import React from 'react';
 import { PageGrid, PageGridItem, PageSelectionBar } from '../../components/PdfTools/PageGrid';
 import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Field, NumberInput, Select } from '../../components/QrGen/fields';
+import { Field, NumberInput, Select } from '../../components/UI/Fields';
 import { baseName, download, errorMessage, formatBytes, isPasswordError, isPdf, readBytes, safeFileName, zipFiles } from '../../lib/pdf/files';
 import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
 import { pdfToImages } from '../../lib/pdf/pdfToImages';
 import { PdfThumbPool } from '../../lib/pdf/thumbs';
 import { PDF_TO_IMAGES } from '../../lib/pdf/tools';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 interface LoadedDoc {
   name: string;
@@ -255,7 +255,7 @@ export default function PdfToImagesPage() {
                 </Field>
               )}
               <Field label={targetCount === 1 ? 'File name' : 'ZIP file name'}>
-                <input className={qrStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
+                <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
               </Field>
             </div>
             <p className={styles.note}>
@@ -263,7 +263,7 @@ export default function PdfToImagesPage() {
                 ? <>Rendering <strong>{selectedIndices.length}</strong> of {doc?.pageCount ?? 0} selected page{selectedIndices.length === 1 ? '' : 's'} at {dpi} DPI.</>
                 : <>All <strong>{doc?.pageCount ?? 0}</strong> page{doc?.pageCount === 1 ? '' : 's'} will be rendered at {dpi} DPI. Click pages to convert only a selection.</>}
             </p>
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
             <button type="button" className={styles.primary} disabled={!canRun} onClick={renderImages}>
               Convert {targetCount} page{targetCount === 1 ? '' : 's'} to {format === 'jpeg' ? 'JPG' : 'PNG'}
             </button>

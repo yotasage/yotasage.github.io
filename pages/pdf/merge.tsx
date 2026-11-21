@@ -4,7 +4,7 @@ import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { FileCard, FileGrid } from '../../components/PdfTools/FileGrid';
 import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Field } from '../../components/QrGen/fields';
+import { Field } from '../../components/UI/Fields';
 import { download, errorMessage, formatBytes, isPasswordError, isPdf, readBytes, safeFileName, uid } from '../../lib/pdf/files';
 import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
 import { parsePageRanges } from '../../lib/pdf/merge';
@@ -12,7 +12,7 @@ import { pdfPreview } from '../../lib/pdf/pdfjs';
 import { MERGE } from '../../lib/pdf/tools';
 import { runMergePdfs } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 interface MergeItem {
   id: string;
@@ -162,11 +162,11 @@ export default function MergePdf() {
               Bookmarks and form fields of the source files are not kept.
             </p>
             <Field label="File name">
-              <input className={qrStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
+              <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
             </Field>
             <p className={styles.note}>{items.length} files, {totalPages} pages in total.</p>
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
-            {items.length < 2 && <p className={qrStyles.warning}>Add at least two PDFs to merge.</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
+            {items.length < 2 && <p className={fieldStyles.warning}>Add at least two PDFs to merge.</p>}
             <button type="button" className={styles.primary} disabled={!canMerge} onClick={merge}>Merge PDF</button>
             {busy && <Progress fraction={progress} label="Merging…" />}
             {error && <div className={styles.error}>{error}</div>}

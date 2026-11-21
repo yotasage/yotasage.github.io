@@ -4,7 +4,7 @@ import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { PageGrid, PageGridItem, PageSelectionBar } from '../../components/PdfTools/PageGrid';
 import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Field } from '../../components/QrGen/fields';
+import { Field } from '../../components/UI/Fields';
 import { baseName, download, errorMessage, formatBytes, isPasswordError, isPdf, readBytes, safeFileName } from '../../lib/pdf/files';
 import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
 import { normalizeRotation } from '../../lib/pdf/pages';
@@ -12,7 +12,7 @@ import { PdfThumbPool } from '../../lib/pdf/thumbs';
 import { ROTATE } from '../../lib/pdf/tools';
 import { runRotatePdf } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 interface LoadedDoc {
   name: string;
@@ -220,14 +220,14 @@ export default function RotatePdfPage() {
               <button type="button" className={styles.button} onClick={() => rotateTarget(180)}>180°</button>
             </div>
             <Field label="File name">
-              <input className={qrStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
+              <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
             </Field>
             <p className={styles.note}>
               {changedCount === 0
                 ? 'No pages rotated yet.'
                 : `${changedCount} of ${doc?.pageCount ?? 0} page${changedCount === 1 ? '' : 's'} rotated.`}
             </p>
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
             <button type="button" className={styles.primary} disabled={busy || !doc || changedCount === 0} onClick={save}>
               Save rotated PDF
             </button>

@@ -4,7 +4,7 @@ import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { PageGrid, PageGridItem } from '../../components/PdfTools/PageGrid';
 import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Field, NumberInput } from '../../components/QrGen/fields';
+import { Field, NumberInput } from '../../components/UI/Fields';
 import {
   baseName,
   download,
@@ -33,7 +33,7 @@ import { PdfThumbPool } from '../../lib/pdf/thumbs';
 import { SPLIT } from '../../lib/pdf/tools';
 import { runSplitPdfBySize, runSplitPdfParts } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 type SplitMode = 'ranges' | 'everyN' | 'size' | 'bookmarks';
 
@@ -440,7 +440,7 @@ export default function SplitPdfPage() {
                   help="Separate output PDFs with commas (1-3, 4-6, 7-), or put one group per line / semicolon (1-3; 4, 6; 7-end)."
                 >
                   <textarea
-                    className={qrStyles.input}
+                    className={fieldStyles.input}
                     rows={3}
                     style={{ resize: 'vertical', minHeight: '4.5rem' }}
                     placeholder="e.g. 1-3, 4-6, 7-"
@@ -491,9 +491,9 @@ export default function SplitPdfPage() {
                 {bookmarksLoading ? (
                   <p className={styles.note}>Reading bookmarks…</p>
                 ) : bookmarksError ? (
-                  <p className={qrStyles.warning}>Could not read bookmarks: {bookmarksError}</p>
+                  <p className={fieldStyles.warning}>Could not read bookmarks: {bookmarksError}</p>
                 ) : bookmarks.length === 0 ? (
-                  <p className={qrStyles.warning}>
+                  <p className={fieldStyles.warning}>
                     This PDF has no top-level bookmarks. Pick another split mode above.
                   </p>
                 ) : (
@@ -525,11 +525,11 @@ export default function SplitPdfPage() {
 
             <div className={styles.options}>
               <Field label={preview.parts && preview.parts.length === 1 ? 'File name' : 'ZIP file name'}>
-                <input className={qrStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
+                <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
               </Field>
             </div>
 
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
 
             <button type="button" className={styles.primary} disabled={!canRun} onClick={applySplit}>
               {mode === 'size' ? `Split under ${maxSizeMb} MB` : `Split into ${partCountLabel}`}
@@ -551,7 +551,7 @@ export default function SplitPdfPage() {
                     : `${formatBytes(result.files[0].bytes.length)}.`}
                 </p>
                 {result.oversizedPages.length > 0 && (
-                  <p className={qrStyles.warning}>
+                  <p className={fieldStyles.warning}>
                     Page{result.oversizedPages.length === 1 ? '' : 's'}{' '}
                     {formatOrderedRanges(result.oversizedPages)} exceeded {maxSizeMb} MB on{' '}
                     {result.oversizedPages.length === 1 ? 'its' : 'their'} own and{' '}

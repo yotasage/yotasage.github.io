@@ -4,7 +4,7 @@ import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { FileCard, FileGrid } from '../../components/PdfTools/FileGrid';
 import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Field, NumberInput, Select } from '../../components/QrGen/fields';
+import { Field, NumberInput, Select } from '../../components/UI/Fields';
 import { PageBoxInfo } from '../../lib/pdf/crop';
 import {
   baseName,
@@ -34,7 +34,7 @@ import {
 import { RESIZE } from '../../lib/pdf/tools';
 import { runGetPageBoxes, runResizePdf } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 interface Item {
   id: string;
@@ -414,7 +414,7 @@ export default function ResizePdfPage() {
             {items.length === 1 && (
               <Field label="Page range (optional)" help="Unselected pages stay unchanged.">
                 <input
-                  className={qrStyles.input}
+                  className={fieldStyles.input}
                   value={pageRange}
                   placeholder="All pages"
                   onChange={(e) => setPageRange(e.target.value)}
@@ -422,9 +422,9 @@ export default function ResizePdfPage() {
               </Field>
             )}
 
-            {baseDims.error && <p className={qrStyles.warning}>{baseDims.error}</p>}
-            {rangeError && <p className={qrStyles.warning}>{rangeError}</p>}
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {baseDims.error && <p className={fieldStyles.warning}>{baseDims.error}</p>}
+            {rangeError && <p className={fieldStyles.warning}>{rangeError}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
 
             <button
               type="button"

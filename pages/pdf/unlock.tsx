@@ -3,7 +3,7 @@ import React from 'react';
 import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { FileCard, FileGrid } from '../../components/PdfTools/FileGrid';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Field } from '../../components/QrGen/fields';
+import { Field } from '../../components/UI/Fields';
 import {
   baseName,
   download,
@@ -23,7 +23,7 @@ import { SecurityInfo } from '../../lib/pdf/security';
 import { UNLOCK } from '../../lib/pdf/tools';
 import { runInspectSecurity, runUnlockPdf } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 interface Item {
   id: string;
@@ -192,7 +192,7 @@ export default function UnlockPdfPage() {
               <div className={styles.passwordInputRow}>
                 <input
                   type={showSharedPwd ? 'text' : 'password'}
-                  className={qrStyles.input}
+                  className={fieldStyles.input}
                   value={sharedPassword}
                   autoComplete="current-password"
                   placeholder={needsPwdCount > 0 ? 'Enter PDF password' : 'No open password required'}
@@ -212,7 +212,7 @@ export default function UnlockPdfPage() {
             <p className={styles.note}>
               PDFs with owner restrictions only (no open password) can be unlocked directly with an empty password.
             </p>
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
 
             <button
               type="button"

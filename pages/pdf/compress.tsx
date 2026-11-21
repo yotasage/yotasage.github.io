@@ -4,7 +4,7 @@ import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { FileCard, FileGrid } from '../../components/PdfTools/FileGrid';
 import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Checkbox, Field, NumberInput, Select } from '../../components/QrGen/fields';
+import { Checkbox, Field, NumberInput, Select } from '../../components/UI/Fields';
 import { PdfSizeBreakdown } from '../../lib/pdf/breakdown';
 import { CompressColorMode, CompressOptions } from '../../lib/pdf/compress';
 import { baseName, download, errorMessage, formatBytes, isPasswordError, isPdf, OutputFile, readBytes, uid, zipFiles } from '../../lib/pdf/files';
@@ -14,7 +14,7 @@ import { pdfPreview } from '../../lib/pdf/pdfjs';
 import { COMPRESS } from '../../lib/pdf/tools';
 import { runCompressPdf, runInspectPdfSizeBreakdown } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 interface CompressItem {
   id: string;
@@ -340,7 +340,7 @@ export default function CompressPdf() {
               <Checkbox label="Remove document metadata (title, author, XMP)" checked={removeMetadata} onChange={setRemoveMetadata} />
               <Checkbox label="Deep structure optimization (QPDF WebAssembly)" checked={qpdfOptimize} onChange={setQpdfOptimize} />
             </div>
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
             <button type="button" className={styles.primary} disabled={busy || ready.length === 0} onClick={compress}>
               Compress {ready.length > 1 ? `${ready.length} PDFs` : 'PDF'}
             </button>

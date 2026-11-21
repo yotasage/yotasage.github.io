@@ -5,7 +5,7 @@ import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { EditorStyleDefaults, EditorTool, PdfEditor } from '../../components/PdfTools/PdfEditor';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Field, NumberInput, Select } from '../../components/QrGen/fields';
+import { Field, NumberInput, Select } from '../../components/UI/Fields';
 import {
   ApplyEditsResult,
   PdfEditFont,
@@ -28,7 +28,7 @@ import { openPdf } from '../../lib/pdf/pdfjs';
 import { EDIT } from '../../lib/pdf/tools';
 import { runApplyEdits } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 interface LoadedDoc {
   name: string;
@@ -1178,7 +1178,7 @@ export default function EditPdfPage() {
               <>
                 <Field label="Output file name">
                   <input
-                    className={qrStyles.input}
+                    className={fieldStyles.input}
                     type="text"
                     value={fileName}
                     onChange={(e) => setFileName(e.target.value)}

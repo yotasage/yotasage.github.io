@@ -6,7 +6,7 @@ import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { SignCanvas } from '../../components/PdfTools/SignCanvas';
 import { SIGNATURE_INK_COLORS, SignatureAsset, SignaturePad } from '../../components/PdfTools/SignaturePad';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Field, NumberInput, Select } from '../../components/QrGen/fields';
+import { Field, NumberInput, Select } from '../../components/UI/Fields';
 import {
   baseName,
   download,
@@ -29,7 +29,7 @@ import {
 import { SIGN } from '../../lib/pdf/tools';
 import { runApplySignatures } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 interface LoadedDoc {
   name: string;
@@ -784,10 +784,10 @@ export default function SignPdfPage() {
             </div>
 
             <Field label="File name">
-              <input className={qrStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
+              <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
             </Field>
 
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
             {error && <div className={styles.error}>{error}</div>}
 
             <button

@@ -11,9 +11,9 @@ import { isHelper, modelBox, ModelStats, modelStats } from '../../lib/viewer3d/s
 import { MAX_TRIANGLES } from '../../lib/viewer3d/topology';
 import { Axis, createViewer, Display, disposeObject, Offset, Projection, Section, Shading, THEMES, Theme, Tool, Viewer, ViewName } from '../../lib/viewer3d/viewer';
 import styles from '../../styles/Viewer3D.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 import { DropTarget, FilePickerButton } from '../PdfTools/ToolPage';
-import { Checkbox, Field, NumberInput, Select } from '../QrGen/fields';
+import { Checkbox, Field, NumberInput, Select } from '../UI/Fields';
 import { AxisGizmo, MeasureLabel } from './Overlays';
 import PartTree, { buildTree, countParts } from './PartTree';
 
@@ -49,7 +49,7 @@ function largerUnit(value: number, units: string | null, power: '²' | '³'): st
 function ModelInfo({ stats, units }: { stats: ModelStats; units: string | null }) {
   const volume = stats.volume === null ? null : withUnit(formatNumber(stats.volume), units, '³') + largerUnit(stats.volume, units, '³');
   return (
-    <table className={[qrStyles.infoTable, styles.info].join(' ')}>
+    <table className={[fieldStyles.infoTable, styles.info].join(' ')}>
       <tbody>
         {!stats.box.isEmpty() && <tr><th>Size (X × Y × Z)</th><td>{sizeText(stats.box, units)}</td></tr>}
         {stats.meshes > 1 && <tr><th>Meshes</th><td>{formatCount(stats.meshes)}</td></tr>}
@@ -383,7 +383,7 @@ export default function Workspace({ files, onOpen }: { files: File[]; onOpen: (f
           {status.kind === 'error' && (
             <div className={[styles.overlay, styles.overlayError].join(' ')} role="alert">
               <span>{status.text}</span>
-              <FilePickerButton accept="" onFiles={onOpen} className={qrStyles.button}>Open another file</FilePickerButton>
+              <FilePickerButton accept="" onFiles={onOpen} className={fieldStyles.button}>Open another file</FilePickerButton>
             </div>
           )}
         </div>
@@ -401,23 +401,23 @@ export default function Workspace({ files, onOpen }: { files: File[]; onOpen: (f
               <Select<MeshQuality> value={quality} onChange={setQuality} disabled={status.kind === 'loading'} options={[['draft', 'Draft'], ['normal', 'Normal'], ['fine', 'Fine']]} />
             </Field>
           )}
-          {model?.warnings.map((w) => <p key={w} className={qrStyles.warning}>{w}</p>)}
+          {model?.warnings.map((w) => <p key={w} className={fieldStyles.warning}>{w}</p>)}
           {missing.length > 0 && (
-            <p className={qrStyles.warning}>
+            <p className={fieldStyles.warning}>
               The model refers to files that were not opened with it: {missing.join(', ')}. Open them together with the model to see them.
             </p>
           )}
-          <div className={qrStyles.buttonRow}>
-            <FilePickerButton accept="" onFiles={onOpen} className={qrStyles.buttonSmall}>Open another file</FilePickerButton>
-            <FilePickerButton accept="" onFiles={(added) => onOpen([...files, ...added])} className={qrStyles.buttonSmall}>Add files</FilePickerButton>
+          <div className={fieldStyles.buttonRow}>
+            <FilePickerButton accept="" onFiles={onOpen} className={fieldStyles.buttonSmall}>Open another file</FilePickerButton>
+            <FilePickerButton accept="" onFiles={(added) => onOpen([...files, ...added])} className={fieldStyles.buttonSmall}>Add files</FilePickerButton>
           </div>
-          <p className={qrStyles.help}>Add files opens more models next to the ones that are open, to compare them.</p>
+          <p className={fieldStyles.help}>Add files opens more models next to the ones that are open, to compare them.</p>
         </Card>
 
         {model && (
           <Card title="Model">
-            {stats ? <ModelInfo stats={stats} units={units} /> : <p className={qrStyles.help}>Measuring the model…</p>}
-            <p className={qrStyles.help}>
+            {stats ? <ModelInfo stats={stats} units={units} /> : <p className={fieldStyles.help}>Measuring the model…</p>}
+            <p className={fieldStyles.help}>
               {units ? `Lengths are in ${units === 'mm' ? 'millimetres' : units}.` : 'Lengths are in the units of the file (often millimetres for 3D printing).'}
               {gridCell !== null && display.grid && ` The squares of the grid are ${withUnit(formatNumber(gridCell), units)} wide.`}
             </p>
@@ -426,7 +426,7 @@ export default function Workspace({ files, onOpen }: { files: File[]; onOpen: (f
 
         {model && model.fileGroups.length > 1 && (
           <Card title="Positions">
-            <p className={qrStyles.help}>
+            <p className={fieldStyles.help}>
               Move the files apart to compare them{units ? ` (offsets in ${units})` : ''}. This only moves them in the view: the
               sizes above and the saved files keep the positions the files give.
             </p>
@@ -446,11 +446,11 @@ export default function Workspace({ files, onOpen }: { files: File[]; onOpen: (f
                 </div>
               );
             })}
-            <div className={qrStyles.buttonRow}>
-              <button type="button" className={qrStyles.buttonSmall} onClick={() => placeFiles(viewer.sideBySide())}>Side by side</button>
+            <div className={fieldStyles.buttonRow}>
+              <button type="button" className={fieldStyles.buttonSmall} onClick={() => placeFiles(viewer.sideBySide())}>Side by side</button>
               <button
                 type="button"
-                className={qrStyles.buttonSmall}
+                className={fieldStyles.buttonSmall}
                 disabled={model.fileGroups.every(({ file }) => (offsets.get(file) ?? NO_OFFSET).every((v) => v === 0))}
                 onClick={() => placeFiles(model.fileGroups.map(() => NO_OFFSET))}
               >
@@ -480,7 +480,7 @@ export default function Workspace({ files, onOpen }: { files: File[]; onOpen: (f
                 <Field label="Colour">
                   <input
                     type="color"
-                    className={qrStyles.color}
+                    className={fieldStyles.color}
                     value={pickedColor}
                     onChange={(e) => {
                       setPickedColor(e.target.value);
@@ -495,7 +495,7 @@ export default function Workspace({ files, onOpen }: { files: File[]; onOpen: (f
             </div>
             <Checkbox label="Grid under the model" checked={display.grid} onChange={(grid) => setDisplay((d) => ({ ...d, grid }))} />
             {display.shading === 'edges' && stats && stats.triangles > 0 && stats.closed === null && (
-              <p className={qrStyles.help}>Edges are not drawn on meshes with more than {formatCount(MAX_TRIANGLES)} triangles.</p>
+              <p className={fieldStyles.help}>Edges are not drawn on meshes with more than {formatCount(MAX_TRIANGLES)} triangles.</p>
             )}
           </Card>
         )}
@@ -514,7 +514,7 @@ export default function Workspace({ files, onOpen }: { files: File[]; onOpen: (f
                   <input type="range" min={0} max={1000} value={Math.round(section.position * 1000)} onChange={(e) => setSection((s) => ({ ...s, position: Number(e.target.value) / 1000 }))} />
                 </label>
                 <Checkbox label="Keep the other side" checked={section.flip} onChange={(flip) => setSection((s) => ({ ...s, flip }))} />
-                <p className={qrStyles.help}>The inside of the model, where it is cut, is shown in orange.</p>
+                <p className={fieldStyles.help}>The inside of the model, where it is cut, is shown in orange.</p>
               </>
             )}
           </Card>
@@ -522,11 +522,11 @@ export default function Workspace({ files, onOpen }: { files: File[]; onOpen: (f
 
         {model && (
           <Card title="Measure">
-            <p className={qrStyles.help}>
+            <p className={fieldStyles.help}>
               {tool === 'measure' ? 'Click two points on the model. A third click starts a new measurement.' : 'Measure the distance between two points on the surface of the model.'}
             </p>
             {distance !== null && (
-              <table className={[qrStyles.infoTable, styles.info].join(' ')}>
+              <table className={[fieldStyles.infoTable, styles.info].join(' ')}>
                 <tbody>
                   <tr><th>Distance</th><td className={styles.strong}>{withUnit(formatNumber(distance), units)}</td></tr>
                   {(['x', 'y', 'z'] as const).map((axis) => (
@@ -535,12 +535,12 @@ export default function Workspace({ files, onOpen }: { files: File[]; onOpen: (f
                 </tbody>
               </table>
             )}
-            <div className={qrStyles.buttonRow}>
-              <button type="button" className={qrStyles.buttonSmall} aria-pressed={tool === 'measure'} onClick={() => setTool((t) => (t === 'measure' ? 'select' : 'measure'))}>
+            <div className={fieldStyles.buttonRow}>
+              <button type="button" className={fieldStyles.buttonSmall} aria-pressed={tool === 'measure'} onClick={() => setTool((t) => (t === 'measure' ? 'select' : 'measure'))}>
                 {tool === 'measure' ? 'Stop measuring' : 'Start measuring'}
               </button>
               {measured.length > 0 && (
-                <button type="button" className={qrStyles.buttonSmall} onClick={() => { viewer?.clearMeasure(); setMeasured([]); }}>Clear</button>
+                <button type="button" className={fieldStyles.buttonSmall} onClick={() => { viewer?.clearMeasure(); setMeasured([]); }}>Clear</button>
               )}
             </div>
           </Card>
@@ -549,18 +549,18 @@ export default function Workspace({ files, onOpen }: { files: File[]; onOpen: (f
         {model && parts > 1 && (
           <Card title={`Parts (${formatCount(parts)})`}>
             <PartTree key={model.root.uuid} nodes={tree} selected={selected} onSelect={select} onToggleVisible={toggleVisible} />
-            <div className={qrStyles.buttonRow}>
-              <button type="button" className={qrStyles.buttonSmall} onClick={showAll}>Show all</button>
+            <div className={fieldStyles.buttonRow}>
+              <button type="button" className={fieldStyles.buttonSmall} onClick={showAll}>Show all</button>
             </div>
             {selected && (
               <div className={styles.selection}>
                 <p className={styles.fileName} title={selected.name}>{selected.name || 'Selected part'}</p>
                 {selectedBox && !selectedBox.isEmpty() && <p className={styles.meta}>Size {sizeText(selectedBox, units)}</p>}
-                <div className={qrStyles.buttonRow}>
-                  <button type="button" className={qrStyles.buttonSmall} onClick={() => viewer?.fit(selected)}>Zoom to</button>
-                  <button type="button" className={qrStyles.buttonSmall} onClick={() => showOnly(selected)}>Show only this</button>
-                  <button type="button" className={qrStyles.buttonSmall} onClick={() => toggleVisible(selected)}>{selected.visible ? 'Hide' : 'Show'}</button>
-                  <button type="button" className={qrStyles.buttonSmall} onClick={() => select(null)}>Deselect</button>
+                <div className={fieldStyles.buttonRow}>
+                  <button type="button" className={fieldStyles.buttonSmall} onClick={() => viewer?.fit(selected)}>Zoom to</button>
+                  <button type="button" className={fieldStyles.buttonSmall} onClick={() => showOnly(selected)}>Show only this</button>
+                  <button type="button" className={fieldStyles.buttonSmall} onClick={() => toggleVisible(selected)}>{selected.visible ? 'Hide' : 'Show'}</button>
+                  <button type="button" className={fieldStyles.buttonSmall} onClick={() => select(null)}>Deselect</button>
                 </div>
               </div>
             )}
@@ -584,8 +584,8 @@ export default function Workspace({ files, onOpen }: { files: File[]; onOpen: (f
               </Field>
             </div>
             {animation !== null && (
-              <div className={qrStyles.buttonRow}>
-                <button type="button" className={qrStyles.buttonSmall} onClick={() => { viewer?.setPaused(!paused); setPaused(!paused); }}>{paused ? 'Play' : 'Pause'}</button>
+              <div className={fieldStyles.buttonRow}>
+                <button type="button" className={fieldStyles.buttonSmall} onClick={() => { viewer?.setPaused(!paused); setPaused(!paused); }}>{paused ? 'Play' : 'Pause'}</button>
               </div>
             )}
           </Card>
@@ -593,19 +593,19 @@ export default function Workspace({ files, onOpen }: { files: File[]; onOpen: (f
 
         {model && (
           <Card title="Save">
-            <p className={qrStyles.help}>The parts that are shown, in the coordinates of the file{units ? ` (${units})` : ''}.</p>
+            <p className={fieldStyles.help}>The parts that are shown, in the coordinates of the file{units ? ` (${units})` : ''}.</p>
             <div className={styles.saveGrid}>
               {EXPORT_FORMATS.map((f) => (
-                <button key={f.id} type="button" className={qrStyles.button} title={f.help} disabled={saving !== null || !stats} onClick={() => save(f.id)}>
+                <button key={f.id} type="button" className={fieldStyles.button} title={f.help} disabled={saving !== null || !stats} onClick={() => save(f.id)}>
                   {saving === f.id ? 'Saving…' : f.label}
                 </button>
               ))}
             </div>
             <div className={styles.screenshotRow}>
-              <button type="button" className={qrStyles.button} onClick={screenshot}>Image (PNG)</button>
+              <button type="button" className={fieldStyles.button} onClick={screenshot}>Image (PNG)</button>
               <Checkbox label="Transparent background" checked={transparent} onChange={setTransparent} />
             </div>
-            {saveError && <p className={qrStyles.warning}>{saveError}</p>}
+            {saveError && <p className={fieldStyles.warning}>{saveError}</p>}
           </Card>
         )}
       </aside>

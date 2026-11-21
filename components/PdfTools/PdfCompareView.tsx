@@ -30,7 +30,7 @@ import { openPdf, renderPage } from '../../lib/pdf/pdfjs';
 import { COMPARE } from '../../lib/pdf/tools';
 import styles from '../../styles/PdfCompare.module.css';
 import shared from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 import { ContinueWith } from './ContinueWith';
 import { PasswordPrompt } from './PasswordPrompt';
 import { DropTarget, FilePickerButton, Progress } from './ToolPage';
@@ -878,7 +878,7 @@ export function PdfCompareView() {
         {renderSlotCard('B', 'Document B (Revised)', docB, lockedB, loadingB)}
       </div>
 
-      {notice && <p className={qrStyles.warning}>{notice}</p>}
+      {notice && <p className={fieldStyles.warning}>{notice}</p>}
       {error && <div className={shared.error}>{error}</div>}
 
       {(docA || docB) && (

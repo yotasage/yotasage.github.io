@@ -23,7 +23,7 @@ import { pdfPreview } from '../../lib/pdf/pdfjs';
 import { FLATTEN } from '../../lib/pdf/tools';
 import { runFlattenPdf, runInspectAnnotations } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 interface Item {
   id: string;
@@ -290,7 +290,7 @@ export default function FlattenPdfPage() {
             {!flattenForms && !flattenAnnotations && (
               <p className={styles.note}>Select at least one option to flatten.</p>
             )}
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
 
             <button
               type="button"

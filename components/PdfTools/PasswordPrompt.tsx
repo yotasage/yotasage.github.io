@@ -1,7 +1,7 @@
 import React from 'react';
 
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 export interface PasswordPromptProps {
   fileName: string;
@@ -34,7 +34,7 @@ export function PasswordPrompt({ fileName, error, busy = false, remaining = 0, o
       <form className={styles.passwordForm} onSubmit={handleSubmit}>
         <input
           type="password"
-          className={qrStyles.input}
+          className={fieldStyles.input}
           placeholder="PDF password"
           autoFocus
           value={password}

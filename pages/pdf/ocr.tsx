@@ -4,7 +4,7 @@ import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { FileCard, FileGrid } from '../../components/PdfTools/FileGrid';
 import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Checkbox, Field, Select } from '../../components/QrGen/fields';
+import { Checkbox, Field, Select } from '../../components/UI/Fields';
 import {
   baseName,
   download,
@@ -25,7 +25,7 @@ import { pdfPreview } from '../../lib/pdf/pdfjs';
 import { OCR } from '../../lib/pdf/tools';
 import ocrStyles from '../../styles/PdfOcr.module.css';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 interface OcrItem {
   id: string;
@@ -489,7 +489,7 @@ export default function OcrPdfPage() {
               )}
 
               {activeLanguages.length === 0 && (
-                <p className={qrStyles.warning}>Select at least one language to run OCR.</p>
+                <p className={fieldStyles.warning}>Select at least one language to run OCR.</p>
               )}
             </div>
 
@@ -497,7 +497,7 @@ export default function OcrPdfPage() {
               <Field label="Pages" help="Leave blank for all pages (e.g. 1-5, 8).">
                 <input
                   type="text"
-                  className={qrStyles.input}
+                  className={fieldStyles.input}
                   value={pageRange}
                   disabled={busy}
                   placeholder="All pages"
@@ -523,7 +523,7 @@ export default function OcrPdfPage() {
               invisible text layer (<code>3 Tr</code>) directly over your original page artwork without rasterizing
               or uploading your PDF.
             </p>
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
 
             <div className={ocrStyles.actionRow}>
               <button

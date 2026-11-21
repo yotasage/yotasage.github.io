@@ -2,7 +2,7 @@ import React from 'react';
 
 import { decryptText, ENCRYPTED_PREFIX } from '../../lib/qr/payloads';
 import styles from '../../styles/QrGen.module.css';
-import { Field } from './fields';
+import { Field } from '../UI/Fields';
 
 export default function DecryptBox() {
   const [cipher, setCipher] = React.useState('');

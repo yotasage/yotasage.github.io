@@ -9,7 +9,7 @@ import { groupDigits } from '../../lib/simsetup/numbers';
 import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Base64Image.module.css';
 import { DropTarget, FilePickerButton } from '../PdfTools/ToolPage';
-import { Field } from '../QrGen/fields';
+import { Field } from '../UI/Fields';
 
 const count = (n: number) => groupDigits(String(n), 'space');
 

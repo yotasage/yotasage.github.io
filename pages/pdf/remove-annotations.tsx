@@ -3,7 +3,7 @@ import React from 'react';
 import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Checkbox, Field } from '../../components/QrGen/fields';
+import { Checkbox, Field } from '../../components/UI/Fields';
 import { AnnotationSummary, RemoveAnnotationsResult } from '../../lib/pdf/annotations';
 import {
   baseName,
@@ -20,7 +20,7 @@ import { parsePageRanges } from '../../lib/pdf/merge';
 import { REMOVE_ANNOTATIONS } from '../../lib/pdf/tools';
 import { runInspectAnnotations, runRemoveAnnotations } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 interface LoadedDoc {
   name: string;
@@ -342,7 +342,7 @@ export default function RemoveAnnotationsPage() {
               }
             >
               <input
-                className={qrStyles.input}
+                className={fieldStyles.input}
                 placeholder="All pages (e.g. 1-3, 5)"
                 value={pageRange}
                 onChange={(e) => setPageRange(e.target.value)}
@@ -357,13 +357,13 @@ export default function RemoveAnnotationsPage() {
             />
 
             <Field label="File name">
-              <input className={qrStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
+              <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
             </Field>
 
             {doc && doc.summary.totalCount > 0 && selectedSubtypes.size === 0 && (
               <p className={styles.note}>No matching annotation subtypes selected for removal.</p>
             )}
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
             {error && <div className={styles.error}>{error}</div>}
 
             <button type="button" className={styles.primary} disabled={!canRun} onClick={runRemove}>

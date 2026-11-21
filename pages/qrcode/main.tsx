@@ -3,7 +3,7 @@ import React from 'react';
 
 import ContentForm from '../../components/QrGen/ContentForm';
 import DecryptBox from '../../components/QrGen/DecryptBox';
-import { Checkbox, Field, NumberInput, Select } from '../../components/QrGen/fields';
+import { Checkbox, Field, NumberInput, Select } from '../../components/UI/Fields';
 import SegmentEditor from '../../components/QrGen/SegmentEditor';
 import SymbolInfo from '../../components/QrGen/SymbolInfo';
 import SymbolPreview from '../../components/QrGen/SymbolPreview';

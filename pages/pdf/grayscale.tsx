@@ -5,7 +5,7 @@ import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { FileCard, FileGrid } from '../../components/PdfTools/FileGrid';
 import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Field, Select } from '../../components/QrGen/fields';
+import { Field, Select } from '../../components/UI/Fields';
 import { grayscalePdf, GrayscaleResult, transformRgbaPixels } from '../../lib/pdf/color';
 import { createBrowserJpegToGrayConverter, rasterTransformPdf } from '../../lib/pdf/colorRaster';
 import {
@@ -26,7 +26,7 @@ import { parsePageRanges } from '../../lib/pdf/merge';
 import { openPdf, pdfPreview, renderPage } from '../../lib/pdf/pdfjs';
 import { GRAYSCALE } from '../../lib/pdf/tools';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 type GrayscaleMode = 'lossless' | 'raster';
 type RasterFormat = 'jpeg' | 'png';
@@ -458,7 +458,7 @@ export default function GrayscalePdfPage() {
         }
         sidebar={
           <>
-            <div className={qrStyles.field}>
+            <div className={fieldStyles.field}>
               <span>Conversion mode</span>
               <div className={styles.levels} role="radiogroup" aria-label="Grayscale conversion mode">
                 <label className={[styles.level, mode === 'lossless' ? styles.levelSelected : ''].join(' ')}>
@@ -550,7 +550,7 @@ export default function GrayscalePdfPage() {
                 {items.length === 1 && (
                   <Field label="Page range (optional)" help="e.g. 1-3, 5. Unselected pages stay unchanged.">
                     <input
-                      className={qrStyles.input}
+                      className={fieldStyles.input}
                       value={pageRange}
                       placeholder="All pages"
                       onChange={(e) => setPageRange(e.target.value)}
@@ -560,8 +560,8 @@ export default function GrayscalePdfPage() {
               </>
             )}
 
-            {rangeState.error && <p className={qrStyles.warning}>{rangeState.error}</p>}
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {rangeState.error && <p className={fieldStyles.warning}>{rangeState.error}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
 
             <button
               type="button"

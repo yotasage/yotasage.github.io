@@ -4,8 +4,8 @@ import { download, safeFileName } from '../../lib/pdf/files';
 import { AssemblyOptions, bomCsv, LeftOut, originPoint, PlaceOrigin, placementCsv } from '../../lib/pcb/export/csv';
 import { Board } from '../../lib/pcb/model';
 import styles from '../../styles/PcbViewer.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
-import { Checkbox, Field, Select } from '../QrGen/fields';
+import fieldStyles from '../../styles/Fields.module.css';
+import { Checkbox, Field, Select } from '../UI/Fields';
 
 function mm(v: number): string {
   return (Math.round(v * 1000) / 1000).toString().replace('-', '−');
@@ -35,7 +35,7 @@ export default function AssemblyCard({ board }: { board: Board }) {
   if (corner) options.push(['board', `The bottom-left corner of the board (${mm(corner.x)}, ${mm(corner.y)} mm)`]);
   return (
     <>
-      <p className={qrStyles.help}>
+      <p className={fieldStyles.help}>
         The components of the design as CSV files. The BOM has a line per value, footprint and part number with the designators and the
         fields; the pick-and-place file has the position, rotation and side of each part, in mm, as KiCad writes it.
       </p>
@@ -45,9 +45,9 @@ export default function AssemblyCard({ board }: { board: Board }) {
         </Field>
       </div>
       <Checkbox label="Leave out DNP parts (do not populate)" checked={leaveOutDnp} onChange={setLeaveOutDnp} />
-      <div className={qrStyles.buttonRow}>
-        <button type="button" className={qrStyles.buttonSmall} disabled={!bom.parts} onClick={() => download(bomCsv(board, o).blob, `${name}-bom.csv`)}>Save BOM</button>
-        <button type="button" className={qrStyles.buttonSmall} disabled={!pos.rows} onClick={() => download(placementCsv(board, o).blob, `${name}-pos.csv`)}>Save pick-and-place</button>
+      <div className={fieldStyles.buttonRow}>
+        <button type="button" className={fieldStyles.buttonSmall} disabled={!bom.parts} onClick={() => download(bomCsv(board, o).blob, `${name}-bom.csv`)}>Save BOM</button>
+        <button type="button" className={fieldStyles.buttonSmall} disabled={!pos.rows} onClick={() => download(placementCsv(board, o).blob, `${name}-pos.csv`)}>Save pick-and-place</button>
       </div>
       <p className={styles.detailNote}>
         {`BOM: ${bom.parts.toLocaleString('en-US')} parts in ${bom.lines.toLocaleString('en-US')} lines.${leftOutText(bom.leftOut)}`}

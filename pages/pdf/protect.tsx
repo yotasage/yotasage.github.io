@@ -4,7 +4,7 @@ import { ContinueWith } from '../../components/PdfTools/ContinueWith';
 import { FileCard, FileGrid } from '../../components/PdfTools/FileGrid';
 import { PasswordPrompt } from '../../components/PdfTools/PasswordPrompt';
 import { PdfPage, Progress, ToolWorkspace } from '../../components/PdfTools/ToolPage';
-import { Checkbox, Field, Select } from '../../components/QrGen/fields';
+import { Checkbox, Field, Select } from '../../components/UI/Fields';
 import {
   baseName,
   download,
@@ -23,7 +23,7 @@ import { ProtectAlgorithm, ProtectOptions, ProtectPermissions, SecurityInfo } fr
 import { PROTECT, READER, UNLOCK } from '../../lib/pdf/tools';
 import { runInspectSecurity, runProtectPdf } from '../../lib/pdf/workerClient';
 import styles from '../../styles/PdfTools.module.css';
-import qrStyles from '../../styles/QrGen.module.css';
+import fieldStyles from '../../styles/Fields.module.css';
 
 interface Item {
   id: string;
@@ -248,7 +248,7 @@ export default function ProtectPdfPage() {
               <div className={styles.passwordInputRow}>
                 <input
                   type={showUserPwd ? 'text' : 'password'}
-                  className={qrStyles.input}
+                  className={fieldStyles.input}
                   value={userPassword}
                   autoComplete="new-password"
                   placeholder="Enter open password"
@@ -272,7 +272,7 @@ export default function ProtectPdfPage() {
               <div className={styles.passwordInputRow}>
                 <input
                   type={showOwnerPwd ? 'text' : 'password'}
-                  className={qrStyles.input}
+                  className={fieldStyles.input}
                   value={ownerPassword}
                   autoComplete="new-password"
                   placeholder="Optional owner password"
@@ -335,7 +335,7 @@ export default function ProtectPdfPage() {
                 Enter a user password, an owner password, or restrict at least one permission to protect your PDF.
               </p>
             )}
-            {notice && <p className={qrStyles.warning}>{notice}</p>}
+            {notice && <p className={fieldStyles.warning}>{notice}</p>}
 
             <button
               type="button"
