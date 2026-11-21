@@ -25,13 +25,18 @@ function fromLink(query) {
 
 export async function designChecks({ browser, base, ok }) {
   const errors = [];
+  const showDesign = async (page) => { await page.getByRole('tab', { name: /Design/i }).click(); };
+  const gotoDesign = async (page, query) => {
+    await page.goto(`${base}/resistor/main${query}`, { waitUntil: 'networkidle' });
+    await showDesign(page);
+  };
   const openPage = async (query, options = {}) => {
     const context = await browser.newContext({ viewport: { width: options.width ?? 1280, height: 900 }, colorScheme: 'light', permissions: ['clipboard-read', 'clipboard-write'] });
     if (options.noWorker) await context.addInitScript(() => { window.Worker = undefined; });
     const page = await context.newPage();
     page.on('pageerror', (error) => errors.push(error.message));
     page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
-    await page.goto(`${base}/resistor/main${query}`, { waitUntil: 'networkidle' });
+    await gotoDesign(page, query);
     return page;
   };
   const section = (page) => page.locator('#design');
@@ -58,7 +63,7 @@ export async function designChecks({ browser, base, ok }) {
   ];
   let page = await openPage('');
   for (const [name, query, circuit, target, values, options, source] of cases) {
-    if (query) await page.goto(`${base}/resistor/main${query}`, { waitUntil: 'networkidle' });
+    if (query) await gotoDesign(page, query);
     await done(page);
     const found = suggestParts(circuit, target, values, options);
     const first = found.candidates[0];
@@ -83,7 +88,7 @@ export async function designChecks({ browser, base, ok }) {
 
   // 2. Nothing passes: the needed tolerance and TCR are named, and one click applies them.
   let query = '?dc=div&dv=5&dt=2.5&dp=1&dtol=5&dtcr=200&ds=e24';
-  await page.goto(`${base}/resistor/main${query}`, { waitUntil: 'networkidle' });
+  await gotoDesign(page, query);
   await done(page);
   let engine = fromLink(query);
   let sentence = await answer(page);
@@ -101,7 +106,7 @@ export async function designChecks({ browser, base, ok }) {
 
   // 3. A temperature chip removed takes its row away; "parts track" narrows the spread of a divider.
   query = '?dc=div&dv=5&dt=2.5';
-  await page.goto(`${base}/resistor/main${query}`, { waitUntil: 'networkidle' });
+  await gotoDesign(page, query);
   await done(page);
   await rows(page).first().getByRole('button', { name: /^Details/ }).click();
   const temperatures = () => section(page).getByTestId('design-temperature').locator('[role=rowheader]').allInnerTexts();
@@ -133,7 +138,7 @@ export async function designChecks({ browser, base, ok }) {
 
   // 5. A link with every input gives the same results in a fresh page, and the page writes the same link back.
   query = '?dc=div&dv=9&dl=100k&dt=3%2C3&dp=2&dk=thin-film&dtol=0.5&dtcr=50&dtemp=-20_25_70&dm=t&dts=10&ds=e24e96&dr=100R-1M&dg=2&dtr=5k-200k&dcr=10u-2m&dz=0805';
-  await page.goto(`${base}/resistor/main${query}`, { waitUntil: 'networkidle' });
+  await gotoDesign(page, query);
   await done(page);
   engine = fromLink(query);
   let shown = await formulas(page);
@@ -153,7 +158,7 @@ export async function designChecks({ browser, base, ok }) {
   // 6. Typing stays responsive while two-value legs of E96 are compared: the run is in the worker, the results on
   //    the page are dimmed meanwhile, and no frame of the page waits for the run.
   query = '?dc=div&dv=12&dt=3.3&dg=2&ds=e96&dp=1';
-  await page.goto(`${base}/resistor/main${query}`, { waitUntil: 'networkidle' });
+  await gotoDesign(page, query);
   await done(page);
   await page.evaluate(() => {
     window.gaps = [];
@@ -186,7 +191,7 @@ export async function designChecks({ browser, base, ok }) {
   await targetField.fill('');
   await page.waitForTimeout(200);
   ok((await section(page).getByTestId('design-problem').innerText()).startsWith('Fill in the marked fields') && await targetField.getAttribute('aria-invalid') === 'true', 'an empty field is marked and nothing is suggested');
-  await page.goto(`${base}/resistor/main?dc=div&dg=2&ds=e192`, { waitUntil: 'networkidle' });
+  await gotoDesign(page, '?dc=div&dg=2&ds=e192');
   await done(page);
   ok(await section(page).getByText('Two values in series or parallel are offered up to 900 values').isVisible() && (await formulas(page)).every((text) => !/[+∥]/.test(text)),
     'with E192 over seven decades each resistance is one value, and the page says why');
@@ -207,6 +212,7 @@ export async function designChecks({ browser, base, ok }) {
   });
   ok(fits, 'at 390 px an opened suggestion fits the window: its tables are not cut off');
   await page.goto(`${base}/resistor/main?q=628.75&cs=e24&cv=12`, { waitUntil: 'networkidle' });
+  await page.getByRole('tab', { name: /Combinations/i }).click();
   await page.waitForFunction(() => document.querySelector('#combinations [data-testid=search-status]')?.getAttribute('data-busy') === 'false', null, { timeout: 15000 });
   await page.locator('#combinations ol > li').nth(1).getByRole('button', { name: /^Details/ }).click();
   await page.waitForTimeout(200);

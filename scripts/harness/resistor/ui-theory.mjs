@@ -19,6 +19,22 @@ export async function theoryChecks({ browser, base, ok }) {
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
   const open = async (query) => { await page.goto(`${base}/resistor/main${query}`, { waitUntil: 'networkidle' }); await page.waitForTimeout(250); };
+  const toWorkbench = async (pg = page) => { await pg.getByRole('tab', { name: /^Workbench$/i }).click(); await pg.waitForTimeout(100); };
+  const toTheory = async (pg = page) => {
+    await pg.getByRole('tab', { name: /Theory & Reference/i }).click();
+    await pg.getByRole('tab', { name: /^Theory$/i }).click();
+    await pg.waitForTimeout(100);
+  };
+  const toRefTables = async (pg = page) => {
+    await pg.getByRole('tab', { name: /Theory & Reference/i }).click();
+    await pg.getByRole('tab', { name: /Reference Tables/i }).click();
+    await pg.waitForTimeout(100);
+  };
+  const toReferences = async (pg = page) => {
+    await pg.getByRole('tab', { name: /Theory & Reference/i }).click();
+    await pg.getByRole('tab', { name: /^References$/i }).click();
+    await pg.waitForTimeout(100);
+  };
   const text = async (id) => compact(await page.getByTestId(id).first().innerText());
 
   // What the citations of the page say: the numbers in the order of the page, and the list of entries.
@@ -38,11 +54,16 @@ export async function theoryChecks({ browser, base, ok }) {
     return { first, entries };
   };
 
-  // 1. The sections and the nav.
+  // 1. The sections and the workspace tabs.
   await open('');
-  const nav = await page.locator('nav[aria-label="Sections"] a').allInnerTexts();
-  ok(nav.join(' ') === 'Lookup Drawing Combinations Design Reference Theory References', `the nav ends with Theory and References: ${nav.join(' ')}`);
-  ok((await page.locator('#theory h2').innerText()).toLowerCase() === 'theory' && (await page.locator('#references h2').innerText()).toLowerCase() === 'references', 'the Theory and References sections are on the page');
+  const tabs = await page.getByRole('tablist', { name: 'Workspace views' }).getByRole('tab').allInnerTexts();
+  ok(tabs.join(' | ') === 'Workbench | Examples | Theory & Reference', `the top workspace tabs are Workbench, Examples and Theory & Reference: ${tabs.join(' | ')}`);
+  await toTheory();
+  const theoryHeading = (await page.locator('#theory h2').innerText()).toLowerCase();
+  await toReferences();
+  const refsHeading = (await page.locator('#references h2').innerText()).toLowerCase();
+  ok(theoryHeading === 'theory' && refsHeading === 'references', `the Theory and References sections are on the page: ${theoryHeading}, ${refsHeading}`);
+  await toTheory();
   const topics = await page.locator('#theory details').count();
   ok(topics === 14 && await page.locator('#theory ol a').count() === topics, `the theory has ${topics} topics, each in the contents`);
   ok(await page.locator('#theory details[open]').count() === topics, 'on a wide screen every topic is open');
@@ -52,23 +73,29 @@ export async function theoryChecks({ browser, base, ok }) {
   // 2. The live items follow the value.
   ok((await text('theory-current')) === 'I=1.06mA' && (await text('theory-power')) === 'P=5.32mW', `the example is 5 V across 4.7 kΩ: ${await text('theory-current')} ${await text('theory-power')}`);
   await open('?q=10k');
+  await toTheory();
   const noise = (ohms) => `${eng(Math.sqrt(4 * BOLTZMANN * 298.15 * ohms), 'V')}/√Hz`;
   ok((await text('theory-current')) === 'I=500µA' && (await text('theory-power')) === 'P=2.5mW', `Ohm's law with 10 kΩ: ${await text('theory-current')} ${await text('theory-power')}`);
   ok((await text('theory-noise')) === noise(1e4) && noise(1e4) === '12.8nV/√Hz', `thermal noise of 10 kΩ: ${await text('theory-noise')}`);
+  await toWorkbench();
   await page.locator('#resistor-input').fill('1M');
   await page.waitForTimeout(200);
+  await toTheory();
   ok((await text('theory-current')) === 'I=5µA' && (await text('theory-power')) === 'P=25µW' && (await text('theory-noise')) === noise(1e6), `the numbers follow the value to 1 MΩ: ${await text('theory-current')} ${await text('theory-noise')}`);
   await page.getByTestId('theory-volts').fill('12');
   ok((await text('theory-current')) === 'I=12µA' && (await text('theory-power')) === 'P=144µW', `and the voltage to 12 V: ${await text('theory-current')} ${await text('theory-power')}`);
   await page.getByTestId('theory-volts').fill('x');
   ok(await page.getByTestId('theory-current').count() === 0 && await page.getByTestId('theory-volts').getAttribute('aria-invalid') === 'true', 'a voltage that cannot be read is marked');
   ok((await text('theory-series-note')).includes('1MΩ,isavalueofE3,E6,E12,E24,E48,E96andE192') && await page.locator('[data-testid="theory-series"] tr[data-on]').count() === 7, 'the series table marks the series of the value');
+  await toWorkbench();
   await page.locator('#resistor-input').fill('4k75');
   await page.waitForTimeout(200);
+  await toTheory();
   ok(await page.locator('[data-testid="theory-series"] tr[data-on]').count() === 2, '4.75 kΩ is marked in E96 and E192');
 
   // 3. The derating curve follows the chip size, and sets it.
   await open('?q=10k&part=chip&size=0603');
+  await toTheory();
   ok((await text('theory-derating')).includes('0603carries100mWupto70°C,82.4mWat85°C,64.7mWat100°C,35.3mWat125°Candnothingat155°C'), `derating of an 0603: ${await text('theory-derating')}`);
   ok((await text('theory-voltage')).includes('31.6V') && (await text('theory-voltage')).includes('75V') && (await text('theory-voltage')).includes('56.3kΩ'), `the limits of 10 kΩ in 0603: ${await text('theory-voltage')}`);
   await page.getByTestId('theory-size').selectOption('0201');
@@ -94,6 +121,7 @@ export async function theoryChecks({ browser, base, ok }) {
   ok(/other reading/.test(readings) && /49\.9/.test(readings) && /Makers do not agree on the EIA-96 letters R and S/.test(await page.locator('main').innerText()), 'the other reading of 68S (49.9 Ω) is offered with the note on R and S');
   await open('?q=68R&read=marking');
   ok(/49\.9/.test(await page.locator('main').innerText()) && /other reading/.test(await page.locator('main').innerText()), '68R offers both readings too');
+  await toRefTables();
   const note = await page.getByTestId('eia96-note').innerText();
   const letters = await page.locator('[aria-label="Multiplier letters"]').innerText();
   ok(/makers do not agree/.test(note) && /Y or S/.test(letters) && /X or R/.test(letters), 'the EIA-96 table names the disagreement on R and S');
@@ -104,6 +132,8 @@ export async function theoryChecks({ browser, base, ok }) {
 
   // 7. The headline of the Design section keeps numbers with their units and brackets.
   await open('?dc=div');
+  await page.getByRole('tab', { name: /Design/i }).click();
+  await page.waitForTimeout(150);
   const sentence = await page.getByTestId('design-answer').locator('p').first().evaluate((p) => p.textContent).catch(() => '');
   ok(sentence === '' || (/\(\S* %\)/.test(sentence) && !/\d %/.test(sentence) && !/\d [kMm]?[ΩVAW]\b/.test(sentence)), `the Design sentence does not break between a number and its unit: ${sentence}`);
 
@@ -112,6 +142,7 @@ export async function theoryChecks({ browser, base, ok }) {
   const small = await phone.newPage();
   await small.goto(`${base}/resistor/main?q=4k7`, { waitUntil: 'networkidle' });
   await small.waitForTimeout(300);
+  await toTheory(small);
   ok(await small.locator('#theory details[open]').count() === 0, 'on a phone the topics start folded');
   await small.getByRole('button', { name: 'Open all' }).click();
   await small.waitForTimeout(150);

@@ -105,10 +105,11 @@ const waitRead = async (loc) => {
 const field = (card, label) => card.locator('dt', { hasText: label }).first().locator('xpath=following-sibling::dd[1]').innerText();
 
 await page.goto(`${base}/qr-reader/main`, { waitUntil: 'networkidle' });
-ok(await page.locator('h1', { hasText: 'QR code reader' }).isVisible(), 'the page has its title');
+ok(await page.locator('h1', { hasText: /QR Code Reader/i }).isVisible(), 'the page has its title');
 ok(await page.locator('aside[aria-label="Status of this tool"]').isVisible(), 'the status note is shown');
 
 // An image with a Wi-Fi code.
+await page.getByRole('tab', { name: /Image \/ PDF/i }).click();
 const wifiText = 'WIFI:T:WPA;S:Harness net;P:pa\\;ss;;';
 await page.locator('input[type=file]').setInputFiles({ name: 'wifi.png', mimeType: 'image/png', buffer: png(grey([encode(wifiText, opts({}))])) });
 const wifi = source('wifi.png');
@@ -163,6 +164,7 @@ const kinds = await example.locator('article[data-kind]').evaluateAll((els) => e
 ok(kinds === 'contact,url,wifi', `the example has a Wi-Fi network, a contact and a link: ${kinds}`);
 
 // Typed text: a sign-in code, checked against the code computed here.
+await page.getByRole('tab', { name: 'Text', exact: true }).click();
 await page.locator('textarea[aria-label="Content of a code"]').fill('otpauth://totp/Example:ada?secret=JBSWY3DPEHPK3PXP&issuer=Example');
 await page.getByRole('button', { name: 'Read text' }).click();
 const otp = page.locator('article[data-kind="otp"]').first();
@@ -174,6 +176,7 @@ const wants = [(await codeNow(acct)).code, (await codeNow(acct, Date.now() - 300
 ok(wants.includes(shown), `sign-in code shown (${shown}) equals RFC 6238 (${wants.join(' or ')})`);
 
 // Pasted text anywhere on the page.
+await page.getByRole('tab', { name: /Image \/ PDF/i }).click();
 await page.evaluate(() => {
   const dt = new DataTransfer();
   dt.setData('text/plain', 'MT:Y.K9042C00KA0648G00');
@@ -184,6 +187,7 @@ await matter.waitFor({ timeout: 5000 }).catch(() => undefined);
 ok((await matter.innerText().catch(() => '')).includes('3497-011-2332'), 'pasted Matter code shows the manual code 3497-011-2332');
 
 // The camera: a fake camera plays a video of an eSIM code.
+await page.getByRole('tab', { name: 'Camera', exact: true }).click();
 await page.getByRole('button', { name: 'Start camera' }).click();
 const cam = page.locator('section[aria-label^="Camera, "]').first();
 await cam.waitFor({ timeout: 20000 }).catch(() => undefined);

@@ -9,6 +9,7 @@ const { searchCombinations, seriesList, networkFormula, formatOhms, formatError,
 
 export async function combinationChecks({ browser, base, ok }) {
   const errors = [];
+  const showCombos = async (page) => { await page.getByRole('tab', { name: /Combinations/i }).click(); };
   const openPage = async (query, options = {}) => {
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: 'light', acceptDownloads: true, permissions: ['clipboard-read', 'clipboard-write'] });
     if (options.noWorker) await context.addInitScript(() => { window.Worker = undefined; });
@@ -16,6 +17,7 @@ export async function combinationChecks({ browser, base, ok }) {
     page.on('pageerror', (error) => errors.push(error.message));
     page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
     await page.goto(`${base}/resistor/main${query}`, { waitUntil: 'networkidle' });
+    await showCombos(page);
     return page;
   };
   const section = (page) => page.locator('#combinations');
@@ -125,13 +127,17 @@ export async function combinationChecks({ browser, base, ok }) {
 
   // 7. Edge states.
   await fresh.goto(`${base}/resistor/main`, { waitUntil: 'networkidle' });
+  await showCombos(fresh);
   ok(await section(fresh).getByText('Type a value at the top').isVisible() && await section(fresh).locator('ol').count() === 0, 'before a value is typed the section says what will appear');
   await fresh.goto(`${base}/resistor/main?q=0`, { waitUntil: 'networkidle' });
+  await showCombos(fresh);
   ok(await section(fresh).getByText('nothing to combine').isVisible(), '0 Ω has nothing to combine');
   await fresh.goto(`${base}/resistor/main?q=100M`, { waitUntil: 'networkidle' });
+  await showCombos(fresh);
   await searched(fresh);
   ok(await section(fresh).getByText('these are only the closest').isVisible() && (await formulas(fresh))[0] === '10 MΩ + 10 MΩ', `a target outside the reach shows the closest and says so: ${(await formulas(fresh))[0]}`);
   await fresh.goto(`${base}/resistor/main?q=1k&cl=330R&cln=One&cn=4`, { waitUntil: 'networkidle' });
+  await showCombos(fresh);
   await searched(fresh);
   ok(await section(fresh).getByText('The list has one value').isVisible() && (await formulas(fresh))[0] === '330 Ω + 330 Ω + 330 Ω', `a list with one value works: ${(await formulas(fresh))[0]}`);
   await fresh.context().close();

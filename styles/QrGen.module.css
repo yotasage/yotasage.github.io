@@ -218,7 +218,7 @@
 
 .fieldGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(210px, 100%), 1fr));
   gap: 12px 14px;
 }
 
@@ -510,6 +510,12 @@
   width: 38%;
   color: var(--ds-ink-2, #c8c8c8);
   font-weight: 500;
+}
+
+.scoreTable {
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
 }
 
 .scoreTable th,

@@ -343,7 +343,10 @@
 .inlineField {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
+  max-width: 100%;
+  min-width: 0;
   color: var(--ds-ink-2);
   font-size: 0.8rem;
   font-weight: 550;
@@ -352,6 +355,8 @@
 .inlineField .input,
 .inlineField .select {
   width: auto;
+  max-width: 100%;
+  min-width: 0;
   height: 32px;
   padding: 0 9px;
   font-size: 0.8rem;

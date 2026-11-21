@@ -261,7 +261,7 @@ try {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: scheme });
     const p = await open(ctx, CASES[1][1]);
     const w = wants[1], link = await p.$eval('[data-r="link"]', (e) => e.textContent);
-    ok(await p.evaluate(() => getComputedStyle(document.body).backgroundColor) === (scheme === 'dark' ? 'rgb(43, 43, 43)' : 'rgb(246, 244, 238)'), `${scheme}: the page is in its theme on screen`);
+    ok(await p.evaluate(() => getComputedStyle(document.body).backgroundColor) === (scheme === 'dark' ? 'rgb(9, 9, 11)' : 'rgb(245, 247, 251)'), `${scheme}: the page is in its theme on screen`);
     for (const [paper, width] of Object.entries(PAPER)) {
       const tag = `${scheme} ${paper}`;
       await p.setViewportSize({ width: Math.floor(width), height: 1000 });

@@ -175,14 +175,24 @@ try {
     } else console.log(`NOTE ${MEZZ_PRO} not found: the LVDS_100R check is skipped`);
   } else console.log('NOTE the carrier board files were not found: the KiCad checks are skipped');
 
-  // ---- the theme switch ----
-  await page.click('[data-theme-toggle]');
+  // ---- the theme switch (Design System v2) ----
+  const themeState = () => page.evaluate(() => ({
+    theme: document.documentElement.getAttribute('data-ds-theme'),
+    stored: localStorage.getItem('site.theme'),
+    bg: getComputedStyle(document.body).backgroundColor,
+  }));
+  await page.getByRole('button', { name: 'Dark', exact: true }).click();
   await settle();
-  const root = page.locator('[data-ready]');
-  check((await root.getAttribute('data-theme')) === 'dark' && (await page.evaluate(() => localStorage.getItem('emsim.theme'))) === 'dark', 'theme switch to dark, kept');
-  await page.click('[data-theme-toggle]');
+  let ts = await themeState();
+  check(ts.theme === 'dark' && ts.stored === 'dark' && ts.bg === 'rgb(9, 9, 11)', `theme switch to dark, kept (${JSON.stringify(ts)})`);
+  await page.getByRole('button', { name: 'High contrast', exact: true }).click();
   await settle();
-  check((await root.getAttribute('data-theme')) === null && (await page.evaluate(() => localStorage.getItem('emsim.theme'))) === null, 'back on the system theme');
+  ts = await themeState();
+  check(ts.theme === 'hc' && ts.stored === 'hc' && ts.bg === 'rgb(0, 0, 0)', `theme switch to high contrast (${JSON.stringify(ts)})`);
+  await page.getByRole('button', { name: 'Light', exact: true }).click();
+  await settle();
+  ts = await themeState();
+  check(ts.theme === 'light' && ts.stored === 'light' && ts.bg === 'rgb(245, 247, 251)', `theme switch back to light (${JSON.stringify(ts)})`);
 
   // ---- widths and themes ----
   if (shots) mkdirSync(shots, { recursive: true });
@@ -205,13 +215,14 @@ try {
   };
   for (const scheme of ['light', 'dark']) {
     await page.emulateMedia({ colorScheme: scheme });
+    await page.getByRole('button', { name: scheme === 'dark' ? 'Dark' : 'Light', exact: true }).click();
     for (const width of [320, 390, 1440]) {
       await page.setViewportSize({ width, height: 900 });
       await page.waitForTimeout(150);
       const sw = await page.evaluate(() => document.documentElement.scrollWidth);
       check(sw <= width, `no horizontal scroll at ${width} px, ${scheme} (${sw})`);
       const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-      check(bg === (scheme === 'dark' ? 'rgb(43, 43, 43)' : 'rgb(246, 244, 238)'), `page background in ${scheme} (${bg})`);
+      check(bg === (scheme === 'dark' ? 'rgb(9, 9, 11)' : 'rgb(245, 247, 251)'), `page background in ${scheme} (${bg})`);
       if (shots) {
         await page.evaluate(() => window.scrollTo(0, 0));
         writeFileSync(join(shots, `emsim-stackup-${width}-${scheme}.png`), await shrink(await page.screenshot({ fullPage: true })));

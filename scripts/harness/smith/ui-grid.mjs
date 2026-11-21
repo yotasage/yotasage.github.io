@@ -278,7 +278,7 @@ const look = (pg) => pg.evaluate(() => {
     text: css('svg[data-level] text', 'fill'), nonScaling: css('path[data-part=z-minor]', 'vectorEffect'), labels: document.querySelectorAll('svg[data-level] text').length };
 });
 const L = await look(page), D = await look(pageDark);
-ok(D.body === 'rgb(43, 43, 43)', `dark page background #2b2b2b: ${D.body}`);
+ok(D.body === 'rgb(9, 9, 11)', `dark page background #09090b: ${D.body}`);
 ok(L.body !== D.body && L.minor !== D.minor && L.y !== D.y && L.text !== D.text, `light and dark differ: ${JSON.stringify(L)} ${JSON.stringify(D)}`);
 ok(L.nonScaling === 'non-scaling-stroke', `strokes do not scale: ${L.nonScaling}`);
 ok(D.labels > 0 && D.labels === L.labels, `dark theme has the same labels: ${D.labels} ${L.labels}`);
@@ -301,25 +301,30 @@ ok(pageDark.errors.length === 0, `no errors in the dark page: ${pageDark.errors.
   ok(at1 === 0 && seen.every((c) => c >= 2), `labels in the field: ${at1} at 1×, ${seen.join(', ')} at 3×, 16×, 64× around 0.3 + j0.25`);
 }
 
-// the theme switch (M2.3): light system → dark, kept in localStorage over a reload, back to the system's theme
+// the theme switch (Design System v2): light → dark (persisted across reload) → high contrast → light
 {
   const tc = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: 'light' });
   const pt = await open(tc);
-  const state = () => pt.evaluate(() => ({ theme: document.querySelector('[data-chart]').closest('[data-theme]')?.getAttribute('data-theme') ?? null,
-    body: getComputedStyle(document.body).backgroundColor, stored: localStorage.getItem('smith.theme') }));
-  const switchTheme = () => pt.getByRole('button', { name: 'Switch between the light and the dark theme' }).click();
+  const state = () => pt.evaluate(() => ({ theme: document.documentElement.getAttribute('data-ds-theme'),
+    body: getComputedStyle(document.body).backgroundColor, stored: localStorage.getItem('site.theme') }));
   const s0 = await state();
-  await switchTheme();
+  await pt.getByRole('button', { name: 'Dark', exact: true }).click();
+  await pt.waitForTimeout(100);
   const s1 = await state();
   await pt.reload({ waitUntil: 'networkidle' });
   await pt.waitForFunction(() => document.querySelector('[data-chart]')?.smithChart);
   await pt.waitForTimeout(100);
   const s2 = await state();
-  await switchTheme();
+  await pt.getByRole('button', { name: 'High contrast', exact: true }).click();
+  await pt.waitForTimeout(100);
+  const sHc = await state();
+  await pt.getByRole('button', { name: 'Light', exact: true }).click();
+  await pt.waitForTimeout(100);
   const s3 = await state();
-  ok(s0.theme === null && s1.theme === 'dark' && s1.body === 'rgb(43, 43, 43)' && s1.stored === 'dark', `the switch turns a light page dark: ${JSON.stringify([s0, s1])}`);
-  ok(s2.theme === 'dark' && s2.body === 'rgb(43, 43, 43)', `the dark theme is kept over a reload: ${JSON.stringify(s2)}`);
-  ok(s3.theme === null && s3.stored === null && s3.body !== s1.body, `switching back follows the system again: ${JSON.stringify(s3)}`);
+  ok(s0.theme === 'light' && s0.body === 'rgb(245, 247, 251)' && s1.theme === 'dark' && s1.body === 'rgb(9, 9, 11)' && s1.stored === 'dark', `the Dark button turns a light page dark: ${JSON.stringify([s0, s1])}`);
+  ok(s2.theme === 'dark' && s2.body === 'rgb(9, 9, 11)' && s2.stored === 'dark', `the dark theme is kept over a reload: ${JSON.stringify(s2)}`);
+  ok(sHc.theme === 'hc' && sHc.body === 'rgb(0, 0, 0)' && sHc.stored === 'hc', `the High contrast button switches to HC: ${JSON.stringify(sHc)}`);
+  ok(s3.theme === 'light' && s3.stored === 'light' && s3.body === 'rgb(245, 247, 251)', `the Light button restores the light theme: ${JSON.stringify(s3)}`);
   await tc.close();
 }
 

@@ -95,16 +95,37 @@ ok(await second.getByRole('radio', { name: '±0.1 %', exact: true }).isChecked()
 ok(second.url() === link, `a link stays as it was: ${second.url()}`);
 await second.close();
 
-const themeSwitch = page.getByRole('button', { name: /light and the dark theme/ });
-await themeSwitch.click();
+const darkBtn = page.getByRole('button', { name: 'Dark', exact: true });
+const hcBtn = page.getByRole('button', { name: 'High contrast', exact: true });
+const lightBtn = page.getByRole('button', { name: 'Light', exact: true });
+await darkBtn.click();
 await settle();
-ok(await page.evaluate(() => document.querySelector('[data-theme="dark"]') !== null && localStorage.getItem('resistor.theme') === 'dark'), 'the switch turns the page dark and remembers it');
+ok(await page.evaluate(() => document.documentElement.getAttribute('data-ds-theme') === 'dark'
+  && localStorage.getItem('site.theme') === 'dark'
+  && getComputedStyle(document.body).backgroundColor === 'rgb(9, 9, 11)'), 'the Dark button turns the page dark and remembers it');
 await page.reload({ waitUntil: 'networkidle' });
 await settle();
-ok(await page.evaluate(() => getComputedStyle(document.body).backgroundColor === 'rgb(20, 21, 19)'), 'the theme is kept after a reload');
-await themeSwitch.click();
+ok(await page.evaluate(() => document.documentElement.getAttribute('data-ds-theme') === 'dark'
+  && localStorage.getItem('site.theme') === 'dark'
+  && getComputedStyle(document.body).backgroundColor === 'rgb(9, 9, 11)'), 'the dark theme is kept after a reload');
+await hcBtn.click();
 await settle();
-ok(await page.evaluate(() => localStorage.getItem('resistor.theme') === null), 'back on the theme of the system, nothing is stored');
+ok(await page.evaluate(() => document.documentElement.getAttribute('data-ds-theme') === 'hc'
+  && localStorage.getItem('site.theme') === 'hc'
+  && getComputedStyle(document.body).backgroundColor === 'rgb(0, 0, 0)'), 'the High contrast button turns the page high-contrast');
+await lightBtn.click();
+await settle();
+ok(await page.evaluate(() => document.documentElement.getAttribute('data-ds-theme') === 'light'
+  && localStorage.getItem('site.theme') === 'light'
+  && getComputedStyle(document.body).backgroundColor === 'rgb(245, 247, 251)'), 'the Light button restores the light theme');
+
+const toWorkbench = async () => { await page.getByRole('tab', { name: /^Workbench$/i }).click(); await settle(); };
+const toBandsExport = async () => { await page.getByRole('tab', { name: /Bands & Export/i }).click(); await settle(); };
+const toRefTables = async () => {
+  await page.getByRole('tab', { name: /Theory & Reference/i }).click();
+  await page.getByRole('tab', { name: /Reference Tables/i }).click();
+  await settle();
+};
 
 // ---------------------------------------------------------------------------------------------------- step S2
 // The drawing: a band is clicked and its colour chosen, the number of bands, the other end, the marking of a chip.
@@ -164,6 +185,7 @@ await settle();
 ok(await page.evaluate(() => localStorage.getItem('resistor.style') === 'flat' && !document.querySelector('[data-part] svg filter')), 'the flat style is drawn and remembered');
 
 // The exports: every format comes out at the width asked for, under a name that says what it is.
+await toBandsExport();
 await page.getByRole('spinbutton', { name: 'Width in pixels' }).fill('640');
 for (const [format, mime] of [['SVG', 'image/svg+xml'], ['PNG', 'image/png'], ['JPG', 'image/jpeg'], ['WebP', 'image/webp']]) {
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: format, exact: true }).first().click()]);
@@ -193,14 +215,16 @@ await page.waitForTimeout(700);
 ok(await page.getByText(/Copied as a PNG of 1280/).isVisible(), 'the picture is copied as a PNG');
 
 // The reference tables use what is clicked and mark the current value.
+await toRefTables();
 await page.getByTitle('Use 10 Ω', { exact: true }).click();
-await settle();
+await toWorkbench();
 ok((await value()) === '10Ω' && await page.locator('#resistor-marking').inputValue() === '01X', `a click on EIA-96 code 01 gives 10 Ω, marked 01X: ${await value()}`);
+await toRefTables();
 await page.getByTitle('Draw a 1206 chip').click();
 await settle();
 ok(query().get('size') === '1206', 'a click on a chip size draws that size');
 await page.getByTitle('Use ±2 %', { exact: true }).click();
-await settle();
+await toWorkbench();
 ok(query().get('part') === 'axial' && await page.getByRole('radio', { name: '±2 %', exact: true }).isChecked(), 'a click on a tolerance in the colour table uses it');
 await group('Style of the drawing').getByRole('radio', { name: 'Realistic' }).click();
 
@@ -269,20 +293,22 @@ await third.close();
 
   // 2. The colour table: a column for each band.
   await open('?q=4k7');
+  await toRefTables();
   const table = page.locator('table').filter({ hasText: '3rd' });
   const on = () => table.locator('td[data-on]').evaluateAll((cells) => cells.map((cell) => `${cell.cellIndex}:${cell.parentElement.rowIndex}`).join(' '));
+  const valueText = async () => compact(await page.locator('output').textContent());
   ok(await table.locator('thead th').count() === 7 && (await on()) === '4:3 1:5 2:8 5:11', `seven columns, and the bands of 4.7 kΩ 5 % marked each in its own: ${await on()}`);
   await title('Add 5 as a third digit: a part with five bands').click();
   await settle();
-  ok((await value()) === '4.75kΩ' && query().get('bands') === '5' && (await on()).includes('3:6'), `a third digit makes a five-band part: ${await value()}, ${await on()}`);
+  ok((await valueText()) === '4.75kΩ' && query().get('bands') === '5' && (await on()).includes('3:6'), `a third digit makes a five-band part: ${await valueText()}, ${await on()}`);
   await title('Take the third digit away: a part with four bands').click();
   await settle();
-  ok((await value()) === '4.7kΩ' && query().get('bands') === '4' && !(await on()).includes('3:'), `a click on the marked third digit takes it away: ${await value()}`);
+  ok((await valueText()) === '4.7kΩ' && query().get('bands') === '4' && !(await on()).includes('3:'), `a click on the marked third digit takes it away: ${await valueText()}`);
   await title('Use red as the second digit').click();
   await settle();
   await title('Use brown as the first digit').click();
   await settle();
-  ok((await value()) === '1.2kΩ', `the first and the second digit are set in their own columns: ${await value()}`);
+  ok((await valueText()) === '1.2kΩ', `the first and the second digit are set in their own columns: ${await valueText()}`);
   await title('Use 25 ppm/K, on a part with six bands').click();
   await settle();
   ok(query().get('bands') === '6' && query().get('tcr') === '25' && (await on()).includes('6:5'), 'a TCR makes a six-band part');
@@ -290,9 +316,11 @@ await third.close();
   await settle();
   ok(query().get('bands') === '5' && !query().has('tcr') && !(await on()).includes('6:'), 'a click on the marked TCR takes the band away');
   await open('?q=4k7&part=chip');
+  await toRefTables();
   await title('Use orange as the multiplier').click();
-  await settle();
+  await toWorkbench();
   ok((await value()) === '47kΩ' && query().get('part') === 'axial' && await page.locator('[data-part="axial"]').isVisible(), 'a click in the table switches from the chip to the axial part');
+  await toRefTables();
   await page.setViewportSize({ width: 390, height: 844 });
   await settle();
   const fit = await page.evaluate(() => {
@@ -304,24 +332,27 @@ await third.close();
 
   // 3. Examples of markings and the EIA-96 table: a chip, marked in that system, of a size that is marked.
   await open('?q=4k7&size=0201');
+  await toRefTables();
   await title('Try 472: read as a marking and drawn on a chip').click();
   await settle();
-  ok((await value()) === '4.7kΩ' && (await input.inputValue()) === '472' && query().get('read') === 'marking' && query().get('part') === 'chip' && query().get('mark') === '3' && !query().has('size'),
+  ok((await valueText()) === '4.7kΩ' && (await input.inputValue()) === '472' && query().get('read') === 'marking' && query().get('part') === 'chip' && query().get('mark') === '3' && !query().has('size'),
     `an example of a marking is read as one and drawn on a marked chip: ${page.url()}`);
   ok(await page.locator('#resistor-marking').inputValue() === '472', 'the chip carries the marking of the example');
   await title('Try 4992: read as a marking and drawn on a chip').click();
   await settle();
-  ok((await value()) === '49.9kΩ' && query().get('mark') === '4', 'an example with four digits switches to four digits');
+  ok((await valueText()) === '49.9kΩ' && query().get('mark') === '4', 'an example with four digits switches to four digits');
   await title('Try 01C: read as a marking and drawn on a chip').click();
-  await settle();
+  await toWorkbench();
   ok((await value()) === '10kΩ' && query().get('mark') === 'eia96' && await page.getByRole('radio', { name: '±1 %', exact: true }).isChecked(), 'an EIA-96 example switches to EIA-96 at 1 %');
   await open('?q=4k7&size=0201');
+  await toRefTables();
   await title('Use 1 kΩ').click();
   await settle();
   ok(query().get('part') === 'chip' && query().get('mark') === 'eia96' && !query().has('size') && await page.locator('#resistor-marking').inputValue() === '01B', `the EIA-96 table does the same from a size without marking: ${page.url()}`);
 
   // 1. Caption None: the part alone, in the preview and in the files.
   await open('?q=4k7');
+  await toBandsExport();
   const preview = page.locator('[data-bg] svg');
   const bars = () => preview.evaluate((svg) => svg.querySelectorAll('[opacity="0.8"]').length);
   const tall = () => preview.evaluate((svg) => svg.viewBox.baseVal.height);
@@ -350,6 +381,7 @@ await third.close();
   ok(copied.startsWith('% Resistor 4k7') && copied.includes('\\begin{tikzpicture}') && copied.trimEnd().endsWith('\\end{tikzpicture}') && !copied.includes('documentclass') && copied.includes('Scale bar') && copied.includes('4.7\\,k\\ensuremath{\\Omega}'),
     'the tikzpicture is copied with its colours, scale bar and caption');
   await open('?q=4k7&part=chip&mark=4&tol=1');
+  await toBandsExport();
   await group('Style of the drawing').first().getByRole('radio', { name: 'Flat' }).click();
   await settle();
   ok(await page.getByText('TikZ, for LaTeX, is always the flat drawing.').count() === 0, 'in the flat style the remark is not needed');
