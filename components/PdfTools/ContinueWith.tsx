@@ -20,6 +20,7 @@ import {
   ORGANIZE,
   PAGE_NUMBERS,
   PDF_TO_IMAGES,
+  PDFA,
   PdfTool,
   PROTECT,
   READER,
@@ -68,6 +69,7 @@ const PDF_TARGETS: PdfTool[] = [
   MERGE,
   PDF_TO_IMAGES,
   EXTRACT_IMAGES,
+  PDFA,
 ];
 
 export function ContinueWith({

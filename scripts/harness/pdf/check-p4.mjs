@@ -15,6 +15,7 @@ import * as compressContentMod from '../../../lib/pdf/compressContent.ts';
 import * as ghostscriptMod from '../../../lib/pdf/ghostscript.ts';
 import * as linearizeMod from '../../../lib/pdf/linearize.ts';
 import * as ocrRuntimeMod from '../../../lib/pdf/ocrRuntime.ts';
+import * as pdfaMod from '../../../lib/pdf/pdfa.ts';
 import * as qpdfMod from '../../../lib/pdf/qpdf.ts';
 import * as redactMod from '../../../lib/pdf/redact.ts';
 import * as repairMod from '../../../lib/pdf/repair.ts';
@@ -36,6 +37,7 @@ const {
 } = require('@cantoo/pdf-lib');
 
 const { checkQpdf, runQpdf } = qpdfMod.default ?? qpdfMod;
+const { inspectPdfA, convertToPdfA } = pdfaMod.default ?? pdfaMod;
 const { compressPdfWithGhostscript, runGhostscript } = ghostscriptMod.default ?? ghostscriptMod;
 const { OCR_ASSET_PATHS, OCR_LANGUAGES } = ocrRuntimeMod.default ?? ocrRuntimeMod;
 const {
@@ -960,6 +962,68 @@ await check('35. P4.6a AGPL-3.0 LICENSE.md, self-hosted Ghostscript WASM, compre
   assert(firstIntent.get(PDFName.of('DestOutputProfile')), 'PDFA=2 OutputIntent missing /DestOutputProfile');
   const pdfaRawText = new TextDecoder('latin1').decode(pdfaRun.output);
   assert(pdfaRawText.includes('pdfaid:part'), 'PDFA=2 output missing XMP pdfaid:part');
+});
+
+await check('36. P4.6b pdfa.ts (inspectPdfA pre-flight + convertToPdfA for 1b, 2b, 3b & Gray)', async () => {
+  const srcBytes = await makeMultiPagePdf(2);
+
+  // 36a. Pre-flight compliance audit on standard synthetic PDF (unembedded Helvetica, no OutputIntent, no XMP pdfaid)
+  const before = await inspectPdfA(srcBytes);
+  assert(before.isPdfA === false, 'synthetic multiPage PDF must not be reported as PDF/A');
+  assert(before.hasOutputIntent === false, 'synthetic multiPage PDF should not have an OutputIntent');
+  assert(
+    before.unembeddedFonts.length >= 1,
+    `expected >= 1 unembedded font in synthetic multiPage PDF, got ${JSON.stringify(before.unembeddedFonts)}`,
+  );
+  assert(before.checks.length >= 5, `expected compliance check rows, got ${before.checks.length}`);
+
+  // 36b. Convert to PDF/A-1b, PDF/A-2b, PDF/A-3b (sRGB) and PDF/A-2b (Grayscale)
+  const cases = [
+    { label: 'PDF/A-1b (RGB)', opts: { level: '1b', colorStrategy: 'RGB' }, expectedPart: 1, expectedCond: 'sRGB' },
+    { label: 'PDF/A-2b (RGB)', opts: { level: '2b', colorStrategy: 'RGB', title: 'Archival Test Document' }, expectedPart: 2, expectedCond: 'sRGB' },
+    { label: 'PDF/A-3b (RGB)', opts: { level: '3b', colorStrategy: 'RGB' }, expectedPart: 3, expectedCond: 'sRGB' },
+    { label: 'PDF/A-2b (Gray)', opts: { level: '2b', colorStrategy: 'Gray' }, expectedPart: 2, expectedCond: 'Gray' },
+  ];
+
+  const metrics = [];
+  for (const c of cases) {
+    const res = await convertToPdfA(srcBytes, c.opts);
+    const rep = res.afterReport;
+    assert(
+      rep.isPdfA === true,
+      `${c.label}: expected afterReport.isPdfA=true (checks: ${JSON.stringify(rep.checks)})`,
+    );
+    assert(
+      rep.pdfaidPart === c.expectedPart,
+      `${c.label}: expected pdfaidPart=${c.expectedPart}, got ${rep.pdfaidPart}`,
+    );
+    assert(
+      rep.pdfaidConformance === 'B',
+      `${c.label}: expected pdfaidConformance="B", got ${rep.pdfaidConformance}`,
+    );
+    assert(rep.hasOutputIntent === true, `${c.label}: expected hasOutputIntent=true`);
+    assert(
+      rep.outputCondition && rep.outputCondition.includes(c.expectedCond),
+      `${c.label}: expected outputCondition containing "${c.expectedCond}", got "${rep.outputCondition}"`,
+    );
+    assert(rep.hasXmpMetadata === true, `${c.label}: expected hasXmpMetadata=true`);
+    assert(rep.hasTrailerId === true, `${c.label}: expected hasTrailerId=true`);
+    assert(
+      rep.unembeddedFonts.length === 0,
+      `${c.label}: expected 0 unembedded fonts, got ${JSON.stringify(rep.unembeddedFonts)}`,
+    );
+    assert(res.qpdfOk === true, `${c.label}: expected qpdfOk=true (warnings: ${res.warnings.join('; ')})`);
+    const outDoc = await PDFDocument.load(res.bytes, { updateMetadata: false });
+    assert(outDoc.getPageCount() === 2, `${c.label}: expected 2 pages, got ${outDoc.getPageCount()}`);
+    if (c.opts.title) {
+      assert(
+        outDoc.getTitle() === c.opts.title,
+        `${c.label}: expected title "${c.opts.title}", got "${outDoc.getTitle()}"`,
+      );
+    }
+    metrics.push(`${c.label}: ${res.beforeBytes}B -> ${res.afterBytes}B (fonts=${rep.totalFonts}, unembedded=0, qpdfOk=true)`);
+  }
+  console.log('  [Check 36 metrics] ' + metrics.join(' | '));
 });
 
 // Print summary table

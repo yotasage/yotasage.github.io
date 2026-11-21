@@ -89,6 +89,14 @@ const ICONS: Record<ToolIconName, React.ReactNode> = {
       <path d="M32 39v5m-3-3 3 3 3-3" />
     </>
   ),
+  pdfa: (
+    <>
+      <Doc x={8} y={4} w={32} h={40} />
+      <path d="M14 13h14" />
+      <circle cx={24} cy={28} r={10} />
+      <path d="M20.2 32.5L24 22.5l3.8 10M21.4 29.5h5.2" />
+    </>
+  ),
   sanitize: (
     <>
       <Doc x={4} y={4} w={24} h={32} />

@@ -10,6 +10,7 @@ export type ToolIconName =
   | 'images'
   | 'pdf-to-images'
   | 'extract-images'
+  | 'pdfa'
   | 'sanitize'
   | 'protect'
   | 'unlock'
@@ -134,6 +135,15 @@ export const EXTRACT_IMAGES: PdfTool = {
   href: '/pdf/extract-images',
   icon: 'extract-images',
   color: '#4da3ff',
+};
+
+export const PDFA: PdfTool = {
+  id: 'pdfa',
+  title: 'PDF to PDF/A',
+  description: 'Convert PDFs to ISO-compliant archival PDF/A-1b, PDF/A-2b or PDF/A-3b with embedded fonts, ICC output intent and XMP metadata using Ghostscript.',
+  href: '/pdf/pdfa',
+  icon: 'pdfa',
+  color: '#34b3a0',
 };
 
 export const REMOVE_METADATA: PdfTool = {
@@ -331,6 +341,6 @@ export const TOOL_CATEGORIES: ToolCategory[] = [
   { title: 'Optimize', tools: [COMPRESS, LINEARIZE, REPAIR] },
   { title: 'Edit & annotate', tools: [EDIT, SIGN, FILL_FORMS, PAGE_NUMBERS, WATERMARK, CROP, RESIZE, NUP, GRAYSCALE, INVERT, EDIT_METADATA, FLATTEN, REMOVE_ANNOTATIONS] },
   { title: 'Convert to PDF', tools: [IMAGES_TO_PDF] },
-  { title: 'Convert from PDF', tools: [PDF_TO_IMAGES, EXTRACT_IMAGES] },
+  { title: 'Convert from PDF', tools: [PDF_TO_IMAGES, EXTRACT_IMAGES, PDFA] },
   { title: 'Security', tools: [PROTECT, UNLOCK, REDACT, REMOVE_METADATA] },
 ];
