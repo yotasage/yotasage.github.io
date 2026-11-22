@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://yotasage.github.io/sitemap.xml

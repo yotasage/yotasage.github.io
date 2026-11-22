@@ -1,9 +1,9 @@
-import Head from 'next/head';
 import { useRouter } from 'next/router';
 import React, { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 
 import Bibliography from '../../components/Bibliography';
 import KatexSpan from '../../components/KatexSpan';
+import PageHead from '../../components/PageHead';
 import Chart from '../../components/Smith/Chart';
 import Derivation from '../../components/Smith/Derivation';
 import ExportPanel from '../../components/Smith/ExportPanel';
@@ -949,11 +949,11 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
 
   return (
     <div className={styles.root} data-ds="v2">
-      <Head>
-        <title>{t('smith.pageTitle')}</title>
-        <meta name="description" content="Build a matching circuit of series and shunt R, L and C, transmission lines, stubs and λ/4 transformers on a zoomable Smith chart with impedance, admittance or combined grids: type or drag the values with snapping, read z, Γ, VSWR and return loss at every node, follow 16 worked examples step by step, try challenges of five kinds with a ladder of hints, make lesson links with locked values, let the solver find one or two missing values for a match or a circle, undo and redo, and keep the circuit in the link." />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+      <PageHead
+        title={t('smith.pageTitle')}
+        description="Interactive Smith chart with Z, Y, and ZY grids: drag matching networks, auto-solve components, run frequency sweeps, and export SVG, TikZ, or Touchstone."
+        path="/smith-chart/main"
+      />
       <style jsx global>{`
         @page {
           margin: 12mm;

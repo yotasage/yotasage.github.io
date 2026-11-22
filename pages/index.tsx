@@ -1,8 +1,8 @@
-import Head from 'next/head';
 import Link from 'next/link';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import ToolIcon, { HomeIconName } from '../components/Home/ToolIcon';
+import PageHead from '../components/PageHead';
 import PdfToolIcon from '../components/PdfTools/ToolIcon';
 import PillTabs, { PillTabItem } from '../components/UI/PillTabs';
 import ToolHeader from '../components/UI/ToolHeader';
@@ -418,11 +418,11 @@ export default function Home() {
 
   return (
     <div className={styles.page} data-ds="v2">
-      <Head>
-        <title>{t('home.pageTitle')}</title>
-        <meta name="description" content={t('home.metaDescription')} />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+      <PageHead
+        title={t('home.pageTitle')}
+        description={t('home.metaDescription')}
+        path="/"
+      />
 
       <ToolHeader
         isHome

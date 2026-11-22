@@ -1,6 +1,6 @@
-import Head from 'next/head';
 import React from 'react';
 
+import PageHead from '../../components/PageHead';
 import PcbViewer, { PCB_FORMATS } from '../../components/PcbViewer/PcbViewer';
 import ToolHeader, { WorkspaceTab } from '../../components/UI/ToolHeader';
 import { useI18n } from '../../lib/ui/i18n';
@@ -21,10 +21,11 @@ export default function PcbViewerPage() {
 
   return (
     <div className={styles.page} data-ds="v2">
-      <Head>
-        <title>{t('pcb.pageTitle')}</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+      <PageHead
+        title={t('pcb.pageTitle')}
+        description="Inspect Gerber, Excellon, KiCad, Altium, PADS, and EAGLE PCB files locally in layer or realistic view, measure nets, export drawings, or convert to KiCad."
+        path="/pcb-viewer/main"
+      />
 
       <ToolHeader<WorkspaceId>
         title={t('pcb.title')}

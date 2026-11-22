@@ -1,6 +1,6 @@
-import Head from 'next/head';
 import React from 'react';
 
+import PageHead from '../components/PageHead';
 import ToolHeader from '../components/UI/ToolHeader';
 // Generated on `npm install` by scripts/collect-licenses.mjs.
 import data from '../lib/generated/third-party-licenses.json';
@@ -61,10 +61,11 @@ export default function Licenses() {
 
   return (
     <div className={styles.page} data-ds="v2">
-      <Head>
-        <title>{t('licenses.pageTitle')}</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+      <PageHead
+        title={t('licenses.pageTitle')}
+        description="Open-source licenses and third-party notices for the libraries, WebAssembly engines, and self-hosted fonts used on yotasage.github.io."
+        path="/licenses"
+      />
 
       <ToolHeader title={t('licenses.title')} showExperienceMode={false} />
 

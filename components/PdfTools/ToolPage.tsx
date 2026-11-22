@@ -1,13 +1,34 @@
-import Head from 'next/head';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import React from 'react';
 
-import { PdfTool } from '../../lib/pdf/tools';
+import { PdfTool, TOOL_CATEGORIES } from '../../lib/pdf/tools';
 import { useI18n } from '../../lib/ui/i18n';
 import { useDesignSystemPage } from '../../lib/ui/theme';
 import styles from '../../styles/PdfTools.module.css';
+import PageHead from '../PageHead';
 import ToolHeader from '../UI/ToolHeader';
 import ToolIcon from './ToolIcon';
+
+const PDF_HUB_DESCRIPTION =
+  'Read, compare, merge, split, compress, OCR, sign, redact, convert, and scrub metadata from PDFs directly in your browser — files never leave your device.';
+
+const PDF_TOOLS_BY_HREF: ReadonlyMap<string, PdfTool> = new Map(
+  TOOL_CATEGORIES.flatMap((category) => category.tools.map((tool) => [tool.href, tool] as const)),
+);
+
+const FULL_LOCAL_SUFFIX = ' Runs locally in your browser — files never leave your device.';
+const SHORT_LOCAL_SUFFIX = ' Runs locally in your browser.';
+
+function resolvePdfDescription(path: string, explicit?: string): string {
+  if (explicit) return explicit;
+  const tool = PDF_TOOLS_BY_HREF.get(path);
+  if (!tool) return PDF_HUB_DESCRIPTION;
+  const base = tool.description.trim();
+  if (base.length + FULL_LOCAL_SUFFIX.length <= 160) return `${base}${FULL_LOCAL_SUFFIX}`;
+  if (base.length + SHORT_LOCAL_SUFFIX.length <= 160) return `${base}${SHORT_LOCAL_SUFFIX}`;
+  return base;
+}
 
 function ShieldCheckIcon() {
   return (
@@ -31,24 +52,38 @@ function ShieldCheckIcon() {
 // Page frame shared by the hub and every tool: frosted SaaS header with back navigation, lead text and responsive container.
 export function PdfPage({
   title,
+  description,
+  path,
+  ogImage,
+  ogAlt,
   lead,
   showHub,
   children,
 }: {
   title: string;
+  description?: string;
+  path?: string;
+  ogImage?: string;
+  ogAlt?: string;
   lead?: React.ReactNode;
   showHub?: boolean;
   children: React.ReactNode;
 }) {
   useDesignSystemPage('#dc2626', '#ef6a50');
   const { t } = useI18n();
+  const router = useRouter();
+  const resolvedPath = path ?? (router.pathname || '/pdf/main');
+  const resolvedDescription = resolvePdfDescription(resolvedPath, description);
 
   return (
     <div className={styles.page} data-ds="v2">
-      <Head>
-        <title>{title}</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+      <PageHead
+        title={title}
+        description={resolvedDescription}
+        path={resolvedPath}
+        ogImage={ogImage}
+        ogAlt={ogAlt}
+      />
 
       <ToolHeader
         title={title}

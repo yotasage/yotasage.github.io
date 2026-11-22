@@ -1,6 +1,6 @@
-import Head from 'next/head';
 import React from 'react';
 
+import PageHead from '../../components/PageHead';
 import ToolHeader, { WorkspaceTab } from '../../components/UI/ToolHeader';
 import Viewer3D from '../../components/Viewer3D/Viewer3D';
 import { useI18n } from '../../lib/ui/i18n';
@@ -22,10 +22,11 @@ export default function Viewer3DPage() {
 
   return (
     <div className={styles.page} data-ds="v2">
-      <Head>
-        <title>{t('viewer3d.pageTitle')}</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+      <PageHead
+        title={t('viewer3d.pageTitle')}
+        description="Inspect STEP, IGES, STL, 3MF, OBJ, glTF, FBX, and USDZ 3D models in your browser with section cuts, measurements, and export. Files stay on your device."
+        path="/3d-viewer/main"
+      />
 
       <ToolHeader<WorkspaceId>
         title={t('viewer3d.title')}

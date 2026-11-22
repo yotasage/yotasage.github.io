@@ -1,6 +1,6 @@
-import Head from 'next/head';
 import React from 'react';
 
+import PageHead from '../../components/PageHead';
 import ContentForm from '../../components/QrGen/ContentForm';
 import DecryptBox from '../../components/QrGen/DecryptBox';
 import { Checkbox, Field, NumberInput, Select } from '../../components/UI/Fields';
@@ -389,14 +389,11 @@ export default function QrCodeGenerator() {
 
   return (
     <div className={styles.page} data-ds="v2">
-      <Head>
-        <title>{t('qrgen.pageTitle')}</title>
-        <meta
-          name="description"
-          content="Create standard QR Code Model 2, Model 1, Micro QR and rMQR symbols with full control over version, error correction, mask, encoding, and PNG/SVG/JPG/PDF export."
-        />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+      <PageHead
+        title={t('qrgen.pageTitle')}
+        description="Create QR Code Model 2, Model 1, Micro QR, and rMQR symbols with control over version, error correction, mask, encoding, and PNG, SVG, JPG, or PDF export."
+        path="/qrcode/main"
+      />
 
       <ToolHeader<WorkspaceId>
         title={t('qrgen.title')}

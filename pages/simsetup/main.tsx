@@ -1,8 +1,8 @@
-import Head from 'next/head';
 import React from 'react';
 
 import Bibliography from '../../components/Bibliography';
 import KatexSpan from '../../components/KatexSpan';
+import PageHead from '../../components/PageHead';
 import CalcBox, { CheckList, CheckText } from '../../components/SimSetup/CalcBox';
 import CoherentSampling from '../../components/SimSetup/CoherentSampling';
 import ParameterList from '../../components/SimSetup/ParameterList';
@@ -269,11 +269,11 @@ export default function SimSetup({ references }: { references: BibEntry[] }) {
 
   return (
     <div data-ds="v2" className={styles.page}>
-      <Head>
-        <title>{t('simsetup.pageTitle')}</title>
-        <meta name="description" content={t('simsetup.subtitle')} />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+      <PageHead
+        title={t('simsetup.pageTitle')}
+        description={t('simsetup.subtitle')}
+        path="/simsetup/main"
+      />
 
       <ToolHeader<WorkspaceId>
         title={t('simsetup.title')}

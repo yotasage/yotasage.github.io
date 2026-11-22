@@ -5,7 +5,7 @@
     "dev": "next dev -H 0.0.0.0 -p 3020",
     "build": "next build",
     "start": "next start -H 0.0.0.0",
-    "postinstall": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-pdf-wasm-assets.mjs && node scripts/copy-3d-assets.mjs && node scripts/copy-qr-assets.mjs && node scripts/copy-fonts.mjs && node scripts/collect-licenses.mjs"
+    "postinstall": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-pdf-wasm-assets.mjs && node scripts/copy-3d-assets.mjs && node scripts/copy-qr-assets.mjs && node scripts/copy-fonts.mjs && node scripts/collect-licenses.mjs && node scripts/generate-sitemap.mjs"
   },
   "dependencies": {
     "@cantoo/pdf-lib": "^2.11.1",

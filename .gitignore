@@ -45,6 +45,9 @@ yarn-error.log*
 # Licence list, generated from node_modules on install
 /lib/generated/
 
+# Sitemap, generated from pages/ on install
+/public/sitemap.xml
+
 # TypeScript incremental build info (npx tsc --noEmit)
 *.tsbuildinfo
 

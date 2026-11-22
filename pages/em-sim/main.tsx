@@ -1,9 +1,9 @@
-import Head from 'next/head';
 import React from 'react';
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
 import EmSimTool from '../../components/EmSim/EmSimTool';
+import PageHead from '../../components/PageHead';
 import type { BibEntry } from '../../lib/bibtex';
 import { EM_EQUATIONS } from '../../lib/emsim/equations';
 import { loadReferences } from '../../lib/references';
@@ -31,14 +31,11 @@ export default function EmSimPage({ references }: { references: BibEntry[] }) {
   const { t } = useI18n();
   return (
     <>
-      <Head>
-        <title>{t('emsim.pageTitle')}</title>
-        <meta
-          name="description"
-          content="PCB stackups, 2D quasi-TEM transmission-line field solver, 3D via transitions, and in-browser WebGPU/CPU full-wave FDTD: JLCPCB presets or KiCad boards and net classes, tolerances, live equations, and TikZ/SVG/Touchstone export."
-        />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+      <PageHead
+        title={t('emsim.pageTitle')}
+        description="In-browser 2D transmission-line field solver, 3D via transitions, and WebGPU FDTD using JLCPCB presets or KiCad stackups, with live equations and exports."
+        path="/em-sim/main"
+      />
       <EmSimTool references={references} />
     </>
   );

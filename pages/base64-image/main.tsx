@@ -1,8 +1,8 @@
-import Head from 'next/head';
 import React from 'react';
 
 import Decoder from '../../components/Base64Image/Decoder';
 import Encoder from '../../components/Base64Image/Encoder';
+import PageHead from '../../components/PageHead';
 import PillTabs, { PillTabItem } from '../../components/UI/PillTabs';
 import TeachingCallout from '../../components/UI/TeachingCallout';
 import ToolHeader, { WorkspaceTab } from '../../components/UI/ToolHeader';
@@ -36,10 +36,11 @@ export default function Base64Image() {
 
   return (
     <div className={styles.page} data-ds="v2">
-      <Head>
-        <title>{t('base64.pageTitle')}</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+      <PageHead
+        title={t('base64.pageTitle')}
+        description="Convert images to Base64 or ready-to-paste HTML, CSS, and Markdown data URLs, or decode Base64 strings back into downloadable image previews locally."
+        path="/base64-image/main"
+      />
 
       <ToolHeader<WorkspaceId>
         title={t('base64.title')}

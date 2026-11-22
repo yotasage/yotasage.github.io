@@ -1,6 +1,6 @@
-import Head from 'next/head';
 import React from 'react';
 
+import PageHead from '../../components/PageHead';
 import Camera, { CameraHit } from '../../components/QrRead/Camera';
 import ResultCard, { Reading } from '../../components/QrRead/ResultCard';
 import SourceView, { Source } from '../../components/QrRead/SourceView';
@@ -242,11 +242,11 @@ export default function QrReader() {
         readFiles([...e.dataTransfer.files]);
       }}
     >
-      <Head>
-        <title>{t('qrread.pageTitle')}</title>
-        <meta name="description" content="Read QR codes with your camera or from images and PDFs, and see what they hold. Runs locally in your browser." />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+      <PageHead
+        title={t('qrread.pageTitle')}
+        description="Scan QR, Micro QR, and rMQR codes from your camera, images, clipboard, or PDFs and inspect Wi-Fi, eSIM, contact, payment, or raw byte payloads locally."
+        path="/qr-reader/main"
+      />
 
       <ToolHeader<WorkspaceId>
         title={t('qrread.title')}

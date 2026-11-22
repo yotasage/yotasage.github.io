@@ -1,9 +1,10 @@
-import Head from 'next/head';
 import React from 'react';
 
+import PageHead from '../../components/PageHead';
 import ResistorTool from '../../components/Resistor/ResistorTool';
 import { BibEntry } from '../../lib/bibtex';
 import { loadReferences } from '../../lib/references';
+import { useI18n } from '../../lib/ui/i18n';
 
 // The sources the page cites, read from references.bib when the site is built.
 export async function getStaticProps() {
@@ -12,13 +13,14 @@ export async function getStaticProps() {
 
 // The tool sets the `html, body` background itself, since it follows the theme chosen on the page.
 export default function Resistor({ references }: { references: BibEntry[] }) {
+  const { t } = useI18n();
   return (
     <>
-      <Head>
-        <title>Resistor lookup</title>
-        <meta name="description" content="Type a resistance, an SMD marking or band colours: the nearest standard values in every E-series, the colour bands and markings, a drawing to save, combinations of resistors, values for a divider or a gain over tolerance and temperature, and the theory with its sources." />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+      <PageHead
+        title={t('resistor.pageTitle')}
+        description="Look up nearest E3–E192 resistor values, colour bands, and SMD markings, solve series/parallel combinations, and design dividers over temperature."
+        path="/resistor/main"
+      />
       <ResistorTool references={references} />
     </>
   );

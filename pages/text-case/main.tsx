@@ -1,6 +1,6 @@
-import Head from 'next/head';
 import React from 'react';
 
+import PageHead from '../../components/PageHead';
 import CaseConverter from '../../components/TextCase/CaseConverter';
 import TeachingCallout from '../../components/UI/TeachingCallout';
 import ToolHeader, { WorkspaceTab } from '../../components/UI/ToolHeader';
@@ -25,10 +25,11 @@ export default function TextCase() {
 
   return (
     <div className={styles.page} data-ds="v2">
-      <Head>
-        <title>{t('textcase.pageTitle')}</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+      <PageHead
+        title={t('textcase.pageTitle')}
+        description="Convert text live between Sentence case, Title Case, UPPER, lower, camelCase, PascalCase, snake_case, and kebab-case with word and character counts."
+        path="/text-case/main"
+      />
 
       <ToolHeader<WorkspaceId>
         title={t('textcase.title')}
