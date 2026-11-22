@@ -44,13 +44,12 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 
 ## Verifying changes
 
-- `npx tsc --noEmit`: type-check, under a second.
-- `npm run build`: full build, also renders every page. Run it before saying a change is done.
+- `npm run verify`: full verification pipeline — runs `npm run typecheck` (`tsc --noEmit` + `tsc -p tsconfig.strict.json --noEmit`), `npm run check:repo` (static-export bans, case-sensitive relative imports, 40 kB budget/ratcheted allowlist, licence coverage, route/PDF/OG consistency, EN/NB i18n parity), and `npm run build:export` (local static export into `out/`, automatically cleaning up temporary `next.config.mjs` and restoring `next-env.d.ts`). Run before saying a change is done.
+- `npm run typecheck`: runs both the repo-wide `tsconfig.json` (`strict: false`) and `tsconfig.strict.json` (`strict: true`, `noUnusedLocals: true`, covering shared UI, equation, simsetup, and foundation modules).
+- `npm run build`: plain Next.js build (non-export); rewrites import paths in `next-env.d.ts` (`next dev` writes them back), so restore it with `git checkout -- next-env.d.ts` rather than committing the change. Prefer `npm run build:export` or `npm run verify` to match GitHub Pages CI.
 - `npm run dev`: dev server on port 3020 bound to `0.0.0.0` (the owner tests on a phone). Not 3000: the Live Preview
   extension of VS Code serves on `127.0.0.1:3000`, which wins over `0.0.0.0:3000` for `localhost`.
-- There are no tests and no lint script. `tsconfig` has `strict: false`.
-- `npm run build` rewrites the import paths in `next-env.d.ts` (`next dev` writes them back). Restore it with
-  `git checkout -- next-env.d.ts` rather than committing the change.
+- There are no unit-test or lint scripts; tool verification lives in `scripts/harness/`.
 
 ## Layout and conventions
 
@@ -244,6 +243,7 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   the measured cost of the PCB viewer build.
 - [docs/ui-redesign/plan.md](docs/ui-redesign/plan.md): Modern High-Polish SaaS Design System v2 spec (`styles/design-system.css`, `lib/ui/{theme,mode,i18n,translations}.*`, `components/UI/{ToolHeader,PillTabs,TeachingCallout}.tsx`, self-hosted Inter & JetBrains Mono fonts) rolled out across every route on the site (`/`, `/licenses`, `/simsetup/main`, `/resistor/main`, `/smith-chart/main`, `/em-sim/main`, `/qrcode/main`, `/qr-reader/main`, `/base64-image/main`, `/text-case/main`, `/pdf/*`, `/3d-viewer/main`, `/pcb-viewer/main`).
 - [docs/sharing/plan.md](docs/sharing/plan.md) and [docs/sharing/channels.md](docs/sharing/channels.md): sharing-readiness plan (metadata, Open Graph previews, built-in demo files, home/footer polish) and pre-share / community-posting playbook.
+- [docs/hygiene/plan.md](docs/hygiene/plan.md) and [docs/hygiene/notes-H4.md](docs/hygiene/notes-H4.md): engineering hygiene and guardrails plan (`npm run verify`, `scripts/check-repo.mjs`, `scripts/build-export.mjs`, 40 kB file-size budget, `tsconfig.strict.json`, and TypeScript strictness audit baseline).
 - [docs/BACKLOG.md](docs/BACKLOG.md): index for wanted-but-unscheduled work across every tool (ids `BL<n>`, never reused; holds the next free ID and links to category files under `docs/backlog/`: `em-sim.md`, `em-sim-2.md`, `pcb-viewer.md`, `smith-chart.md`, `other.md`, and `done.md` for completed/merged history). Work left out of a step goes here.
 
 ## Commits

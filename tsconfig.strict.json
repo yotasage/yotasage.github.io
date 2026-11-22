@@ -1,0 +1,33 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "noUnusedLocals": true,
+    "noEmit": true,
+    "incremental": false
+  },
+  "include": [
+    "next-env.d.ts",
+    "lib/ui/**/*",
+    "components/UI/**/*",
+    "lib/equations/**/*",
+    "components/Equations/**/*",
+    "lib/simsetup/**/*",
+    "components/SimSetup/**/*",
+    "components/Home/**/*",
+    "components/icons/**/*",
+    "components/PageHead.tsx",
+    "components/SiteFooter.tsx",
+    "components/KatexSpan.tsx",
+    "components/Bibliography.tsx",
+    "lib/bibtex.ts",
+    "lib/complex.ts",
+    "lib/quantity.ts",
+    "lib/references.ts",
+    "lib/useReplayHighlight.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "out"
+  ]
+}

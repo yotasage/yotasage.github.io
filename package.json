@@ -5,7 +5,7 @@
     "dev": "next dev -H 0.0.0.0 -p 3020",
     "build": "next build",
     "start": "next start -H 0.0.0.0",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.strict.json --noEmit",
     "check:repo": "node scripts/check-repo.mjs",
     "build:export": "node scripts/build-export.mjs",
     "verify": "npm run typecheck && npm run check:repo && npm run build:export",

@@ -1,7 +1,6 @@
-import * as React from "react"
-import { SVGProps } from "react"
+import type { SVGProps } from "react"
 
-export default function HomeIcon(props) {
+export default function HomeIcon(props: SVGProps<SVGSVGElement>) {
 
     let width = props.width;
     let height = props.height;
@@ -28,7 +27,7 @@ export default function HomeIcon(props) {
 // SvgHomeIcon has been generated based on the home.svg using the following website:
 // https://react-svgr.com/playground/?typescript=true
 
-const SvgHomeIcon = (props) => (
+const SvgHomeIcon = (props: SVGProps<SVGSVGElement>) => (
     <svg
         xmlns="http://www.w3.org/2000/svg"
         width={props.width}

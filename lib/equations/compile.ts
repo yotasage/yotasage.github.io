@@ -242,6 +242,7 @@ export function bind(program: Program, binding: Binding): void {
     const v = binding[name];
     if (v === undefined) throw new Error(`no value for ${name}`);
     const o = program.slots.get(name);
+    if (o === undefined) throw new Error(`no slot for ${name}`);
     if (typeof v === 'number') { r[o] = v; r[o + 1] = 0; } else { r[o] = v[0]; r[o + 1] = v[1]; }
   }
 }

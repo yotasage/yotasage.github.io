@@ -45,7 +45,10 @@ export default class Bibliography {
   }
 
   citedEntries(): BibEntry[] {
-    return this.cited.map((key) => this.entries.get(key));
+    return this.cited.flatMap((key) => {
+      const entry = this.entries.get(key);
+      return entry ? [entry] : [];
+    });
   }
 }
 

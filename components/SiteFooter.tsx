@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import React from 'react';
 
 import { useI18n } from '../lib/ui/i18n';
 import styles from '../styles/Licenses.module.css';
