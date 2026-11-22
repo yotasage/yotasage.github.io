@@ -114,11 +114,13 @@ Status: ✅ done · 🔄 in progress · 📋 planned
 
 | Step | Scope | Status | Commit |
 | --- | --- | :-: | --- |
-| S1 | Shared `PageHead` metadata, canonical URLs, `robots.txt` and `sitemap.xml` | 📋 | — |
-| S2 | Static `1200×630` Open Graph preview images (`public/og/`) wired into every page | 📋 | — |
-| S3 | One-click built-in sample files for PCB viewer and 3D viewer (`public/samples/`) | 📋 | — |
-| S4 | Home page scannability, `SiteFooter` feedback link, and GitHub issue template | 📋 | — |
-| S5 | Visual `README.md` and `docs/sharing/channels.md` sharing playbook | 📋 | — |
+| S1 | Shared `PageHead` metadata, canonical URLs, `robots.txt` and `sitemap.xml` | ✅ | `e21c182` |
+| S2 | Static `1200×630` Open Graph preview images (`public/og/`) wired into every page | ✅ | `a300d18` |
+| S3 | One-click built-in sample files for PCB viewer and 3D viewer (`public/samples/`) | ✅ | `a82c0cc` |
+| S4 | Home page scannability, `SiteFooter` feedback link, and GitHub issue template | ✅ | `13b4b75` |
+| S5 | Visual `README.md` and `docs/sharing/channels.md` sharing playbook | ✅ | pending (S5, completed 2026-11-22) |
+
+*Notes:* The site now has 46 static routes (including 33 PDF sub-tools). S3 ran before S2 as recommended so the PCB and 3D viewer Open Graph screenshots could capture the built-in sample models directly.
 
 ---
 

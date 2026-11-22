@@ -8,6 +8,12 @@ ads and bad design.
 Every tool runs entirely in the browser. There is no server: the site is a static export hosted on GitHub Pages, and
 files given to a tool never leave the device.
 
+| | |
+| :-: | :-: |
+| [![PCB viewer](public/og/pcb-viewer.png)](https://yotasage.github.io/pcb-viewer/main)<br>[**PCB viewer**](https://yotasage.github.io/pcb-viewer/main) — Gerber, KiCad, Altium, PADS & EAGLE | [![EM simulation](public/og/em-sim.png)](https://yotasage.github.io/em-sim/main)<br>[**EM simulation**](https://yotasage.github.io/em-sim/main) — 2D trace solver, 3D vias & WebGPU FDTD |
+| [![Smith chart](public/og/smith-chart.png)](https://yotasage.github.io/smith-chart/main)<br>[**Smith chart**](https://yotasage.github.io/smith-chart/main) — Interactive matching, solver & TikZ export | [![Resistor lookup](public/og/resistor.png)](https://yotasage.github.io/resistor/main)<br>[**Resistor lookup**](https://yotasage.github.io/resistor/main) — E-series, SMD/colour codes, combinations & design |
+| [![3D viewer](public/og/3d-viewer.png)](https://yotasage.github.io/3d-viewer/main)<br>[**3D viewer**](https://yotasage.github.io/3d-viewer/main) — STEP, IGES, BREP & mesh formats | [![PDF tools](public/og/pdf-tools.png)](https://yotasage.github.io/pdf/main)<br>[**PDF tools**](https://yotasage.github.io/pdf/main) — 33 private client-side PDF utilities |
+
 ## Tools
 
 Every tool has a card on the main page ([pages/index.tsx](pages/index.tsx)).
@@ -17,7 +23,7 @@ Every tool has a card on the main page ([pages/index.tsx](pages/index.tsx)).
 | Simulation setup | [/simsetup/main](https://yotasage.github.io/simsetup/main) | Calculates sampling parameters for FFTs and simulations (f0, FS, Ncyc, Npts and what follows from them), with checks for coherent sampling. |
 | QR code generator | [/qrcode/main](https://yotasage.github.io/qrcode/main) | QR Code Model 1 and 2, Micro QR and rMQR with control over every parameter. Exports PNG, JPG, SVG and PDF. |
 | QR code reader | [/qr-reader/main](https://yotasage.github.io/qr-reader/main) | Reads QR Code, Micro QR and rMQR (and, when asked, Data Matrix, Aztec, PDF417, EAN, UPC, Code 128 and other barcodes) from the camera (pausing at the first code or adding each new one; camera choice, light and zoom where the phone has them), from images, screenshots and every page of a PDF (chosen, dropped or pasted), several codes per picture, also inverted, mirrored or turned, with each code outlined and numbered; a code that is found but too damaged is outlined and said so. Shows what a code holds: Wi-Fi networks (password hidden until shown), eSIM activation codes (SM-DP+ address and activation code to copy, and Apple's install link on an iPhone), links with warnings for look-alike addresses, user names before "@", plain http and link shorteners, contacts (vCard, MeCard, BIZCARD; saved as .vcf), calendar events (.ics), email, SMS, phone numbers, locations with map links, two-factor accounts with their live codes (otpauth and Google Authenticator's export), SEPA (EPC) and Swiss QR bill payments with IBAN and reference checks, crypto payment links, GS1 product data and Digital Links, Matter setup codes with the manual pairing code, boarding passes (IATA BCBP), Wi-Fi Easy Connect, JSON, data URLs, the generator's password-protected text (decrypted with the password), and images, ZIP, gzip or zlib data stored as bytes. Joins structured-append messages from any pictures. A raw view gives the text with control and invisible characters named, a hex dump and the bytes read in another character set; a symbol view redraws the modules with version, error correction, mask and the symbology identifier. Typed or pasted text is shown the same way. |
-| PDF tools | [/pdf/main](https://yotasage.github.io/pdf/main) | Merge, compress, images to PDF and remove metadata. Planned tools are in [docs/pdf-tools-plan.md](docs/pdf-tools-plan.md). |
+| PDF tools | [/pdf/main](https://yotasage.github.io/pdf/main) | 33 client-side PDF tools: reading, visual and text comparison, merging, splitting, organizing, rotating, removing and extracting pages, compressing, web optimization (linearizing), repairing, self-hosted OCR, editing, signing, filling forms, page numbers, watermarks, cropping, resizing, N-up, grayscale, dark mode/invert, redacting, protecting, unlocking, converting to/from images and PDF/A, flattening, and editing or removing metadata, with in-memory handoff between tools. Plan: [docs/pdf-tools-plan.md](docs/pdf-tools-plan.md). |
 | Base64 image converter | [/base64-image/main](https://yotasage.github.io/base64-image/main) | Image to Base64, a data URL or an HTML, CSS or Markdown snippet (optionally converted to PNG, JPEG or WebP first), and Base64 back to an image to view, download or copy. |
 | Text case converter | [/text-case/main](https://yotasage.github.io/text-case/main) | Sentence case, lower case, UPPER CASE, Capitalized Case, Title Case (Chicago or APA), alternating and inverse case, and names for code (camelCase, PascalCase, snake_case, CONSTANT_CASE, kebab-case, Train-Case, dot.case), with character, word and line counts. |
 | 3D viewer | [/3d-viewer/main](https://yotasage.github.io/3d-viewer/main) | Views STEP, IGES and BREP (with Open CASCADE), STL, 3MF, AMF, OBJ, PLY, OFF, VTK, glTF/GLB, FBX, Collada, KMZ, 3DS, USD/USDZ, VRML, XYZ, PCD, G-code and MagicaVoxel files. Several files can be opened together and moved apart to compare them. Section view, distance measuring, size, surface area and volume, a parts tree, and saving as STL, OBJ, PLY, GLB or PNG. |
@@ -34,7 +40,7 @@ of the packages the site uses.
 Needs Node 22 or newer (GitHub builds with Node 22).
 
 ```
-npm install      # also copies the pdf.js and 3D viewer files and generates the licence list
+npm install      # also copies pdf.js, 3D viewer, QR and font assets, generates the licence list and writes sitemap.xml
 npm run dev      # http://localhost:3020, also reachable from a phone on the same network
 npm run build    # run before pushing; GitHub runs the same build
 ```
@@ -68,7 +74,7 @@ files and publishes them to GitHub Pages. The workflow adds the `output: 'export
 | `lib/` | Logic without React, one folder per tool. `bibtex.ts` and `references.ts` read [references.bib](references.bib). |
 | `styles/` | CSS modules, one per tool. |
 | `scripts/` | Scripts that run on `npm install`. `scripts/harness/` holds test harnesses with packages of their own, which the site does not use. |
-| `public/` | Files served as they are (favicon, icons). `public/pdfjs/`, `public/3d/` and `public/qr/` are copied from `node_modules` on install. |
+| `public/` | Files served as they are (favicon, `robots.txt`, `public/og/` social previews, `public/samples/` built-in demo files for the PCB and 3D viewers). `public/pdfjs/`, `public/3d/`, `public/qr/`, `public/fonts/` and `public/sitemap.xml` are copied or generated on `npm install`. |
 | `docs/` | Notes and plans. |
 
 Sources cited on the site are in [references.bib](references.bib); the comment at the top of the file explains how

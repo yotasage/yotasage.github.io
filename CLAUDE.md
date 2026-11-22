@@ -35,9 +35,10 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   file name case exactly.
 - `postinstall` runs [scripts/copy-pdfjs-assets.mjs](scripts/copy-pdfjs-assets.mjs) (→ `public/pdfjs/`),
   [scripts/copy-3d-assets.mjs](scripts/copy-3d-assets.mjs) (→ `public/3d/`), [scripts/copy-qr-assets.mjs](scripts/copy-qr-assets.mjs) (→ `public/qr/`),
-  [scripts/copy-fonts.mjs](scripts/copy-fonts.mjs) (→ `public/fonts/`, self-hosted Inter Variable and JetBrains Mono Variable) and
+  [scripts/copy-fonts.mjs](scripts/copy-fonts.mjs) (→ `public/fonts/`, self-hosted Inter Variable and JetBrains Mono Variable),
   [scripts/collect-licenses.mjs](scripts/collect-licenses.mjs) (→ `lib/generated/third-party-licenses.json`, shown by
-  `/licenses`; the list is found by scanning imports in `pages/`, `components/`, `lib/`). All outputs are
+  `/licenses`; the list is found by scanning imports in `pages/`, `components/`, `lib/`), and
+  [scripts/generate-sitemap.mjs](scripts/generate-sitemap.mjs) (→ `public/sitemap.xml`, git-ignored). All outputs are
   git-ignored. After adding or removing a dependency, run `npm install` so the licence list follows.
 
 ## Verifying changes
@@ -55,9 +56,12 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 - Tool entry pages are `pages/<tool>/main.tsx`. **Every file under `pages/` becomes a route**, so helpers go in
   `lib/<tool>/` (framework-free logic) and `components/<Tool>/` (React). Styles are CSS modules in
   `styles/<Tool>.module.css`.
-- Each page sets its own `<Head>` (title, `/favicon.ico`), a home link with `components/icons/home.tsx` at the top,
-  and `html, body` styles in `<style jsx global>`. The dark background is `#2b2b2b`. `styles/globals.css` is not
-  imported anywhere. [pages/_app.tsx](pages/_app.tsx) adds `SiteFooter` (links to `/licenses` and the GitHub repo)
+- Each page renders [components/PageHead.tsx](components/PageHead.tsx) (shared `<title>`, meta description, canonical URL,
+  Open Graph and Twitter tags, `/favicon.ico`) referencing static `1200×630` social previews in `public/og/`, a home
+  link with `components/icons/home.tsx` at the top, and `html, body` styles in `<style jsx global>`. Synthetic built-in
+  demo files for the PCB and 3D viewers live in `public/samples/`. The dark background is `#2b2b2b`. `styles/globals.css`
+  is not imported anywhere. [pages/_app.tsx](pages/_app.tsx) adds [components/SiteFooter.tsx](components/SiteFooter.tsx)
+  (`Licenses`, `GitHub`, and `Report an issue`, paired with [.github/ISSUE_TEMPLATE/feedback.md](.github/ISSUE_TEMPLATE/feedback.md))
   to every page; on the main page only it is fixed to the bottom of the screen.
 - Layouts must work at phone width.
 - PDF tools: 11 client-side tools (Phase 1 & 2 complete: Merge, Split, Organize, Rotate, Remove/Extract pages, Compress,
@@ -232,6 +236,7 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 - [docs/agent-workflow.md](docs/agent-workflow.md): how to run large work with Claude agents cheaply and safely, with
   the measured cost of the PCB viewer build.
 - [docs/ui-redesign/plan.md](docs/ui-redesign/plan.md): Modern High-Polish SaaS Design System v2 spec (`styles/design-system.css`, `lib/ui/{theme,mode,i18n,translations}.*`, `components/UI/{ToolHeader,PillTabs,TeachingCallout}.tsx`, self-hosted Inter & JetBrains Mono fonts) rolled out across every route on the site (`/`, `/licenses`, `/simsetup/main`, `/resistor/main`, `/smith-chart/main`, `/em-sim/main`, `/qrcode/main`, `/qr-reader/main`, `/base64-image/main`, `/text-case/main`, `/pdf/*`, `/3d-viewer/main`, `/pcb-viewer/main`).
+- [docs/sharing/plan.md](docs/sharing/plan.md) and [docs/sharing/channels.md](docs/sharing/channels.md): sharing-readiness plan (metadata, Open Graph previews, built-in demo files, home/footer polish) and pre-share / community-posting playbook.
 - [docs/BACKLOG.md](docs/BACKLOG.md): wanted but not scheduled, for every tool (ids `BL<n>`, never reused). Work left out
   of a step goes here.
 
