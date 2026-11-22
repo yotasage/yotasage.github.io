@@ -17,10 +17,8 @@ const SIZE_EXCLUDED_FILES = new Set([
 ]);
 
 // Ratcheted byte caps (exact current size + 512 B headroom) for existing >= 40 KiB files.
-// Split high-churn / doc files in H3; dormant code/style files stay frozen here until next touched.
+// High-churn / doc files were split in H3; dormant code/style files stay frozen here until next touched.
 const KNOWN_LARGE = new Map([
-  ['lib/ui/translations.ts', 96478 + 512],
-  ['docs/BACKLOG.md', 91079 + 512],
   ['styles/PdfTools.module.css', 80524 + 512],
   ['lib/pcb/export/kicad.ts', 79872 + 512],
   ['lib/smith/solve.ts', 79085 + 512],
@@ -43,7 +41,6 @@ const KNOWN_LARGE = new Map([
   ['lib/pcb/altium/board.ts', 44678 + 512],
   ['pages/qrcode/main.tsx', 44574 + 512],
   ['styles/Smith.module.css', 43933 + 512],
-  ['docs/pdf-tools-plan.md', 43730 + 512],
   ['lib/pdf/pdfToSvg.ts', 43594 + 512],
   ['pages/pdf/extract-images.tsx', 41995 + 512],
 ]);
@@ -659,27 +656,50 @@ function compareLocalePair(label, enObj, nbObj, errors) {
 
 function checkTranslations() {
   const errors = [];
+  const barrelPath = join(root, 'lib', 'ui', 'translations.ts');
+  if (!existsSync(barrelPath)) {
+    return ['lib/ui/translations.ts is missing'];
+  }
+  const barrelText = readFileSync(barrelPath, 'utf8');
+
   const splitDir = join(root, 'lib', 'ui', 'i18n');
   if (existsSync(splitDir)) {
     const splitFiles = walkFiles('lib/ui/i18n', (_, name) => extname(name) === '.ts');
     if (splitFiles.length > 0) {
+      const globalKeys = new Map();
       for (const file of splitFiles) {
+        const rel = toPosix(file);
         const text = readFileSync(file, 'utf8');
         const enObj = extractExportedObjectKeys(text, 'en');
         const nbObj = extractExportedObjectKeys(text, 'nb');
-        compareLocalePair(toPosix(file), enObj, nbObj, errors);
+        compareLocalePair(rel, enObj, nbObj, errors);
+        if (enObj && enObj.keys.length === 0) {
+          errors.push(`${rel}: parsed 0 keys from en`);
+        }
+        if (enObj) {
+          for (const key of enObj.keys) {
+            const prev = globalKeys.get(key);
+            if (prev) {
+              errors.push(`${rel}: duplicate translation key '${key}' (already defined in ${prev})`);
+            } else {
+              globalKeys.set(key, rel);
+            }
+          }
+        }
+        const stem = rel.replace(/^lib\/ui\/i18n\//, '').replace(/\.ts$/, '');
+        if (!barrelText.includes(`'./i18n/${stem}'`) && !barrelText.includes(`"./i18n/${stem}"`)) {
+          errors.push(`lib/ui/translations.ts: missing import for './i18n/${stem}'`);
+        }
+      }
+      if (globalKeys.size === 0) {
+        errors.push('lib/ui/i18n/: parsed 0 translation keys across all modules');
       }
       return errors;
     }
   }
 
-  const singlePath = join(root, 'lib', 'ui', 'translations.ts');
-  if (!existsSync(singlePath)) {
-    return ['lib/ui/translations.ts is missing'];
-  }
-  const text = readFileSync(singlePath, 'utf8');
-  const enObj = extractExportedObjectKeys(text, 'en');
-  const nbObj = extractExportedObjectKeys(text, 'nb');
+  const enObj = extractExportedObjectKeys(barrelText, 'en');
+  const nbObj = extractExportedObjectKeys(barrelText, 'nb');
   compareLocalePair('lib/ui/translations.ts', enObj, nbObj, errors);
   if (enObj && enObj.keys.length === 0) {
     errors.push('lib/ui/translations.ts: parsed 0 keys from en');

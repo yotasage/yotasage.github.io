@@ -74,7 +74,8 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   run in a module Web Worker for PDF/A and vector-preserving max compression; the repo is licensed `AGPL-3.0-or-later`
   in [LICENSE.md](LICENSE.md) to satisfy Ghostscript's AGPL-3.0 terms), and Tesseract.js OCR with bundled
   `tessdata_fast` models (`public/ocr/`). Verify changes with `npm run check` and `npm run ui` in
-  `scripts/harness/pdf/` and update the status table/module map in [docs/pdf-tools-plan.md](docs/pdf-tools-plan.md).
+  `scripts/harness/pdf/` and update the status table/module map in [docs/pdf-tools-plan.md](docs/pdf-tools-plan.md) and
+  [docs/pdf-tools-modules.md](docs/pdf-tools-modules.md).
 - Citations: entries live in [references.bib](references.bib). Load them with `loadReferences()` from
   `lib/references.ts` **only in `getStaticProps`** (it uses `node:fs`), then cite with the `Bibliography` class in
   `components/Bibliography.tsx` (IEEE style, numbered by first citation). An unknown key stops the build.
@@ -212,12 +213,13 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   stays under about 200k tokens of context, heavy steps split into research, code and check, briefs that name the
   files to read and a verification bar, and a watchdog that resumes agents stopped by usage limits or lost connections.
 - **No file over 40 kB is read whole.** Docs are split into parts with an index before they reach 40 kB (as
-  `docs/pcb-viewer/`). For a large code file, list its outline first (`grep -n` for top-level declarations or methods),
-  then read only the range needed (`offset`/`limit`). Notable large files now include `lib/ui/translations.ts`,
-  `styles/PdfTools.module.css`, `lib/pcb/export/kicad.ts`, `lib/pcb/pads/board.ts`, `lib/pcb/kicad/board.ts`,
-  `lib/pcb/altium/board.ts` (splitting the PCB files is BL29), and `lib/smith/solve.ts` — see
-  [docs/hygiene/plan.md](docs/hygiene/plan.md) for the full ≥ 40 kB inventory and budget tracking. Never read
-  `package-lock.json` or the generated glyph data `lib/pcb/font/newstroke-glyphs.ts`.
+  `docs/pcb-viewer/` and `docs/backlog/`). For a large code file, list its outline first (`grep -n` for top-level declarations or methods),
+  then read only the range needed (`offset`/`limit`). Notable large files now include `styles/PdfTools.module.css`,
+  `lib/pcb/export/kicad.ts`, `lib/pcb/pads/board.ts`, `lib/pcb/kicad/board.ts`, `lib/pcb/altium/board.ts` (splitting the
+  PCB files is BL29), and `lib/smith/solve.ts` — see [docs/hygiene/plan.md](docs/hygiene/plan.md) for the full ≥ 40 kB
+  inventory and budget tracking (EN/NB translations are split under `lib/ui/i18n/` and re-exported by
+  `lib/ui/translations.ts`). Never read `package-lock.json` or the generated glyph data
+  `lib/pcb/font/newstroke-glyphs.ts`.
 - **Test files** are on the owner's machines; read them where they are and never copy them into the repo. PCB samples
   are listed in [docs/pcb-viewer/test-files.md](docs/pcb-viewer/test-files.md). Real 3D models for the
   3D viewer (JLC/EasyEDA component models, STEP and WRL) are in
@@ -228,7 +230,7 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 
 - [README.md](README.md): what the site is, tools, getting started, how to add a tool.
 - [docs/npm-and-node.md](docs/npm-and-node.md): npm, NVM for Windows and Next.js commands explained.
-- [docs/pdf-tools-plan.md](docs/pdf-tools-plan.md): PDF tools roadmap, libraries and licence notes.
+- [docs/pdf-tools-plan.md](docs/pdf-tools-plan.md) and [docs/pdf-tools-modules.md](docs/pdf-tools-modules.md): PDF tools roadmap, libraries, licence notes, module map, and Phase 2–4 execution history.
 - [docs/pcb-viewer/](docs/pcb-viewer/plan.md): PCB viewer plan, in parts: `plan.md` (index: goal, formats, step
   status, how a step is run and verified), `test-files.md`, `architecture.md`, `model.md`, and `s1.md`–`s9.md` (each
   step's scope and the notes it left for later steps).
@@ -242,8 +244,7 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   the measured cost of the PCB viewer build.
 - [docs/ui-redesign/plan.md](docs/ui-redesign/plan.md): Modern High-Polish SaaS Design System v2 spec (`styles/design-system.css`, `lib/ui/{theme,mode,i18n,translations}.*`, `components/UI/{ToolHeader,PillTabs,TeachingCallout}.tsx`, self-hosted Inter & JetBrains Mono fonts) rolled out across every route on the site (`/`, `/licenses`, `/simsetup/main`, `/resistor/main`, `/smith-chart/main`, `/em-sim/main`, `/qrcode/main`, `/qr-reader/main`, `/base64-image/main`, `/text-case/main`, `/pdf/*`, `/3d-viewer/main`, `/pcb-viewer/main`).
 - [docs/sharing/plan.md](docs/sharing/plan.md) and [docs/sharing/channels.md](docs/sharing/channels.md): sharing-readiness plan (metadata, Open Graph previews, built-in demo files, home/footer polish) and pre-share / community-posting playbook.
-- [docs/BACKLOG.md](docs/BACKLOG.md): wanted but not scheduled, for every tool (ids `BL<n>`, never reused). Work left out
-  of a step goes here.
+- [docs/BACKLOG.md](docs/BACKLOG.md): index for wanted-but-unscheduled work across every tool (ids `BL<n>`, never reused; holds the next free ID and links to category files under `docs/backlog/`: `em-sim.md`, `em-sim-2.md`, `pcb-viewer.md`, `smith-chart.md`, `other.md`, and `done.md` for completed/merged history). Work left out of a step goes here.
 
 ## Commits
 
