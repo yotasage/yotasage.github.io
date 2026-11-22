@@ -2,6 +2,7 @@ import Link from 'next/link';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import ToolIcon, { HomeIconName } from '../components/Home/ToolIcon';
+import HomeIcon from '../components/icons/home';
 import PageHead from '../components/PageHead';
 import PdfToolIcon from '../components/PdfTools/ToolIcon';
 import PillTabs, { PillTabItem } from '../components/UI/PillTabs';
@@ -192,17 +193,6 @@ const PROMISE_KEYS: readonly TranslationKey[] = [
   'home.promise.noAds',
   'home.promise.noSignup',
 ];
-
-function BrandEmblem() {
-  return (
-    <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polygon points="12 2.5 20.5 7.25 20.5 16.75 12 21.5 3.5 16.75 3.5 7.25" />
-      <path d="M12 2.5V12l8.5-4.75" opacity={0.55} />
-      <path d="M12 12L3.5 7.25" opacity={0.55} />
-      <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
 
 function CheckIcon() {
   return (
@@ -429,7 +419,7 @@ export default function Home() {
       <ToolHeader
         isHome
         title="yotasage"
-        brandIcon={<BrandEmblem />}
+        brandIcon={<HomeIcon width={16} height={18} color="currentColor" />}
         showExperienceMode={false}
       />
 
