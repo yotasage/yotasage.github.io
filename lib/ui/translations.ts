@@ -52,6 +52,7 @@ export const en = {
   // Footer
   'footer.licenses': 'Licenses',
   'footer.github': 'GitHub',
+  'footer.reportIssue': 'Report an issue',
   'footer.localOnly': '100% client-side — your files never leave your device',
 
   // Home namespace
@@ -850,6 +851,7 @@ export const nb: Record<TranslationKey, string> = {
   // Footer
   'footer.licenses': 'Lisenser',
   'footer.github': 'GitHub',
+  'footer.reportIssue': 'Rapporter et problem',
   'footer.localOnly': '100 % lokalt i nettleseren — filene dine forlater aldri enheten',
 
   // Home namespace

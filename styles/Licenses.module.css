@@ -185,6 +185,11 @@
 /* Site-wide footer (components/SiteFooter.tsx) */
 
 .footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
   padding: 1rem;
   border-top: 1px solid #444;
   background: #2B2B2B;
@@ -192,6 +197,7 @@
   font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans,
     Helvetica Neue, sans-serif;
   font-size: 0.85rem;
+  line-height: 1.5;
   text-align: center;
 }
 
@@ -205,6 +211,8 @@
 }
 
 .footer a {
+  display: inline-block;
+  padding: 0.15rem 0.1rem;
   color: #c8c8c8;
   text-decoration: underline;
 }
