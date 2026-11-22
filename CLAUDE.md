@@ -38,8 +38,10 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   [scripts/copy-3d-assets.mjs](scripts/copy-3d-assets.mjs) (→ `public/3d/`), [scripts/copy-qr-assets.mjs](scripts/copy-qr-assets.mjs) (→ `public/qr/`),
   [scripts/copy-fonts.mjs](scripts/copy-fonts.mjs) (→ `public/fonts/`, self-hosted Inter Variable and JetBrains Mono Variable),
   [scripts/collect-licenses.mjs](scripts/collect-licenses.mjs) (→ `lib/generated/third-party-licenses.json`, shown by
-  `/licenses`; the list is found by scanning imports in `pages/`, `components/`, `lib/`), and
-  [scripts/generate-sitemap.mjs](scripts/generate-sitemap.mjs) (→ `public/sitemap.xml`, git-ignored). All outputs are
+  `/licenses`; the list is found by scanning imports in `pages/`, `components/`, `lib/`),
+  [scripts/generate-sitemap.mjs](scripts/generate-sitemap.mjs) (→ `public/sitemap.xml`, git-ignored), and
+  [scripts/generate-page-meta.mjs](scripts/generate-page-meta.mjs) (→ `lib/generated/page-meta.json`, per-route
+  last-changed date, git commit, and SHA-256 content hash for [lib/citation.ts](lib/citation.ts)). All outputs are
   git-ignored. After adding or removing a dependency, run `npm install` so the licence list follows.
 
 ## Verifying changes
@@ -61,8 +63,10 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   link with `components/icons/home.tsx` at the top, and `html, body` styles in `<style jsx global>`. Synthetic built-in
   demo files for the PCB and 3D viewers live in `public/samples/`. The dark background is `#2b2b2b`.
   [pages/_app.tsx](pages/_app.tsx) adds [components/SiteFooter.tsx](components/SiteFooter.tsx)
-  (`Licenses`, `GitHub`, and `Report an issue`, paired with [.github/ISSUE_TEMPLATE/feedback.md](.github/ISSUE_TEMPLATE/feedback.md))
-  to every page; on the main page only it is fixed to the bottom of the screen.
+  (`Cite this tool`/`Cite this page` opening [components/UI/CiteModal.tsx](components/UI/CiteModal.tsx) via
+  [lib/citation.ts](lib/citation.ts), `Licenses`, `GitHub`, `Report an issue` paired with
+  [.github/ISSUE_TEMPLATE/feedback.md](.github/ISSUE_TEMPLATE/feedback.md), plus per-page last-changed date, commit
+  link, and short SHA-256 content hash) to every page; on the main page only it is fixed to the bottom of the screen.
 - Layouts must work at phone width.
 - PDF tools: 33 client-side tools / 34 routes under `pages/pdf/` (Phase 1–4 complete) registered in
   [lib/pdf/tools.ts](lib/pdf/tools.ts) (hub tiles on `/pdf/main`), using shared frames/grids/prompts in

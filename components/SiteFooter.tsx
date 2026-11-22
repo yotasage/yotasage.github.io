@@ -1,23 +1,109 @@
 import Link from 'next/link';
+import { useRouter } from 'next/router';
+import { useRef, useState } from 'react';
 
+import { getPageMeta, getProjectMeta } from '../lib/citation';
 import { useI18n } from '../lib/ui/i18n';
-import styles from '../styles/Licenses.module.css';
+import styles from '../styles/SiteFooter.module.css';
+import CiteModal from './UI/CiteModal';
 
 // Shown under every page by pages/_app.tsx. `fixed` keeps it at the bottom of the screen (the main page).
 export default function SiteFooter({ fixed = false }: { fixed?: boolean }) {
+  const { pathname } = useRouter();
   const { t } = useI18n();
+  const [citeOpen, setCiteOpen] = useState(false);
+  const citeBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  const page = getPageMeta(pathname);
+  const project = getProjectMeta();
+  const commitUrl = page.commit ? `${project.repository}/commit/${page.commit}` : '';
+
   return (
-    <footer className={fixed ? [styles.footer, styles.fixed].join(' ') : styles.footer}>
-      <Link href="/licenses">{t('footer.licenses')}</Link>
-      <span aria-hidden="true">·</span>
-      {/* A new tab, so the state of the tool on the page is not lost. */}
-      <a href="https://github.com/yotasage/yotasage.github.io" target="_blank" rel="noopener noreferrer">
-        {t('footer.github')}
-      </a>
-      <span aria-hidden="true">·</span>
-      <a href="https://github.com/yotasage/yotasage.github.io/issues" target="_blank" rel="noopener noreferrer">
-        {t('footer.reportIssue')}
-      </a>
-    </footer>
+    <>
+      <footer className={fixed ? `${styles.footer} ${styles.fixed}` : styles.footer}>
+        <div className={styles.inner}>
+          <div className={styles.linksGroup}>
+            <button
+              type="button"
+              ref={citeBtnRef}
+              className={styles.citeBtn}
+              onClick={() => setCiteOpen(true)}
+            >
+              <svg
+                className={styles.citeIcon}
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />
+                <path d="M8 7h6" />
+                <path d="M8 11h8" />
+              </svg>
+              <span>{page.kind === 'tool' ? t('footer.citeTool') : t('footer.citePage')}</span>
+            </button>
+            <span className={styles.dot} aria-hidden="true">·</span>
+            <Link href="/licenses">{t('footer.licenses')}</Link>
+            <span className={styles.dot} aria-hidden="true">·</span>
+            {/* A new tab, so the state of the tool on the page is not lost. */}
+            <a href="https://github.com/yotasage/yotasage.github.io" target="_blank" rel="noopener noreferrer">
+              {t('footer.github')}
+            </a>
+            <span className={styles.dot} aria-hidden="true">·</span>
+            <a href="https://github.com/yotasage/yotasage.github.io/issues" target="_blank" rel="noopener noreferrer">
+              {t('footer.reportIssue')}
+            </a>
+          </div>
+
+          <span className={styles.groupSep} aria-hidden="true">|</span>
+
+          <div className={styles.metaGroup}>
+            {page.lastChanged && (
+              <span>{t('footer.updated', { date: page.lastChanged })}</span>
+            )}
+            {commitUrl && (
+              <>
+                <span className={styles.dot} aria-hidden="true">·</span>
+                <a
+                  className={styles.monoLink}
+                  href={commitUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={t('footer.commitTitle', { hash: page.commit })}
+                >
+                  {page.commitShort}
+                </a>
+              </>
+            )}
+            {page.contentHash && (
+              <>
+                <span className={styles.dot} aria-hidden="true">·</span>
+                <button
+                  type="button"
+                  className={styles.hashBtn}
+                  onClick={() => setCiteOpen(true)}
+                  title={t('footer.hashTitle', { hash: page.contentHashFull })}
+                >
+                  sha256:{page.contentHash.slice(0, 8)}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </footer>
+
+      <CiteModal
+        open={citeOpen}
+        onClose={() => setCiteOpen(false)}
+        page={page}
+        project={project}
+        triggerRef={citeBtnRef}
+      />
+    </>
   );
 }

@@ -315,8 +315,8 @@ html[data-ds-page="v2"] #__next > footer {
   border-top: var(--ds-border-w) solid var(--ds-border);
   color: var(--ds-ink-3);
   font-family: var(--ds-font-ui);
-  font-size: 0.84rem;
-  padding: 0.9rem 1.25rem;
+  font-size: 0.82rem;
+  padding: 0.72rem 1.25rem;
 }
 
 html[data-ds-page="v2"] #__next > footer a {
@@ -349,6 +349,13 @@ html[data-ds-page="v2"][data-ds-theme="hc"] #__next > footer a {
 html[data-ds-page="v2"][data-ds-theme="hc"] #__next > footer a:hover,
 html[data-ds-page="v2"][data-ds-theme="hc"] #__next > footer a:focus-visible {
   color: #ffe600;
+}
+
+@media (max-width: 480px) {
+  html[data-ds-page="v2"] #__next > footer {
+    padding: 0.62rem 0.75rem;
+    font-size: 0.78rem;
+  }
 }
 
 /* --------------------------------------------------------------------------

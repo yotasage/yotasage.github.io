@@ -66,6 +66,17 @@ if (!existsSync(nextBin)) {
   process.exit(1);
 }
 
+const metaGen = spawnSync(process.execPath, [join(root, 'scripts', 'generate-page-meta.mjs')], {
+  cwd: root,
+  stdio: 'inherit',
+});
+if (metaGen.error || metaGen.status !== 0) {
+  console.error(
+    `build-export: failed to generate page metadata${metaGen.error ? `: ${metaGen.error.message}` : ''}.`,
+  );
+  process.exit(metaGen.status ?? 1);
+}
+
 const tempConfigPath = join(root, 'next.config.mjs');
 let createdConfig = false;
 let exitCode = 0;

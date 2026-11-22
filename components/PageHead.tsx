@@ -1,5 +1,7 @@
 import Head from 'next/head';
 
+import { getPageMeta, getProjectMeta } from '../lib/citation';
+
 export const SITE_ORIGIN = 'https://yotasage.github.io';
 
 export interface PageHeadProps {
@@ -27,6 +29,8 @@ export default function PageHead({
   const normalizedOgImage = ogImage.startsWith('/') ? ogImage : `/${ogImage}`;
   const ogImageUrl = `${SITE_ORIGIN}${normalizedOgImage}`;
   const imageAlt = ogAlt ?? fullTitle;
+  const pageMeta = getPageMeta(normalizedPath);
+  const projectMeta = getProjectMeta();
 
   return (
     <Head>
@@ -47,6 +51,12 @@ export default function PageHead({
       <meta key="twitter:title" name="twitter:title" content={fullTitle} />
       <meta key="twitter:description" name="twitter:description" content={description} />
       <meta key="twitter:image" name="twitter:image" content={ogImageUrl} />
+      <meta key="citation_title" name="citation_title" content={pageMeta.title} />
+      <meta key="citation_author" name="citation_author" content={projectMeta.author} />
+      {pageMeta.lastChanged && (
+        <meta key="citation_online_date" name="citation_online_date" content={pageMeta.lastChanged} />
+      )}
+      <meta key="citation_public_url" name="citation_public_url" content={canonicalUrl} />
       {themeColor && <meta key="theme-color" name="theme-color" content={themeColor} />}
       {noIndex && <meta key="robots" name="robots" content="noindex" />}
     </Head>

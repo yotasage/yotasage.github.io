@@ -676,7 +676,7 @@
 
 @media (max-width: 640px) {
   .main {
-    padding: 2rem 14px 7.25rem;
+    padding: 2rem 14px 8.25rem;
   }
 
   .hero {
@@ -710,7 +710,7 @@
 
 @media (max-width: 380px) {
   .main {
-    padding: 1.6rem 12px 7.5rem;
+    padding: 1.6rem 12px 9.25rem;
   }
 
   .promiseChip {

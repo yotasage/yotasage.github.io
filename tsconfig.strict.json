@@ -21,6 +21,7 @@
     "components/KatexSpan.tsx",
     "components/Bibliography.tsx",
     "lib/bibtex.ts",
+    "lib/citation.ts",
     "lib/complex.ts",
     "lib/quantity.ts",
     "lib/references.ts",

@@ -708,6 +708,96 @@ function checkTranslations() {
 }
 
 // ---------------------------------------------------------------------------
+// 7. Generated page metadata
+// ---------------------------------------------------------------------------
+function collectSitemapRoutes(dir, pagesRoot, list = []) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name.startsWith('_')) continue;
+    const absPath = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name === 'api') continue;
+      collectSitemapRoutes(absPath, pagesRoot, list);
+      continue;
+    }
+
+    const ext = extname(entry.name);
+    if (!PAGE_EXTENSIONS.has(ext)) continue;
+
+    const baseName = entry.name.slice(0, -ext.length);
+    if (baseName.startsWith('_') || baseName === '404' || baseName === '500') continue;
+
+    const rel = relative(pagesRoot, absPath).split(sep).join(posix.sep);
+    const withoutExt = rel.slice(0, -ext.length);
+    if (withoutExt === 'index') list.push('/');
+    else if (withoutExt.endsWith('/index')) list.push(`/${withoutExt.slice(0, -'/index'.length)}`);
+    else list.push(`/${withoutExt}`);
+  }
+  return list;
+}
+
+function checkPageMeta() {
+  const errors = [];
+  const metaPath = join(root, 'lib', 'generated', 'page-meta.json');
+  if (!existsSync(metaPath)) {
+    return ['lib/generated/page-meta.json is missing (run npm run generate:meta or npm install)'];
+  }
+
+  let data;
+  try {
+    data = JSON.parse(readFileSync(metaPath, 'utf8'));
+  } catch (err) {
+    return [`lib/generated/page-meta.json is invalid JSON: ${err.message}`];
+  }
+
+  if (!data || typeof data.project !== 'object' || data.project === null) {
+    errors.push('lib/generated/page-meta.json is missing a project object');
+  } else {
+    for (const field of ['name', 'title', 'author', 'origin', 'repository', 'license', 'commitShort', 'lastChanged', 'contentHash']) {
+      if (typeof data.project[field] !== 'string' || !data.project[field].trim()) {
+        errors.push(`lib/generated/page-meta.json: project.${field} is missing or empty`);
+      }
+    }
+  }
+
+  if (!data || typeof data.routes !== 'object' || data.routes === null || Array.isArray(data.routes)) {
+    errors.push('lib/generated/page-meta.json is missing a routes object');
+    return errors;
+  }
+
+  const pagesDir = join(root, 'pages');
+  const expectedRoutes = collectSitemapRoutes(pagesDir, pagesDir).sort();
+  const expectedSet = new Set(expectedRoutes);
+
+  for (const route of expectedRoutes) {
+    const entry = data.routes[route];
+    if (!entry) {
+      errors.push(`route '${route}' is missing from lib/generated/page-meta.json (run npm run generate:meta)`);
+      continue;
+    }
+    if (typeof entry.title !== 'string' || !entry.title.trim()) {
+      errors.push(`lib/generated/page-meta.json: route '${route}' has empty title`);
+    }
+    if (typeof entry.lastChanged !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(entry.lastChanged)) {
+      errors.push(`lib/generated/page-meta.json: route '${route}' has invalid lastChanged '${entry.lastChanged}'`);
+    }
+    if (typeof entry.contentHash !== 'string' || !/^[0-9a-f]{12}$/.test(entry.contentHash)) {
+      errors.push(`lib/generated/page-meta.json: route '${route}' has invalid contentHash '${entry.contentHash}'`);
+    }
+    if (typeof entry.fileCount !== 'number' || entry.fileCount < 1) {
+      errors.push(`lib/generated/page-meta.json: route '${route}' has invalid fileCount '${entry.fileCount}'`);
+    }
+  }
+
+  for (const route of Object.keys(data.routes).sort()) {
+    if (!expectedSet.has(route)) {
+      errors.push(`stale route '${route}' in lib/generated/page-meta.json (run npm run generate:meta)`);
+    }
+  }
+
+  return errors;
+}
+
+// ---------------------------------------------------------------------------
 // Runner
 // ---------------------------------------------------------------------------
 const checks = [
@@ -717,6 +807,7 @@ const checks = [
   ['Generated-licence freshness', checkLicenses],
   ['Routes, tool cards, PDF registry & PageHead/OG', checkRoutesAndMeta],
   ['EN/NB translation parity', checkTranslations],
+  ['Generated page metadata', checkPageMeta],
 ];
 
 let totalErrors = 0;

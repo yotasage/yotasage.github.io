@@ -1,0 +1,715 @@
+/* ==========================================================================
+   SiteFooter & CiteModal — Design System v2
+   Uses --ds-* tokens across Light, Dark, and High Contrast (AAA).
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Footer Bar
+   -------------------------------------------------------------------------- */
+
+.footer {
+  width: 100%;
+  padding: 0.72rem 1.25rem;
+  border-top: var(--ds-border-w, 1px) solid var(--ds-border, #444);
+  background: var(--ds-header-bg, #2b2b2b);
+  color: var(--ds-ink-3, #9a9a9a);
+  font-family: var(--ds-font-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  box-sizing: border-box;
+}
+
+/* Keeps the fixed home footer above home tool-card links (z-index 1). */
+.fixed {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+}
+
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+}
+
+.linksGroup,
+.metaGroup {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.25rem 0.45rem;
+  min-width: 0;
+}
+
+.metaGroup {
+  font-size: 0.78rem;
+  color: var(--ds-ink-3, #9a9a9a);
+}
+
+.dot {
+  opacity: 0.55;
+  user-select: none;
+}
+
+.groupSep {
+  opacity: 0.35;
+  user-select: none;
+}
+
+.citeBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.36rem;
+  padding: 0.24rem 0.62rem;
+  border-radius: var(--ds-radius-pill, 999px);
+  border: var(--ds-border-w, 1px) solid var(--ds-accent-border, rgba(37, 99, 235, 0.32));
+  background: var(--ds-accent-soft, rgba(37, 99, 235, 0.12));
+  color: var(--ds-accent, #60a5fa);
+  font-family: inherit;
+  font-size: 0.79rem;
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
+}
+
+.citeBtn:hover {
+  background: var(--ds-accent, #2563eb);
+  border-color: var(--ds-accent, #2563eb);
+  color: var(--ds-accent-ink, #ffffff);
+}
+
+.citeBtn:active {
+  transform: scale(0.98);
+}
+
+.citeIcon {
+  flex-shrink: 0;
+}
+
+.monoLink {
+  font-family: var(--ds-font-mono, ui-monospace, Consolas, monospace);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.hashBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.42rem;
+  border-radius: 6px;
+  border: var(--ds-border-w, 1px) solid var(--ds-border, rgba(255, 255, 255, 0.14));
+  background: var(--ds-well, rgba(255, 255, 255, 0.06));
+  color: var(--ds-ink-2, #c8c8c8);
+  font-family: var(--ds-font-mono, ui-monospace, Consolas, monospace);
+  font-size: 0.73rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+  cursor: pointer;
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+
+.hashBtn:hover {
+  background: var(--ds-well-hover, rgba(255, 255, 255, 0.12));
+  border-color: var(--ds-border-strong, rgba(255, 255, 255, 0.28));
+  color: var(--ds-ink, #ffffff);
+}
+
+:global(html[data-ds-theme="hc"]) .citeBtn {
+  background: #000000;
+  border-color: #ffe600;
+  color: #ffe600;
+}
+
+:global(html[data-ds-theme="hc"]) .citeBtn:hover,
+:global(html[data-ds-theme="hc"]) .citeBtn:focus-visible {
+  background: #ffe600;
+  color: #000000;
+}
+
+:global(html[data-ds-theme="hc"]) .hashBtn {
+  background: #000000;
+  border-color: #ffffff;
+  color: #ffffff;
+}
+
+:global(html[data-ds-theme="hc"]) .hashBtn:hover,
+:global(html[data-ds-theme="hc"]) .hashBtn:focus-visible {
+  border-color: #ffe600;
+  color: #ffe600;
+}
+
+@media (max-width: 780px) {
+  .inner {
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .groupSep {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .footer {
+    padding: 0.62rem 0.75rem;
+    font-size: 0.78rem;
+  }
+
+  .metaGroup {
+    font-size: 0.74rem;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   CiteModal (<dialog>)
+   -------------------------------------------------------------------------- */
+
+dialog.dialog {
+  width: min(720px, calc(100vw - 24px));
+  max-width: 720px;
+  max-height: calc(100dvh - 32px);
+  min-height: 0;
+  margin: auto;
+  padding: 0;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-surface-elevated);
+  background-image: none;
+  color: var(--ds-ink);
+  box-shadow: var(--ds-shadow-elev);
+  overflow: hidden;
+  font-family: var(--ds-font-ui);
+}
+
+dialog.dialog::backdrop {
+  background: rgba(9, 9, 11, 0.58);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+:global(html[data-ds-theme="hc"]) dialog.dialog {
+  background: #000000;
+  border: 2px solid #ffffff;
+  box-shadow: none;
+}
+
+:global(html[data-ds-theme="hc"]) dialog.dialog::backdrop {
+  background: rgba(0, 0, 0, 0.86);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.modalSurface {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 32px);
+  min-width: 0;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 14px;
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-surface-solid);
+  flex-shrink: 0;
+}
+
+.modalHeadingGroup {
+  min-width: 0;
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: 1.12rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ds-ink);
+  line-height: 1.25;
+}
+
+.modalSubtitle {
+  margin: 4px 0 0;
+  font-size: 0.84rem;
+  color: var(--ds-ink-2);
+  line-height: 1.45;
+}
+
+.closeBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: var(--ds-radius-pill);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  color: var(--ds-ink-2);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+
+.closeBtn:hover {
+  background: var(--ds-well-hover);
+  border-color: var(--ds-border-strong);
+  color: var(--ds-ink);
+}
+
+.modalBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 20px 20px;
+  overflow-y: auto;
+  min-width: 0;
+}
+
+/* Metadata Details Card */
+
+.metaCard {
+  padding: 12px 14px;
+  border-radius: var(--ds-radius-ctrl);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+}
+
+.metaCardTitle {
+  margin: 0 0 8px;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+  color: var(--ds-ink-3);
+}
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.metaRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.metaLabel {
+  font-size: 0.72rem;
+  font-weight: 550;
+  color: var(--ds-ink-3);
+  line-height: 1.25;
+}
+
+.metaValue {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--ds-ink);
+  min-width: 0;
+}
+
+.metaInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.metaBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: var(--ds-radius-pill);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink-2);
+  font-size: 0.71rem;
+  font-weight: 550;
+  white-space: nowrap;
+}
+
+.metaCode {
+  font-family: var(--ds-font-mono);
+  font-size: 0.76rem;
+  color: var(--ds-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metaLink,
+.metaMonoLink,
+.metaUrlLink {
+  color: var(--ds-accent);
+  text-decoration: none;
+  font-weight: 550;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metaMonoLink,
+.metaUrlLink {
+  font-family: var(--ds-font-mono);
+  font-size: 0.76rem;
+}
+
+.metaLink:hover,
+.metaMonoLink:hover,
+.metaUrlLink:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.miniCopyBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 6px;
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink-2);
+  font-family: var(--ds-font-ui);
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+
+.miniCopyBtn:hover {
+  background: var(--ds-well-hover);
+  border-color: var(--ds-border-strong);
+  color: var(--ds-ink);
+}
+
+/* Scope & Options Row */
+
+.controlsRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+}
+
+.optionsGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+
+.checkboxLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--ds-ink-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkboxLabel input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--ds-accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Format Tabs */
+
+.formatBar {
+  display: flex;
+  overflow-x: auto;
+  max-width: 100%;
+  padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Code Output & Actions */
+
+.outputPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.codeBlock {
+  margin: 0;
+  padding: 13px 14px;
+  max-height: 240px;
+  overflow: auto;
+  border-radius: var(--ds-radius-ctrl);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.78rem;
+  line-height: 1.52;
+  white-space: pre;
+  tab-size: 2;
+  user-select: all;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ds-ink-2);
+  line-height: 1.48;
+}
+
+.actionBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.primaryBtn,
+.secondaryBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 15px;
+  border-radius: var(--ds-radius-pill);
+  font-family: var(--ds-font-ui);
+  font-size: 0.83rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease, opacity 0.14s ease, transform 0.12s ease;
+}
+
+.primaryBtn {
+  border: var(--ds-border-w) solid var(--ds-accent);
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+}
+
+.primaryBtn:hover {
+  opacity: 0.92;
+}
+
+.primaryBtn:active,
+.secondaryBtn:active {
+  transform: scale(0.98);
+}
+
+.secondaryBtn {
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+}
+
+.secondaryBtn:hover {
+  background: var(--ds-well);
+  border-color: var(--ds-accent-border);
+}
+
+.downloadShort {
+  display: none;
+}
+
+/* Plain Text Style Cards */
+
+.plainList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.plainCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 11px 13px;
+  border-radius: var(--ds-radius-ctrl);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+}
+
+.plainCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.styleBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--ds-radius-pill);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  background: var(--ds-accent-soft);
+  color: var(--ds-accent);
+  font-size: 0.72rem;
+  font-weight: 680;
+  letter-spacing: 0.03em;
+}
+
+.plainCopyBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: var(--ds-radius-pill);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-ui);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+
+.plainCopyBtn:hover {
+  background: var(--ds-well-hover);
+  border-color: var(--ds-accent-border);
+}
+
+.plainText {
+  margin: 0;
+  font-size: 0.83rem;
+  line-height: 1.55;
+  color: var(--ds-ink);
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.inTextHint {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--ds-ink-2);
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+/* High Contrast AAA Refinements */
+
+:global(html[data-ds-theme="hc"]) .metaCardTitle,
+:global(html[data-ds-theme="hc"]) .metaLabel,
+:global(html[data-ds-theme="hc"]) .checkboxLabel,
+:global(html[data-ds-theme="hc"]) .hint,
+:global(html[data-ds-theme="hc"]) .inTextHint {
+  color: var(--ds-ink-2);
+}
+
+:global(html[data-ds-theme="hc"]) .miniCopyBtn,
+:global(html[data-ds-theme="hc"]) .plainCopyBtn,
+:global(html[data-ds-theme="hc"]) .secondaryBtn {
+  background: #000000;
+  border-color: #ffffff;
+  color: #ffffff;
+}
+
+:global(html[data-ds-theme="hc"]) .miniCopyBtn:hover,
+:global(html[data-ds-theme="hc"]) .plainCopyBtn:hover,
+:global(html[data-ds-theme="hc"]) .secondaryBtn:hover {
+  border-color: #ffe600;
+  color: #ffe600;
+}
+
+/* Responsive Breakpoints (Down to 320px) */
+
+@media (max-width: 600px) {
+  dialog.dialog {
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+  }
+
+  .modalSurface {
+    max-height: calc(100dvh - 16px);
+  }
+
+  .modalHeader {
+    padding: 14px 14px 12px;
+  }
+
+  .modalBody {
+    padding: 12px 14px 16px;
+    gap: 12px;
+  }
+
+  .metaGrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .codeBlock {
+    max-height: 200px;
+    font-size: 0.74rem;
+    padding: 10px 12px;
+  }
+}
+
+@media (max-width: 390px) {
+  .downloadLong {
+    display: none;
+  }
+
+  .downloadShort {
+    display: inline;
+  }
+
+  .primaryBtn,
+  .secondaryBtn {
+    padding: 0 12px;
+    font-size: 0.8rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .citeBtn,
+  .hashBtn,
+  .closeBtn,
+  .miniCopyBtn,
+  .primaryBtn,
+  .secondaryBtn,
+  .plainCopyBtn {
+    transition: none;
+  }
+
+  .citeBtn:active,
+  .primaryBtn:active,
+  .secondaryBtn:active {
+    transform: none;
+  }
+}

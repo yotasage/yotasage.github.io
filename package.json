@@ -7,9 +7,10 @@
     "start": "next start -H 0.0.0.0",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.strict.json --noEmit",
     "check:repo": "node scripts/check-repo.mjs",
+    "generate:meta": "node scripts/generate-page-meta.mjs",
     "build:export": "node scripts/build-export.mjs",
     "verify": "npm run typecheck && npm run check:repo && npm run build:export",
-    "postinstall": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-pdf-wasm-assets.mjs && node scripts/copy-3d-assets.mjs && node scripts/copy-qr-assets.mjs && node scripts/copy-fonts.mjs && node scripts/collect-licenses.mjs && node scripts/generate-sitemap.mjs"
+    "postinstall": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-pdf-wasm-assets.mjs && node scripts/copy-3d-assets.mjs && node scripts/copy-qr-assets.mjs && node scripts/copy-fonts.mjs && node scripts/collect-licenses.mjs && node scripts/generate-sitemap.mjs && node scripts/generate-page-meta.mjs"
   },
   "dependencies": {
     "@cantoo/pdf-lib": "^2.11.1",
