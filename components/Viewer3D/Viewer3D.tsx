@@ -40,8 +40,28 @@ export interface Viewer3DProps {
 
 export default function Viewer3D({ onOpenGuide }: Viewer3DProps) {
   const [files, setFiles] = React.useState<File[] | null>(null);
+  const [loadingExample, setLoadingExample] = React.useState(false);
+  const [exampleError, setExampleError] = React.useState<string | null>(null);
   const { t } = useI18n();
   const { mode, setMode } = useExperienceMode();
+
+  const handleLoadExample = React.useCallback(async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    if (loadingExample) return;
+    setLoadingExample(true);
+    setExampleError(null);
+    try {
+      const res = await fetch('/samples/example-part.stl');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const buf = await res.arrayBuffer();
+      const file = new File([buf], 'example-part.stl', { type: 'model/stl' });
+      setFiles([file]);
+    } catch {
+      setExampleError(t('viewer3d.drop.exampleError'));
+    } finally {
+      setLoadingExample(false);
+    }
+  }, [loadingExample, t]);
 
   if (files) return <Workspace files={files} onOpen={setFiles} />;
 
@@ -70,9 +90,25 @@ export default function Viewer3D({ onOpenGuide }: Viewer3DProps) {
         </div>
         <h2>{t('viewer3d.drop.title')}</h2>
         <p>{t('viewer3d.drop.desc')}</p>
-        <FilePickerButton accept={ACCEPT} onFiles={setFiles} className={styles.heroButton}>
-          {t('viewer3d.drop.selectBtn')}
-        </FilePickerButton>
+        <div className={styles.heroButtons}>
+          <FilePickerButton accept={ACCEPT} onFiles={setFiles} className={styles.heroButton}>
+            {t('viewer3d.drop.selectBtn')}
+          </FilePickerButton>
+          <button
+            type="button"
+            className={styles.heroButtonSecondary}
+            onClick={handleLoadExample}
+            disabled={loadingExample}
+            aria-busy={loadingExample || undefined}
+          >
+            {loadingExample ? t('viewer3d.drop.loadingExample') : t('viewer3d.drop.tryExample')}
+          </button>
+        </div>
+        {exampleError && (
+          <p className={styles.exampleError} role="alert">
+            {exampleError}
+          </p>
+        )}
         <span className={styles.hint}>{t('viewer3d.drop.hint')}</span>
 
         <div className={styles.formatBar}>

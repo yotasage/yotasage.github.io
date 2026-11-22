@@ -220,13 +220,29 @@
   transition: border-color 0.14s ease, background-color 0.14s ease, transform 0.14s ease;
 }
 
-.heroButtonSecondary:hover,
-.heroButtonSecondary:focus-visible {
+.heroButtonSecondary:hover:not(:disabled),
+.heroButtonSecondary:focus-visible:not(:disabled) {
   border-color: var(--ds-accent);
   background: var(--ds-accent-soft);
   transform: translateY(-1px);
   outline: none;
   box-shadow: var(--ds-focus-ring);
+}
+
+.heroButtonSecondary:disabled {
+  opacity: 0.65;
+  cursor: wait;
+  transform: none;
+}
+
+.exampleError {
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-bad-soft);
+  color: var(--ds-bad);
+  font-size: 0.86rem;
+  font-weight: 500;
 }
 
 .hint {

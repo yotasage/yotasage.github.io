@@ -717,6 +717,9 @@ export const en = {
   'viewer3d.drop.desc':
     'Turn, zoom, cut cross-sections, measure surface distances, check bounding size and volume, and export as STL, OBJ, PLY, GLB, or PNG.',
   'viewer3d.drop.selectBtn': 'Select 3D file',
+  'viewer3d.drop.tryExample': 'Try an example model',
+  'viewer3d.drop.loadingExample': 'Loading example…',
+  'viewer3d.drop.exampleError': 'Could not load the example model. Please try again.',
   'viewer3d.drop.hint':
     'or drop files here. For OBJ and glTF models with separate materials, buffers, or textures, select or drop all files together.',
   'viewer3d.drop.localHint': 'Your files are read locally in this browser and are never uploaded.',
@@ -761,6 +764,9 @@ export const en = {
     'Select Gerber and drill files, a project folder, a ZIP archive, or a KiCad, Altium, PADS, or EAGLE board. Inspect layers or realistic mask & finish from top or bottom, highlight nets and parts, measure, and export.',
   'pcb.drop.selectFiles': 'Select files',
   'pcb.drop.selectFolder': 'Select folder',
+  'pcb.drop.tryExample': 'Try an example board',
+  'pcb.drop.loadingExample': 'Loading example…',
+  'pcb.drop.exampleError': 'Could not load the example board. Please try again.',
   'pcb.drop.hint':
     'or drop files, ZIP archives, or a whole project folder here. Other project files can come along — the file list shows how each file was classified.',
   'pcb.drop.localHint': 'Your files are read locally in this browser and are never uploaded.',
@@ -1509,6 +1515,9 @@ export const nb: Record<TranslationKey, string> = {
   'viewer3d.drop.desc':
     'Roter, zoom, skjær tverrsnitt, mål overflateavstander, sjekk mål og volum, og eksporter som STL, OBJ, PLY, GLB eller PNG.',
   'viewer3d.drop.selectBtn': 'Velg 3D-fil',
+  'viewer3d.drop.tryExample': 'Prøv en eksempelmodell',
+  'viewer3d.drop.loadingExample': 'Laster eksempel…',
+  'viewer3d.drop.exampleError': 'Kunne ikke laste eksempelmodellen. Prøv igjen.',
   'viewer3d.drop.hint':
     'eller slipp filer her. For OBJ- og glTF-modeller med egne material-, buffer- eller teksturfiler, velg eller slipp alle filene sammen.',
   'viewer3d.drop.localHint': 'Filene dine leses lokalt i denne nettleseren og lastes aldri opp.',
@@ -1553,6 +1562,9 @@ export const nb: Record<TranslationKey, string> = {
     'Velg Gerber- og borefiler, en prosjektmappe, et ZIP-arkiv eller et KiCad-, Altium-, PADS- eller EAGLE-kort. Se hvert lag eller realistisk kort fra topp eller bunn, uthev nett og deler, mål og eksporter.',
   'pcb.drop.selectFiles': 'Velg filer',
   'pcb.drop.selectFolder': 'Velg mappe',
+  'pcb.drop.tryExample': 'Prøv et eksempelkort',
+  'pcb.drop.loadingExample': 'Laster eksempel…',
+  'pcb.drop.exampleError': 'Kunne ikke laste eksempelkortet. Prøv igjen.',
   'pcb.drop.hint':
     'eller slipp filer, ZIP-arkiver eller en hel prosjektmappe her. Andre prosjektfiler kan følge med — fillisten viser hvordan hver fil ble klassifisert.',
   'pcb.drop.localHint': 'Filene dine leses lokalt i denne nettleseren og lastes aldri opp.',
