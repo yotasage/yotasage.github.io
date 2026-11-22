@@ -10,7 +10,9 @@ const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem('site.them
 export default function Document() {
   return (
     <Html lang="en">
-      <Head />
+      <Head>
+        <meta name="google-site-verification" content="nXa_1-KjP-Lv3u15HNRAq-INkpkJOxCJKNuojbb-qMA" />
+      </Head>
       <body>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <Main />
