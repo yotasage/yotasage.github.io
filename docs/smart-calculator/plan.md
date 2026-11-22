@@ -92,7 +92,7 @@ A fast, ad-free, client-side engineering calculator at `/calculator/main` design
 | Step | Scope | Status |
 | --- | --- | --- |
 | C0 | Branch `smart-calculator` + plan (`docs/smart-calculator/plan.md`) | Done |
-| C1 | Engine: `units.ts`, `constants.ts`, `value.ts` + unit harness (`check-units.mjs`) | Pending |
+| C1 | Engine: `units.ts`, `constants.ts`, `value.ts` + unit harness (`check-units.mjs`) | Done |
 | C2 | Engine: `ast.ts`, `parse.ts`, `calculus.ts`, `eval.ts` + eval/calculus harness (`check-eval.mjs`) | Pending |
 | C3 | Engine: `invert.ts`, `layouts.ts`, `storage.ts` + layouts/JSON harness (`check-layouts.mjs`) | Pending |
 | C4 | Page: `/calculator/main`, 3 workflow tabs (`HybridView`, `NotebookView`, `QuickBarView`, `ResultDisplay`), i18n, Home card & icon | Pending |

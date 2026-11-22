@@ -11,6 +11,7 @@
     "lib/ui/**/*",
     "components/UI/**/*",
     "lib/equations/**/*",
+    "lib/calc/**/*",
     "components/Equations/**/*",
     "lib/simsetup/**/*",
     "components/SimSetup/**/*",

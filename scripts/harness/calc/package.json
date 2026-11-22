@@ -1,0 +1,10 @@
+{
+  "name": "calc-harness",
+  "private": true,
+  "description": "Independent engine and UI checks for the Smart Calculator (/calculator/main). Not part of the site.",
+  "type": "module",
+  "scripts": {
+    "check:units": "../resistor/node_modules/.bin/tsx check-units.mjs",
+    "check": "npm run check:units"
+  }
+}
