@@ -273,6 +273,8 @@ export default function SimSetup({ references }: { references: BibEntry[] }) {
         title={t('simsetup.pageTitle')}
         description={t('simsetup.subtitle')}
         path="/simsetup/main"
+        ogImage="/og/home.png"
+        ogAlt="yotasage.github.io browser engineering and document tools overview"
       />
 
       <ToolHeader<WorkspaceId>

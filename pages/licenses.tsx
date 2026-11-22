@@ -65,6 +65,8 @@ export default function Licenses() {
         title={t('licenses.pageTitle')}
         description="Open-source licenses and third-party notices for the libraries, WebAssembly engines, and self-hosted fonts used on yotasage.github.io."
         path="/licenses"
+        ogImage="/og/home.png"
+        ogAlt="yotasage.github.io browser engineering and document tools overview"
       />
 
       <ToolHeader title={t('licenses.title')} showExperienceMode={false} />

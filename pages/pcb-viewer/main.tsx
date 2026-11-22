@@ -25,6 +25,8 @@ export default function PcbViewerPage() {
         title={t('pcb.pageTitle')}
         description="Inspect Gerber, Excellon, KiCad, Altium, PADS, and EAGLE PCB files locally in layer or realistic view, measure nets, export drawings, or convert to KiCad."
         path="/pcb-viewer/main"
+        ogImage="/og/pcb-viewer.png"
+        ogAlt="Realistic top view of a four-layer green ENIG printed circuit board in the PCB viewer"
       />
 
       <ToolHeader<WorkspaceId>

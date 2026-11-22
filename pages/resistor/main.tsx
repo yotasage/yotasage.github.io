@@ -20,6 +20,8 @@ export default function Resistor({ references }: { references: BibEntry[] }) {
         title={t('resistor.pageTitle')}
         description="Look up nearest E3–E192 resistor values, colour bands, and SMD markings, solve series/parallel combinations, and design dividers over temperature."
         path="/resistor/main"
+        ogImage="/og/resistor.png"
+        ogAlt="Resistor lookup showing axial colour-code and SMD resistor drawings with nearest E-series values"
       />
       <ResistorTool references={references} />
     </>

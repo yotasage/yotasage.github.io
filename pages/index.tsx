@@ -422,6 +422,8 @@ export default function Home() {
         title={t('home.pageTitle')}
         description={t('home.metaDescription')}
         path="/"
+        ogImage="/og/home.png"
+        ogAlt="yotasage.github.io browser engineering and document tools overview"
       />
 
       <ToolHeader

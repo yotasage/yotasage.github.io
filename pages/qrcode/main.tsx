@@ -393,6 +393,8 @@ export default function QrCodeGenerator() {
         title={t('qrgen.pageTitle')}
         description="Create QR Code Model 2, Model 1, Micro QR, and rMQR symbols with control over version, error correction, mask, encoding, and PNG, SVG, JPG, or PDF export."
         path="/qrcode/main"
+        ogImage="/og/qr-tools.png"
+        ogAlt="QR code generator displaying a scannable QR symbol with encoding and export controls"
       />
 
       <ToolHeader<WorkspaceId>

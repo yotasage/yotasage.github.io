@@ -246,6 +246,8 @@ export default function QrReader() {
         title={t('qrread.pageTitle')}
         description="Scan QR, Micro QR, and rMQR codes from your camera, images, clipboard, or PDFs and inspect Wi-Fi, eSIM, contact, payment, or raw byte payloads locally."
         path="/qr-reader/main"
+        ogImage="/og/qr-tools.png"
+        ogAlt="QR code generator displaying a scannable QR symbol with encoding and export controls"
       />
 
       <ToolHeader<WorkspaceId>

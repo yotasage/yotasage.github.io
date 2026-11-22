@@ -953,6 +953,8 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
         title={t('smith.pageTitle')}
         description="Interactive Smith chart with Z, Y, and ZY grids: drag matching networks, auto-solve components, run frequency sweeps, and export SVG, TikZ, or Touchstone."
         path="/smith-chart/main"
+        ogImage="/og/smith-chart.png"
+        ogAlt="Interactive Smith chart showing an impedance matching network with arcs, markers, and live readout"
       />
       <style jsx global>{`
         @page {

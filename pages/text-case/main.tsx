@@ -29,6 +29,8 @@ export default function TextCase() {
         title={t('textcase.pageTitle')}
         description="Convert text live between Sentence case, Title Case, UPPER, lower, camelCase, PascalCase, snake_case, and kebab-case with word and character counts."
         path="/text-case/main"
+        ogImage="/og/home.png"
+        ogAlt="yotasage.github.io browser engineering and document tools overview"
       />
 
       <ToolHeader<WorkspaceId>

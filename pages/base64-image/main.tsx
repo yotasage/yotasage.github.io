@@ -40,6 +40,8 @@ export default function Base64Image() {
         title={t('base64.pageTitle')}
         description="Convert images to Base64 or ready-to-paste HTML, CSS, and Markdown data URLs, or decode Base64 strings back into downloadable image previews locally."
         path="/base64-image/main"
+        ogImage="/og/home.png"
+        ogAlt="yotasage.github.io browser engineering and document tools overview"
       />
 
       <ToolHeader<WorkspaceId>

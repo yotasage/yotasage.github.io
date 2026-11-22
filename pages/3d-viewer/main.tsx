@@ -26,6 +26,8 @@ export default function Viewer3DPage() {
         title={t('viewer3d.pageTitle')}
         description="Inspect STEP, IGES, STL, 3MF, OBJ, glTF, FBX, and USDZ 3D models in your browser with section cuts, measurements, and export. Files stay on your device."
         path="/3d-viewer/main"
+        ogImage="/og/3d-viewer.png"
+        ogAlt="Flanged L-bracket 3D model rendered in the browser 3D viewer with dimensions and mesh statistics"
       />
 
       <ToolHeader<WorkspaceId>
