@@ -2,7 +2,7 @@ import React from 'react';
 
 // Icons for the tool cards on the main page, in the style of components/PdfTools/ToolIcon.tsx. Filled shapes use
 // currentColor, which the <svg> sets to the tool's colour.
-export type HomeIconName = 'calculator' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
+export type HomeIconName = 'calculator' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
 
 const SAMPLES: [number, number][] = [[6, 24], [12, 12], [18, 12], [24, 24], [30, 36], [36, 36], [42, 24]];
 
@@ -70,6 +70,16 @@ const ICONS: Record<HomeIconName, React.ReactNode> = {
       <path d="M10 26v7a4 4 0 0 0 4 4h2M13 34l3 3-3 3" />
       <path d="M38 26V15a4 4 0 0 0-4-4h-2M35 8l-3 3 3 3" />
       <path d="M20 30h7M31 30h13M20 37h13M37 37h7M20 44h9M33 44h5" />
+    </>
+  ),
+  // Stacked layers with a tilted paintbrush across them.
+  paint: (
+    <>
+      <path d="M6 31l18 9 18-9" opacity={0.55} />
+      <path d="M6 24l18 9 18-9" opacity={0.75} />
+      <path d="M24 8L6 17l18 9 18-9-18-9z" />
+      <path d="M31 15l8-8a2.5 2.5 0 0 1 3.5 3.5l-8 8" />
+      <circle cx={29} cy={17} r={2.2} fill="currentColor" stroke="none" />
     </>
   ),
   textcase: (

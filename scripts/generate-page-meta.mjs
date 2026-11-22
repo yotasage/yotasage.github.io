@@ -48,6 +48,7 @@ const CANONICAL_TITLES = {
   '/qrcode/main': 'QR code generator',
   '/qr-reader/main': 'QR code reader',
   '/base64-image/main': 'Base64 image converter',
+  '/paint/main': 'Paint & Image Editor',
   '/text-case/main': 'Text case converter',
   '/calculator/main': 'Smart Calculator',
 };

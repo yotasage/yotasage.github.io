@@ -72,6 +72,10 @@ export const en = {
   'home.tool.base64.category': 'Images',
   'home.tool.base64.desc':
     'Encode images into Base64 or ready-to-paste data URLs for HTML, CSS, and Markdown, or decode Base64 strings back into downloadable previews.',
+  'home.tool.paint.title': 'Paint & image editor',
+  'home.tool.paint.category': 'Images',
+  'home.tool.paint.desc':
+    'Paint.NET-style raster editor with layers, crop, resize, scale down, rotate, black & white color styles, Paint.NET Ctrl+C/V clipboard sync, and dockable panels.',
   'home.tool.textcase.title': 'Text case converter',
   'home.tool.textcase.category': 'Text',
   'home.tool.textcase.desc':
@@ -152,6 +156,10 @@ export const nb: Record<keyof typeof en, string> = {
   'home.tool.base64.category': 'Bilder',
   'home.tool.base64.desc':
     'Konverter bilder til Base64 eller data-URL-er for HTML, CSS og Markdown, eller dekod Base64-strenger tilbake til bilder du kan forhåndsvise og laste ned.',
+  'home.tool.paint.title': 'Tegne- og bilderedigering',
+  'home.tool.paint.category': 'Bilder',
+  'home.tool.paint.desc':
+    'Paint.NET-inspirert bildeeditor med lag, beskjæring, nedskalering, rotering, svart-hvitt fargestiler, Ctrl+C/V mot Paint.NET og flyttbare paneler.',
   'home.tool.textcase.title': 'Tekstformatkonverterer',
   'home.tool.textcase.category': 'Tekst',
   'home.tool.textcase.desc':
