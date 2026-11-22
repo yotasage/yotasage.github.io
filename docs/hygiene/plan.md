@@ -112,8 +112,8 @@ Status: ✅ done · 🔄 in progress · 📋 planned · ⏸️ deferred
 
 | Step | Scope | Status | Commit |
 | --- | --- | :-: | --- |
-| H1 | Repo housekeeping: `.gitattributes`, `.gitignore` (`/.cache/`), delete 10 merged local branches, sync stale facts in `CLAUDE.md` & `docs/pdf-tools-plan.md` | ✅ | — |
-| H2 | Local static-export check (`scripts/build-export.mjs`), automated repo guardrails (`scripts/check-repo.mjs`), `npm run verify`, and CI pre-build check | 📋 | — |
+| H1 | Repo housekeeping: `.gitattributes`, `.gitignore` (`/.cache/`), delete 10 merged local branches, sync stale facts in `CLAUDE.md` & `docs/pdf-tools-plan.md` | ✅ | `0c61bc5` |
+| H2 | Local static-export check (`scripts/build-export.mjs`), automated repo guardrails (`scripts/check-repo.mjs`), `npm run verify`, and CI pre-build check | ✅ | — |
 | H3 | Split high-churn / doc files over 40 kB (`docs/BACKLOG.md`, `docs/pdf-tools-plan.md`, `lib/ui/translations.ts`) and tighten `check-repo.mjs` allowlist | 📋 | — |
 | H4 | Light TypeScript strictness audit (`docs/hygiene/notes-H4.md`) + `tsconfig.strict.json` for clean shared/new folders + final `CLAUDE.md` updates | 📋 | — |
 | — | Deferred: `BL29` PCB splits (needs `scripts/harness/pcb/` first), dormant solver/PDF splits (ratcheted in allowlist), `BL201` (before EM sim Phase 2), `BL203` (after 2026-11-29) | ⏸️ | — |
