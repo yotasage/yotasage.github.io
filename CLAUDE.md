@@ -34,6 +34,7 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 - CI runs on Ubuntu with Node 22 (`npm ci`); development is on Windows with a newer Node. Import paths must match
   file name case exactly.
 - `postinstall` runs [scripts/copy-pdfjs-assets.mjs](scripts/copy-pdfjs-assets.mjs) (→ `public/pdfjs/`),
+  [scripts/copy-pdf-wasm-assets.mjs](scripts/copy-pdf-wasm-assets.mjs) (→ `public/pdf-wasm/`, `public/ocr/`),
   [scripts/copy-3d-assets.mjs](scripts/copy-3d-assets.mjs) (→ `public/3d/`), [scripts/copy-qr-assets.mjs](scripts/copy-qr-assets.mjs) (→ `public/qr/`),
   [scripts/copy-fonts.mjs](scripts/copy-fonts.mjs) (→ `public/fonts/`, self-hosted Inter Variable and JetBrains Mono Variable),
   [scripts/collect-licenses.mjs](scripts/collect-licenses.mjs) (→ `lib/generated/third-party-licenses.json`, shown by
@@ -59,17 +60,20 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 - Each page renders [components/PageHead.tsx](components/PageHead.tsx) (shared `<title>`, meta description, canonical URL,
   Open Graph and Twitter tags, `/favicon.ico`) referencing static `1200×630` social previews in `public/og/`, a home
   link with `components/icons/home.tsx` at the top, and `html, body` styles in `<style jsx global>`. Synthetic built-in
-  demo files for the PCB and 3D viewers live in `public/samples/`. The dark background is `#2b2b2b`. `styles/globals.css`
-  is not imported anywhere. [pages/_app.tsx](pages/_app.tsx) adds [components/SiteFooter.tsx](components/SiteFooter.tsx)
+  demo files for the PCB and 3D viewers live in `public/samples/`. The dark background is `#2b2b2b`.
+  [pages/_app.tsx](pages/_app.tsx) adds [components/SiteFooter.tsx](components/SiteFooter.tsx)
   (`Licenses`, `GitHub`, and `Report an issue`, paired with [.github/ISSUE_TEMPLATE/feedback.md](.github/ISSUE_TEMPLATE/feedback.md))
   to every page; on the main page only it is fixed to the bottom of the screen.
 - Layouts must work at phone width.
-- PDF tools: 11 client-side tools (Phase 1 & 2 complete: Merge, Split, Organize, Rotate, Remove/Extract pages, Compress,
-  Images to PDF, PDF to images, Extract images, Remove metadata) registered in [lib/pdf/tools.ts](lib/pdf/tools.ts)
-  (hub tiles on `/pdf/main`), using shared frames/grids/prompts in `components/PdfTools/` (`PageGrid`, `PasswordPrompt`,
-  `ContinueWith`) and shared form fields from `components/UI/Fields.tsx`. Heavy pdf-lib jobs offload to
-  `lib/pdf/worker.ts` via `lib/pdf/workerClient.ts`, `lib/pdf/handoff.ts` chains outputs between tools in memory, and
-  `lib/pdf/breakdown.ts` inspects PDF size composition. Verify changes with `npm run check` and `npm run ui` in
+- PDF tools: 33 client-side tools / 34 routes under `pages/pdf/` (Phase 1–4 complete) registered in
+  [lib/pdf/tools.ts](lib/pdf/tools.ts) (hub tiles on `/pdf/main`), using shared frames/grids/prompts in
+  `components/PdfTools/` (`PageGrid`, `PasswordPrompt`, `ContinueWith`) and shared form fields from
+  `components/UI/Fields.tsx`. Heavy pdf-lib jobs offload to `lib/pdf/worker.ts` via `lib/pdf/workerClient.ts`,
+  `lib/pdf/handoff.ts` chains outputs between tools in memory, and `lib/pdf/breakdown.ts` inspects PDF size
+  composition. Phase 4 adds self-hosted QPDF WASM (`public/pdf-wasm/`), Ghostscript 10.08.0 WASM (`public/pdf-wasm/gs/`,
+  run in a module Web Worker for PDF/A and vector-preserving max compression; the repo is licensed `AGPL-3.0-or-later`
+  in [LICENSE.md](LICENSE.md) to satisfy Ghostscript's AGPL-3.0 terms), and Tesseract.js OCR with bundled
+  `tessdata_fast` models (`public/ocr/`). Verify changes with `npm run check` and `npm run ui` in
   `scripts/harness/pdf/` and update the status table/module map in [docs/pdf-tools-plan.md](docs/pdf-tools-plan.md).
 - Citations: entries live in [references.bib](references.bib). Load them with `loadReferences()` from
   `lib/references.ts` **only in `getStaticProps`** (it uses `node:fs`), then cite with the `Bibliography` class in
@@ -209,9 +213,10 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   files to read and a verification bar, and a watchdog that resumes agents stopped by usage limits or lost connections.
 - **No file over 40 kB is read whole.** Docs are split into parts with an index before they reach 40 kB (as
   `docs/pcb-viewer/`). For a large code file, list its outline first (`grep -n` for top-level declarations or methods),
-  then read only the range needed (`offset`/`limit`). Large code files now: `lib/pcb/export/kicad.ts`,
-  `lib/pcb/pads/board.ts`, `lib/pcb/kicad/board.ts`, `lib/pcb/altium/board.ts` (splitting them is BL29),
-  `lib/smith/solve.ts`. Never read
+  then read only the range needed (`offset`/`limit`). Notable large files now include `lib/ui/translations.ts`,
+  `styles/PdfTools.module.css`, `lib/pcb/export/kicad.ts`, `lib/pcb/pads/board.ts`, `lib/pcb/kicad/board.ts`,
+  `lib/pcb/altium/board.ts` (splitting the PCB files is BL29), and `lib/smith/solve.ts` — see
+  [docs/hygiene/plan.md](docs/hygiene/plan.md) for the full ≥ 40 kB inventory and budget tracking. Never read
   `package-lock.json` or the generated glyph data `lib/pcb/font/newstroke-glyphs.ts`.
 - **Test files** are on the owner's machines; read them where they are and never copy them into the repo. PCB samples
   are listed in [docs/pcb-viewer/test-files.md](docs/pcb-viewer/test-files.md). Real 3D models for the

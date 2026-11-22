@@ -1,0 +1,39 @@
+# Normalize all text files to LF across Windows and Linux/CI.
+* text=auto eol=lf
+
+# Explicit text formats
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.json text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.svg text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+*.bib text eol=lf
+*.txt text eol=lf
+*.xml text eol=lf
+
+# Binary assets (never perform line-ending conversion or text diffs)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.wasm binary
+*.gz binary
+*.zip binary
+*.pdf binary
+*.stl binary
+*.step binary
+*.stp binary
+*.wrl binary
+*.traineddata binary

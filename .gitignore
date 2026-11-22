@@ -56,5 +56,8 @@ yarn-error.log*
 TODO.md
 .local
 
+# Local caches (e.g. Fritzing parts)
+/.cache/
+
 # Resistor harness (scripts/harness/resistor): its own packages
 /scripts/harness/*/node_modules/

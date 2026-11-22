@@ -36,7 +36,7 @@ The goal is to cover the useful parts of [PDF24 Tools](https://tools.pdf24.org/e
 | Hub page | `pages/pdf/main.tsx` | Grid of tool buttons. |
 | Tool pages | `pages/pdf/<tool>.tsx` | One static page per tool. |
 | Shared UI | `components/PdfTools/` | `PdfPage` (frame), `ToolWorkspace` (drop zone → files + sidebar), `FileGrid`/`FileCard` (sortable thumbnail cards), `ToolIcon`. |
-| Styles | `styles/PdfTools.module.css` | Form fields reuse `components/QrGen/fields.tsx` and `styles/QrGen.module.css`. |
+| Styles | `styles/PdfTools.module.css` | Form fields reuse `components/UI/Fields.tsx` and `styles/Fields.module.css`. |
 | PDF logic | `lib/pdf/` | Framework-free functions, one module per tool, plus `files.ts` (download, ZIP, names) and `pdfjs.ts` (lazy pdf.js, page rendering, thumbnails). |
 
 Libraries:
