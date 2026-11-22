@@ -49,6 +49,7 @@ const CANONICAL_TITLES = {
   '/qr-reader/main': 'QR code reader',
   '/base64-image/main': 'Base64 image converter',
   '/text-case/main': 'Text case converter',
+  '/calculator/main': 'Smart Calculator',
 };
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');

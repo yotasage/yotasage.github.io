@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-A personal collection of browser tools (simulation setup calculator, QR code generator and reader, PDF tools, Base64 image
+A personal collection of browser tools (smart calculator, simulation setup calculator, QR code generator and reader, PDF tools, Base64 image
 converter, text case converter, 3D viewer, PCB viewer, resistor lookup, Smith chart, EM simulation), so the owner does not have to use other people's sites with ads and bad design. Next.js 16 Pages Router,
 React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
 
@@ -173,6 +173,13 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   (engine), `npm run ui` (next build, then every browser script against `next start` on 3022), `npm run recheck` (both,
   plus the Smith chart's checks on the shared equation modules, as one table of every step's "done when"; about 40
   minutes). openEMS on the owner's PC is for the harness's reference fixtures only.
+- Smart Calculator (`pages/calculator/main.tsx`, plan in [docs/smart-calculator/plan.md](docs/smart-calculator/plan.md)):
+  zero-dependency unit-aware engineering calculator in `lib/calc/` (`units.ts`, `constants.ts`, `value.ts`, `ast.ts`,
+  `parse.ts`, `calculus.ts`, `eval.ts`, `invert.ts`, `layouts.ts`, `storage.ts`) with 7-exponent SI dimensional
+  analysis, complex phasors, symbolic differentiation/integration + Gauss-Kronrod quadrature, 19 bidirectional equation
+  layouts with shareable `SmartCalcLayoutV1` JSON import/export, and editable variables with Excel TSV copy. React UI
+  lives in `components/Calculator/` and styles in `styles/Calculator*.module.css` (EN/NB in `lib/ui/i18n/calculator.ts`).
+  Checks in `scripts/harness/calc/` (`npm run check`, `npm run ui`).
 - `tsconfig` uses `"module": "node16"`, so our own files count as CommonJS and the ES-module-only add-ons of three.js
   (`three/examples/jsm/...`) can only be loaded with `await import(...)`, or imported as types with
   `import type ... with { 'resolution-mode': 'import' }`. A dynamic import of one of our own files needs
@@ -243,6 +250,7 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   `engine.md`, `solver.md`, `learning.md`, `milestones.md`, and the `notes-<step>.md` each step leaves.
 - [docs/em-sim/](docs/em-sim/plan.md): EM simulation plan (phase 1 done; branch `em-sim`): `plan.md`, `howto.md` (for visitors), `milestones.md`, `engine.md`,
   `later.md`, and the `notes-<step>.md` each step leaves.
+- [docs/smart-calculator/plan.md](docs/smart-calculator/plan.md): Smart Calculator plan (`/calculator/main`), module map, `SmartCalcLayoutV1` JSON schema, and step status (C0–C6).
 - [docs/agent-workflow.md](docs/agent-workflow.md): how to run large work with Claude agents cheaply and safely, with
   the measured cost of the PCB viewer build.
 - [docs/ui-redesign/plan.md](docs/ui-redesign/plan.md): Modern High-Polish SaaS Design System v2 spec (`styles/design-system.css`, `lib/ui/{theme,mode,i18n,translations}.*`, `components/UI/{ToolHeader,PillTabs,TeachingCallout}.tsx`, self-hosted Inter & JetBrains Mono fonts) rolled out across every route on the site (`/`, `/licenses`, `/simsetup/main`, `/resistor/main`, `/smith-chart/main`, `/em-sim/main`, `/qrcode/main`, `/qr-reader/main`, `/base64-image/main`, `/text-case/main`, `/pdf/*`, `/3d-viewer/main`, `/pcb-viewer/main`).

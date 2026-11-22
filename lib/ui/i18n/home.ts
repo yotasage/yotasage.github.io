@@ -28,6 +28,10 @@ export const en = {
   'home.resetFilters': 'Show all tools',
   'home.openTool': 'Open tool',
   'home.pdfSubToolsCount': '{count} built-in PDF tools',
+  'home.tool.calculator.title': 'Smart calculator',
+  'home.tool.calculator.category': 'Engineering math',
+  'home.tool.calculator.desc':
+    'Unit-aware calculator with SI auto-prefixing, complex phasors, editable Excel-ready variables, basic calculus, and shareable bidirectional equation layouts.',
   'home.tool.simsetup.title': 'Simulation setup',
   'home.tool.simsetup.category': 'Signal processing',
   'home.tool.simsetup.desc':
@@ -104,6 +108,10 @@ export const nb: Record<keyof typeof en, string> = {
   'home.resetFilters': 'Vis alle verktøy',
   'home.openTool': 'Åpne verktøy',
   'home.pdfSubToolsCount': '{count} innebygde PDF-verktøy',
+  'home.tool.calculator.title': 'Smartkalkulator',
+  'home.tool.calculator.category': 'Ingeniørmatte',
+  'home.tool.calculator.desc':
+    'Enhetsbevisst kalkulator med automatiske SI-prefikser, komplekse fasorer, Excel-klare variabler, grunnleggende kalkulus og delbare ligningsmaler.',
   'home.tool.simsetup.title': 'Simuleringsoppsett',
   'home.tool.simsetup.category': 'Signalbehandling',
   'home.tool.simsetup.desc':

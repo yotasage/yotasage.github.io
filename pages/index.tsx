@@ -36,6 +36,19 @@ const ALL_PDF_TOOLS: readonly PdfTool[] = TOOL_CATEGORIES.flatMap((category) => 
 // Every tool on the site has a card here.
 const TOOLS: readonly SiteTool[] = [
   {
+    id: 'calculator',
+    href: '/calculator/main',
+    group: 'electronics',
+    titleKey: 'home.tool.calculator.title',
+    categoryKey: 'home.tool.calculator.category',
+    descKey: 'home.tool.calculator.desc',
+    icon: 'calculator',
+    accentLight: '#0284c7',
+    accentDark: '#38bdf8',
+    tags: ['SI & RF units', 'Phasors', 'Variables → Excel', 'diff · int', 'Equation layouts'],
+    searchKeywords: ['calc', 'math', 'units', 'dbm', 'complex', 'integral', 'derivative', 'formula', 'equation', 'kalkulator'],
+  },
+  {
     id: 'simsetup',
     href: '/simsetup/main',
     group: 'electronics',

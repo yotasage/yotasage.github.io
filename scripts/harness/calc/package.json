@@ -1,0 +1,13 @@
+{
+  "name": "calc-harness",
+  "private": true,
+  "description": "Independent engine and UI checks for the Smart Calculator (/calculator/main). Not part of the site.",
+  "type": "module",
+  "scripts": {
+    "check:units": "node --import ./ts-loader.mjs check-units.mjs",
+    "check:eval": "node --import ./ts-loader.mjs check-eval.mjs",
+    "check:layouts": "node --import ./ts-loader.mjs check-layouts.mjs",
+    "check": "npm run check:units && npm run check:eval && npm run check:layouts",
+    "ui": "node ui.mjs"
+  }
+}

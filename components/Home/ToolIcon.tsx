@@ -2,7 +2,7 @@ import React from 'react';
 
 // Icons for the tool cards on the main page, in the style of components/PdfTools/ToolIcon.tsx. Filled shapes use
 // currentColor, which the <svg> sets to the tool's colour.
-export type HomeIconName = 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
+export type HomeIconName = 'calculator' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
 
 const SAMPLES: [number, number][] = [[6, 24], [12, 12], [18, 12], [24, 24], [30, 36], [36, 36], [42, 24]];
 
@@ -11,6 +11,15 @@ const QR_MODULES: [number, number][] = [
 ];
 
 const ICONS: Record<HomeIconName, React.ReactNode> = {
+  // Engineering calculator: display screen, grid of keys, and equals bar.
+  calculator: (
+    <>
+      <rect x={8} y={4} width={32} height={40} rx={4} />
+      <rect x={13} y={9} width={22} height={9} rx={1.5} opacity={0.75} />
+      <path d="M15 24h4M23 24h4M31 24h2M15 31h4M23 31h4M15 38h4M23 38h4" />
+      <rect x={30} y={30} width={5} height={9.5} rx={1.2} fill="currentColor" stroke="none" />
+    </>
+  ),
   // A sampled sine wave: the signal, and the samples as a stem plot.
   simsetup: (
     <>

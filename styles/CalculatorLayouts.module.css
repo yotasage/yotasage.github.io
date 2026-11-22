@@ -1,0 +1,461 @@
+/* Smart Calculator — Equation Layouts workspace, JSON Editor Modal & Guide (Design System v2) */
+
+.layoutsShell {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 200px;
+  max-width: 380px;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--ds-radius-ctrl);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-ui);
+  font-size: 0.88rem;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.splitGrid {
+  display: grid;
+  grid-template-columns: minmax(270px, 0.95fr) minmax(0, 1.45fr);
+  gap: 1.1rem;
+  align-items: start;
+}
+
+.presetList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 680px;
+  overflow-y: auto;
+  padding-right: 0.15rem;
+}
+
+.presetCard {
+  width: 100%;
+  flex-shrink: 0;
+  text-align: left;
+  padding: 0.78rem 0.92rem;
+  border-radius: var(--ds-radius-ctrl);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-surface);
+  color: var(--ds-ink);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  transition: border-color 0.14s ease, background-color 0.14s ease, transform 0.14s ease;
+}
+
+.presetCard:hover {
+  border-color: var(--ds-accent-border);
+  background: var(--ds-surface-elevated);
+}
+
+.presetCardActive {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+}
+
+.presetCardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+}
+
+.presetName {
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: var(--ds-ink);
+}
+
+.presetFormula {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 100%;
+  padding-block: 0.2rem;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--ds-ink-2);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.presetDesc {
+  font-size: 0.78rem;
+  color: var(--ds-ink-3);
+  line-height: 1.4;
+}
+
+/* Active Solver Panel */
+.solverPanel {
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  padding: 1.25rem 1.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.solverHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.solverTitle {
+  margin: 0;
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: var(--ds-ink);
+}
+
+.solverDesc {
+  margin: 0.2rem 0 0;
+  font-size: 0.86rem;
+  color: var(--ds-ink-2);
+}
+
+.formulaPlate {
+  padding: 0.85rem 1rem;
+  border-radius: var(--ds-radius-ctrl);
+  background: var(--ds-well);
+  border: var(--ds-border-w) solid var(--ds-border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.formulaMath {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  padding-block: 0.3rem;
+  font-size: 1.15rem;
+  line-height: 1.5;
+  color: var(--ds-ink);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.solveForRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.solveForLabel {
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: var(--ds-ink-2);
+  margin-right: 0.25rem;
+}
+
+.varChoiceBtn {
+  min-height: 30px;
+  padding: 0.25rem 0.7rem;
+  border-radius: var(--ds-radius-pill);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.varChoiceBtnActive {
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+}
+
+.inputsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.75rem;
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.fieldLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ds-ink-2);
+}
+
+.fieldUnitHint {
+  font-family: var(--ds-font-mono);
+  font-size: 0.73rem;
+  color: var(--ds-ink-3);
+  font-weight: 500;
+}
+
+.fieldInput {
+  padding: 0.52rem 0.75rem;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.9rem;
+}
+
+.fieldInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.fieldInputTarget {
+  background: var(--ds-accent-soft);
+  border-color: var(--ds-accent-border);
+  color: var(--ds-accent);
+  font-weight: 650;
+}
+
+/* Modal Dialog */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(15, 23, 42, 0.56);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal {
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--ds-surface-elevated);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-elev);
+  padding: 1.25rem 1.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: 1.08rem;
+  font-weight: 700;
+  color: var(--ds-ink);
+}
+
+.modalForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.formRow2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.9fr);
+  gap: 0.7rem;
+}
+
+.varEditorRow {
+  display: grid;
+  grid-template-columns: 82px minmax(110px, 1fr) 86px 100px auto;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.jsonTextarea {
+  width: 100%;
+  min-height: 220px;
+  padding: 0.75rem;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.validationBox {
+  padding: 0.7rem 0.85rem;
+  border-radius: var(--ds-radius-sm);
+  font-size: 0.82rem;
+}
+
+.validationOk {
+  background: var(--ds-good-soft);
+  color: var(--ds-good);
+  border: var(--ds-border-w) solid color-mix(in srgb, var(--ds-good) 35%, transparent);
+}
+
+.validationErr {
+  background: var(--ds-bad-soft);
+  color: var(--ds-bad);
+  border: var(--ds-border-w) solid color-mix(in srgb, var(--ds-bad) 35%, transparent);
+}
+
+.validationErr ul {
+  margin: 0.3rem 0 0;
+  padding-left: 1.15rem;
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  padding-top: 0.5rem;
+  border-top: var(--ds-border-w) solid var(--ds-border);
+}
+
+/* Guide Workspace */
+.guideGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: 1.1rem;
+}
+
+.guideCard {
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  padding: 1.15rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.guideCard h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 680;
+  color: var(--ds-ink);
+}
+
+.guideCard p {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--ds-ink-2);
+  line-height: 1.5;
+}
+
+.tryList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.tryRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  padding: 0.48rem 0.68rem;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  border: var(--ds-border-w) solid var(--ds-border);
+}
+
+.tryCode {
+  font-family: var(--ds-font-mono);
+  font-size: 0.82rem;
+  color: var(--ds-ink);
+}
+
+.tryNote {
+  font-size: 0.76rem;
+  color: var(--ds-ink-3);
+}
+
+.constTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.constTable th,
+.constTable td {
+  text-align: left;
+  padding: 0.45rem 0.55rem;
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+}
+
+.constTable th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ds-ink-3);
+  border-bottom-color: var(--ds-border-strong);
+}
+
+@media (max-width: 900px) {
+  .splitGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .presetList {
+    max-height: 280px;
+  }
+}
+
+@media (max-width: 640px) {
+  .formRow2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .varEditorRow {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}

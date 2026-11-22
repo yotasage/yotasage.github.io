@@ -961,8 +961,10 @@
   border-left: 3px solid var(--ds-accent);
   background: var(--ds-accent-soft);
   font-size: 1.45rem;
+  line-height: 1.6;
   text-align: center;
   overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .parameterRow {

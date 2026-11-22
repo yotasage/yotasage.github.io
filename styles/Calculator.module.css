@@ -1,0 +1,750 @@
+/* Smart Calculator — main page & 3 calculator workflow views (Design System v2) */
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 1.25rem 1.25rem 3rem;
+  flex: 1;
+}
+
+.workspacePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.workspacePanel[hidden] {
+  display: none;
+}
+
+.topStrip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+}
+
+.lead {
+  margin: 0;
+  color: var(--ds-ink-2);
+  font-size: 0.94rem;
+  max-width: 68ch;
+  line-height: 1.5;
+}
+
+/* Shared cards & controls */
+.card {
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  padding: 1.15rem 1.25rem;
+}
+
+.cardHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.85rem;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 650;
+  color: var(--ds-ink);
+  letter-spacing: -0.01em;
+}
+
+.cardSubtitle {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+  color: var(--ds-ink-3);
+}
+
+.btnRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.btn,
+.btnPrimary,
+.btnGhost,
+.btnDanger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 32px;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-ui);
+  font-size: 0.82rem;
+  font-weight: 550;
+  cursor: pointer;
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  background: var(--ds-well);
+}
+
+.btnPrimary {
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+}
+
+.btnPrimary:hover {
+  filter: brightness(1.06);
+}
+
+.btnGhost {
+  background: transparent;
+  border-color: var(--ds-border);
+  color: var(--ds-ink-2);
+}
+
+.btnGhost:hover {
+  background: var(--ds-well);
+  color: var(--ds-ink);
+}
+
+.btnDanger {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--ds-bad) 35%, transparent);
+  color: var(--ds-bad);
+}
+
+.btnDanger:hover {
+  background: var(--ds-bad-soft);
+}
+
+.btnSmall {
+  min-height: 28px;
+  padding: 0.22rem 0.55rem;
+  font-size: 0.76rem;
+}
+
+/* Expression input bar */
+.inputShell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.inputRow {
+  display: flex;
+  gap: 0.55rem;
+  align-items: stretch;
+}
+
+.exprInput {
+  flex: 1;
+  min-width: 0;
+  padding: 0.78rem 1rem;
+  border-radius: var(--ds-radius-ctrl);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.exprInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.exprInput::placeholder {
+  color: var(--ds-ink-3);
+  font-family: var(--ds-font-ui);
+  font-size: 0.9rem;
+}
+
+.evalBtn {
+  padding: 0 1.15rem;
+  font-size: 0.9rem;
+  border-radius: var(--ds-radius-ctrl);
+}
+
+.quickBarRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.insertStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.insertChip {
+  min-height: 26px;
+  padding: 0.18rem 0.52rem;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  color: var(--ds-ink-2);
+  font-family: var(--ds-font-mono);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.insertChip:hover {
+  background: var(--ds-accent-soft);
+  border-color: var(--ds-accent-border);
+  color: var(--ds-accent);
+}
+
+.enterHint {
+  font-size: 0.76rem;
+  color: var(--ds-ink-3);
+}
+
+/* Result Display */
+.resultWrap {
+  margin-top: 0.85rem;
+}
+
+.resultCard {
+  background: var(--ds-well);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-ctrl);
+  padding: 0.95rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.resultCardError {
+  background: var(--ds-bad-soft);
+  border-color: color-mix(in srgb, var(--ds-bad) 36%, transparent);
+}
+
+.resultTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.resultValueWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.resultPrimary {
+  font-family: var(--ds-font-mono);
+  font-size: clamp(1.35rem, 2.5vw, 1.85rem);
+  font-weight: 680;
+  color: var(--ds-ink);
+  letter-spacing: -0.02em;
+  word-break: break-word;
+  font-variant-numeric: tabular-nums;
+}
+
+.mathSpan {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  line-height: normal;
+  padding-block: 0.14em;
+}
+
+.mathSpan :global(.katex) {
+  display: inline-flex;
+  align-items: center;
+  line-height: normal;
+}
+
+.resultMathPreview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.5rem;
+  padding-block: 0.25rem;
+  color: var(--ds-ink-2);
+  font-size: 0.98rem;
+  line-height: 1.5;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.resultMetaRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.75rem;
+  font-size: 0.8rem;
+  color: var(--ds-ink-2);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.14rem 0.5rem;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-accent-soft);
+  color: var(--ds-accent);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  font-size: 0.73rem;
+  font-weight: 600;
+}
+
+.badgeGood {
+  background: var(--ds-good-soft);
+  color: var(--ds-good);
+  border-color: color-mix(in srgb, var(--ds-good) 32%, transparent);
+}
+
+.errorText {
+  color: var(--ds-bad);
+  font-size: 0.88rem;
+  font-weight: 520;
+  margin: 0;
+}
+
+.emptyPrompt {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--ds-ink-3);
+}
+
+.chipsRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.chipsLabel {
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ds-ink-3);
+  margin-right: 0.25rem;
+}
+
+.unitChip {
+  min-height: 26px;
+  padding: 0.16rem 0.55rem;
+  border-radius: var(--ds-radius-pill);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink-2);
+  font-family: var(--ds-font-mono);
+  font-size: 0.76rem;
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.unitChip:hover {
+  border-color: var(--ds-accent);
+  color: var(--ds-accent);
+}
+
+.unitChipActive {
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+}
+
+.hintsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.hintItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  border: var(--ds-border-w) solid var(--ds-border);
+  font-size: 0.8rem;
+}
+
+.hintLabel {
+  color: var(--ds-ink-3);
+  font-size: 0.74rem;
+}
+
+.hintVal {
+  font-family: var(--ds-font-mono);
+  color: var(--ds-ink);
+  font-weight: 560;
+}
+
+/* Hybrid Grid Layout */
+.hybridGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 1fr);
+  gap: 1.1rem;
+  align-items: start;
+}
+
+.leftCol,
+.rightCol {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  min-width: 0;
+}
+
+/* History Tape */
+.tapeList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 460px;
+  overflow-y: auto;
+}
+
+.tapeItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.62rem 0.8rem;
+  border-radius: var(--ds-radius-ctrl);
+  background: var(--ds-well);
+  border: var(--ds-border-w) solid var(--ds-border);
+}
+
+.tapeMain {
+  display: flex;
+  flex-direction: column;
+  gap: 0.16rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.tapeExprBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  color: var(--ds-ink-2);
+  font-family: var(--ds-font-mono);
+  font-size: 0.82rem;
+  cursor: pointer;
+  word-break: break-word;
+}
+
+.tapeExprBtn:hover {
+  color: var(--ds-accent);
+  text-decoration: underline;
+}
+
+.tapeRes {
+  font-family: var(--ds-font-mono);
+  font-size: 0.98rem;
+  font-weight: 640;
+  color: var(--ds-ink);
+  word-break: break-word;
+}
+
+.tapeActions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.ansTag {
+  padding: 0.16rem 0.45rem;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  background: var(--ds-accent-soft);
+  color: var(--ds-accent);
+  font-family: var(--ds-font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ansTag:hover {
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+}
+
+/* Editable Variable Table */
+.varTableWrap {
+  overflow-x: auto;
+  margin-bottom: 0.75rem;
+}
+
+.varTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.varTable th {
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ds-ink-3);
+  padding: 0.45rem 0.45rem;
+  border-bottom: var(--ds-border-w) solid var(--ds-border-strong);
+  white-space: nowrap;
+}
+
+.varTable td {
+  padding: 0.42rem 0.45rem;
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+  vertical-align: middle;
+}
+
+.varNameBtn {
+  background: var(--ds-accent-soft);
+  color: var(--ds-accent);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  border-radius: var(--ds-radius-sm);
+  padding: 0.14rem 0.45rem;
+  font-family: var(--ds-font-mono);
+  font-weight: 650;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.varNameBtn:hover {
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+}
+
+.varInlineInput {
+  width: 100%;
+  min-width: 100px;
+  padding: 0.3rem 0.5rem;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.8rem;
+}
+
+.varInlineInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+}
+
+.varValCell {
+  font-family: var(--ds-font-mono);
+  font-weight: 600;
+  color: var(--ds-ink);
+  white-space: nowrap;
+}
+
+.varErrCell {
+  color: var(--ds-bad);
+  font-size: 0.76rem;
+}
+
+.varAddForm {
+  display: grid;
+  grid-template-columns: minmax(76px, 0.7fr) minmax(110px, 1.4fr) auto;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.varInput {
+  min-width: 0;
+  padding: 0.42rem 0.62rem;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.84rem;
+}
+
+.varInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+}
+
+/* Notebook Scratchpad */
+.notebookSplit {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(220px, 0.9fr);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-ctrl);
+  overflow: hidden;
+  background: var(--ds-surface-solid);
+}
+
+.notebookTextarea {
+  width: 100%;
+  min-height: 360px;
+  padding: 0.85rem 1rem;
+  border: none;
+  resize: vertical;
+  background: transparent;
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.92rem;
+  line-height: 1.75;
+  font-variant-numeric: tabular-nums;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.notebookTextarea:focus {
+  outline: none;
+}
+
+.notebookGutter {
+  border-left: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  padding: 0.85rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  overflow-x: auto;
+}
+
+.notebookRow {
+  min-height: calc(0.92rem * 1.75);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-family: var(--ds-font-mono);
+  font-size: 0.86rem;
+  line-height: 1.75;
+}
+
+.notebookLineNum {
+  color: var(--ds-ink-3);
+  font-size: 0.72rem;
+  user-select: none;
+  min-width: 1.5rem;
+}
+
+.notebookValBtn {
+  background: none;
+  border: none;
+  padding: 0 0.25rem;
+  margin-left: auto;
+  text-align: right;
+  font-family: var(--ds-font-mono);
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--ds-accent);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.notebookValBtn:hover {
+  text-decoration: underline;
+}
+
+.notebookComment {
+  color: var(--ds-ink-3);
+  font-style: italic;
+  font-size: 0.76rem;
+}
+
+.notebookErr {
+  color: var(--ds-bad);
+  font-size: 0.76rem;
+  margin-left: auto;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 240px;
+}
+
+/* Quick Bar View */
+.quickShell {
+  max-width: 820px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.quickExamples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+@media (max-width: 920px) {
+  .hybridGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 680px) {
+  .main {
+    padding: 0.9rem 0.75rem 2.25rem;
+  }
+
+  .card {
+    padding: 0.9rem 0.95rem;
+  }
+
+  .inputRow {
+    flex-direction: column;
+  }
+
+  .evalBtn {
+    min-height: 38px;
+  }
+
+  .notebookSplit {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .notebookGutter {
+    border-left: none;
+    border-top: var(--ds-border-w) solid var(--ds-border);
+  }
+
+  .varAddForm {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

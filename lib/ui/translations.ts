@@ -1,3 +1,4 @@
+import { en as calculatorEn, nb as calculatorNb } from './i18n/calculator';
 import { en as commonEn, nb as commonNb } from './i18n/common';
 import { en as eeEn, nb as eeNb } from './i18n/ee';
 import { en as homeEn, nb as homeNb } from './i18n/home';
@@ -13,6 +14,7 @@ export const LOCALES: readonly Locale[] = ['en', 'nb'] as const;
 export const en = {
   ...commonEn,
   ...homeEn,
+  ...calculatorEn,
   ...simsetupEn,
   ...eeEn,
   ...utilitiesEn,
@@ -25,6 +27,7 @@ export type TranslationKey = keyof typeof en;
 export const nb: Record<TranslationKey, string> = {
   ...commonNb,
   ...homeNb,
+  ...calculatorNb,
   ...simsetupNb,
   ...eeNb,
   ...utilitiesNb,

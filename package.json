@@ -2,9 +2,9 @@
   "private": true,
   "license": "AGPL-3.0-or-later",
   "scripts": {
-    "dev": "next dev -H 0.0.0.0 -p 3020",
+    "dev": "next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
-    "start": "next start -H 0.0.0.0",
+    "start": "next start -H 0.0.0.0 -p 3000",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.strict.json --noEmit",
     "check:repo": "node scripts/check-repo.mjs",
     "generate:meta": "node scripts/generate-page-meta.mjs",
