@@ -38,6 +38,7 @@ const EXCLUDED_SHELL_PREFIXES = [
 const CANONICAL_TITLES = {
   '/': SITE_TITLE,
   '/licenses': 'Open-Source Licenses',
+  '/references': 'References',
   '/simsetup/main': 'Simulation setup',
   '/resistor/main': 'Resistor lookup',
   '/smith-chart/main': 'Smith chart',
@@ -151,6 +152,7 @@ function humanizeRoute(route) {
 function makeCiteKey(route) {
   if (route === '/') return 'yotasage_site';
   if (route === '/licenses') return 'yotasage_licenses';
+  if (route === '/references') return 'yotasage_references';
   const cleaned = route
     .replace(/^\/+/, '')
     .replace(/\/main$/, '')
@@ -442,7 +444,7 @@ const routes = {};
 
 for (const page of pages) {
   const { route, sourcePath, absPath } = page;
-  const kind = route === '/' ? 'project' : route === '/licenses' ? 'page' : 'tool';
+  const kind = route === '/' ? 'project' : route === '/licenses' || route === '/references' ? 'page' : 'tool';
   const pdfEntry = pdfToolsMeta.get(route);
   const title = CANONICAL_TITLES[route] ?? pdfEntry?.title ?? humanizeRoute(route);
   const description = pdfEntry?.description;

@@ -84,7 +84,7 @@ function link(href: string, text: string) {
   return <a href={href} target="_blank" rel="noopener noreferrer">{text}</a>;
 }
 
-function Reference({ entry }: { entry: BibEntry }) {
+export function Reference({ entry }: { entry: BibEntry }) {
   const f = entry.fields;
   const text = (name: string) => (f[name] ? latexToText(f[name]) : undefined);
 

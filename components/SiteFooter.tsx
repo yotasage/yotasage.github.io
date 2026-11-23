@@ -48,6 +48,8 @@ export default function SiteFooter({ fixed = false }: { fixed?: boolean }) {
               <span>{page.kind === 'tool' ? t('footer.citeTool') : t('footer.citePage')}</span>
             </button>
             <span className={styles.dot} aria-hidden="true">·</span>
+            <Link href="/references">{t('footer.references')}</Link>
+            <span className={styles.dot} aria-hidden="true">·</span>
             <Link href="/licenses">{t('footer.licenses')}</Link>
             <span className={styles.dot} aria-hidden="true">·</span>
             {/* A new tab, so the state of the tool on the page is not lost. */}

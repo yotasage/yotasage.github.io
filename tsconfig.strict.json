@@ -34,7 +34,10 @@
     "lib/complex.ts",
     "lib/quantity.ts",
     "lib/references.ts",
-    "lib/useReplayHighlight.ts"
+    "lib/referencesCatalog.ts",
+    "lib/referencesIndex.ts",
+    "lib/useReplayHighlight.ts",
+    "pages/references.tsx"
   ],
   "exclude": [
     "node_modules",

@@ -1,0 +1,575 @@
+/* ==========================================================================
+   References (/references) — Design System v2
+   Uses --ds-* tokens for Light, Dark, and High Contrast (AAA).
+   ========================================================================== */
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.page a {
+  color: var(--ds-accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.page a:hover,
+.page a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.main {
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 24px 20px 64px;
+  flex: 1;
+}
+
+@media (max-width: 600px) {
+  .main {
+    padding: 16px 12px 48px;
+  }
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* --------------------------------------------------------------------------
+   Surface Cards
+   -------------------------------------------------------------------------- */
+
+.introCard,
+.controlsCard,
+.listCard {
+  padding: 20px 22px;
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  min-width: 0;
+}
+
+@media (max-width: 520px) {
+  .introCard,
+  .controlsCard,
+  .listCard {
+    padding: 16px 14px;
+  }
+}
+
+.lead {
+  margin: 0;
+  color: var(--ds-ink-2);
+  font-size: 0.93rem;
+  line-height: 1.62;
+  max-width: 78ch;
+}
+
+.lead code {
+  font-size: 0.86em;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--ds-well);
+  color: var(--ds-ink);
+}
+
+.lead a code {
+  color: inherit;
+}
+
+.summaryRow {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ds-border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 0.84rem;
+  color: var(--ds-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.summaryStrong {
+  color: var(--ds-ink);
+  font-weight: 600;
+}
+
+.sep {
+  color: var(--ds-ink-3);
+  user-select: none;
+}
+
+/* --------------------------------------------------------------------------
+   Search & Filter Controls
+   -------------------------------------------------------------------------- */
+
+.controlsCard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.searchWrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ds-ink-3);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  height: 40px;
+  padding: 0 38px 0 36px;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-ctrl);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-ui);
+  font-size: 0.9rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.searchInput::placeholder {
+  color: var(--ds-ink-3);
+}
+
+.searchInput:hover {
+  border-color: var(--ds-accent-border);
+}
+
+.searchInput:focus-visible {
+  border-color: var(--ds-accent);
+}
+
+.searchClear {
+  appearance: none;
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ds-ink-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.14s ease, color 0.14s ease;
+}
+
+.searchClear:hover {
+  background: var(--ds-well);
+  color: var(--ds-ink);
+}
+
+/* Interactive tool filter tabs */
+.toolFilterBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.toolTab {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  color: var(--ds-ink-2);
+  font-family: var(--ds-font-ui);
+  font-size: 0.82rem;
+  font-weight: 550;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+
+.toolTab:hover {
+  background: var(--ds-well-hover);
+  color: var(--ds-ink);
+  border-color: var(--ds-border-strong);
+}
+
+.toolTabActive {
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+}
+
+.toolTabActive:hover {
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  opacity: 0.94;
+}
+
+.tabCount {
+  font-family: var(--ds-font-mono);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.82;
+}
+
+.selectsRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ds-border);
+}
+
+.selectGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+.selectField {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--ds-ink-2);
+  font-weight: 500;
+}
+
+.select {
+  height: 34px;
+  padding: 0 10px;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-ui);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.resultsCount {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ds-ink-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   References List
+   -------------------------------------------------------------------------- */
+
+.listCard {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 3.1rem minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 14px 6px;
+  border-bottom: 1px solid var(--ds-border);
+  border-radius: 6px;
+  scroll-margin-top: calc(var(--ds-header-h, 60px) + 16px);
+}
+
+.item:last-child {
+  border-bottom: none;
+}
+
+@keyframes refTargetHighlight {
+  from {
+    box-shadow: inset 0 0 0 100vmax color-mix(in srgb, var(--ds-accent) 22%, transparent);
+  }
+  to {
+    box-shadow: inset 0 0 0 100vmax transparent;
+  }
+}
+
+.item:target {
+  animation: refTargetHighlight 3s ease-in forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item:target {
+    animation: none;
+    background: var(--ds-accent-soft);
+  }
+}
+
+.number {
+  font-family: var(--ds-font-mono);
+  font-size: 0.84rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ds-ink-3);
+  text-align: right;
+  padding-top: 2px;
+  user-select: none;
+}
+
+.body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.citationText {
+  margin: 0;
+  font-size: 0.93rem;
+  line-height: 1.58;
+  color: var(--ds-ink);
+  overflow-wrap: anywhere;
+}
+
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 14px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--ds-ink-3);
+}
+
+.metaLeft {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+.bibKey {
+  font-family: var(--ds-font-mono);
+  font-size: 0.76rem;
+  color: var(--ds-ink-2);
+}
+
+.entryType {
+  font-family: var(--ds-font-mono);
+  font-size: 0.75rem;
+  color: var(--ds-ink-3);
+}
+
+.citedIn {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 6px;
+  color: var(--ds-ink-2);
+}
+
+.citedInLabel {
+  color: var(--ds-ink-3);
+}
+
+.toolLink {
+  color: var(--ds-accent);
+  font-weight: 550;
+  white-space: nowrap;
+}
+
+.uncitedNote {
+  color: var(--ds-ink-3);
+  font-style: italic;
+}
+
+.actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.actionBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 9px;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: 6px;
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink-2);
+  font-family: var(--ds-font-ui);
+  font-size: 0.75rem;
+  font-weight: 550;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+
+.actionBtn:hover {
+  background: var(--ds-well);
+  border-color: var(--ds-border-strong);
+  color: var(--ds-ink);
+}
+
+.actionBtnActive {
+  border-color: var(--ds-accent-border);
+  background: var(--ds-accent-soft);
+  color: var(--ds-accent);
+}
+
+.bibtexBlock {
+  margin: 4px 0 2px;
+  padding: 11px 13px;
+  overflow-x: auto;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.77rem;
+  line-height: 1.5;
+  white-space: pre;
+  user-select: all;
+}
+
+/* --------------------------------------------------------------------------
+   Empty State
+   -------------------------------------------------------------------------- */
+
+.empty {
+  padding: 36px 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ds-ink);
+}
+
+.emptyHint {
+  margin: 0;
+  font-size: 0.87rem;
+  color: var(--ds-ink-2);
+}
+
+.resetBtn {
+  appearance: none;
+  margin-top: 8px;
+  height: 36px;
+  padding: 0 16px;
+  border: var(--ds-border-w) solid var(--ds-accent);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  font-family: var(--ds-font-ui);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.14s ease;
+}
+
+.resetBtn:hover {
+  opacity: 0.92;
+}
+
+/* --------------------------------------------------------------------------
+   High Contrast (AAA) & Mobile Adjustments
+   -------------------------------------------------------------------------- */
+
+:global(html[data-ds-theme="hc"]) .toolTab {
+  background: #000000;
+  border-color: #ffffff;
+  color: #ffffff;
+}
+
+:global(html[data-ds-theme="hc"]) .toolTabActive {
+  background: #ffe600;
+  border-color: #ffe600;
+  color: #000000;
+}
+
+:global(html[data-ds-theme="hc"]) .actionBtn {
+  background: #000000;
+  border-color: #ffffff;
+  color: #ffffff;
+}
+
+:global(html[data-ds-theme="hc"]) .actionBtn:hover,
+:global(html[data-ds-theme="hc"]) .actionBtnActive {
+  border-color: #ffe600;
+  color: #ffe600;
+}
+
+@media (max-width: 600px) {
+  .item {
+    grid-template-columns: 2.4rem minmax(0, 1fr);
+    gap: 0.5rem;
+    padding: 12px 2px;
+  }
+
+  .number {
+    font-size: 0.78rem;
+  }
+
+  .citationText {
+    font-size: 0.88rem;
+  }
+
+  .selectField {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .select {
+    flex: 1;
+    max-width: 240px;
+  }
+
+  .metaRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
