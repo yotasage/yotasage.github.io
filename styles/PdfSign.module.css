@@ -1,0 +1,329 @@
+/* ==========================================================================
+   PDF Sign — Full-screen Signature Pad & Pan/Zoom Full-screen PDF Viewer
+   Kept separate from PdfTools.module.css to stay well under the 40 KiB cap.
+   ========================================================================== */
+
+/* ---- Signature Pad fullscreen modal ---- */
+
+.sigPadHeaderActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sigPadFullscreenBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  display: flex;
+  flex-direction: column;
+  background: var(--ds-bg);
+  color: var(--ds-ink);
+  padding: max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
+    max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.sigPadFullscreenTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding-bottom: 8px;
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+}
+
+.sigPadFullscreenTop h3 {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--ds-ink);
+}
+
+.sigPadFullscreenBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sigDrawWrapFullscreen {
+  position: relative;
+  flex: 1 1 240px;
+  min-height: 220px;
+  border: 2px solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-ctrl);
+  background: #ffffff;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+}
+
+.sigDrawCanvasFullscreen {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.sigPadFullscreenControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  padding: 8px 10px;
+  border-radius: var(--ds-radius-ctrl);
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+}
+
+.sigPadFullscreenFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px 14px;
+  padding-top: 8px;
+  border-top: var(--ds-border-w) solid var(--ds-border);
+}
+
+.sigTouchSwatch {
+  width: 34px;
+  height: 34px;
+}
+
+.sigTouchBtn {
+  min-height: 40px;
+  padding: 8px 14px;
+}
+
+/* ---- PDF Viewer pan/zoom toolbar & fullscreen shell ---- */
+
+.viewerShell {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.viewerShellFullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: var(--ds-bg);
+  color: var(--ds-ink);
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.viewerBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+  padding: 7px 10px;
+  border-radius: var(--ds-radius-ctrl);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-surface);
+}
+
+.viewerShellFullscreen .viewerBar {
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  background: var(--ds-surface-elevated);
+  padding: 8px 12px;
+}
+
+.viewerBarGroup {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.zoomReadout {
+  min-width: 52px;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ds-ink);
+  padding: 5px 8px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  cursor: pointer;
+}
+
+.zoomReadout:hover,
+.zoomReadout:focus-visible {
+  border-color: var(--ds-accent);
+  color: var(--ds-accent);
+  outline: none;
+}
+
+.toolBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 5px 10px;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.14s ease, background-color 0.14s ease, color 0.14s ease;
+}
+
+.toolBtn:hover:not(:disabled),
+.toolBtn:focus-visible:not(:disabled) {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  outline: none;
+}
+
+.toolBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.toolBtnActive {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+}
+
+.toolBtnActive:hover:not(:disabled),
+.toolBtnActive:focus-visible:not(:disabled) {
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  filter: brightness(1.06);
+}
+
+.panStage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 14px;
+  border-radius: var(--ds-radius-ctrl);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  user-select: none;
+  touch-action: pan-y pinch-zoom;
+}
+
+.panStageInteractive {
+  touch-action: none;
+}
+
+.panStageZoomedInline {
+  height: min(72vh, 680px);
+}
+
+.viewerShellFullscreen .panStage {
+  flex: 1 1 auto;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 12px;
+  touch-action: none;
+}
+
+.panStageGrab {
+  cursor: grab;
+}
+
+.panStageGrabbing {
+  cursor: grabbing;
+}
+
+.panTransformWrap {
+  position: relative;
+  flex: 0 0 auto;
+  will-change: transform;
+}
+
+.stageArmedBanner {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  max-width: calc(100% - 20px);
+  padding: 5px 12px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.viewerFooterBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-surface-elevated);
+}
+
+.panHint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ds-ink-3);
+}
+
+@media (max-width: 640px) {
+  .viewerBar {
+    padding: 6px 8px;
+    gap: 5px;
+  }
+
+  .toolBtn {
+    min-height: 38px;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+  }
+
+  .zoomReadout {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .viewerFooterBar {
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .panStage {
+    padding: 8px;
+  }
+}

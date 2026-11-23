@@ -403,6 +403,7 @@ export default function QrCodeGenerator() {
         activeWorkspace={workspace}
         onWorkspaceChange={setWorkspace}
         showExperienceMode
+        allowWideView
       />
 
       <main className={styles.main}>

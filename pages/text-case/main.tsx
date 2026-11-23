@@ -39,6 +39,7 @@ export default function TextCase() {
         activeWorkspace={workspace}
         onWorkspaceChange={setWorkspace}
         showExperienceMode
+        allowWideView
       />
 
       <main className={styles.main}>

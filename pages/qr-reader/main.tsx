@@ -256,6 +256,7 @@ export default function QrReader() {
         activeWorkspace={workspace}
         onWorkspaceChange={setWorkspace}
         showExperienceMode
+        allowWideView
       />
 
       <main className={styles.main}>

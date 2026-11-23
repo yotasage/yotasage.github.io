@@ -88,6 +88,7 @@ export function PdfPage({
       <ToolHeader
         title={title}
         showExperienceMode={false}
+        allowWideView
         actions={
           showHub ? (
             <Link href="/pdf/main" className={styles.hubLink}>

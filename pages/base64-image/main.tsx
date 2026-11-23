@@ -50,6 +50,7 @@ export default function Base64Image() {
         activeWorkspace={workspace}
         onWorkspaceChange={setWorkspace}
         showExperienceMode
+        allowWideView
       />
 
       <main className={styles.main}>

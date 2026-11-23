@@ -35,6 +35,7 @@ export default function PcbViewerPage() {
         activeWorkspace={workspace}
         onWorkspaceChange={setWorkspace}
         showExperienceMode
+        allowWideView
       />
 
       <main className={styles.main}>

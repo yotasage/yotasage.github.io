@@ -25,6 +25,9 @@ export const en = {
   'header.languageToggle': 'Switch language',
   'header.switchToNb': 'Bytt til norsk bokmål (NB)',
   'header.switchToEn': 'Switch to English (EN)',
+  'header.wideView': 'Wide view',
+  'header.wideViewEnable': 'Expand to wide view (full window width)',
+  'header.wideViewDisable': 'Return to standard width',
 
   // Theme labels
   'theme.light': 'Light',
@@ -204,6 +207,9 @@ export const nb: Record<keyof typeof en, string> = {
   'header.languageToggle': 'Bytt språk',
   'header.switchToNb': 'Bytt til norsk bokmål (NB)',
   'header.switchToEn': 'Switch to English (EN)',
+  'header.wideView': 'Bred visning',
+  'header.wideViewEnable': 'Utvid til bred visning (full vindusbredde)',
+  'header.wideViewDisable': 'Tilbake til standard bredde',
 
   // Theme labels
   'theme.light': 'Lys',

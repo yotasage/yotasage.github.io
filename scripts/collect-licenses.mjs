@@ -10,8 +10,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SOURCE_DIRS = ['pages', 'components', 'lib'];
-// Loaded by Next.js itself on every page.
-const ALWAYS = ['next', 'react', 'react-dom'];
+// Loaded by Next.js itself on every page, plus self-hosted UI flag icons (public/flags).
+const ALWAYS = ['next', 'react', 'react-dom', 'flag-icons'];
 
 const LICENSE_FILE = /^(licen[sc]e|copying|notice)([-._].*)?$/i;
 

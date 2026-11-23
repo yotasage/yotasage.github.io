@@ -2,6 +2,7 @@ import React from 'react';
 
 import { Checkbox, Field } from '../UI/Fields';
 import styles from '../../styles/PdfTools.module.css';
+import signStyles from '../../styles/PdfSign.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
 export interface SignatureAsset {
@@ -73,7 +74,7 @@ const TYPE_STYLES: TypeStylePreset[] = [
   },
 ];
 
-// Fixed logical coordinate system for drawn strokes so resizing never distorts ink.
+// Reference logical frame for drawn strokes; uniform scaling prevents distortion when toggling full screen.
 const PAD_W = 640;
 const PAD_H = 200;
 
@@ -136,9 +137,16 @@ async function canvasToPngAsset(
   return { pngBytes, dataUrl, width: cropW, height: cropH };
 }
 
-function renderStrokes(ctx: CanvasRenderingContext2D, strokes: DrawStroke[], scale: number) {
+function renderStrokes(
+  ctx: CanvasRenderingContext2D,
+  strokes: DrawStroke[],
+  scale: number,
+  offsetX = 0,
+  offsetY = 0,
+) {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   ctx.save();
+  ctx.translate(offsetX, offsetY);
   ctx.scale(scale, scale);
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
@@ -173,6 +181,47 @@ function renderStrokes(ctx: CanvasRenderingContext2D, strokes: DrawStroke[], sca
     ctx.stroke();
   }
   ctx.restore();
+}
+
+function computeUniformTransform(cssW: number, cssH: number) {
+  const safeW = Math.max(1, cssW);
+  const safeH = Math.max(1, cssH);
+  const scale = Math.min(safeW / PAD_W, safeH / PAD_H);
+  const offsetX = (safeW - PAD_W * scale) / 2;
+  const offsetY = (safeH - PAD_H * scale) / 2;
+  return { scale, offsetX, offsetY };
+}
+
+function exportDrawnStrokesCanvas(strokes: DrawStroke[]): HTMLCanvasElement | null {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  let maxW = 4;
+
+  for (const s of strokes) {
+    if (s.width > maxW) maxW = s.width;
+    for (const p of s.points) {
+      if (p.x < minX) minX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y > maxY) maxY = p.y;
+    }
+  }
+  if (!Number.isFinite(minX) || !Number.isFinite(minY)) return null;
+
+  const pad = Math.ceil(maxW) + 12;
+  const logicalW = Math.max(16, maxX - minX + pad * 2);
+  const logicalH = Math.max(16, maxY - minY + pad * 2);
+  const exportScale = Math.min(2.5, 1600 / Math.max(logicalW, logicalH, 1));
+
+  const out = document.createElement('canvas');
+  out.width = Math.max(1, Math.ceil(logicalW * exportScale));
+  out.height = Math.max(1, Math.ceil(logicalH * exportScale));
+  const ctx = out.getContext('2d');
+  if (!ctx) return null;
+  renderStrokes(ctx, strokes, exportScale, (pad - minX) * exportScale, (pad - minY) * exportScale);
+  return out;
 }
 
 function drawTypedCanvas(
@@ -271,10 +320,12 @@ export interface SignaturePadProps {
   onCreate: (asset: SignatureAsset) => void;
   onCancel?: () => void;
   defaultLabel?: string;
+  initialFullscreen?: boolean;
 }
 
-export function SignaturePad({ onCreate, onCancel, defaultLabel }: SignaturePadProps) {
+export function SignaturePad({ onCreate, onCancel, defaultLabel, initialFullscreen }: SignaturePadProps) {
   const [mode, setMode] = React.useState<PadMode>('draw');
+  const [fullscreen, setFullscreen] = React.useState<boolean>(Boolean(initialFullscreen));
   const [inkColor, setInkColor] = React.useState<string>(SIGNATURE_INK_COLORS[0].hex);
   const [label, setLabel] = React.useState<string>('');
   const [saving, setSaving] = React.useState(false);
@@ -300,25 +351,62 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel }: SignaturePadP
   const [bgThreshold, setBgThreshold] = React.useState(220);
   const [uploadPreviewUrl, setUploadPreviewUrl] = React.useState<string | null>(null);
 
-  // Initialize and redraw the HiDPI draw canvas whenever strokes change or mode switches back to draw.
+  const exitFullscreen = React.useCallback(() => {
+    if (initialFullscreen && onCancel) {
+      onCancel();
+      return;
+    }
+    setFullscreen(false);
+  }, [initialFullscreen, onCancel]);
+
+  // Lock page scroll and handle Escape while in full screen.
+  React.useEffect(() => {
+    if (!fullscreen) return undefined;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        exitFullscreen();
+      }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKey, true);
+    };
+  }, [fullscreen, exitFullscreen]);
+
+  // Initialize and redraw the HiDPI draw canvas whenever strokes, mode, or canvas size changes.
   const redrawPad = React.useCallback((list: DrawStroke[], liveStroke?: DrawStroke) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const dpr = Math.min(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, 2.5);
-    const targetW = Math.round(PAD_W * dpr);
-    const targetH = Math.round(PAD_H * dpr);
+    const rect = canvas.getBoundingClientRect();
+    const cssW = Math.max(100, Math.round(rect.width || PAD_W));
+    const cssH = Math.max(80, Math.round(rect.height || PAD_H));
+    const targetW = Math.round(cssW * dpr);
+    const targetH = Math.round(cssH * dpr);
     if (canvas.width !== targetW || canvas.height !== targetH) {
       canvas.width = targetW;
       canvas.height = targetH;
     }
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    renderStrokes(ctx, liveStroke ? [...list, liveStroke] : list, dpr);
+    const { scale, offsetX, offsetY } = computeUniformTransform(cssW, cssH);
+    renderStrokes(ctx, liveStroke ? [...list, liveStroke] : list, scale * dpr, offsetX * dpr, offsetY * dpr);
   }, []);
 
   React.useEffect(() => {
-    if (mode === 'draw') redrawPad(strokes);
-  }, [mode, strokes, redrawPad]);
+    if (mode !== 'draw') return undefined;
+    redrawPad(strokes);
+    const canvas = canvasRef.current;
+    if (!canvas || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(() => redrawPad(strokesRef.current));
+    ro.observe(canvas);
+    return () => ro.disconnect();
+  }, [mode, strokes, fullscreen, redrawPad]);
 
   // Recompute upload preview whenever image, removeBg, or bgThreshold changes.
   React.useEffect(() => {
@@ -341,11 +429,13 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel }: SignaturePadP
 
   function clientToPad(e: React.PointerEvent<HTMLCanvasElement>): DrawPoint {
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / Math.max(1, rect.width)) * PAD_W;
-    const y = ((e.clientY - rect.top) / Math.max(1, rect.height)) * PAD_H;
+    const { scale, offsetX, offsetY } = computeUniformTransform(rect.width, rect.height);
+    const safeScale = Math.max(0.05, scale);
+    const localX = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+    const localY = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
     return {
-      x: Math.max(0, Math.min(PAD_W, x)),
-      y: Math.max(0, Math.min(PAD_H, y)),
+      x: (localX - offsetX) / safeScale,
+      y: (localY - offsetY) / safeScale,
     };
   }
 
@@ -420,12 +510,11 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel }: SignaturePadP
           setPadError('Draw your signature on the pad first.');
           return;
         }
-        offscreen = document.createElement('canvas');
-        const exportScale = 2;
-        offscreen.width = PAD_W * exportScale;
-        offscreen.height = PAD_H * exportScale;
-        const ctx = offscreen.getContext('2d');
-        if (ctx) renderStrokes(ctx, strokes, exportScale);
+        offscreen = exportDrawnStrokesCanvas(strokes);
+        if (!offscreen) {
+          setPadError('Draw your signature on the pad first.');
+          return;
+        }
       } else if (mode === 'type') {
         if (!typedText.trim()) {
           setPadError('Enter your name or initials to generate a typed signature.');
@@ -465,6 +554,7 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel }: SignaturePadP
       // Reset transient inputs for clean subsequent creation.
       setStrokes([]);
       setLabel('');
+      setFullscreen(false);
     } catch (e) {
       setPadError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -479,15 +569,37 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel }: SignaturePadP
         ? typedText.trim().length > 0
         : Boolean(uploadedImg && uploadPreviewUrl);
 
+  const swatchClass = (hex: string) =>
+    [
+      styles.sigSwatch,
+      fullscreen ? signStyles.sigTouchSwatch : '',
+      inkColor === hex ? styles.sigSwatchActive : '',
+    ].join(' ');
+
   return (
-    <div className={styles.sigPadCard}>
-      <div className={styles.sigPadHeader}>
+    <div
+      className={fullscreen ? signStyles.sigPadFullscreenBackdrop : styles.sigPadCard}
+      role={fullscreen ? 'dialog' : undefined}
+      aria-modal={fullscreen || undefined}
+      aria-label={fullscreen ? 'Full screen signature pad' : undefined}
+    >
+      <div className={fullscreen ? signStyles.sigPadFullscreenTop : styles.sigPadHeader}>
         <h3>Create signature or initials</h3>
-        {onCancel && (
-          <button type="button" className={styles.miniBtn} onClick={onCancel}>
-            Close
+        <div className={signStyles.sigPadHeaderActions}>
+          <button
+            type="button"
+            className={[signStyles.toolBtn, fullscreen ? signStyles.toolBtnActive : ''].join(' ')}
+            aria-pressed={fullscreen}
+            onClick={() => (fullscreen ? exitFullscreen() : setFullscreen(true))}
+          >
+            {fullscreen ? 'Exit full screen' : 'Full screen'}
           </button>
-        )}
+          {onCancel && !fullscreen && (
+            <button type="button" className={styles.miniBtn} onClick={onCancel}>
+              Close
+            </button>
+          )}
+        </div>
       </div>
 
       <div className={styles.tabs} role="tablist" aria-label="Signature creation mode">
@@ -530,8 +642,8 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel }: SignaturePadP
       </div>
 
       {mode === 'draw' && (
-        <div className={styles.sigPadBody}>
-          <div className={styles.sigControlsRow}>
+        <div className={fullscreen ? signStyles.sigPadFullscreenBody : styles.sigPadBody}>
+          <div className={fullscreen ? signStyles.sigPadFullscreenControls : styles.sigControlsRow}>
             <div className={styles.sigSwatchGroup} role="group" aria-label="Ink color">
               {SIGNATURE_INK_COLORS.map((swatch) => (
                 <button
@@ -540,10 +652,7 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel }: SignaturePadP
                   title={swatch.label}
                   aria-label={swatch.label}
                   aria-pressed={inkColor === swatch.hex}
-                  className={[
-                    styles.sigSwatch,
-                    inkColor === swatch.hex ? styles.sigSwatchActive : '',
-                  ].join(' ')}
+                  className={swatchClass(swatch.hex)}
                   style={{ backgroundColor: swatch.hex }}
                   onClick={() => setInkColor(swatch.hex)}
                 />
@@ -563,7 +672,7 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel }: SignaturePadP
             <div className={styles.sigMiniActions}>
               <button
                 type="button"
-                className={styles.buttonSmall}
+                className={[styles.buttonSmall, fullscreen ? signStyles.sigTouchBtn : ''].join(' ')}
                 disabled={strokes.length === 0}
                 onClick={() => setStrokes((prev) => prev.slice(0, -1))}
               >
@@ -571,7 +680,7 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel }: SignaturePadP
               </button>
               <button
                 type="button"
-                className={styles.buttonSmall}
+                className={[styles.buttonSmall, fullscreen ? signStyles.sigTouchBtn : ''].join(' ')}
                 disabled={strokes.length === 0}
                 onClick={() => setStrokes([])}
               >
@@ -580,10 +689,10 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel }: SignaturePadP
             </div>
           </div>
 
-          <div className={styles.sigDrawWrap}>
+          <div className={fullscreen ? signStyles.sigDrawWrapFullscreen : styles.sigDrawWrap}>
             <canvas
               ref={canvasRef}
-              className={styles.sigDrawCanvas}
+              className={fullscreen ? signStyles.sigDrawCanvasFullscreen : styles.sigDrawCanvas}
               aria-label="Signature drawing pad"
               onPointerDown={handlePadPointerDown}
               onPointerMove={handlePadPointerMove}
@@ -601,8 +710,8 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel }: SignaturePadP
       )}
 
       {mode === 'type' && (
-        <div className={styles.sigPadBody}>
-          <div className={styles.sigControlsRow}>
+        <div className={fullscreen ? signStyles.sigPadFullscreenBody : styles.sigPadBody}>
+          <div className={fullscreen ? signStyles.sigPadFullscreenControls : styles.sigControlsRow}>
             <div className={styles.sigTypeInputWrap}>
               <input
                 className={fieldStyles.input}
@@ -625,10 +734,7 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel }: SignaturePadP
                   title={swatch.label}
                   aria-label={swatch.label}
                   aria-pressed={inkColor === swatch.hex}
-                  className={[
-                    styles.sigSwatch,
-                    inkColor === swatch.hex ? styles.sigSwatchActive : '',
-                  ].join(' ')}
+                  className={swatchClass(swatch.hex)}
                   style={{ backgroundColor: swatch.hex }}
                   onClick={() => setInkColor(swatch.hex)}
                 />
@@ -671,11 +777,11 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel }: SignaturePadP
       )}
 
       {mode === 'upload' && (
-        <div className={styles.sigPadBody}>
-          <div className={styles.sigControlsRow}>
+        <div className={fullscreen ? signStyles.sigPadFullscreenBody : styles.sigPadBody}>
+          <div className={fullscreen ? signStyles.sigPadFullscreenControls : styles.sigControlsRow}>
             <button
               type="button"
-              className={styles.buttonSmall}
+              className={[styles.buttonSmall, fullscreen ? signStyles.sigTouchBtn : ''].join(' ')}
               onClick={() => uploadInputRef.current?.click()}
             >
               {uploadedImg ? 'Choose another image' : 'Select signature image'}
@@ -730,7 +836,7 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel }: SignaturePadP
         </div>
       )}
 
-      <div className={styles.sigPadFooter}>
+      <div className={fullscreen ? signStyles.sigPadFullscreenFooter : styles.sigPadFooter}>
         <div className={styles.sigLabelInput}>
           <Field label="Label (optional)">
             <input
@@ -745,7 +851,7 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel }: SignaturePadP
         </div>
         <button
           type="button"
-          className={styles.primary}
+          className={[styles.primary, fullscreen ? signStyles.sigTouchBtn : ''].join(' ')}
           disabled={saving || !canSave}
           onClick={() => void handleSave()}
         >

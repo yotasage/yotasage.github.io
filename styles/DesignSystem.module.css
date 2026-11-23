@@ -33,6 +33,10 @@
   gap: 12px 16px;
 }
 
+:global(html[data-ds-wide="true"]) .headerInner {
+  max-width: none;
+}
+
 .headerLeft {
   display: flex;
   align-items: center;
@@ -218,12 +222,74 @@
   letter-spacing: 0.03em;
 }
 
+/* Wide View Toggle Button */
+
+.wideBtn {
+  appearance: none;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: var(--ds-radius-pill);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  color: var(--ds-ink-2);
+  font-family: var(--ds-font-ui);
+  font-size: 0.76rem;
+  font-weight: 550;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.wideBtn:hover {
+  background: var(--ds-well-hover);
+  border-color: var(--ds-border-strong);
+  color: var(--ds-ink);
+}
+
+.wideBtnActive {
+  background: var(--ds-accent-soft);
+  border-color: var(--ds-accent-border);
+  color: var(--ds-accent);
+  font-weight: 600;
+}
+
+:global(html[data-ds-theme="hc"]) .wideBtnActive {
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  font-weight: 700;
+}
+
+.wideLabel {
+  line-height: 1;
+}
+
+@media (max-width: 1260px) {
+  .wideLabel {
+    display: none;
+  }
+
+  .wideBtn {
+    padding: 0 8px;
+  }
+}
+
+@media (max-width: 1020px) {
+  .wideBtn {
+    display: none;
+  }
+}
+
 /* Language Toggle Pill */
 
 .langBtn {
   appearance: none;
   height: 32px;
-  padding: 0 10px;
+  padding: 0 9px;
   border-radius: var(--ds-radius-pill);
   border: var(--ds-border-w) solid var(--ds-border);
   background: var(--ds-well);
@@ -234,7 +300,7 @@
   letter-spacing: 0.02em;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
@@ -246,9 +312,37 @@
   border-color: var(--ds-border-strong);
 }
 
+.langItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.langFlag {
+  display: block;
+  width: 15px;
+  height: 11px;
+  border-radius: 2px;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.16);
+  opacity: 0.56;
+  transition: opacity 0.15s ease;
+  flex-shrink: 0;
+}
+
+:global(html[data-ds-theme="dark"]) .langFlag,
+:global(html[data-ds-theme="hc"]) .langFlag {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.24);
+}
+
 .langActive {
   color: var(--ds-ink);
   font-weight: 700;
+}
+
+.langActive .langFlag,
+.langBtn:hover .langFlag {
+  opacity: 1;
 }
 
 :global(html[data-ds-theme="hc"]) .langActive {
@@ -596,6 +690,15 @@
     height: 29px;
     padding: 0 6px;
     font-size: 0.66rem;
-    gap: 2px;
+    gap: 3px;
+  }
+
+  .langItem {
+    gap: 3px;
+  }
+
+  .langFlag {
+    width: 13px;
+    height: 10px;
   }
 }

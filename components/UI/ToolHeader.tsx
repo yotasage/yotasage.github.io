@@ -2,6 +2,7 @@ import Link from 'next/link';
 import React from 'react';
 
 import { useI18n } from '../../lib/ui/i18n';
+import { useWideView } from '../../lib/ui/layout';
 import { ExperienceMode, useExperienceMode } from '../../lib/ui/mode';
 import { ResolvedTheme, useTheme } from '../../lib/ui/theme';
 import styles from '../../styles/DesignSystem.module.css';
@@ -23,6 +24,7 @@ export interface ToolHeaderProps<T extends string = string> {
   onWorkspaceChange?: (id: T) => void;
   actions?: React.ReactNode;
   showExperienceMode?: boolean;
+  allowWideView?: boolean;
   className?: string;
 }
 
@@ -70,6 +72,36 @@ function MoonIcon() {
   );
 }
 
+function WideViewIcon({ active }: { active: boolean }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      {active ? (
+        <>
+          <path d="m10 9-3 3 3 3" />
+          <path d="m14 9 3 3-3 3" />
+        </>
+      ) : (
+        <>
+          <path d="m8 9-3 3 3 3" />
+          <path d="m16 9 3 3-3 3" />
+          <path d="M5 12h14" />
+        </>
+      )}
+    </svg>
+  );
+}
+
 const EXPERIENCE_MODES: readonly ExperienceMode[] = ['quick', 'standard', 'teaching'];
 
 export default function ToolHeader<T extends string = string>({
@@ -81,14 +113,30 @@ export default function ToolHeader<T extends string = string>({
   onWorkspaceChange,
   actions,
   showExperienceMode = false,
+  allowWideView = false,
   className,
 }: ToolHeaderProps<T>) {
   const { theme, setTheme, mounted: themeMounted } = useTheme();
   const { mode, setMode } = useExperienceMode();
   const { locale, toggleLocale, t } = useI18n();
+  const { wide, mounted: wideMounted, toggleWide } = useWideView();
 
   const workspaceItems: readonly PillTabItem<T>[] | undefined = workspaces;
   const activeTheme: ResolvedTheme = themeMounted ? theme : 'light';
+  const wideActive = allowWideView && wideMounted && wide;
+
+  React.useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    if (wideActive) {
+      root.setAttribute('data-ds-wide', 'true');
+    } else {
+      root.removeAttribute('data-ds-wide');
+    }
+    return () => {
+      root.removeAttribute('data-ds-wide');
+    };
+  }, [wideActive]);
 
   return (
     <header className={[styles.header, 'ds-no-print', className ?? ''].filter(Boolean).join(' ')}>
@@ -152,6 +200,21 @@ export default function ToolHeader<T extends string = string>({
             </div>
           )}
 
+          {allowWideView && (
+            <button
+              type="button"
+              className={[styles.wideBtn, wideActive ? styles.wideBtnActive : ''].filter(Boolean).join(' ')}
+              aria-pressed={wideActive}
+              aria-label={wideActive ? t('header.wideViewDisable') : t('header.wideViewEnable')}
+              title={wideActive ? t('header.wideViewDisable') : t('header.wideViewEnable')}
+              onClick={toggleWide}
+              data-wide-toggle=""
+            >
+              <WideViewIcon active={wideActive} />
+              <span className={styles.wideLabel}>{t('header.wideView')}</span>
+            </button>
+          )}
+
           <div className={styles.segmented} role="group" aria-label={t('header.themeSelector')}>
             <button
               type="button"
@@ -210,9 +273,15 @@ export default function ToolHeader<T extends string = string>({
             aria-label={locale === 'en' ? t('header.switchToNb') : t('header.switchToEn')}
             title={locale === 'en' ? t('header.switchToNb') : t('header.switchToEn')}
           >
-            <span className={locale === 'en' ? styles.langActive : undefined}>EN</span>
+            <span className={[styles.langItem, locale === 'en' ? styles.langActive : ''].filter(Boolean).join(' ')}>
+              <img src="/flags/gb.svg" alt="" width={16} height={12} className={styles.langFlag} aria-hidden="true" />
+              <span>EN</span>
+            </span>
             <span className={styles.langSep} aria-hidden="true">/</span>
-            <span className={locale === 'nb' ? styles.langActive : undefined}>NB</span>
+            <span className={[styles.langItem, locale === 'nb' ? styles.langActive : ''].filter(Boolean).join(' ')}>
+              <img src="/flags/no.svg" alt="" width={16} height={12} className={styles.langFlag} aria-hidden="true" />
+              <span>NB</span>
+            </span>
           </button>
         </div>
       </div>

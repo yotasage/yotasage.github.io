@@ -10,6 +10,7 @@ import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Base64Image.module.css';
 import { DropTarget, FilePickerButton } from '../PdfTools/ToolPage';
 import { Checkbox, Field, NumberInput, Select } from '../UI/Fields';
+import CameraCapture from './CameraCapture';
 
 type Output = 'dataUrl' | 'base64' | 'html' | 'css' | 'markdown';
 
@@ -66,6 +67,7 @@ function utf8OrNull(bytes: Uint8Array): string | null {
 export default function Encoder() {
   const { t } = useI18n();
   const [source, setSource] = React.useState<Source | null>(null);
+  const [cameraOpen, setCameraOpen] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [imageMode, setImageMode] = React.useState<ImageMode>('original');
   const [width, setWidth] = React.useState(256);
@@ -193,17 +195,36 @@ export default function Encoder() {
   return (
     <DropTarget onFiles={(files) => load(files[0])} className={[styles.card, styles.panel].join(' ')} overClassName={styles.dropOver}>
       <h2>{t('base64.encoder.title')}</h2>
-      {!source && (
+      {cameraOpen && (
+        <CameraCapture
+          onCapture={(file) => {
+            setCameraOpen(false);
+            void load(file);
+          }}
+          onClose={() => setCameraOpen(false)}
+        />
+      )}
+
+      {!source && !cameraOpen && (
         <div className={styles.empty}>
-          <FilePickerButton accept="image/*" multiple={false} onFiles={(files) => load(files[0])} className={styles.primaryButton}>
-            {t('base64.encoder.selectImage')}
-          </FilePickerButton>
+          <div className={styles.emptyActions}>
+            <FilePickerButton accept="image/*" multiple={false} onFiles={(files) => load(files[0])} className={styles.primaryButton}>
+              {t('base64.encoder.selectImage')}
+            </FilePickerButton>
+            <button type="button" className={styles.button} onClick={() => setCameraOpen(true)}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+                <circle cx="12" cy="13" r="3" />
+              </svg>
+              {t('base64.encoder.useCamera')}
+            </button>
+          </div>
           <span className={styles.help}>{t('base64.encoder.dropHint')}</span>
         </div>
       )}
       {loadError && <div className={styles.error}>{loadError}</div>}
 
-      {source && (
+      {source && !cameraOpen && (
         <>
           <div className={styles.preview}>
             {source.image
@@ -222,6 +243,9 @@ export default function Encoder() {
             <FilePickerButton accept="image/*" multiple={false} onFiles={(files) => load(files[0])} className={styles.buttonSmall}>
               {t('base64.encoder.chooseAnother')}
             </FilePickerButton>
+            <button type="button" className={styles.buttonSmall} onClick={() => setCameraOpen(true)}>
+              {t('base64.encoder.takePhoto')}
+            </button>
             <button type="button" className={styles.buttonSmall} onClick={() => setSource(null)}>
               {t('base64.encoder.remove')}
             </button>

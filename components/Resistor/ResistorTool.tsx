@@ -374,6 +374,7 @@ export default function ResistorTool({ references }: { references: BibEntry[] })
         activeWorkspace={workspace}
         onWorkspaceChange={setWorkspace}
         showExperienceMode
+        allowWideView
       />
 
       <main className={styles.main}>

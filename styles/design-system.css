@@ -305,6 +305,19 @@ html[data-ds-page="v2"] #__next > footer :focus-visible {
 }
 
 /* --------------------------------------------------------------------------
+   Wide View Mode (full viewport width on tools that opt in via allowWideView)
+   -------------------------------------------------------------------------- */
+
+html[data-ds-wide="true"] [data-ds="v2"] {
+  --page-w: 100%;
+}
+
+html[data-ds-wide="true"] [data-ds="v2"] > main,
+html[data-ds-wide="true"] [data-ds="v2"] main {
+  max-width: none !important;
+}
+
+/* --------------------------------------------------------------------------
    Global SiteFooter Styling on v2 Pages
    -------------------------------------------------------------------------- */
 

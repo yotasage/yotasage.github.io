@@ -8,18 +8,19 @@ import {
 } from '../../lib/pcb/inspect';
 import { buildBoard, LoadedFile, PickedFile, readFiles } from '../../lib/pcb/load';
 import { Board, Box, isEmptyBox, Layer, LayerKind, Pt, Side, unionBox } from '../../lib/pcb/model';
-import { shapeBox } from '../../lib/pcb/outline';
 import { PnpMapping } from '../../lib/pcb/pnp';
 import {
-  defaultColor, defaultStyle, Finish, finishFromName, FINISHES, MASK_COLORS, MaskColor, maskFromName, RealisticStyle, realisticColors, SILK_COLORS, SilkColor,
-  silkFromName,
+  defaultColor, defaultStyle, finishFromName, maskFromName, RealisticStyle, realisticColors, silkFromName,
 } from '../../lib/pcb/render/colors';
 import { BACKGROUND_DARK, BACKGROUND_LIGHT, BoardView, LayerStyle, ViewMode } from '../../lib/pcb/render/view';
+import { computePcbStats } from '../../lib/pcb/stats';
 import styles from '../../styles/PcbViewer.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
-import { Field, Select } from '../UI/Fields';
 import AssemblyCard from './AssemblyCard';
+import { BoardInfo, Card, RealisticFields } from './BoardPanels';
+import BoardStats from './BoardStats';
 import FileList from './FileList';
+import FullscreenDrawer, { FullscreenTab } from './FullscreenDrawer';
 import { InspectPanel, PartsCard, targetLabel } from './Inspect';
 import LayerPanel, { LayerActions } from './LayerPanel';
 import { MeasureCard, MeasureOverlay, MeasurePoint, snapPoint } from './Measure';
@@ -30,15 +31,6 @@ import SaveCard from './SaveCard';
 type Status = { kind: 'loading'; text: string } | { kind: 'ready' } | { kind: 'empty' } | { kind: 'error'; text: string };
 
 export type Units = 'mm' | 'in';
-
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className={styles.card}>
-      <h2>{title}</h2>
-      {children}
-    </section>
-  );
-}
 
 // A length in the chosen unit, with a number of decimals that fits millimetres or inches.
 export function formatLength(mm: number, units: Units, decimals?: number): string {
@@ -57,73 +49,6 @@ function CursorReadout({ view, units }: { view: BoardView; units: Units }) {
   const decimals = Math.min(6, Math.max(1, Math.ceil(-Math.log10(perPixel))));
   const f = (v: number) => (units === 'in' ? v / 25.4 : v).toFixed(decimals).replace('-', '−');
   return <div className={styles.coords} aria-live="off">{`X ${f(point.x)}  Y ${f(point.y)} ${UNIT_NAME[units]}`}</div>;
-}
-
-const SIZE_FROM: Record<NonNullable<Board['outlineFrom']>, string> = {
-  outline: 'Size',
-  design: 'Size',
-  frame: 'Size',
-  copper: 'Size of the copper',
-  extent: 'Size of the layers',
-};
-
-function BoardInfo({ board, units, shown }: { board: Board; units: Units; shown: number }) {
-  const box = board.outline?.length ? shapeBox(board.outline) : null;
-  const copper = board.layers.filter((l) => l.kind === 'copper').length;
-  const s = board.stackup ?? {};
-  const d = board.design;
-  return (
-    <>
-      <p className={styles.boardName} title={board.name}>{board.name}</p>
-      <table className={[fieldStyles.infoTable, styles.info].join(' ')}>
-        <tbody>
-          {d && <tr><th>File</th><td>{d.format}</td></tr>}
-          {box && (
-            <tr>
-              <th>{SIZE_FROM[board.outlineFrom ?? 'outline']}</th>
-              <td>{formatLength(box.maxX - box.minX, units)} × {formatLength(box.maxY - box.minY, units)} {UNIT_NAME[units]}</td>
-            </tr>
-          )}
-          {copper > 0 && <tr><th>Copper layers</th><td>{s.copperLayers && s.copperLayers !== copper ? `${copper} (the job file says ${s.copperLayers})` : copper}</td></tr>}
-          {s.thickness !== undefined && <tr><th>Thickness</th><td>{formatLength(s.thickness, units, units === 'in' ? 4 : 3)} {UNIT_NAME[units]}</td></tr>}
-          {s.mask && <tr><th>Solder mask</th><td>{s.mask}</td></tr>}
-          {s.silk && <tr><th>Silkscreen</th><td>{s.silk}</td></tr>}
-          {s.finish && <tr><th>Finish</th><td>{s.finish}</td></tr>}
-          {d && <tr><th>Components</th><td>{d.components.length.toLocaleString('en-US')}</td></tr>}
-          {d && d.nets.length > 1 && <tr><th>Nets</th><td>{(d.nets.length - 1).toLocaleString('en-US')}</td></tr>}
-          <tr><th>Layers</th><td>{board.layers.length}, {shown} shown</td></tr>
-        </tbody>
-      </table>
-      {board.outlineFrom === 'copper' && <p className={styles.detailNote}>There is no board outline among the files, so the board is taken to be the rectangle around the copper.</p>}
-      {board.warnings.map((w) => <p key={w} className={fieldStyles.warning}>{w}</p>)}
-    </>
-  );
-}
-
-// The colours of the realistic view, from the job file at first.
-function RealisticFields({ value, onChange, board }: { value: RealisticStyle; onChange: (v: RealisticStyle) => void; board: Board }) {
-  const s = board.stackup ?? {};
-  const fromJob = [s.mask && `${s.mask} mask`, s.silk && `${s.silk} silkscreen`, s.finish && `finish ${s.finish}`].filter(Boolean);
-  const source = board.design ? 'The board file' : 'The job file';
-  return (
-    <>
-      <div className={styles.detailFields}>
-        <Field label="Solder mask">
-          <Select<MaskColor> value={value.mask} onChange={(mask) => onChange({ ...value, mask })} options={Object.entries(MASK_COLORS).map(([k, v]) => [k as MaskColor, v.label])} />
-        </Field>
-        <Field label="Silkscreen">
-          <Select<SilkColor> value={value.silk} onChange={(silk) => onChange({ ...value, silk })} options={Object.entries(SILK_COLORS).map(([k, v]) => [k as SilkColor, v.label])} />
-        </Field>
-        <Field label="Finish">
-          <Select<Finish> value={value.finish} onChange={(finish) => onChange({ ...value, finish })} options={Object.entries(FINISHES).map(([k, v]) => [k as Finish, v.label])} />
-        </Field>
-      </div>
-      <p className={fieldStyles.help}>
-        {fromJob.length ? `${source} says: ${fromJob.join(', ')}.` : `${board.design ? 'The board file gives no colours' : 'No job file gives the colours'}; green mask, white silkscreen and ENIG are assumed.`}
-        {' '}The view uses the copper, solder mask, silkscreen and drill layers of the side in view, whether they are shown in the layer list or not.
-      </p>
-    </>
-  );
 }
 
 // What a click found: the items there (one entry per object), which one is shown, where the click was, and on which
@@ -202,6 +127,8 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
   const [status, setStatus] = React.useState<Status>({ kind: 'loading', text: 'Reading…' });
   const [busy, setBusy] = React.useState(false);
   const [fullscreen, setFullscreen] = React.useState(false);
+  const [fsDrawer, setFsDrawer] = React.useState<FullscreenTab | null>(null);
+  const nativeFsRef = React.useRef(false);
   const [folders, setFolders] = React.useState(false);
   const [measuring, setMeasuring] = React.useState(false);
   const [points, setPoints] = React.useState<MeasurePoint[]>([]);
@@ -228,13 +155,43 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
     v.onBusy = setBusy;
     setView(v);
     setFolders(canPickFolders());
-    const onFullscreen = () => setFullscreen(document.fullscreenElement === viewport.current);
+    const onFullscreen = () => {
+      const isNative = document.fullscreenElement === viewport.current;
+      if (isNative) {
+        nativeFsRef.current = true;
+        setFullscreen(true);
+      } else if (nativeFsRef.current) {
+        nativeFsRef.current = false;
+        setFullscreen(false);
+        setFsDrawer(null);
+      }
+    };
     document.addEventListener('fullscreenchange', onFullscreen);
     return () => {
       v.dispose();
       document.removeEventListener('fullscreenchange', onFullscreen);
     };
   }, []);
+
+  React.useEffect(() => {
+    if (!fullscreen) return undefined;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      const l = latest.current;
+      if (l.measuring || l.inspection || l.highlight) return;
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+      nativeFsRef.current = false;
+      setFullscreen(false);
+      setFsDrawer(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [fullscreen]);
 
   // Shows a board built from the files: keeps the colours, visibility and order the user chose, and gives new layers
   // their defaults.
@@ -449,6 +406,7 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
     }
   }, [view, lit]);
   const catalog = React.useMemo(() => (board ? boardCatalog(board) : null), [board]);
+  const stats = React.useMemo(() => (board ? computePcbStats(board) : null), [board]);
   const description = React.useMemo(() => {
     const h = inspection?.hits[inspection.index];
     return h && board ? describeHit(board, h, units) : null;
@@ -553,8 +511,19 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
   };
 
   function toggleFullscreen() {
-    if (document.fullscreenElement) void document.exitFullscreen();
-    else void viewport.current?.requestFullscreen();
+    if (fullscreen) {
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+      nativeFsRef.current = false;
+      setFullscreen(false);
+      setFsDrawer(null);
+      return;
+    }
+    setFullscreen(true);
+    if (typeof document !== 'undefined' && document.fullscreenEnabled && viewport.current?.requestFullscreen) {
+      void viewport.current.requestFullscreen().catch(() => {
+        nativeFsRef.current = false;
+      });
+    }
   }
 
   function toggleMeasuring() {
@@ -564,11 +533,66 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
 
   const ready = status.kind === 'ready' && board;
   const shown = layersInOrder.filter((l) => layerStyles.get(l.id)?.visible).length;
+  const hasParts = Boolean(board && catalog && (catalog.parts.length > 0 || catalog.nets.length > 0));
   const openButtons = (
     <div className={fieldStyles.buttonRow}>
       <PickButton onFiles={(f) => open(f, false)} className={fieldStyles.buttonSmall}>Add files</PickButton>
       {folders && <PickButton folder onFiles={(f) => open(f, false)} className={fieldStyles.buttonSmall}>Add folder</PickButton>}
       <PickButton onFiles={(f) => open(f, true)} className={fieldStyles.buttonSmall}>Open other files</PickButton>
+    </div>
+  );
+
+  const layersSection = board ? (
+    <>
+      <LayerPanel layers={layersInOrder} styles={layerStyles} actions={actions} files={files} />
+      <p className={fieldStyles.help}>The top of the list is drawn on top. Seen from the bottom, the layers of the two sides swap places.</p>
+    </>
+  ) : null;
+
+  const partsSection = board && hasParts && catalog ? (
+    <PartsCard key={board.name} catalog={catalog} highlight={highlight} onPick={pickTarget} onClear={() => setHighlight(null)} source={listSource(board, files)} />
+  ) : null;
+
+  const toolsSections = (
+    <div className={styles.fsToolsStack}>
+      {board && mode === 'realistic' && (
+        <Card title="Realistic view">
+          <RealisticFields
+            value={realistic}
+            board={board}
+            onChange={(v) => {
+              customRealistic.current = true;
+              setRealistic(v);
+            }}
+          />
+        </Card>
+      )}
+      {board && (
+        <Card title="Measure">
+          <MeasureCard measuring={measuring} points={points} onToggle={toggleMeasuring} onClear={() => setPoints([])} />
+        </Card>
+      )}
+      {board && view && (
+        <Card title="Save">
+          <SaveCard view={view} board={board} mode={mode} flipped={flipped} layerStyles={layerStyles} colors={realisticColors(realistic)} highlighted={lit?.items ? targetLabel(lit.target) : undefined} />
+        </Card>
+      )}
+      {board?.design && board.placements.length > 0 && (
+        <Card title="BOM and pick-and-place">
+          <AssemblyCard board={board} />
+        </Card>
+      )}
+      {board && !board.design && files.some((f) => f.pnpState) && (
+        <Card title="Pick-and-place">
+          <PlacementCard files={files} onChange={setPnpMapping} />
+        </Card>
+      )}
+      {files.length > 0 && (
+        <Card title={`Files (${files.filter((f) => f.detected.id !== 'zip').length})`}>
+          <FileList files={files} layers={board?.layers ?? []} />
+        </Card>
+      )}
+      <Card title="Open files">{openButtons}</Card>
     </div>
   );
 
@@ -609,76 +633,126 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
           >
             {canvasTheme === 'light' ? 'Canvas: Light' : 'Canvas: Dark'}
           </button>
-          {typeof document !== 'undefined' && document.fullscreenEnabled && (
-            <button type="button" className={styles.toolButton} aria-pressed={fullscreen} onClick={toggleFullscreen}>{fullscreen ? 'Exit full screen' : 'Full screen'}</button>
+          {fullscreen && board && (
+            <>
+              <button
+                type="button"
+                className={styles.toolButton}
+                aria-pressed={fsDrawer === 'layers'}
+                onClick={() => setFsDrawer((cur) => (cur === 'layers' ? null : 'layers'))}
+                title="Show or hide the layer list"
+              >
+                Layer list
+              </button>
+              <button
+                type="button"
+                className={styles.toolButton}
+                aria-pressed={fsDrawer !== null && fsDrawer !== 'layers'}
+                onClick={() => setFsDrawer((cur) => (cur && cur !== 'layers' ? null : 'tools'))}
+                title="Show or hide stats, parts, measure, export, and other tools"
+              >
+                Tools
+              </button>
+            </>
           )}
+          <button type="button" className={styles.toolButton} aria-pressed={fullscreen} onClick={toggleFullscreen}>
+            {fullscreen ? 'Exit full screen' : 'Full screen'}
+          </button>
         </div>
-        <div className={styles.canvasBox}>
-          <canvas
-            ref={canvas}
-            className={[styles.canvas, measuring ? styles.canvasMeasure : ''].join(' ')}
-            tabIndex={0}
-            aria-label="Board view. Click or tap to see what is there; drag to move, scroll or pinch to zoom; arrow keys move, + and − zoom, F fits the board, Escape closes."
-          />
-          {view && ready && (measuring || points.length === 2) && <MeasureOverlay view={view} points={points} hover={measuring ? hover : null} />}
-          {view && ready && <CursorReadout view={view} units={units} />}
-          {ready && (flipped || mode === 'realistic' || highlight) && (
-            <div className={styles.badges}>
-              {(flipped || mode === 'realistic') && (
-                <span className={styles.sideBadge}>{mode === 'realistic' ? `Realistic · ${flipped ? 'bottom' : 'top'}` : 'Seen from the bottom'}</span>
-              )}
-              {highlight && (
-                <span className={styles.highlightBadge}>
-                  <span className={styles.highlightName} title={targetLabel(highlight)}>{lit && !lit.items ? `${targetLabel(highlight)}: nothing on the layers` : `Highlighted: ${targetLabel(highlight)}`}</span>
-                  <button type="button" onClick={() => setHighlight(null)} aria-label="Clear the highlight">×</button>
-                </span>
-              )}
-            </div>
-          )}
-          {ready && description && !measuring && (
-            <InspectPanel
-              desc={description}
-              index={inspection.index}
-              count={inspection.hits.length}
-              highlight={highlight}
-              onStep={(by) => setInspection((s) => (s ? { ...s, index: (s.index + by + s.hits.length) % s.hits.length } : s))}
-              onClose={() => setInspection(null)}
-              onHighlight={setHighlight}
+
+        <div className={styles.viewportBody}>
+          <div className={styles.canvasBox}>
+            <canvas
+              ref={canvas}
+              className={[styles.canvas, measuring ? styles.canvasMeasure : ''].join(' ')}
+              tabIndex={0}
+              aria-label="Board view. Click or tap to see what is there; drag to move, scroll or pinch to zoom; arrow keys move, + and − zoom, F fits the board, Escape closes."
             />
-          )}
-          {ready && !(description && !measuring) && (
-            <p className={styles.viewHint}>
-              {measuring ? (
-                <>
-                  <span className={styles.mouseHint}>Click two points to measure · Drag to move · Esc clears</span>
-                  <span className={styles.touchHint}>Tap two points to measure · Drag to move</span>
-                </>
-              ) : (
-                <>
-                  <span className={styles.mouseHint}>Click to inspect · Drag to move · Scroll to zoom · F to fit</span>
-                  <span className={styles.touchHint}>Tap to inspect · One finger moves · Two fingers zoom</span>
-                </>
-              )}
-            </p>
-          )}
-          {busy && <span className={styles.busy} aria-label="Drawing" />}
-          {status.kind === 'loading' && (
-            <div className={styles.overlay} role="status">
-              <span className={styles.spinner} aria-hidden />
-              <span>{status.text}</span>
-            </div>
-          )}
-          {status.kind === 'empty' && (
-            <div className={[styles.overlay, styles.overlayError].join(' ')} role="alert">
-              <span>No board, Gerber or drill layers were found among these files. The file list says what each file is.</span>
-              {openButtons}
-            </div>
-          )}
-          {status.kind === 'error' && (
-            <div className={[styles.overlay, styles.overlayError].join(' ')} role="alert">
-              <span>{status.text}</span>
-              {openButtons}
-            </div>
+            {view && ready && (measuring || points.length === 2) && <MeasureOverlay view={view} points={points} hover={measuring ? hover : null} />}
+            {view && ready && <CursorReadout view={view} units={units} />}
+            {ready && (flipped || mode === 'realistic' || highlight) && (
+              <div className={styles.badges}>
+                {(flipped || mode === 'realistic') && (
+                  <span className={styles.sideBadge}>{mode === 'realistic' ? `Realistic · ${flipped ? 'bottom' : 'top'}` : 'Seen from the bottom'}</span>
+                )}
+                {highlight && (
+                  <span className={styles.highlightBadge}>
+                    <span className={styles.highlightName} title={targetLabel(highlight)}>{lit && !lit.items ? `${targetLabel(highlight)}: nothing on the layers` : `Highlighted: ${targetLabel(highlight)}`}</span>
+                    <button type="button" onClick={() => setHighlight(null)} aria-label="Clear the highlight">×</button>
+                  </span>
+                )}
+              </div>
+            )}
+            {ready && description && !measuring && (
+              <InspectPanel
+                desc={description}
+                index={inspection.index}
+                count={inspection.hits.length}
+                highlight={highlight}
+                onStep={(by) => setInspection((s) => (s ? { ...s, index: (s.index + by + s.hits.length) % s.hits.length } : s))}
+                onClose={() => setInspection(null)}
+                onHighlight={setHighlight}
+              />
+            )}
+            {ready && !(description && !measuring) && (
+              <p className={styles.viewHint}>
+                {measuring ? (
+                  <>
+                    <span className={styles.mouseHint}>Click two points to measure · Drag to move · Esc clears</span>
+                    <span className={styles.touchHint}>Tap two points to measure · Drag to move</span>
+                  </>
+                ) : (
+                  <>
+                    <span className={styles.mouseHint}>Click to inspect · Drag to move · Scroll to zoom · F to fit</span>
+                    <span className={styles.touchHint}>Tap to inspect · One finger moves · Two fingers zoom</span>
+                  </>
+                )}
+              </p>
+            )}
+            {busy && <span className={styles.busy} aria-label="Drawing" />}
+            {status.kind === 'loading' && (
+              <div className={styles.overlay} role="status">
+                <span className={styles.spinner} aria-hidden />
+                <span>{status.text}</span>
+              </div>
+            )}
+            {status.kind === 'empty' && (
+              <div className={[styles.overlay, styles.overlayError].join(' ')} role="alert">
+                <span>No board, Gerber or drill layers were found among these files. The file list says what each file is.</span>
+                {openButtons}
+              </div>
+            )}
+            {status.kind === 'error' && (
+              <div className={[styles.overlay, styles.overlayError].join(' ')} role="alert">
+                <span>{status.text}</span>
+                {openButtons}
+              </div>
+            )}
+          </div>
+
+          {fullscreen && board && fsDrawer && (
+            <FullscreenDrawer
+              activeTab={fsDrawer}
+              hasParts={hasParts}
+              layerCount={board.layers.length}
+              onSelectTab={setFsDrawer}
+              onClose={() => setFsDrawer(null)}
+              layersContent={<Card title={`Layers (${board.layers.length})`}>{layersSection}</Card>}
+              statsContent={
+                <div className={styles.fsToolsStack}>
+                  <Card title="Board">
+                    <BoardInfo board={board} units={units} shown={shown} />
+                  </Card>
+                  {stats && (
+                    <Card title="Board statistics">
+                      <BoardStats stats={stats} units={units} />
+                    </Card>
+                  )}
+                </div>
+              }
+              partsContent={partsSection ? <Card title="Components and nets">{partsSection}</Card> : null}
+              toolsContent={toolsSections}
+            />
           )}
         </div>
       </div>
@@ -694,9 +768,15 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
           </p>
         </Card>
 
-        {board && catalog && (catalog.parts.length > 0 || catalog.nets.length > 0) && (
+        {board && stats && (
+          <Card title="Board statistics">
+            <BoardStats stats={stats} units={units} />
+          </Card>
+        )}
+
+        {hasParts && (
           <Card title="Components and nets">
-            <PartsCard key={board.name} catalog={catalog} highlight={highlight} onPick={pickTarget} onClear={() => setHighlight(null)} source={listSource(board, files)} />
+            {partsSection}
           </Card>
         )}
 

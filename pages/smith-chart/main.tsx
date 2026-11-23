@@ -977,6 +977,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
         activeWorkspace={workspace}
         onWorkspaceChange={setWorkspace}
         showExperienceMode
+        allowWideView
       />
 
       <main>

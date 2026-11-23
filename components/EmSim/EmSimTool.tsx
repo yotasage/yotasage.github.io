@@ -531,6 +531,7 @@ export default function EmSimTool({ references }: { references: BibEntry[] }) {
         activeWorkspace={workspace}
         onWorkspaceChange={setWorkspace}
         showExperienceMode
+        allowWideView
         actions={undoRedoActions}
       />
 

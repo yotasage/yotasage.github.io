@@ -294,6 +294,7 @@ export default function SmartCalculatorPage() {
         workspaces={workspaces}
         activeWorkspace={workspace}
         onWorkspaceChange={setWorkspace}
+        allowWideView
       />
 
       <main className={styles.main}>

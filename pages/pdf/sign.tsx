@@ -92,6 +92,7 @@ export default function SignPdfPage() {
   const [library, setLibrary] = React.useState<SignatureAsset[]>([]);
   const [activeAssetId, setActiveAssetId] = React.useState<string | null>(null);
   const [showPad, setShowPad] = React.useState(true);
+  const [padModalFullscreen, setPadModalFullscreen] = React.useState(false);
 
   // Placements + undo/redo history
   const [history, setHistory] = React.useState<HistoryState>(EMPTY_HISTORY);
@@ -340,6 +341,7 @@ export default function SignPdfPage() {
     setLibrary((prev) => [...prev, asset]);
     setActiveAssetId(asset.id);
     setShowPad(false);
+    setPadModalFullscreen(false);
     setArmed({ kind: 'signature', assetId: asset.id });
     setNotice(null);
   }
@@ -927,7 +929,111 @@ export default function SignPdfPage() {
               onDelete={handleDeletePlacement}
               onCancelArm={() => setArmed(null)}
               onPageSize={setPageSize}
+              fullscreenTopSlot={
+                <div className={styles.canvasNav}>
+                  <button
+                    type="button"
+                    className={styles.buttonSmall}
+                    disabled={pageIndex <= 0}
+                    onClick={() => {
+                      setPageIndex((i) => Math.max(0, i - 1));
+                      setSelectedId(null);
+                    }}
+                  >
+                    &larr;
+                  </button>
+                  <select
+                    className={styles.signPageSelect}
+                    aria-label="Select page in full screen"
+                    value={pageIndex}
+                    onChange={(e) => {
+                      setPageIndex(Number(e.target.value));
+                      setSelectedId(null);
+                    }}
+                  >
+                    {Array.from({ length: pageCount }, (_, idx) => (
+                      <option key={idx} value={idx}>
+                        {idx + 1} / {pageCount}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className={styles.buttonSmall}
+                    disabled={pageIndex >= pageCount - 1}
+                    onClick={() => {
+                      setPageIndex((i) => Math.min(pageCount - 1, i + 1));
+                      setSelectedId(null);
+                    }}
+                  >
+                    &rarr;
+                  </button>
+                </div>
+              }
+              fullscreenBottomSlot={
+                <>
+                  <div className={styles.signActionBar}>
+                    <button
+                      type="button"
+                      className={[
+                        styles.buttonSmall,
+                        armed?.kind === 'signature' ? styles.signBtnArmed : '',
+                      ].join(' ')}
+                      onClick={() => {
+                        if (library.length === 0) setPadModalFullscreen(true);
+                        else handleQuickPlaceSignature();
+                      }}
+                    >
+                      {armed?.kind === 'signature'
+                        ? 'Cancel place'
+                        : library.length === 0
+                          ? '+ Draw signature'
+                          : 'Place signature'}
+                    </button>
+                    {library.length > 0 && (
+                      <button
+                        type="button"
+                        className={styles.buttonSmall}
+                        onClick={() => setPadModalFullscreen(true)}
+                      >
+                        + New signature
+                      </button>
+                    )}
+                    <button type="button" className={styles.buttonSmall} onClick={handleQuickAddDate}>
+                      + Date
+                    </button>
+                    <button type="button" className={styles.buttonSmall} onClick={handleQuickAddText}>
+                      + Text
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.buttonSmall}
+                      disabled={history.past.length === 0}
+                      onClick={handleUndo}
+                    >
+                      Undo
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.buttonSmall}
+                      disabled={history.future.length === 0}
+                      onClick={handleRedo}
+                    >
+                      Redo
+                    </button>
+                  </div>
+                </>
+              }
             />
+
+            {padModalFullscreen && (
+              <SignaturePad
+                initialFullscreen
+                defaultLabel={`Signature ${library.length + 1}`}
+                onCreate={handleSignatureCreated}
+                onCancel={() => setPadModalFullscreen(false)}
+              />
+            )}
           </>
         )}
       </ToolWorkspace>

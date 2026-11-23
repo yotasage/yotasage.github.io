@@ -164,6 +164,11 @@ export const en = {
   'emsim.teaching.wavesTitle': 'When to run 3D full-wave FDTD',
   'emsim.teaching.wavesBody':
     'Quasi-static models hold well below λ/8 where transverse fields dominate. Run the in-browser WebGPU / CPU FDTD solver when edge speeds are very fast, stubs resonate near the signal band, or return vias sit far from the barrel.',
+  'emsim.status.aria': 'Status and release notes for this tool',
+  'emsim.status.badge': "What's new",
+  'emsim.status.show': 'Details',
+  'emsim.status.hide': 'Hide',
+  'emsim.status.more': 'Assumptions & limitations',
 } as const;
 
 export const nb: Record<keyof typeof en, string> = {
@@ -332,4 +337,9 @@ export const nb: Record<keyof typeof en, string> = {
   'emsim.teaching.wavesTitle': 'Når bør du kjøre 3D fullbølge-FDTD',
   'emsim.teaching.wavesBody':
     'Kvasi-statiske modeller er nøyaktige langt under λ/8. Kjør 3D FDTD-løseren (WebGPU / CPU) i nettleseren når stigetidene er svært korte, en stub resonerer nær signalbåndet, eller returviaene ligger langt fra signalviaen.',
+  'emsim.status.aria': 'Status og nytt i dette verktøyet',
+  'emsim.status.badge': 'Nytt',
+  'emsim.status.show': 'Detaljer',
+  'emsim.status.hide': 'Skjul',
+  'emsim.status.more': 'Forutsetninger og begrensninger',
 };
