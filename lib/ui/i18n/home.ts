@@ -80,6 +80,10 @@ export const en = {
   'home.tool.textcase.category': 'Text',
   'home.tool.textcase.desc':
     'Transform prose and code identifiers live across Sentence, Title, UPPER, camelCase, snake_case, and kebab-case with character, word, and line counts.',
+  'home.tool.notepad.title': 'Scratchpad',
+  'home.tool.notepad.category': 'Text & Code',
+  'home.tool.notepad.desc':
+    'Fast Monaco-powered text editor for quick notes and reviewing code, CSV, TeX, and log files — with side-by-side & 2×2 grid views, diff compare, extended & regex replace, occurrence counts, smart selection highlights, and auto-saved browser sessions.',
 } as const;
 
 export const nb: Record<keyof typeof en, string> = {
@@ -164,4 +168,8 @@ export const nb: Record<keyof typeof en, string> = {
   'home.tool.textcase.category': 'Tekst',
   'home.tool.textcase.desc':
     'Endre store/små bokstaver og kodeidentifikatorer i sanntid (Sentence, Title, UPPER, camelCase, snake_case, kebab-case) med tegn-, ord- og linjeteller.',
+  'home.tool.notepad.title': 'Scratchpad',
+  'home.tool.notepad.category': 'Tekst og kode',
+  'home.tool.notepad.desc':
+    'Rask Monaco-basert teksteditor for notater og hurtig visning av kode, CSV, TeX og tekstfiler — med side om side, 2×2-rutenett, diff-sammenligning, utvidet og regex søk/erstatt, telling av treff, utheving av like valg og automatisk lagring i nettleseren.',
 };

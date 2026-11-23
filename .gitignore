@@ -39,6 +39,9 @@ yarn-error.log*
 # QR code reader (zxing-wasm), copied from node_modules on install
 /public/qr/
 
+# Self-hosted Monaco Editor bundle, copied from node_modules on install
+/public/monaco/
+
 # Self-hosted site fonts (Inter, JetBrains Mono), copied from node_modules on install
 /public/fonts/
 

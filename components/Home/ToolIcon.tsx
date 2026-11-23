@@ -2,7 +2,7 @@ import React from 'react';
 
 // Icons for the tool cards on the main page, in the style of components/PdfTools/ToolIcon.tsx. Filled shapes use
 // currentColor, which the <svg> sets to the tool's colour.
-export type HomeIconName = 'calculator' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
+export type HomeIconName = 'calculator' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
 
 const SAMPLES: [number, number][] = [[6, 24], [12, 12], [18, 12], [24, 24], [30, 36], [36, 36], [42, 24]];
 
@@ -80,6 +80,18 @@ const ICONS: Record<HomeIconName, React.ReactNode> = {
       <path d="M24 8L6 17l18 9 18-9-18-9z" />
       <path d="M31 15l8-8a2.5 2.5 0 0 1 3.5 3.5l-8 8" />
       <circle cx={29} cy={17} r={2.2} fill="currentColor" stroke="none" />
+    </>
+  ),
+  // Split text editor & diff view: two side-by-side panes with highlighted matching lines.
+  notepad: (
+    <>
+      <rect x={5} y={7} width={38} height={34} rx={3.5} />
+      <path d="M5 15h38" />
+      <path d="M24 15v26" opacity={0.6} />
+      <circle cx={10} cy={11} r={1.3} fill="currentColor" stroke="none" />
+      <circle cx={15} cy={11} r={1.3} fill="currentColor" stroke="none" />
+      <path d="M10 22h9M10 28h7M10 34h9" />
+      <path d="M29 22h9M29 28h9M29 34h6" opacity={0.75} />
     </>
   ),
   textcase: (
