@@ -1,4 +1,4 @@
-// Copies the self-hosted Monaco Editor AMD bundle (MIT) into public/monaco/vs, so the Notepad++ tool
+// Copies the self-hosted Monaco Editor AMD bundle (MIT) into public/monaco/vs, so Scratchpad
 // loads Monaco and its language workers locally without any CDN requests. Runs on `npm install` / `npm ci`.
 import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
