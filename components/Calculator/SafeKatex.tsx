@@ -1,6 +1,8 @@
 import katex from 'katex';
 import React from 'react';
 
+import { promoteFractionsToDisplay } from '../../lib/ui/mathFormat';
+import { useMathSettings } from '../../lib/ui/mathSettings';
 import styles from '../../styles/Calculator.module.css';
 
 export interface SafeKatexProps extends React.HTMLAttributes<HTMLSpanElement> {
@@ -18,9 +20,11 @@ export default function SafeKatex({
   className,
   ...delegated
 }: SafeKatexProps) {
+  const { fullSizeFractions } = useMathSettings();
+  const formatted = fullSizeFractions ? promoteFractionsToDisplay(text) : text;
   const html = React.useMemo(() => {
     try {
-      return katex.renderToString(text, {
+      return katex.renderToString(formatted, {
         output: 'mathml',
         displayMode,
         throwOnError: false,
@@ -29,7 +33,7 @@ export default function SafeKatex({
     } catch {
       return '';
     }
-  }, [text, displayMode]);
+  }, [formatted, displayMode]);
 
   const combinedClass = [styles.mathSpan, className ?? ''].filter(Boolean).join(' ');
 

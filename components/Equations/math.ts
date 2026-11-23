@@ -5,6 +5,8 @@
 
 import katex from 'katex';
 
+import { promoteFractionsToDisplay } from '../../lib/ui/mathFormat';
+
 // A page's sentinel colours (\color{#0aCCVV}: colour CC, the variable's index VV in its row) become a class and the
 // variable's target in the MathML (learning.md §2 of the Smith chart: \htmlClass is dropped in MathML output).
 const SENTINEL = /mathcolor="#0a([0-9a-f]{2})([0-9a-f]{2})"/g;
@@ -14,7 +16,8 @@ const SENTINEL = /mathcolor="#0a([0-9a-f]{2})([0-9a-f]{2})"/g;
  * colours become `classes[colour]` and `data-mt` = `targets[index]` (pages without sentinels pass neither).
  */
 export function mathHtml(tex: string, targets: readonly string[] = [], inline = false, classes: readonly string[] = []): string {
-  return katex.renderToString(inline ? tex : `\\displaystyle ${tex}`, { output: 'mathml' }).replace(SENTINEL, (_, c: string, v: string) => {
+  const normalized = promoteFractionsToDisplay(tex);
+  return katex.renderToString(inline ? normalized : `\\displaystyle ${normalized}`, { output: 'mathml' }).replace(SENTINEL, (_, c: string, v: string) => {
     const t = targets[parseInt(v, 16)];
     return `class="${classes[parseInt(c, 16)] ?? ''}"${t ? ` data-mt="${t}"` : ''}`;
   });

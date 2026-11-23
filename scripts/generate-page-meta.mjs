@@ -52,6 +52,8 @@ const CANONICAL_TITLES = {
   '/paint/main': 'Paint & Image Editor',
   '/text-case/main': 'Text case converter',
   '/calculator/main': 'Smart Calculator',
+  '/integral/main': 'Integral solver',
+  '/derivative/main': 'Derivative solver',
 };
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');

@@ -2,7 +2,7 @@ import React from 'react';
 
 // Icons for the tool cards on the main page, in the style of components/PdfTools/ToolIcon.tsx. Filled shapes use
 // currentColor, which the <svg> sets to the tool's colour.
-export type HomeIconName = 'calculator' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
+export type HomeIconName = 'calculator' | 'integral' | 'derivative' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
 
 const SAMPLES: [number, number][] = [[6, 24], [12, 12], [18, 12], [24, 24], [30, 36], [36, 36], [42, 24]];
 
@@ -18,6 +18,28 @@ const ICONS: Record<HomeIconName, React.ReactNode> = {
       <rect x={13} y={9} width={22} height={9} rx={1.5} opacity={0.75} />
       <path d="M15 24h4M23 24h4M31 24h2M15 31h4M23 31h4M15 38h4M23 38h4" />
       <rect x={30} y={30} width={5} height={9.5} rx={1.2} fill="currentColor" stroke="none" />
+    </>
+  ),
+  // Integral solver: tall integral sign next to a curve and shaded area between bounds.
+  integral: (
+    <>
+      <path d="M16 9c-2.5 0-4 2-4 5.5v19c0 3.5-1.5 5.5-4 5.5" />
+      <circle cx={16.5} cy={9} r={1.6} fill="currentColor" stroke="none" />
+      <circle cx={7.5} cy={39} r={1.6} fill="currentColor" stroke="none" />
+      <path d="M21 36h22" opacity={0.55} />
+      <path d="M23 36V26c4-9 12-9 18-2v12" fill="currentColor" fillOpacity={0.18} stroke="none" />
+      <path d="M21 29c4-11 13-12 22-4" />
+      <path d="M24 25v11M40 24v12" opacity={0.7} />
+    </>
+  ),
+  // Derivative solver: smooth curve with a tangent line, point of tangency, and slope triangle.
+  derivative: (
+    <>
+      <path d="M6 39h36" opacity={0.45} />
+      <path d="M8 35C15 34 21 29 27 19S36 10 42 10" />
+      <path d="M11 33L39 9" opacity={0.75} />
+      <path d="M24 22h11V12.5" opacity={0.5} strokeDasharray="2.5 2.5" />
+      <circle cx={24} cy={22} r={2.8} fill="currentColor" stroke="none" />
     </>
   ),
   // A sampled sine wave: the signal, and the samples as a stem plot.

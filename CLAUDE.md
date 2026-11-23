@@ -42,11 +42,12 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   [scripts/generate-sitemap.mjs](scripts/generate-sitemap.mjs) (→ `public/sitemap.xml`, git-ignored), and
   [scripts/generate-page-meta.mjs](scripts/generate-page-meta.mjs) (→ `lib/generated/page-meta.json`, per-route
   last-changed date, git commit, and SHA-256 content hash for [lib/citation.ts](lib/citation.ts)). All outputs are
-  git-ignored. After adding or removing a dependency, run `npm install` so the licence list follows.
+  git-ignored. After adding, updating, or removing any dependency in `package.json`, always run `npm install` (or
+  `npm install --package-lock-only`) so `package-lock.json` and the licence list stay in sync for CI `npm ci`.
 
 ## Verifying changes
 
-- `npm run verify`: full verification pipeline — runs `npm run typecheck` (`tsc --noEmit` + `tsc -p tsconfig.strict.json --noEmit`), `npm run check:repo` (static-export bans, case-sensitive relative imports, 40 kB budget/ratcheted allowlist, licence coverage, route/PDF/OG consistency, EN/NB i18n parity), and `npm run build:export` (local static export into `out/`, automatically cleaning up temporary `next.config.mjs` and restoring `next-env.d.ts`). Run before saying a change is done.
+- `npm run verify`: full verification pipeline — runs `npm run typecheck` (`tsc --noEmit` + `tsc -p tsconfig.strict.json --noEmit`), `npm run check:repo` (static-export bans, case-sensitive relative imports, 40 kB budget/ratcheted allowlist, licence coverage, route/PDF/OG consistency, EN/NB i18n parity, generated page metadata, and `package.json` ↔ `package-lock.json` sync), and `npm run build:export` (local static export into `out/`, automatically cleaning up temporary `next.config.mjs` and restoring `next-env.d.ts`). Run before saying a change is done.
 - `npm run typecheck`: runs both the repo-wide `tsconfig.json` (`strict: false`) and `tsconfig.strict.json` (`strict: true`, `noUnusedLocals: true`, covering shared UI, equation, simsetup, and foundation modules).
 - `npm run build`: plain Next.js build (non-export); rewrites import paths in `next-env.d.ts` (`next dev` writes them back), so restore it with `git checkout -- next-env.d.ts` rather than committing the change. Prefer `npm run build:export` or `npm run verify` to match GitHub Pages CI.
 - `npm run dev`: dev server on port 3020 bound to `0.0.0.0` (the owner tests on a phone). Not 3000: the Live Preview

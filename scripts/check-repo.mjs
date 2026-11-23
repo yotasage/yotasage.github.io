@@ -798,6 +798,81 @@ function checkPageMeta() {
 }
 
 // ---------------------------------------------------------------------------
+// 8. Package lockfile sync (prevents GitHub Actions `npm ci` failures)
+// ---------------------------------------------------------------------------
+function checkLockfileSync() {
+  const errors = [];
+  const pkgPath = join(root, 'package.json');
+  const lockPath = join(root, 'package-lock.json');
+
+  if (!existsSync(lockPath)) {
+    return ['package-lock.json is missing (run `npm install --package-lock-only` so `npm ci` succeeds in CI)'];
+  }
+
+  let pkg;
+  let lock;
+  try {
+    pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+  } catch (err) {
+    return [`package.json is invalid JSON: ${err.message}`];
+  }
+  try {
+    lock = JSON.parse(readFileSync(lockPath, 'utf8'));
+  } catch (err) {
+    return [`package-lock.json is invalid JSON: ${err.message}`];
+  }
+
+  if (typeof lock.lockfileVersion !== 'number' || lock.lockfileVersion < 2) {
+    errors.push(`package-lock.json has unsupported lockfileVersion '${lock.lockfileVersion}' (expected >= 2)`);
+    return errors;
+  }
+
+  const rootPkg = lock.packages?.[''];
+  if (!rootPkg || typeof rootPkg !== 'object') {
+    errors.push('package-lock.json is missing packages[""] root entry (run `npm install --package-lock-only`)');
+    return errors;
+  }
+
+  const fixHint = 'run `npm install --package-lock-only` (or `npm install`) so GitHub Actions `npm ci` stays in sync';
+
+  const depSections = [
+    ['dependencies', true],
+    ['devDependencies', true],
+    ['optionalDependencies', false],
+    ['peerDependencies', false],
+  ];
+
+  for (const [section, requireNodeEntry] of depSections) {
+    const pkgMap = pkg[section] ?? {};
+    const lockMap = rootPkg[section] ?? {};
+
+    for (const [name, expectedRange] of Object.entries(pkgMap)) {
+      if (lockMap[name] !== expectedRange) {
+        errors.push(
+          `package-lock.json out of sync for ${section}.${name} (package.json: "${expectedRange}", lockfile: ${
+            lockMap[name] === undefined ? 'missing' : `"${lockMap[name]}"`
+          }) — ${fixHint}`,
+        );
+      } else if (requireNodeEntry && !lock.packages[`node_modules/${name}`]) {
+        errors.push(
+          `package-lock.json is missing resolved entry packages["node_modules/${name}"] — ${fixHint}`,
+        );
+      }
+    }
+
+    for (const name of Object.keys(lockMap)) {
+      if (!(name in pkgMap)) {
+        errors.push(
+          `package-lock.json has stale ${section}.${name} removed from package.json — ${fixHint}`,
+        );
+      }
+    }
+  }
+
+  return errors;
+}
+
+// ---------------------------------------------------------------------------
 // Runner
 // ---------------------------------------------------------------------------
 const checks = [
@@ -808,6 +883,7 @@ const checks = [
   ['Routes, tool cards, PDF registry & PageHead/OG', checkRoutesAndMeta],
   ['EN/NB translation parity', checkTranslations],
   ['Generated page metadata', checkPageMeta],
+  ['Package lockfile sync', checkLockfileSync],
 ];
 
 let totalErrors = 0;

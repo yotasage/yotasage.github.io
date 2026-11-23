@@ -3,11 +3,13 @@ import React from 'react';
 
 import { useI18n } from '../../lib/ui/i18n';
 import { useWideView } from '../../lib/ui/layout';
+import { useMathSettings } from '../../lib/ui/mathSettings';
 import { ExperienceMode, useExperienceMode } from '../../lib/ui/mode';
 import { ResolvedTheme, useTheme } from '../../lib/ui/theme';
 import styles from '../../styles/DesignSystem.module.css';
 import HomeIcon from '../icons/home';
 import PillTabs, { PillTabItem } from './PillTabs';
+import SettingsModal from './SettingsModal';
 
 export interface WorkspaceTab<T extends string = string> {
   id: T;
@@ -102,6 +104,25 @@ function WideViewIcon({ active }: { active: boolean }) {
   );
 }
 
+function GearIcon() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+    </svg>
+  );
+}
+
 const EXPERIENCE_MODES: readonly ExperienceMode[] = ['quick', 'standard', 'teaching'];
 
 export default function ToolHeader<T extends string = string>({
@@ -120,10 +141,14 @@ export default function ToolHeader<T extends string = string>({
   const { mode, setMode } = useExperienceMode();
   const { locale, toggleLocale, t } = useI18n();
   const { wide, mounted: wideMounted, toggleWide } = useWideView();
+  const { isDefault: mathIsDefault, mounted: mathMounted } = useMathSettings();
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const settingsBtnRef = React.useRef<HTMLButtonElement | null>(null);
 
   const workspaceItems: readonly PillTabItem<T>[] | undefined = workspaces;
   const activeTheme: ResolvedTheme = themeMounted ? theme : 'light';
   const wideActive = allowWideView && wideMounted && wide;
+  const hasCustomSettings = mathMounted && !mathIsDefault;
 
   React.useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -283,8 +308,31 @@ export default function ToolHeader<T extends string = string>({
               <span>NB</span>
             </span>
           </button>
+
+          <button
+            ref={settingsBtnRef}
+            type="button"
+            className={[styles.settingsBtn, hasCustomSettings ? styles.settingsBtnCustomized : '']
+              .filter(Boolean)
+              .join(' ')}
+            onClick={() => setSettingsOpen(true)}
+            aria-label={t('header.settingsAria')}
+            title={t('header.settings')}
+            aria-haspopup="dialog"
+            aria-expanded={settingsOpen}
+            data-settings-trigger=""
+          >
+            <GearIcon />
+            {hasCustomSettings && <span className={styles.settingsDot} aria-hidden="true" />}
+          </button>
         </div>
       </div>
+
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        triggerRef={settingsBtnRef}
+      />
     </header>
   );
 }

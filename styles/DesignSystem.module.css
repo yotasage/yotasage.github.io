@@ -353,6 +353,59 @@
   opacity: 0.45;
 }
 
+/* Settings Gear Button */
+
+.settingsBtn {
+  position: relative;
+  appearance: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: var(--ds-radius-pill);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  color: var(--ds-ink-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.settingsBtn:hover {
+  background: var(--ds-well-hover);
+  border-color: var(--ds-border-strong);
+  color: var(--ds-ink);
+}
+
+.settingsBtnCustomized {
+  border-color: var(--ds-accent-border);
+  color: var(--ds-accent);
+}
+
+.settingsDot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ds-accent);
+}
+
+:global(html[data-ds-theme="hc"]) .settingsBtn {
+  background: #000000;
+  border-color: #ffffff;
+  color: #ffffff;
+}
+
+:global(html[data-ds-theme="hc"]) .settingsBtn:hover,
+:global(html[data-ds-theme="hc"]) .settingsBtnCustomized {
+  border-color: #ffe600;
+  color: #ffe600;
+}
+
 /* --------------------------------------------------------------------------
    PillTabs
    -------------------------------------------------------------------------- */
@@ -645,6 +698,11 @@
     font-size: 0.69rem;
   }
 
+  .settingsBtn {
+    width: 30px;
+    height: 30px;
+  }
+
   .homePill {
     height: 30px;
     padding: 0 9px 0 8px;
@@ -691,6 +749,11 @@
     padding: 0 6px;
     font-size: 0.66rem;
     gap: 3px;
+  }
+
+  .settingsBtn {
+    width: 29px;
+    height: 29px;
   }
 
   .langItem {

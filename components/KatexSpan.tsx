@@ -12,12 +12,20 @@
 import katex from 'katex';
 import React from 'react';
 
+import { promoteFractionsToDisplay } from '../lib/ui/mathFormat';
+import { useMathSettings } from '../lib/ui/mathSettings';
+
 // Rendered while the page is built, so the formulas are in the HTML before any script runs.
 // MathML output is drawn by the browser itself and does not need the KaTeX stylesheet.
 export default function KatexSpan({ text, displayMode = false, ...delegated }: {
   text: string;
   displayMode?: boolean;
 } & React.HTMLAttributes<HTMLSpanElement>) {
-  const html = React.useMemo(() => katex.renderToString(text, { output: 'mathml', displayMode }), [text, displayMode]);
+  const { fullSizeFractions } = useMathSettings();
+  const formatted = fullSizeFractions ? promoteFractionsToDisplay(text) : text;
+  const html = React.useMemo(
+    () => katex.renderToString(formatted, { output: 'mathml', displayMode }),
+    [formatted, displayMode],
+  );
   return <span {...delegated} dangerouslySetInnerHTML={{ __html: html }} />;
 }

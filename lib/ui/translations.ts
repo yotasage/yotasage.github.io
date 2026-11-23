@@ -1,4 +1,5 @@
 import { en as calculatorEn, nb as calculatorNb } from './i18n/calculator';
+import { en as calculusEn, nb as calculusNb } from './i18n/calculus';
 import { en as commonEn, nb as commonNb } from './i18n/common';
 import { en as eeEn, nb as eeNb } from './i18n/ee';
 import { en as homeEn, nb as homeNb } from './i18n/home';
@@ -17,6 +18,7 @@ export const en = {
   ...commonEn,
   ...homeEn,
   ...calculatorEn,
+  ...calculusEn,
   ...simsetupEn,
   ...eeEn,
   ...utilitiesEn,
@@ -32,6 +34,7 @@ export const nb: Record<TranslationKey, string> = {
   ...commonNb,
   ...homeNb,
   ...calculatorNb,
+  ...calculusNb,
   ...simsetupNb,
   ...eeNb,
   ...utilitiesNb,

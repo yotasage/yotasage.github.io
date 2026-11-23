@@ -28,6 +28,26 @@ export const en = {
   'header.wideView': 'Wide view',
   'header.wideViewEnable': 'Expand to wide view (full window width)',
   'header.wideViewDisable': 'Return to standard width',
+  'header.settings': 'Settings',
+  'header.settingsAria': 'Open site settings',
+
+  // Settings modal
+  'settings.title': 'Settings',
+  'settings.subtitle': 'Site-wide preferences applied across all tools.',
+  'settings.mathSize.title': 'Math display size',
+  'settings.mathSize.desc':
+    'Scale rendered equations and formulas across every tool on the site.',
+  'settings.mathSize.presetsAria': 'Predefined math display sizes',
+  'settings.mathSize.defaultTag': 'Default',
+  'settings.mathSize.sliderAria': 'Adjust math display size percentage',
+  'settings.mathSize.customLabel': 'Custom',
+  'settings.mathSize.rangeHint': 'Enter any size between {min}% and {max}%.',
+  'settings.fractions.title': 'Full-size fractions (\\dfrac)',
+  'settings.fractions.desc':
+    'Render inline fractions at full display size instead of shrinking numerators and denominators.',
+  'settings.preview.label': 'Live preview',
+  'settings.preview.inlineLead': 'Inline formula:',
+  'settings.reset': 'Reset to defaults',
 
   // Theme labels
   'theme.light': 'Light',
@@ -210,6 +230,26 @@ export const nb: Record<keyof typeof en, string> = {
   'header.wideView': 'Bred visning',
   'header.wideViewEnable': 'Utvid til bred visning (full vindusbredde)',
   'header.wideViewDisable': 'Tilbake til standard bredde',
+  'header.settings': 'Innstillinger',
+  'header.settingsAria': 'Åpne innstillinger for nettstedet',
+
+  // Settings modal
+  'settings.title': 'Innstillinger',
+  'settings.subtitle': 'Nettstedsvide valg som gjelder alle verktøy.',
+  'settings.mathSize.title': 'Størrelse på matematikk',
+  'settings.mathSize.desc':
+    'Skaler viste formler og uttrykk på tvers av alle verktøy på nettstedet.',
+  'settings.mathSize.presetsAria': 'Forhåndsvalgte størrelser for matematikk',
+  'settings.mathSize.defaultTag': 'Standard',
+  'settings.mathSize.sliderAria': 'Juster størrelse på matematikk i prosent',
+  'settings.mathSize.customLabel': 'Egendefinert',
+  'settings.mathSize.rangeHint': 'Skriv inn en hvilken som helst størrelse mellom {min} % og {max} %.',
+  'settings.fractions.title': 'Brøker i full størrelse (\\dfrac)',
+  'settings.fractions.desc':
+    'Vis brøker i full visningsstørrelse i stedet for å forminske teller og nevner.',
+  'settings.preview.label': 'Forhåndsvisning',
+  'settings.preview.inlineLead': 'Formel i tekst:',
+  'settings.reset': 'Tilbakestill til standard',
 
   // Theme labels
   'theme.light': 'Lys',

@@ -32,6 +32,14 @@ export const en = {
   'home.tool.calculator.category': 'Engineering math',
   'home.tool.calculator.desc':
     'Unit-aware calculator with SI auto-prefixing, complex phasors, editable Excel-ready variables, basic calculus, and shareable bidirectional equation layouts.',
+  'home.tool.integral.title': 'Integral solver',
+  'home.tool.integral.category': 'Calculus',
+  'home.tool.integral.desc':
+    'Step-by-step indefinite and definite integral solver with u-substitution, integration by parts, trig identities, partial fractions, teaching theory, and an identities reference.',
+  'home.tool.derivative.title': 'Derivative solver',
+  'home.tool.derivative.category': 'Calculus',
+  'home.tool.derivative.desc':
+    'Step-by-step symbolic derivative solver with chain, product, quotient, and logarithmic rules, higher orders up to 4th, tangent lines, teaching theory, and an identities reference.',
   'home.tool.simsetup.title': 'Simulation setup',
   'home.tool.simsetup.category': 'Signal processing',
   'home.tool.simsetup.desc':
@@ -120,6 +128,14 @@ export const nb: Record<keyof typeof en, string> = {
   'home.tool.calculator.category': 'Ingeniørmatte',
   'home.tool.calculator.desc':
     'Enhetsbevisst kalkulator med automatiske SI-prefikser, komplekse fasorer, Excel-klare variabler, grunnleggende kalkulus og delbare ligningsmaler.',
+  'home.tool.integral.title': 'Integralløser',
+  'home.tool.integral.category': 'Kalkulus',
+  'home.tool.integral.desc':
+    'Steg-for-steg-løser for ubestemte og bestemte integraler med substitusjon, delvis integrasjon, trigonometriske identiteter, delbrøkoppspalting, undervisningsteori og regeloppslag.',
+  'home.tool.derivative.title': 'Derivasjonsløser',
+  'home.tool.derivative.category': 'Kalkulus',
+  'home.tool.derivative.desc':
+    'Steg-for-steg symbolsk derivasjonsløser med kjerneregel, produkt-, brøk- og logaritmeregler, høyere ordener opptil 4., tangentlinjer, undervisningsteori og regeloppslag.',
   'home.tool.simsetup.title': 'Simuleringsoppsett',
   'home.tool.simsetup.category': 'Signalbehandling',
   'home.tool.simsetup.desc':
