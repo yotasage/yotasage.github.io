@@ -5,7 +5,7 @@
 | Page | `/python/main` (`pages/python/main.tsx`) |
 | Branch | `python` (one commit per step; agents never push) |
 | Written | 2026-11-23, from `README.md`, `CLAUDE.md` and `docs/agent-workflow.md`; the network policy and security part were added the same day. The other docs and the code were **not** read; step S0 reads what it needs |
-| Status | In progress. Q1 and Q3–Q7 answered, S0 done (2026-11-24). Next: owner answers Q8, then S1, S2, S6, S3 |
+| Status | In progress. Q1 and Q3–Q8 answered, S0 and S1 done (2026-11-24). Next: S2, S6, S3 (one at a time), then report before P1 |
 
 This plan replaces an earlier draft that was written without access to the repo. Where the two differ, this one is right.
 
@@ -74,14 +74,14 @@ Ask before the named step; do not guess.
 - **Q5 (resolved 2026-11-24): phones.** **Approved by owner:** Accept Monaco on touch with a clear note for v1, and consider a plain text-area fallback for narrow/touch screens later.
 - **Q6 (resolved 2026-11-24): warning wording.** **Approved by owner:** Draft warning texts W1–W9 in `security.md` section 7 are good; first-visit dialog W1 appears once and again whenever its text changes.
 - **Q7 (resolved 2026-11-24): the "Everything" mode.** **Approved by owner:** Keep "Everything" mode behind the red banner and tick-box confirmation.
-- **Q8 (before P1, after S0): the tool's origin.** Keep it on `yotasage.github.io` (proposal for v1) or publish it as its own site on a second origin (another GitHub account or organisation, or a custom domain)? Decide with S0's inventory of what the site's tools and other Pages repositories store; security.md section 9 has the options. A second origin is required before any share-by-link.
+- **Q8 (resolved 2026-11-24, after S0): the tool's origin.** **Approved by owner:** Option A for v1 — stay on `yotasage.github.io` with the explicit Scratchpad warning in W1 (S0 found Scratchpad uses IndexedDB `yotasage-notepad-db` and `BroadcastChannel('yotasage-notepad-sync-v1')`; owner confirmed no other GitHub Pages repositories exist under `github.com/yotasage`). Keep the runtime origin named in one place (`lib/python/origin.ts`); Option B (second origin) remains required before any share-by-link feature.
 
 ## Status
 
 | Step | What | Status |
 |---|---|---|
 | S0 | Survey of the repo parts this tool touches | Done (`notes-S0.md`) |
-| S1 | Isolation and network policy spike: service worker, COOP/COEP, CSP | Not started |
+| S1 | Isolation and network policy spike: service worker, COOP/COEP, CSP | Done (`notes-S1.md`) |
 | S2 | Pyodide self-hosting and boot spike | Not started |
 | S6 | Monaco and xterm self-hosting spike | Not started |
 | S3 | Blocking input, Stop, asyncio spike | Not started |

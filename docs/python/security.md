@@ -124,7 +124,7 @@ English drafts below. The implementing step writes the Norwegian texts; `check:r
 | W8 | Confirmation | Opening any link from program output, showing the full URL |
 | W9 | Settings, next to **Clear all data**, and one sentence in W1 | Always visible there |
 
-**W1.** "This tool runs Python code in your browser. Only run code you wrote or understand. Code written by someone else can read, change and delete every file you put in this tool, and [data this site has saved in your browser]. While network access is off, which is the default, your browser blocks the code from sending anything to the internet. If you turn network access on, the code can send those files to any server you allow. This site never uploads your files itself." Never type passwords or other secrets into a program.
+**W1.** "This tool runs Python code in your browser. Only run code you wrote or understand. Code written by someone else can read, change and delete every file you put in this tool, and any notes or files saved in Scratchpad on this site (including open Scratchpad tabs). While network access is off, which is the default, your browser blocks the code from sending anything to the internet. If you turn network access on, the code can send those files to any server you allow. This site never uploads your files itself." Never type passwords or other secrets into a program.
 
 **W2.** "Runs Python locally in your browser (Pyodide). Network access is off by default. [Current capability tier and what is checked vs. not yet implemented—updated at each phase.]"
 
@@ -202,8 +202,8 @@ Sources are in [research.md](research.md). I found public security statements fr
 
 Also relevant: JupyterLite kernels run in a Web Worker, and a Pyodide kernel can reach the page's IndexedDB (a user did it in 2021). I found **no site that blocks the network by default with a CSP**, so that part of the design has no precedent to lean on: S1 and the checks of section 8 carry the weight.
 
-## 12. Open questions
+## 12. Open questions (resolved 2026-11-24)
 
-- **Q6 (before P2):** is the wording of W1 to W9 right, and should W1 appear once or at every visit? Proposal: once, and again when the text changes.
-- **Q7 (before P2):** keep the "Everything" mode? Proposal: yes, behind the red banner and the tick-box, because trusted code (fetching a data file, calling an API) is a normal use. The alternative is to omit it, which makes the tool offline-only except for the package index and typed hosts.
-- **Q8 (before P1, after S0): the tool's origin.** Keep it on `yotasage.github.io` (option A, proposal for v1) or publish it as its own site on a second origin (option B)? Decide with S0's inventory of what the site's tools and other Pages repositories store. Option B is required before any share-by-link.
+- **Q6 (resolved):** W1–W9 draft wording approved (with W1 updated after S0 to name Scratchpad); W1 appears once and again when its text changes.
+- **Q7 (resolved):** Keep the "Everything" mode behind the red banner and the tick-box confirmation.
+- **Q8 (resolved after S0):** Option A for v1 (stay on `yotasage.github.io` with the explicit Scratchpad warning in W1; owner confirmed no other GitHub Pages repositories under `github.com/yotasage`). `lib/python/origin.ts` keeps Option B possible, and Option B remains required before any share-by-link.
