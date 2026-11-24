@@ -1,0 +1,1175 @@
+/* Boolean Expression Simplifier — Design System v2 */
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+
+  --bool-theory-bg: #ecfeff;
+  --bool-theory-border: rgba(8, 145, 178, 0.28);
+  --bool-theory-ink: #164e63;
+  --bool-theory-label: #0e7490;
+  --bool-rule-bg: color-mix(in srgb, var(--ds-well) 72%, transparent);
+  --bool-result-bg: color-mix(in srgb, var(--ds-accent) 7%, var(--ds-surface-solid));
+  --bool-high: #059669;
+  --bool-low: #64748b;
+  --bool-glitch: #dc2626;
+}
+
+:global(html[data-ds-theme="dark"]) .page {
+  --bool-theory-bg: rgba(6, 182, 212, 0.13);
+  --bool-theory-border: rgba(34, 211, 238, 0.30);
+  --bool-theory-ink: #cffafe;
+  --bool-theory-label: #67e8f9;
+  --bool-high: #34d399;
+  --bool-low: #94a3b8;
+  --bool-glitch: #f87171;
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(html:not([data-ds-theme])) .page {
+    --bool-theory-bg: rgba(6, 182, 212, 0.13);
+    --bool-theory-border: rgba(34, 211, 238, 0.30);
+    --bool-theory-ink: #cffafe;
+    --bool-theory-label: #67e8f9;
+    --bool-high: #34d399;
+    --bool-low: #94a3b8;
+    --bool-glitch: #f87171;
+  }
+}
+
+:global(html[data-ds-theme="hc"]) .page {
+  --bool-theory-bg: #111827;
+  --bool-theory-border: #ffe600;
+  --bool-theory-ink: #fde047;
+  --bool-theory-label: #ffe600;
+  --bool-rule-bg: #121212;
+  --bool-result-bg: #000000;
+  --bool-high: #4ade80;
+  --bool-low: #cbd5e1;
+  --bool-glitch: #ff6b6b;
+}
+
+.main {
+  width: 100%;
+  max-width: 1320px;
+  min-width: 0;
+  margin: 0 auto;
+  padding: 1.25rem 1.25rem 3rem;
+  flex: 1;
+}
+
+:global(html[data-ds-wide="1"]) .main {
+  max-width: 1680px;
+}
+
+.workspacePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.workspacePanel[hidden] {
+  display: none;
+}
+
+.lead {
+  margin: 0;
+  color: var(--ds-ink-2);
+  font-size: 0.94rem;
+  max-width: 78ch;
+  line-height: 1.55;
+}
+
+.card {
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  padding: 1.2rem 1.35rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.cardHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 650;
+  color: var(--ds-ink);
+  letter-spacing: -0.012em;
+}
+
+.metaInline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+  color: var(--ds-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.metaDot {
+  opacity: 0.55;
+}
+
+/* Buttons & segmented controls */
+.btnRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.btn,
+.btnPrimary,
+.btnGhost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 36px;
+  padding: 0.42rem 0.88rem;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-ui);
+  font-size: 0.84rem;
+  font-weight: 560;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+
+.btn:hover {
+  background: var(--ds-well);
+}
+
+.btnPrimary {
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+}
+
+.btnPrimary:hover {
+  filter: brightness(1.06);
+}
+
+.btnGhost {
+  background: transparent;
+  border-color: var(--ds-border);
+  color: var(--ds-ink-2);
+}
+
+.btnGhost:hover {
+  background: var(--ds-well);
+  color: var(--ds-ink);
+}
+
+.btnSmall {
+  min-height: 30px;
+  padding: 0.25rem 0.62rem;
+  font-size: 0.78rem;
+}
+
+.btnActiveSoft {
+  background: var(--ds-accent-soft);
+  border-color: var(--ds-accent-border);
+  color: var(--ds-accent);
+}
+
+.segmented {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  border: var(--ds-border-w) solid var(--ds-border);
+  gap: 2px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.segBtn {
+  min-height: 30px;
+  padding: 0.25rem 0.65rem;
+  border: none;
+  border-radius: calc(var(--ds-radius-sm) - 2px);
+  background: transparent;
+  color: var(--ds-ink-2);
+  font-family: var(--ds-font-ui);
+  font-size: 0.79rem;
+  font-weight: 540;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background-color 0.14s ease, color 0.14s ease, box-shadow 0.14s ease;
+}
+
+.segBtn:hover {
+  color: var(--ds-ink);
+}
+
+.segBtnActive {
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-weight: 620;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
+}
+
+/* Full-width, elevated MathML overline bars with clear separation between nested levels */
+.page :global(math mover[accent="true"]) {
+  border-top: 0.08em solid currentColor;
+  padding-top: 0.22em;
+  margin-top: 0.1em;
+  padding-inline: 0.07em;
+  margin-inline: 0.06em;
+}
+
+.page :global(math mover[accent="true"] > mo[stretchy="true"]:last-child) {
+  display: none;
+}
+
+/* Workspace layout switcher & focused analysis tabs */
+.workspaceBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem 1rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  box-shadow: var(--ds-shadow-card);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.analysisTabList {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.analysisTab {
+  min-height: 34px;
+  padding: 0.34rem 0.82rem;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid transparent;
+  background: transparent;
+  color: var(--ds-ink-2);
+  font-family: var(--ds-font-ui);
+  font-size: 0.84rem;
+  font-weight: 560;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.14s ease, color 0.14s ease, border-color 0.14s ease;
+}
+
+.analysisTab:hover {
+  background: var(--ds-well);
+  color: var(--ds-ink);
+}
+
+.analysisTabActive {
+  background: var(--ds-accent-soft);
+  border-color: var(--ds-accent-border);
+  color: var(--ds-accent);
+  font-weight: 650;
+}
+
+.layoutToggleWrap {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.layoutToggleLabel {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--ds-ink-3);
+}
+
+/* Alternative Split Workbench layout (Solver on left, sticky tabbed Inspector on right) */
+.workbenchGrid {
+  display: grid;
+  grid-template-columns: minmax(340px, 1fr) minmax(380px, 1.15fr);
+  gap: 1.15rem;
+  align-items: start;
+}
+
+.workbenchCol {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.workbenchInspector {
+  position: sticky;
+  top: 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+/* Multi-equation rows */
+.eqList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.eqRow {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.eqIndex {
+  font-family: var(--ds-font-mono);
+  font-size: 0.76rem;
+  font-weight: 650;
+  color: var(--ds-ink-3);
+  min-width: 1.3rem;
+  text-align: right;
+  user-select: none;
+}
+
+.eqRemoveBtn {
+  min-width: 34px;
+  min-height: 38px;
+  padding: 0 0.5rem;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: transparent;
+  color: var(--ds-ink-3);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.eqRemoveBtn:hover {
+  border-color: var(--ds-bad);
+  color: var(--ds-bad);
+  background: var(--ds-bad-soft);
+}
+
+.eqActionsRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem 0.85rem;
+}
+
+.eqResultList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.eqResultItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 1rem;
+  padding: 0.35rem 0;
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+}
+
+.eqResultItem:last-child {
+  border-bottom: none;
+}
+
+/* Input section */
+.inputForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.inputRow {
+  display: flex;
+  gap: 0.55rem;
+  align-items: stretch;
+}
+
+.fieldLabel {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ds-ink-2);
+  margin-bottom: 0.32rem;
+}
+
+.exprInputWrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.exprInput {
+  flex: 1 1 0%;
+  min-width: 0;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.68rem 0.95rem;
+  border-radius: var(--ds-radius-ctrl);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-variant-ligatures: none;
+  font-size: 1.02rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+}
+
+.exprInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.solveBtn {
+  min-height: 44px;
+  min-width: 112px;
+  padding: 0 1.25rem;
+  font-size: 0.92rem;
+  border-radius: var(--ds-radius-ctrl);
+  align-self: flex-end;
+}
+
+.optionsBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1.15rem;
+}
+
+.optionGroup {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.selectInput {
+  min-height: 36px;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-ui);
+  font-size: 0.84rem;
+}
+
+.selectInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.previewBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.62rem 0.9rem;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  border: var(--ds-border-w) solid var(--ds-border);
+  min-height: 48px;
+}
+
+.previewMath {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 1.1rem;
+  font-size: 1.04rem;
+  color: var(--ds-ink);
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block: 0.42rem 0.24rem;
+  line-height: 1.65;
+  max-width: 100%;
+}
+
+.previewCaption {
+  font-size: 0.76rem;
+  font-weight: 560;
+  color: var(--ds-ink-3);
+  white-space: nowrap;
+}
+
+.previewErr {
+  font-size: 0.82rem;
+  color: var(--ds-bad);
+}
+
+.insertToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.insertBtn {
+  min-height: 28px;
+  padding: 0.18rem 0.52rem;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  color: var(--ds-ink-2);
+  font-family: var(--ds-font-mono);
+  font-size: 0.78rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.insertBtn:hover {
+  background: var(--ds-accent-soft);
+  border-color: var(--ds-accent-border);
+  color: var(--ds-accent);
+}
+
+.examplesRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding-top: 0.55rem;
+  border-top: var(--ds-border-w) solid var(--ds-border);
+}
+
+.examplesLabel {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ds-ink-3);
+  margin-right: 0.25rem;
+}
+
+.exampleBtn {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.45rem;
+  min-height: 30px;
+  max-width: 100%;
+  padding: 0.24rem 0.62rem;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.77rem;
+  cursor: pointer;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.exampleBtn:hover {
+  border-color: var(--ds-accent);
+  color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+}
+
+.exampleTag {
+  font-family: var(--ds-font-ui);
+  font-size: 0.72rem;
+  color: var(--ds-ink-3);
+}
+
+/* Result banner */
+.resultCard {
+  background: var(--bool-result-bg);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  padding: 1.2rem 1.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.resultCardError {
+  background: var(--ds-bad-soft);
+  border-color: color-mix(in srgb, var(--ds-bad) 38%, transparent);
+}
+
+.resultTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.resultHeading {
+  margin: 0;
+  font-size: 0.84rem;
+  font-weight: 650;
+  color: var(--ds-accent);
+}
+
+.resultEquation {
+  font-size: clamp(1.12rem, 1.8vw, 1.38rem);
+  color: var(--ds-ink);
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block: 0.42rem 0.28rem;
+  line-height: 1.65;
+}
+
+.metricsStrip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1.5rem;
+  padding-top: 0.55rem;
+  border-top: var(--ds-border-w) solid var(--ds-border);
+  font-size: 0.84rem;
+  color: var(--ds-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.metricItem {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.metricLabel {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--ds-ink-3);
+}
+
+.metricVal {
+  font-family: var(--ds-font-mono);
+  font-weight: 620;
+  color: var(--ds-ink);
+}
+
+.metricDelta {
+  font-family: var(--ds-font-mono);
+  font-size: 0.76rem;
+  color: var(--ds-good);
+  font-weight: 600;
+}
+
+.resultSubRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding-top: 0.55rem;
+  border-top: var(--ds-border-w) solid var(--ds-border);
+  font-size: 0.82rem;
+  color: var(--ds-ink-2);
+}
+
+.verifyOk {
+  color: var(--ds-good);
+  font-weight: 560;
+}
+
+.verifyBad {
+  color: var(--ds-bad);
+  font-weight: 580;
+}
+
+.monoCode {
+  font-family: var(--ds-font-mono);
+  font-variant-ligatures: none;
+  font-size: 0.8rem;
+  color: var(--ds-ink-2);
+}
+
+.inspectBanner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.65rem 1rem;
+  border-radius: var(--ds-radius-sm);
+  background: var(--bool-theory-bg);
+  border: var(--ds-border-w) solid var(--bool-theory-border);
+  color: var(--bool-theory-ink);
+  font-size: 0.84rem;
+  font-weight: 560;
+}
+
+/* Step viewer (inspired by Calculus StepViewer) */
+.stepsCard {
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  overflow: hidden;
+  scroll-margin-top: 76px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.stepsToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem 1rem;
+  padding: 0.95rem 1.25rem;
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-surface-solid);
+}
+
+.stepsTitleGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.75rem;
+}
+
+.stepsControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.splitTable {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.splitHeader {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.18fr) minmax(240px, 1fr);
+  border-bottom: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-well);
+  font-size: 0.76rem;
+  font-weight: 650;
+  color: var(--ds-ink-2);
+}
+
+.splitHeaderCell {
+  padding: 0.55rem 1.15rem;
+}
+
+.splitHeaderCellRight {
+  padding: 0.55rem 1.15rem;
+  border-left: var(--ds-border-w) solid var(--ds-border);
+}
+
+.splitList,
+.interleavedList,
+.sameSideList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.splitRow {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.18fr) minmax(240px, 1fr);
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+  align-items: start;
+}
+
+.splitRow:last-child {
+  border-bottom: none;
+}
+
+.splitRowResult {
+  background: var(--bool-result-bg);
+}
+
+.stepRowSelected {
+  box-shadow: inset 0 0 0 1.5px var(--ds-accent);
+}
+
+.splitLeft {
+  padding: 0.85rem 1.15rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.splitRight {
+  padding: 0.85rem 1.15rem;
+  border-left: var(--ds-border-w) solid var(--ds-border);
+  background: var(--bool-rule-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  height: 100%;
+}
+
+.stepNum {
+  font-family: var(--ds-font-mono);
+  font-size: 0.74rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--ds-ink-3);
+  min-width: 1.45rem;
+  padding-top: 0.22rem;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.workContent {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.workMetaLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem 0.75rem;
+}
+
+.workTag {
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: var(--ds-accent);
+}
+
+.workMath {
+  font-size: 1rem;
+  color: var(--ds-ink);
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block: 0.34rem 0.18rem;
+  line-height: 1.6;
+}
+
+.ruleHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 0.6rem;
+}
+
+.ruleTitle {
+  font-size: 0.86rem;
+  font-weight: 640;
+  color: var(--ds-ink);
+}
+
+.ruleJumpBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--ds-font-ui);
+  font-size: 0.76rem;
+  font-weight: 560;
+  color: var(--ds-accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+
+.ruleFormula {
+  font-size: 0.88rem;
+  color: var(--ds-ink-2);
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block: 0.28rem 0.14rem;
+}
+
+.ruleAnnotation {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ds-ink-2);
+  line-height: 1.48;
+}
+
+.theoryBox {
+  margin-top: 0.3rem;
+  padding: 0.55rem 0.72rem;
+  border-radius: var(--ds-radius-sm);
+  background: var(--bool-theory-bg);
+  border: var(--ds-border-w) solid var(--bool-theory-border);
+  color: var(--bool-theory-ink);
+  font-size: 0.81rem;
+  line-height: 1.5;
+}
+
+.theoryPrefix {
+  font-weight: 700;
+  color: var(--bool-theory-label);
+  margin-right: 0.4rem;
+}
+
+.interleavedItem {
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+  display: flex;
+  flex-direction: column;
+}
+
+.interleavedRuleBand {
+  padding: 0.65rem 1.15rem 0.55rem;
+  background: var(--bool-rule-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.interleavedWorkBand {
+  padding: 0.75rem 1.15rem 0.85rem 2.2rem;
+  background: var(--ds-surface-solid);
+}
+
+.sameSideStep {
+  padding: 0.65rem 1.2rem;
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.32rem;
+}
+
+.sameSideWorkLine {
+  display: flex;
+  align-items: baseline;
+  gap: 0.65rem;
+}
+
+.sameSideRuleLine {
+  padding-left: 2.1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.65rem;
+  font-size: 0.83rem;
+  color: var(--ds-ink-2);
+}
+
+.sameSideRuleName {
+  font-weight: 620;
+  color: var(--ds-accent);
+}
+
+/* Laws reference grid */
+.identitiesControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+.searchInput {
+  min-width: 240px;
+  flex: 1;
+  max-width: 420px;
+  min-height: 38px;
+  padding: 0.45rem 0.8rem;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-ui);
+  font-size: 0.88rem;
+}
+
+.identitiesGrid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.95rem;
+}
+
+.identityCard {
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  padding: 1.05rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.identityCardHighlight {
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.identityHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 0.65rem;
+}
+
+.identityTitle {
+  margin: 0;
+  font-size: 0.94rem;
+  font-weight: 650;
+  color: var(--ds-ink);
+}
+
+.identityMeta {
+  font-size: 0.75rem;
+  color: var(--ds-ink-3);
+}
+
+.identityFormula {
+  padding: 0.72rem 0.85rem 0.65rem;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  border: var(--ds-border-w) solid var(--ds-border);
+  font-size: 0.96rem;
+  color: var(--ds-ink);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.identitySummary {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--ds-ink-2);
+  line-height: 1.5;
+}
+
+.identityFooter {
+  margin-top: auto;
+  padding-top: 0.5rem;
+  border-top: var(--ds-border-w) solid var(--ds-border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+}
+
+.errorMsg {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 580;
+  color: var(--ds-bad);
+}
+
+.errorHint {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--ds-ink-2);
+}
+
+.emptyState {
+  text-align: center;
+  padding: 2.2rem 1.25rem;
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  color: var(--ds-ink-2);
+}
+
+@media (max-width: 1040px) {
+  .workbenchGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workbenchInspector {
+    position: static;
+  }
+}
+
+@media (max-width: 860px) {
+  .identitiesGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .main {
+    padding: 0.9rem 0.75rem 2.25rem;
+  }
+
+  .card,
+  .resultCard {
+    padding: 0.95rem 1rem;
+  }
+
+  .inputRow {
+    flex-direction: column;
+  }
+
+  .eqRow {
+    flex-wrap: wrap;
+  }
+
+  .exprInput {
+    flex: 1 1 180px;
+  }
+
+  .solveBtn {
+    width: 100%;
+    align-self: stretch;
+  }
+
+  .segmented {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
+  .splitHeader {
+    display: none;
+  }
+
+  .splitRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .splitRight {
+    border-left: none;
+    border-top: var(--ds-border-w) solid var(--ds-border);
+  }
+
+  .searchInput {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+}

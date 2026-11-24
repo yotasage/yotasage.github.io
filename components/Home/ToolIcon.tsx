@@ -2,7 +2,7 @@ import React from 'react';
 
 // Icons for the tool cards on the main page, in the style of components/PdfTools/ToolIcon.tsx. Filled shapes use
 // currentColor, which the <svg> sets to the tool's colour.
-export type HomeIconName = 'calculator' | 'integral' | 'derivative' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
+export type HomeIconName = 'boolean' | 'calculator' | 'integral' | 'derivative' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
 
 const SAMPLES: [number, number][] = [[6, 24], [12, 12], [18, 12], [24, 24], [30, 36], [36, 36], [42, 24]];
 
@@ -11,6 +11,14 @@ const QR_MODULES: [number, number][] = [
 ];
 
 const ICONS: Record<HomeIconName, React.ReactNode> = {
+  // Boolean simplifier: IEEE NAND gate with input/output leads and logic bubble.
+  boolean: (
+    <>
+      <path d="M4 17h10M4 31h10M39 24h5" />
+      <path d="M14 11h10a13 13 0 0 1 0 26H14z" />
+      <circle cx={36.5} cy={24} r={2.6} />
+    </>
+  ),
   // Engineering calculator: display screen, grid of keys, and equals bar.
   calculator: (
     <>

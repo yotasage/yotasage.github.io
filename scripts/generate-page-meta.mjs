@@ -54,6 +54,7 @@ const CANONICAL_TITLES = {
   '/calculator/main': 'Smart Calculator',
   '/integral/main': 'Integral solver',
   '/derivative/main': 'Derivative solver',
+  '/boolean/main': 'Boolean simplifier',
 };
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');

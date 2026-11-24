@@ -1,3 +1,4 @@
+import { en as booleanEn, nb as booleanNb } from './i18n/boolean';
 import { en as calculatorEn, nb as calculatorNb } from './i18n/calculator';
 import { en as calculusEn, nb as calculusNb } from './i18n/calculus';
 import { en as commonEn, nb as commonNb } from './i18n/common';
@@ -17,6 +18,7 @@ export const LOCALES: readonly Locale[] = ['en', 'nb'] as const;
 export const en = {
   ...commonEn,
   ...homeEn,
+  ...booleanEn,
   ...calculatorEn,
   ...calculusEn,
   ...simsetupEn,
@@ -33,6 +35,7 @@ export type TranslationKey = keyof typeof en;
 export const nb: Record<TranslationKey, string> = {
   ...commonNb,
   ...homeNb,
+  ...booleanNb,
   ...calculatorNb,
   ...calculusNb,
   ...simsetupNb,

@@ -40,6 +40,10 @@ export const en = {
   'home.tool.derivative.category': 'Calculus',
   'home.tool.derivative.desc':
     'Step-by-step symbolic derivative solver with chain, product, quotient, and logarithmic rules, higher orders up to 4th, tangent lines, teaching theory, and an identities reference.',
+  'home.tool.boolean.title': 'Boolean simplifier',
+  'home.tool.boolean.category': 'Digital logic',
+  'home.tool.boolean.desc':
+    'Simplify Boolean expressions step by step with truth tables, TikZ/IEEE logic circuits, Karnaugh maps, and WaveDrom timing diagrams with gate delays and D flip-flop clocking.',
   'home.tool.simsetup.title': 'Simulation setup',
   'home.tool.simsetup.category': 'Signal processing',
   'home.tool.simsetup.desc':
@@ -136,6 +140,10 @@ export const nb: Record<keyof typeof en, string> = {
   'home.tool.derivative.category': 'Kalkulus',
   'home.tool.derivative.desc':
     'Steg-for-steg symbolsk derivasjonsløser med kjerneregel, produkt-, brøk- og logaritmeregler, høyere ordener opptil 4., tangentlinjer, undervisningsteori og regeloppslag.',
+  'home.tool.boolean.title': 'Boolsk forenkler',
+  'home.tool.boolean.category': 'Digitalteknikk',
+  'home.tool.boolean.desc':
+    'Forenkle boolske uttrykk steg for steg med sannhetstabeller, TikZ/IEEE-logikkretser, Karnaugh-kart og WaveDrom-tidsdiagrammer med portforsinkelser og D-vippe-klokking.',
   'home.tool.simsetup.title': 'Simuleringsoppsett',
   'home.tool.simsetup.category': 'Signalbehandling',
   'home.tool.simsetup.desc':

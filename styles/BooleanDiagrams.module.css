@@ -1,0 +1,679 @@
+/* Boolean Simplifier Diagrams — Truth Tables, Logic Circuits, K-Map & WaveDrom Timing */
+
+.sectionCard {
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  overflow: hidden;
+  scroll-margin-top: 76px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.sectionToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem 1rem;
+  padding: 0.95rem 1.25rem;
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-surface-solid);
+}
+
+.sectionBody {
+  padding: 1.1rem 1.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Side-by-side responsive grids */
+.dualGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.1rem;
+  align-items: start;
+}
+
+.singleGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.subPane {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 0;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  padding: 0.85rem 1rem;
+}
+
+.subPaneHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 0.75rem;
+}
+
+.subPaneTitle {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 650;
+  color: var(--ds-ink);
+}
+
+/* Signal column / trace checkbox picker */
+.signalBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.9rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  border: var(--ds-border-w) solid var(--ds-border);
+  font-size: 0.8rem;
+}
+
+.signalBarLabel {
+  font-weight: 620;
+  color: var(--ds-ink-3);
+  font-size: 0.76rem;
+}
+
+.signalCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.78rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.signalCheck input {
+  accent-color: var(--ds-accent);
+  cursor: pointer;
+}
+
+.signalCheckRole {
+  font-family: var(--ds-font-ui);
+  font-size: 0.7rem;
+  color: var(--ds-ink-3);
+}
+
+/* Truth Table */
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+}
+
+.truthTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--ds-font-mono);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.truthTable th {
+  padding: 0.45rem 0.55rem;
+  background: var(--ds-well);
+  color: var(--ds-ink-2);
+  font-weight: 650;
+  border-bottom: var(--ds-border-w) solid var(--ds-border-strong);
+  white-space: nowrap;
+}
+
+.truthTable td {
+  padding: 0.36rem 0.55rem;
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+  color: var(--ds-ink);
+}
+
+.truthTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.truthTable tbody tr {
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.truthTable tbody tr:hover {
+  background: color-mix(in srgb, var(--ds-accent) 7%, transparent);
+}
+
+.rowActive {
+  background: color-mix(in srgb, var(--ds-accent) 14%, transparent) !important;
+}
+
+.colSep {
+  border-left: 1.5px solid var(--ds-border-strong);
+}
+
+.thInternal {
+  color: var(--ds-accent) !important;
+}
+
+.thOutput {
+  color: var(--ds-ink) !important;
+}
+
+.valOne {
+  color: var(--bool-high);
+  font-weight: 700;
+}
+
+.valZero {
+  color: var(--bool-low);
+}
+
+.rowIdx {
+  color: var(--ds-ink-3);
+  font-size: 0.74rem;
+}
+
+.netLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.9rem;
+  font-size: 0.76rem;
+  color: var(--ds-ink-2);
+  font-family: var(--ds-font-mono);
+}
+
+/* Circuit SVG viewport */
+.circuitStage {
+  width: 100%;
+  overflow-x: auto;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  padding: 0.65rem;
+}
+
+.circuitSvg {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  height: auto;
+}
+
+.probeBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.75rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  border: var(--ds-border-w) solid var(--ds-border);
+}
+
+.probeToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 30px;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.probeToggleOn {
+  border-color: var(--bool-high);
+  color: var(--bool-high);
+  background: color-mix(in srgb, var(--bool-high) 10%, var(--ds-surface-solid));
+}
+
+/* Timing diagram & WaveDrom */
+.delayControlsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.9rem;
+}
+
+.delayBox {
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  padding: 0.8rem 0.95rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.delayBoxTitle {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: var(--ds-ink-2);
+}
+
+.delayInputsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.7rem;
+}
+
+.delayField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.74rem;
+  color: var(--ds-ink-3);
+  font-family: var(--ds-font-mono);
+}
+
+.delayNumInput {
+  width: 68px;
+  min-height: 30px;
+  padding: 0.2rem 0.45rem;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.delayNumInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.dffRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem 1rem;
+  padding: 0.7rem 0.95rem;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  border: var(--ds-border-w) solid var(--ds-border);
+}
+
+.dffCheckLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ds-ink);
+  cursor: pointer;
+}
+
+.dffCheckLabel input {
+  accent-color: var(--ds-accent);
+  width: 16px;
+  height: 16px;
+}
+
+.waveStage {
+  width: 100%;
+  overflow-x: auto;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  padding: 0.75rem;
+}
+
+.waveSvg {
+  display: block;
+  min-width: 640px;
+  width: 100%;
+  height: auto;
+}
+
+.codeBlock {
+  margin: 0;
+  padding: 0.8rem 1rem;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-variant-ligatures: none;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  overflow-x: auto;
+  max-height: 280px;
+}
+
+/* Karnaugh Map */
+.kmapGridWrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  align-items: flex-start;
+}
+
+.kmapTable {
+  border-collapse: collapse;
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.kmapCorner {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.74rem;
+  font-weight: 650;
+  color: var(--ds-ink-3);
+  border-bottom: 1.5px solid var(--ds-border-strong);
+  border-right: 1.5px solid var(--ds-border-strong);
+}
+
+.kmapHeader {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--ds-ink-2);
+  background: var(--ds-well);
+  border: var(--ds-border-w) solid var(--ds-border);
+}
+
+.kmapCell {
+  position: relative;
+  width: 58px;
+  height: 48px;
+  padding: 0;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  text-align: center;
+  vertical-align: middle;
+}
+
+.kmapCellBtn {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--ds-font-mono);
+  font-size: 0.94rem;
+  color: var(--ds-ink);
+}
+
+.kmapCellBtn:hover {
+  background: color-mix(in srgb, var(--ds-accent) 10%, transparent);
+}
+
+.kmapMintermIdx {
+  font-size: 0.64rem;
+  color: var(--ds-ink-3);
+  line-height: 1;
+}
+
+.kmapLegend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 190px;
+}
+
+.kmapGroupBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-size: 0.84rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.kmapGroupBtnActive {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+}
+
+.kmapSwatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.canonicalBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  font-size: 0.85rem;
+}
+
+.hdlGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.7rem;
+}
+
+.hdlItem {
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  padding: 0.65rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.hdlItemHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.76rem;
+  font-weight: 650;
+  color: var(--ds-ink-2);
+}
+
+.hdlCode {
+  font-family: var(--ds-font-mono);
+  font-variant-ligatures: none;
+  font-size: 0.78rem;
+  color: var(--ds-ink);
+  word-break: break-all;
+}
+
+.slackGood {
+  color: var(--ds-good);
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+
+.slackBad {
+  color: var(--ds-bad);
+  font-weight: 620;
+  font-size: 0.82rem;
+}
+
+.hintText {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ds-ink-3);
+}
+
+/* Curated Examples, Gate Reference & Background Theory */
+.examplesGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.exampleCard {
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  padding: 1.1rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.exampleEqBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  border: var(--ds-border-w) solid var(--ds-border);
+  font-family: var(--ds-font-mono);
+  font-size: 0.82rem;
+  color: var(--ds-ink);
+  overflow-x: auto;
+}
+
+.comparisonList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.comparisonItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 0.75rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  border: var(--ds-border-w) solid var(--ds-border);
+  font-size: 0.8rem;
+  color: var(--ds-ink-2);
+}
+
+.comparisonLabel {
+  font-weight: 640;
+  color: var(--ds-ink);
+  margin-right: 0.35rem;
+}
+
+.gateRefGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.gateRefCard {
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  padding: 1.05rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.gateSymbolsRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.gateSymbolBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.55rem 0.5rem 0.45rem;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  border: var(--ds-border-w) solid var(--ds-border);
+}
+
+.gateSymbolCaption {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--ds-ink-3);
+}
+
+.gateRefBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.85rem;
+  align-items: start;
+}
+
+.theoryTopicsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.theoryTopicCard {
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.theoryBulletList {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.83rem;
+  color: var(--ds-ink-2);
+  line-height: 1.5;
+}
+
+@media (max-width: 860px) {
+  .examplesGrid,
+  .gateRefGrid,
+  .theoryTopicsGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 820px) {
+  .dualGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .gateRefBody {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
