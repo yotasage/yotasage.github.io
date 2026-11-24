@@ -16,6 +16,7 @@ import {
   SEARCH_PRESETS,
   SearchPresetId,
 } from '../../lib/notepad/fileActions';
+import { detectPreviewKind } from '../../lib/notepad/htmlPreview';
 import { toMonacoLanguageId } from '../../lib/notepad/languages';
 import { MimeToolAction, runMimeTool } from '../../lib/notepad/mimeTools';
 import { loadMonaco, MonacoNamespace } from '../../lib/notepad/monacoLoader';
@@ -27,7 +28,7 @@ import {
   replaceSingleMatch,
 } from '../../lib/notepad/search';
 import { estimateWorkspaceBytes } from '../../lib/notepad/storage';
-import { computeMinimalTextEdit } from '../../lib/notepad/syncMerge';
+import { computeMinimalTextEdit, PaneViewState } from '../../lib/notepad/syncMerge';
 import {
   createEqualTrackSizes,
   DEFAULT_SEARCH_OPTIONS,
@@ -46,13 +47,17 @@ import DiffControlBar from './DiffControlBar';
 import FindReplaceBar from './FindReplaceBar';
 import HashDialog from './HashDialog';
 import MonacoDiffPane, { MonacoDiffPaneHandle } from './MonacoDiffPane';
-import MonacoPane, { MonacoPaneHandle, SelectionSnapshot } from './MonacoPane';
+import type { MonacoPaneHandle, SelectionSnapshot } from './MonacoPane';
 import ResizableGrid from './ResizableGrid';
 import StatusBar from './StatusBar';
 import StorageSyncDialog from './StorageSyncDialog';
 import TabStrip from './TabStrip';
 import Toolbar from './Toolbar';
+import { useCsvActions } from './useCsvActions';
 import { useWorkspaceSync } from './useWorkspaceSync';
+import WorkspacePane from './WorkspacePane';
+
+const DEFAULT_PANE_VIEW: PaneViewState = { mode: 'editor', kind: 'auto' };
 
 export default function NotepadWorkspace() {
   const { t } = useI18n();
@@ -260,6 +265,11 @@ export default function NotepadWorkspace() {
   const activePaneIdx = Math.min(viewState.activePane, maxVisiblePane);
   const activeDocId = viewState.paneDocIds[activePaneIdx] ?? workspace.docs[0].id;
   const activeDoc = docById.get(activeDocId) ?? workspace.docs[0];
+  const activePaneView = viewState.paneViews[activePaneIdx] ?? DEFAULT_PANE_VIEW;
+  const detectedPreviewKind = useMemo(
+    () => detectPreviewKind(activeDoc.language, activeDoc.name, activeDoc.content),
+    [activeDoc.language, activeDoc.name, activeDoc.content],
+  );
 
   const diffLeftDoc = docById.get(viewState.diffLeftId) ?? workspace.docs[0];
   const diffRightDoc =
@@ -515,6 +525,29 @@ export default function NotepadWorkspace() {
     [activeDoc.content, activeDoc.id, activePaneIdx, patchDocById, showToast, t],
   );
 
+  const setPaneView = useCallback(
+    (paneIdx: number, next: PaneViewState) => {
+      setViewState((prev) => ({
+        ...prev,
+        paneViews: {
+          ...prev.paneViews,
+          [paneIdx]: next,
+        },
+      }));
+    },
+    [setViewState],
+  );
+
+  const { handleAlignCsv, handleShrinkCsv } = useCsvActions({
+    activeDoc,
+    activePaneIdx,
+    paneDocIds: viewState.paneDocIds,
+    docById,
+    paneRefs,
+    patchDocById,
+    showToast,
+  });
+
   const handleSelectGrid = useCallback(
     (rows: number, cols: number) => {
       const r = Math.max(1, Math.min(MAX_GRID_DIM, Math.floor(rows)));
@@ -672,70 +705,46 @@ export default function NotepadWorkspace() {
     const doc = docById.get(docId) ?? workspace.docs[0];
     const model = getOrCreateModel(doc);
     const isPaneActive = activePaneIdx === paneIdx;
+    const paneView = viewState.paneViews[paneIdx] ?? DEFAULT_PANE_VIEW;
 
     return (
-      <div
+      <WorkspacePane
         key={`pane-${paneIdx}`}
-        className={[styles.editorPane, isPaneActive ? styles.editorPaneActive : ''].filter(Boolean).join(' ')}
-        onMouseDown={() => {
+        paneIdx={paneIdx}
+        showHeader={showHeader}
+        docs={workspace.docs}
+        doc={doc}
+        monaco={monaco}
+        monacoError={monacoError}
+        model={model}
+        theme={theme}
+        settings={workspace.settings}
+        isPaneActive={isPaneActive}
+        paneView={paneView}
+        findMatchesList={findOpen ? activeSearchResult.matches : []}
+        activeFindMatchIndex={activeFindIdx}
+        onAssignRef={(handle) => {
+          paneRefs.current[paneIdx] = handle;
+        }}
+        onActivatePane={() => {
           if (viewState.activePane !== paneIdx) {
             setViewState((prev) => ({ ...prev, activePane: paneIdx }));
           }
         }}
-      >
-        {showHeader && (
-          <div className={styles.paneHeader}>
-            <span className={styles.paneIndex}>{t('notepad.pane.label', { n: paneIdx + 1 })}</span>
-            <select
-              className={styles.paneSelect}
-              value={doc.id}
-              aria-label={t('notepad.pane.selectFile', { n: paneIdx + 1 })}
-              onChange={(e) => assignDocToPane(paneIdx, e.target.value)}
-            >
-              {workspace.docs.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-            {isPaneActive && <span className={styles.paneActiveLabel}>{t('notepad.pane.active')}</span>}
-          </div>
-        )}
-        <div className={styles.paneBody}>
-          {monaco && model ? (
-            <MonacoPane
-              ref={(handle) => {
-                paneRefs.current[paneIdx] = handle;
-              }}
-              paneIndex={paneIdx}
-              monaco={monaco}
-              model={model}
-              doc={doc}
-              theme={theme}
-              settings={workspace.settings}
-              isActive={isPaneActive}
-              findMatchesList={findOpen ? activeSearchResult.matches : []}
-              activeFindMatchIndex={activeFindIdx}
-              onFocusPane={(idx) =>
-                setViewState((prev) => (prev.activePane === idx ? prev : { ...prev, activePane: idx }))
-              }
-              onSelectionChange={(snap) => {
-                if (snap.paneIndex === activePaneIdx || viewState.layout === 'single') {
-                  setSelectionInfo(snap);
-                }
-              }}
-              onOpenFindBar={() => {
-                setFindOpen(true);
-                setFindFocusTrigger((n) => n + 1);
-              }}
-            />
-          ) : (
-            <div className={styles.editorLoading}>
-              {monacoError ? t('notepad.loadError', { error: monacoError }) : t('notepad.loadingEditor')}
-            </div>
-          )}
-        </div>
-      </div>
+        onAssignDoc={(nextDocId) => assignDocToPane(paneIdx, nextDocId)}
+        onChangePaneView={(next) => setPaneView(paneIdx, next)}
+        onAlignCsv={(opts) => handleAlignCsv(opts, paneIdx)}
+        onShrinkCsv={(delim) => handleShrinkCsv(delim, paneIdx)}
+        onSelectionChange={(snap) => {
+          if (snap.paneIndex === activePaneIdx || viewState.layout === 'single') {
+            setSelectionInfo(snap);
+          }
+        }}
+        onOpenFindBar={() => {
+          setFindOpen(true);
+          setFindFocusTrigger((n) => n + 1);
+        }}
+      />
     );
   };
 
@@ -769,6 +778,8 @@ export default function NotepadWorkspace() {
         activeLanguage={activeDoc.language}
         activeEncoding={activeDoc.encoding}
         activeDirection={activeDoc.direction}
+        activePaneView={activePaneView}
+        detectedPreviewKind={detectedPreviewKind}
         onNewDoc={() => openNewDoc('')}
         onPasteAsNew={() => void handlePasteAsNew()}
         onOpenFiles={(files) => void handleUploadFiles(files)}
@@ -800,6 +811,9 @@ export default function NotepadWorkspace() {
           setHashDialogAlgo(algo);
           setHashDialogOpen(true);
         }}
+        onChangeActivePaneView={(next) => setPaneView(activePaneIdx, next)}
+        onAlignCsv={(opts) => handleAlignCsv(opts, activePaneIdx)}
+        onShrinkCsv={(delim) => handleShrinkCsv(delim, activePaneIdx)}
         onOpenSync={openSyncDialog}
       />
 

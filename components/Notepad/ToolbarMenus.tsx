@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { HashAlgorithm } from '../../lib/notepad/cryptoHash';
+import { AlignOptions, DelimiterOption } from '../../lib/notepad/csvTools';
 import { getEncodingShortLabel, SUPPORTED_ENCODINGS } from '../../lib/notepad/encoding';
 import { getLanguageLabel, groupLanguagesByLetter } from '../../lib/notepad/languages';
 import { MimeToolAction } from '../../lib/notepad/mimeTools';
@@ -8,7 +9,7 @@ import { FileEncoding, MAX_GRID_DIM, SymbolSettings } from '../../lib/notepad/ty
 import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Notepad.module.css';
 
-export type OpenMenuId = 'grid' | 'symbols' | 'language' | 'encoding' | 'mime' | 'tools' | null;
+export type OpenMenuId = 'grid' | 'symbols' | 'language' | 'encoding' | 'mime' | 'data' | 'tools' | null;
 
 export interface ToolbarMenusProps {
   openMenu: OpenMenuId;
@@ -638,6 +639,130 @@ export function ToolsHashMenuControl({
           <div className={styles.menuDivider} />
           <button type="button" role="menuitem" className={styles.menuItem} onClick={() => pick('ALL')}>
             {t('notepad.tools.allDigests')}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export interface DataAlignMenuProps {
+  openMenu: OpenMenuId;
+  setOpenMenu: (id: OpenMenuId) => void;
+  onAlignCsv: (opts: AlignOptions) => void;
+  onShrinkCsv: (delimiter?: DelimiterOption) => void;
+  onOpenCsvPreview: () => void;
+}
+
+export function DataAlignMenuControl({
+  openMenu,
+  setOpenMenu,
+  onAlignCsv,
+  onShrinkCsv,
+  onOpenCsvPreview,
+}: DataAlignMenuProps) {
+  const { t } = useI18n();
+  const isOpen = openMenu === 'data';
+
+  const runAlign = (opts: AlignOptions) => {
+    onAlignCsv(opts);
+    setOpenMenu(null);
+  };
+
+  return (
+    <div className={styles.menuWrap}>
+      <button
+        type="button"
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        className={styles.cmdBtn}
+        onClick={() => setOpenMenu(isOpen ? null : 'data')}
+      >
+        {t('notepad.data.menu')} ▾
+      </button>
+      {isOpen && (
+        <div className={styles.menuDropdown} role="menu" aria-label={t('notepad.data.menu')}>
+          <div className={styles.menuSectionLabel}>{t('notepad.mime.scopeHint')}</div>
+          <button
+            type="button"
+            role="menuitem"
+            className={styles.menuItem}
+            onClick={() => runAlign({ delimiter: 'auto', alignment: 'auto' })}
+          >
+            {t('notepad.data.alignAuto')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={styles.menuItem}
+            onClick={() => runAlign({ delimiter: 'auto', alignment: 'left' })}
+          >
+            {t('notepad.data.alignLeft')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={styles.menuItem}
+            onClick={() => runAlign({ delimiter: 'auto', alignment: 'right' })}
+          >
+            {t('notepad.data.alignRight')}
+          </button>
+          <div className={styles.menuDivider} />
+          <button
+            type="button"
+            role="menuitem"
+            className={styles.menuItem}
+            onClick={() => runAlign({ delimiter: ',', alignment: 'auto' })}
+          >
+            {t('notepad.data.alignComma')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={styles.menuItem}
+            onClick={() => runAlign({ delimiter: ';', alignment: 'auto' })}
+          >
+            {t('notepad.data.alignSemicolon')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={styles.menuItem}
+            onClick={() => runAlign({ delimiter: '\t', alignment: 'auto' })}
+          >
+            {t('notepad.data.alignTab')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={styles.menuItem}
+            onClick={() => runAlign({ delimiter: '|', alignment: 'auto' })}
+          >
+            {t('notepad.data.alignPipe')}
+          </button>
+          <div className={styles.menuDivider} />
+          <button
+            type="button"
+            role="menuitem"
+            className={styles.menuItem}
+            onClick={() => {
+              onShrinkCsv('auto');
+              setOpenMenu(null);
+            }}
+          >
+            {t('notepad.data.shrink')}
+          </button>
+          <div className={styles.menuDivider} />
+          <button
+            type="button"
+            role="menuitem"
+            className={styles.menuItem}
+            onClick={() => {
+              onOpenCsvPreview();
+              setOpenMenu(null);
+            }}
+          >
+            {t('notepad.data.openTablePreview')}
           </button>
         </div>
       )}

@@ -1,7 +1,10 @@
 import { useRef, useState } from 'react';
 
 import { HashAlgorithm } from '../../lib/notepad/cryptoHash';
+import { AlignOptions, DelimiterOption } from '../../lib/notepad/csvTools';
+import { ConcretePreviewKind } from '../../lib/notepad/htmlPreview';
 import { MimeToolAction } from '../../lib/notepad/mimeTools';
+import { PaneViewState } from '../../lib/notepad/syncMerge';
 import {
   EditorSettings,
   FileEncoding,
@@ -11,7 +14,9 @@ import {
 } from '../../lib/notepad/types';
 import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Notepad.module.css';
+import previewStyles from '../../styles/NotepadPreview.module.css';
 import {
+  DataAlignMenuControl,
   EncodingMenuControl,
   GridMenuControl,
   LanguageMenuControl,
@@ -31,6 +36,8 @@ export interface ToolbarProps {
   activeLanguage: string;
   activeEncoding: FileEncoding;
   activeDirection: TextDirection;
+  activePaneView: PaneViewState;
+  detectedPreviewKind: ConcretePreviewKind | null;
   onNewDoc: () => void;
   onPasteAsNew: () => void;
   onOpenFiles: (files: FileList) => void;
@@ -48,6 +55,9 @@ export interface ToolbarProps {
   onConvertEncoding: (encoding: FileEncoding) => void;
   onRunMimeTool: (action: MimeToolAction) => void;
   onOpenHashDialog: (algo: HashAlgorithm | 'ALL') => void;
+  onChangeActivePaneView: (next: PaneViewState) => void;
+  onAlignCsv: (opts: AlignOptions) => void;
+  onShrinkCsv: (delimiter?: DelimiterOption) => void;
   onOpenSync: () => void;
 }
 
@@ -60,6 +70,8 @@ export default function Toolbar({
   activeLanguage,
   activeEncoding,
   activeDirection,
+  activePaneView,
+  detectedPreviewKind,
   onNewDoc,
   onPasteAsNew,
   onOpenFiles,
@@ -77,6 +89,9 @@ export default function Toolbar({
   onConvertEncoding,
   onRunMimeTool,
   onOpenHashDialog,
+  onChangeActivePaneView,
+  onAlignCsv,
+  onShrinkCsv,
   onOpenSync,
 }: ToolbarProps) {
   const { t } = useI18n();
@@ -85,6 +100,17 @@ export default function Toolbar({
   const [openMenu, setOpenMenu] = useState<OpenMenuId>(null);
 
   useMenuDismiss(toolbarRef, openMenu, setOpenMenu);
+
+  const previewBtnLabel =
+    detectedPreviewKind === 'markdown'
+      ? t('notepad.preview.buttonMd')
+      : detectedPreviewKind === 'html'
+        ? t('notepad.preview.buttonHtml')
+        : detectedPreviewKind === 'csv'
+          ? t('notepad.preview.buttonCsv')
+          : t('notepad.preview.button');
+
+  const isDiff = layout === 'diff';
 
   return (
     <div ref={toolbarRef} className={styles.commandBar} role="toolbar" aria-label="Scratchpad toolbar">
@@ -231,11 +257,89 @@ export default function Toolbar({
           setOpenMenu={setOpenMenu}
           onRunMimeTool={onRunMimeTool}
         />
+        <DataAlignMenuControl
+          openMenu={openMenu}
+          setOpenMenu={setOpenMenu}
+          onAlignCsv={onAlignCsv}
+          onShrinkCsv={onShrinkCsv}
+          onOpenCsvPreview={() => {
+            if (isDiff) onChangeLayout('single');
+            onChangeActivePaneView({
+              mode: activePaneView.mode === 'editor' ? 'split' : activePaneView.mode,
+              kind: 'csv',
+            });
+          }}
+        />
         <ToolsHashMenuControl
           openMenu={openMenu}
           setOpenMenu={setOpenMenu}
           onOpenHashDialog={onOpenHashDialog}
         />
+      </div>
+
+      <span className={styles.cmdSep} aria-hidden="true" />
+
+      <div className={styles.cmdGroup}>
+        {activePaneView.mode === 'editor' || isDiff ? (
+          <button
+            type="button"
+            disabled={isDiff}
+            aria-pressed={false}
+            className={[
+              styles.toggleBtn,
+              !isDiff && detectedPreviewKind !== null ? previewStyles.toolbarPreviewHint : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            onClick={() => {
+              setOpenMenu(null);
+              onChangeActivePaneView({ ...activePaneView, mode: 'split' });
+            }}
+          >
+            {previewBtnLabel}
+          </button>
+        ) : (
+          <div
+            className={styles.segmentedGroup}
+            role="group"
+            aria-label={t('notepad.preview.modeGroup')}
+          >
+            <button
+              type="button"
+              aria-pressed={false}
+              className={styles.segBtn}
+              onClick={() => onChangeActivePaneView({ ...activePaneView, mode: 'editor' })}
+            >
+              {t('notepad.preview.modeEditor')}
+            </button>
+            <button
+              type="button"
+              aria-pressed={activePaneView.mode === 'split'}
+              className={[
+                styles.segBtn,
+                activePaneView.mode === 'split' ? styles.segBtnActive : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              onClick={() => onChangeActivePaneView({ ...activePaneView, mode: 'split' })}
+            >
+              {t('notepad.preview.modeSplit')}
+            </button>
+            <button
+              type="button"
+              aria-pressed={activePaneView.mode === 'preview'}
+              className={[
+                styles.segBtn,
+                activePaneView.mode === 'preview' ? styles.segBtnActive : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              onClick={() => onChangeActivePaneView({ ...activePaneView, mode: 'preview' })}
+            >
+              {t('notepad.preview.modePreview')}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className={styles.cmdSpacer} />
