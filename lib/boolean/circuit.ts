@@ -472,8 +472,20 @@ export function buildMultiCircuitGraph(
     gapExitNets.set(gap, list);
   }
 
+  // Compute dynamic horizontal padding so wide multi-character signal labels never clip at SVG edges
+  const maxInputLabelLen = (byLevel.get(0) ?? []).reduce(
+    (max, n) => Math.max(max, n.label.length),
+    1,
+  );
+  const maxOutputLabelLen = (byLevel.get(outLevel) ?? []).reduce(
+    (max, n) => Math.max(max, n.label.length),
+    1,
+  );
+  const leftPad = Math.max(PAD_X, Math.ceil(maxInputLabelLen * 7.5 + 34));
+  const rightPad = Math.max(PAD_X, Math.ceil(maxOutputLabelLen * 7.5 + 34));
+
   // Compute dynamic X coordinate for every level based on track count in each gap
-  const levelX: number[] = [PAD_X];
+  const levelX: number[] = [leftPad];
   for (let lvl = 0; lvl < outLevel; lvl++) {
     const exitCount = gapExitNets.get(lvl)?.length ?? 0;
     const entryCount = gapEntrySkipEdges.get(lvl)?.length ?? 0;
@@ -594,7 +606,7 @@ export function buildMultiCircuitGraph(
     };
   });
 
-  const width = Math.max(380, (levelX[outLevel] ?? PAD_X) + PAD_X + 36);
+  const width = Math.max(380, (levelX[outLevel] ?? leftPad) + rightPad + 36);
   const outputNames = decomposedOutputs.map((o) => o.outputName);
 
   return {

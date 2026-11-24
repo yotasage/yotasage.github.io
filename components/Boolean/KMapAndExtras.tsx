@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { toLatex, toPlainText, toVerilog, toVhdl, varToLatex } from '../../lib/boolean/parse';
+import { exportKMapLatex, formatKMapCornerVars } from '../../lib/boolean/qm';
 import type { SimplifySuccess } from '../../lib/boolean/types';
 import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Boolean.module.css';
 import dStyles from '../../styles/BooleanDiagrams.module.css';
 import KatexSpan from '../KatexSpan';
+import { TableSelectionBar, useTableSelection } from './useTableSelection';
 
 const GROUP_COLORS = [
   '#2563eb',
@@ -39,8 +41,36 @@ function SingleOutputKMapAndCanonical({
 }) {
   const { t } = useI18n();
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null);
+  const [copiedLatex, setCopiedLatex] = useState(false);
   const { outputName, canonical, kmap } = result;
   const activeGroup = kmap?.groups.find((g) => g.id === hoveredGroupId) ?? null;
+
+  const kmapGrid = useMemo<readonly (readonly string[])[]>(() => {
+    if (!kmap) return [];
+    const corner = `${formatKMapCornerVars(kmap.rowVars)} \\ ${formatKMapCornerVars(kmap.colVars)}`;
+    const header = [corner, ...kmap.colLabels];
+    const rows = kmap.rowGray.map((rBits, rIdx) => [
+      kmap.rowLabels[rIdx],
+      ...kmap.colGray.map((cBits) => {
+        const minterm = (rBits << kmap.colVars.length) | cBits;
+        return String(kmap.values[minterm] ?? 0);
+      }),
+    ]);
+    return [header, ...rows];
+  }, [kmap]);
+
+  const selection = useTableSelection(kmapGrid);
+
+  const copyKmapLatex = async () => {
+    if (!kmap) return;
+    try {
+      await navigator.clipboard.writeText(exportKMapLatex(kmap));
+      setCopiedLatex(true);
+      window.setTimeout(() => setCopiedLatex(false), 1500);
+    } catch {
+      // Ignore clipboard failure
+    }
+  };
 
   return (
     <div
@@ -50,80 +80,133 @@ function SingleOutputKMapAndCanonical({
       {kmap && (
         <div className={dStyles.subPane}>
           <div className={dStyles.subPaneHead}>
-            <h3 className={dStyles.subPaneTitle}>
-              {t('boolean.extras.kmapTitle')} ({outputName})
-            </h3>
-            <span className={styles.metaInline}>
-              Σm({canonical.minterms.slice(0, 10).join(', ')}
-              {canonical.minterms.length > 10 ? ', …' : ''})
-            </span>
+            <div className={styles.stepsTitleGroup}>
+              <h3 className={dStyles.subPaneTitle}>
+                {t('boolean.extras.kmapTitle')} ({outputName})
+              </h3>
+              <span className={styles.metaInline}>
+                Σm({canonical.minterms.slice(0, 10).join(', ')}
+                {canonical.minterms.length > 10 ? ', …' : ''})
+              </span>
+            </div>
+            <div className={styles.btnRow}>
+              <button
+                type="button"
+                className={[styles.btn, styles.btnSmall].join(' ')}
+                onClick={() => void selection.copyAll()}
+                data-testid={`kmap-copy-excel-${outputName}`}
+              >
+                {selection.copiedState === 'all'
+                  ? t('boolean.table.copiedExcel')
+                  : t('boolean.table.copyExcel')}
+              </button>
+              <button
+                type="button"
+                className={[styles.btn, styles.btnSmall].join(' ')}
+                onClick={() => void copyKmapLatex()}
+                data-testid={`kmap-copy-latex-${outputName}`}
+              >
+                {copiedLatex ? t('boolean.result.copied') : t('boolean.kmap.copyLatex')}
+              </button>
+            </div>
           </div>
           <p className={dStyles.hintText}>{t('boolean.extras.kmapHint')}</p>
           <div className={dStyles.kmapGridWrap}>
-            <table className={dStyles.kmapTable} aria-label={`Karnaugh map for ${outputName}`}>
-              <thead>
-                <tr>
-                  <th className={dStyles.kmapCorner}>
-                    {kmap.rowVars.join('')} \ {kmap.colVars.join('')}
-                  </th>
-                  {kmap.colLabels.map((lbl) => (
-                    <th key={lbl} className={dStyles.kmapHeader}>
-                      {lbl}
+            <div
+              ref={selection.containerRef}
+              tabIndex={0}
+              onKeyDown={selection.onKeyDown}
+              className={dStyles.kmapTableStack}
+            >
+              <table
+                className={[dStyles.kmapTable, dStyles.selectableTable].join(' ')}
+                aria-label={`Karnaugh map for ${outputName}`}
+              >
+                <thead>
+                  <tr>
+                    <th
+                      {...selection.getCellProps(0, 0)}
+                      className={selection.getCellClassName(0, 0, dStyles.kmapCorner)}
+                    >
+                      {formatKMapCornerVars(kmap.rowVars)} \ {formatKMapCornerVars(kmap.colVars)}
                     </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {kmap.rowGray.map((rBits, rIdx) => (
-                  <tr key={kmap.rowLabels[rIdx]}>
-                    <th className={dStyles.kmapHeader}>{kmap.rowLabels[rIdx]}</th>
-                    {kmap.colGray.map((cBits, cIdx) => {
-                      const minterm = (rBits << kmap.colVars.length) | cBits;
-                      const val = kmap.values[minterm] ?? 0;
-                      const coveringGroups = kmap.groups.filter((g) =>
-                        g.cells.includes(minterm),
-                      );
-                      const isHovered = activeGroup?.cells.includes(minterm) ?? false;
-                      const isSelected = selectedRowIndex === minterm;
-                      const firstColor =
-                        coveringGroups.length > 0
-                          ? GROUP_COLORS[coveringGroups[0].colorIndex]
-                          : undefined;
-                      const cellBg =
-                        isHovered && activeGroup
-                          ? `${GROUP_COLORS[activeGroup.colorIndex]}30`
-                          : firstColor
-                            ? `${firstColor}16`
-                            : undefined;
-                      const cellOutline = isSelected
-                        ? '2px solid var(--ds-accent)'
-                        : isHovered && activeGroup
-                          ? `2px solid ${GROUP_COLORS[activeGroup.colorIndex]}`
-                          : undefined;
-                      return (
-                        <td
-                          key={`${rIdx}-${cIdx}`}
-                          className={dStyles.kmapCell}
-                          style={{ backgroundColor: cellBg, outline: cellOutline, outlineOffset: -2 }}
-                        >
-                          <button
-                            type="button"
-                            className={dStyles.kmapCellBtn}
-                            onClick={() => onSelectRow(minterm)}
-                            aria-label={`${outputName} minterm ${minterm}, value ${val}`}
-                          >
-                            <span className={val === 1 ? dStyles.valOne : dStyles.valZero}>
-                              {val}
-                            </span>
-                            <span className={dStyles.kmapMintermIdx}>m{minterm}</span>
-                          </button>
-                        </td>
-                      );
-                    })}
+                    {kmap.colLabels.map((lbl, cIdx) => (
+                      <th
+                        key={lbl}
+                        {...selection.getCellProps(0, cIdx + 1)}
+                        className={selection.getCellClassName(0, cIdx + 1, dStyles.kmapHeader)}
+                      >
+                        {lbl}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {kmap.rowGray.map((rBits, rIdx) => (
+                    <tr key={kmap.rowLabels[rIdx]}>
+                      <th
+                        {...selection.getCellProps(rIdx + 1, 0)}
+                        className={selection.getCellClassName(rIdx + 1, 0, dStyles.kmapHeader)}
+                      >
+                        {kmap.rowLabels[rIdx]}
+                      </th>
+                      {kmap.colGray.map((cBits, cIdx) => {
+                        const minterm = (rBits << kmap.colVars.length) | cBits;
+                        const val = kmap.values[minterm] ?? 0;
+                        const coveringGroups = kmap.groups.filter((g) =>
+                          g.cells.includes(minterm),
+                        );
+                        const isHovered = activeGroup?.cells.includes(minterm) ?? false;
+                        const isSelected = selectedRowIndex === minterm;
+                        const firstColor =
+                          coveringGroups.length > 0
+                            ? GROUP_COLORS[coveringGroups[0].colorIndex]
+                            : undefined;
+                        const cellBg =
+                          isHovered && activeGroup
+                            ? `${GROUP_COLORS[activeGroup.colorIndex]}30`
+                            : firstColor
+                              ? `${firstColor}16`
+                              : undefined;
+                        const cellOutline = isSelected
+                          ? '2px solid var(--ds-accent)'
+                          : isHovered && activeGroup
+                            ? `2px solid ${GROUP_COLORS[activeGroup.colorIndex]}`
+                            : undefined;
+                        return (
+                          <td
+                            key={`${rIdx}-${cIdx}`}
+                            {...selection.getCellProps(rIdx + 1, cIdx + 1)}
+                            className={selection.getCellClassName(
+                              rIdx + 1,
+                              cIdx + 1,
+                              dStyles.kmapCell,
+                            )}
+                            style={{ backgroundColor: cellBg, outline: cellOutline, outlineOffset: -2 }}
+                          >
+                            <button
+                              type="button"
+                              data-sel-cell-btn="1"
+                              className={dStyles.kmapCellBtn}
+                              onClick={() => {
+                                if (!selection.consumeDidDrag()) onSelectRow(minterm);
+                              }}
+                              aria-label={`${outputName} minterm ${minterm}, value ${val}`}
+                            >
+                              <span className={val === 1 ? dStyles.valOne : dStyles.valZero}>
+                                {val}
+                              </span>
+                              <span className={dStyles.kmapMintermIdx}>m{minterm}</span>
+                            </button>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <TableSelectionBar selection={selection} />
+            </div>
 
             {kmap.groups.length > 0 && (
               <div className={dStyles.kmapLegend}>

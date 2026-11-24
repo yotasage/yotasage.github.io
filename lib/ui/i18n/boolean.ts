@@ -26,6 +26,9 @@ export const en = {
   'boolean.view.stacked': 'Stacked',
 
   // Input & options
+  'boolean.input.modeLabel': 'Input mode',
+  'boolean.input.mode.expression': 'Expression',
+  'boolean.input.mode.truthTable': 'Truth table',
   'boolean.input.label': 'Boolean expression',
   'boolean.input.labelPlural': 'Boolean equations',
   'boolean.input.placeholder':
@@ -61,7 +64,30 @@ export const en = {
   'boolean.opt.notation.verilog': 'Verilog (&, |, ~)',
   'boolean.opt.andStyle': 'AND operator',
   'boolean.opt.andStyle.explicit': 'Explicit (A·B)',
-  'boolean.opt.andStyle.minimal': 'Minimal (AB)',
+  'boolean.opt.andStyle.minimal': 'Minimal (A(B+C))',
+
+  // Truth table input mode
+  'boolean.ttInput.inputs': 'Inputs',
+  'boolean.ttInput.outputs': 'Outputs',
+  'boolean.ttInput.addInput': 'Add input column',
+  'boolean.ttInput.addInputMax': 'Maximum 8 inputs (256 rows)',
+  'boolean.ttInput.removeLastInput': 'Remove last input',
+  'boolean.ttInput.removeInput': 'Remove input {name}',
+  'boolean.ttInput.addOutput': 'Add output column',
+  'boolean.ttInput.addOutputMax': 'Maximum 16 outputs',
+  'boolean.ttInput.removeLastOutput': 'Remove last output',
+  'boolean.ttInput.removeOutput': 'Remove output {name}',
+  'boolean.ttInput.inputNameAria': 'Input signal {index} name',
+  'boolean.ttInput.outputNameAria': 'Output signal {index} name',
+  'boolean.ttInput.clearOutputs': 'Clear outputs (0)',
+  'boolean.ttInput.invertOutputs': 'Invert outputs',
+  'boolean.ttInput.importExpr': 'Import from expression',
+  'boolean.ttInput.imported': 'Imported',
+  'boolean.ttInput.importDisabled': 'Enter a valid expression with 1–8 variables to import',
+  'boolean.ttInput.editInExpr': 'Edit in Expression mode',
+  'boolean.ttInput.clickHint': 'Click any output cell to toggle 0/1 · drag cells to select & copy for Excel',
+  'boolean.ttInput.duplicateName': 'Duplicate signal name "{name}". Each input and output must have a unique name.',
+  'boolean.ttInput.rowsCount': '{rows} rows',
 
   // Result banner
   'boolean.result.title': 'Simplified expression',
@@ -116,6 +142,17 @@ export const en = {
   'boolean.tt.probeHint': 'Click any row to probe live 0/1 values on the circuits and K-Map.',
   'boolean.tt.truncated': 'Showing first {shown} of {total} rows.',
   'boolean.tt.noCols': 'All columns are hidden. Click "Reset to default" to restore inputs and outputs.',
+
+  // Table selection & Excel / K-Map export
+  'boolean.table.copyExcel': 'Copy for Excel',
+  'boolean.table.copiedExcel': 'Copied for Excel',
+  'boolean.table.copiedRange': 'Copied {rows}×{cols} for Excel',
+  'boolean.table.selectedRange': 'Selected {rows}×{cols} cells (Ctrl+C)',
+  'boolean.table.selectedSingle': 'Selected 1 cell (Ctrl+C)',
+  'boolean.table.selectAll': 'Select all',
+  'boolean.table.clear': 'Clear',
+  'boolean.table.dragHint': 'Drag cells to select & copy for Excel',
+  'boolean.kmap.copyLatex': 'Copy LaTeX',
 
   // Circuits
   'boolean.circuit.title': 'Logic circuit schematics',
@@ -269,6 +306,9 @@ export const nb: Record<keyof typeof en, string> = {
   'boolean.view.stacked': 'Stablet',
 
   // Input & options
+  'boolean.input.modeLabel': 'Inndatamodus',
+  'boolean.input.mode.expression': 'Uttrykk',
+  'boolean.input.mode.truthTable': 'Sannhetstabell',
   'boolean.input.label': 'Boolsk uttrykk',
   'boolean.input.labelPlural': 'Boolske ligninger',
   'boolean.input.placeholder':
@@ -304,7 +344,30 @@ export const nb: Record<keyof typeof en, string> = {
   'boolean.opt.notation.verilog': 'Verilog (&, |, ~)',
   'boolean.opt.andStyle': 'AND-operator',
   'boolean.opt.andStyle.explicit': 'Eksplisitt (A·B)',
-  'boolean.opt.andStyle.minimal': 'Minimal (AB)',
+  'boolean.opt.andStyle.minimal': 'Minimal (A(B+C))',
+
+  // Truth table input mode
+  'boolean.ttInput.inputs': 'Innganger',
+  'boolean.ttInput.outputs': 'Utganger',
+  'boolean.ttInput.addInput': 'Legg til inngangskolonne',
+  'boolean.ttInput.addInputMax': 'Maks 8 innganger (256 rader)',
+  'boolean.ttInput.removeLastInput': 'Fjern siste inngang',
+  'boolean.ttInput.removeInput': 'Fjern inngang {name}',
+  'boolean.ttInput.addOutput': 'Legg til utgangskolonne',
+  'boolean.ttInput.addOutputMax': 'Maks 16 utganger',
+  'boolean.ttInput.removeLastOutput': 'Fjern siste utgang',
+  'boolean.ttInput.removeOutput': 'Fjern utgang {name}',
+  'boolean.ttInput.inputNameAria': 'Navn på inngangssignal {index}',
+  'boolean.ttInput.outputNameAria': 'Navn på utgangssignal {index}',
+  'boolean.ttInput.clearOutputs': 'Nullstill utganger (0)',
+  'boolean.ttInput.invertOutputs': 'Inverter utganger',
+  'boolean.ttInput.importExpr': 'Importer fra uttrykk',
+  'boolean.ttInput.imported': 'Importert',
+  'boolean.ttInput.importDisabled': 'Skriv et gyldig uttrykk med 1–8 variabler for å importere',
+  'boolean.ttInput.editInExpr': 'Rediger i uttrykksmodus',
+  'boolean.ttInput.clickHint': 'Klikk på en utgangscelle for å veksle 0/1 · dra for å velge og kopiere til Excel',
+  'boolean.ttInput.duplicateName': 'Duplisert signalnavn «{name}». Hver inngang og utgang må ha et unikt navn.',
+  'boolean.ttInput.rowsCount': '{rows} rader',
 
   // Result banner
   'boolean.result.title': 'Forenklet uttrykk',
@@ -359,6 +422,17 @@ export const nb: Record<keyof typeof en, string> = {
   'boolean.tt.probeHint': 'Klikk på en rad for å vise 0/1-signaler direkte på kretsene og Karnaugh-kartet.',
   'boolean.tt.truncated': 'Viser første {shown} av {total} rader.',
   'boolean.tt.noCols': 'Alle kolonner er skjult. Klikk «Tilbakestill til standard» for å vise inn- og utganger.',
+
+  // Table selection & Excel / K-Map export
+  'boolean.table.copyExcel': 'Kopier til Excel',
+  'boolean.table.copiedExcel': 'Kopiert til Excel',
+  'boolean.table.copiedRange': 'Kopierte {rows}×{cols} til Excel',
+  'boolean.table.selectedRange': 'Valgt {rows}×{cols} celler (Ctrl+C)',
+  'boolean.table.selectedSingle': 'Valgt 1 celle (Ctrl+C)',
+  'boolean.table.selectAll': 'Velg alt',
+  'boolean.table.clear': 'Fjern valg',
+  'boolean.table.dragHint': 'Dra over celler for å velge og kopiere til Excel',
+  'boolean.kmap.copyLatex': 'Kopier LaTeX',
 
   // Circuits
   'boolean.circuit.title': 'Logikkretsskjemaer',

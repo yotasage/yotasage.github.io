@@ -10,6 +10,7 @@ import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Boolean.module.css';
 import dStyles from '../../styles/BooleanDiagrams.module.css';
 import KatexSpan from '../KatexSpan';
+import { TableSelectionBar, useTableSelection } from './useTableSelection';
 
 export interface GateReferenceTabProps {
   readonly onTryGate: (expr: string) => void;
@@ -199,6 +200,17 @@ function GateCard({
   onTryGate: (expr: string) => void;
 }) {
   const { t } = useI18n();
+  const gateGrid = useMemo<readonly (readonly string[])[]>(() => {
+    const header = [...gate.inputNames, 'Y'];
+    const rows = gate.rows.map((row) => [
+      ...row.slice(0, gate.arity).map(String),
+      String(row[row.length - 1]),
+    ]);
+    return [header, ...rows];
+  }, [gate.inputNames, gate.rows, gate.arity]);
+
+  const selection = useTableSelection(gateGrid);
+
   return (
     <article className={dStyles.gateRefCard} data-testid={`gate-ref-${gate.id.toLowerCase()}`}>
       <div className={styles.identityHead}>
@@ -236,36 +248,78 @@ function GateCard({
           </span>
         </div>
 
-        <div className={dStyles.tableWrap} style={{ maxHeight: 280, overflowY: 'auto' }}>
-          <table className={dStyles.truthTable} aria-label={`${gate.name} (${gate.marking}) truth table`}>
-            <thead>
-              <tr>
-                {gate.inputNames.map((v) => (
-                  <th key={v}>{v}</th>
-                ))}
-                <th className={[dStyles.colSep, dStyles.thOutput].join(' ')}>Y</th>
-              </tr>
-            </thead>
-            <tbody>
-              {gate.rows.map((row, idx) => (
-                <tr key={idx}>
-                  {row.slice(0, gate.arity).map((bit, bIdx) => (
-                    <td key={bIdx} className={bit === 1 ? dStyles.valOne : dStyles.valZero}>
-                      {bit}
-                    </td>
+        <div
+          ref={selection.containerRef}
+          tabIndex={0}
+          onKeyDown={selection.onKeyDown}
+          className={dStyles.selectableBox}
+        >
+          <div className={dStyles.tableWrap} style={{ maxHeight: 280, overflowY: 'auto' }}>
+            <table
+              className={[dStyles.truthTable, dStyles.selectableTable].join(' ')}
+              aria-label={`${gate.name} (${gate.marking}) truth table`}
+            >
+              <thead>
+                <tr>
+                  {gate.inputNames.map((v, cIdx) => (
+                    <th
+                      key={v}
+                      {...selection.getCellProps(0, cIdx)}
+                      className={selection.getCellClassName(0, cIdx)}
+                    >
+                      {v}
+                    </th>
                   ))}
-                  <td
-                    className={[
-                      dStyles.colSep,
-                      row[row.length - 1] === 1 ? dStyles.valOne : dStyles.valZero,
-                    ].join(' ')}
+                  <th
+                    {...selection.getCellProps(0, gate.arity)}
+                    className={selection.getCellClassName(
+                      0,
+                      gate.arity,
+                      [dStyles.colSep, dStyles.thOutput].join(' '),
+                    )}
                   >
-                    {row[row.length - 1]}
-                  </td>
+                    Y
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {gate.rows.map((row, idx) => {
+                  const gridRow = idx + 1;
+                  return (
+                    <tr key={idx}>
+                      {row.slice(0, gate.arity).map((bit, bIdx) => (
+                        <td
+                          key={bIdx}
+                          {...selection.getCellProps(gridRow, bIdx)}
+                          className={selection.getCellClassName(
+                            gridRow,
+                            bIdx,
+                            bit === 1 ? dStyles.valOne : dStyles.valZero,
+                          )}
+                        >
+                          {bit}
+                        </td>
+                      ))}
+                      <td
+                        {...selection.getCellProps(gridRow, gate.arity)}
+                        className={selection.getCellClassName(
+                          gridRow,
+                          gate.arity,
+                          [
+                            dStyles.colSep,
+                            row[row.length - 1] === 1 ? dStyles.valOne : dStyles.valZero,
+                          ].join(' '),
+                        )}
+                      >
+                        {row[row.length - 1]}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <TableSelectionBar selection={selection} compact compactHint showIdleCopy />
         </div>
       </div>
 

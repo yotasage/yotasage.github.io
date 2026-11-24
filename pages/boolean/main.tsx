@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { BooleanSubmitOverride } from '../../components/Boolean/BooleanInput';
 import BooleanLawsTab, { type TheorySubTab } from '../../components/Boolean/BooleanLawsTab';
-import BooleanSolverView from '../../components/Boolean/BooleanSolverView';
+import BooleanSolverView, { type BooleanInputMode } from '../../components/Boolean/BooleanSolverView';
 import ExamplesTab, { type LoadExamplePayload } from '../../components/Boolean/ExamplesTab';
 import GateReferenceTab from '../../components/Boolean/GateReferenceTab';
 import PageHead from '../../components/PageHead';
@@ -34,6 +34,7 @@ export default function BooleanSimplifierPage() {
   const [theorySubTab, setTheorySubTab] = useState<TheorySubTab>('overview');
   const [highlightedLawId, setHighlightedLawId] = useState<string | null>(null);
 
+  const [inputMode, setInputMode] = useState<BooleanInputMode>('expression');
   const [equations, setEquations] = useState<string[]>([...DEFAULT_EQUATIONS]);
   const [method, setMethod] = useState<SimplifyMethod>('heuristic');
   const [effort, setEffort] = useState<SimplifyEffort>('medium');
@@ -105,6 +106,7 @@ export default function BooleanSimplifierPage() {
       equations: nextEqs,
       seq: prev.seq + 1,
     }));
+    setInputMode('expression');
     setActiveTab('solver');
     setWorkspace('solver');
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -118,6 +120,7 @@ export default function BooleanSimplifierPage() {
       equations: nextEqs,
       seq: prev.seq + 1,
     }));
+    setInputMode('expression');
     setActiveTab('kmap');
     setWorkspace('solver');
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -141,6 +144,7 @@ export default function BooleanSimplifierPage() {
       targetForm: nextForm,
       seq: prev.seq + 1,
     }));
+    setInputMode('expression');
     setActiveTab(payload.openTab ?? 'solver');
     setWorkspace('solver');
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -182,6 +186,8 @@ export default function BooleanSimplifierPage() {
           aria-label={t('boolean.workspace.solver')}
         >
           <BooleanSolverView
+            inputMode={inputMode}
+            onInputModeChange={setInputMode}
             equations={equations}
             onEquationsChange={setEquations}
             method={method}

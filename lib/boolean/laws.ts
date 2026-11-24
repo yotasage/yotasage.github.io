@@ -13,7 +13,7 @@ export const DEFAULT_GATE_DELAYS: GateDelayMap = {
 export const BOOLEAN_EXAMPLES: readonly BooleanExample[] = [
   {
     id: 'consensus',
-    label: 'AB + A\'C + BC',
+    label: "A·B + A'·C + B·C",
     tag: 'Consensus',
     expr: "Y = A*B + A'*C + B*C",
   },
@@ -25,37 +25,37 @@ export const BOOLEAN_EXAMPLES: readonly BooleanExample[] = [
   },
   {
     id: 'demorgan',
-    label: '!(A*B) + A*B\'',
+    label: "!(A·B) + A·B'",
     tag: 'De Morgan',
     expr: "Y = !(A*B) + A*B'",
   },
   {
     id: 'mux',
-    label: 'A\'B\'C + A\'BC + AB\'C + ABC',
+    label: "A'·B'·C + A'·B·C + A·B'·C + A·B·C",
     tag: '4-term collapse',
     expr: "Y = A'*B'*C + A'*B*C + A*B'*C + A*B*C",
   },
   {
     id: 'carry',
-    label: 'AB + BC + AC + ABC',
+    label: 'A·B + B·C + A·C + A·B·C',
     tag: 'Full-adder Cout',
     expr: 'Cout = A*B + B*C + A*C + A*B*C',
   },
   {
     id: 'factor',
-    label: 'AB + AC + AD',
+    label: 'A·B + A·C + A·D',
     tag: 'Multi-level factor',
     expr: 'Y = A*B + A*C + A*D',
   },
   {
     id: 'xor-detect',
-    label: 'A\'B + AB\'',
+    label: "A'·B + A·B'",
     tag: 'XOR synthesis',
     expr: "Y = A'*B + A*B'",
   },
   {
     id: 'four-var',
-    label: 'A\'B\'C\'D + A\'B\'CD + A\'BC\'D + AB\'C\'D + AB\'CD',
+    label: "A'·B'·C'·D + A'·B'·C·D + A'·B·C'·D + A·B'·C'·D + A·B'·C·D",
     tag: '4-var K-Map',
     expr: "Y = A'*B'*C'*D + A'*B'*C*D + A'*B*C'*D + A*B'*C'*D + A*B'*C*D",
   },

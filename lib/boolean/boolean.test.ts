@@ -8,9 +8,10 @@ import {
   evaluateCircuitNodes,
   exportCircuitTikz,
 } from './circuit';
+import { CURATED_EXAMPLES } from './examples';
 import { buildGateReferenceList } from './gateReference';
 import { KMAP_WORKED_EXAMPLES } from './kmapGuide';
-import { DEFAULT_GATE_DELAYS } from './laws';
+import { BOOLEAN_EXAMPLES, BOOLEAN_LAWS, DEFAULT_GATE_DELAYS } from './laws';
 import {
   evaluateBool,
   parseBoolean,
@@ -19,8 +20,17 @@ import {
   toPlainText,
   toVerilog,
   toVhdl,
+  varToLatex,
 } from './parse';
-import { evalTruthVector, minimizeQM } from './qm';
+import {
+  buildKMap,
+  evalTruthVector,
+  exportKMapLatex,
+  exportKMapTsv,
+  formatKMapCornerLatex,
+  formatKMapCornerVars,
+  minimizeQM,
+} from './qm';
 import { simplifyBoolean } from './simplify';
 import { computeCriticalPath, simulateCircuitTiming } from './timing';
 import {
@@ -28,13 +38,17 @@ import {
   buildTruthTable,
   exportTruthTableCsv,
   exportTruthTableLatex,
+  generateDefaultSignalName,
+  truthTableOutputToEquation,
+  truthTableToEquations,
+  validateSignalName,
 } from './truthTable';
-import type { GateDelayMap, SimplifyMethod, TargetForm } from './types';
+import type { GateDelayMap, SimplifyMethod, SimplifySuccess, TargetForm } from './types';
 
-test('parser handles engineering, logic, programming, keywords, juxtaposition, and output name', () => {
+test('parser handles engineering, logic, programming, keywords, implicit AND before parens, and output name', () => {
   const cases = [
     { expr: "Y = A*B + A'*C", out: 'Y', vars: ['A', 'B', 'C'] },
-    { expr: 'AB + A\'C', out: 'Y', vars: ['A', 'B', 'C'] },
+    { expr: "A·B + A'·C", out: 'Y', vars: ['A', 'B', 'C'] },
     { expr: 'F = (A AND B) OR (NOT A AND C)', out: 'F', vars: ['A', 'B', 'C'] },
     { expr: '(A && B) || (!A && C)', out: 'Y', vars: ['A', 'B', 'C'] },
     { expr: 'A ∧ B ∨ ¬A ∧ C', out: 'Y', vars: ['A', 'B', 'C'] },
@@ -50,6 +64,26 @@ test('parser handles engineering, logic, programming, keywords, juxtaposition, a
     const vec = evalTruthVector(parsed.ast, parsed.variables);
     assert.deepEqual(vec, refVec);
   }
+
+  // AB is a single multi-character signal name (NOT A*B)
+  const singleSignal = parseBoolean('Y = AB');
+  assert.deepEqual(singleSignal.variables, ['AB']);
+  assert.equal(singleSignal.ast.kind, 'var');
+
+  // Implicit AND is still allowed immediately before "("
+  const implicit1 = parseBoolean('Y = A(B + C)');
+  const explicit1 = parseBoolean('Y = A*(B + C)');
+  assert.deepEqual(
+    evalTruthVector(implicit1.ast, implicit1.variables),
+    evalTruthVector(explicit1.ast, explicit1.variables),
+  );
+
+  const implicit2 = parseBoolean('Y = (A + B)(C + D)');
+  const explicit2 = parseBoolean('Y = (A + B)*(C + D)');
+  assert.deepEqual(
+    evalTruthVector(implicit2.ast, implicit2.variables),
+    evalTruthVector(explicit2.ast, explicit2.variables),
+  );
 });
 
 test('parser rejects malformed inputs with helpful messages', () => {
@@ -266,12 +300,32 @@ test('timing simulation respects gate-type delays, per-instance overrides, glitc
   assert.ok(simDffBad.dffAnalysis.slackNs < 0);
 });
 
-test('explicitAnd toggle formats engineering expressions with explicit · vs compact juxtaposition', () => {
+test('explicitAnd toggle keeps ·/\\cdot between signals and omits it only before parentheses in minimal mode', () => {
   const parsed = parseBoolean('Y = A*(B + C) + D*E');
-  assert.ok(toPlainText(parsed.ast, 'engineering', true).includes('·'));
-  assert.ok(toLatex(parsed.ast, 'engineering', true).includes('\\cdot'));
-  assert.ok(!toPlainText(parsed.ast, 'engineering', false).includes('·'));
-  assert.ok(!toLatex(parsed.ast, 'engineering', false).includes('\\cdot'));
+  assert.equal(toPlainText(parsed.ast, 'engineering', true), 'A·(B + C) + D·E');
+  assert.equal(toPlainText(parsed.ast, 'engineering', false), 'A(B + C) + D·E');
+  assert.equal(toLatex(parsed.ast, 'engineering', true), 'A \\cdot (B + C) + D \\cdot E');
+  assert.equal(toLatex(parsed.ast, 'engineering', false), 'A\\,(B + C) + D \\cdot E');
+
+  // Multi-char signals always keep explicit AND separator even when explicitAnd = false
+  const multi = parseBoolean('Y = GT*EQ + EN*(A + B)');
+  assert.equal(toPlainText(multi.ast, 'engineering', false), 'GT·EQ + EN(A + B)');
+  assert.equal(
+    toLatex(multi.ast, 'engineering', false),
+    '\\mathrm{GT} \\cdot \\mathrm{EQ} + \\mathrm{EN}\\,(A + B)',
+  );
+
+  // Overline in LaTeX does not start with "(", so \cdot is preserved even in minimal mode
+  const neg = parseBoolean("Y = A*B'");
+  assert.equal(toLatex(neg.ast, 'engineering', false), 'A \\cdot \\overline{B}');
+  assert.equal(toPlainText(neg.ast, 'engineering', false), "A·B'");
+
+  // Minimal-mode output remains 100% re-parseable in both plain text and LaTeX
+  const reparsedPlain = parseBoolean(toPlainText(multi.ast, 'engineering', false));
+  const reparsedLatex = parseBoolean(toLatex(multi.ast, 'engineering', false));
+  const refVec = evalTruthVector(multi.ast, multi.variables);
+  assert.deepEqual(evalTruthVector(reparsedPlain.ast, multi.variables), refVec);
+  assert.deepEqual(evalTruthVector(reparsedLatex.ast, multi.variables), refVec);
 });
 
 test('heuristic effort levels (low, medium, high) produce progressively stronger simplifications', () => {
@@ -561,4 +615,267 @@ test('zero-delay timing simulation yields 0 ns critical path and valid WaveDrom 
   assert.equal(sim.criticalPathNs, 0);
   assert.equal(sim.totalGlitches, 0);
   assert.ok(sim.traces.length >= 4);
+});
+
+test('1-bit magnitude comparator (GT, EQ, LT) works end-to-end across parser, simplifier, circuit, truth table, timing, and K-maps', () => {
+  const eqs = ["GT = A*B'", "EQ = A*B + A'*B'", "LT = A'*B"];
+  const results = eqs.map((expr) =>
+    simplifyBoolean(expr, {
+      method: 'heuristic',
+      effort: 'medium',
+      targetForm: 'auto',
+      notation: 'engineering',
+    }),
+  );
+
+  const okResults = results.filter((r): r is SimplifySuccess => r.ok);
+  assert.equal(okResults.length, 3);
+  assert.deepEqual(
+    okResults.map((r) => r.outputName),
+    ['GT', 'EQ', 'LT'],
+  );
+
+  const sharedVars = ['A', 'B'];
+  const specs = okResults.map((r) => ({ outputName: r.outputName, ast: r.simplifiedAst }));
+  const graph = buildMultiCircuitGraph(specs, sharedVars, 'engineering', true, 'multi');
+  assert.deepEqual(graph.outputNames, ['GT', 'EQ', 'LT']);
+
+  const table = buildMultiTruthTable(specs, sharedVars, graph.internals);
+  assert.equal(table.rows.length, 4);
+  for (const row of table.rows) {
+    assert.equal(row.outputs.GT, row.inputs.A > row.inputs.B ? 1 : 0);
+    assert.equal(row.outputs.EQ, row.inputs.A === row.inputs.B ? 1 : 0);
+    assert.equal(row.outputs.LT, row.inputs.A < row.inputs.B ? 1 : 0);
+  }
+
+  const latexTbl = exportTruthTableLatex(table, [
+    { id: 'A', label: 'A', kind: 'input' },
+    { id: 'B', label: 'B', kind: 'input' },
+    { id: 'GT', label: 'GT', kind: 'output' },
+    { id: 'EQ', label: 'EQ', kind: 'output' },
+    { id: 'LT', label: 'LT', kind: 'output' },
+  ]);
+  assert.ok(latexTbl.includes('$\\mathrm{GT}$'));
+  assert.ok(latexTbl.includes('$\\mathrm{EQ}$'));
+  assert.ok(latexTbl.includes('$\\mathrm{LT}$'));
+
+  const sim = simulateCircuitTiming(
+    graph,
+    DEFAULT_GATE_DELAYS,
+    {},
+    { enabled: false, clockPeriodNs: 50, tClkToQNs: 4, tSetupNs: 3 },
+  );
+  assert.ok(sim.traces.some((t) => t.id === 'GT'));
+  assert.ok(sim.traces.some((t) => t.id === 'EQ'));
+  assert.ok(sim.traces.some((t) => t.id === 'LT'));
+
+  for (const r of okResults) {
+    assert.ok(r.kmap !== null);
+  }
+});
+
+test('multi-character signal names format in varToLatex, toLatex, and round-trip cleanly through parseBoolean', () => {
+  assert.equal(varToLatex('A'), 'A');
+  assert.equal(varToLatex('A1'), 'A_{1}');
+  assert.equal(varToLatex('A_1'), 'A_{1}');
+  assert.equal(varToLatex('C_in'), 'C_{\\mathrm{in}}');
+  assert.equal(varToLatex('CLK1'), '\\mathrm{CLK}_{1}');
+  assert.equal(varToLatex('CLK_1'), '\\mathrm{CLK}_{1}');
+  assert.equal(varToLatex('DATA_in'), '\\mathrm{DATA}_{\\mathrm{in}}');
+  assert.equal(varToLatex('GT'), '\\mathrm{GT}');
+  assert.equal(varToLatex('EN'), '\\mathrm{EN}');
+  assert.equal(varToLatex('X1'), 'X_{1}');
+
+  const parsed = parseBoolean("X1 = CLK*EN + DATA_in'*A_1");
+  assert.equal(parsed.outputName, 'X1');
+  assert.deepEqual(parsed.variables, ['A_1', 'CLK', 'DATA_in', 'EN']);
+
+  const latex = toLatex(parsed.ast, 'engineering', true);
+  assert.ok(latex.includes('\\mathrm{CLK}'));
+  assert.ok(latex.includes('\\mathrm{EN}'));
+  assert.ok(latex.includes('\\mathrm{DATA}_{\\mathrm{in}}'));
+  assert.ok(latex.includes('A_{1}'));
+
+  const reparsed = parseBoolean(`${varToLatex(parsed.outputName)} = ${latex}`);
+  assert.equal(reparsed.outputName, 'X_1');
+  assert.deepEqual(reparsed.variables, parsed.variables);
+  assert.deepEqual(
+    evalTruthVector(reparsed.ast, parsed.variables),
+    evalTruthVector(parsed.ast, parsed.variables),
+  );
+
+  // Wide signal names expand circuit SVG horizontal padding so labels do not clip
+  const wideGraph = buildCircuitGraph(parsed.ast, parsed.variables, 'LONG_OUTPUT_NAME', 'engineering');
+  assert.ok(wideGraph.nodes.some((n) => n.kind === 'input' && n.x >= 80));
+  assert.ok(wideGraph.width > 380);
+});
+
+test('parser rejects missing AND operator between signals while accepting implicit AND before parentheses', () => {
+  for (const bad of ['A B', "A'B", 'GT EQ', 'A !B', '(A + B) C']) {
+    assert.throws(() => parseBoolean(bad), /Missing operator before/);
+  }
+
+  for (const good of ['EN(A + B)', "A'(B + C)", '(A + B)(C + D)']) {
+    const parsed = parseBoolean(good);
+    assert.ok(parsed.variables.length >= 2);
+  }
+});
+
+test('all CURATED_EXAMPLES, BOOLEAN_EXAMPLES, and BOOLEAN_LAWS exampleExpr parse and simplify cleanly', () => {
+  for (const preset of CURATED_EXAMPLES) {
+    for (const eq of preset.equations) {
+      const res = simplifyBoolean(eq, {
+        method: preset.defaultMethod ?? 'heuristic',
+        effort: preset.defaultEffort ?? 'medium',
+        targetForm: preset.defaultTargetForm ?? 'auto',
+        notation: 'engineering',
+      });
+      assert.equal(res.ok, true, `Curated preset ${preset.id} failed on "${eq}"`);
+      if (res.ok) assert.equal(res.equivalent, true);
+    }
+  }
+
+  for (const ex of BOOLEAN_EXAMPLES) {
+    const res = simplifyBoolean(ex.expr, {
+      method: 'heuristic',
+      effort: 'medium',
+      targetForm: 'auto',
+      notation: 'engineering',
+    });
+    assert.equal(res.ok, true, `Quick sample ${ex.id} failed on "${ex.expr}"`);
+  }
+
+  for (const law of BOOLEAN_LAWS) {
+    const res = simplifyBoolean(law.exampleExpr, {
+      method: 'algebraic',
+      effort: 'medium',
+      targetForm: 'auto',
+      notation: 'engineering',
+    });
+    assert.equal(res.ok, true, `Law ${law.id} failed on "${law.exampleExpr}"`);
+  }
+});
+
+test('K-Map LaTeX and TSV export format 2/3/4-var and multi-char maps with strictly 0/1 cells and no minterm indices', () => {
+  assert.equal(formatKMapCornerVars(['A', 'B']), 'AB');
+  assert.equal(formatKMapCornerVars(['CLK', 'EN']), 'CLK, EN');
+  assert.equal(formatKMapCornerLatex(['A', 'B']), 'AB');
+  assert.equal(formatKMapCornerLatex(['CLK', 'EN']), '\\mathrm{CLK},\\,\\mathrm{EN}');
+
+  const cases = [
+    { expr: "Y = A*B'", vars: ['A', 'B'], expectedCols: 2, expectedRows: 2 },
+    { expr: "Y = A*B + A'*C", vars: ['A', 'B', 'C'], expectedCols: 4, expectedRows: 2 },
+    {
+      expr: "Y = A'*B'*C'*D + A'*B'*C*D + A*B'*C'*D",
+      vars: ['A', 'B', 'C', 'D'],
+      expectedCols: 4,
+      expectedRows: 4,
+    },
+    { expr: "Y = CLK*EN + CLK'*RST", vars: ['CLK', 'EN', 'RST'], expectedCols: 4, expectedRows: 2 },
+  ];
+
+  for (const c of cases) {
+    const parsed = parseBoolean(c.expr);
+    const vec = evalTruthVector(parsed.ast, c.vars);
+    const qm = minimizeQM(vec, c.vars, 'sop', 'medium');
+    const kmap = buildKMap(vec, c.vars, qm.implicants, 'engineering', true);
+    assert.ok(kmap !== null);
+    if (!kmap) continue;
+
+    const latex = exportKMapLatex(kmap);
+    assert.ok(latex.startsWith(`\\begin{tabular}{c|${'c'.repeat(c.expectedCols)}}`));
+    assert.ok(latex.endsWith('\\end{tabular}'));
+    assert.ok(!/\bm\d+\b/.test(latex), `LaTeX K-Map must not contain minterm indices: ${latex}`);
+
+    const latexDataLines = latex
+      .split('\n')
+      .slice(3, -1)
+      .map((line) => line.trim().replace(/\s*\\\\$/, ''));
+    assert.equal(latexDataLines.length, c.expectedRows);
+    for (const line of latexDataLines) {
+      const cells = line.split('&').map((s) => s.trim()).slice(1);
+      assert.equal(cells.length, c.expectedCols);
+      for (const cell of cells) {
+        assert.ok(cell === '0' || cell === '1', `Expected 0 or 1 in LaTeX cell, got "${cell}"`);
+      }
+    }
+
+    const tsv = exportKMapTsv(kmap);
+    assert.ok(!/\bm\d+\b/.test(tsv), `TSV K-Map must not contain minterm indices: ${tsv}`);
+    const tsvRows = tsv.split('\n');
+    assert.equal(tsvRows.length, c.expectedRows + 1);
+    for (const row of tsvRows.slice(1)) {
+      const cells = row.split('\t').slice(1);
+      assert.equal(cells.length, c.expectedCols);
+      for (const cell of cells) {
+        assert.ok(cell === '0' || cell === '1', `Expected 0 or 1 in TSV cell, got "${cell}"`);
+      }
+    }
+  }
+});
+
+test('truth-table signal naming, validation, and equation synthesis round-trip through simplifyBoolean', () => {
+  // Inputs: A..N -> A1..N1 -> A2..N2
+  const usedIn = new Set<string>();
+  const generatedIn: string[] = [];
+  for (let i = 0; i < 30; i++) {
+    const name = generateDefaultSignalName('input', usedIn);
+    usedIn.add(name);
+    generatedIn.push(name);
+  }
+  assert.equal(generatedIn[0], 'A');
+  assert.equal(generatedIn[13], 'N');
+  assert.equal(generatedIn[14], 'A1');
+  assert.equal(generatedIn[27], 'N1');
+  assert.equal(generatedIn[28], 'A2');
+  assert.equal(generatedIn[29], 'B2');
+
+  // Outputs: X, Y, Z -> X1, Y1, Z1 -> X2, Y2, Z2
+  const usedOut = new Set<string>();
+  const generatedOut: string[] = [];
+  for (let i = 0; i < 9; i++) {
+    const name = generateDefaultSignalName('output', usedOut);
+    usedOut.add(name);
+    generatedOut.push(name);
+  }
+  assert.deepEqual(generatedOut, ['X', 'Y', 'Z', 'X1', 'Y1', 'Z1', 'X2', 'Y2', 'Z2']);
+
+  // Signal name validation
+  assert.equal(validateSignalName('A'), null);
+  assert.equal(validateSignalName('CLK_1'), null);
+  assert.equal(validateSignalName('GT'), null);
+  assert.ok(validateSignalName('') !== null);
+  assert.ok(validateSignalName('1ABC') !== null);
+  assert.ok(validateSignalName('A+B') !== null);
+  assert.ok(validateSignalName('AND') !== null);
+  assert.ok(validateSignalName('xor') !== null);
+  assert.ok(validateSignalName('TRUE') !== null);
+
+  // Constant outputs and multi-char inputs
+  assert.equal(truthTableOutputToEquation('X', ['A', 'B'], [0, 0, 0, 0]), 'X = 0');
+  assert.equal(truthTableOutputToEquation('X', ['A', 'B'], [1, 1, 1, 1]), 'X = 1');
+  assert.equal(truthTableOutputToEquation('Y', ['CLK', 'EN'], [0, 1, 0, 0]), "Y = CLK'*EN");
+
+  // Full synthesis round-trip through simplifyBoolean with 100% truth-table equivalence
+  const inputNames = ['A', 'B', 'Cin'];
+  const outputs: { name: string; values: (0 | 1)[] }[] = [
+    { name: 'S', values: [0, 1, 1, 0, 1, 0, 0, 1] },
+    { name: 'Cout', values: [0, 0, 0, 1, 0, 1, 1, 1] },
+  ];
+  const eqs = truthTableToEquations(inputNames, outputs);
+  assert.equal(eqs.length, 2);
+
+  eqs.forEach((eq, idx) => {
+    const res = simplifyBoolean(eq, {
+      method: 'heuristic',
+      effort: 'high',
+      targetForm: 'auto',
+      notation: 'engineering',
+    });
+    assert.equal(res.ok, true, `Failed simplifying synthesized equation: ${eq}`);
+    if (res.ok) {
+      assert.equal(res.outputName, outputs[idx].name);
+      assert.deepEqual(evalTruthVector(res.simplifiedAst, inputNames), outputs[idx].values);
+    }
+  });
 });

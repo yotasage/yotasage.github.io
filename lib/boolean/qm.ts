@@ -1,4 +1,13 @@
-import { evaluateBool, makeConst, makeGate, makeNot, makeVar, toLatex, toPlainText } from './parse';
+import {
+  evaluateBool,
+  makeConst,
+  makeGate,
+  makeNot,
+  makeVar,
+  toLatex,
+  toPlainText,
+  varToLatex,
+} from './parse';
 import type {
   BoolNode,
   CanonicalForms,
@@ -466,4 +475,56 @@ export function buildKMap(
     values: truthVector,
     groups,
   };
+}
+
+export function formatKMapCornerVars(vars: readonly string[]): string {
+  return vars.some((v) => v.length > 1) ? vars.join(', ') : vars.join('');
+}
+
+export function formatKMapCornerLatex(vars: readonly string[]): string {
+  const formatted = vars.map((v) => varToLatex(v));
+  return vars.some((v) => v.length > 1) ? formatted.join(',\\,') : formatted.join('');
+}
+
+type KMapExportInput = Pick<
+  KMapData,
+  'rowVars' | 'colVars' | 'rowGray' | 'colGray' | 'rowLabels' | 'colLabels' | 'values'
+>;
+
+export function exportKMapLatex(kmap: KMapExportInput): string {
+  const colBits = kmap.colVars.length;
+  const colSpec = `c|${'c'.repeat(kmap.colLabels.length)}`;
+  const corner = `$${formatKMapCornerLatex(kmap.rowVars)} \\backslash ${formatKMapCornerLatex(kmap.colVars)}$`;
+  const lines = [
+    `\\begin{tabular}{${colSpec}}`,
+    `  ${corner} & ${kmap.colLabels.join(' & ')} \\\\`,
+    '  \\hline',
+  ];
+
+  for (let r = 0; r < kmap.rowGray.length; r++) {
+    const vals = kmap.colGray.map((cGray) => {
+      const idx = (kmap.rowGray[r] << colBits) | cGray;
+      return kmap.values[idx] === 1 ? '1' : '0';
+    });
+    lines.push(`  ${kmap.rowLabels[r]} & ${vals.join(' & ')} \\\\`);
+  }
+
+  lines.push('\\end{tabular}');
+  return lines.join('\n');
+}
+
+export function exportKMapTsv(kmap: KMapExportInput): string {
+  const colBits = kmap.colVars.length;
+  const corner = `${formatKMapCornerVars(kmap.rowVars)} \\ ${formatKMapCornerVars(kmap.colVars)}`;
+  const lines = [[corner, ...kmap.colLabels].join('\t')];
+
+  for (let r = 0; r < kmap.rowGray.length; r++) {
+    const vals = kmap.colGray.map((cGray) => {
+      const idx = (kmap.rowGray[r] << colBits) | cGray;
+      return kmap.values[idx] === 1 ? '1' : '0';
+    });
+    lines.push([kmap.rowLabels[r], ...vals].join('\t'));
+  }
+
+  return lines.join('\n');
 }

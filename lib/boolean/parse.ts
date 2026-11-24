@@ -58,8 +58,8 @@ export function preprocessLatex(input: string): string {
   s = s.replace(/^\\\[([\s\S]*)\\\]$/, '$1');
   s = s.replace(/^\\\(([\s\S]*)\\\)$/, '$1');
 
-  // If there are no backslashes at all, return immediately
-  if (!s.includes('\\')) return s;
+  // If there are no backslashes or braced subscripts, return immediately
+  if (!s.includes('\\') && !s.includes('_{')) return s;
 
   // Unwrap \mathrm{...}, \text{...}, \mathit{...}, \mathbf{...}, \operatorname{...}
   let prev = '';
@@ -80,7 +80,7 @@ export function preprocessLatex(input: string): string {
 
   // Normalize escaped underscores inside variable names (\_ -> _) and braced subscripts A_{in} -> A_in
   s = s.replace(/\\_/g, '_');
-  s = s.replace(/([A-Za-z][A-Za-z0-9]*)_\{([A-Za-z0-9_]+)\}/g, '$1_$2');
+  s = s.replace(/([A-Za-z][A-Za-z0-9_]*)_\{([A-Za-z0-9_]+)\}/g, '$1_$2');
 
   // Convert nested \overline{...} and \bar{...} from innermost braces outward
   prev = '';
@@ -234,11 +234,6 @@ function tokenize(rawInput: string): Token[] {
         } else {
           tokens.push({ kind: kw, text: upper, pos: start });
         }
-      } else if (word.length > 1 && /^[A-Z]+$/.test(word)) {
-        // Classic digital-logic juxtaposition: AB -> A * B, ABC -> A * B * C
-        for (let k = 0; k < word.length; k++) {
-          tokens.push({ kind: 'IDENT', text: word[k], pos: start + k });
-        }
       } else {
         tokens.push({ kind: 'IDENT', text: word, pos: start });
       }
@@ -338,10 +333,14 @@ export function parseBoolean(input: string): ParsedBoolean {
         } else {
           left = makeGate('NAND', [left, right]);
         }
-      } else if (canStartPrimary(next.kind)) {
-        // Implicit AND: A(B+C), A'B, (A+B)(C+D)
+      } else if (next.kind === 'LPAREN') {
+        // Implicit AND is permitted only immediately before "(" — e.g. A(B+C), (A+B)(C+D), EN(A+B), A'(B+C)
         const right = parseUnary();
         left = appendGate('AND', left, right);
+      } else if (canStartPrimary(next.kind)) {
+        throw new Error(
+          `Missing operator before "${next.text}" at position ${next.pos + 1}. Use * (or ·, &, AND) for AND between signals.`,
+        );
       } else {
         break;
       }
@@ -556,17 +555,42 @@ function opPrecedence(op: BoolOp): number {
 
 export function varToLatex(name: string): string {
   if (/^[A-Za-z]$/.test(name)) return name;
-  const sub = name.match(/^([A-Za-z]+)_?(\d+)$/);
-  if (sub) return `${sub[1]}_{${sub[2]}}`;
+  const singleNum = name.match(/^([A-Za-z])_?(\d+)$/);
+  if (singleNum) return `${singleNum[1]}_{${singleNum[2]}}`;
+  const singleSub = name.match(/^([A-Za-z])_([A-Za-z0-9]+)$/);
+  if (singleSub) return `${singleSub[1]}_{\\mathrm{${singleSub[2]}}}`;
+  const multiNum = name.match(/^([A-Za-z]{2,})_?(\d+)$/);
+  if (multiNum) return `\\mathrm{${multiNum[1]}}_{${multiNum[2]}}`;
+  const multiSub = name.match(/^([A-Za-z]{2,})_([A-Za-z0-9]+)$/);
+  if (multiSub) return `\\mathrm{${multiSub[1]}}_{\\mathrm{${multiSub[2]}}}`;
   return `\\mathrm{${name.replace(/_/g, '\\_')}}`;
 }
 
-function needsExplicitAndBetween(left: BoolNode, right: BoolNode): boolean {
-  // Always keep separator between constants (e.g. 1 · 0) or adjacent multi-letter names (e.g. Cin · Cout)
-  if (left.kind === 'const' || right.kind === 'const') return true;
-  if (left.kind === 'var' && left.name.length > 1 && right.kind === 'var') return true;
-  if (left.kind === 'var' && right.kind === 'var' && right.name.length > 1) return true;
+function startsWithParenInEngineering(
+  right: BoolNode,
+  parentPrec: number,
+  mode: 'latex' | 'plain',
+): boolean {
+  if (right.kind === 'gate') {
+    if (mode === 'latex' && (right.op === 'NAND' || right.op === 'NOR')) {
+      return false;
+    }
+    return opPrecedence(right.op) < parentPrec;
+  }
+  if (mode === 'plain' && right.kind === 'not') {
+    return right.operand.kind !== 'var' && right.operand.kind !== 'const';
+  }
   return false;
+}
+
+function needsExplicitAndBetween(
+  _left: BoolNode,
+  right: BoolNode,
+  parentPrec: number,
+  mode: 'latex' | 'plain',
+): boolean {
+  // Omit explicit AND only when the right operand renders starting with "(" so multi-char names stay unambiguous
+  return !startsWithParenInEngineering(right, parentPrec, mode);
 }
 
 export function toLatex(
@@ -596,7 +620,9 @@ export function toLatex(
           let joined = '';
           for (let i = 0; i < n.args.length; i++) {
             if (i > 0) {
-              const useDot = explicitAnd || needsExplicitAndBetween(n.args[i - 1], n.args[i]);
+              const useDot =
+                explicitAnd ||
+                needsExplicitAndBetween(n.args[i - 1], n.args[i], innerPrec, 'latex');
               joined += useDot ? ' \\cdot ' : '\\,';
             }
             joined += render(n.args[i], innerPrec);
@@ -616,7 +642,8 @@ export function toLatex(
       let body = '';
       for (let i = 0; i < n.args.length; i++) {
         if (i > 0) {
-          const useDot = explicitAnd || needsExplicitAndBetween(n.args[i - 1], n.args[i]);
+          const useDot =
+            explicitAnd || needsExplicitAndBetween(n.args[i - 1], n.args[i], prec, 'latex');
           body += useDot ? ' \\cdot ' : '\\,';
         }
         body += render(n.args[i], prec);
@@ -696,7 +723,8 @@ export function toPlainText(
       let body = '';
       for (let i = 0; i < n.args.length; i++) {
         if (i > 0) {
-          const useDot = explicitAnd || needsExplicitAndBetween(n.args[i - 1], n.args[i]);
+          const useDot =
+            explicitAnd || needsExplicitAndBetween(n.args[i - 1], n.args[i], prec, 'plain');
           body += useDot ? '·' : '';
         }
         body += render(n.args[i], prec);

@@ -28,9 +28,14 @@ import BooleanStepViewer from './BooleanStepViewer';
 import CircuitPanel from './CircuitPanel';
 import KMapAndExtras from './KMapAndExtras';
 import TimingPanel from './TimingPanel';
+import TruthTableInput from './TruthTableInput';
 import TruthTablePanel from './TruthTablePanel';
 
+export type BooleanInputMode = 'expression' | 'truth-table';
+
 export interface BooleanSolverViewProps {
+  readonly inputMode: BooleanInputMode;
+  readonly onInputModeChange: (next: BooleanInputMode) => void;
   readonly equations: readonly string[];
   readonly onEquationsChange: (next: string[]) => void;
   readonly method: SimplifyMethod;
@@ -74,6 +79,8 @@ const ZERO_GATE_DELAYS: GateDelayMap = {
 };
 
 export default function BooleanSolverView({
+  inputMode,
+  onInputModeChange,
   equations,
   onEquationsChange,
   method,
@@ -375,21 +382,73 @@ export default function BooleanSolverView({
 
   const inputCard = (
     <section className={styles.card}>
-      <BooleanInput
-        equations={equations}
-        onEquationsChange={onEquationsChange}
-        method={method}
-        onMethodChange={onMethodChange}
-        effort={effort}
-        onEffortChange={onEffortChange}
-        targetForm={targetForm}
-        onTargetFormChange={onTargetFormChange}
-        notation={notation}
-        onNotationChange={onNotationChange}
-        explicitAnd={explicitAnd}
-        onExplicitAndChange={onExplicitAndChange}
-        onSubmit={onSolve}
-      />
+      <div className={dStyles.inputModeBar}>
+        <div className={dStyles.inputModeGroup}>
+          <span className={styles.fieldLabel}>{t('boolean.input.modeLabel')}</span>
+          <div className={styles.segmented} role="group" aria-label={t('boolean.input.modeLabel')}>
+            <button
+              type="button"
+              aria-pressed={inputMode === 'expression'}
+              data-testid="input-mode-expression"
+              className={[styles.segBtn, inputMode === 'expression' ? styles.segBtnActive : '']
+                .filter(Boolean)
+                .join(' ')}
+              onClick={() => onInputModeChange('expression')}
+            >
+              {t('boolean.input.mode.expression')}
+            </button>
+            <button
+              type="button"
+              aria-pressed={inputMode === 'truth-table'}
+              data-testid="input-mode-truth-table"
+              className={[styles.segBtn, inputMode === 'truth-table' ? styles.segBtnActive : '']
+                .filter(Boolean)
+                .join(' ')}
+              onClick={() => onInputModeChange('truth-table')}
+            >
+              {t('boolean.input.mode.truthTable')}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {inputMode === 'expression' ? (
+        <BooleanInput
+          equations={equations}
+          onEquationsChange={onEquationsChange}
+          method={method}
+          onMethodChange={onMethodChange}
+          effort={effort}
+          onEffortChange={onEffortChange}
+          targetForm={targetForm}
+          onTargetFormChange={onTargetFormChange}
+          notation={notation}
+          onNotationChange={onNotationChange}
+          explicitAnd={explicitAnd}
+          onExplicitAndChange={onExplicitAndChange}
+          onSubmit={onSolve}
+        />
+      ) : (
+        <TruthTableInput
+          method={method}
+          onMethodChange={onMethodChange}
+          effort={effort}
+          onEffortChange={onEffortChange}
+          targetForm={targetForm}
+          onTargetFormChange={onTargetFormChange}
+          notation={notation}
+          onNotationChange={onNotationChange}
+          explicitAnd={explicitAnd}
+          onExplicitAndChange={onExplicitAndChange}
+          currentEquations={equations}
+          onApplyEquations={(nextEqs, switchToExpr) => {
+            onEquationsChange(nextEqs);
+            onSolve({ equations: nextEqs });
+            if (switchToExpr) onInputModeChange('expression');
+          }}
+          onOptionsSolve={onSolve}
+        />
+      )}
     </section>
   );
 

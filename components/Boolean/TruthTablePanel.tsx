@@ -6,6 +6,7 @@ import { useI18n } from '../../lib/ui/i18n';
 import { useExperienceMode } from '../../lib/ui/mode';
 import styles from '../../styles/Boolean.module.css';
 import dStyles from '../../styles/BooleanDiagrams.module.css';
+import { TableSelectionBar, useTableSelection } from './useTableSelection';
 
 type ColumnPreset = 'io' | 'all' | 'custom';
 
@@ -91,6 +92,27 @@ function SingleTruthTable({
     [visibleCols],
   );
 
+  const tableGrid = useMemo<readonly (readonly string[])[]>(() => {
+    if (visibleCols.length === 0) return [];
+    const header = ['#', ...visibleCols.map((c) => c.label)];
+    const rows = table.rows.map((row) => [
+      String(row.index),
+      ...visibleCols.map((col) => {
+        const rawId = col.id.replace(/^(?:in|int|out):/, '');
+        const val =
+          col.kind === 'input'
+            ? (row.inputs[rawId] ?? 0)
+            : col.kind === 'internal'
+              ? (row.internals[rawId] ?? 0)
+              : (row.outputs[rawId] ?? row.output);
+        return String(val);
+      }),
+    ]);
+    return [header, ...rows];
+  }, [table.rows, visibleCols]);
+
+  const selection = useTableSelection(tableGrid);
+
   const copyTable = async (kind: 'csv' | 'latex') => {
     const text =
       kind === 'csv'
@@ -109,26 +131,39 @@ function SingleTruthTable({
     <div className={dStyles.subPane} data-testid={`truth-table-${paneKey}`}>
       <div className={dStyles.subPaneHead}>
         <h3 className={dStyles.subPaneTitle}>{title}</h3>
-        {!isQuick && (
-          <div className={styles.btnRow}>
-            <button
-              type="button"
-              className={[styles.btn, styles.btnSmall].join(' ')}
-              onClick={() => copyTable('csv')}
-              disabled={visibleCols.length === 0}
-            >
-              {copied === 'csv' ? t('boolean.result.copied') : t('boolean.tt.copyCsv')}
-            </button>
-            <button
-              type="button"
-              className={[styles.btn, styles.btnSmall].join(' ')}
-              onClick={() => copyTable('latex')}
-              disabled={visibleCols.length === 0}
-            >
-              {copied === 'latex' ? t('boolean.result.copied') : t('boolean.tt.copyLatex')}
-            </button>
-          </div>
-        )}
+        <div className={styles.btnRow}>
+          <button
+            type="button"
+            className={[styles.btn, styles.btnSmall].join(' ')}
+            onClick={() => void selection.copyAll()}
+            disabled={visibleCols.length === 0}
+            data-testid={`tt-copy-excel-${paneKey}`}
+          >
+            {selection.copiedState === 'all'
+              ? t('boolean.table.copiedExcel')
+              : t('boolean.table.copyExcel')}
+          </button>
+          {!isQuick && (
+            <>
+              <button
+                type="button"
+                className={[styles.btn, styles.btnSmall].join(' ')}
+                onClick={() => copyTable('csv')}
+                disabled={visibleCols.length === 0}
+              >
+                {copied === 'csv' ? t('boolean.result.copied') : t('boolean.tt.copyCsv')}
+              </button>
+              <button
+                type="button"
+                className={[styles.btn, styles.btnSmall].join(' ')}
+                onClick={() => copyTable('latex')}
+                disabled={visibleCols.length === 0}
+              >
+                {copied === 'latex' ? t('boolean.result.copied') : t('boolean.tt.copyLatex')}
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {preset === 'custom' && (
@@ -152,65 +187,93 @@ function SingleTruthTable({
       {visibleCols.length === 0 ? (
         <p className={dStyles.hintText}>{t('boolean.tt.noCols')}</p>
       ) : (
-        <div className={dStyles.tableWrap}>
-          <table className={dStyles.truthTable}>
-            <thead>
-              <tr>
-                <th className={dStyles.rowIdx}>#</th>
-                {visibleCols.map((col, idx) => {
-                  const prev = idx > 0 ? visibleCols[idx - 1] : null;
-                  const sep = prev && prev.kind !== col.kind ? dStyles.colSep : '';
-                  const cls = [
-                    sep,
-                    col.kind === 'internal' ? dStyles.thInternal : '',
-                    col.kind === 'output' ? dStyles.thOutput : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' ');
+        <div
+          ref={selection.containerRef}
+          tabIndex={0}
+          onKeyDown={selection.onKeyDown}
+          className={dStyles.selectableBox}
+        >
+          <div className={dStyles.tableWrap}>
+            <table className={[dStyles.truthTable, dStyles.selectableTable].join(' ')}>
+              <thead>
+                <tr>
+                  <th
+                    {...selection.getCellProps(0, 0)}
+                    className={selection.getCellClassName(0, 0, dStyles.rowIdx)}
+                  >
+                    #
+                  </th>
+                  {visibleCols.map((col, idx) => {
+                    const prev = idx > 0 ? visibleCols[idx - 1] : null;
+                    const sep = prev && prev.kind !== col.kind ? dStyles.colSep : '';
+                    const cls = [
+                      sep,
+                      col.kind === 'internal' ? dStyles.thInternal : '',
+                      col.kind === 'output' ? dStyles.thOutput : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ');
+                    return (
+                      <th
+                        key={col.id}
+                        {...selection.getCellProps(0, idx + 1)}
+                        className={selection.getCellClassName(0, idx + 1, cls)}
+                        title={col.title}
+                      >
+                        {col.label}
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {table.rows.map((row, rIdx) => {
+                  const active = selectedRowIndex === row.index;
+                  const gridRow = rIdx + 1;
                   return (
-                    <th key={col.id} className={cls} title={col.title}>
-                      {col.label}
-                    </th>
+                    <tr
+                      key={row.index}
+                      className={active ? dStyles.rowActive : undefined}
+                      onClick={() => {
+                        if (!selection.consumeDidDrag()) onSelectRow(row.index);
+                      }}
+                    >
+                      <td
+                        {...selection.getCellProps(gridRow, 0)}
+                        className={selection.getCellClassName(gridRow, 0, dStyles.rowIdx)}
+                      >
+                        {row.index}
+                      </td>
+                      {visibleCols.map((col, idx) => {
+                        const prev = idx > 0 ? visibleCols[idx - 1] : null;
+                        const sep = prev && prev.kind !== col.kind ? dStyles.colSep : '';
+                        const rawId = col.id.replace(/^(?:in|int|out):/, '');
+                        const val =
+                          col.kind === 'input'
+                            ? (row.inputs[rawId] ?? 0)
+                            : col.kind === 'internal'
+                              ? (row.internals[rawId] ?? 0)
+                              : (row.outputs[rawId] ?? row.output);
+                        const baseCls = [sep, val === 1 ? dStyles.valOne : dStyles.valZero]
+                          .filter(Boolean)
+                          .join(' ');
+                        return (
+                          <td
+                            key={col.id}
+                            {...selection.getCellProps(gridRow, idx + 1)}
+                            className={selection.getCellClassName(gridRow, idx + 1, baseCls)}
+                          >
+                            {val}
+                          </td>
+                        );
+                      })}
+                    </tr>
                   );
                 })}
-              </tr>
-            </thead>
-            <tbody>
-              {table.rows.map((row) => {
-                const active = selectedRowIndex === row.index;
-                return (
-                  <tr
-                    key={row.index}
-                    className={active ? dStyles.rowActive : undefined}
-                    onClick={() => onSelectRow(row.index)}
-                  >
-                    <td className={dStyles.rowIdx}>{row.index}</td>
-                    {visibleCols.map((col, idx) => {
-                      const prev = idx > 0 ? visibleCols[idx - 1] : null;
-                      const sep = prev && prev.kind !== col.kind ? dStyles.colSep : '';
-                      const rawId = col.id.replace(/^(?:in|int|out):/, '');
-                      const val =
-                        col.kind === 'input'
-                          ? (row.inputs[rawId] ?? 0)
-                          : col.kind === 'internal'
-                            ? (row.internals[rawId] ?? 0)
-                            : (row.outputs[rawId] ?? row.output);
-                      return (
-                        <td
-                          key={col.id}
-                          className={[sep, val === 1 ? dStyles.valOne : dStyles.valZero]
-                            .filter(Boolean)
-                            .join(' ')}
-                        >
-                          {val}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
+          <TableSelectionBar selection={selection} />
         </div>
       )}
 
