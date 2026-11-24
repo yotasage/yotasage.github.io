@@ -310,8 +310,14 @@ export default function NotepadWorkspace() {
     (paneIndex: number, docId: string) => {
       setViewState((prev) => {
         const nextPanes = prev.paneDocIds.slice();
+        const changed = nextPanes[paneIndex] !== docId;
         nextPanes[paneIndex] = docId;
-        return { ...prev, paneDocIds: nextPanes, activePane: paneIndex };
+        const curView = prev.paneViews[paneIndex];
+        const nextPaneViews =
+          changed && curView && curView.kind !== 'auto'
+            ? { ...prev.paneViews, [paneIndex]: { ...curView, kind: 'auto' as const } }
+            : prev.paneViews;
+        return { ...prev, paneDocIds: nextPanes, activePane: paneIndex, paneViews: nextPaneViews };
       });
     },
     [setViewState],
@@ -330,10 +336,16 @@ export default function NotepadWorkspace() {
         const targetPane = prev.layout === 'single' ? 0 : prev.activePane;
         const nextPanes = prev.paneDocIds.slice();
         nextPanes[targetPane] = createdId;
+        const curView = prev.paneViews[targetPane];
+        const nextPaneViews =
+          curView && curView.kind !== 'auto'
+            ? { ...prev.paneViews, [targetPane]: { ...curView, kind: 'auto' as const } }
+            : prev.paneViews;
         return {
           ...prev,
           paneDocIds: nextPanes,
           activePane: targetPane,
+          paneViews: nextPaneViews,
           layout: prev.layout === 'diff' ? 'single' : prev.layout,
         };
       });

@@ -266,7 +266,7 @@ export default function Toolbar({
             if (isDiff) onChangeLayout('single');
             onChangeActivePaneView({
               mode: activePaneView.mode === 'editor' ? 'split' : activePaneView.mode,
-              kind: 'csv',
+              kind: detectedPreviewKind === 'csv' ? 'auto' : 'csv',
             });
           }}
         />
