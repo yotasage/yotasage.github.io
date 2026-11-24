@@ -5,13 +5,16 @@ import { HashAlgorithm } from '../../lib/notepad/cryptoHash';
 import { applyEol, computeLineDiffStats, detectEol, guessLanguageFromFilename } from '../../lib/notepad/diffStats';
 import {
   decodeBytesWithEncoding,
-  detectEncodingFromBytes,
   encodeTextWithEncoding,
   getEncodingLabel,
 } from '../../lib/notepad/encoding';
 import {
+  createNewNotepadDoc,
   downloadDocumentEncoded,
   downloadWorkspaceZip,
+  readFilesToNotepadDocs,
+  SEARCH_PRESETS,
+  SearchPresetId,
 } from '../../lib/notepad/fileActions';
 import { toMonacoLanguageId } from '../../lib/notepad/languages';
 import { MimeToolAction, runMimeTool } from '../../lib/notepad/mimeTools';
@@ -23,10 +26,8 @@ import {
   replaceAllMatches,
   replaceSingleMatch,
 } from '../../lib/notepad/search';
-import {
-  createDocId,
-  estimateWorkspaceBytes,
-} from '../../lib/notepad/storage';
+import { estimateWorkspaceBytes } from '../../lib/notepad/storage';
+import { computeMinimalTextEdit } from '../../lib/notepad/syncMerge';
 import {
   createEqualTrackSizes,
   DEFAULT_SEARCH_OPTIONS,
@@ -53,15 +54,6 @@ import TabStrip from './TabStrip';
 import Toolbar from './Toolbar';
 import { useWorkspaceSync } from './useWorkspaceSync';
 
-function nextUntitledName(docs: readonly NotepadDoc[]): string {
-  const used = new Set(docs.map((d) => d.name.toLowerCase()));
-  for (let i = 1; i < 10_000; i++) {
-    const candidate = `new ${i}.txt`;
-    if (!used.has(candidate)) return candidate;
-  }
-  return `new ${Date.now()}.txt`;
-}
-
 export default function NotepadWorkspace() {
   const { t } = useI18n();
   const { theme } = useTheme();
@@ -73,7 +65,10 @@ export default function NotepadWorkspace() {
 
   const {
     workspace,
-    setWorkspace,
+    viewState,
+    setViewState,
+    updateDocs,
+    updateSettings,
     storageEngine,
     saveState,
     syncOpen,
@@ -108,7 +103,6 @@ export default function NotepadWorkspace() {
   const [toast, setToast] = useState<string | null>(null);
   const [draggingFiles, setDraggingFiles] = useState(false);
 
-  const [splitRatio, setSplitRatio] = useState(50);
   const splitContainerRef = useRef<HTMLDivElement>(null);
 
   const [hashDialogOpen, setHashDialogOpen] = useState(false);
@@ -171,22 +165,21 @@ export default function NotepadWorkspace() {
         const nextVal = model.getValue();
         const nextEol: EolMode =
           model.getEndOfLineSequence() === monaco.editor.EndOfLineSequence.CRLF ? 'CRLF' : 'LF';
-        // Once the user edits content, invalidate stale uploaded raw byte cache
         rawBytesRef.current.delete(doc.id);
-        setWorkspace((prev) => {
-          const idx = prev.docs.findIndex((d) => d.id === doc.id);
-          if (idx === -1) return prev;
-          if (prev.docs[idx].content === nextVal && prev.docs[idx].eol === nextEol) return prev;
-          const nextDocs = prev.docs.slice();
+        updateDocs((docs) => {
+          const idx = docs.findIndex((d) => d.id === doc.id);
+          if (idx === -1) return docs;
+          if (docs[idx].content === nextVal && docs[idx].eol === nextEol) return docs;
+          const nextDocs = docs.slice();
           nextDocs[idx] = { ...nextDocs[idx], content: nextVal, eol: nextEol, updatedAt: Date.now() };
-          return { ...prev, docs: nextDocs };
+          return nextDocs;
         });
       });
 
       modelsRef.current.set(doc.id, { model, sub });
       return model;
     },
-    [monaco],
+    [monaco, updateDocs],
   );
 
   useEffect(() => {
@@ -202,15 +195,30 @@ export default function NotepadWorkspace() {
         doc.eol === 'CRLF'
           ? monaco.editor.EndOfLineSequence.CRLF
           : monaco.editor.EndOfLineSequence.LF;
-      if (entry.model.getValue() !== doc.content) {
-        suppressingModelSyncRef.current = true;
-        entry.model.setValue(doc.content);
-        suppressingModelSyncRef.current = false;
-      }
       if (entry.model.getEndOfLineSequence() !== targetSeq) {
         suppressingModelSyncRef.current = true;
-        entry.model.setEOL(targetSeq);
-        suppressingModelSyncRef.current = false;
+        try {
+          entry.model.setEOL(targetSeq);
+        } finally {
+          suppressingModelSyncRef.current = false;
+        }
+      }
+      const edit = computeMinimalTextEdit(entry.model.getValue(), doc.content);
+      if (edit) {
+        const startPos = entry.model.getPositionAt(edit.startOffset);
+        const endPos = entry.model.getPositionAt(edit.endOffset);
+        const range = new monaco.Range(
+          startPos.lineNumber,
+          startPos.column,
+          endPos.lineNumber,
+          endPos.column,
+        );
+        suppressingModelSyncRef.current = true;
+        try {
+          entry.model.applyEdits([{ range, text: edit.insertText, forceMoveMarkers: false }]);
+        } finally {
+          suppressingModelSyncRef.current = false;
+        }
       }
     }
   }, [monaco, workspace.docs]);
@@ -244,25 +252,25 @@ export default function NotepadWorkspace() {
   }, [workspace.docs]);
 
   const maxVisiblePane =
-    workspace.layout === 'single'
+    viewState.layout === 'single'
       ? 0
-      : workspace.layout === 'split'
+      : viewState.layout === 'split'
         ? 1
-        : Math.max(0, workspace.gridRows * workspace.gridCols - 1);
-  const activePaneIdx = Math.min(workspace.activePane, maxVisiblePane);
-  const activeDocId = workspace.paneDocIds[activePaneIdx] ?? workspace.docs[0].id;
+        : Math.max(0, viewState.gridRows * viewState.gridCols - 1);
+  const activePaneIdx = Math.min(viewState.activePane, maxVisiblePane);
+  const activeDocId = viewState.paneDocIds[activePaneIdx] ?? workspace.docs[0].id;
   const activeDoc = docById.get(activeDocId) ?? workspace.docs[0];
 
-  const diffLeftDoc = docById.get(workspace.diffLeftId) ?? workspace.docs[0];
+  const diffLeftDoc = docById.get(viewState.diffLeftId) ?? workspace.docs[0];
   const diffRightDoc =
-    docById.get(workspace.diffRightId) ?? workspace.docs[Math.min(1, workspace.docs.length - 1)];
+    docById.get(viewState.diffRightId) ?? workspace.docs[Math.min(1, workspace.docs.length - 1)];
 
   const diffStats = useMemo(
     () =>
-      workspace.layout === 'diff'
-        ? computeLineDiffStats(diffLeftDoc.content, diffRightDoc.content, workspace.diffIgnoreWhitespace)
+      viewState.layout === 'diff'
+        ? computeLineDiffStats(diffLeftDoc.content, diffRightDoc.content, viewState.diffIgnoreWhitespace)
         : null,
-    [workspace.layout, diffLeftDoc.content, diffRightDoc.content, workspace.diffIgnoreWhitespace],
+    [viewState.layout, diffLeftDoc.content, diffRightDoc.content, viewState.diffIgnoreWhitespace],
   );
 
   const activeSearchResult = useMemo(() => {
@@ -288,38 +296,32 @@ export default function NotepadWorkspace() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [flushSaveNow, showToast, t]);
 
-  const assignDocToPane = useCallback((paneIndex: number, docId: string) => {
-    setWorkspace((prev) => {
-      const nextPanes = prev.paneDocIds.slice();
-      nextPanes[paneIndex] = docId;
-      return { ...prev, paneDocIds: nextPanes, activePane: paneIndex };
-    });
-  }, []);
+  const assignDocToPane = useCallback(
+    (paneIndex: number, docId: string) => {
+      setViewState((prev) => {
+        const nextPanes = prev.paneDocIds.slice();
+        nextPanes[paneIndex] = docId;
+        return { ...prev, paneDocIds: nextPanes, activePane: paneIndex };
+      });
+    },
+    [setViewState],
+  );
 
   const openNewDoc = useCallback(
     (initialContent = '', customName?: string) => {
-      const now = Date.now();
-      const id = createDocId();
-      setWorkspace((prev) => {
-        const name = customName?.trim() || nextUntitledName(prev.docs);
-        const doc: NotepadDoc = {
-          id,
-          name,
-          content: initialContent,
-          language: guessLanguageFromFilename(name),
-          eol: detectEol(initialContent),
-          encoding: 'utf-8',
-          encodingConfidence: 'exact',
-          direction: 'ltr',
-          createdAt: now,
-          updatedAt: now,
-        };
+      let createdId = '';
+      updateDocs((docs) => {
+        const doc = createNewNotepadDoc(docs, initialContent, customName);
+        createdId = doc.id;
+        return [...docs, doc];
+      });
+      if (!createdId) return;
+      setViewState((prev) => {
         const targetPane = prev.layout === 'single' ? 0 : prev.activePane;
         const nextPanes = prev.paneDocIds.slice();
-        nextPanes[targetPane] = id;
+        nextPanes[targetPane] = createdId;
         return {
           ...prev,
-          docs: [...prev.docs, doc],
           paneDocIds: nextPanes,
           activePane: targetPane,
           layout: prev.layout === 'diff' ? 'single' : prev.layout,
@@ -327,7 +329,7 @@ export default function NotepadWorkspace() {
       });
       window.setTimeout(() => paneRefs.current[activePaneIdx]?.focus(), 30);
     },
-    [activePaneIdx],
+    [activePaneIdx, setViewState, updateDocs],
   );
 
   const handlePasteAsNew = useCallback(async () => {
@@ -344,81 +346,37 @@ export default function NotepadWorkspace() {
     showToast(t('notepad.clipboardDenied'));
   }, [openNewDoc, showToast, t]);
 
-  const handleUploadFiles = useCallback(async (files: FileList | File[]) => {
-    const list = Array.from(files);
-    if (list.length === 0) return;
-    const now = Date.now();
-    const loaded: NotepadDoc[] = [];
-    for (const file of list) {
-      const buf = await file.arrayBuffer();
-      const bytes = new Uint8Array(buf);
-      const detected = detectEncodingFromBytes(bytes);
-      const text = decodeBytesWithEncoding(bytes, detected.encoding);
-      const id = createDocId();
-      rawBytesRef.current.set(id, bytes);
-      loaded.push({
-        id,
-        name: file.name,
-        content: text,
-        language: guessLanguageFromFilename(file.name),
-        eol: detectEol(text),
-        encoding: detected.encoding,
-        encodingConfidence: detected.confidence,
-        direction: 'ltr',
-        createdAt: now,
-        updatedAt: now,
+  const handleUploadFiles = useCallback(
+    async (files: FileList | File[]) => {
+      const loaded = await readFilesToNotepadDocs(files, rawBytesRef.current);
+      if (loaded.length === 0) return;
+      updateDocs((docs) => [...docs, ...loaded]);
+      setViewState((prev) => {
+        const nextPanes = prev.paneDocIds.slice();
+        nextPanes[prev.activePane] = loaded[0].id;
+        if (loaded.length >= 2) nextPanes[1] = loaded[1].id;
+        return {
+          ...prev,
+          paneDocIds: nextPanes,
+          diffLeftId: loaded.length >= 2 ? loaded[0].id : prev.diffLeftId,
+          diffRightId: loaded.length >= 2 ? loaded[1].id : prev.diffRightId,
+        };
       });
-    }
-    setWorkspace((prev) => {
-      const nextPanes = prev.paneDocIds.slice();
-      nextPanes[prev.activePane] = loaded[0].id;
-      if (loaded.length >= 2) nextPanes[1] = loaded[1].id;
-      return {
-        ...prev,
-        docs: [...prev.docs, ...loaded],
-        paneDocIds: nextPanes,
-        diffLeftId: loaded.length >= 2 ? loaded[0].id : prev.diffLeftId,
-        diffRightId: loaded.length >= 2 ? loaded[1].id : prev.diffRightId,
-      };
-    });
-  }, []);
+    },
+    [setViewState, updateDocs],
+  );
 
-  const handleCloseDoc = useCallback((docId: string) => {
-    setWorkspace((prev) => {
-      const target = prev.docs.find((d) => d.id === docId);
-      if (target?.pinned) return prev;
-      let nextDocs = prev.docs.filter((d) => d.id !== docId);
-      if (nextDocs.length === 0) {
-        const now = Date.now();
-        nextDocs = [
-          {
-            id: createDocId(),
-            name: 'new 1.txt',
-            content: '',
-            language: 'plaintext',
-            eol: 'LF',
-            encoding: 'utf-8',
-            encodingConfidence: 'exact',
-            direction: 'ltr',
-            createdAt: now,
-            updatedAt: now,
-          },
-        ];
-      }
-      const fallbackId = nextDocs[0].id;
-      const validIds = new Set(nextDocs.map((d) => d.id));
-      const nextPanes = prev.paneDocIds.map((id) => (validIds.has(id) ? id : fallbackId));
-      return {
-        ...prev,
-        docs: nextDocs,
-        paneDocIds: nextPanes,
-        diffLeftId: validIds.has(prev.diffLeftId) ? prev.diffLeftId : fallbackId,
-        diffRightId: validIds.has(prev.diffRightId)
-          ? prev.diffRightId
-          : nextDocs[Math.min(1, nextDocs.length - 1)].id,
-      };
-    });
-  }, []);
+  const handleCloseDoc = useCallback(
+    (docId: string) => {
+      updateDocs((docs) => {
+        const target = docs.find((d) => d.id === docId);
+        if (!target || target.pinned) return docs;
+        const nextDocs = docs.filter((d) => d.id !== docId);
+        return nextDocs.length > 0 ? nextDocs : [createNewNotepadDoc([], '', 'new 1.txt')];
+      });
+    },
+    [updateDocs],
+  );
 
   const handleDuplicateDoc = useCallback(
     (doc: NotepadDoc) => {
@@ -429,49 +387,58 @@ export default function NotepadWorkspace() {
     [openNewDoc],
   );
 
-  const handleRenameDoc = useCallback((docId: string, cleanName: string) => {
-    setWorkspace((prev) => ({
-      ...prev,
-      docs: prev.docs.map((d) =>
-        d.id === docId
-          ? { ...d, name: cleanName, language: guessLanguageFromFilename(cleanName), updatedAt: Date.now() }
-          : d,
-      ),
-    }));
-  }, []);
+  const patchDocById = useCallback(
+    (docId: string, patchFn: (doc: NotepadDoc) => NotepadDoc) => {
+      updateDocs((docs) => docs.map((d) => (d.id === docId ? patchFn(d) : d)));
+    },
+    [updateDocs],
+  );
 
-  const handleTogglePin = useCallback((docId: string) => {
-    setWorkspace((prev) => ({
-      ...prev,
-      docs: prev.docs.map((d) => (d.id === docId ? { ...d, pinned: !d.pinned } : d)),
-    }));
-  }, []);
+  const handleRenameDoc = useCallback(
+    (docId: string, cleanName: string) => {
+      patchDocById(docId, (d) => ({
+        ...d,
+        name: cleanName,
+        language: guessLanguageFromFilename(cleanName),
+        updatedAt: Date.now(),
+      }));
+    },
+    [patchDocById],
+  );
 
-  const handleChangeLanguage = useCallback((docId: string, lang: string) => {
-    setWorkspace((prev) => ({
-      ...prev,
-      docs: prev.docs.map((d) => (d.id === docId ? { ...d, language: lang } : d)),
-    }));
-  }, []);
+  const handleTogglePin = useCallback(
+    (docId: string) => {
+      patchDocById(docId, (d) => ({ ...d, pinned: !d.pinned, updatedAt: Date.now() }));
+    },
+    [patchDocById],
+  );
 
-  const handleChangeEol = useCallback((docId: string, eol: EolMode) => {
-    setWorkspace((prev) => ({
-      ...prev,
-      docs: prev.docs.map((d) =>
-        d.id === docId ? { ...d, eol, content: applyEol(d.content, eol), updatedAt: Date.now() } : d,
-      ),
-    }));
-  }, []);
+  const handleChangeLanguage = useCallback(
+    (docId: string, lang: string) => {
+      patchDocById(docId, (d) => ({ ...d, language: lang, updatedAt: Date.now() }));
+    },
+    [patchDocById],
+  );
+
+  const handleChangeEol = useCallback(
+    (docId: string, eol: EolMode) => {
+      patchDocById(docId, (d) => ({
+        ...d,
+        eol,
+        content: applyEol(d.content, eol),
+        updatedAt: Date.now(),
+      }));
+    },
+    [patchDocById],
+  );
 
   const handleToggleDirection = useCallback(() => {
-    const targetId = activeDoc.id;
-    setWorkspace((prev) => ({
-      ...prev,
-      docs: prev.docs.map((d) =>
-        d.id === targetId ? { ...d, direction: d.direction === 'rtl' ? 'ltr' : 'rtl' } : d,
-      ),
+    patchDocById(activeDoc.id, (d) => ({
+      ...d,
+      direction: d.direction === 'rtl' ? 'ltr' : 'rtl',
+      updatedAt: Date.now(),
     }));
-  }, [activeDoc.id]);
+  }, [activeDoc.id, patchDocById]);
 
   const handleReinterpretEncoding = useCallback(
     (nextEncoding: FileEncoding) => {
@@ -481,24 +448,17 @@ export default function NotepadWorkspace() {
         encodeTextWithEncoding(applyEol(doc.content, doc.eol), doc.encoding).bytes;
       rawBytesRef.current.set(doc.id, raw);
       const redecoded = decodeBytesWithEncoding(raw, nextEncoding);
-      setWorkspace((prev) => ({
-        ...prev,
-        docs: prev.docs.map((d) =>
-          d.id === doc.id
-            ? {
-                ...d,
-                content: redecoded,
-                eol: detectEol(redecoded),
-                encoding: nextEncoding,
-                encodingConfidence: 'exact',
-                updatedAt: Date.now(),
-              }
-            : d,
-        ),
+      patchDocById(doc.id, (d) => ({
+        ...d,
+        content: redecoded,
+        eol: detectEol(redecoded),
+        encoding: nextEncoding,
+        encodingConfidence: 'exact',
+        updatedAt: Date.now(),
       }));
       showToast(t('notepad.encoding.reinterpretedToast', { name: getEncodingLabel(nextEncoding) }));
     },
-    [activeDoc, showToast, t],
+    [activeDoc, patchDocById, showToast, t],
   );
 
   const handleConvertEncoding = useCallback(
@@ -508,19 +468,12 @@ export default function NotepadWorkspace() {
       const encoded = encodeTextWithEncoding(normalized, nextEncoding);
       rawBytesRef.current.set(doc.id, encoded.bytes);
       const finalText = encoded.lossyCount > 0 ? decodeBytesWithEncoding(encoded.bytes, nextEncoding) : doc.content;
-      setWorkspace((prev) => ({
-        ...prev,
-        docs: prev.docs.map((d) =>
-          d.id === doc.id
-            ? {
-                ...d,
-                content: finalText,
-                encoding: nextEncoding,
-                encodingConfidence: 'exact',
-                updatedAt: Date.now(),
-              }
-            : d,
-        ),
+      patchDocById(doc.id, (d) => ({
+        ...d,
+        content: finalText,
+        encoding: nextEncoding,
+        encodingConfidence: 'exact',
+        updatedAt: Date.now(),
       }));
       if (encoded.lossyCount > 0) {
         showToast(
@@ -533,7 +486,7 @@ export default function NotepadWorkspace() {
         showToast(t('notepad.encoding.convertedToast', { name: getEncodingLabel(nextEncoding) }));
       }
     },
-    [activeDoc, showToast, t],
+    [activeDoc, patchDocById, showToast, t],
   );
 
   const handleRunMimeTool = useCallback(
@@ -545,12 +498,7 @@ export default function NotepadWorkspace() {
           showToast(res.error);
           return;
         }
-        setWorkspace((prev) => ({
-          ...prev,
-          docs: prev.docs.map((d) =>
-            d.id === activeDoc.id ? { ...d, content: res.output, updatedAt: Date.now() } : d,
-          ),
-        }));
+        patchDocById(activeDoc.id, (d) => ({ ...d, content: res.output, updatedAt: Date.now() }));
         return;
       }
       const outcome = pane.applyTransformEdit((input) => runMimeTool(action, input));
@@ -564,66 +512,55 @@ export default function NotepadWorkspace() {
         );
       }
     },
-    [activeDoc.content, activeDoc.id, activePaneIdx, showToast, t],
+    [activeDoc.content, activeDoc.id, activePaneIdx, patchDocById, showToast, t],
   );
 
-  const handleSelectGrid = useCallback((rows: number, cols: number) => {
-    const r = Math.max(1, Math.min(MAX_GRID_DIM, Math.floor(rows)));
-    const c = Math.max(1, Math.min(MAX_GRID_DIM, Math.floor(cols)));
-    setWorkspace((prev) => ({
-      ...prev,
-      layout: 'grid',
-      gridRows: r,
-      gridCols: c,
-      gridRowSizes: prev.gridRows === r ? prev.gridRowSizes : createEqualTrackSizes(r),
-      gridColSizes: prev.gridCols === c ? prev.gridColSizes : createEqualTrackSizes(c),
-      activePane: Math.min(prev.activePane, r * c - 1),
-    }));
-  }, []);
+  const handleSelectGrid = useCallback(
+    (rows: number, cols: number) => {
+      const r = Math.max(1, Math.min(MAX_GRID_DIM, Math.floor(rows)));
+      const c = Math.max(1, Math.min(MAX_GRID_DIM, Math.floor(cols)));
+      setViewState((prev) => ({
+        ...prev,
+        layout: 'grid',
+        gridRows: r,
+        gridCols: c,
+        gridRowSizes: prev.gridRows === r ? prev.gridRowSizes : createEqualTrackSizes(r),
+        gridColSizes: prev.gridCols === c ? prev.gridColSizes : createEqualTrackSizes(c),
+        activePane: Math.min(prev.activePane, r * c - 1),
+      }));
+    },
+    [setViewState],
+  );
 
   const handleResetGridSizes = useCallback(() => {
-    setWorkspace((prev) => ({
+    setViewState((prev) => ({
       ...prev,
       gridRowSizes: createEqualTrackSizes(prev.gridRows),
       gridColSizes: createEqualTrackSizes(prev.gridCols),
     }));
-  }, []);
+  }, [setViewState]);
 
-  const handleToggleSymbol = useCallback((key: keyof SymbolSettings) => {
-    setWorkspace((prev) => {
-      const nextSymbols = { ...prev.settings.symbols, [key]: !prev.settings.symbols[key] };
-      return {
-        ...prev,
-        settings: {
-          ...prev.settings,
-          showWhitespace: nextSymbols.showWhitespaceAndTab,
-          symbols: nextSymbols,
-        },
-      };
-    });
-  }, []);
+  const handleToggleSymbol = useCallback(
+    (key: keyof SymbolSettings) => {
+      updateSettings((prev) => {
+        const nextSymbols = { ...prev.symbols, [key]: !prev.symbols[key] };
+        return { ...prev, showWhitespace: nextSymbols.showWhitespaceAndTab, symbols: nextSymbols };
+      });
+    },
+    [updateSettings],
+  );
 
   const handleToggleAllSymbols = useCallback(() => {
-    setWorkspace((prev) => {
-      const cur = prev.settings.symbols;
-      const allOn = cur.showWhitespaceAndTab && cur.showEol && cur.showNonPrinting;
-      const nextVal = !allOn;
-      const nextSymbols: SymbolSettings = {
-        ...cur,
-        showWhitespaceAndTab: nextVal,
-        showEol: nextVal,
-        showNonPrinting: nextVal,
-      };
+    updateSettings((prev) => {
+      const cur = prev.symbols;
+      const nextVal = !(cur.showWhitespaceAndTab && cur.showEol && cur.showNonPrinting);
       return {
         ...prev,
-        settings: {
-          ...prev.settings,
-          showWhitespace: nextVal,
-          symbols: nextSymbols,
-        },
+        showWhitespace: nextVal,
+        symbols: { ...cur, showWhitespaceAndTab: nextVal, showEol: nextVal, showNonPrinting: nextVal },
       };
     });
-  }, []);
+  }, [updateSettings]);
 
   const handleFindStep = useCallback(
     (direction: 'next' | 'prev') => {
@@ -646,15 +583,10 @@ export default function NotepadWorkspace() {
       if (docId === activeDoc.id && paneRefs.current[activePaneIdx]) {
         paneRefs.current[activePaneIdx]?.applyFullTextEdit(nextText);
       } else {
-        setWorkspace((prev) => ({
-          ...prev,
-          docs: prev.docs.map((d) =>
-            d.id === docId ? { ...d, content: nextText, updatedAt: Date.now() } : d,
-          ),
-        }));
+        patchDocById(docId, (d) => ({ ...d, content: nextText, updatedAt: Date.now() }));
       }
     },
-    [activeDoc.id, activePaneIdx],
+    [activeDoc.id, activePaneIdx, patchDocById],
   );
 
   const handleReplaceOne = useCallback(() => {
@@ -676,17 +608,17 @@ export default function NotepadWorkspace() {
 
   const handleReplaceAllOpenFiles = useCallback(() => {
     let totalReplaced = 0;
-    setWorkspace((prev) => {
-      const nextDocs = prev.docs.map((doc) => {
+    updateDocs((docs) => {
+      const nextDocs = docs.map((doc) => {
         const res = replaceAllMatches(doc.content, findQuery, replaceText, searchOptions, doc.eol);
         if (res.error || res.count === 0) return doc;
         totalReplaced += res.count;
         return { ...doc, content: res.text, updatedAt: Date.now() };
       });
-      return totalReplaced > 0 ? { ...prev, docs: nextDocs } : prev;
+      return totalReplaced > 0 ? nextDocs : docs;
     });
     setFindFeedback(t('notepad.find.replacedFeedback', { count: totalReplaced }));
-  }, [findQuery, replaceText, searchOptions, t]);
+  }, [findQuery, replaceText, searchOptions, t, updateDocs]);
 
   const handleCountActive = useCallback(() => {
     const res = findMatches(activeDoc.content, findQuery, searchOptions);
@@ -705,54 +637,38 @@ export default function NotepadWorkspace() {
     setAllFilesCount({ summaries: res.summaries, total: res.total });
   }, [workspace.docs, findQuery, searchOptions]);
 
-  const handleApplyPreset = useCallback(
-    (preset: 'joinComma' | 'joinCommaSpace' | 'splitComma' | 'trimTrailing' | 'removeEmpty') => {
-      setAllFilesCount(null);
-      if (preset === 'joinComma') {
-        setSearchOptions((prev) => ({ ...prev, mode: 'extended' }));
-        setFindQuery('\\r\\n');
-        setReplaceText(',');
-      } else if (preset === 'joinCommaSpace') {
-        setSearchOptions((prev) => ({ ...prev, mode: 'extended' }));
-        setFindQuery('\\r\\n');
-        setReplaceText(', ');
-      } else if (preset === 'splitComma') {
-        setSearchOptions((prev) => ({ ...prev, mode: 'extended' }));
-        setFindQuery(',');
-        setReplaceText('\\r\\n');
-      } else if (preset === 'trimTrailing') {
-        setSearchOptions((prev) => ({ ...prev, mode: 'regex' }));
-        setFindQuery('[ \\t]+$');
-        setReplaceText('');
-      } else if (preset === 'removeEmpty') {
-        setSearchOptions((prev) => ({ ...prev, mode: 'regex' }));
-        setFindQuery('^\\s*\\r?\\n');
-        setReplaceText('');
-      }
-      setFindFocusTrigger((n) => n + 1);
-    },
-    [],
-  );
-
-  const startSplitResize = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const container = splitContainerRef.current;
-    if (!container) return;
-    const rect = container.getBoundingClientRect();
-    const onMove = (ev: PointerEvent) => {
-      const pct = ((ev.clientX - rect.left) / rect.width) * 100;
-      setSplitRatio(Math.min(80, Math.max(20, pct)));
-    };
-    const onUp = () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-    };
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
+  const handleApplyPreset = useCallback((preset: SearchPresetId) => {
+    const cfg = SEARCH_PRESETS[preset];
+    setAllFilesCount(null);
+    setSearchOptions((prev) => ({ ...prev, mode: cfg.mode }));
+    setFindQuery(cfg.findQuery);
+    setReplaceText(cfg.replaceText);
+    setFindFocusTrigger((n) => n + 1);
   }, []);
 
+  const startSplitResize = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      const container = splitContainerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const onMove = (ev: PointerEvent) => {
+        const pct = ((ev.clientX - rect.left) / rect.width) * 100;
+        const clamped = Math.min(80, Math.max(20, pct));
+        setViewState((prev) => ({ ...prev, splitRatio: clamped }));
+      };
+      const onUp = () => {
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+      };
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+    },
+    [setViewState],
+  );
+
   const renderPane = (paneIdx: number, showHeader: boolean) => {
-    const docId = workspace.paneDocIds[paneIdx] ?? workspace.docs[paneIdx % workspace.docs.length].id;
+    const docId = viewState.paneDocIds[paneIdx] ?? workspace.docs[paneIdx % workspace.docs.length].id;
     const doc = docById.get(docId) ?? workspace.docs[0];
     const model = getOrCreateModel(doc);
     const isPaneActive = activePaneIdx === paneIdx;
@@ -762,8 +678,8 @@ export default function NotepadWorkspace() {
         key={`pane-${paneIdx}`}
         className={[styles.editorPane, isPaneActive ? styles.editorPaneActive : ''].filter(Boolean).join(' ')}
         onMouseDown={() => {
-          if (workspace.activePane !== paneIdx) {
-            setWorkspace((prev) => ({ ...prev, activePane: paneIdx }));
+          if (viewState.activePane !== paneIdx) {
+            setViewState((prev) => ({ ...prev, activePane: paneIdx }));
           }
         }}
       >
@@ -801,10 +717,10 @@ export default function NotepadWorkspace() {
               findMatchesList={findOpen ? activeSearchResult.matches : []}
               activeFindMatchIndex={activeFindIdx}
               onFocusPane={(idx) =>
-                setWorkspace((prev) => (prev.activePane === idx ? prev : { ...prev, activePane: idx }))
+                setViewState((prev) => (prev.activePane === idx ? prev : { ...prev, activePane: idx }))
               }
               onSelectionChange={(snap) => {
-                if (snap.paneIndex === activePaneIdx || workspace.layout === 'single') {
+                if (snap.paneIndex === activePaneIdx || viewState.layout === 'single') {
                   setSelectionInfo(snap);
                 }
               }}
@@ -823,8 +739,8 @@ export default function NotepadWorkspace() {
     );
   };
 
-  const diffLeftModel = workspace.layout === 'diff' ? getOrCreateModel(diffLeftDoc) : null;
-  const diffRightModel = workspace.layout === 'diff' ? getOrCreateModel(diffRightDoc) : null;
+  const diffLeftModel = viewState.layout === 'diff' ? getOrCreateModel(diffLeftDoc) : null;
+  const diffRightModel = viewState.layout === 'diff' ? getOrCreateModel(diffRightDoc) : null;
 
   return (
     <div
@@ -845,9 +761,9 @@ export default function NotepadWorkspace() {
       }}
     >
       <Toolbar
-        layout={workspace.layout}
-        gridRows={workspace.gridRows}
-        gridCols={workspace.gridCols}
+        layout={viewState.layout}
+        gridRows={viewState.gridRows}
+        gridCols={viewState.gridCols}
         findOpen={findOpen}
         settings={workspace.settings}
         activeLanguage={activeDoc.language}
@@ -858,7 +774,7 @@ export default function NotepadWorkspace() {
         onOpenFiles={(files) => void handleUploadFiles(files)}
         onDownloadActive={() => downloadDocumentEncoded(activeDoc)}
         onChangeLayout={(mode) =>
-          setWorkspace((prev) => ({
+          setViewState((prev) => ({
             ...prev,
             layout: mode,
             activePane: mode === 'single' ? 0 : mode === 'split' ? Math.min(prev.activePane, 1) : prev.activePane,
@@ -872,12 +788,7 @@ export default function NotepadWorkspace() {
             return !open;
           });
         }}
-        onToggleSetting={(key) =>
-          setWorkspace((prev) => ({
-            ...prev,
-            settings: { ...prev.settings, [key]: !prev.settings[key] },
-          }))
-        }
+        onToggleSetting={(key) => updateSettings((prev) => ({ ...prev, [key]: !prev[key] }))}
         onToggleSymbol={handleToggleSymbol}
         onToggleAllSymbols={handleToggleAllSymbols}
         onToggleDirection={handleToggleDirection}
@@ -895,10 +806,10 @@ export default function NotepadWorkspace() {
       <TabStrip
         docs={workspace.docs}
         activeDocId={activeDoc.id}
-        isDiffMode={workspace.layout === 'diff'}
+        isDiffMode={viewState.layout === 'diff'}
         onSelectDoc={(docId) => {
-          if (workspace.layout === 'diff') {
-            setWorkspace((prev) => {
+          if (viewState.layout === 'diff') {
+            setViewState((prev) => {
               const nextPanes = prev.paneDocIds.slice();
               nextPanes[0] = docId;
               return { ...prev, layout: 'single', paneDocIds: nextPanes, activePane: 0 };
@@ -914,7 +825,7 @@ export default function NotepadWorkspace() {
         onNewDoc={() => openNewDoc('')}
       />
 
-      {findOpen && workspace.layout !== 'diff' && (
+      {findOpen && viewState.layout !== 'diff' && (
         <FindReplaceBar
           query={findQuery}
           replacement={replaceText}
@@ -949,37 +860,37 @@ export default function NotepadWorkspace() {
         />
       )}
 
-      {workspace.layout === 'diff' && (
+      {viewState.layout === 'diff' && (
         <DiffControlBar
           docs={workspace.docs}
           leftDocId={diffLeftDoc.id}
           rightDocId={diffRightDoc.id}
-          diffStyle={workspace.diffStyle}
-          ignoreWhitespace={workspace.diffIgnoreWhitespace}
+          diffStyle={viewState.diffStyle}
+          ignoreWhitespace={viewState.diffIgnoreWhitespace}
           stats={diffStats}
-          onChangeLeft={(docId) => setWorkspace((prev) => ({ ...prev, diffLeftId: docId }))}
-          onChangeRight={(docId) => setWorkspace((prev) => ({ ...prev, diffRightId: docId }))}
+          onChangeLeft={(docId) => setViewState((prev) => ({ ...prev, diffLeftId: docId }))}
+          onChangeRight={(docId) => setViewState((prev) => ({ ...prev, diffRightId: docId }))}
           onSwap={() =>
-            setWorkspace((prev) => ({
+            setViewState((prev) => ({
               ...prev,
               diffLeftId: prev.diffRightId,
               diffRightId: prev.diffLeftId,
             }))
           }
-          onChangeStyle={(style) => setWorkspace((prev) => ({ ...prev, diffStyle: style }))}
+          onChangeStyle={(style) => setViewState((prev) => ({ ...prev, diffStyle: style }))}
           onToggleIgnoreWhitespace={() =>
-            setWorkspace((prev) => ({ ...prev, diffIgnoreWhitespace: !prev.diffIgnoreWhitespace }))
+            setViewState((prev) => ({ ...prev, diffIgnoreWhitespace: !prev.diffIgnoreWhitespace }))
           }
           onStepChange={(dir) => diffRef.current?.goToChange(dir)}
         />
       )}
 
       <div className={styles.viewport}>
-        {workspace.layout === 'single' && <div className={styles.layoutSingle}>{renderPane(0, false)}</div>}
+        {viewState.layout === 'single' && <div className={styles.layoutSingle}>{renderPane(0, false)}</div>}
 
-        {workspace.layout === 'split' && (
+        {viewState.layout === 'split' && (
           <div ref={splitContainerRef} className={styles.layoutSplit}>
-            <div className={styles.splitSlot} style={{ flexBasis: `${splitRatio}%` }}>
+            <div className={styles.splitSlot} style={{ flexBasis: `${viewState.splitRatio}%` }}>
               {renderPane(0, true)}
             </div>
             <div
@@ -989,25 +900,25 @@ export default function NotepadWorkspace() {
               aria-label="Resize side-by-side panes"
               onPointerDown={startSplitResize}
             />
-            <div className={styles.splitSlot} style={{ flexBasis: `${100 - splitRatio}%` }}>
+            <div className={styles.splitSlot} style={{ flexBasis: `${100 - viewState.splitRatio}%` }}>
               {renderPane(1, true)}
             </div>
           </div>
         )}
 
-        {workspace.layout === 'grid' && (
+        {viewState.layout === 'grid' && (
           <ResizableGrid
-            rows={workspace.gridRows}
-            cols={workspace.gridCols}
-            colSizes={workspace.gridColSizes}
-            rowSizes={workspace.gridRowSizes}
-            onChangeColSizes={(next) => setWorkspace((prev) => ({ ...prev, gridColSizes: next }))}
-            onChangeRowSizes={(next) => setWorkspace((prev) => ({ ...prev, gridRowSizes: next }))}
+            rows={viewState.gridRows}
+            cols={viewState.gridCols}
+            colSizes={viewState.gridColSizes}
+            rowSizes={viewState.gridRowSizes}
+            onChangeColSizes={(next) => setViewState((prev) => ({ ...prev, gridColSizes: next }))}
+            onChangeRowSizes={(next) => setViewState((prev) => ({ ...prev, gridRowSizes: next }))}
             renderPane={(idx) => renderPane(idx, true)}
           />
         )}
 
-        {workspace.layout === 'diff' && (
+        {viewState.layout === 'diff' && (
           <div className={styles.layoutSingle}>
             {monaco && diffLeftModel && diffRightModel ? (
               <MonacoDiffPane
@@ -1017,8 +928,8 @@ export default function NotepadWorkspace() {
                 modifiedModel={diffRightModel}
                 theme={theme}
                 settings={workspace.settings}
-                diffStyle={workspace.diffStyle}
-                ignoreWhitespace={workspace.diffIgnoreWhitespace}
+                diffStyle={viewState.diffStyle}
+                ignoreWhitespace={viewState.diffIgnoreWhitespace}
               />
             ) : (
               <div className={styles.editorLoading}>
@@ -1040,7 +951,7 @@ export default function NotepadWorkspace() {
         activeDoc={activeDoc}
         textStats={activeTextStats}
         selectionInfo={selectionInfo}
-        isDiffMode={workspace.layout === 'diff'}
+        isDiffMode={viewState.layout === 'diff'}
         toast={toast}
         onJumpSelection={(dir) => paneRefs.current[activePaneIdx]?.jumpSelectionMatch(dir)}
         onUseSelectionInFind={(selectedText) => {

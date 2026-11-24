@@ -165,7 +165,8 @@ export const en = {
   'notepad.sync.localDesc':
     'Every note, edit, open tab, and layout is saved automatically in your browser storage ({engine}). Close the tab or restart your browser and everything reopens in its exact latest state — your files never leave this device.',
   'notepad.sync.stats': '{files} open files · {size} stored locally · Last saved {time}',
-  'notepad.sync.crossTabNote': 'Multiple tabs in this same browser stay live-synced automatically.',
+  'notepad.sync.crossTabNote':
+    'Open files and edits sync live across windows in this browser, while each window keeps its own layout and active panes.',
   'notepad.sync.accountHeading': 'About Chrome / Google Account & Firefox / Mozilla Account sync',
   'notepad.sync.accountDesc':
     'Standard web pages cannot read or write Chrome Sync or Firefox Sync — browsers restrict those APIs to installed browser extensions. Because this site is 100% static with no backend server, your notes are never uploaded to a third-party cloud.',
@@ -355,7 +356,8 @@ export const nb: Record<keyof typeof en, string> = {
   'notepad.sync.localDesc':
     'Alle notater, endringer, åpne faner og visninger lagres automatisk lokalt i nettleseren ({engine}). Lukk fanen eller start nettleseren på nytt, så åpnes alt i nyeste tilstand — filene forlater aldri enheten.',
   'notepad.sync.stats': '{files} åpne filer · {size} lagret lokalt · Sist lagret {time}',
-  'notepad.sync.crossTabNote': 'Flere faner i samme nettleser holdes automatisk synkronisert.',
+  'notepad.sync.crossTabNote':
+    'Åpne filer og endringer synkroniseres fortløpende mellom vinduer i samme nettleser, mens hvert vindu beholder sitt eget oppsett og sine aktive ruter.',
   'notepad.sync.accountHeading': 'Om Chrome / Google-konto og Firefox / Mozilla-konto',
   'notepad.sync.accountDesc':
     'Vanlige nettsider har ikke tilgang til Chrome Sync eller Firefox Sync — nettleserne begrenser disse API-ene til nettleserutvidelser. Siden denne siden er 100 % statisk uten backend-server, lastes aldri notatene dine opp til tredjepart.',
