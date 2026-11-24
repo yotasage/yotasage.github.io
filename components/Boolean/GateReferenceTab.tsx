@@ -1,5 +1,8 @@
+import { useMemo, useState } from 'react';
+
 import {
-  GATE_REFERENCE_LIST,
+  buildGateReferenceList,
+  type GateBaseInputs,
   type GateReferenceEntry,
   type ReferenceGateKind,
 } from '../../lib/boolean/gateReference';
@@ -12,17 +15,37 @@ export interface GateReferenceTabProps {
   readonly onTryGate: (expr: string) => void;
 }
 
-function GateMiniSvg({ kind, variant }: { kind: ReferenceGateKind; variant: 'ieee' | 'iec' }) {
+const BASE_INPUT_OPTIONS: readonly GateBaseInputs[] = [2, 3, 4];
+
+function computePinYs(top: number, h: number, count: number): number[] {
+  if (count === 1) return [top + h / 2];
+  const pad = count === 2 ? 10 : count === 3 ? 7 : 6;
+  const usable = h - pad * 2;
+  const step = usable / (count - 1);
+  return Array.from({ length: count }, (_, idx) => top + pad + idx * step);
+}
+
+function GateMiniSvg({
+  kind,
+  variant,
+  inputNames,
+}: {
+  kind: ReferenceGateKind;
+  variant: 'ieee' | 'iec';
+  inputNames: readonly string[];
+}) {
   const stroke = 'var(--ds-ink)';
   const fill = 'var(--ds-surface-solid)';
   const hasBubble = kind === 'NOT' || kind === 'NAND' || kind === 'NOR' || kind === 'XNOR';
-  const isUnary = kind === 'BUFFER' || kind === 'NOT';
+  const count = inputNames.length;
 
-  const left = 24;
+  const h = count >= 4 ? 50 : count === 3 ? 42 : 36;
+  const svgH = h + 24;
   const top = 12;
-  const h = 36;
   const y = top + h / 2;
-  const bodyRight = hasBubble ? 70 : 78;
+  const left = 34;
+  const bodyRight = hasBubble ? 80 : 88;
+  const pinYs = computePinYs(top, h, count);
 
   const iecText: Record<ReferenceGateKind, string> = {
     BUFFER: '1',
@@ -35,23 +58,83 @@ function GateMiniSvg({ kind, variant }: { kind: ReferenceGateKind; variant: 'iee
     XNOR: '=1',
   };
 
+  const isCurvedLeft =
+    variant === 'ieee' && (kind === 'OR' || kind === 'NOR' || kind === 'XOR' || kind === 'XNOR');
+
   return (
-    <svg width="108" height="60" viewBox="0 0 108 60" role="img" aria-label={`${kind} ${variant.toUpperCase()} symbol`}>
-      {/* Input leads */}
-      {isUnary ? (
-        <line x1={6} y1={y} x2={left + (variant === 'ieee' ? 4 : 0)} y2={y} stroke="var(--ds-ink-2)" strokeWidth={1.6} />
-      ) : (
-        <>
-          <line x1={6} y1={y - 10} x2={left + (variant === 'ieee' && (kind === 'OR' || kind === 'NOR' || kind === 'XOR' || kind === 'XNOR') ? 6 : 0)} y2={y - 10} stroke="var(--ds-ink-2)" strokeWidth={1.6} />
-          <line x1={6} y1={y + 10} x2={left + (variant === 'ieee' && (kind === 'OR' || kind === 'NOR' || kind === 'XOR' || kind === 'XNOR') ? 6 : 0)} y2={y + 10} stroke="var(--ds-ink-2)" strokeWidth={1.6} />
-        </>
-      )}
-      {/* Output lead */}
-      <line x1={hasBubble ? bodyRight + 8 : bodyRight} y1={y} x2={102} y2={y} stroke="var(--ds-ink-2)" strokeWidth={1.6} />
+    <svg
+      width="126"
+      height={svgH}
+      viewBox={`0 0 126 ${svgH}`}
+      role="img"
+      aria-label={`${kind}${count} ${variant.toUpperCase()} symbol`}
+    >
+      {/* Input leads & pin labels */}
+      {pinYs.map((py, idx) => {
+        const bodyEntryX =
+          variant === 'ieee' && (kind === 'BUFFER' || kind === 'NOT')
+            ? left + 4
+            : isCurvedLeft
+              ? left + (kind === 'XOR' || kind === 'XNOR' ? 4 : 6)
+              : left;
+        return (
+          <g key={inputNames[idx]}>
+            <text
+              x={11}
+              y={py + 3}
+              textAnchor="end"
+              fontSize="9"
+              fontWeight={650}
+              fill="var(--ds-ink-3)"
+              fontFamily="var(--ds-font-mono)"
+            >
+              {inputNames[idx]}
+            </text>
+            <line
+              x1={15}
+              y1={py}
+              x2={bodyEntryX}
+              y2={py}
+              stroke="var(--ds-ink-2)"
+              strokeWidth={1.6}
+            />
+          </g>
+        );
+      })}
+
+      {/* Output lead & label */}
+      <line
+        x1={hasBubble ? bodyRight + 8 : bodyRight}
+        y1={y}
+        x2={110}
+        y2={y}
+        stroke="var(--ds-ink-2)"
+        strokeWidth={1.6}
+      />
+      <text
+        x={114}
+        y={y + 3.5}
+        textAnchor="start"
+        fontSize="9.5"
+        fontWeight={700}
+        fill="var(--ds-ink-2)"
+        fontFamily="var(--ds-font-mono)"
+      >
+        Y
+      </text>
 
       {variant === 'iec' ? (
         <>
-          <rect x={left} y={top} width={bodyRight - left} height={h} rx={2} fill={fill} stroke={stroke} strokeWidth={1.8} />
+          <rect
+            x={left}
+            y={top}
+            width={bodyRight - left}
+            height={h}
+            rx={2}
+            fill={fill}
+            stroke={stroke}
+            strokeWidth={1.8}
+          />
           <text
             x={(left + bodyRight) / 2}
             y={y + 4}
@@ -74,7 +157,7 @@ function GateMiniSvg({ kind, variant }: { kind: ReferenceGateKind; variant: 'iee
         />
       ) : kind === 'AND' || kind === 'NAND' ? (
         <path
-          d={`M ${left} ${top} L ${left + 26} ${top} A ${bodyRight - (left + 26)} ${h / 2} 0 0 1 ${left + 26} ${top + h} L ${left} ${top + h} Z`}
+          d={`M ${left} ${top} L ${left + 24} ${top} A ${bodyRight - (left + 24)} ${h / 2} 0 0 1 ${left + 24} ${top + h} L ${left} ${top + h} Z`}
           fill={fill}
           stroke={stroke}
           strokeWidth={1.8}
@@ -120,16 +203,18 @@ function GateCard({
     <article className={dStyles.gateRefCard} data-testid={`gate-ref-${gate.id.toLowerCase()}`}>
       <div className={styles.identityHead}>
         <h3 className={styles.identityTitle}>{gate.name}</h3>
-        <span className={styles.workTag}>{gate.marking2}</span>
+        <span className={styles.workTag} data-testid={`gate-marking-${gate.id.toLowerCase()}`}>
+          {gate.marking}
+        </span>
       </div>
 
       <div className={dStyles.gateSymbolsRow}>
         <div className={dStyles.gateSymbolBox}>
-          <GateMiniSvg kind={gate.id} variant="ieee" />
+          <GateMiniSvg kind={gate.id} variant="ieee" inputNames={gate.inputNames} />
           <span className={dStyles.gateSymbolCaption}>{t('boolean.gates.ieee')}</span>
         </div>
         <div className={dStyles.gateSymbolBox}>
-          <GateMiniSvg kind={gate.id} variant="iec" />
+          <GateMiniSvg kind={gate.id} variant="iec" inputNames={gate.inputNames} />
           <span className={dStyles.gateSymbolCaption}>{t('boolean.gates.iec')}</span>
         </div>
       </div>
@@ -151,22 +236,24 @@ function GateCard({
           </span>
         </div>
 
-        <div className={dStyles.tableWrap}>
-          <table className={dStyles.truthTable} aria-label={`${gate.name} truth table`}>
+        <div className={dStyles.tableWrap} style={{ maxHeight: 280, overflowY: 'auto' }}>
+          <table className={dStyles.truthTable} aria-label={`${gate.name} (${gate.marking}) truth table`}>
             <thead>
               <tr>
-                <th>A</th>
-                {gate.arity === 2 && <th>B</th>}
+                {gate.inputNames.map((v) => (
+                  <th key={v}>{v}</th>
+                ))}
                 <th className={[dStyles.colSep, dStyles.thOutput].join(' ')}>Y</th>
               </tr>
             </thead>
             <tbody>
               {gate.rows.map((row, idx) => (
                 <tr key={idx}>
-                  <td className={row[0] === 1 ? dStyles.valOne : dStyles.valZero}>{row[0]}</td>
-                  {gate.arity === 2 && (
-                    <td className={row[1] === 1 ? dStyles.valOne : dStyles.valZero}>{row[1]}</td>
-                  )}
+                  {row.slice(0, gate.arity).map((bit, bIdx) => (
+                    <td key={bIdx} className={bit === 1 ? dStyles.valOne : dStyles.valZero}>
+                      {bit}
+                    </td>
+                  ))}
                   <td
                     className={[
                       dStyles.colSep,
@@ -198,6 +285,9 @@ function GateCard({
 
 export default function GateReferenceTab({ onTryGate }: GateReferenceTabProps) {
   const { t } = useI18n();
+  const [baseInputs, setBaseInputs] = useState<GateBaseInputs>(2);
+
+  const gates = useMemo(() => buildGateReferenceList(baseInputs), [baseInputs]);
 
   return (
     <div className={styles.workspacePanel}>
@@ -207,14 +297,41 @@ export default function GateReferenceTab({ onTryGate }: GateReferenceTabProps) {
             <h2 className={styles.cardTitle}>{t('boolean.gates.title')}</h2>
             <p className={styles.lead}>{t('boolean.gates.lead')}</p>
           </div>
+
+          <div className={styles.layoutToggleWrap}>
+            <span className={styles.layoutToggleLabel}>{t('boolean.gates.baseInputs')}:</span>
+            <div
+              className={styles.segmented}
+              role="group"
+              aria-label={t('boolean.gates.baseInputs')}
+              data-testid="gate-base-inputs-selector"
+            >
+              {BASE_INPUT_OPTIONS.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  aria-pressed={baseInputs === n}
+                  data-testid={`gate-inputs-${n}`}
+                  className={[styles.segBtn, baseInputs === n ? styles.segBtnActive : '']
+                    .filter(Boolean)
+                    .join(' ')}
+                  onClick={() => setBaseInputs(n)}
+                >
+                  {n} inputs
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         <div className={styles.theoryBox}>
-          <span>{t('boolean.gates.markingNote')}</span>
+          <span>
+            {t('boolean.gates.markingNote')} {t('boolean.gates.baseInputsHint')}
+          </span>
         </div>
       </div>
 
       <div className={dStyles.gateRefGrid}>
-        {GATE_REFERENCE_LIST.map((gate) => (
+        {gates.map((gate) => (
           <GateCard key={gate.id} gate={gate} onTryGate={onTryGate} />
         ))}
       </div>

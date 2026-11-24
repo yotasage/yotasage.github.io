@@ -290,8 +290,53 @@ function SingleCircuitView({
 }) {
   const { t } = useI18n();
   const svgRef = useRef<SVGSVGElement>(null);
+  const dragRef = useRef<{ startY: number; startH: number } | null>(null);
   const [copiedTikz, setCopiedTikz] = useState(false);
   const [selectedGateId, setSelectedGateId] = useState<string | null>(null);
+  const [customHeight, setCustomHeight] = useState<number | null>(null);
+  const [isResizing, setIsResizing] = useState(false);
+
+  const handleResizePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const curH =
+      customHeight ??
+      Math.round(svgRef.current?.getBoundingClientRect().height || graph.height);
+    dragRef.current = { startY: e.clientY, startH: curH };
+    setIsResizing(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handleResizePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const nextH = Math.max(140, Math.min(1200, Math.round(drag.startH + (e.clientY - drag.startY))));
+    setCustomHeight(nextH);
+  };
+
+  const handleResizePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragRef.current) return;
+    dragRef.current = null;
+    setIsResizing(false);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+  };
+
+  const handleResizeKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const baseH =
+      customHeight ??
+      Math.round(svgRef.current?.getBoundingClientRect().height || graph.height);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setCustomHeight(Math.min(1200, baseH + 28));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setCustomHeight(Math.max(140, baseH - 28));
+    } else if (e.key === 'Home' || e.key === 'Escape') {
+      e.preventDefault();
+      setCustomHeight(null);
+    }
+  };
 
   const nodeValues = useMemo(() => evaluateCircuitNodes(graph, probeInputs), [graph, probeInputs]);
   const crit = useMemo(
@@ -342,36 +387,54 @@ function SingleCircuitView({
             {!isQuick && ` · ${t('boolean.circuit.criticalPath', { delay: crit.delayNs })}`}
           </span>
         </div>
-        {!isQuick && (
-          <div className={styles.btnRow}>
+        <div className={styles.btnRow}>
+          {customHeight !== null && (
             <button
               type="button"
-              className={[styles.btn, styles.btnSmall].join(' ')}
-              onClick={handleCopyTikz}
+              className={[styles.btnGhost, styles.btnSmall].join(' ')}
+              onClick={() => setCustomHeight(null)}
             >
-              {copiedTikz ? t('boolean.result.copied') : t('boolean.circuit.copyTikz')}
+              {t('boolean.circuit.resetSize')} ({customHeight}px)
             </button>
-            <button
-              type="button"
-              className={[styles.btn, styles.btnSmall].join(' ')}
-              onClick={handleDownloadSvg}
-            >
-              {t('boolean.circuit.downloadSvg')}
-            </button>
-          </div>
-        )}
+          )}
+          {!isQuick && (
+            <>
+              <button
+                type="button"
+                className={[styles.btn, styles.btnSmall].join(' ')}
+                onClick={handleCopyTikz}
+              >
+                {copiedTikz ? t('boolean.result.copied') : t('boolean.circuit.copyTikz')}
+              </button>
+              <button
+                type="button"
+                className={[styles.btn, styles.btnSmall].join(' ')}
+                onClick={handleDownloadSvg}
+              >
+                {t('boolean.circuit.downloadSvg')}
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
-      <div className={dStyles.circuitStage}>
-        <svg
-          ref={svgRef}
-          className={dStyles.circuitSvg}
-          viewBox={`0 0 ${graph.width} ${graph.height}`}
-          width={graph.width}
-          height={graph.height}
-          role="img"
-          aria-label={`${title} schematic`}
-        >
+      <div className={dStyles.circuitStageWrap}>
+        <div className={dStyles.circuitStageInner}>
+          <svg
+            ref={svgRef}
+            className={dStyles.circuitSvg}
+            viewBox={`0 0 ${graph.width} ${graph.height}`}
+            width={graph.width}
+            height={graph.height}
+            preserveAspectRatio="xMidYMid meet"
+            style={
+              customHeight !== null
+                ? { height: `${customHeight}px`, width: 'auto', maxWidth: 'none' }
+                : undefined
+            }
+            role="img"
+            aria-label={`${title} schematic`}
+          >
           {/* Overlap-free orthogonal wires with channel tracks and bypass lanes */}
           {graph.edges.map((edge) => {
             const from = nodeMap.get(edge.fromId);
@@ -530,6 +593,29 @@ function SingleCircuitView({
             return null;
           })}
         </svg>
+        </div>
+        <div
+          role="separator"
+          tabIndex={0}
+          aria-orientation="horizontal"
+          aria-label={t('boolean.circuit.resizeHint')}
+          title={`${t('boolean.circuit.resizeHint')} (double-click to reset)`}
+          data-testid={`circuit-resize-handle-${which}`}
+          className={[
+            dStyles.circuitResizeHandle,
+            isResizing ? dStyles.circuitResizeHandleActive : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          onPointerDown={handleResizePointerDown}
+          onPointerMove={handleResizePointerMove}
+          onPointerUp={handleResizePointerUp}
+          onPointerCancel={handleResizePointerUp}
+          onDoubleClick={() => setCustomHeight(null)}
+          onKeyDown={handleResizeKeyDown}
+        >
+          <span className={dStyles.circuitResizeGrip} aria-hidden="true" />
+        </div>
       </div>
 
       {selectedGate && selectedGate.gateType && (
@@ -586,6 +672,7 @@ export default function CircuitPanel({
   const isQuick = mode === 'quick';
   const containerRef = useRef<HTMLDivElement>(null);
   const [isWide, setIsWide] = useState(true);
+  const [paneLayout, setPaneLayout] = useState<'side-by-side' | 'stacked'>('side-by-side');
   const [showOrig, setShowOrig] = useState(true);
   const [showSimp, setShowSimp] = useState(true);
   const [symbolStyle, setSymbolStyle] = useState<CircuitSymbolStyle>('ieee');
@@ -610,6 +697,7 @@ export default function CircuitPanel({
   }, []);
 
   const bothVisible = showOrig && showSimp;
+  const useSideBySide = bothVisible && isWide && paneLayout === 'side-by-side';
 
   const gateModeOptions: readonly { id: GateInputMode; label: string }[] = [
     { id: 'multi', label: t('boolean.circuit.gateMode.multi') },
@@ -624,11 +712,40 @@ export default function CircuitPanel({
         <div className={styles.stepsTitleGroup}>
           <h2 className={styles.cardTitle}>{t('boolean.circuit.title')}</h2>
           <span className={styles.metaInline}>
-            {bothVisible ? (isWide ? 'side-by-side' : 'stacked') : 'single view'}
+            {bothVisible ? (useSideBySide ? 'side-by-side' : 'stacked') : 'single view'}
           </span>
         </div>
 
         <div className={styles.stepsControls}>
+          {bothVisible && (
+            <div className={styles.segmented} role="group" aria-label="Circuit layout">
+              <button
+                type="button"
+                aria-pressed={paneLayout === 'side-by-side'}
+                data-testid="circuit-layout-side"
+                className={[
+                  styles.segBtn,
+                  paneLayout === 'side-by-side' ? styles.segBtnActive : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                onClick={() => setPaneLayout('side-by-side')}
+              >
+                {t('boolean.view.sideBySide')}
+              </button>
+              <button
+                type="button"
+                aria-pressed={paneLayout === 'stacked'}
+                data-testid="circuit-layout-stacked"
+                className={[styles.segBtn, paneLayout === 'stacked' ? styles.segBtnActive : '']
+                  .filter(Boolean)
+                  .join(' ')}
+                onClick={() => setPaneLayout('stacked')}
+              >
+                {t('boolean.view.stacked')}
+              </button>
+            </div>
+          )}
           <div className={styles.segmented} role="group" aria-label={t('boolean.circuit.gateMode')}>
             {gateModeOptions.map((opt) => (
               <button
@@ -731,7 +848,7 @@ export default function CircuitPanel({
         {!showOrig && !showSimp ? (
           <p className={dStyles.hintText}>{t('boolean.circuit.allHidden')}</p>
         ) : (
-          <div className={bothVisible && isWide ? dStyles.dualGrid : dStyles.singleGrid}>
+          <div className={useSideBySide ? dStyles.dualGrid : dStyles.singleGrid} data-testid="circuit-grid">
             {showOrig && (
               <SingleCircuitView
                 graph={originalGraph}

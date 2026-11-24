@@ -9,17 +9,25 @@ import styles from '../../styles/Boolean.module.css';
 import dStyles from '../../styles/BooleanDiagrams.module.css';
 import KatexSpan from '../KatexSpan';
 import PillTabs, { type PillTabItem } from '../UI/PillTabs';
+import KMapGuideSection from './KMapGuideSection';
 
 type LawCategoryFilter = 'all' | BooleanLaw['category'];
+export type TheorySubTab = 'overview' | 'kmap-guide';
 
 export interface BooleanLawsTabProps {
   readonly highlightedLawId: string | null;
+  readonly activeSubTab: TheorySubTab;
+  readonly onSubTabChange: (next: TheorySubTab) => void;
   readonly onTryExample: (expr: string) => void;
+  readonly onOpenKMapExample: (expr: string) => void;
 }
 
 export default function BooleanLawsTab({
   highlightedLawId,
+  activeSubTab,
+  onSubTabChange,
   onTryExample,
+  onOpenKMapExample,
 }: BooleanLawsTabProps) {
   const { t } = useI18n();
   const { mode } = useExperienceMode();
@@ -30,6 +38,7 @@ export default function BooleanLawsTab({
 
   useEffect(() => {
     if (!highlightedLawId) return;
+    onSubTabChange('overview');
     const match = BOOLEAN_LAWS.find((l) => l.id === highlightedLawId);
     if (match) {
       setCategory(match.category);
@@ -39,10 +48,10 @@ export default function BooleanLawsTab({
           behavior: 'smooth',
           block: 'center',
         });
-      }, 40);
+      }, 60);
       return () => window.clearTimeout(timer);
     }
-  }, [highlightedLawId]);
+  }, [highlightedLawId, onSubTabChange]);
 
   const counts = useMemo(() => {
     const map: Record<LawCategoryFilter, number> = {
@@ -82,124 +91,172 @@ export default function BooleanLawsTab({
 
   return (
     <div className={styles.workspacePanel}>
-      {/* Background Theory section */}
-      <div className={styles.card}>
-        <div className={styles.cardHeader}>
-          <div>
-            <h2 className={styles.cardTitle}>{t('boolean.theory.title')}</h2>
-            <p className={styles.lead}>{t('boolean.theory.lead')}</p>
-          </div>
-        </div>
-        <div className={dStyles.theoryTopicsGrid}>
-          {BOOLEAN_THEORY_TOPICS.map((topic) => (
-            <article key={topic.id} className={dStyles.theoryTopicCard}>
-              <h3 className={styles.identityTitle}>{topic.title}</h3>
-              {topic.formulaLatex && (
-                <div className={styles.identityFormula}>
-                  <KatexSpan text={topic.formulaLatex} />
-                </div>
-              )}
-              <p className={styles.identitySummary}>{topic.summary}</p>
-              <ul className={dStyles.theoryBulletList}>
-                {topic.details.map((pt, idx) => (
-                  <li key={idx}>{pt}</li>
-                ))}
-              </ul>
-            </article>
-          ))}
-        </div>
-      </div>
-
-      {/* Searchable Laws & Identities catalog */}
-      <div className={styles.card}>
-        <div className={styles.cardHeader}>
-          <div>
-            <h2 className={styles.cardTitle}>{t('boolean.laws.title')}</h2>
-            <p className={styles.lead}>{t('boolean.laws.lead')}</p>
-          </div>
-          <span className={styles.metaInline}>
-            {t('boolean.laws.count', { count: filtered.length })}
-          </span>
-        </div>
-
-        <div className={styles.identitiesControls}>
-          <PillTabs<LawCategoryFilter>
-            items={categoryTabs}
-            value={category}
-            onChange={setCategory}
-            ariaLabel={t('boolean.laws.title')}
-            size="sm"
-          />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t('boolean.laws.searchPlaceholder')}
-            aria-label={t('boolean.laws.searchPlaceholder')}
-            className={styles.searchInput}
-          />
-        </div>
-      </div>
-
-      {filtered.length === 0 ? (
-        <div className={styles.emptyState} role="status">
-          <p>{t('boolean.laws.empty', { query: query.trim() })}</p>
+      <div className={styles.workspaceBar}>
+        <div className={styles.analysisTabList} role="tablist" aria-label="Theory sections">
           <button
             type="button"
-            className={styles.btn}
-            onClick={() => {
-              setCategory('all');
-              setQuery('');
-            }}
+            role="tab"
+            aria-selected={activeSubTab === 'overview'}
+            data-testid="theory-subtab-overview"
+            className={[
+              styles.analysisTab,
+              activeSubTab === 'overview' ? styles.analysisTabActive : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            onClick={() => onSubTabChange('overview')}
           >
-            {t('boolean.laws.reset')}
+            {t('boolean.theory.subtab.overview')}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeSubTab === 'kmap-guide'}
+            data-testid="theory-subtab-kmap-guide"
+            className={[
+              styles.analysisTab,
+              activeSubTab === 'kmap-guide' ? styles.analysisTabActive : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            onClick={() => onSubTabChange('kmap-guide')}
+          >
+            {t('boolean.theory.subtab.kmapGuide')}
           </button>
         </div>
+      </div>
+
+      {activeSubTab === 'kmap-guide' ? (
+        <KMapGuideSection onOpenExampleInKMap={onOpenKMapExample} />
       ) : (
-        <ul className={styles.identitiesGrid}>
-          {filtered.map((item) => {
-            const highlighted = highlightedLawId === item.id;
-            return (
-              <li
-                key={item.id}
-                id={`bool-law-${item.id}`}
-                className={[
-                  styles.identityCard,
-                  highlighted ? styles.identityCardHighlight : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
+        <>
+          {/* Background Theory section */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <div>
+                <h2 className={styles.cardTitle}>{t('boolean.theory.title')}</h2>
+                <p className={styles.lead}>{t('boolean.theory.lead')}</p>
+              </div>
+              <button
+                type="button"
+                className={[styles.btn, styles.btnSmall].join(' ')}
+                onClick={() => onSubTabChange('kmap-guide')}
               >
-                <div className={styles.identityHead}>
-                  <h3 className={styles.identityTitle}>{item.name}</h3>
-                  <span className={styles.identityMeta}>
-                    {t(`boolean.laws.cat.${item.category}`)}
-                  </span>
-                </div>
-                <div className={styles.identityFormula}>
-                  <KatexSpan text={item.formulaLatex} />
-                </div>
-                <p className={styles.identitySummary}>{item.summary}</p>
-                {isTeaching && (
-                  <div className={styles.theoryBox}>
-                    <span className={styles.theoryPrefix}>{t('boolean.steps.theoryLabel')}:</span>
-                    <span>{item.theory}</span>
-                  </div>
-                )}
-                <div className={styles.identityFooter}>
-                  <code className={styles.monoCode}>{item.exampleExpr}</code>
-                  <button
-                    type="button"
-                    className={[styles.btn, styles.btnSmall].join(' ')}
-                    onClick={() => onTryExample(item.exampleExpr)}
+                {t('boolean.theory.subtab.kmapGuide')} →
+              </button>
+            </div>
+            <div className={dStyles.theoryTopicsGrid}>
+              {BOOLEAN_THEORY_TOPICS.map((topic) => (
+                <article key={topic.id} className={dStyles.theoryTopicCard}>
+                  <h3 className={styles.identityTitle}>{topic.title}</h3>
+                  {topic.formulaLatex && (
+                    <div className={styles.identityFormula}>
+                      <KatexSpan text={topic.formulaLatex} />
+                    </div>
+                  )}
+                  <p className={styles.identitySummary}>{topic.summary}</p>
+                  <ul className={dStyles.theoryBulletList}>
+                    {topic.details.map((pt, idx) => (
+                      <li key={idx}>{pt}</li>
+                    ))}
+                  </ul>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          {/* Searchable Laws & Identities catalog */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <div>
+                <h2 className={styles.cardTitle}>{t('boolean.laws.title')}</h2>
+                <p className={styles.lead}>{t('boolean.laws.lead')}</p>
+              </div>
+              <span className={styles.metaInline}>
+                {t('boolean.laws.count', { count: filtered.length })}
+              </span>
+            </div>
+
+            <div className={styles.identitiesControls}>
+              <PillTabs<LawCategoryFilter>
+                items={categoryTabs}
+                value={category}
+                onChange={setCategory}
+                ariaLabel={t('boolean.laws.title')}
+                size="sm"
+              />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t('boolean.laws.searchPlaceholder')}
+                aria-label={t('boolean.laws.searchPlaceholder')}
+                className={styles.searchInput}
+              />
+            </div>
+          </div>
+
+          {filtered.length === 0 ? (
+            <div className={styles.emptyState} role="status">
+              <p>{t('boolean.laws.empty', { query: query.trim() })}</p>
+              <button
+                type="button"
+                className={styles.btn}
+                onClick={() => {
+                  setCategory('all');
+                  setQuery('');
+                }}
+              >
+                {t('boolean.laws.reset')}
+              </button>
+            </div>
+          ) : (
+            <ul className={styles.identitiesGrid}>
+              {filtered.map((item) => {
+                const highlighted = highlightedLawId === item.id;
+                return (
+                  <li
+                    key={item.id}
+                    id={`bool-law-${item.id}`}
+                    className={[
+                      styles.identityCard,
+                      highlighted ? styles.identityCardHighlight : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
                   >
-                    {t('boolean.laws.tryExample')}
-                  </button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                    <div className={styles.identityHead}>
+                      <h3 className={styles.identityTitle}>{item.name}</h3>
+                      <span className={styles.identityMeta}>
+                        {t(`boolean.laws.cat.${item.category}`)}
+                      </span>
+                    </div>
+                    <div className={styles.identityFormula}>
+                      <KatexSpan text={item.formulaLatex} />
+                    </div>
+                    <p className={styles.identitySummary}>{item.summary}</p>
+                    {isTeaching && (
+                      <div className={styles.theoryBox}>
+                        <span className={styles.theoryPrefix}>{t('boolean.steps.theoryLabel')}:</span>
+                        <span>{item.theory}</span>
+                      </div>
+                    )}
+                    <div className={styles.identityFooter}>
+                      <code className={styles.monoCode}>{item.exampleExpr}</code>
+                      <button
+                        type="button"
+                        className={[styles.btn, styles.btnSmall].join(' ')}
+                        onClick={() => onTryExample(item.exampleExpr)}
+                      >
+                        {t('boolean.laws.tryExample')}
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </>
       )}
     </div>
   );

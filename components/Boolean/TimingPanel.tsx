@@ -31,6 +31,7 @@ export interface TimingPanelProps {
   readonly targetOverrides: InstanceDelayMap;
   readonly onChangeInstanceDelay: (which: 'orig' | 'target', gateId: string, delayNs: number | null) => void;
   readonly onResetAllDelays: () => void;
+  readonly onZeroAllDelays: () => void;
   readonly allowCollapse?: boolean;
 }
 
@@ -393,6 +394,7 @@ export default function TimingPanel({
   targetOverrides,
   onChangeInstanceDelay,
   onResetAllDelays,
+  onZeroAllDelays,
   allowCollapse = false,
 }: TimingPanelProps) {
   const { t } = useI18n();
@@ -501,6 +503,11 @@ export default function TimingPanel({
     Object.keys(targetOverrides).length > 0 ||
     GATE_TYPES.some((gt) => typeDelays[gt] !== DEFAULT_GATE_DELAYS[gt]);
 
+  const allDelaysZero =
+    Object.keys(origOverrides).length === 0 &&
+    Object.keys(targetOverrides).length === 0 &&
+    GATE_TYPES.every((gt) => typeDelays[gt] === 0);
+
   return (
     <section className={dStyles.sectionCard} aria-label={t('boolean.timing.title')}>
       <div className={dStyles.sectionToolbar}>
@@ -582,15 +589,26 @@ export default function TimingPanel({
             <div className={dStyles.delayBox}>
               <div className={dStyles.subPaneHead}>
                 <h3 className={dStyles.delayBoxTitle}>{t('boolean.timing.gateDelays')}</h3>
-                {hasCustomDelays && (
+                <div className={styles.btnRow}>
                   <button
                     type="button"
-                    className={[styles.btnGhost, styles.btnSmall].join(' ')}
-                    onClick={onResetAllDelays}
+                    data-testid="timing-zero-delays-btn"
+                    disabled={allDelaysZero}
+                    className={[styles.btn, styles.btnSmall].join(' ')}
+                    onClick={onZeroAllDelays}
                   >
-                    {t('boolean.timing.resetDelays')}
+                    {t('boolean.timing.zeroDelays')}
                   </button>
-                )}
+                  {hasCustomDelays && (
+                    <button
+                      type="button"
+                      className={[styles.btnGhost, styles.btnSmall].join(' ')}
+                      onClick={onResetAllDelays}
+                    >
+                      {t('boolean.timing.resetDelays')}
+                    </button>
+                  )}
+                </div>
               </div>
               <div className={dStyles.delayInputsRow}>
                 {GATE_TYPES.map((gt) => (

@@ -21,6 +21,7 @@ import type {
 import { useI18n } from '../../lib/ui/i18n';
 import { useExperienceMode } from '../../lib/ui/mode';
 import styles from '../../styles/Boolean.module.css';
+import dStyles from '../../styles/BooleanDiagrams.module.css';
 import KatexSpan from '../KatexSpan';
 import BooleanInput, { type BooleanSubmitOverride } from './BooleanInput';
 import BooleanStepViewer from './BooleanStepViewer';
@@ -59,7 +60,18 @@ export interface BooleanSolverViewProps {
   };
   readonly onSolve: (override?: BooleanSubmitOverride) => void;
   readonly onInspectLaw: (lawId: string) => void;
+  readonly onOpenKMapGuide?: () => void;
 }
+
+const ZERO_GATE_DELAYS: GateDelayMap = {
+  NOT: 0,
+  AND: 0,
+  OR: 0,
+  NAND: 0,
+  NOR: 0,
+  XOR: 0,
+  XNOR: 0,
+};
 
 export default function BooleanSolverView({
   equations,
@@ -83,6 +95,7 @@ export default function BooleanSolverView({
   submitted,
   onSolve,
   onInspectLaw,
+  onOpenKMapGuide,
 }: BooleanSolverViewProps) {
   const { t } = useI18n();
   const { mode } = useExperienceMode();
@@ -287,6 +300,12 @@ export default function BooleanSolverView({
 
   const handleResetAllDelays = () => {
     setTypeDelays(DEFAULT_GATE_DELAYS);
+    setOrigOverrides({});
+    setTargetOverrides({});
+  };
+
+  const handleZeroAllDelays = () => {
+    setTypeDelays(ZERO_GATE_DELAYS);
     setOrigOverrides({});
     setTargetOverrides({});
   };
@@ -529,6 +548,43 @@ export default function BooleanSolverView({
     </>
   ) : null;
 
+  const expressionBanner =
+    evalBundle.ok && evalBundle.results.length > 0 ? (
+      <div className={dStyles.exprStrip} data-testid="split-tab-expr-strip">
+        <div className={dStyles.exprStripEquations}>
+          {evalBundle.results.map((r, idx) => {
+            const stepLatex =
+              idx === selectedEqIdx && activeTargetStep
+                ? activeTargetStep.workLatex
+                : r.simplifiedLatex;
+            return (
+              <div key={`${r.outputName}-${idx}`} className={dStyles.exprStripRow}>
+                <span className={dStyles.exprStripTag}>{t('boolean.exprBanner.original')}:</span>
+                <KatexSpan text={`${varToLatex(r.outputName)} = ${r.originalLatex}`} />
+                <span className={dStyles.exprStripArrow} aria-hidden="true">
+                  →
+                </span>
+                <span className={dStyles.exprStripTag}>
+                  {idx === selectedEqIdx && activeTargetStep && inspectedStepIndex !== null
+                    ? t('boolean.tt.atStep', { step: inspectedStepIndex + 1 })
+                    : t('boolean.exprBanner.simplified')}
+                  :
+                </span>
+                <KatexSpan text={`${varToLatex(r.outputName)} = ${stepLatex}`} />
+              </div>
+            );
+          })}
+        </div>
+        <button
+          type="button"
+          className={[styles.btn, styles.btnSmall].join(' ')}
+          onClick={() => onActiveTabChange('solver')}
+        >
+          {t('boolean.exprBanner.edit')}
+        </button>
+      </div>
+    ) : null;
+
   const inspectBanner =
     inspectedStepIndex !== null && activeTargetStep ? (
       <div className={styles.inspectBanner} role="status">
@@ -587,6 +643,7 @@ export default function BooleanSolverView({
         targetOverrides={targetOverrides}
         onChangeInstanceDelay={handleChangeInstanceDelay}
         onResetAllDelays={handleResetAllDelays}
+        onZeroAllDelays={handleZeroAllDelays}
         allowCollapse={layoutMode === 'all'}
       />
     ) : null;
@@ -598,6 +655,7 @@ export default function BooleanSolverView({
         explicitAnd={submitted.explicitAnd}
         selectedRowIndex={selectedRowIndex}
         onSelectRow={handleSelectRow}
+        onOpenKMapGuide={onOpenKMapGuide}
       />
     ) : null;
 
@@ -668,6 +726,7 @@ export default function BooleanSolverView({
             </section>
           ) : (
             <>
+              {activeTab !== 'solver' && expressionBanner}
               {inspectBanner}
               {activeTab === 'solver' && resultAndSteps}
               {activeTab === 'truth-table' && truthTableSection}

@@ -1,11 +1,13 @@
 export type ReferenceGateKind = 'BUFFER' | 'NOT' | 'AND' | 'OR' | 'NAND' | 'NOR' | 'XOR' | 'XNOR';
+export type GateBaseInputs = 2 | 3 | 4;
 
 export interface GateReferenceEntry {
   readonly id: ReferenceGateKind;
   readonly name: string;
-  readonly marking2: string;
+  readonly marking: string;
   readonly iecLabel: string;
-  readonly arity: 1 | 2;
+  readonly arity: 1 | 2 | 3 | 4;
+  readonly inputNames: readonly string[];
   readonly equationLatex: string;
   readonly plainExpr: string;
   readonly summary: string;
@@ -14,148 +16,208 @@ export interface GateReferenceEntry {
   readonly rows: readonly (readonly (0 | 1)[])[];
 }
 
-export const GATE_REFERENCE_LIST: readonly GateReferenceEntry[] = [
-  {
-    id: 'BUFFER',
-    name: 'Buffer (Identity)',
-    marking2: 'BUF1',
-    iecLabel: '1',
-    arity: 1,
-    equationLatex: 'Y = A',
-    plainExpr: 'A',
-    summary: 'Passes the input logic level unchanged while restoring signal drive strength and voltage margins.',
-    nandEquivalent: 'NAND(NAND(A, A), NAND(A, A))',
-    norEquivalent: 'NOR(NOR(A, A), NOR(A, A))',
-    rows: [
-      [0, 0],
-      [1, 1],
-    ],
-  },
-  {
-    id: 'NOT',
-    name: 'NOT (Inverter)',
-    marking2: 'NOT1',
-    iecLabel: '1',
-    arity: 1,
-    equationLatex: 'Y = \\overline{A}',
-    plainExpr: "!A",
-    summary: 'Outputs the logical complement of its single input (0 becomes 1, 1 becomes 0).',
-    nandEquivalent: 'NAND(A, A)',
-    norEquivalent: 'NOR(A, A)',
-    rows: [
-      [0, 1],
-      [1, 0],
-    ],
-  },
-  {
-    id: 'AND',
-    name: 'AND Gate',
-    marking2: 'AND2',
-    iecLabel: '&',
-    arity: 2,
-    equationLatex: 'Y = A \\cdot B',
-    plainExpr: 'A * B',
-    summary: 'Outputs 1 if and only if every input is 1; otherwise outputs 0.',
-    nandEquivalent: 'NAND(NAND(A, B), NAND(A, B))',
-    norEquivalent: 'NOR(NOR(A, A), NOR(B, B))',
-    rows: [
-      [0, 0, 0],
-      [0, 1, 0],
-      [1, 0, 0],
-      [1, 1, 1],
-    ],
-  },
-  {
-    id: 'OR',
-    name: 'OR Gate',
-    marking2: 'OR2',
-    iecLabel: '>=1',
-    arity: 2,
-    equationLatex: 'Y = A + B',
-    plainExpr: 'A + B',
-    summary: 'Outputs 1 whenever at least one input is 1; outputs 0 only when all inputs are 0.',
-    nandEquivalent: 'NAND(NAND(A, A), NAND(B, B))',
-    norEquivalent: 'NOR(NOR(A, B), NOR(A, B))',
-    rows: [
-      [0, 0, 0],
-      [0, 1, 1],
-      [1, 0, 1],
-      [1, 1, 1],
-    ],
-  },
-  {
-    id: 'NAND',
-    name: 'NAND Gate (Universal)',
-    marking2: 'NAND2',
-    iecLabel: '&',
-    arity: 2,
-    equationLatex: 'Y = \\overline{A \\cdot B}',
-    plainExpr: 'A NAND B',
-    summary: 'Inverted AND. Outputs 0 only when all inputs are 1. Functionally complete on its own.',
-    nandEquivalent: 'NAND(A, B) (1 gate)',
-    norEquivalent: 'NOR(NOR(NOR(A,A), NOR(B,B)), ...)',
-    rows: [
-      [0, 0, 1],
-      [0, 1, 1],
-      [1, 0, 1],
-      [1, 1, 0],
-    ],
-  },
-  {
-    id: 'NOR',
-    name: 'NOR Gate (Universal)',
-    marking2: 'NOR2',
-    iecLabel: '>=1',
-    arity: 2,
-    equationLatex: 'Y = \\overline{A + B}',
-    plainExpr: 'A NOR B',
-    summary: 'Inverted OR. Outputs 1 only when all inputs are 0. Functionally complete on its own.',
-    nandEquivalent: '4 NAND2 gates (De Morgan)',
-    norEquivalent: 'NOR(A, B) (1 gate)',
-    rows: [
-      [0, 0, 1],
-      [0, 1, 0],
-      [1, 0, 0],
-      [1, 1, 0],
-    ],
-  },
-  {
-    id: 'XOR',
-    name: 'XOR Gate (Exclusive OR)',
-    marking2: 'XOR2',
-    iecLabel: '=1',
-    arity: 2,
-    equationLatex: 'Y = A \\oplus B = \\overline{A}\\cdot B + A\\cdot \\overline{B}',
-    plainExpr: 'A XOR B',
-    summary: 'Outputs 1 when an odd number of inputs are 1 (for 2 inputs: when A and B differ). Core building block of binary adders.',
-    nandEquivalent: '4 NAND2 gates (shared T = NAND(A, B))',
-    norEquivalent: '5 NOR2 gates',
-    rows: [
-      [0, 0, 0],
-      [0, 1, 1],
-      [1, 0, 1],
-      [1, 1, 0],
-    ],
-  },
-  {
-    id: 'XNOR',
-    name: 'XNOR Gate (Equivalence)',
-    marking2: 'XNOR2',
-    iecLabel: '=1',
-    arity: 2,
-    equationLatex: 'Y = A \\odot B = A\\cdot B + \\overline{A}\\cdot \\overline{B}',
-    plainExpr: 'A XNOR B',
-    summary: 'Outputs 1 when both inputs are equal (both 0 or both 1). Used in magnitude comparators and even-parity checkers.',
-    nandEquivalent: '5 NAND2 gates',
-    norEquivalent: '4 NOR2 gates (shared T = NOR(A, B))',
-    rows: [
-      [0, 0, 1],
-      [0, 1, 0],
-      [1, 0, 0],
-      [1, 1, 1],
-    ],
-  },
-];
+const INPUT_NAMES_POOL = ['A', 'B', 'C', 'D'] as const;
+
+function buildRows(kind: ReferenceGateKind, arity: 1 | 2 | 3 | 4): readonly (readonly (0 | 1)[])[] {
+  const total = 1 << arity;
+  const rows: (0 | 1)[][] = [];
+  for (let mask = 0; mask < total; mask++) {
+    const bits: (0 | 1)[] = [];
+    for (let i = 0; i < arity; i++) {
+      bits.push(((mask >> (arity - 1 - i)) & 1) === 1 ? 1 : 0);
+    }
+    const ones = bits.reduce<number>((acc, b) => acc + b, 0);
+    let out: 0 | 1 = 0;
+    switch (kind) {
+      case 'BUFFER':
+        out = bits[0];
+        break;
+      case 'NOT':
+        out = bits[0] === 1 ? 0 : 1;
+        break;
+      case 'AND':
+        out = ones === arity ? 1 : 0;
+        break;
+      case 'OR':
+        out = ones > 0 ? 1 : 0;
+        break;
+      case 'NAND':
+        out = ones === arity ? 0 : 1;
+        break;
+      case 'NOR':
+        out = ones > 0 ? 0 : 1;
+        break;
+      case 'XOR':
+        out = ones % 2 === 1 ? 1 : 0;
+        break;
+      case 'XNOR':
+        out = ones % 2 === 0 ? 1 : 0;
+        break;
+    }
+    rows.push([...bits, out]);
+  }
+  return rows;
+}
+
+export function buildGateReferenceList(baseInputs: GateBaseInputs = 2): readonly GateReferenceEntry[] {
+  const vars = INPUT_NAMES_POOL.slice(0, baseInputs);
+  const dotLatex = vars.join(' \\cdot ');
+  const plusLatex = vars.join(' + ');
+  const xorLatex = vars.join(' \\oplus ');
+  const xnorLatex = vars.join(' \\odot ');
+  const starExpr = vars.join(' * ');
+  const plusExpr = vars.join(' + ');
+  const xorExpr = vars.join(' XOR ');
+  const varArgs = vars.join(', ');
+
+  return [
+    {
+      id: 'BUFFER',
+      name: 'Buffer (Identity)',
+      marking: 'BUF1',
+      iecLabel: '1',
+      arity: 1,
+      inputNames: ['A'],
+      equationLatex: 'Y = A',
+      plainExpr: 'A',
+      summary:
+        'Single-input gate that passes the logic level unchanged while restoring signal drive strength and voltage margins.',
+      nandEquivalent: 'NAND(NAND(A, A), NAND(A, A))',
+      norEquivalent: 'NOR(NOR(A, A), NOR(A, A))',
+      rows: buildRows('BUFFER', 1),
+    },
+    {
+      id: 'NOT',
+      name: 'NOT (Inverter)',
+      marking: 'NOT1',
+      iecLabel: '1',
+      arity: 1,
+      inputNames: ['A'],
+      equationLatex: 'Y = \\overline{A}',
+      plainExpr: '!A',
+      summary: 'Single-input inverter that outputs the logical complement of its input (0 becomes 1, 1 becomes 0).',
+      nandEquivalent: 'NAND(A, A)',
+      norEquivalent: 'NOR(A, A)',
+      rows: buildRows('NOT', 1),
+    },
+    {
+      id: 'AND',
+      name: 'AND Gate',
+      marking: `AND${baseInputs}`,
+      iecLabel: '&',
+      arity: baseInputs,
+      inputNames: vars,
+      equationLatex: `Y = ${dotLatex}`,
+      plainExpr: starExpr,
+      summary: `Outputs 1 if and only if all ${baseInputs} inputs (${varArgs}) are 1; otherwise outputs 0.`,
+      nandEquivalent:
+        baseInputs === 2
+          ? 'NAND(NAND(A, B), NAND(A, B))'
+          : `NAND${baseInputs}(${varArgs}) inverted by NOT1`,
+      norEquivalent: `NOR${baseInputs}(${vars.map((v) => `NOR(${v},${v})`).join(', ')})`,
+      rows: buildRows('AND', baseInputs),
+    },
+    {
+      id: 'OR',
+      name: 'OR Gate',
+      marking: `OR${baseInputs}`,
+      iecLabel: '≥1',
+      arity: baseInputs,
+      inputNames: vars,
+      equationLatex: `Y = ${plusLatex}`,
+      plainExpr: plusExpr,
+      summary: `Outputs 1 whenever at least one of the ${baseInputs} inputs (${varArgs}) is 1; outputs 0 only when all are 0.`,
+      nandEquivalent: `NAND${baseInputs}(${vars.map((v) => `NAND(${v},${v})`).join(', ')})`,
+      norEquivalent:
+        baseInputs === 2
+          ? 'NOR(NOR(A, B), NOR(A, B))'
+          : `NOR${baseInputs}(${varArgs}) inverted by NOT1`,
+      rows: buildRows('OR', baseInputs),
+    },
+    {
+      id: 'NAND',
+      name: 'NAND Gate (Universal)',
+      marking: `NAND${baseInputs}`,
+      iecLabel: '&',
+      arity: baseInputs,
+      inputNames: vars,
+      equationLatex: `Y = \\overline{${dotLatex}}`,
+      plainExpr: baseInputs === 2 ? 'A NAND B' : `!(${starExpr})`,
+      summary: `Inverted ${baseInputs}-input AND. Outputs 0 only when all ${baseInputs} inputs are 1. Functionally complete on its own.`,
+      nandEquivalent: `NAND${baseInputs}(${varArgs}) (1 gate)`,
+      norEquivalent: `De Morgan: invert inputs then NOR${baseInputs} + NOT1`,
+      rows: buildRows('NAND', baseInputs),
+    },
+    {
+      id: 'NOR',
+      name: 'NOR Gate (Universal)',
+      marking: `NOR${baseInputs}`,
+      iecLabel: '≥1',
+      arity: baseInputs,
+      inputNames: vars,
+      equationLatex: `Y = \\overline{${plusLatex}}`,
+      plainExpr: baseInputs === 2 ? 'A NOR B' : `!(${plusExpr})`,
+      summary: `Inverted ${baseInputs}-input OR. Outputs 1 only when all ${baseInputs} inputs are 0. Functionally complete on its own.`,
+      nandEquivalent: `De Morgan: invert inputs then NAND${baseInputs} + NOT1`,
+      norEquivalent: `NOR${baseInputs}(${varArgs}) (1 gate)`,
+      rows: buildRows('NOR', baseInputs),
+    },
+    {
+      id: 'XOR',
+      name: 'XOR Gate (Odd Parity)',
+      marking: `XOR${baseInputs}`,
+      iecLabel: '=1',
+      arity: baseInputs,
+      inputNames: vars,
+      equationLatex:
+        baseInputs === 2
+          ? 'Y = A \\oplus B = \\overline{A}\\cdot B + A\\cdot \\overline{B}'
+          : `Y = ${xorLatex}`,
+      plainExpr: xorExpr,
+      summary:
+        baseInputs === 2
+          ? 'Outputs 1 when an odd number of inputs are 1 (when A and B differ). Core building block of binary adders.'
+          : `Odd-parity gate: outputs 1 whenever an odd number of its ${baseInputs} inputs (${varArgs}) are 1.`,
+      nandEquivalent:
+        baseInputs === 2
+          ? '4 NAND2 gates (shared T = NAND(A, B))'
+          : `Cascade of ${baseInputs - 1} 4-NAND XOR2 blocks (${(baseInputs - 1) * 4} NAND2 gates)`,
+      norEquivalent:
+        baseInputs === 2
+          ? '5 NOR2 gates'
+          : `Cascade of ${baseInputs - 1} 5-NOR XOR2 blocks (${(baseInputs - 1) * 5} NOR2 gates)`,
+      rows: buildRows('XOR', baseInputs),
+    },
+    {
+      id: 'XNOR',
+      name: 'XNOR Gate (Even Parity)',
+      marking: `XNOR${baseInputs}`,
+      iecLabel: '=1',
+      arity: baseInputs,
+      inputNames: vars,
+      equationLatex:
+        baseInputs === 2
+          ? 'Y = A \\odot B = A\\cdot B + \\overline{A}\\cdot \\overline{B}'
+          : `Y = \\overline{${xorLatex}} = ${xnorLatex}`,
+      plainExpr: baseInputs === 2 ? 'A XNOR B' : `!(${xorExpr})`,
+      summary:
+        baseInputs === 2
+          ? 'Outputs 1 when both inputs are equal (both 0 or both 1). Used in magnitude comparators and even-parity checkers.'
+          : `Even-parity gate (inverted ${baseInputs}-input XOR): outputs 1 whenever an even number (0, 2${baseInputs === 4 ? ', 4' : ''}) of inputs are 1.`,
+      nandEquivalent:
+        baseInputs === 2
+          ? '5 NAND2 gates'
+          : `XOR${baseInputs} followed by 1 NAND2 inverter`,
+      norEquivalent:
+        baseInputs === 2
+          ? '4 NOR2 gates (shared T = NOR(A, B))'
+          : `XOR${baseInputs} followed by 1 NOR2 inverter`,
+      rows: buildRows('XNOR', baseInputs),
+    },
+  ];
+}
+
+export const GATE_REFERENCE_LIST: readonly GateReferenceEntry[] = buildGateReferenceList(2);
 
 export interface BooleanTheoryTopic {
   readonly id: string;

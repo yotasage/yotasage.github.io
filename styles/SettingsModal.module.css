@@ -336,13 +336,14 @@ dialog.dialog::backdrop {
 
 /* Live preview panel */
 .previewCard {
-  padding: 0.8rem 0.95rem;
+  flex-shrink: 0;
+  padding: 0.85rem 0.95rem 0.95rem;
   border-radius: var(--ds-radius-ctrl, 12px);
   background: var(--ds-surface-solid, #ffffff);
   border: var(--ds-border-w, 1px) solid var(--ds-border-strong, rgba(15, 23, 42, 0.16));
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.7rem;
 }
 
 .previewLabel {
@@ -355,18 +356,22 @@ dialog.dialog::backdrop {
 
 .previewInline {
   margin: 0;
+  padding-block: 0.45rem;
   font-size: 0.9rem;
   color: var(--ds-ink, #0f172a);
-  line-height: 1.75;
+  line-height: 2.15;
   overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .previewDisplay {
-  padding-top: 0.5rem;
+  padding: 0.75rem 0.25rem 0.6rem;
   border-top: var(--ds-border-w, 1px) solid var(--ds-border, rgba(15, 23, 42, 0.085));
   font-size: 1.05rem;
+  line-height: 1.9;
   color: var(--ds-ink, #0f172a);
   overflow-x: auto;
+  overflow-y: hidden;
 }
 
 /* Footer */

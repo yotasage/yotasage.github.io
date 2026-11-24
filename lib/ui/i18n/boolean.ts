@@ -19,11 +19,17 @@ export const en = {
   'boolean.tab.circuit': 'Circuit',
   'boolean.tab.timing': 'Timing',
   'boolean.tab.kmap': 'K-Map & HDL',
+  'boolean.exprBanner.original': 'Original',
+  'boolean.exprBanner.simplified': 'Simplified',
+  'boolean.exprBanner.edit': 'Edit in Solver',
+  'boolean.view.sideBySide': 'Side-by-side',
+  'boolean.view.stacked': 'Stacked',
 
   // Input & options
   'boolean.input.label': 'Boolean expression',
   'boolean.input.labelPlural': 'Boolean equations',
-  'boolean.input.placeholder': "e.g. Y = A*B + A'*C + B*C   or   (A + B)(A + C)",
+  'boolean.input.placeholder':
+    "e.g. Y = A*B + A'*C + B*C   or   Y = A \\cdot B + \\overline{A} \\cdot C",
   'boolean.input.rowPlaceholder': "e.g. Cout = A*B + B*Cin + A*Cin",
   'boolean.input.addEquation': 'Add equation',
   'boolean.input.removeEquation': 'Remove equation',
@@ -135,6 +141,8 @@ export const en = {
   'boolean.circuit.gateHint': 'Click any gate to edit its individual propagation delay (ns).',
   'boolean.circuit.criticalPath': 'Critical path: {delay} ns',
   'boolean.circuit.allHidden': 'Both circuits are hidden. Use the buttons above to show either schematic.',
+  'boolean.circuit.resizeHint': 'Drag bottom border to scale circuit vertically',
+  'boolean.circuit.resetSize': 'Reset height',
 
   // Timing diagram (WaveDrom)
   'boolean.timing.title': 'Timing diagram (WaveDrom)',
@@ -145,7 +153,8 @@ export const en = {
   'boolean.timing.target.both': 'Compare both',
   'boolean.timing.gateDelays': 'Circuit-wide gate delays (ns)',
   'boolean.timing.instanceDelays': 'Per-gate instance delay overrides (ns)',
-  'boolean.timing.resetDelays': 'Reset delays',
+  'boolean.timing.resetDelays': 'Reset defaults',
+  'boolean.timing.zeroDelays': 'Reset all to 0',
   'boolean.timing.dffToggle': 'Wrap I/O in D Flip-Flops (Synchronous)',
   'boolean.timing.clkPeriod': 'Clock period (ns)',
   'boolean.timing.tcq': 't_clk→q (ns)',
@@ -168,6 +177,9 @@ export const en = {
   'boolean.extras.canonical': 'Canonical forms & minterms',
   'boolean.extras.hdl': 'Hardware & code export',
   'boolean.extras.selectOutput': 'Inspect output',
+  'boolean.extras.viewSingle': 'Single output',
+  'boolean.extras.viewStacked': 'All outputs stacked',
+  'boolean.extras.learnKmap': 'Learn how K-Maps work',
 
   // Examples tab
   'boolean.examples.title': 'Curated examples & method showcases',
@@ -195,8 +207,23 @@ export const en = {
   'boolean.gates.tryGate': 'Open in simplifier',
   'boolean.gates.markingNote':
     'Gate markings combine the logic function and input pin count: AND2 = 2-input AND, NAND3 = 3-input NAND, OR4 = 4-input OR, NOT1 = single-input inverter.',
+  'boolean.gates.baseInputs': 'Base inputs',
+  'boolean.gates.baseInputsHint':
+    'Preview 2, 3, or 4 inputs for multi-input gates on this page (5, 6, … inputs generalize the same way). Buffer and NOT always stay single-input.',
 
-  // Theory & Laws tab
+  // Theory, K-Map guide & Laws tab
+  'boolean.theory.subtab.overview': 'Theory & laws',
+  'boolean.theory.subtab.kmapGuide': 'Karnaugh map guide',
+  'boolean.kmapGuide.title': 'How to build & solve Karnaugh maps (K-Maps)',
+  'boolean.kmapGuide.lead':
+    'A step-by-step beginner guide for digital-logic learners: Gray-code cell ordering, valid power-of-2 loops, edge and 4-corner wrap-around, essential prime implicants, and reading off the minimal equation.',
+  'boolean.kmapGuide.examplesTitle': 'Worked examples (Easy → Moderate → Difficult)',
+  'boolean.kmapGuide.openInKmap': 'Open in K-Map & simplifier',
+  'boolean.kmapGuide.diff.easy': 'Easy',
+  'boolean.kmapGuide.diff.moderate': 'Moderate',
+  'boolean.kmapGuide.diff.difficult': 'Difficult',
+  'boolean.kmapGuide.highlightHint':
+    'Click any group below to highlight its cells on the map and inspect which variables drop out.',
   'boolean.theory.title': 'Background theory',
   'boolean.theory.lead':
     'Core concepts behind Boolean minimization, canonical representations, universal gates, and propagation timing.',
@@ -235,11 +262,17 @@ export const nb: Record<keyof typeof en, string> = {
   'boolean.tab.circuit': 'Krets',
   'boolean.tab.timing': 'Tidsdiagram',
   'boolean.tab.kmap': 'K-kart og HDL',
+  'boolean.exprBanner.original': 'Original',
+  'boolean.exprBanner.simplified': 'Forenklet',
+  'boolean.exprBanner.edit': 'Rediger i forenkler',
+  'boolean.view.sideBySide': 'Side om side',
+  'boolean.view.stacked': 'Stablet',
 
   // Input & options
   'boolean.input.label': 'Boolsk uttrykk',
   'boolean.input.labelPlural': 'Boolske ligninger',
-  'boolean.input.placeholder': "f.eks. Y = A*B + A'*C + B*C   eller   (A + B)(A + C)",
+  'boolean.input.placeholder':
+    "f.eks. Y = A*B + A'*C + B*C   eller   Y = A \\cdot B + \\overline{A} \\cdot C",
   'boolean.input.rowPlaceholder': "f.eks. Cout = A*B + B*Cin + A*Cin",
   'boolean.input.addEquation': 'Legg til ligning',
   'boolean.input.removeEquation': 'Fjern ligning',
@@ -351,6 +384,8 @@ export const nb: Record<keyof typeof en, string> = {
   'boolean.circuit.gateHint': 'Klikk på en port for å overstyre portforsinkelsen (ns).',
   'boolean.circuit.criticalPath': 'Kritisk sti: {delay} ns',
   'boolean.circuit.allHidden': 'Begge kretsene er skjult. Bruk knappene over for å vise en krets.',
+  'boolean.circuit.resizeHint': 'Dra nederste kant for å skalere kretsen vertikalt',
+  'boolean.circuit.resetSize': 'Tilbakestill høyde',
 
   // Timing diagram (WaveDrom)
   'boolean.timing.title': 'Tidsdiagram (WaveDrom)',
@@ -361,7 +396,8 @@ export const nb: Record<keyof typeof en, string> = {
   'boolean.timing.target.both': 'Sammenlign begge',
   'boolean.timing.gateDelays': 'Globale portforsinkelser (ns)',
   'boolean.timing.instanceDelays': 'Overstyring per portinstans (ns)',
-  'boolean.timing.resetDelays': 'Tilbakestill forsinkelser',
+  'boolean.timing.resetDelays': 'Tilbakestill standard',
+  'boolean.timing.zeroDelays': 'Nullstill alle til 0',
   'boolean.timing.dffToggle': 'Pakk inn/ut i D-vipper (synkron / klokket)',
   'boolean.timing.clkPeriod': 'Klokkeperiode (ns)',
   'boolean.timing.tcq': 't_clk→q (ns)',
@@ -384,6 +420,9 @@ export const nb: Record<keyof typeof en, string> = {
   'boolean.extras.canonical': 'Kanoniske former og mintermer',
   'boolean.extras.hdl': 'Maskinvare- og kodeeksport',
   'boolean.extras.selectOutput': 'Inspiser utgang',
+  'boolean.extras.viewSingle': 'Én utgang',
+  'boolean.extras.viewStacked': 'Alle utganger stablet',
+  'boolean.extras.learnKmap': 'Lær hvordan K-kart fungerer',
 
   // Examples tab
   'boolean.examples.title': 'Utvalgte eksempler og metodevisning',
@@ -411,8 +450,23 @@ export const nb: Record<keyof typeof en, string> = {
   'boolean.gates.tryGate': 'Åpne i forenkleren',
   'boolean.gates.markingNote':
     'Portmerking kombinerer logikkfunksjon og antall innganger: AND2 = 2-inngangs AND, NAND3 = 3-inngangs NAND, OR4 = 4-inngangs OR, NOT1 = inverter med én inngang.',
+  'boolean.gates.baseInputs': 'Antall innganger',
+  'boolean.gates.baseInputsHint':
+    'Forhåndsvis 2, 3 eller 4 innganger for flerinngangsporter på denne siden (5, 6, … innganger følger samme mønster). Buffer og NOT har alltid én inngang.',
 
-  // Theory & Laws tab
+  // Theory, K-Map guide & Laws tab
+  'boolean.theory.subtab.overview': 'Teori og lover',
+  'boolean.theory.subtab.kmapGuide': 'Karnaugh-kartguide',
+  'boolean.kmapGuide.title': 'Hvordan lage og løse Karnaugh-kart (K-kart)',
+  'boolean.kmapGuide.lead':
+    'En praktisk veiledning for deg som kan grunnleggende boolsk algebra og sannhetstabeller: Gray-kode, gyldige 2^k-løkker, kant- og hjørneløkker, essensielle primimplikanter og avlesning av uttrykk.',
+  'boolean.kmapGuide.examplesTitle': 'Gjennomgåtte eksempler (Enkel → Middels → Vanskelig)',
+  'boolean.kmapGuide.openInKmap': 'Åpne i K-kart og forenkler',
+  'boolean.kmapGuide.diff.easy': 'Enkel',
+  'boolean.kmapGuide.diff.moderate': 'Middels',
+  'boolean.kmapGuide.diff.difficult': 'Vanskelig',
+  'boolean.kmapGuide.highlightHint':
+    'Klikk på en gruppe under for å markere cellene på kartet og se hvilke variabler som faller bort.',
   'boolean.theory.title': 'Bakgrunnsteori',
   'boolean.theory.lead':
     'Grunnleggende konsepter bak boolsk minimering, kanoniske former, universelle porter og forplantningsforsinkelse.',

@@ -45,7 +45,77 @@ function isIdentChar(ch: string): boolean {
   return isAlpha(ch) || (ch >= '0' && ch <= '9');
 }
 
-function tokenize(raw: string): Token[] {
+/**
+ * Convert common LaTeX Boolean notation (e.g. `Y = A \cdot B + \overline{A} \cdot C`,
+ * `\bar{A}`, `\neg`, `\land`, `\lor`, `\oplus`, `\left( ... \right)`, `C_{in}`)
+ * into standard tokens before lexing.
+ */
+export function preprocessLatex(input: string): string {
+  let s = input.trim();
+  // Strip outer math delimiters if pasted directly from LaTeX
+  s = s.replace(/^\$\$([\s\S]*)\$\$$/, '$1');
+  s = s.replace(/^\$([\s\S]*)\$$/, '$1');
+  s = s.replace(/^\\\[([\s\S]*)\\\]$/, '$1');
+  s = s.replace(/^\\\(([\s\S]*)\\\)$/, '$1');
+
+  // If there are no backslashes at all, return immediately
+  if (!s.includes('\\')) return s;
+
+  // Unwrap \mathrm{...}, \text{...}, \mathit{...}, \mathbf{...}, \operatorname{...}
+  let prev = '';
+  let guard = 0;
+  while (s !== prev && guard < 16) {
+    prev = s;
+    guard++;
+    s = s.replace(
+      /\\(?:mathrm|text|mathit|mathbf|mathsf|mathtt|operatorname)\s*\{([^{}]*)\}/g,
+      '$1',
+    );
+  }
+
+  // Strip LaTeX spacing commands first (before \overline / \neg introduce '!' NOT tokens)
+  s = s.replace(/\\(?:qquad|quad|enspace|thickspace|medspace|thinspace)(?![A-Za-z])/g, ' ');
+  s = s.replace(/\\[,;:! ]/g, ' ');
+  s = s.replace(/\\hspace\s*\{[^{}]*\}/g, ' ');
+
+  // Normalize escaped underscores inside variable names (\_ -> _) and braced subscripts A_{in} -> A_in
+  s = s.replace(/\\_/g, '_');
+  s = s.replace(/([A-Za-z][A-Za-z0-9]*)_\{([A-Za-z0-9_]+)\}/g, '$1_$2');
+
+  // Convert nested \overline{...} and \bar{...} from innermost braces outward
+  prev = '';
+  guard = 0;
+  while (s !== prev && guard < 24) {
+    prev = s;
+    guard++;
+    s = s.replace(/\\(?:overline|bar)\s*\{([^{}]*)\}/g, '!($1)');
+  }
+  // Also handle unbraced \overline A or \bar A
+  s = s.replace(/\\(?:overline|bar)\s+([A-Za-z][A-Za-z0-9_]*|[01])/g, '!($1)');
+
+  // Sizing prefixes on delimiters
+  s = s.replace(/\\(?:left|right|big|Big|bigg|Bigg|bigl|bigr|Bigl|Bigr)\s*(?=[()[\]{}|])/g, '');
+  s = s.replace(/\\\{/g, '(').replace(/\\\}/g, ')');
+
+  // LaTeX logical operators -> parser tokens
+  s = s.replace(/\\(?:lnot|neg|sim)(?![A-Za-z])/g, ' ! ');
+  s = s.replace(/\\(?:cdot|times|ast|land|wedge)(?![A-Za-z])/g, ' * ');
+  s = s.replace(/\\(?:lor|vee)(?![A-Za-z])/g, ' + ');
+  s = s.replace(/\\(?:oplus|veebar)(?![A-Za-z])/g, ' ^ ');
+  s = s.replace(/\\(?:odot|leftrightarrow|iff|equiv)(?![A-Za-z])/g, ' <-> ');
+  s = s.replace(/\\(?:uparrow|barwedge)(?![A-Za-z])/g, ' NAND ');
+  s = s.replace(/\\downarrow(?![A-Za-z])/g, ' NOR ');
+  s = s.replace(/\\(?:rightarrow|implies|to)(?![A-Za-z])/g, ' -> ');
+
+  // Escaped programming operators \& and \|
+  s = s.replace(/\\&\\&/g, ' && ').replace(/\\&/g, ' & ');
+  s = s.replace(/\\\|\\\|/g, ' || ').replace(/\\\|/g, ' | ');
+
+  return s;
+}
+
+function tokenize(rawInput: string): Token[] {
+  const raw = preprocessLatex(rawInput);
   const tokens: Token[] = [];
   let i = 0;
   const n = raw.length;

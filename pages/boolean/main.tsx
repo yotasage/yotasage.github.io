@@ -2,7 +2,7 @@ import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { BooleanSubmitOverride } from '../../components/Boolean/BooleanInput';
-import BooleanLawsTab from '../../components/Boolean/BooleanLawsTab';
+import BooleanLawsTab, { type TheorySubTab } from '../../components/Boolean/BooleanLawsTab';
 import BooleanSolverView from '../../components/Boolean/BooleanSolverView';
 import ExamplesTab, { type LoadExamplePayload } from '../../components/Boolean/ExamplesTab';
 import GateReferenceTab from '../../components/Boolean/GateReferenceTab';
@@ -31,6 +31,7 @@ export default function BooleanSimplifierPage() {
   const router = useRouter();
 
   const [workspace, setWorkspace] = useState<WorkspaceId>('solver');
+  const [theorySubTab, setTheorySubTab] = useState<TheorySubTab>('overview');
   const [highlightedLawId, setHighlightedLawId] = useState<string | null>(null);
 
   const [equations, setEquations] = useState<string[]>([...DEFAULT_EQUATIONS]);
@@ -85,6 +86,13 @@ export default function BooleanSimplifierPage() {
 
   const handleInspectLaw = useCallback((lawId: string) => {
     setHighlightedLawId(lawId);
+    setTheorySubTab('overview');
+    setWorkspace('laws');
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const handleOpenKMapGuide = useCallback(() => {
+    setTheorySubTab('kmap-guide');
     setWorkspace('laws');
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
@@ -98,6 +106,19 @@ export default function BooleanSimplifierPage() {
       seq: prev.seq + 1,
     }));
     setActiveTab('solver');
+    setWorkspace('solver');
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const handleOpenKMapExample = useCallback((exampleExpr: string) => {
+    const nextEqs = [exampleExpr];
+    setEquations(nextEqs);
+    setSubmitted((prev) => ({
+      ...prev,
+      equations: nextEqs,
+      seq: prev.seq + 1,
+    }));
+    setActiveTab('kmap');
     setWorkspace('solver');
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
@@ -182,6 +203,7 @@ export default function BooleanSimplifierPage() {
             submitted={submitted}
             onSolve={handleSolve}
             onInspectLaw={handleInspectLaw}
+            onOpenKMapGuide={handleOpenKMapGuide}
           />
         </section>
 
@@ -208,7 +230,10 @@ export default function BooleanSimplifierPage() {
         >
           <BooleanLawsTab
             highlightedLawId={highlightedLawId}
+            activeSubTab={theorySubTab}
+            onSubTabChange={setTheorySubTab}
             onTryExample={handleTrySingleExample}
+            onOpenKMapExample={handleOpenKMapExample}
           />
         </section>
       </main>

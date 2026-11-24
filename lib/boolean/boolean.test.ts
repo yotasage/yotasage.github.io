@@ -8,8 +8,18 @@ import {
   evaluateCircuitNodes,
   exportCircuitTikz,
 } from './circuit';
+import { buildGateReferenceList } from './gateReference';
+import { KMAP_WORKED_EXAMPLES } from './kmapGuide';
 import { DEFAULT_GATE_DELAYS } from './laws';
-import { evaluateBool, parseBoolean, toLatex, toPlainText, toVerilog, toVhdl } from './parse';
+import {
+  evaluateBool,
+  parseBoolean,
+  preprocessLatex,
+  toLatex,
+  toPlainText,
+  toVerilog,
+  toVhdl,
+} from './parse';
 import { evalTruthVector, minimizeQM } from './qm';
 import { simplifyBoolean } from './simplify';
 import { computeCriticalPath, simulateCircuitTiming } from './timing';
@@ -19,7 +29,7 @@ import {
   exportTruthTableCsv,
   exportTruthTableLatex,
 } from './truthTable';
-import type { SimplifyMethod, TargetForm } from './types';
+import type { GateDelayMap, SimplifyMethod, TargetForm } from './types';
 
 test('parser handles engineering, logic, programming, keywords, juxtaposition, and output name', () => {
   const cases = [
@@ -441,4 +451,114 @@ test('multi-output Full Adder shares inputs, produces multi-output truth table, 
       }
     }
   }
+});
+
+test('parser supports LaTeX expressions including \\cdot, \\overline, \\neg, \\land, \\lor, \\oplus, subscripts, and delimiters', () => {
+  // Exact example from user request: Y = A \cdot B + \overline{A} \cdot C
+  const latexParsed = parseBoolean(String.raw`Y = A \cdot B + \overline{A} \cdot C`);
+  const plainParsed = parseBoolean("Y = A*B + A'*C");
+  assert.equal(latexParsed.outputName, 'Y');
+  assert.deepEqual(latexParsed.variables, ['A', 'B', 'C']);
+  assert.deepEqual(
+    evalTruthVector(latexParsed.ast, latexParsed.variables),
+    evalTruthVector(plainParsed.ast, plainParsed.variables),
+  );
+
+  // Nested overline (De Morgan / NAND-of-NAND)
+  const nestedLatex = parseBoolean(String.raw`F = \overline{\overline{A \cdot B} \cdot C}`);
+  const nestedPlain = parseBoolean('F = !(!(A*B)*C)');
+  assert.equal(nestedLatex.outputName, 'F');
+  assert.deepEqual(
+    evalTruthVector(nestedLatex.ast, nestedLatex.variables),
+    evalTruthVector(nestedPlain.ast, nestedPlain.variables),
+  );
+
+  // Math-mode delimiters, \left / \right, \neg, \land, \lor, \oplus, subscripts
+  const richLatex = parseBoolean(
+    String.raw`$$C_{out} = \left(\neg A \land B\right) \lor \left(A \oplus C_{in}\right)$$`,
+  );
+  const richPlain = parseBoolean('C_out = (!A * B) + (A ^ C_in)');
+  assert.equal(richLatex.outputName, 'C_out');
+  assert.deepEqual(richLatex.variables, ['A', 'B', 'C_in']);
+  assert.deepEqual(
+    evalTruthVector(richLatex.ast, richLatex.variables),
+    evalTruthVector(richPlain.ast, richPlain.variables),
+  );
+
+  // preprocessLatex leaves standard plain text intact
+  assert.equal(preprocessLatex("Y = A*B + A'*C"), "Y = A*B + A'*C");
+});
+
+test('buildGateReferenceList generates accurate markings, truth tables, and plainExpr for 2, 3, and 4 base inputs', () => {
+  for (const base of [2, 3, 4] as const) {
+    const list = buildGateReferenceList(base);
+    assert.equal(list.length, 8);
+    const byId = new Map(list.map((g) => [g.id, g]));
+
+    // Unary gates stay 1-input
+    assert.equal(byId.get('NOT')?.marking, 'NOT1');
+    assert.equal(byId.get('NOT')?.rows.length, 2);
+    assert.equal(byId.get('BUFFER')?.marking, 'BUF1');
+    assert.equal(byId.get('BUFFER')?.rows.length, 2);
+
+    // Multi-input gates scale to base inputs with 2^base truth-table rows
+    const expectedRows = 1 << base;
+    for (const id of ['AND', 'OR', 'NAND', 'NOR', 'XOR', 'XNOR'] as const) {
+      const gate = byId.get(id);
+      assert.ok(gate, `Missing gate ${id}`);
+      if (!gate) continue;
+      assert.equal(gate.marking, `${id}${base}`);
+      assert.equal(gate.inputNames.length, base);
+      assert.equal(gate.rows.length, expectedRows);
+
+      // Verify plainExpr parses and matches every generated truth-table row
+      const parsed = parseBoolean(gate.plainExpr);
+      for (const row of gate.rows) {
+        const assignment: Record<string, 0 | 1> = {};
+        gate.inputNames.forEach((name, idx) => {
+          assignment[name] = row[idx];
+        });
+        const expectedOut: 0 | 1 = row[gate.arity];
+        assert.equal(
+          evaluateBool(parsed.ast, assignment),
+          expectedOut,
+          `Gate ${gate.marking} plainExpr mismatch on row ${row.slice(0, gate.arity).join('')}`,
+        );
+      }
+    }
+  }
+});
+
+test('K-Map beginner guide worked examples are mathematically exact and simplify cleanly', () => {
+  assert.equal(KMAP_WORKED_EXAMPLES.length, 3);
+  for (const ex of KMAP_WORKED_EXAMPLES) {
+    const parsedOrig = parseBoolean(ex.inputExpr);
+    // Also exercises LaTeX parsing on the worked example's final result formula!
+    const parsedFinal = parseBoolean(ex.resultLatex);
+    const origVec = evalTruthVector(parsedOrig.ast, ex.variables);
+    const finalVec = evalTruthVector(parsedFinal.ast, ex.variables);
+    assert.deepEqual(finalVec, origVec, `K-Map example ${ex.id} resultLatex disagrees with inputExpr`);
+
+    // Check listed minterms match exact 1-positions of truth vector
+    const computedMinterms: number[] = [];
+    origVec.forEach((v, i) => {
+      if (v === 1) computedMinterms.push(i);
+    });
+    assert.deepEqual(computedMinterms, ex.minterms, `K-Map example ${ex.id} minterm list mismatch`);
+  }
+});
+
+test('zero-delay timing simulation yields 0 ns critical path and valid WaveDrom traces', () => {
+  const parsed = parseBoolean("Y = A*B + A'*C");
+  const graph = buildCircuitGraph(parsed.ast, parsed.variables, parsed.outputName, 'engineering');
+  const zeroDelays: GateDelayMap = { NOT: 0, AND: 0, OR: 0, NAND: 0, NOR: 0, XOR: 0, XNOR: 0 };
+  const sim = simulateCircuitTiming(
+    graph,
+    zeroDelays,
+    {},
+    { enabled: false, clockPeriodNs: 50, tClkToQNs: 4, tSetupNs: 3 },
+  );
+  assert.equal(sim.criticalPathNs, 0);
+  assert.equal(sim.totalGlitches, 0);
+  assert.ok(sim.traces.length >= 4);
 });

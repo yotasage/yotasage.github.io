@@ -246,6 +246,7 @@ export default function TruthTablePanel({
   const isQuick = mode === 'quick';
   const containerRef = useRef<HTMLDivElement>(null);
   const [isWide, setIsWide] = useState(true);
+  const [paneLayout, setPaneLayout] = useState<'side-by-side' | 'stacked'>('side-by-side');
   const [collapsed, setCollapsed] = useState(false);
   const [preset, setPreset] = useState<ColumnPreset>('io');
 
@@ -322,6 +323,7 @@ export default function TruthTablePanel({
   };
 
   const isCustomized = preset !== 'io';
+  const useSideBySide = isWide && paneLayout === 'side-by-side';
 
   return (
     <section ref={containerRef} className={dStyles.sectionCard} aria-label={t('boolean.tt.title')}>
@@ -329,13 +331,41 @@ export default function TruthTablePanel({
         <div className={styles.stepsTitleGroup}>
           <h2 className={styles.cardTitle}>{t('boolean.tt.title')}</h2>
           <span className={styles.metaInline}>
-            {originalTable.rows.length} rows · {isWide ? 'side-by-side' : 'stacked'}
+            {originalTable.rows.length} rows · {useSideBySide ? 'side-by-side' : 'stacked'}
           </span>
         </div>
 
         <div className={styles.stepsControls}>
           {!collapsed && (
             <>
+              <div className={styles.segmented} role="group" aria-label="Truth table layout">
+                <button
+                  type="button"
+                  aria-pressed={paneLayout === 'side-by-side'}
+                  data-testid="tt-layout-side"
+                  className={[
+                    styles.segBtn,
+                    paneLayout === 'side-by-side' ? styles.segBtnActive : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  onClick={() => setPaneLayout('side-by-side')}
+                >
+                  {t('boolean.view.sideBySide')}
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={paneLayout === 'stacked'}
+                  data-testid="tt-layout-stacked"
+                  className={[styles.segBtn, paneLayout === 'stacked' ? styles.segBtnActive : '']
+                    .filter(Boolean)
+                    .join(' ')}
+                  onClick={() => setPaneLayout('stacked')}
+                >
+                  {t('boolean.view.stacked')}
+                </button>
+              </div>
+
               <div className={styles.segmented} role="group" aria-label={t('boolean.tt.signalPicker')}>
                 {(['io', 'all', 'custom'] as const).map((m) => (
                   <button
@@ -378,7 +408,7 @@ export default function TruthTablePanel({
       {!collapsed && (
         <div className={dStyles.sectionBody}>
           {!isQuick && <p className={dStyles.hintText}>{t('boolean.tt.probeHint')}</p>}
-          <div className={isWide ? dStyles.dualGrid : dStyles.singleGrid}>
+          <div className={useSideBySide ? dStyles.dualGrid : dStyles.singleGrid} data-testid="tt-grid">
             <SingleTruthTable
               table={originalTable}
               title={t('boolean.tt.before')}

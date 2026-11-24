@@ -658,6 +658,218 @@
   line-height: 1.5;
 }
 
+/* Expression context bar shown above Truth table, Circuit, Timing, and K-Map in Split Tabs mode */
+.exprStrip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem 1.1rem;
+  padding: 0.72rem 1.05rem;
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  box-shadow: var(--ds-shadow-card);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.exprStripEquations {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.exprStripRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.75rem;
+  font-size: 0.94rem;
+  color: var(--ds-ink);
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block: 0.22rem 0.1rem;
+}
+
+.exprStripTag {
+  font-size: 0.72rem;
+  font-weight: 660;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ds-ink-3);
+  white-space: nowrap;
+}
+
+.exprStripArrow {
+  color: var(--ds-accent);
+  font-weight: 700;
+  user-select: none;
+}
+
+/* Vertically scalable circuit frame with drag handle at bottom border */
+.circuitStageWrap {
+  display: flex;
+  flex-direction: column;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  overflow: hidden;
+}
+
+.circuitStageInner {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.65rem;
+}
+
+.circuitResizeHandle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 18px;
+  background: var(--ds-surface-solid);
+  border-top: var(--ds-border-w) solid var(--ds-border);
+  cursor: ns-resize;
+  touch-action: none;
+  user-select: none;
+  transition: background-color 0.14s ease, border-color 0.14s ease;
+}
+
+.circuitResizeHandle:hover,
+.circuitResizeHandle:focus-visible,
+.circuitResizeHandleActive {
+  background: var(--ds-accent-soft);
+  border-top-color: var(--ds-accent-border);
+  outline: none;
+}
+
+.circuitResizeGrip {
+  width: 44px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--ds-border-strong);
+  transition: background-color 0.14s ease, width 0.14s ease;
+}
+
+.circuitResizeHandle:hover .circuitResizeGrip,
+.circuitResizeHandle:focus-visible .circuitResizeGrip,
+.circuitResizeHandleActive .circuitResizeGrip {
+  background: var(--ds-accent);
+  width: 56px;
+}
+
+/* Stacked multi-output K-Map container */
+.kmapStackedList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+/* Karnaugh Map Beginner Guide & Worked Examples */
+.kmapChapterNum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--ds-accent-soft);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  color: var(--ds-accent);
+  font-family: var(--ds-font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.kmapChapterHead {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.kmapWorkedList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.kmapWorkedCard {
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  padding: 1.15rem 1.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.kmapDiffBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.55rem;
+  border-radius: var(--ds-radius-sm);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.kmapDiffEasy {
+  background: color-mix(in srgb, var(--ds-good) 14%, transparent);
+  color: var(--ds-good);
+  border: var(--ds-border-w) solid color-mix(in srgb, var(--ds-good) 35%, transparent);
+}
+
+.kmapDiffModerate {
+  background: color-mix(in srgb, #d97706 14%, transparent);
+  color: #b45309;
+  border: var(--ds-border-w) solid color-mix(in srgb, #d97706 35%, transparent);
+}
+
+.kmapDiffDifficult {
+  background: color-mix(in srgb, var(--ds-bad) 12%, transparent);
+  color: var(--ds-bad);
+  border: var(--ds-border-w) solid color-mix(in srgb, var(--ds-bad) 32%, transparent);
+}
+
+.kmapGroupExplainBox {
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  border: var(--ds-border-w) solid var(--ds-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  color: var(--ds-ink-2);
+  line-height: 1.5;
+}
+
+.kmapTrapExplainBox {
+  background: var(--ds-bad-soft);
+  border-color: color-mix(in srgb, var(--ds-bad) 35%, transparent);
+  color: var(--ds-ink);
+}
+
+.kmapStepList {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.84rem;
+  color: var(--ds-ink-2);
+  line-height: 1.52;
+}
+
 @media (max-width: 860px) {
   .examplesGrid,
   .gateRefGrid,
