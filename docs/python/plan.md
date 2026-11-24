@@ -5,7 +5,7 @@
 | Page | `/python/main` (`pages/python/main.tsx`) |
 | Branch | `python` (one commit per step; agents never push) |
 | Written | 2026-11-23, from `README.md`, `CLAUDE.md` and `docs/agent-workflow.md`; the network policy and security part were added the same day. The other docs and the code were **not** read; step S0 reads what it needs |
-| Status | In progress. Q1 and Q3–Q7 answered on 2026-11-24. Next: S0, then Q8, then S1, S2, S6, S3 |
+| Status | In progress. Q1 and Q3–Q7 answered, S0 done (2026-11-24). Next: owner answers Q8, then S1, S2, S6, S3 |
 
 This plan replaces an earlier draft that was written without access to the repo. Where the two differ, this one is right.
 
@@ -80,7 +80,7 @@ Ask before the named step; do not guess.
 
 | Step | What | Status |
 |---|---|---|
-| S0 | Survey of the repo parts this tool touches | Not started |
+| S0 | Survey of the repo parts this tool touches | Done (`notes-S0.md`) |
 | S1 | Isolation and network policy spike: service worker, COOP/COEP, CSP | Not started |
 | S2 | Pyodide self-hosting and boot spike | Not started |
 | S6 | Monaco and xterm self-hosting spike | Not started |
