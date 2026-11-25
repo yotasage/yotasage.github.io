@@ -106,7 +106,7 @@ Ask before the named step; do not guess.
 | P5a | Packages: install engine | Done (`notes-P5a.md`) |
 | P5b | Packages: manifest, wheels, restore | Done (`notes-P5b.md`) |
 | P6 | Packages: page | Done (Packages tab, W6, `ui-packages-checks.mjs`) |
-| S4 | Display transport spike | Not started |
+| S4 | Display transport spike | Done (`notes-S4.md`) |
 | P7, P8 | Display: engine, page | Not started |
 | P9 to P11 | Widget surface, tkinter subset, turtle (after go/no-go gate post-P8) | Not started |
 | P12 | Polish, visitor docs, CLAUDE.md and README | Not started |
