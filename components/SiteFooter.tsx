@@ -17,6 +17,7 @@ export default function SiteFooter({ fixed = false }: { fixed?: boolean }) {
   const page = getPageMeta(pathname);
   const project = getProjectMeta();
   const commitUrl = page.commit ? `${project.repository}/commit/${page.commit}` : '';
+  const hardExit = pathname.startsWith('/python');
 
   return (
     <>
@@ -48,9 +49,17 @@ export default function SiteFooter({ fixed = false }: { fixed?: boolean }) {
               <span>{page.kind === 'tool' ? t('footer.citeTool') : t('footer.citePage')}</span>
             </button>
             <span className={styles.dot} aria-hidden="true">·</span>
-            <Link href="/references">{t('footer.references')}</Link>
+            {hardExit ? (
+              <a href="/references">{t('footer.references')}</a>
+            ) : (
+              <Link href="/references">{t('footer.references')}</Link>
+            )}
             <span className={styles.dot} aria-hidden="true">·</span>
-            <Link href="/licenses">{t('footer.licenses')}</Link>
+            {hardExit ? (
+              <a href="/licenses">{t('footer.licenses')}</a>
+            ) : (
+              <Link href="/licenses">{t('footer.licenses')}</Link>
+            )}
             <span className={styles.dot} aria-hidden="true">·</span>
             {/* A new tab, so the state of the tool on the page is not lost. */}
             <a href="https://github.com/yotasage/yotasage.github.io" target="_blank" rel="noopener noreferrer">

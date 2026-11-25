@@ -45,9 +45,10 @@ yarn-error.log*
 # Self-hosted site fonts (Inter, JetBrains Mono), copied from node_modules on install
 /public/fonts/
 
-# Self-hosted Pyodide runtime and curated wheels, copied/downloaded on install
+# Self-hosted Pyodide runtime, curated wheels, and xterm CSS, copied/downloaded on install
 /public/pyodide/
 /public/python/rt/
+/public/python/xterm.css
 
 # Licence list, generated from node_modules on install
 /lib/generated/

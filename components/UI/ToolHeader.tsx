@@ -20,6 +20,7 @@ export interface WorkspaceTab<T extends string = string> {
 export interface ToolHeaderProps<T extends string = string> {
   title: string;
   isHome?: boolean;
+  hardHomeLink?: boolean;
   brandIcon?: React.ReactNode;
   workspaces?: readonly WorkspaceTab<T>[];
   activeWorkspace?: T;
@@ -128,6 +129,7 @@ const EXPERIENCE_MODES: readonly ExperienceMode[] = ['quick', 'standard', 'teach
 export default function ToolHeader<T extends string = string>({
   title,
   isHome = false,
+  hardHomeLink = false,
   brandIcon,
   workspaces,
   activeWorkspace,
@@ -177,10 +179,17 @@ export default function ToolHeader<T extends string = string>({
             )
           ) : (
             <>
-              <Link href="/" className={styles.homePill} aria-label={t('header.homeAria')}>
-                <HomeIcon width={14} height={15} color="currentColor" />
-                <span className={styles.homeLabel}>{t('common.tools')}</span>
-              </Link>
+              {hardHomeLink ? (
+                <a href="/" className={styles.homePill} aria-label={t('header.homeAria')}>
+                  <HomeIcon width={14} height={15} color="currentColor" />
+                  <span className={styles.homeLabel}>{t('common.tools')}</span>
+                </a>
+              ) : (
+                <Link href="/" className={styles.homePill} aria-label={t('header.homeAria')}>
+                  <HomeIcon width={14} height={15} color="currentColor" />
+                  <span className={styles.homeLabel}>{t('common.tools')}</span>
+                </Link>
+              )}
               <span className={styles.separator} aria-hidden="true">/</span>
             </>
           )}

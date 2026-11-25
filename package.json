@@ -10,7 +10,7 @@
     "generate:meta": "node scripts/generate-page-meta.mjs",
     "build:export": "node scripts/build-export.mjs",
     "verify": "npm run typecheck && npm run check:repo && npm run build:export",
-    "postinstall": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-pdf-wasm-assets.mjs && node scripts/copy-3d-assets.mjs && node scripts/copy-qr-assets.mjs && node scripts/copy-monaco-assets.mjs && node scripts/copy-fonts.mjs && node scripts/copy-flags.mjs && node scripts/copy-pyodide-assets.mjs && node scripts/collect-licenses.mjs && node scripts/generate-sitemap.mjs && node scripts/generate-page-meta.mjs"
+    "postinstall": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-pdf-wasm-assets.mjs && node scripts/copy-3d-assets.mjs && node scripts/copy-qr-assets.mjs && node scripts/copy-monaco-assets.mjs && node scripts/copy-fonts.mjs && node scripts/copy-flags.mjs && node scripts/copy-pyodide-assets.mjs && node scripts/copy-xterm-assets.mjs && node scripts/collect-licenses.mjs && node scripts/generate-sitemap.mjs && node scripts/generate-page-meta.mjs"
   },
   "dependencies": {
     "@cantoo/pdf-lib": "^2.11.1",
@@ -27,6 +27,9 @@
     "@types/katex": "^0.16.8",
     "@types/react-dom": "^19.3.0",
     "@wasmedia/wghostscript": "^0.2.0",
+    "@xterm/addon-fit": "0.11.0",
+    "@xterm/addon-web-links": "0.12.0",
+    "@xterm/xterm": "6.0.0",
     "altiumts": "0.0.95",
     "clipper2-ts": "2.0.1",
     "fflate": "^0.8.3",

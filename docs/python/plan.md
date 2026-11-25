@@ -5,7 +5,7 @@
 | Page | `/python/main` (`pages/python/main.tsx`) |
 | Branch | `python` (one commit per step; agents never push) |
 | Written | 2026-11-23, from `README.md`, `CLAUDE.md` and `docs/agent-workflow.md`; the network policy and security part were added the same day. The other docs and the code were **not** read; step S0 reads what it needs |
-| Status | In progress. Q1–Q8 resolved; S0–S3, S6, and P1 (Engine + 3-browser harness) complete (2026-11-25). Next: P2 (Page) |
+| Status | In progress. Q1–Q8 resolved; S0–S3, S6, and P1 complete. Running P2 (P2a page & UI components, then P2b 3-browser UI harness) |
 
 This plan replaces an earlier draft that was written without access to the repo. Where the two differ, this one is right.
 
@@ -86,7 +86,7 @@ Ask before the named step; do not guess.
 | S6 | Monaco and xterm self-hosting spike | Done (`notes-S6.md`) |
 | S3 | Blocking input, Stop, asyncio spike | Done (`notes-S3.md`) |
 | P1 | Engine: worker, run/stop, stdio, REPL, network policy | Done (`notes-P1.md`) |
-| P2 | Page: layout, Monaco, terminal, card, i18n, network settings, warnings | Not started |
+| P2 | Page: layout, Monaco, terminal, card, i18n, network settings, warnings | In progress (P2a) |
 | S5 | Persistence spike | Not started |
 | P3 | Files | Not started |
 | P4 | Plots and viewers. **v1 ends here: the owner tries it** | Not started |

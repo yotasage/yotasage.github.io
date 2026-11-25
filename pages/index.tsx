@@ -29,6 +29,7 @@ interface SiteTool {
   searchKeywords?: readonly string[];
   subTools?: readonly PdfTool[];
   wide?: boolean;
+  hardNavigation?: boolean;
 }
 
 const ALL_PDF_TOOLS: readonly PdfTool[] = TOOL_CATEGORIES.flatMap((category) => category.tools);
@@ -245,6 +246,36 @@ const TOOLS: readonly SiteTool[] = [
     searchKeywords: ['scratchpad', 'editor', 'monaco', 'diff', 'compare', 'regex', 'notes', 'csv', 'tex', 'latex', 'code', 'count', 'replace', 'teksteditor', 'notatblokk'],
   },
   {
+    id: 'python',
+    href: '/python/main',
+    group: 'utilities',
+    titleKey: 'python.cardTitle',
+    categoryKey: 'python.cardCategory',
+    descKey: 'python.cardDesc',
+    icon: 'python',
+    accentLight: '#2563eb',
+    accentDark: '#60a5fa',
+    hardNavigation: true,
+    tags: ['Python 3.14 (Pyodide)', 'NumPy · SciPy · pandas', 'Console + REPL', 'Network off by default'],
+    searchKeywords: [
+      'python',
+      'pyodide',
+      'wasm',
+      'repl',
+      'monaco',
+      'numpy',
+      'scipy',
+      'pandas',
+      'sympy',
+      'matplotlib',
+      'pillow',
+      'code',
+      'script',
+      'playground',
+      'lekeplass',
+    ],
+  },
+  {
     id: 'textcase',
     href: '/text-case/main',
     group: 'utilities',
@@ -353,12 +384,21 @@ function ToolCard({ tool, query }: ToolCardProps) {
 
       <h3 className={styles.cardTitle}>
         {/* Its ::after covers the card, so the whole card is a link. Sub-tool links sit above it. */}
-        <Link href={tool.href} className={styles.cardLink}>
-          <span>{title}</span>
-          <span className={styles.arrow} aria-hidden="true">
-            &rarr;
-          </span>
-        </Link>
+        {tool.hardNavigation ? (
+          <a href={tool.href} className={styles.cardLink}>
+            <span>{title}</span>
+            <span className={styles.arrow} aria-hidden="true">
+              &rarr;
+            </span>
+          </a>
+        ) : (
+          <Link href={tool.href} className={styles.cardLink}>
+            <span>{title}</span>
+            <span className={styles.arrow} aria-hidden="true">
+              &rarr;
+            </span>
+          </Link>
+        )}
       </h3>
 
       <p className={styles.cardDesc}>{description}</p>

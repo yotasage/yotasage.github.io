@@ -1,0 +1,333 @@
+/* Trusted security & network modal dialogs for Python Playground (outside program output). */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(15, 23, 42, 0.58);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.dialog {
+  width: 100%;
+  max-width: 540px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  border-radius: var(--ds-radius-card);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-elevated);
+  color: var(--ds-ink);
+  box-shadow: var(--ds-shadow-elev);
+  padding: 20px;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.dialogWide {
+  max-width: 620px;
+}
+
+.dialogDanger {
+  border: 2px solid var(--ds-bad);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.closeBtn {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  color: var(--ds-ink);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.paragraph {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ds-ink);
+}
+
+.mutedNote {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ds-ink-2);
+}
+
+.calloutWarn {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--ds-radius-sm);
+  border: 1px solid var(--ds-warn);
+  background: var(--ds-warn-soft);
+  color: var(--ds-ink);
+  font-size: 13px;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.calloutDanger {
+  margin: 0;
+  padding: 12px;
+  border-radius: var(--ds-radius-sm);
+  border: 1px solid var(--ds-bad);
+  background: var(--ds-bad-soft);
+  color: var(--ds-ink);
+  font-size: 13px;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.calloutTitle {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.codeBox {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  font-family: var(--ds-font-mono);
+  font-size: 13px;
+  word-break: break-all;
+  color: var(--ds-ink);
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.checkboxRow input {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.fieldset {
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.legend {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ds-ink-2);
+  margin-bottom: 4px;
+}
+
+.radioCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  cursor: pointer;
+}
+
+.radioCard:hover {
+  background: var(--ds-well);
+}
+
+.radioCardDanger {
+  border-color: var(--ds-bad);
+}
+
+.radioCard input {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.radioTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ds-ink);
+}
+
+.radioDesc {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ds-ink-2);
+  margin-top: 2px;
+}
+
+.hostsBox {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+}
+
+.hostsLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ds-ink-2);
+}
+
+.hostsTextarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 14px;
+  resize: vertical;
+}
+
+.errorText {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ds-bad);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.primaryBtn {
+  padding: 8px 16px;
+  border-radius: var(--ds-radius-sm);
+  border: none;
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primaryBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.secondaryBtn {
+  padding: 8px 14px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.secondaryBtn:hover {
+  background: var(--ds-well);
+}
+
+.dangerBtn {
+  padding: 8px 16px;
+  border-radius: var(--ds-radius-sm);
+  border: none;
+  background: var(--ds-bad);
+  color: #ffffff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dangerBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.dangerOutlineBtn {
+  align-self: flex-start;
+  padding: 7px 14px;
+  border-radius: var(--ds-radius-sm);
+  border: 1px solid var(--ds-bad);
+  background: var(--ds-bad-soft);
+  color: var(--ds-bad);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.divider {
+  border: none;
+  border-top: 1px solid var(--ds-border);
+  margin: 4px 0;
+}
+
+.storageSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.clearConfirmBox {
+  padding: 10px 12px;
+  border-radius: var(--ds-radius-sm);
+  border: 1px solid var(--ds-bad);
+  background: var(--ds-bad-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

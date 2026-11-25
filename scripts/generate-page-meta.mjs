@@ -55,6 +55,7 @@ const CANONICAL_TITLES = {
   '/integral/main': 'Integral solver',
   '/derivative/main': 'Derivative solver',
   '/boolean/main': 'Boolean simplifier',
+  '/python/main': 'Python playground',
   '/python/harness': 'Python engine harness',
 };
 

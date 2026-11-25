@@ -1,0 +1,775 @@
+// Main Python Playground workspace controller (/python/main).
+// Coordinates SW registration, W1/W4/W7/W8/W9 security gates, PythonWorkerClient lifecycle,
+// Monaco editor, xterm.js Console + REPL, traceback line jumps, and responsive desktop/phone layout.
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+import { OFF_NETWORK_POLICY, parseNetworkPolicyFromSearch } from '../../lib/python/network';
+import type { NetworkPolicy } from '../../lib/python/network';
+import type { CapabilityTier, PythonErrorInfo, SecurityStatusInfo } from '../../lib/python/protocol';
+import { detectBrowserCapabilities, registerPythonServiceWorker } from '../../lib/python/tiers';
+import {
+  PythonClientState,
+  PythonWorkerClient,
+  ReadyInfo,
+  ReplCompletionsResult,
+  ReplPushResult,
+} from '../../lib/python/workerClient';
+import { useI18n } from '../../lib/ui/i18n';
+import { useDesignSystemPage, useTheme } from '../../lib/ui/theme';
+import styles from '../../styles/Python.module.css';
+import PillTabs, { PillTabItem } from '../UI/PillTabs';
+import ToolHeader from '../UI/ToolHeader';
+import NetworkBanner from './NetworkBanner';
+import NetworkDialog from './NetworkDialog';
+import PythonEditor, {
+  DEFAULT_PYTHON_CODE,
+  EditorErrorMarker,
+  PythonEditorHandle,
+} from './PythonEditor';
+import PythonTerminal, { PythonTerminalHandle, TerminalMode } from './PythonTerminal';
+import {
+  W1_ACK_KEY,
+  W1FirstVisitDialog,
+  W4OnLoadDialog,
+  W7FailClosedDialog,
+  W8ExternalLinkDialog,
+} from './SecurityDialogs';
+
+type MobilePane = 'editor' | 'output';
+
+interface TracebackJump {
+  readonly line: number;
+  readonly fn: string;
+}
+
+function extractMainPyJumps(error: PythonErrorInfo | undefined): TracebackJump[] {
+  if (!error) return [];
+  const seen = new Set<number>();
+  const jumps: TracebackJump[] = [];
+  for (const frame of error.frames) {
+    const file = frame.file.replace(/\\/g, '/');
+    if (file === '/workspace/main.py' || file === 'main.py' || file.endsWith('/main.py')) {
+      if (frame.line > 0 && !seen.has(frame.line)) {
+        seen.add(frame.line);
+        jumps.push({ line: frame.line, fn: frame.fn || '<module>' });
+      }
+    }
+  }
+  if (jumps.length === 0 && error.formatted) {
+    const re = /File "(?:\/workspace\/)?main\.py", line (\d+)/g;
+    for (const match of error.formatted.matchAll(re)) {
+      const line = Number(match[1]);
+      if (Number.isInteger(line) && line > 0 && !seen.has(line)) {
+        seen.add(line);
+        jumps.push({ line, fn: '<module>' });
+      }
+    }
+  }
+  return jumps;
+}
+
+export default function PythonPlayground() {
+  useDesignSystemPage('#2563eb', '#60a5fa');
+  const { theme, mounted: themeMounted } = useTheme();
+  const { t } = useI18n();
+  const resolvedTheme = themeMounted ? theme : 'light';
+
+  const editorRef = useRef<PythonEditorHandle | null>(null);
+  const consoleRef = useRef<PythonTerminalHandle | null>(null);
+  const replRef = useRef<PythonTerminalHandle | null>(null);
+  const clientRef = useRef<PythonWorkerClient | null>(null);
+  const outputTabRef = useRef<TerminalMode>('console');
+
+  // Hydration-safe client state
+  const [hydrated, setHydrated] = useState(false);
+  const [policy, setPolicy] = useState<NetworkPolicy>(OFF_NETWORK_POLICY);
+  const [w1Open, setW1Open] = useState(false);
+  const [w4LoadApproved, setW4LoadApproved] = useState(false);
+  const [w7Open, setW7Open] = useState(false);
+  const [allowUnconfirmed, setAllowUnconfirmed] = useState(false);
+  const [pendingExternalUrl, setPendingExternalUrl] = useState<string | null>(null);
+  const [networkDialogOpen, setNetworkDialogOpen] = useState(false);
+
+  // Runtime state
+  const [clientState, setClientState] = useState<PythonClientState>('idle');
+  const [statusDetail, setStatusDetail] = useState<string>('');
+  const [readyInfo, setReadyInfo] = useState<ReadyInfo | null>(null);
+  const [securityStatus, setSecurityStatus] = useState<SecurityStatusInfo | null>(null);
+  const [detectedTier, setDetectedTier] = useState<CapabilityTier>(1);
+  const [awaitingStdin, setAwaitingStdin] = useState(false);
+  const [crashReason, setCrashReason] = useState<string | null>(null);
+  const [lastRunSummary, setLastRunSummary] = useState<string>('');
+  const [tracebackJumps, setTracebackJumps] = useState<readonly TracebackJump[]>([]);
+
+  // Panes & responsive state
+  const [outputTab, setOutputTab] = useState<TerminalMode>('console');
+  const [mobilePane, setMobilePane] = useState<MobilePane>('editor');
+  const [isNarrow, setIsNarrow] = useState(false);
+  const [swSettled, setSwSettled] = useState(false);
+
+  outputTabRef.current = outputTab;
+
+  // 1. Parse URL policy, W1 acknowledgement, viewport width, and register coi-sw.js on client mount.
+  useEffect(() => {
+    const parsed = parseNetworkPolicyFromSearch(window.location.search);
+    setPolicy(parsed);
+
+    let needsW1 = true;
+    try {
+      needsW1 = window.localStorage.getItem(W1_ACK_KEY) !== '1';
+    } catch {
+      needsW1 = true;
+    }
+    setW1Open(needsW1);
+    setW4LoadApproved(parsed.mode === 'off');
+
+    const caps = detectBrowserCapabilities();
+    setDetectedTier(caps.tier);
+
+    const mq = window.matchMedia('(max-width: 899px)');
+    const syncNarrow = () => setIsNarrow(mq.matches);
+    syncNarrow();
+    mq.addEventListener('change', syncNarrow);
+
+    setHydrated(true);
+
+    let cancelled = false;
+    // Register coi-sw.js so COOP/COEP + CSP headers are in place; never boots Pyodide by itself.
+    void registerPythonServiceWorker({ reloadIfNeeded: true }).then((res) => {
+      if (cancelled) return;
+      if (res.status === 'reloading') return;
+      setDetectedTier(detectBrowserCapabilities().tier);
+      setSwSettled(true);
+    });
+
+    return () => {
+      cancelled = true;
+      mq.removeEventListener('change', syncNarrow);
+    };
+  }, []);
+
+  const canBootWorker =
+    hydrated && swSettled && !w1Open && (policy.mode === 'off' || w4LoadApproved);
+
+  // 2. Instantiate and boot PythonWorkerClient strictly AFTER W1 & W4 approvals!
+  useEffect(() => {
+    if (!canBootWorker) return;
+
+    const client = new PythonWorkerClient({ networkMode: policy.mode });
+    clientRef.current = client;
+
+    const unsub = client.subscribe({
+      state: (next, detail) => {
+        setClientState(next);
+        setStatusDetail(detail ?? '');
+        if (next !== 'running' && next !== 'stopping') {
+          setAwaitingStdin(false);
+        }
+      },
+      status: (_phase, message) => {
+        setStatusDetail(message);
+      },
+      security: (status) => {
+        setSecurityStatus(status);
+        if (policy.mode === 'off' && !status.cspConfirmed) {
+          setW7Open(true);
+        }
+      },
+      stdout: (text) => {
+        if (outputTabRef.current === 'repl' && client.state !== 'running' && client.state !== 'stopping') {
+          replRef.current?.writeStdout(text);
+        } else {
+          consoleRef.current?.writeStdout(text);
+        }
+      },
+      stderr: (text) => {
+        if (outputTabRef.current === 'repl' && client.state !== 'running' && client.state !== 'stopping') {
+          replRef.current?.writeStderr(text);
+        } else {
+          consoleRef.current?.writeStderr(text);
+        }
+      },
+      stdinRequest: () => {
+        setAwaitingStdin(true);
+        setOutputTab('console');
+        setMobilePane('output');
+      },
+      linkRequest: (url) => {
+        setPendingExternalUrl(url);
+      },
+      crash: (reason) => {
+        setCrashReason(reason);
+        setAwaitingStdin(false);
+        consoleRef.current?.writeStderr(`\n[Worker stopped: ${reason}]\n`);
+      },
+    });
+
+    void client
+      .start()
+      .then((info) => {
+        setReadyInfo(info);
+        setDetectedTier(info.tier);
+        setCrashReason(null);
+      })
+      .catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        setCrashReason(msg);
+      });
+
+    return () => {
+      unsub();
+      client.dispose();
+      clientRef.current = null;
+    };
+  }, [canBootWorker, policy.mode]);
+
+  const handleAcknowledgeW1 = useCallback(() => {
+    try {
+      window.localStorage.setItem(W1_ACK_KEY, '1');
+    } catch {
+      // Private windows with blocked storage still proceed for this session.
+    }
+    setW1Open(false);
+  }, []);
+
+  const handleReloadOff = useCallback(() => {
+    window.location.assign('/python/main');
+  }, []);
+
+  const handleReloadRepair = useCallback(() => {
+    try {
+      window.sessionStorage.removeItem('python:coi-reload-attempted');
+    } catch {
+      // Ignore storage error.
+    }
+    window.location.reload();
+  }, []);
+
+  const handleConfirmExternalLink = useCallback((url: string) => {
+    setPendingExternalUrl(null);
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }, []);
+
+  const handleRun = useCallback(async () => {
+    const client = clientRef.current;
+    if (!client) return;
+    if (client.state === 'running' || client.state === 'stopping' || client.state === 'booting') {
+      return;
+    }
+    if (client.isFailClosedBlocked && !allowUnconfirmed) {
+      setW7Open(true);
+      return;
+    }
+
+    const code = editorRef.current?.getValue() ?? DEFAULT_PYTHON_CODE;
+    editorRef.current?.setErrorMarkers([]);
+    setTracebackJumps([]);
+    setLastRunSummary('');
+    setCrashReason(null);
+    setOutputTab('console');
+    if (isNarrow) {
+      setMobilePane('output');
+    }
+
+    try {
+      const res = await client.run(code, {
+        filename: '/workspace/main.py',
+        allowUnconfirmed,
+      });
+      setAwaitingStdin(false);
+
+      if (res.forceStopped) {
+        setLastRunSummary(t('python.runFinishedForceStopped'));
+        consoleRef.current?.writeSystem(t('python.runFinishedForceStopped'));
+      } else if (res.interrupted) {
+        setLastRunSummary(t('python.runFinishedInterrupted', { ms: Math.round(res.durationMs) }));
+      } else if (res.ok) {
+        setLastRunSummary(t('python.runFinishedOk', { ms: Math.round(res.durationMs) }));
+      } else {
+        setLastRunSummary(
+          t('python.runFinishedError', { code: res.exitCode, ms: Math.round(res.durationMs) }),
+        );
+      }
+
+      if (res.error) {
+        const jumps = extractMainPyJumps(res.error);
+        setTracebackJumps(jumps);
+        if (jumps.length > 0) {
+          const markers: EditorErrorMarker[] = jumps.map((j) => ({
+            line: j.line,
+            message: `${res.error!.type}: ${res.error!.message}`,
+          }));
+          editorRef.current?.setErrorMarkers(markers);
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      consoleRef.current?.writeStderr(`${msg}\n`);
+    }
+  }, [allowUnconfirmed, isNarrow, t]);
+
+  const handleStop = useCallback(() => {
+    void clientRef.current?.stop();
+  }, []);
+
+  const handleForceStop = useCallback(() => {
+    void clientRef.current?.forceStop().then(() => {
+      setReadyInfo(clientRef.current?.readyInfo ?? null);
+      setCrashReason(null);
+    });
+  }, []);
+
+  const handleRestart = useCallback(() => {
+    const client = clientRef.current;
+    if (!client) return;
+    setCrashReason(null);
+    setTracebackJumps([]);
+    editorRef.current?.setErrorMarkers([]);
+    void client
+      .restart()
+      .then((info) => {
+        setReadyInfo(info);
+        setDetectedTier(info.tier);
+      })
+      .catch((err) => {
+        setCrashReason(err instanceof Error ? err.message : String(err));
+      });
+  }, []);
+
+  const handleSendStdin = useCallback((line: string) => {
+    const ok = clientRef.current?.sendStdin(line) ?? false;
+    if (ok) setAwaitingStdin(false);
+  }, []);
+
+  const handleSendStdinEof = useCallback(() => {
+    const ok = clientRef.current?.sendStdinEof() ?? false;
+    if (ok) setAwaitingStdin(false);
+  }, []);
+
+  const handleReplPush = useCallback(
+    async (line: string): Promise<ReplPushResult> => {
+      const client = clientRef.current;
+      if (!client) throw new Error('Python worker is not ready');
+      if (client.isFailClosedBlocked && !allowUnconfirmed) {
+        setW7Open(true);
+        throw new Error('Execution blocked until network block is confirmed.');
+      }
+      return client.replPush(line, { allowUnconfirmed });
+    },
+    [allowUnconfirmed],
+  );
+
+  const handleReplComplete = useCallback(async (source: string): Promise<ReplCompletionsResult> => {
+    const client = clientRef.current;
+    if (!client) return { completions: [], start: 0 };
+    return client.replComplete(source);
+  }, []);
+
+  const handleJumpToLine = useCallback((line: number) => {
+    if (isNarrow) {
+      setMobilePane('editor');
+    }
+    requestAnimationFrame(() => {
+      editorRef.current?.jumpToLine(line);
+    });
+  }, [isNarrow]);
+
+  const activeTier = readyInfo?.tier ?? detectedTier;
+  const isRunning = clientState === 'running' || clientState === 'stopping';
+  const isBlockedGate =
+    policy.mode === 'off' &&
+    securityStatus !== null &&
+    !securityStatus.cspConfirmed &&
+    !allowUnconfirmed;
+
+  const canRun =
+    canBootWorker &&
+    (clientState === 'ready' || (clientState === 'blocked' && allowUnconfirmed)) &&
+    !isBlockedGate;
+
+  const networkBtnLabel =
+    policy.mode === 'off'
+      ? t('python.networkOffShort')
+      : policy.mode === 'pkg'
+        ? t('python.networkPkgShort')
+        : policy.mode === 'hosts'
+          ? t('python.networkHostsShort', { count: policy.hosts.length })
+          : t('python.networkAllShort');
+
+  const statusLabel = (() => {
+    if (policy.mode !== 'off' && !w4LoadApproved) return t('python.statusWaitingApproval');
+    switch (clientState) {
+      case 'booting':
+        return statusDetail || t('python.statusBooting');
+      case 'ready':
+        return readyInfo ? `${t('python.statusReady')} · Py ${readyInfo.pythonVersion}` : t('python.statusReady');
+      case 'running':
+        return t('python.statusRunning');
+      case 'stopping':
+        return t('python.statusStopping');
+      case 'crashed':
+        return t('python.statusCrashed');
+      case 'blocked':
+        return allowUnconfirmed ? t('python.statusReady') : t('python.statusBlocked');
+      default:
+        return t('python.statusIdle');
+    }
+  })();
+
+  const tierBadge =
+    activeTier === 1
+      ? t('python.tier1Badge')
+      : activeTier === 2
+        ? t('python.tier2Badge')
+        : t('python.tier3Badge');
+
+  const tierDesc =
+    activeTier === 1
+      ? t('python.tier1Desc')
+      : activeTier === 2
+        ? t('python.tier2Desc')
+        : t('python.tier3Desc');
+
+  const outputTabs = useMemo<readonly PillTabItem<TerminalMode>[]>(
+    () => [
+      { id: 'console', label: t('python.tabConsole') },
+      { id: 'repl', label: t('python.tabRepl'), disabled: isRunning },
+    ],
+    [t, isRunning],
+  );
+
+  const mobileTabs = useMemo<readonly PillTabItem<MobilePane>[]>(
+    () => [
+      { id: 'editor', label: t('python.tabEditor') },
+      {
+        id: 'output',
+        label: outputTab === 'repl' ? t('python.tabRepl') : t('python.tabConsole'),
+      },
+    ],
+    [t, outputTab],
+  );
+
+  const showEditorPane = !isNarrow || mobilePane === 'editor';
+  const showOutputPane = !isNarrow || mobilePane === 'output';
+
+  return (
+    <div className={styles.page} data-ds="v2">
+      <ToolHeader
+        title={t('python.title')}
+        hardHomeLink
+        allowWideView
+        actions={
+          <button
+            type="button"
+            className={[
+              styles.headerNetBtn,
+              policy.mode === 'all'
+                ? styles.headerNetBtnDanger
+                : policy.mode !== 'off'
+                  ? styles.headerNetBtnWarn
+                  : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            onClick={() => setNetworkDialogOpen(true)}
+            data-testid="python-network-btn"
+          >
+            <span
+              className={[
+                styles.netDot,
+                policy.mode === 'off'
+                  ? styles.netDotOff
+                  : policy.mode === 'all'
+                    ? styles.netDotDanger
+                    : styles.netDotWarn,
+              ].join(' ')}
+              aria-hidden="true"
+            />
+            <span>{networkBtnLabel}</span>
+          </button>
+        }
+      />
+
+      <NetworkBanner policy={policy} onReloadOff={handleReloadOff} />
+
+      <main className={styles.main}>
+        {/* W2 honest status note (collapsible so workspace stays front-and-center) */}
+        <details className={styles.statusNote} data-testid="python-w2-note">
+          <summary className={styles.statusNoteSummary}>
+            <span className={styles.statusNoteLead}>{t('python.w2Summary')}</span>
+            <span className={styles.statusNoteBadge}>{tierBadge}</span>
+          </summary>
+          <div className={styles.statusNoteBody}>
+            <p>
+              <strong>{t('python.w2WorksLabel')}</strong> {t('python.w2Works')}
+            </p>
+            <p>
+              <strong>{t('python.w2VerifiedLabel')}</strong> {t('python.w2Verified')}
+            </p>
+            <p>
+              <strong>{t('python.w2NotYetLabel')}</strong> {t('python.w2NotYet')}
+            </p>
+            <p>
+              <strong>{t('python.w2MobileLabel')}</strong> {t('python.w2MobileNote')}
+            </p>
+            <p className={styles.statusNoteTier}>{tierDesc}</p>
+            <p className={styles.statusNotePromise}>{t('python.w2Promise')}</p>
+          </div>
+        </details>
+
+        {/* Action toolbar */}
+        <div className={styles.toolbar} role="toolbar" aria-label={t('python.title')}>
+          <div className={styles.toolbarLeft}>
+            <button
+              type="button"
+              className={styles.runBtn}
+              disabled={!canRun}
+              onClick={() => {
+                void handleRun();
+              }}
+              title={t('python.runTitle')}
+              data-testid="python-run-btn"
+            >
+              &#9654; {t('python.run')}
+            </button>
+
+            {isRunning && (
+              <>
+                <button
+                  type="button"
+                  className={styles.stopBtn}
+                  onClick={handleStop}
+                  title={t('python.stopTitle')}
+                  data-testid="python-stop-btn"
+                >
+                  &#9632; {activeTier === 1 && clientState === 'running' ? t('python.stop') : t('python.forceStop')}
+                </button>
+                {activeTier === 1 && clientState === 'running' && (
+                  <button
+                    type="button"
+                    className={styles.forceStopBtn}
+                    onClick={handleForceStop}
+                    title={t('python.forceStopTitle')}
+                    data-testid="python-force-stop-btn"
+                  >
+                    {t('python.forceStop')}
+                  </button>
+                )}
+              </>
+            )}
+
+            {(clientState === 'crashed' || clientState === 'ready') && (
+              <button
+                type="button"
+                className={clientState === 'crashed' ? styles.restartBtnHighlight : styles.secondaryBtn}
+                onClick={handleRestart}
+                title={t('python.restartTitle')}
+                data-testid="python-restart-btn"
+              >
+                {t('python.restart')}
+              </button>
+            )}
+
+            {isBlockedGate && (
+              <button
+                type="button"
+                className={styles.dangerOutlineBtn}
+                onClick={() => setW7Open(true)}
+                data-testid="python-open-w7-btn"
+              >
+                {t('python.w7Title')}
+              </button>
+            )}
+          </div>
+
+          <div className={styles.toolbarRight}>
+            {lastRunSummary && (
+              <span className={styles.runSummary} data-testid="python-run-summary">
+                {lastRunSummary}
+              </span>
+            )}
+            <span
+              className={[
+                styles.statusPill,
+                clientState === 'running' || clientState === 'stopping'
+                  ? styles.statusPillRunning
+                  : clientState === 'crashed' || isBlockedGate
+                    ? styles.statusPillBad
+                    : clientState === 'ready'
+                      ? styles.statusPillGood
+                      : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              data-testid="python-status-pill"
+            >
+              {statusLabel}
+            </span>
+            <span className={styles.tierPill} title={tierDesc} data-testid="python-tier-pill">
+              {tierBadge}
+            </span>
+          </div>
+        </div>
+
+        {/* Crash notice bar (outside program output) */}
+        {crashReason && clientState === 'crashed' && (
+          <div className={styles.crashBar} role="alert" data-testid="python-crash-banner">
+            <span>{t('python.crashBanner', { reason: crashReason })}</span>
+            <button type="button" className={styles.primaryBtnSm} onClick={handleRestart}>
+              {t('python.restart')}
+            </button>
+          </div>
+        )}
+
+        {/* Phone pane switcher */}
+        {isNarrow && (
+          <div className={styles.mobileTabsRow}>
+            <PillTabs
+              items={mobileTabs}
+              value={mobilePane}
+              onChange={(next) => {
+                setMobilePane(next);
+                requestAnimationFrame(() => {
+                  if (next === 'editor') editorRef.current?.layout();
+                  else {
+                    consoleRef.current?.fit();
+                    replRef.current?.fit();
+                  }
+                });
+              }}
+              ariaLabel={t('python.paneNavAria')}
+              size="sm"
+            />
+          </div>
+        )}
+
+        {/* Main 2-column workspace */}
+        <div className={styles.workspace}>
+          {/* Left: Monaco Editor */}
+          <section
+            className={styles.paneCard}
+            style={{ display: showEditorPane ? 'flex' : 'none' }}
+            aria-label={t('python.tabEditor')}
+          >
+            <div className={styles.paneHeader}>
+              <span className={styles.fileChip}>{t('python.editorFile')}</span>
+              <span className={styles.shortcutHint}>Ctrl+Enter</span>
+            </div>
+            <PythonEditor
+              ref={editorRef}
+              initialCode={DEFAULT_PYTHON_CODE}
+              theme={resolvedTheme}
+              onRun={() => {
+                void handleRun();
+              }}
+            />
+          </section>
+
+          {/* Right: Program output container (strictly framed & labelled per security.md §4) */}
+          <section
+            className={[styles.paneCard, styles.programOutputFrame].join(' ')}
+            style={{ display: showOutputPane ? 'flex' : 'none' }}
+            aria-label={t('python.programOutput')}
+            data-testid="python-program-output-frame"
+          >
+            <div className={styles.paneHeader}>
+              <div className={styles.paneHeaderLeft}>
+                <span className={styles.programOutputLabel} data-testid="python-program-output-label">
+                  {t('python.programOutput')}
+                </span>
+                <PillTabs
+                  items={outputTabs}
+                  value={outputTab}
+                  onChange={(next) => setOutputTab(next)}
+                  ariaLabel={t('python.outputNavAria')}
+                  size="sm"
+                  variant="subtle"
+                />
+              </div>
+            </div>
+
+            {/* Trusted traceback jump strip (pure React text nodes, zero HTML) */}
+            {tracebackJumps.length > 0 && (
+              <div className={styles.tracebackStrip} data-testid="python-traceback-strip">
+                <span className={styles.tracebackLabel}>{t('python.tracebackLabel')}</span>
+                {tracebackJumps.map((j) => (
+                  <button
+                    key={j.line}
+                    type="button"
+                    className={styles.tracebackChip}
+                    onClick={() => handleJumpToLine(j.line)}
+                    data-testid={`python-tb-line-${j.line}`}
+                  >
+                    {t('python.tracebackLine', { line: j.line })}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <PythonTerminal
+              ref={consoleRef}
+              mode="console"
+              visible={showOutputPane && outputTab === 'console'}
+              theme={resolvedTheme}
+              awaitingStdin={awaitingStdin}
+              onStop={handleStop}
+              onSendStdin={handleSendStdin}
+              onSendStdinEof={handleSendStdinEof}
+              onExternalLink={(url) => setPendingExternalUrl(url)}
+            />
+
+            <PythonTerminal
+              ref={replRef}
+              mode="repl"
+              visible={showOutputPane && outputTab === 'repl'}
+              theme={resolvedTheme}
+              replDisabled={isRunning || !readyInfo || isBlockedGate}
+              replBanner={
+                readyInfo
+                  ? t('python.replReadyBanner', { version: readyInfo.pythonVersion })
+                  : undefined
+              }
+              onReplPush={handleReplPush}
+              onReplComplete={handleReplComplete}
+              onExternalLink={(url) => setPendingExternalUrl(url)}
+            />
+          </section>
+        </div>
+      </main>
+
+      {/* Trusted security dialogs — always rendered outside program-output containers */}
+      <W1FirstVisitDialog open={hydrated && w1Open} onAcknowledge={handleAcknowledgeW1} />
+
+      <W4OnLoadDialog
+        open={hydrated && !w1Open && policy.mode !== 'off' && !w4LoadApproved}
+        policy={policy}
+        onContinue={() => setW4LoadApproved(true)}
+        onReloadOff={handleReloadOff}
+      />
+
+      <W7FailClosedDialog
+        open={w7Open}
+        reason={securityStatus?.reason}
+        onReloadRepair={handleReloadRepair}
+        onRunAnyway={() => {
+          setAllowUnconfirmed(true);
+          setW7Open(false);
+        }}
+        onDismiss={() => setW7Open(false)}
+      />
+
+      <W8ExternalLinkDialog
+        url={pendingExternalUrl}
+        onConfirm={handleConfirmExternalLink}
+        onCancel={() => setPendingExternalUrl(null)}
+      />
+
+      <NetworkDialog
+        open={networkDialogOpen}
+        currentPolicy={policy}
+        onClose={() => setNetworkDialogOpen(false)}
+      />
+    </div>
+  );
+}

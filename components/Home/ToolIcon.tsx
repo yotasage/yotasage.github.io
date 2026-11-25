@@ -2,7 +2,7 @@ import React from 'react';
 
 // Icons for the tool cards on the main page, in the style of components/PdfTools/ToolIcon.tsx. Filled shapes use
 // currentColor, which the <svg> sets to the tool's colour.
-export type HomeIconName = 'boolean' | 'calculator' | 'integral' | 'derivative' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
+export type HomeIconName = 'boolean' | 'calculator' | 'integral' | 'derivative' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'python' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
 
 const SAMPLES: [number, number][] = [[6, 24], [12, 12], [18, 12], [24, 24], [30, 36], [36, 36], [42, 24]];
 
@@ -122,6 +122,15 @@ const ICONS: Record<HomeIconName, React.ReactNode> = {
       <circle cx={15} cy={11} r={1.3} fill="currentColor" stroke="none" />
       <path d="M10 22h9M10 28h7M10 34h9" />
       <path d="M29 22h9M29 28h9M29 34h6" opacity={0.75} />
+    </>
+  ),
+  // Python playground: interlocking dual-serpent emblem with terminal eyes.
+  python: (
+    <>
+      <path d="M24 6c-6.6 0-8 2.4-8 6v4h10v2.5H12.5C8.5 18.5 6 21 6 25.5c0 4.3 2.1 7 5.5 7H15v-4.2c0-3.4 2.8-6.3 6.3-6.3h9.2c2.8 0 5-2.2 5-5V12c0-3.6-2.8-6-11.5-6Z" />
+      <path d="M24 42c6.6 0 8-2.4 8-6v-4H22v-2.5h13.5c4 0 6.5-2.5 6.5-7 0-4.3-2.1-7-5.5-7H33v4.2c0 3.4-2.8 6.3-6.3 6.3h-9.2c-2.8 0-5 2.2-5 5V36c0 3.6 2.8 6 11.5 6Z" opacity={0.75} />
+      <circle cx={20} cy={11.5} r={1.8} fill="currentColor" stroke="none" />
+      <circle cx={28} cy={36.5} r={1.8} fill="currentColor" stroke="none" />
     </>
   ),
   textcase: (

@@ -28,6 +28,7 @@
     "components/Notepad/**/*",
     "pages/scratchpad/**/*",
     "lib/python/**/*",
+    "components/Python/**/*",
     "pages/python/**/*",
     "components/Equations/**/*",
     "lib/simsetup/**/*",

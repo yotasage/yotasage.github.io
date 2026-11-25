@@ -4,6 +4,7 @@ One-line map of the Python runtime, isolation/security layer, licence notices, a
 
 ## Asset Pipeline & Licences
 - [scripts/copy-pyodide-assets.mjs](../../scripts/copy-pyodide-assets.mjs): Copies Pyodide core files to `public/pyodide/`, downloads + SHA-256-verifies the curated 7-root wheel closure (`micropip`, `numpy`, `matplotlib`, `pillow`, `scipy`, `pandas`, `sympy`), writes trimmed `pyodide-lock.json`, and syncs `lib/python/rt/*.py` into `public/python/rt/`.
+- [scripts/copy-xterm-assets.mjs](../../scripts/copy-xterm-assets.mjs): Copies `@xterm/xterm/css/xterm.css` into `public/python/xterm.css` (git-ignored) so `/python/main` loads xterm CSS lazily with zero bytes added to other routes.
 - [lib/python/licenses/](../../lib/python/licenses/): Checked-in upstream licence texts (`LICENSE.pyodide-mpl2.txt`, `LICENSE.freetype-ftl.txt`, `LICENSE.humor-sans-ofl.txt`, `LICENSE.matplotlib-notices.txt`, `LICENSE.pillow-native.txt`, `LICENSE.wasm-core-libs.txt`, `LICENSE.scientific-bsd.txt`) collected into `python[]` by [scripts/collect-licenses.mjs](../../scripts/collect-licenses.mjs) and rendered on `/licenses`.
 
 ## Service Worker & In-Scope Worker
@@ -16,6 +17,20 @@ One-line map of the Python runtime, isolation/security layer, licence notices, a
 - [lib/python/protocol.ts](../../lib/python/protocol.ts): `MainToWorkerMessage` / `WorkerToMainMessage` types, S3 SAB layout constants (`CONTROL_SAB_BYTES`, `STDIN_SAB_BYTES`, slot indices, `SIGINT`), and strict `validateWorkerMessage` payload/size validator.
 - [lib/python/tiers.ts](../../lib/python/tiers.ts): `registerPythonServiceWorker` (with blocked-SW `undefined` and reload-once `sessionStorage` guards) and `detectCapabilityTier` / `detectBrowserCapabilities` (Tiers 1–3).
 - [lib/python/workerClient.ts](../../lib/python/workerClient.ts): `PythonWorkerClient` managing worker boot, fail-closed W7 execution gate, 64 KiB chunked SAB/JSPI `sendStdin` / `sendStdinEof`, 10 ms SIGINT re-assert + 1.5 s Force Stop escalation, REPL push/complete, and crash/OOM recovery.
+- [lib/python/xtermLoader.ts](../../lib/python/xtermLoader.ts): Lazy loader for `@xterm/xterm`, `@xterm/addon-fit`, `@xterm/addon-web-links`, and `/python/xterm.css`, plus Design System v2 Light/Dark/HC `XTERM_THEMES`.
+- [lib/ui/monacoLoader.ts](../../lib/ui/monacoLoader.ts): Shared self-hosted Monaco AMD loader (`/monaco/vs/`, re-exported by `lib/notepad/monacoLoader.ts` for Scratchpad).
+- [lib/ui/i18n/python.ts](../../lib/ui/i18n/python.ts): Complete EN/NB translations for `/python/main`, home card, Tier 1–3 notes, and exact W1–W9 security warnings.
+
+## Playground UI (`pages/python/main.tsx`, `components/Python/`, `styles/Python*.module.css`)
+- [pages/python/main.tsx](../../pages/python/main.tsx): Static-export-safe `/python/main` route rendering `<PageHead>` (with `/og/python.png`) and `<PythonPlayground />`.
+- [components/Python/PythonPlayground.tsx](../../components/Python/PythonPlayground.tsx): Main playground workspace wiring SW registration, W1/W4/W7/W8/W9 gates, `PythonWorkerClient`, Monaco editor, Console/REPL tabs, traceback jumps, and desktop/phone responsive layout.
+- [components/Python/PythonEditor.tsx](../../components/Python/PythonEditor.tsx): Monaco Editor component for `main.py` with theme sync, `Ctrl+Enter`/`Cmd+Enter` Run binding, traceback error markers, and S6 mobile-tuned options.
+- [components/Python/PythonTerminal.tsx](../../components/Python/PythonTerminal.tsx): Framed xterm.js 6.0.0 Console & REPL component with S6 Light-mode/iOS/touch-scroll fixes, `WebLinksAddon` W8 intercept, `Ctrl+C` copy-vs-stop, interactive `input()` bar, and Tab completion.
+- [components/Python/SecurityDialogs.tsx](../../components/Python/SecurityDialogs.tsx): Trusted W1 first-visit, W4 on-load blocking network, W7 fail-closed CSP, and W8 external link modals rendered outside program output.
+- [components/Python/NetworkDialog.tsx](../../components/Python/NetworkDialog.tsx): Network policy selector (`Off`, `PyPI`, `Selected hosts`, `Everything`) with live hostname validation, W4 switch notice, and W9 Clear all data section.
+- [components/Python/NetworkBanner.tsx](../../components/Python/NetworkBanner.tsx): W3 warning/danger banner under `ToolHeader` whenever network mode is not Off, with one-click reload to Off.
+- [components/Python/clearData.ts](../../components/Python/clearData.ts): Deletes `python*` IndexedDB databases, `python:*` storage keys, `python*` caches, and `/python/` service worker registrations, then hard-reloads `/python/main`.
+- [styles/Python.module.css](../../styles/Python.module.css) & [styles/PythonDialogs.module.css](../../styles/PythonDialogs.module.css): Design System v2 Light/Dark/HC styles, phone responsive rules, and xterm 6.0.0 CSS fixes.
 
 ## Python Runtime Package (`lib/python/rt/`)
 - [lib/python/rt/bundle.ts](../../lib/python/rt/bundle.ts): Manifest (`YOTASAGE_RT_MODULES`, `getYotasageRtModuleUrls`) of the runtime `.py` modules synced to `/python/rt/`.
