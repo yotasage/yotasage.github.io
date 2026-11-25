@@ -26,4 +26,11 @@ One-line map of the Python runtime, isolation/security layer, licence notices, a
 - [lib/python/rt/repl.py](../../lib/python/rt/repl.py): `PyodideConsole` wrapper (`repl_push`, `repl_complete`) sharing the last run's `__main__` namespace.
 
 ## Bare Verification Page
-- [pages/python/harness.tsx](../../pages/python/harness.tsx): Bare `noIndex` page under `/python/harness` registering `coi-sw.js` and exposing `window.__pythonHarness` for P1b's cross-browser Playwright verification suite.
+- [pages/python/harness.tsx](../../pages/python/harness.tsx): Bare `noIndex` page under `/python/harness` registering `coi-sw.js` (with `?noreload=1` / `?nosw=1` test flags) and exposing `window.__pythonHarness` for P1b's cross-browser Playwright verification suite.
+
+## Engine & Security Harness (`scripts/harness/python/`)
+- [scripts/harness/python/check.mjs](../../scripts/harness/python/check.mjs): Entry script (`npm run check`) running Part A pure-Node unit checks, building `out/` via `scripts/build-export.mjs`, and executing Part B across Edge (`msedge`), Firefox, and WebKit.
+- [scripts/harness/python/unit-checks.mjs](../../scripts/harness/python/unit-checks.mjs): Pure-Node unit checks for `lib/python/{network,protocol,tiers}.ts` and VM-verified CSP parity against `public/python/coi-sw.js`.
+- [scripts/harness/python/servers.mjs](../../scripts/harness/python/servers.mjs): Zero-security-header static export server (`http://localhost:3023`) and second-origin HTTP/CORS/WebSocket/SSE/framing probe server (`http://127.0.0.1:3024`).
+- [scripts/harness/python/corpus-checks.mjs](../../scripts/harness/python/corpus-checks.mjs): 3-browser verification of all 10 corpus items, Q4 scientific imports (`scipy`, `pandas`, `sympy`), REPL, `SystemExit`, 20-trial Soft Stop latency, Force Stop warm restart, crash recovery, and Tier 2 JSPI fail-closed + `input()`.
+- [scripts/harness/python/security-checks.mjs](../../scripts/harness/python/security-checks.mjs): 3-browser `security.md` §8 verification (Off-mode zero-hit exfiltration battery, forged/malformed worker messages, headers & `frame-ancestors`, URL modes `?net=pkg|hosts|all`, offline fail-closed self-test, Cache Storage poisoning, and worker SW unregister).

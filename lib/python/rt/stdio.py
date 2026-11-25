@@ -36,7 +36,7 @@ class _JspiStdin(io.TextIOBase):
 
     def readline(self, size: int = -1) -> str:
         if not self._buf:
-            val = yotasage_host.request_stdin_jspi().run_sync()
+            val = pyodide.ffi.run_sync(yotasage_host.request_stdin_jspi())
             if _is_eof_sentinel(val):
                 return ""
             text = str(val)

@@ -9,6 +9,7 @@ import time
 import urllib.parse
 import webbrowser
 
+import pyodide.ffi
 import yotasage_host
 
 _ORIG_SLEEP = time.sleep
@@ -64,9 +65,19 @@ class YotaSyncEventLoop(asyncio.BaseEventLoop):
 
 
 def _shim_asyncio_run(main, *, debug=None, loop_factory=None):
-    factory = loop_factory if loop_factory is not None else YotaSyncEventLoop
-    with asyncio.Runner(debug=debug, loop_factory=factory) as runner:
-        return runner.run(main)
+    prev_running = asyncio._get_running_loop()
+    suspend_ambient = prev_running is not None and not isinstance(
+        prev_running, YotaSyncEventLoop
+    )
+    if suspend_ambient:
+        asyncio._set_running_loop(None)
+    try:
+        factory = loop_factory if loop_factory is not None else YotaSyncEventLoop
+        with asyncio.Runner(debug=debug, loop_factory=factory) as runner:
+            return runner.run(main)
+    finally:
+        if suspend_ambient:
+            asyncio._set_running_loop(prev_running)
 
 
 def _sleep_tier1(seconds: float) -> None:
@@ -85,7 +96,7 @@ def _sleep_tier2(seconds: float) -> None:
         raise ValueError("sleep length must be non-negative")
     if secs == 0:
         return
-    yotasage_host.sleep_async_promise(secs).run_sync()
+    pyodide.ffi.run_sync(yotasage_host.sleep_async_promise(secs))
 
 
 def _webbrowser_open(url: str, new: int = 0, autoraise: bool = True) -> bool:

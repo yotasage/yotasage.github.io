@@ -436,15 +436,23 @@ export class PythonWorkerClient {
     }, this.sigintRetryIntervalMs);
 
     return new Promise<void>((resolve) => {
+      let settled = false;
+      let unsub = () => {};
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        unsub();
+        resolve();
+      };
+
       this.forceStopTimer = setTimeout(() => {
-        this.forceStop().finally(resolve);
+        this.forceStop().finally(done);
       }, this.softStopTimeoutMs);
 
-      const unsub = this.subscribe({
+      unsub = this.subscribe({
         state: (next) => {
           if (next === 'ready' || next === 'blocked' || next === 'crashed' || next === 'idle') {
-            unsub();
-            resolve();
+            done();
           }
         },
       });
@@ -585,6 +593,11 @@ export class PythonWorkerClient {
   private handleMessage(msg: WorkerToMainMessage): void {
     switch (msg.type) {
       case 'security.status':
+        // Security status is only accepted once during initial boot before user code can run.
+        if (this._securityStatus !== null || this._readyInfo !== null) {
+          this.emit('droppedMessage', 'Ignored forged security.status after boot');
+          break;
+        }
         this._securityStatus = msg.status;
         this.emit('security', msg.status);
         break;
@@ -594,6 +607,10 @@ export class PythonWorkerClient {
         break;
 
       case 'ready': {
+        if (!this.pendingInit || this.pendingInit.id !== msg.id) {
+          this.emit('droppedMessage', 'Ignored unexpected or mismatched ready message');
+          break;
+        }
         const info: ReadyInfo = {
           pyodideVersion: msg.pyodideVersion,
           pythonVersion: msg.pythonVersion,
@@ -603,11 +620,9 @@ export class PythonWorkerClient {
         };
         this._readyInfo = info;
         this.setState(this.isFailClosedBlocked ? 'blocked' : 'ready');
-        if (this.pendingInit && this.pendingInit.id === msg.id) {
-          const p = this.pendingInit;
-          this.pendingInit = null;
-          p.resolve(info);
-        }
+        const p = this.pendingInit;
+        this.pendingInit = null;
+        p.resolve(info);
         break;
       }
 
@@ -634,21 +649,23 @@ export class PythonWorkerClient {
         break;
 
       case 'run.end': {
+        if (!this.pendingRun || this.pendingRun.id !== msg.id) {
+          this.emit('droppedMessage', 'Ignored unexpected or mismatched run.end message');
+          break;
+        }
         this.clearStopTimers();
         this._activeStdin = null;
         this.pendingTransfer = null;
         this.setState(this.isFailClosedBlocked ? 'blocked' : 'ready');
-        if (this.pendingRun && this.pendingRun.id === msg.id) {
-          const p = this.pendingRun;
-          this.pendingRun = null;
-          p.resolve({
-            ok: msg.ok,
-            exitCode: msg.exitCode,
-            interrupted: msg.interrupted,
-            durationMs: msg.durationMs,
-            ...(msg.error ? { error: msg.error } : {}),
-          });
-        }
+        const p = this.pendingRun;
+        this.pendingRun = null;
+        p.resolve({
+          ok: msg.ok,
+          exitCode: msg.exitCode,
+          interrupted: msg.interrupted,
+          durationMs: msg.durationMs,
+          ...(msg.error ? { error: msg.error } : {}),
+        });
         break;
       }
 

@@ -291,12 +291,13 @@ async function handleInit(msg) {
   const { id, payload } = msg;
   networkMode = payload.networkMode || 'off';
 
-  if (payload.controlSab instanceof SharedArrayBuffer) {
+  const hasSab = typeof SharedArrayBuffer === 'function';
+  if (hasSab && payload.controlSab instanceof SharedArrayBuffer) {
     ctrlView = new Int32Array(payload.controlSab);
   } else {
     ctrlView = null;
   }
-  if (payload.stdinSab instanceof SharedArrayBuffer) {
+  if (hasSab && payload.stdinSab instanceof SharedArrayBuffer) {
     stdinView = new Uint8Array(payload.stdinSab);
   } else {
     stdinView = null;
@@ -329,7 +330,7 @@ async function handleInit(msg) {
     activeTier = 3;
   }
 
-  if (activeTier === 1 && payload.controlSab instanceof SharedArrayBuffer) {
+  if (activeTier === 1 && hasSab && payload.controlSab instanceof SharedArrayBuffer) {
     pyodide.setInterruptBuffer(new Int32Array(payload.controlSab, 0, 1));
   }
 

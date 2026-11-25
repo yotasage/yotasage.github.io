@@ -23,11 +23,12 @@ def _write_stderr(text: str) -> None:
 def set_namespace(namespace: dict) -> None:
     """Bind the REPL console to the given globals dictionary."""
     global _console
+    # Do not pass stdout_callback/stderr_callback pointing at sys.stdout/sys.stderr:
+    # PyodideConsole redirects sys.stdout to a wrapper calling stdout_callback, which would
+    # recurse infinitely on print(). Leaving them None writes directly to Pyodide's live streams.
     _console = PyodideConsole(
         namespace,
         filename="<console>",
-        stdout_callback=_write_stdout,
-        stderr_callback=_write_stderr,
     )
 
 

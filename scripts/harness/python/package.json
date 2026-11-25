@@ -1,0 +1,13 @@
+{
+  "name": "python-harness",
+  "private": true,
+  "description": "Engine, corpus, and 3-browser security checks for the browser Python playground. Not part of the site.",
+  "type": "module",
+  "scripts": {
+    "check": "tsx check.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "1.65.1",
+    "tsx": "^4.19.0"
+  }
+}

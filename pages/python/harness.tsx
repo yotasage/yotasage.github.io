@@ -80,9 +80,18 @@ export default function PythonHarnessPage() {
       };
     };
 
-    const skipAutoReload = new URLSearchParams(window.location.search).get('noreload') === '1';
+    const params = new URLSearchParams(window.location.search);
+    const skipAutoReload = params.get('noreload') === '1';
+    const skipSwRegister = params.get('nosw') === '1';
 
     publish(null);
+    if (skipSwRegister) {
+      publish({ status: 'not-isolated', reason: 'SW registration skipped by ?nosw=1' });
+      setStatus('sw:skipped');
+      return () => {
+        cancelled = true;
+      };
+    }
     registerPythonServiceWorker({ reloadIfNeeded: !skipAutoReload })
       .then((res) => {
         if (cancelled) return;
