@@ -175,20 +175,6 @@ export const en = {
   // Built-in examples
   'python.examplesPlaceholder': 'Load an example…',
   'python.examplesAria': 'Load a built-in Python example',
-  'python.example.hello.title': 'Hello & input()',
-  'python.example.hello.desc': 'Interactive prompt and basic loop.',
-  'python.example.modules.title': 'Multi-file modules',
-  'python.example.modules.desc': 'Imports functions from helpers.py.',
-  'python.example.numpy_scipy.title': 'NumPy & SciPy signal',
-  'python.example.numpy_scipy.desc': 'Linear algebra solve and Butterworth filter.',
-  'python.example.matplotlib_plot.title': 'Matplotlib plot to PNG',
-  'python.example.matplotlib_plot.desc': 'Renders a damped sine wave into sine_wave.png.',
-  'python.example.pillow_image.title': 'Pillow gradient image',
-  'python.example.pillow_image.desc': 'Generates gradient.png with Pillow.',
-  'python.example.csv_data.title': 'CSV & pandas table',
-  'python.example.csv_data.desc': 'Writes weather.csv and summarises it with pandas.',
-  'python.example.asyncio_tasks.title': 'Asyncio concurrent tasks',
-  'python.example.asyncio_tasks.desc': 'Runs concurrent coroutines with asyncio.gather.',
 
   // W1 — First-visit blocking dialog
   'python.w1Title': 'Before you start',
@@ -466,20 +452,6 @@ export const nb: Record<keyof typeof en, string> = {
   // Built-in examples
   'python.examplesPlaceholder': 'Last inn et eksempel…',
   'python.examplesAria': 'Last inn et innebygd Python-eksempel',
-  'python.example.hello.title': 'Hei og input()',
-  'python.example.hello.desc': 'Interaktiv spørring og enkel løkke.',
-  'python.example.modules.title': 'Flerfils-moduler',
-  'python.example.modules.desc': 'Importerer funksjoner fra helpers.py.',
-  'python.example.numpy_scipy.title': 'NumPy og SciPy-signal',
-  'python.example.numpy_scipy.desc': 'Lineært ligningssystem og Butterworth-filter.',
-  'python.example.matplotlib_plot.title': 'Matplotlib-plott til PNG',
-  'python.example.matplotlib_plot.desc': 'Tegner en dempet sinusbølge til sine_wave.png.',
-  'python.example.pillow_image.title': 'Pillow-gradientbilde',
-  'python.example.pillow_image.desc': 'Lager gradient.png med Pillow.',
-  'python.example.csv_data.title': 'CSV og pandas-tabell',
-  'python.example.csv_data.desc': 'Skriver weather.csv og oppsummerer den med pandas.',
-  'python.example.asyncio_tasks.title': 'Asyncio samtidige oppgaver',
-  'python.example.asyncio_tasks.desc': 'Kjører samtidige korutiner med asyncio.gather.',
 
   // W1 — First-visit blocking dialog
   'python.w1Title': 'Før du begynner',

@@ -508,7 +508,7 @@ export default function FileTree({
         >
           <option value="">{t('python.examplesPlaceholder')}</option>
           {PYTHON_EXAMPLES.map((ex) => (
-            <option key={ex.id} value={ex.id} title={t(ex.descKey)}>
+            <option key={ex.id} value={ex.id} title={t(ex.descriptionKey)}>
               {t(ex.titleKey)}
             </option>
           ))}

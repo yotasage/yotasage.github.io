@@ -6,6 +6,7 @@
 // Flags:
 //   --no-build              Skip running `npm run build:export` when out/python/harness.html exists
 //   PYTHON_BROWSERS=edge,firefox,webkit  Restrict browser list (default: all 3)
+//   PYTHON_PARTS=corpus,security,fs,plots,examples  Restrict Part B parts (default: all)
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -14,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium, firefox, webkit } from 'playwright-core';
 
 import { runCorpusChecks } from './corpus-checks.mjs';
+import { runExamplesChecks } from './examples-checks.mjs';
 import { runFsChecks } from './fs-checks.mjs';
 import { runPlotChecks } from './plot-checks.mjs';
 import { runSecurityChecks } from './security-checks.mjs';
@@ -29,6 +31,12 @@ const BROWSERS = (process.env.PYTHON_BROWSERS || 'edge,firefox,webkit')
   .split(',')
   .map((s) => s.trim().toLowerCase())
   .filter(Boolean);
+const PARTS = new Set(
+  (process.env.PYTHON_PARTS || 'corpus,security,fs,plots,examples')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean),
+);
 
 const table = new Map();
 const allFailures = [];
@@ -116,29 +124,44 @@ try {
       console.log(`  Launched ${b} ${version}`);
       setCell('Browser version', b, version);
 
-      const metrics = await runCorpusChecks(b, browser, {
-        primaryOrigin: servers.primaryOrigin,
-        record,
-      });
-      browserMetrics[b] = { version, ...metrics };
+      if (PARTS.has('corpus')) {
+        const metrics = await runCorpusChecks(b, browser, {
+          primaryOrigin: servers.primaryOrigin,
+          record,
+        });
+        browserMetrics[b] = { version, ...metrics };
+      }
 
-      await runSecurityChecks(b, browser, {
-        primaryOrigin: servers.primaryOrigin,
-        secondaryOrigin: servers.secondaryOrigin,
-        getHits: servers.getHits,
-        resetHits: servers.resetHits,
-        record,
-      });
+      if (PARTS.has('security')) {
+        await runSecurityChecks(b, browser, {
+          primaryOrigin: servers.primaryOrigin,
+          secondaryOrigin: servers.secondaryOrigin,
+          getHits: servers.getHits,
+          resetHits: servers.resetHits,
+          record,
+        });
+      }
 
-      await runFsChecks(b, browser, {
-        primaryOrigin: servers.primaryOrigin,
-        record,
-      });
+      if (PARTS.has('fs')) {
+        await runFsChecks(b, browser, {
+          primaryOrigin: servers.primaryOrigin,
+          record,
+        });
+      }
 
-      await runPlotChecks(b, browser, {
-        primaryOrigin: servers.primaryOrigin,
-        record,
-      });
+      if (PARTS.has('plots')) {
+        await runPlotChecks(b, browser, {
+          primaryOrigin: servers.primaryOrigin,
+          record,
+        });
+      }
+
+      if (PARTS.has('examples')) {
+        await runExamplesChecks(b, browser, {
+          primaryOrigin: servers.primaryOrigin,
+          record,
+        });
+      }
     } catch (err) {
       totalFailed += 1;
       const msg = err instanceof Error ? err.message : String(err);

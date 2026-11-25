@@ -187,8 +187,8 @@ export async function runFilesUiSuite(
     await record(browserName, 'P3 Files: load multi-file "modules" example & Run', async () => {
       await page.getByTestId('python-console-clear').click();
       await page.getByTestId('python-examples-select').selectOption('modules');
-      await page.getByTestId('python-tree-item-helpers.py').waitFor({ state: 'visible', timeout: 5000 });
-      await page.getByTestId('python-tab-main.py').waitFor({ state: 'visible', timeout: 5000 });
+      await page.getByTestId('python-tree-item-modules/helpers.py').waitFor({ state: 'visible', timeout: 5000 });
+      await page.getByTestId('python-tab-modules/main.py').waitFor({ state: 'visible', timeout: 5000 });
 
       await page.getByTestId('python-run-btn').click();
       await waitTerminalContains(page, 'python-console-xterm', 'Smoothed signal', 15000);

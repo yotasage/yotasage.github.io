@@ -18,6 +18,7 @@ _INTERNAL_FRAME_PREFIXES = (
 )
 
 _last_main_namespace: dict = {"__name__": "__main__"}
+_script_dir_on_path: str | None = None
 
 
 def get_last_namespace() -> dict:
@@ -45,6 +46,20 @@ def _resolve_workspace_path(rel_path: str) -> str:
     if norm in ("", ".") or norm.startswith("..") or "/../" in f"/{norm}/":
         raise ValueError(f"Invalid workspace path: {rel_path!r}")
     return posixpath.join(WORKSPACE_ROOT, norm)
+
+
+def _set_script_dir(script_path: str) -> None:
+    """Put the script's own folder first on sys.path, as `python dir/main.py` does, so a script in a
+    workspace folder can import its sibling modules. /workspace stays on the path after it."""
+    global _script_dir_on_path
+    if _script_dir_on_path is not None:
+        while _script_dir_on_path in sys.path:
+            sys.path.remove(_script_dir_on_path)
+        _script_dir_on_path = None
+    script_dir = posixpath.dirname(script_path)
+    if script_dir and script_dir != WORKSPACE_ROOT and script_dir not in sys.path:
+        sys.path.insert(0, script_dir)
+        _script_dir_on_path = script_dir
 
 
 def sync_workspace_files(files: dict | None) -> None:
@@ -163,6 +178,7 @@ def run_script(code: str | None = None, filename: str = "main.py", files: dict |
         raise FileNotFoundError(f"Workspace file not found: {script_path}")
 
     purge_user_modules()
+    _set_script_dir(script_path)
 
     try:
         ns = runpy.run_path(script_path, run_name="__main__")

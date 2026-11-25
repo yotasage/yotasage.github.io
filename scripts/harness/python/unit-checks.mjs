@@ -8,7 +8,13 @@ import vm from 'node:vm';
 
 import { zipSync } from 'fflate';
 
-import { getPythonExample, PYTHON_EXAMPLES } from '../../../lib/python/examples/index.ts';
+import {
+  getPythonExample,
+  getPythonExampleTagKey,
+  PYTHON_EXAMPLE_TAGS,
+  PYTHON_EXAMPLES,
+} from '../../../lib/python/examples/index.ts';
+import { en as examplesEn, nb as examplesNb } from '../../../lib/ui/i18n/python-examples.ts';
 import {
   buildNetworkPolicyUrl,
   buildPageCsp,
@@ -685,34 +691,56 @@ export async function runUnitChecks() {
     assert.equal(sizeBombRes.errorCode, 'ZIP_BOMB_SIZE');
   });
 
-  // 8. examples/index.ts: all 7 built-in examples valid & complete
-  await check('examples/index.ts: 7 built-in examples have valid paths & entry files', () => {
+  // 8. examples/: all 12 built-in examples valid & complete, with EN/NB strings
+  await check('examples/: 12 built-in examples have valid folders, entries, tags & EN/NB strings', () => {
     const requiredIds = [
       'hello',
+      'input_colors',
+      'soft_stop',
       'modules',
-      'numpy_scipy',
+      'science',
       'matplotlib_plot',
       'pillow_image',
-      'csv_data',
-      'asyncio_tasks',
+      'pdf_report',
+      'csv_json',
+      'html_preview',
+      'asyncio_gather',
+      'network_probe',
     ];
-    assert.equal(PYTHON_EXAMPLES.length, requiredIds.length);
+    assert.deepEqual(
+      PYTHON_EXAMPLES.map((ex) => ex.id),
+      requiredIds,
+    );
+    for (const tag of PYTHON_EXAMPLE_TAGS) {
+      const key = getPythonExampleTagKey(tag);
+      assert.ok(examplesEn[key] && examplesNb[key], `Missing tag label ${key}`);
+    }
     for (const id of requiredIds) {
       const ex = getPythonExample(id);
       assert.ok(ex, `Missing example "${id}"`);
-      assert.ok(ex.titleKey.startsWith('python.'));
-      assert.ok(ex.descKey.startsWith('python.'));
-      const entryNorm = normalizeWorkspacePath(ex.entryFile);
-      assert.equal(entryNorm.ok, true, `Invalid entryFile for ${id}`);
-      assert.ok(ex.files[ex.entryFile], `Entry file missing in files for ${id}`);
+      assert.ok(PYTHON_EXAMPLE_TAGS.includes(ex.tag), `Unknown tag "${ex.tag}" for ${id}`);
+      for (const key of [ex.titleKey, ex.descriptionKey]) {
+        assert.ok(examplesEn[key] && examplesNb[key], `Missing EN/NB string ${key}`);
+      }
+      const entryNorm = normalizeWorkspacePath(ex.entry);
+      assert.equal(entryNorm.ok, true, `Invalid entry for ${id}`);
+      assert.ok(ex.files[ex.entry], `Entry file missing in files for ${id}`);
       for (const [path, content] of Object.entries(ex.files)) {
         const res = normalizeWorkspacePath(path);
         assert.equal(res.ok, true, `Invalid file path "${path}" in example "${id}"`);
+        assert.ok(path.startsWith(`${id}/`), `File "${path}" of "${id}" is outside its folder`);
         assert.ok(typeof content === 'string' && content.trim().length > 0);
+        assert.ok(content.startsWith('#') || content.startsWith('"""'), `"${path}" lacks a header comment`);
+        assert.ok(!content.includes(String.fromCharCode(9)), `"${path}" contains a tab`);
+      }
+      // Only the network probe may contact other hosts.
+      const text = Object.values(ex.files).join(String.fromCharCode(10));
+      if (id !== 'network_probe') {
+        assert.ok(!/https?:\/\//.test(text), `"${id}" mentions a URL`);
       }
     }
     const modEx = getPythonExample('modules');
-    assert.ok(modEx && modEx.files['main.py'] && modEx.files['helpers.py']);
+    assert.ok(modEx && modEx.files['modules/main.py'] && modEx.files['modules/helpers.py']);
   });
 
   return { passed, failed, failures };

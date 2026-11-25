@@ -793,11 +793,11 @@ export function useWorkspace({ swSettled, canBootStorage, editorRef }: UseWorksp
         setFileVersion((v) => v + 1);
         await refreshListing();
         for (const path of Object.keys(ex.files)) {
-          if (path !== ex.entryFile) {
+          if (path !== ex.entry) {
             await openFile(path);
           }
         }
-        await openFile(ex.entryFile, { focus: true });
+        await openFile(ex.entry, { focus: true });
       } catch (err) {
         setErrorMessage(formatStorageError(err));
       }
