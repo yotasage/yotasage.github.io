@@ -5,7 +5,7 @@
 | Page | `/python/main` (`pages/python/main.tsx`) |
 | Branch | `python` (one commit per step; agents never push) |
 | Written | 2026-11-23, from `README.md`, `CLAUDE.md` and `docs/agent-workflow.md`; the network policy and security part were added the same day. The other docs and the code were **not** read; step S0 reads what it needs |
-| Status | In progress. Q1 and Q3–Q8 answered; pre-P1 spikes S0, S1, S2, S6, and S3 complete (2026-11-24). Waiting for owner confirmation before starting P1 |
+| Status | In progress. Q1–Q8 resolved, S0–S3 & S6 done, P1a engine built (2026-11-25). Running P1b 3-browser harness & security verification |
 
 This plan replaces an earlier draft that was written without access to the repo. Where the two differ, this one is right.
 
@@ -67,10 +67,10 @@ A Python environment that runs entirely in the browser, in the style of the othe
 
 Ask before the named step; do not guess.
 
-- **Q1 (resolved 2026-11-24): licences outside the approved list.** **Approved by owner:** MPL-2.0 (Pyodide), PSF-2.0 (CPython), HPND/MIT-CMU (Pillow), and the matplotlib licence, for files served unmodified from `public/pyodide/` with a link to their source on `/licenses`. Also list the licences of the libraries bundled inside those packages and Pyodide's core (e.g. FreeType's credit line, libjpeg, libpng, zlib, Qhull, Agg, DejaVu/STIX fonts, NumPy's BSD-3, Emscripten). Any later package with a licence other than MIT/BSD/Apache-2.0/ISC/PSF/HPND/MPL-2.0 still needs the owner's decision. If a vendored MPL file ever has to be modified, stop and ask first. S2 still checks Pyodide's MPL-2.0 files for any "Incompatible With Secondary Licenses" notice against the repo's `AGPL-3.0-or-later`.
+- **Q1 (resolved 2026-11-24, addendum 2026-11-25): licences outside the approved list.** **Approved by owner:** MPL-2.0 (Pyodide), PSF-2.0 (CPython), HPND/MIT-CMU (Pillow), and the matplotlib licence, plus S2-audited sub-libraries (`libtiff`, `bzip2`, `BaKoMa CM fonts`, `Adobe AFM`, CC0/public-domain parts in SQLite/liblzma/NumPy, and `Humor-Sans.ttf`), all served unmodified and free of charge from `public/pyodide/` and listed on `/licenses` with links to their sources. Keep Adobe's AFM notice file with the AFM files (preserved unmodified in the wheel). For `Humor-Sans`, show the full SIL OFL-1.1 text with its author and a link to the upstream source on `/licenses`. Also list FreeType's credit line, libjpeg, libpng, zlib, Qhull, Agg, DejaVu/STIX fonts, NumPy's BSD-3, Emscripten, SciPy/pandas/SymPy BSD-3. Any later package with a licence other than MIT/BSD/Apache-2.0/ISC/PSF/HPND/MPL-2.0 — or any modification to a vendored file, or any GPL-only/LGPL-only/unknown/missing licence — must stop and ask the owner first. (S2 verified Pyodide's MPL-2.0 files carry no Exhibit B "Incompatible With Secondary Licenses" notice.)
 - **Q2: resolved by D13.** Installing from PyPI contacts third parties, so it is only possible in the Package index network mode, which is off by default and needs a confirmation after a page reload.
 - **Q3 (resolved 2026-11-24): build-time download.** **Approved by owner:** `scripts/copy-pyodide-assets.mjs` may download the curated set from Pyodide's release host during `npm install` and CI, verify SHA-256 against `pyodide-lock.json`, and write the result to `public/pyodide/` (git-ignored).
-- **Q4 (resolved 2026-11-24): the bundled set.** **Approved by owner:** NumPy, matplotlib, and Pillow initially; SciPy, pandas, and SymPy only if size and boot time are acceptable.
+- **Q4 (resolved 2026-11-24, updated 2026-11-25): the bundled set.** **Approved by owner:** Bundle `micropip`, `numpy`, `matplotlib`, `pillow`, `scipy`, `pandas`, and `sympy` (+ transitive deps, all MIT/BSD/Apache-2.0/PSF/HPND/MPL-2.0; ~49 MB total in `public/pyodide/`, ~160 MB projected `out/`).
 - **Q5 (resolved 2026-11-24): phones.** **Approved by owner:** Accept Monaco on touch with a clear note for v1, and consider a plain text-area fallback for narrow/touch screens later.
 - **Q6 (resolved 2026-11-24): warning wording.** **Approved by owner:** Draft warning texts W1–W9 in `security.md` section 7 are good; first-visit dialog W1 appears once and again whenever its text changes.
 - **Q7 (resolved 2026-11-24): the "Everything" mode.** **Approved by owner:** Keep "Everything" mode behind the red banner and tick-box confirmation.
@@ -85,7 +85,7 @@ Ask before the named step; do not guess.
 | S2 | Pyodide self-hosting and boot spike | Done (`notes-S2.md`) |
 | S6 | Monaco and xterm self-hosting spike | Done (`notes-S6.md`) |
 | S3 | Blocking input, Stop, asyncio spike | Done (`notes-S3.md`) |
-| P1 | Engine: worker, run/stop, stdio, REPL, network policy | Not started |
+| P1 | Engine: worker, run/stop, stdio, REPL, network policy | In progress (P1a) |
 | P2 | Page: layout, Monaco, terminal, card, i18n, network settings, warnings | Not started |
 | S5 | Persistence spike | Not started |
 | P3 | Files | Not started |

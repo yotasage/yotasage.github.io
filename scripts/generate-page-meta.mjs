@@ -55,6 +55,7 @@ const CANONICAL_TITLES = {
   '/integral/main': 'Integral solver',
   '/derivative/main': 'Derivative solver',
   '/boolean/main': 'Boolean simplifier',
+  '/python/harness': 'Python engine harness',
 };
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');

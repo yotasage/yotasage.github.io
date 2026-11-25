@@ -1,0 +1,446 @@
+// Shared worker protocol types, SAB binary layout constants, and strict runtime validator.
+// Security rule (security.md §4): every worker message is untrusted input and carries data only.
+
+import type { NetworkMode } from './network';
+
+export type CapabilityTier = 1 | 2 | 3;
+
+// SharedArrayBuffer binary layout (S3 finalized contract)
+export const CONTROL_SAB_BYTES = 64; // 16 x Int32 slots
+export const STDIN_SAB_BYTES = 65536; // 64 KiB raw UTF-8 chunk buffer
+
+// Int32 slot indices inside controlSab
+export const CTRL_INTERRUPT = 0; // Main stores SIGINT (2) + Atomics.notify; aliased for setInterruptBuffer
+export const CTRL_STDIN_STATE = 1; // STDIN_* state machine
+export const CTRL_STDIN_LEN = 2; // UTF-8 byte count in stdinSab (0..65536)
+export const CTRL_STDIN_SEQ = 3; // Monotonic request sequence number
+// Slots 4..15 (bytes 16..63) reserved for S4 display (frameCounter, eventsHead, eventsTail, rpc).
+
+export const SIGINT = 2;
+
+export const STDIN_IDLE = 0;
+export const STDIN_REQUEST = 1;
+export const STDIN_CHUNK_READY = 2;
+export const STDIN_CHUNK_FINAL = 3;
+export const STDIN_EOF = 4;
+export const STDIN_INTERRUPTED = 5;
+
+// Protocol payload caps
+export const MAX_STREAM_CHUNK_CHARS = 256 * 1024;
+export const MAX_ERROR_TEXT_CHARS = 128 * 1024;
+export const MAX_STATUS_TEXT_CHARS = 512;
+export const MAX_TRACEBACK_FRAMES = 200;
+export const MAX_COMPLETIONS = 500;
+export const MAX_COMPLETION_ITEM_CHARS = 256;
+export const MAX_LINK_URL_CHARS = 4096;
+export const MAX_FILE_PATH_CHARS = 512;
+
+export interface PythonErrorFrame {
+  readonly file: string;
+  readonly line: number;
+  readonly column?: number;
+  readonly fn: string;
+  readonly text?: string;
+}
+
+export interface PythonErrorInfo {
+  readonly type: string;
+  readonly message: string;
+  readonly formatted: string;
+  readonly frames: readonly PythonErrorFrame[];
+}
+
+export interface SecurityStatusInfo {
+  readonly cspConfirmed: boolean;
+  readonly mode: NetworkMode;
+  readonly violationDirective: string | null;
+  readonly reason?: string;
+}
+
+export interface WorkerInitPayload {
+  readonly controlSab: SharedArrayBuffer | null;
+  readonly stdinSab: SharedArrayBuffer | null;
+  readonly networkMode: NetworkMode;
+  readonly pyodideIndexUrl: string;
+  readonly pyodideLockUrl: string;
+  readonly runtimeBaseUrl: string;
+}
+
+export type MainToWorkerMessage =
+  | { readonly type: 'init'; readonly id: number; readonly payload: WorkerInitPayload }
+  | {
+      readonly type: 'run';
+      readonly id: number;
+      readonly code: string;
+      readonly filename?: string;
+      readonly files?: Readonly<Record<string, string>>;
+      readonly autoLoadPackages?: boolean;
+    }
+  | { readonly type: 'stop'; readonly id: number }
+  | { readonly type: 'repl.push'; readonly id: number; readonly line: string }
+  | { readonly type: 'repl.complete'; readonly id: number; readonly source: string }
+  | {
+      readonly type: 'stdin.reply';
+      readonly seq: number;
+      readonly text: string | null;
+      readonly eof?: boolean;
+      readonly interrupted?: boolean;
+    };
+
+export type WorkerToMainMessage =
+  | {
+      readonly type: 'security.status';
+      readonly status: SecurityStatusInfo;
+    }
+  | {
+      readonly type: 'status';
+      readonly phase: 'booting' | 'loading-packages' | 'ready' | 'running' | 'idle';
+      readonly message: string;
+    }
+  | {
+      readonly type: 'ready';
+      readonly id: number;
+      readonly pyodideVersion: string;
+      readonly pythonVersion: string;
+      readonly tier: CapabilityTier;
+      readonly crossOriginIsolated: boolean;
+      readonly canRunSync: boolean;
+    }
+  | {
+      readonly type: 'stdout';
+      readonly text: string;
+    }
+  | {
+      readonly type: 'stderr';
+      readonly text: string;
+    }
+  | {
+      readonly type: 'stdin.request';
+      readonly seq: number;
+      readonly mode: 'sab' | 'jspi';
+    }
+  | {
+      readonly type: 'stdin.chunk_ack';
+      readonly seq: number;
+    }
+  | {
+      readonly type: 'run.start';
+      readonly id: number;
+      readonly filename: string;
+    }
+  | {
+      readonly type: 'run.end';
+      readonly id: number;
+      readonly ok: boolean;
+      readonly exitCode: number;
+      readonly interrupted: boolean;
+      readonly durationMs: number;
+      readonly error?: PythonErrorInfo;
+    }
+  | {
+      readonly type: 'repl.result';
+      readonly id: number;
+      readonly status: 'complete' | 'incomplete' | 'syntax-error' | 'error';
+      readonly error?: PythonErrorInfo;
+    }
+  | {
+      readonly type: 'repl.completions';
+      readonly id: number;
+      readonly completions: readonly string[];
+      readonly start: number;
+    }
+  | {
+      readonly type: 'link.request';
+      readonly url: string;
+    }
+  | {
+      readonly type: 'error';
+      readonly id?: number;
+      readonly message: string;
+    };
+
+export type ValidationResult =
+  | { readonly ok: true; readonly message: WorkerToMainMessage }
+  | { readonly ok: false; readonly reason: string };
+
+const VALID_MODES = new Set<string>(['off', 'pkg', 'hosts', 'all']);
+const VALID_PHASES = new Set<string>(['booting', 'loading-packages', 'ready', 'running', 'idle']);
+const VALID_REPL_STATUSES = new Set<string>(['complete', 'incomplete', 'syntax-error', 'error']);
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+function isBoundedString(v: unknown, maxLen: number): v is string {
+  return typeof v === 'string' && v.length <= maxLen;
+}
+
+function isFiniteInt(v: unknown, min = -2147483648, max = 2147483647): v is number {
+  return typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;
+}
+
+function isFiniteNonNeg(v: unknown): v is number {
+  return typeof v === 'number' && Number.isFinite(v) && v >= 0;
+}
+
+function validateErrorInfo(raw: unknown): PythonErrorInfo | null {
+  if (!isRecord(raw)) return null;
+  if (!isBoundedString(raw.type, 256)) return null;
+  if (!isBoundedString(raw.message, MAX_ERROR_TEXT_CHARS)) return null;
+  if (!isBoundedString(raw.formatted, MAX_ERROR_TEXT_CHARS)) return null;
+  if (!Array.isArray(raw.frames) || raw.frames.length > MAX_TRACEBACK_FRAMES) return null;
+
+  const frames: PythonErrorFrame[] = [];
+  for (const f of raw.frames) {
+    if (!isRecord(f)) return null;
+    if (!isBoundedString(f.file, MAX_FILE_PATH_CHARS)) return null;
+    if (!isFiniteInt(f.line, 0, 10_000_000)) return null;
+    if (!isBoundedString(f.fn, 512)) return null;
+    let column: number | undefined;
+    if (f.column !== undefined) {
+      if (!isFiniteInt(f.column, 0, 1_000_000)) return null;
+      column = f.column;
+    }
+    let text: string | undefined;
+    if (f.text !== undefined) {
+      if (!isBoundedString(f.text, 2048)) return null;
+      text = f.text;
+    }
+    frames.push({
+      file: f.file,
+      line: f.line,
+      ...(column !== undefined ? { column } : {}),
+      fn: f.fn,
+      ...(text !== undefined ? { text } : {}),
+    });
+  }
+
+  return {
+    type: raw.type,
+    message: raw.message,
+    formatted: raw.formatted,
+    frames,
+  };
+}
+
+/** Validates an untrusted message received from the Python Web Worker. */
+export function validateWorkerMessage(raw: unknown): ValidationResult {
+  if (!isRecord(raw) || typeof raw.type !== 'string') {
+    return { ok: false, reason: 'Message must be an object with a string type' };
+  }
+
+  switch (raw.type) {
+    case 'security.status': {
+      if (!isRecord(raw.status)) return { ok: false, reason: 'Invalid security.status payload' };
+      const st = raw.status;
+      if (typeof st.cspConfirmed !== 'boolean') return { ok: false, reason: 'Invalid cspConfirmed' };
+      if (typeof st.mode !== 'string' || !VALID_MODES.has(st.mode)) {
+        return { ok: false, reason: 'Invalid network mode' };
+      }
+      let violationDirective: string | null = null;
+      if (st.violationDirective !== null) {
+        if (!isBoundedString(st.violationDirective, 256)) {
+          return { ok: false, reason: 'Invalid violationDirective' };
+        }
+        violationDirective = st.violationDirective;
+      }
+      let reason: string | undefined;
+      if (st.reason !== undefined) {
+        if (!isBoundedString(st.reason, MAX_STATUS_TEXT_CHARS)) {
+          return { ok: false, reason: 'Invalid security status reason' };
+        }
+        reason = st.reason;
+      }
+      return {
+        ok: true,
+        message: {
+          type: 'security.status',
+          status: {
+            cspConfirmed: st.cspConfirmed,
+            mode: st.mode as NetworkMode,
+            violationDirective,
+            ...(reason !== undefined ? { reason } : {}),
+          },
+        },
+      };
+    }
+
+    case 'status': {
+      if (typeof raw.phase !== 'string' || !VALID_PHASES.has(raw.phase)) {
+        return { ok: false, reason: 'Invalid status phase' };
+      }
+      if (!isBoundedString(raw.message, MAX_STATUS_TEXT_CHARS)) {
+        return { ok: false, reason: 'Status message invalid or too long' };
+      }
+      return {
+        ok: true,
+        message: {
+          type: 'status',
+          phase: raw.phase as 'booting' | 'loading-packages' | 'ready' | 'running' | 'idle',
+          message: raw.message,
+        },
+      };
+    }
+
+    case 'ready': {
+      if (!isFiniteInt(raw.id, 0)) return { ok: false, reason: 'Invalid ready id' };
+      if (!isBoundedString(raw.pyodideVersion, 64) || !isBoundedString(raw.pythonVersion, 64)) {
+        return { ok: false, reason: 'Invalid version strings in ready' };
+      }
+      if (raw.tier !== 1 && raw.tier !== 2 && raw.tier !== 3) {
+        return { ok: false, reason: 'Invalid tier in ready' };
+      }
+      if (typeof raw.crossOriginIsolated !== 'boolean' || typeof raw.canRunSync !== 'boolean') {
+        return { ok: false, reason: 'Invalid capability booleans in ready' };
+      }
+      return {
+        ok: true,
+        message: {
+          type: 'ready',
+          id: raw.id,
+          pyodideVersion: raw.pyodideVersion,
+          pythonVersion: raw.pythonVersion,
+          tier: raw.tier,
+          crossOriginIsolated: raw.crossOriginIsolated,
+          canRunSync: raw.canRunSync,
+        },
+      };
+    }
+
+    case 'stdout':
+    case 'stderr': {
+      if (!isBoundedString(raw.text, MAX_STREAM_CHUNK_CHARS)) {
+        return { ok: false, reason: `${raw.type} chunk missing or exceeds cap` };
+      }
+      return { ok: true, message: { type: raw.type, text: raw.text } };
+    }
+
+    case 'stdin.request': {
+      if (!isFiniteInt(raw.seq, 0)) return { ok: false, reason: 'Invalid stdin.request seq' };
+      if (raw.mode !== 'sab' && raw.mode !== 'jspi') {
+        return { ok: false, reason: 'Invalid stdin.request mode' };
+      }
+      return { ok: true, message: { type: 'stdin.request', seq: raw.seq, mode: raw.mode } };
+    }
+
+    case 'stdin.chunk_ack': {
+      if (!isFiniteInt(raw.seq, 0)) return { ok: false, reason: 'Invalid stdin.chunk_ack seq' };
+      return { ok: true, message: { type: 'stdin.chunk_ack', seq: raw.seq } };
+    }
+
+    case 'run.start': {
+      if (!isFiniteInt(raw.id, 0)) return { ok: false, reason: 'Invalid run.start id' };
+      if (!isBoundedString(raw.filename, MAX_FILE_PATH_CHARS)) {
+        return { ok: false, reason: 'Invalid run.start filename' };
+      }
+      return { ok: true, message: { type: 'run.start', id: raw.id, filename: raw.filename } };
+    }
+
+    case 'run.end': {
+      if (!isFiniteInt(raw.id, 0)) return { ok: false, reason: 'Invalid run.end id' };
+      if (typeof raw.ok !== 'boolean') return { ok: false, reason: 'Invalid run.end ok' };
+      if (!isFiniteInt(raw.exitCode, -1000, 1000)) return { ok: false, reason: 'Invalid exitCode' };
+      if (typeof raw.interrupted !== 'boolean') return { ok: false, reason: 'Invalid interrupted' };
+      if (!isFiniteNonNeg(raw.durationMs)) return { ok: false, reason: 'Invalid durationMs' };
+      let error: PythonErrorInfo | undefined;
+      if (raw.error !== undefined) {
+        const parsed = validateErrorInfo(raw.error);
+        if (!parsed) return { ok: false, reason: 'Invalid run.end error payload' };
+        error = parsed;
+      }
+      return {
+        ok: true,
+        message: {
+          type: 'run.end',
+          id: raw.id,
+          ok: raw.ok,
+          exitCode: raw.exitCode,
+          interrupted: raw.interrupted,
+          durationMs: raw.durationMs,
+          ...(error ? { error } : {}),
+        },
+      };
+    }
+
+    case 'repl.result': {
+      if (!isFiniteInt(raw.id, 0)) return { ok: false, reason: 'Invalid repl.result id' };
+      if (typeof raw.status !== 'string' || !VALID_REPL_STATUSES.has(raw.status)) {
+        return { ok: false, reason: 'Invalid repl.result status' };
+      }
+      let error: PythonErrorInfo | undefined;
+      if (raw.error !== undefined) {
+        const parsed = validateErrorInfo(raw.error);
+        if (!parsed) return { ok: false, reason: 'Invalid repl.result error payload' };
+        error = parsed;
+      }
+      return {
+        ok: true,
+        message: {
+          type: 'repl.result',
+          id: raw.id,
+          status: raw.status as 'complete' | 'incomplete' | 'syntax-error' | 'error',
+          ...(error ? { error } : {}),
+        },
+      };
+    }
+
+    case 'repl.completions': {
+      if (!isFiniteInt(raw.id, 0)) return { ok: false, reason: 'Invalid repl.completions id' };
+      if (!isFiniteInt(raw.start, 0, MAX_STREAM_CHUNK_CHARS)) {
+        return { ok: false, reason: 'Invalid repl.completions start' };
+      }
+      if (!Array.isArray(raw.completions) || raw.completions.length > MAX_COMPLETIONS) {
+        return { ok: false, reason: 'Invalid or oversized completions list' };
+      }
+      const completions: string[] = [];
+      for (const item of raw.completions) {
+        if (!isBoundedString(item, MAX_COMPLETION_ITEM_CHARS)) {
+          return { ok: false, reason: 'Invalid completion item' };
+        }
+        completions.push(item);
+      }
+      return {
+        ok: true,
+        message: { type: 'repl.completions', id: raw.id, completions, start: raw.start },
+      };
+    }
+
+    case 'link.request': {
+      if (!isBoundedString(raw.url, MAX_LINK_URL_CHARS)) {
+        return { ok: false, reason: 'Invalid or oversized link.request url' };
+      }
+      let parsed: URL;
+      try {
+        parsed = new URL(raw.url);
+      } catch {
+        return { ok: false, reason: 'Malformed link.request URL' };
+      }
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return { ok: false, reason: 'link.request only accepts http: or https: URLs' };
+      }
+      return { ok: true, message: { type: 'link.request', url: parsed.href } };
+    }
+
+    case 'error': {
+      let id: number | undefined;
+      if (raw.id !== undefined) {
+        if (!isFiniteInt(raw.id, 0)) return { ok: false, reason: 'Invalid error id' };
+        id = raw.id;
+      }
+      if (!isBoundedString(raw.message, MAX_ERROR_TEXT_CHARS)) {
+        return { ok: false, reason: 'Invalid or oversized error message' };
+      }
+      return {
+        ok: true,
+        message: {
+          type: 'error',
+          ...(id !== undefined ? { id } : {}),
+          message: raw.message,
+        },
+      };
+    }
+
+    default:
+      return { ok: false, reason: `Unknown worker message type "${raw.type}"` };
+  }
+}

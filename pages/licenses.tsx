@@ -45,6 +45,7 @@ export default function Licenses() {
   const pcb = (data as { pcb?: Entry[] }).pcb ?? [];
   const qr = (data as { qr?: Entry[] }).qr ?? [];
   const fonts = (data as { fonts?: Entry[] }).fonts ?? [];
+  const python = (data as { python?: Entry[] }).python ?? [];
 
   // A link from the table opens the licence it points to.
   React.useEffect(() => {
@@ -154,6 +155,18 @@ export default function Licenses() {
                 {t('licenses.section.fontsLeadPost')}
               </p>
               <Entries entries={fonts} noText={noText} />
+            </section>
+          )}
+
+          {python.length > 0 && (
+            <section className={styles.sectionCard}>
+              <h2>{t('licenses.section.python')}</h2>
+              <p className={styles.lead}>
+                {t('licenses.section.pythonLeadPre')}
+                <code>/pyodide/</code>
+                {t('licenses.section.pythonLeadPost')}
+              </p>
+              <Entries entries={python} noText={noText} />
             </section>
           )}
         </div>

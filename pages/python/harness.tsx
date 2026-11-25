@@ -1,0 +1,127 @@
+import { useEffect, useState } from 'react';
+
+import PageHead from '../../components/PageHead';
+import {
+  buildNetworkPolicyUrl,
+  buildPageCsp,
+  buildWorkerCsp,
+  parseNetworkPolicyFromSearch,
+  validateSelectedHost,
+} from '../../lib/python/network';
+import type { NetworkPolicy } from '../../lib/python/network';
+import { getPythonWorkerUrl } from '../../lib/python/origin';
+import { validateWorkerMessage } from '../../lib/python/protocol';
+import {
+  detectBrowserCapabilities,
+  detectCapabilityTier,
+  registerPythonServiceWorker,
+} from '../../lib/python/tiers';
+import type { BrowserCapabilityInfo, SwRegistrationResult } from '../../lib/python/tiers';
+import { PythonWorkerClient } from '../../lib/python/workerClient';
+import type { PythonWorkerClientOptions } from '../../lib/python/workerClient';
+
+export interface PythonHarnessApi {
+  readonly policy: NetworkPolicy;
+  readonly capabilities: BrowserCapabilityInfo;
+  readonly swResult: SwRegistrationResult | null;
+  readonly parseNetworkPolicyFromSearch: typeof parseNetworkPolicyFromSearch;
+  readonly buildNetworkPolicyUrl: typeof buildNetworkPolicyUrl;
+  readonly validateSelectedHost: typeof validateSelectedHost;
+  readonly buildPageCsp: typeof buildPageCsp;
+  readonly buildWorkerCsp: typeof buildWorkerCsp;
+  readonly detectBrowserCapabilities: typeof detectBrowserCapabilities;
+  readonly detectCapabilityTier: typeof detectCapabilityTier;
+  readonly registerPythonServiceWorker: typeof registerPythonServiceWorker;
+  readonly validateWorkerMessage: typeof validateWorkerMessage;
+  readonly createClient: (options?: PythonWorkerClientOptions) => PythonWorkerClient;
+  readonly spawnRawWorker: () => Worker;
+}
+
+declare global {
+  interface Window {
+    __pythonHarness?: PythonHarnessApi;
+  }
+}
+
+export default function PythonHarnessPage() {
+  const [status, setStatus] = useState<string>('initializing');
+  const [policyMode, setPolicyMode] = useState<string>('off');
+  const [tierLabel, setTierLabel] = useState<string>('unknown');
+
+  useEffect(() => {
+    let cancelled = false;
+    const policy = parseNetworkPolicyFromSearch(window.location.search);
+    setPolicyMode(policy.mode);
+
+    const publish = (swResult: SwRegistrationResult | null) => {
+      const capabilities = detectBrowserCapabilities();
+      setTierLabel(
+        `Tier ${capabilities.tier} (coi=${String(capabilities.crossOriginIsolated)}, sab=${String(capabilities.hasSab)})`,
+      );
+      window.__pythonHarness = {
+        policy,
+        capabilities,
+        swResult,
+        parseNetworkPolicyFromSearch,
+        buildNetworkPolicyUrl,
+        validateSelectedHost,
+        buildPageCsp,
+        buildWorkerCsp,
+        detectBrowserCapabilities,
+        detectCapabilityTier,
+        registerPythonServiceWorker,
+        validateWorkerMessage,
+        createClient: (options) =>
+          new PythonWorkerClient({
+            networkMode: policy.mode,
+            ...options,
+          }),
+        spawnRawWorker: () => new Worker(getPythonWorkerUrl(), { type: 'module' }),
+      };
+    };
+
+    const skipAutoReload = new URLSearchParams(window.location.search).get('noreload') === '1';
+
+    publish(null);
+    registerPythonServiceWorker({ reloadIfNeeded: !skipAutoReload })
+      .then((res) => {
+        if (cancelled) return;
+        publish(res);
+        setStatus(`sw:${res.status}`);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        publish({ status: 'blocked', reason: String(err) });
+        setStatus('sw:error');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <>
+      <PageHead
+        title="Python engine harness"
+        description="Internal verification harness page for the browser Python runtime."
+        path="/python/harness"
+        noIndex
+      />
+      <main
+        style={{
+          fontFamily: 'monospace',
+          padding: '24px',
+          backgroundColor: '#18181b',
+          color: '#f4f4f5',
+          minHeight: '100vh',
+        }}
+      >
+        <h1>Python Engine Harness</h1>
+        <p data-testid="harness-status">Status: {status}</p>
+        <p data-testid="harness-mode">Network mode: {policyMode}</p>
+        <p data-testid="harness-tier">Capability: {tierLabel}</p>
+      </main>
+    </>
+  );
+}

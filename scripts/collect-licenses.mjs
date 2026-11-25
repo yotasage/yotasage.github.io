@@ -82,6 +82,7 @@ while (queue.length) {
     console.warn(`collect-licenses: ${name} is not installed; skipped.`);
     continue;
   }
+  if (name === 'pyodide') continue; // Listed in the dedicated python[] section below.
   const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
   const key = `${pkg.name}@${pkg.version}`;
   if (packages.has(key)) continue;
@@ -297,7 +298,90 @@ for (const [pkgName, displayName, url] of SITE_FONTS) {
   });
 }
 
+// Self-hosted Pyodide runtime, CPython/Emscripten core WASM libraries, and curated Python wheels
+// served unmodified from public/pyodide/ (see copy-pyodide-assets.mjs).
+const pyodideDir = resolvePackage('pyodide', root);
+const pythonLicDir = join(root, 'lib', 'python', 'licenses');
+const python = [];
+if (pyodideDir) {
+  const pyodidePkg = JSON.parse(readFileSync(join(pyodideDir, 'package.json'), 'utf8'));
+  const pyodideVersion = pyodidePkg.version;
+  const trimmedLockPath = join(root, 'public', 'pyodide', 'pyodide-lock.json');
+  const lockPath = existsSync(trimmedLockPath) ? trimmedLockPath : join(pyodideDir, 'pyodide-lock.json');
+  const lockData = existsSync(lockPath) ? JSON.parse(readFileSync(lockPath, 'utf8')) : { info: {}, packages: {} };
+  const lockPkgs = lockData.packages ?? {};
+  const pyVer = lockData.info?.python ?? '3.14.2';
+  const pkgVer = (k) => lockPkgs[k]?.version ?? undefined;
+  const readPyLic = (file) => readFileSync(join(pythonLicDir, file), 'utf8').trim();
+
+  const supportKeys = [
+    'numpy', 'scipy', 'pandas', 'sympy', 'mpmath',
+    'contourpy', 'cycler', 'fonttools', 'kiwisolver',
+    'packaging', 'pyparsing', 'python-dateutil', 'pytz', 'six',
+  ];
+  const versionSummary = supportKeys
+    .filter((k) => lockPkgs[k]?.version)
+    .map((k) => `${k} ${lockPkgs[k].version}`)
+    .join(', ');
+
+  python.push(
+    {
+      name: 'Pyodide & micropip (WebAssembly Python runtime)',
+      version: pyodideVersion,
+      license: 'MPL-2.0',
+      url: `https://github.com/pyodide/pyodide/tree/${pyodideVersion}`,
+      text: `Pyodide ${pyodideVersion}${pkgVer('micropip') ? ` & micropip ${pkgVer('micropip')}` : ''}\n\n${readPyLic('LICENSE.pyodide-mpl2.txt')}`,
+    },
+    {
+      name: 'CPython, Emscripten & Core WASM C Libraries (musl, zlib, bzip2, liblzma, zstd, SQLite, Expat, libffi, libmpdec)',
+      version: pyVer,
+      license: 'PSF-2.0 / MIT / BSD / Zlib / CC0',
+      url: `https://github.com/python/cpython/tree/v${pyVer}`,
+      text: readPyLic('LICENSE.wasm-core-libs.txt'),
+    },
+    {
+      name: 'FreeType (compiled into Pillow and matplotlib)',
+      version: '2.13.3',
+      license: 'FTL',
+      url: 'https://freetype.org/',
+      text: readPyLic('LICENSE.freetype-ftl.txt'),
+    },
+    {
+      name: 'Pillow & Image Codecs (IJG libjpeg 9f, libpng, libtiff, libwebp, zlib)',
+      version: pkgVer('pillow'),
+      license: 'MIT-CMU / IJG / libpng / libtiff / BSD-3-Clause / Zlib',
+      url: 'https://github.com/python-pillow/Pillow',
+      text: readPyLic('LICENSE.pillow-native.txt'),
+    },
+    {
+      name: 'matplotlib, Fonts & Plotting Libraries (Agg 2.4, Qhull, DejaVu, STIX, BaKoMa, Adobe AFM)',
+      version: pkgVer('matplotlib'),
+      license: 'Matplotlib (PSF-based) / BSD / SIL OFL-1.1 / Bitstream Vera / BaKoMa / Adobe AFM',
+      url: 'https://github.com/matplotlib/matplotlib',
+      text: readPyLic('LICENSE.matplotlib-notices.txt'),
+    },
+    {
+      name: 'Humor Sans Font (bundled in Pyodide matplotlib wheel)',
+      version: '1.0',
+      license: 'SIL OFL-1.1',
+      url: 'https://github.com/shreyankg/xkcd-desktop',
+      text: readPyLic('LICENSE.humor-sans-ofl.txt'),
+    },
+    {
+      name: 'Curated Scientific & Support Python Packages (NumPy, SciPy, pandas, SymPy & dependencies)',
+      license: 'BSD-3-Clause / MIT / Apache-2.0 / 0BSD / Zlib / CC0-1.0',
+      url: 'https://github.com/pyodide/pyodide',
+      text: `${versionSummary ? `Bundled versions: ${versionSummary}\n\n` : ''}${readPyLic('LICENSE.scientific-bsd.txt')}`,
+    },
+  );
+}
+
 const out = join(root, 'lib', 'generated');
 mkdirSync(out, { recursive: true });
-writeFileSync(join(out, 'third-party-licenses.json'), JSON.stringify({ packages: list, assets, pdfWasm, viewer, pcb, qr, fonts }, null, 1));
-console.log(`Collected the licences of ${list.length} packages, ${assets.length} pdf.js data files, ${pdfWasm.length} PDF WASM/OCR entries, ${viewer.length} 3D viewer files, ${pcb.length} PCB viewer files, ${qr.length} QR code reader file and ${fonts.length} site fonts.`);
+writeFileSync(
+  join(out, 'third-party-licenses.json'),
+  JSON.stringify({ packages: list, assets, pdfWasm, viewer, pcb, qr, fonts, python }, null, 1),
+);
+console.log(
+  `Collected the licences of ${list.length} packages, ${assets.length} pdf.js data files, ${pdfWasm.length} PDF WASM/OCR entries, ${viewer.length} 3D viewer files, ${pcb.length} PCB viewer files, ${qr.length} QR code reader file, ${fonts.length} site fonts and ${python.length} Python runtime entries.`,
+);

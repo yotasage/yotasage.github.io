@@ -1,0 +1,125 @@
+Curated Scientific & Support Python Packages (Self-Hosted Wheels in /pyodide/)
+
+All wheels listed below are served unmodified from /pyodide/ and verified
+against their SHA-256 digests in pyodide-lock.json.
+
+===========================================================================
+Package Inventory & Upstream Sources
+===========================================================================
+
+- NumPy — BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0
+  Copyright (c) 2005-2026, NumPy Developers. All rights reserved.
+  Source: https://github.com/numpy/numpy
+  Notes: Bundles permissive C/math sub-libraries including libdivide (Zlib),
+  pythoncapi-compat (0BSD), Highway (Apache-2.0 / BSD-3 / CC0-1.0 random-inl.h),
+  dragon4 (MIT), x86-simd-sort (BSD-3), pocketfft (BSD-3), lapack_lite (BSD-3),
+  PCG/MT19937/Philox/SFC64 PRNGs (MIT/BSD-3/NCSA), and splitmix64 (CC0-1.0).
+
+- SciPy — BSD-3-Clause
+  Copyright (c) 2001-2002 Enthought, Inc. 2003-2026, SciPy Developers.
+  Source: https://github.com/scipy/scipy
+  Notes: Includes statically linked BLAS/LAPACK/OpenBLAS/Qhull/SuperLU/ARPACK
+  and other BSD/MIT/Zlib/Public-Domain scientific C/Fortran routines as
+  documented in scipy's LICENSES_bundled.txt inside the wheel.
+
+- pandas — BSD-3-Clause
+  Copyright (c) 2008-2011, AQR Capital Management, LLC, Lambda Foundry, Inc.
+  and PyData Development Team; Copyright (c) 2011-2026, Open source contributors.
+  Source: https://github.com/pandas-dev/pandas
+
+- SymPy — BSD-3-Clause
+  Copyright (c) 2006-2026 SymPy Development Team. All rights reserved.
+  Source: https://github.com/sympy/sympy
+
+- mpmath — BSD-3-Clause
+  Copyright (c) 2005-2026 Fredrik Johansson and mpmath contributors.
+  Source: https://github.com/mpmath/mpmath
+
+- contourpy — BSD-3-Clause
+  Copyright (c) 2021-2026, ContourPy Developers. All rights reserved.
+  Source: https://github.com/contourpy/contourpy
+
+- cycler — BSD-3-Clause
+  Copyright (c) 2015, matplotlib project. All rights reserved.
+  Source: https://github.com/matplotlib/cycler
+
+- fonttools — MIT
+  Copyright (c) 2017 Just van Rossum and fonttools contributors.
+  Source: https://github.com/fonttools/fonttools
+
+- kiwisolver — BSD-3-Clause (Modified BSD)
+  Copyright (c) 2013-2026, Nucleic Development Team. All rights reserved.
+  Source: https://github.com/nucleic/kiwi
+
+- packaging — Apache-2.0 OR BSD-2-Clause
+  Copyright (c) Donald Stufft and individual contributors.
+  Source: https://github.com/pypa/packaging
+
+- pyparsing — MIT
+  Copyright (c) 2003-2026 Paul T. McGuire.
+  Source: https://github.com/pyparsing/pyparsing
+
+- python-dateutil — Apache-2.0 OR BSD-3-Clause
+  Copyright (c) 2003-2011 Gustavo Niemeyer; Copyright (c) 2012-2026 Paul Ganssle
+  and dateutil contributors.
+  Source: https://github.com/dateutil/dateutil
+
+- pytz — MIT
+  Copyright (c) 2003-2026 Stuart Bishop <stuart@stuartbishop.net>.
+  Source: https://github.com/stub42/pytz
+
+- six — MIT
+  Copyright (c) 2010-2024 Benjamin Peterson.
+  Source: https://github.com/benjaminp/six
+
+===========================================================================
+Standard 3-Clause BSD License Text
+===========================================================================
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+   may be used to endorse or promote products derived from this software
+   without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
+===========================================================================
+Standard MIT License Text
+===========================================================================
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.

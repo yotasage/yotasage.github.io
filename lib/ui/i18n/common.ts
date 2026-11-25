@@ -156,6 +156,11 @@ export const en = {
   'licenses.section.fonts': 'Site fonts',
   'licenses.section.fontsLeadPre': 'Self-hosted variable fonts served directly from ',
   'licenses.section.fontsLeadPost': ' under the SIL Open Font License 1.1, with zero external font CDN requests.',
+  'licenses.section.python': 'Python runtime and curated packages',
+  'licenses.section.pythonLeadPre':
+    'Pyodide (MPL-2.0), CPython (PSF-2.0), Emscripten C libraries, and curated scientific Python wheels served unmodified as separate files from ',
+  'licenses.section.pythonLeadPost':
+    ' and executed locally in a Web Worker. Upstream source links and full notices (including FreeType FTL and SIL OFL-1.1 font texts) are listed below.',
   'licenses.noText': 'No licence text was found for this package.',
 
   // References page namespace
@@ -358,6 +363,11 @@ export const nb: Record<keyof typeof en, string> = {
   'licenses.section.fonts': 'Nettstedets skrifttyper',
   'licenses.section.fontsLeadPre': 'Selvhostede variable skrifttyper servert direkte fra ',
   'licenses.section.fontsLeadPost': ' under SIL Open Font License 1.1, uten eksterne CDN-forespørsler.',
+  'licenses.section.python': 'Python-kjøretid og medfølgende pakker',
+  'licenses.section.pythonLeadPre':
+    'Pyodide (MPL-2.0), CPython (PSF-2.0), Emscripten C-biblioteker og utvalgte vitenskapelige Python-pakker servert uendret som egne filer fra ',
+  'licenses.section.pythonLeadPost':
+    ' og kjørt lokalt i en Web Worker. Lenker til kildekode og fullstendige merknader (inkludert FreeType FTL og SIL OFL-1.1 skrifttypelisenser) er oppført nedenfor.',
   'licenses.noText': 'Ingen lisenstekst ble funnet for denne pakken.',
 
   // References page namespace
