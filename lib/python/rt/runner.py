@@ -179,9 +179,34 @@ def _interrupted_result(exc: BaseException) -> dict:
     return {"ok": False, "exitCode": 130, "interrupted": True, "error": info}
 
 
+def set_interrupts(on: bool) -> None:
+    """Turn noticing Stop (SIGINT, Tier 1) on or off. A REPL line turns it off around everything but the user's
+    code (repl.py), because one noticed between two web-loop callbacks would lose a callback; a run turns it on."""
+    try:
+        import yotasage_interrupt
+
+        if on:
+            yotasage_interrupt.enable()
+        else:
+            yotasage_interrupt.disable()
+    except ImportError:
+        pass
+
+
+def ack_interrupt() -> None:
+    """Tell the page this Stop's KeyboardInterrupt was caught, so it stops re-asserting SIGINT (Tier 1)."""
+    try:
+        import yotasage_interrupt
+
+        yotasage_interrupt.ack()
+    except ImportError:
+        pass
+
+
 def run_script(code: str | None = None, filename: str = "main.py", files: dict | None = None) -> dict:
     """Run a script; a Stop that lands during the setup before the script starts is a clean interruption too."""
     try:
+        set_interrupts(True)
         return _run_script(code, filename, files)
     except KeyboardInterrupt as exc:
         return _interrupted_result(exc)

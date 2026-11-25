@@ -38,7 +38,11 @@ export async function runCorpusChecks(browserName, browser, { primaryOrigin, rec
     asyncioStopMs: null,
     forceStopTotalMs: null,
     forceStopRestartMs: null,
+    replStopMedianMs: null,
+    replSleepStopMs: null,
+    replForceStopReadyMs: null,
     tier2Tier: null,
+    tier2ReplStop: null,
   };
 
   // --- Context 1: Standard isolated Tier 1 session ---
@@ -503,7 +507,6 @@ export async function runCorpusChecks(browserName, browser, { primaryOrigin, rec
 
     // 12b. Stop immediately after Run / a REPL line is a clean interrupt (never an internal RuntimeError)
     await record(browserName, 'Stop immediately after Run is a clean interrupt (20 trials + REPL)', async () => {
-      const errorsBefore = pageErrors.length;
       const out = await page.evaluate(async () => {
         const client = window.__testClient;
         const delays = [0, 5, 10, 20, 40];
@@ -538,47 +541,188 @@ export async function runCorpusChecks(browserName, browser, { primaryOrigin, rec
           await okAfter(`run trial ${i + 1}`);
           if (bad.length) break;
         }
-        // REPL line: replPush does not enter the running state (the page's Stop does nothing then), so write SIGINT to
-        // the control buffer as Stop does, d ms after the line starts printing.
+        // REPL line: the client's real Stop, d ms after replPush enters the running state (F2).
         for (let i = 0; i < 10 && !bad.length; i += 1) {
           const d = delays[i % delays.length];
-          const ctrl = client.ctrlView;
-          let done = false;
-          const pulse = () => { Atomics.store(ctrl, 0, 2); Atomics.notify(ctrl, 0, 1); };
-          let timer = null;
+          let stopPromise = null;
+          let stderr = '';
+          // A compound statement, as typed: the blank line that ends it runs it.
+          const first = await within(client.replPush('while True: pass'), 8000, `repl trial ${i + 1} first line`);
+          if (first.status !== 'incomplete') bad.push(`repl trial ${i + 1}: first line ${JSON.stringify(first)}`);
           const unsub = client.subscribe({
-            stdout: (t) => {
-              if (timer || !t.includes('REPL_GO')) return;
-              setTimeout(() => {
-                pulse();
-                timer = setInterval(() => { if (!done && Atomics.load(ctrl, 0) === 0) pulse(); }, 150);
-              }, d);
-              timer = -1;
+            stderr: (t) => { stderr += t; },
+            state: (s) => {
+              if (s === 'running' && !stopPromise) setTimeout(() => { stopPromise = client.stop(); }, d);
             },
           });
           let r;
           try {
-            r = await within(client.replPush('exec("print(\'REPL_GO\', flush=True)\\nwhile True: pass")'), 8000, `repl trial ${i + 1} (${d} ms)`);
+            r = await within(client.replPush(''), 8000, `repl trial ${i + 1} (${d} ms)`);
+            if (stopPromise) await stopPromise;
           } finally {
-            done = true;
-            if (timer && timer !== -1) clearInterval(timer);
             unsub();
           }
           const errType = r.error && r.error.type;
-          if (r.status !== 'error' || errType !== 'KeyboardInterrupt') {
-            bad.push(`repl trial ${i + 1} (${d} ms): ${JSON.stringify(r).slice(0, 400)}`);
+          if (r.status !== 'error' || errType !== 'KeyboardInterrupt' || r.forceStopped || stderr.includes('RuntimeError')) {
+            bad.push(`repl trial ${i + 1} (${d} ms): ${JSON.stringify(r).slice(0, 400)} stderr=${JSON.stringify(stderr.slice(0, 200))}`);
           }
           const next = await within(client.replPush('1 + 1'), 8000, `repl follow-up ${i + 1}`);
           if (next.status !== 'complete') bad.push(`repl trial ${i + 1}: following line ${JSON.stringify(next)}`);
         }
         return bad;
       });
-      // Pyodide's web loop also reports the KeyboardInterrupt of an interrupted REPL line as an uncaught page error
-      // (the page's Stop never reaches a REPL line); those, and only those, belong to this check.
-      for (let k = pageErrors.length - 1; k >= errorsBefore; k -= 1) {
-        if (pageErrors[k].includes('pyodide/console.py') && pageErrors[k].includes('KeyboardInterrupt')) pageErrors.splice(k, 1);
-      }
       if (out.length) return out[0];
+      return true;
+    });
+
+    // 12c. F2: Stop reaches a running REPL line (busy state, SIGINT, Force Stop escalation)
+    // lines: typed REPL lines; all but the last are pushed first (a compound statement), Stop lands in the last.
+    const replStop = (lines, trials, delayMs = 150) =>
+      page.evaluate(async ({ lines, trials, delayMs }) => {
+        const client = window.__testClient;
+        const within = (p, ms, tag) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(`${tag} hung > ${ms} ms`)), ms))]);
+        const push = async (src) => {
+          let out = '';
+          let err = '';
+          const unsub = client.subscribe({ stdout: (t) => { out += t; }, stderr: (t) => { err += t; } });
+          try {
+            const res = await within(client.replPush(src), 8000, src);
+            return { res, out, err };
+          } finally {
+            unsub();
+          }
+        };
+        const kept = await push('repl_kept = 41');
+        const trialsOut = [];
+        for (let i = 0; i < trials; i += 1) {
+          let stopAt = 0;
+          const states = [];
+          let stopPromise = null;
+          let stderr = '';
+          for (const l of lines.slice(0, -1)) await push(l);
+          const line = lines[lines.length - 1];
+          const unsub = client.subscribe({
+            stderr: (t) => { stderr += t; },
+            state: (s) => {
+              states.push(s);
+              if (s === 'running' && !stopPromise && !stopAt) {
+                stopAt = -1;
+                setTimeout(() => {
+                  stopAt = performance.now();
+                  states.push(`activity:${client.activity}`);
+                  stopPromise = client.stop();
+                }, delayMs);
+              }
+            },
+          });
+          let res;
+          let endAt = 0;
+          try {
+            res = await within(client.replPush(line), 10000, line);
+            endAt = performance.now();
+            if (stopPromise) await within(stopPromise, 8000, 'stop()');
+          } finally {
+            unsub();
+          }
+          const readyAt = performance.now();
+          const two = await push('1 + 1');
+          const keptNow = await push('repl_kept + 1');
+          trialsOut.push({
+            res, ms: endAt - stopAt, readyMs: readyAt - stopAt, stderr, states,
+            two: two.out, kept: keptNow.out, twoStatus: two.res.status, endState: client.state, endActivity: client.activity,
+          });
+        }
+        return { kept: kept.res.status, trials: trialsOut };
+      }, { lines, trials, delayMs });
+
+    const checkSoftReplStop = (out, label) => {
+      if (out.kept !== 'complete') return `${label}: setting a variable failed (${out.kept})`;
+      for (const [i, t] of out.trials.entries()) {
+        const tag = `${label} trial ${i + 1}`;
+        if (!t.states.includes('activity:repl')) return `${tag}: client not busy with the REPL line (${t.states.join(',')})`;
+        if (!t.states.includes('stopping')) return `${tag}: Stop did not enter stopping (${t.states.join(',')})`;
+        if (t.res.status !== 'error' || t.res.error?.type !== 'KeyboardInterrupt' || !t.res.interrupted || t.res.forceStopped) {
+          return `${tag}: ${JSON.stringify(t.res).slice(0, 300)}`;
+        }
+        if (!t.stderr.includes('KeyboardInterrupt') || t.stderr.includes('Traceback')) return `${tag}: stderr ${JSON.stringify(t.stderr)}`;
+        if (t.twoStatus !== 'complete' || t.two.trim() !== '2') return `${tag}: 1 + 1 gave ${JSON.stringify(t.two)}`;
+        if (t.kept.trim() !== '42') return `${tag}: variable lost, repl_kept + 1 gave ${JSON.stringify(t.kept)}`;
+        if (t.endState !== 'ready' || t.endActivity !== null) return `${tag}: ended ${t.endState}/${t.endActivity}`;
+      }
+      return true;
+    };
+
+    await record(browserName, 'REPL: Stop ends while True: pass (10 trials, median < 300 ms), namespace kept', async () => {
+      const out = await replStop(['while True: pass', ''], 10);
+      const ok = checkSoftReplStop(out, 'while True');
+      if (ok !== true) return ok;
+      const ms = out.trials.map((t) => t.ms);
+      metrics.replStopMedianMs = median(ms);
+      if (metrics.replStopMedianMs >= 300) {
+        return `REPL Stop median ${metrics.replStopMedianMs.toFixed(1)} ms >= 300 ms (${ms.map((v) => v.toFixed(0)).join(', ')})`;
+      }
+      return true;
+    });
+
+    await record(browserName, 'REPL: Stop ends time.sleep(100) (< 300 ms), namespace kept', async () => {
+      const out = await replStop(['import time; time.sleep(100)'], 3);
+      const ok = checkSoftReplStop(out, 'time.sleep');
+      if (ok !== true) return ok;
+      metrics.replSleepStopMs = Math.max(...out.trials.map((t) => t.ms));
+      if (metrics.replSleepStopMs >= 300) return `REPL sleep Stop took ${metrics.replSleepStopMs.toFixed(1)} ms >= 300 ms`;
+      return true;
+    });
+
+    await record(browserName, 'REPL: Force Stop escalation when KeyboardInterrupt is ignored, REPL works after', async () => {
+      const out = await replStop([
+        'while True:',
+        '    try:',
+        '        while True: pass',
+        '    except KeyboardInterrupt:',
+        '        pass',
+        '',
+      ], 1, 100);
+      const t = out.trials[0];
+      if (!t.res.forceStopped || !t.res.interrupted || t.res.error?.type !== 'KeyboardInterrupt') {
+        return `expected a force-stopped REPL line, got ${JSON.stringify(t.res).slice(0, 300)}`;
+      }
+      if (!t.states.includes('booting')) return `worker was not restarted (${t.states.join(',')})`;
+      if (t.ms < 1400 || t.ms > 2200) return `REPL line ended ${t.ms.toFixed(0)} ms after Stop (expected the 1.5 s escalation)`;
+      metrics.replForceStopReadyMs = t.readyMs;
+      if (t.readyMs > 4500) return `worker ready ${t.readyMs.toFixed(0)} ms after Stop (> 4500 ms)`;
+      if (t.twoStatus !== 'complete' || t.two.trim() !== '2') return `REPL after Force Stop: 1 + 1 gave ${JSON.stringify(t.two)}`;
+      if (t.endState !== 'ready' || t.endActivity !== null) return `ended ${t.endState}/${t.endActivity}`;
+      return true;
+    });
+
+    await record(browserName, 'REPL: input() in a line works, and Stop while it waits is a KeyboardInterrupt', async () => {
+      const r = await page.evaluate(async () => {
+        const client = window.__testClient;
+        let out = '';
+        let asks = 0;
+        let stopNext = false;
+        const unsub = client.subscribe({
+          stdout: (t) => { out += t; },
+          stdinRequest: () => {
+            asks += 1;
+            if (stopNext) setTimeout(() => { void client.stop(); }, 100);
+            else client.sendStdin('Ada');
+          },
+        });
+        try {
+          const answered = await client.replPush('print("HI:" + input("Who? "))');
+          stopNext = true;
+          const stopped = await client.replPush('input("Again? ")');
+          const after = await client.replPush('1 + 1');
+          return { answered, stopped, after, out, asks, state: client.state };
+        } finally {
+          unsub();
+        }
+      });
+      if (r.answered.status !== 'complete' || !r.out.includes('HI:Ada')) return `input() line: ${JSON.stringify(r.answered)} out=${JSON.stringify(r.out)}`;
+      if (r.asks !== 2) return `expected 2 input requests, got ${r.asks}`;
+      if (r.stopped.error?.type !== 'KeyboardInterrupt' || r.stopped.forceStopped) return `Stop in input(): ${JSON.stringify(r.stopped).slice(0, 300)}`;
+      if (r.after.status !== 'complete' || !r.out.trim().endsWith('2')) return `line after: ${JSON.stringify(r.after)} out=${JSON.stringify(r.out.slice(-80))}`;
       return true;
     });
 
@@ -788,6 +932,42 @@ export async function runCorpusChecks(browserName, browser, { primaryOrigin, rec
           return `Tier 2 JSPI output mismatch: ${JSON.stringify(res.jspiOut)}`;
         }
       }
+      return true;
+    });
+
+    // F2: without SAB there is no SIGINT, so Stop on a REPL line Force Stops and restarts at once (as for runs).
+    await record(browserName, 'Tier 2/3: Stop on a running REPL line Force Stops, REPL works after', async () => {
+      const r = await t2Page.evaluate(async () => {
+        const client = window.__pythonHarness.createClient();
+        await client.start();
+        const states = [];
+        let stopAt = 0;
+        const unsub = client.subscribe({
+          state: (s) => {
+            states.push(`${s}:${client.activity}`);
+            if (s === 'running' && !stopAt) {
+              stopAt = -1;
+              setTimeout(() => { stopAt = performance.now(); void client.stop(); }, 300);
+            }
+          },
+        });
+        await client.replPush('while True: pass', { allowUnconfirmed: true });
+        const res = await client.replPush('', { allowUnconfirmed: true });
+        const ms = performance.now() - stopAt;
+        unsub();
+        let out = '';
+        const unsub2 = client.subscribe({ stdout: (t) => { out += t; } });
+        const two = await client.replPush('1 + 1', { allowUnconfirmed: true });
+        unsub2();
+        const tier = client.readyInfo?.tier;
+        client.dispose();
+        return { res, ms, states, two, out, tier };
+      });
+      metrics.tier2ReplStop = `force ${r.ms.toFixed(0)} ms`;
+      if (!r.states.includes('running:repl')) return `REPL line did not make the client busy (${r.states.join(',')})`;
+      if (!r.res.forceStopped || !r.res.interrupted) return `expected a force-stopped line, got ${JSON.stringify(r.res).slice(0, 300)}`;
+      if (r.ms > 500) return `Force Stop took ${r.ms.toFixed(0)} ms to end the line`;
+      if (r.two.status !== 'complete' || r.out.trim() !== '2') return `REPL after Force Stop: ${JSON.stringify(r.two)} out=${JSON.stringify(r.out)}`;
       return true;
     });
   } finally {

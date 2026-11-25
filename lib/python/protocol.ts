@@ -26,6 +26,9 @@ export const CTRL_INTERRUPT = 0; // Main stores SIGINT (2) + Atomics.notify; ali
 export const CTRL_STDIN_STATE = 1; // STDIN_* state machine
 export const CTRL_STDIN_LEN = 2; // UTF-8 byte count in stdinSab (0..65536)
 export const CTRL_STDIN_SEQ = 3; // Monotonic request sequence number
+// Worker sets 1 when the runtime caught a Stop's KeyboardInterrupt (a REPL line); main clears it when a Stop
+// starts and does not re-assert SIGINT while it is 1 (slot 15, the last of displayProtocol.ts's slots 4..15).
+export const CTRL_INTERRUPT_ACK = 15;
 // Slots 4..15 (bytes 16..63): the display (CTRL_DISPLAY_STATE ... CTRL_EV_DROPPED in displayProtocol.ts).
 
 export const SIGINT = 2;

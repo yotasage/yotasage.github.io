@@ -95,6 +95,8 @@ export default function PythonPlayground() {
 
   // Runtime state
   const [clientState, setClientState] = useState<PythonClientState>('idle');
+  // F2: a REPL line keeps the client busy like a run (Stop reaches it), but the REPL stays the place it runs in.
+  const [replLineRunning, setReplLineRunning] = useState(false);
   const [statusDetail, setStatusDetail] = useState<string>('');
   const [readyInfo, setReadyInfo] = useState<ReadyInfo | null>(null);
   const [securityStatus, setSecurityStatus] = useState<SecurityStatusInfo | null>(null);
@@ -210,6 +212,7 @@ export default function PythonPlayground() {
     const unsub = client.subscribe({
       state: (next, detail) => {
         setClientState(next);
+        setReplLineRunning(client.activity === 'repl');
         setStatusDetail(detail ?? '');
         if (next !== 'running' && next !== 'stopping') {
           setAwaitingStdin(false);
@@ -225,14 +228,14 @@ export default function PythonPlayground() {
         }
       },
       stdout: (text) => {
-        if (replActiveRef.current && client.state !== 'running' && client.state !== 'stopping') {
+        if (client.activity === 'repl' || (replActiveRef.current && client.activity !== 'run')) {
           replRef.current?.writeStdout(text);
         } else {
           consoleRef.current?.writeStdout(text);
         }
       },
       stderr: (text) => {
-        if (replActiveRef.current && client.state !== 'running' && client.state !== 'stopping') {
+        if (client.activity === 'repl' || (replActiveRef.current && client.activity !== 'run')) {
           replRef.current?.writeStderr(text);
         } else {
           consoleRef.current?.writeStderr(text);
@@ -438,6 +441,10 @@ export default function PythonPlayground() {
     [allowUnconfirmed],
   );
 
+  const handleReplCancelInput = useCallback(() => {
+    clientRef.current?.replCancelInput();
+  }, []);
+
   const handleReplComplete = useCallback(async (source: string): Promise<ReplCompletionsResult> => {
     const client = clientRef.current;
     if (!client) return { completions: [], start: 0 };
@@ -538,7 +545,7 @@ export default function PythonPlayground() {
       case 'ready':
         return readyInfo ? `${t('python.statusReady')} · Py ${readyInfo.pythonVersion}` : t('python.statusReady');
       case 'running':
-        return t('python.statusRunning');
+        return replLineRunning ? t('python.statusRunningRepl') : t('python.statusRunning');
       case 'stopping':
         return t('python.statusStopping');
       case 'crashed':
@@ -887,7 +894,9 @@ export default function PythonPlayground() {
                     mode="repl"
                     visible={isShown('repl')}
                     theme={resolvedTheme}
-                    replDisabled={isRunning || !readyInfo || isBlockedGate || isLockedByOtherTab}
+                    replDisabled={
+                      (isRunning && !replLineRunning) || !readyInfo || isBlockedGate || isLockedByOtherTab
+                    }
                     replBanner={
                       readyInfo
                         ? t('python.replReadyBanner', { version: readyInfo.pythonVersion })
@@ -895,6 +904,8 @@ export default function PythonPlayground() {
                     }
                     onReplPush={handleReplPush}
                     onReplComplete={handleReplComplete}
+                    onReplCancelInput={handleReplCancelInput}
+                    onStop={handleStop}
                     onExternalLink={(url) => setPendingExternalUrl(url)}
                   />,
                   panelHosts.repl,

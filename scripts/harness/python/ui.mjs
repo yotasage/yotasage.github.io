@@ -25,6 +25,7 @@ import { runDisplayUiSuite } from './ui-display-checks.mjs';
 import { runExamplesUiSuite } from './ui-examples-checks.mjs';
 import { runPackagesUiSuite } from './ui-packages-checks.mjs';
 import { runPlotsUiSuite } from './ui-plots-checks.mjs';
+import { runReplUiSuite } from './ui-repl-checks.mjs';
 import { runSelectionUiSuite } from './ui-selection-checks.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -224,12 +225,23 @@ async function runBrowserSuite(browserName, browser, baseUrl) {
       waitMonacoAndPyodideReady,
       attachErrorTracker,
     });
+  const replSuite = () =>
+    runReplUiSuite(browserName, browser, baseUrl, {
+      record,
+      waitIsolatedMain,
+      waitMonacoAndPyodideReady,
+      attachErrorTracker,
+    });
   const layoutSuite = async () => {
     const helpers = { record, waitIsolatedMain, waitMonacoAndPyodideReady, attachErrorTracker };
     await runLayoutUiSuite(browserName, browser, baseUrl, helpers);
     await runLayoutDragUiSuite(browserName, browser, baseUrl, helpers);
   };
-  // PYTHON_UI_ONLY=packages, =display, =selection, =examples or =layout runs only that suite (while working on it).
+  // PYTHON_UI_ONLY=packages, =display, =selection, =examples, =layout or =repl runs only that suite (while working on it).
+  if (process.env.PYTHON_UI_ONLY === 'repl') {
+    await replSuite();
+    return;
+  }
   if (process.env.PYTHON_UI_ONLY === 'layout') {
     await layoutSuite();
     return;
@@ -1057,6 +1069,9 @@ async function runBrowserSuite(browserName, browser, baseUrl) {
 
   // Suite 5b: U2 multi-selection, delete selection, Reset workspace, phone Select mode
   await selectionSuite();
+
+  // Suite 5c: F2 Stop and Ctrl+C in the REPL
+  await replSuite();
 
   // =========================================================================
   // Suite 6: P4b Plots Gallery & Hardened File Viewers

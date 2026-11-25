@@ -1036,6 +1036,7 @@ async function handleInit(msg) {
   });
 
   (await import('./display-host.js')).installDisplayHost(pyodide, ctrlView, activeTier);
+  (await import('./interrupt.js')).installInterruptHost(pyodide, ctrlView, activeTier);
   await installRuntimePackage(runtimeBaseUrl);
 
   const pythonVersion = String(

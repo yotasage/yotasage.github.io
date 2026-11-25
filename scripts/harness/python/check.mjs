@@ -207,7 +207,7 @@ console.log('\n=== Latency & Recovery Metrics ===');
 for (const [b, m] of Object.entries(browserMetrics)) {
   const fmt = (v) => (typeof v === 'number' ? `${v.toFixed(1)} ms` : 'n/a');
   console.log(
-    `  ${b} (${m.version}): SoftStop(20) min=${fmt(m.stopMinMs)} median=${fmt(m.stopMedianMs)} p95=${fmt(m.stopP95Ms)} max=${fmt(m.stopMaxMs)} | sleepStop=${fmt(m.sleepStopMs)} | asyncioStop=${fmt(m.asyncioStopMs)} | forceStopTotal=${fmt(m.forceStopTotalMs)} restart=${fmt(m.forceStopRestartMs)} | Tier2=${m.tier2Tier}`,
+    `  ${b} (${m.version}): SoftStop(20) min=${fmt(m.stopMinMs)} median=${fmt(m.stopMedianMs)} p95=${fmt(m.stopP95Ms)} max=${fmt(m.stopMaxMs)} | sleepStop=${fmt(m.sleepStopMs)} | asyncioStop=${fmt(m.asyncioStopMs)} | forceStopTotal=${fmt(m.forceStopTotalMs)} restart=${fmt(m.forceStopRestartMs)} | REPL stop median=${fmt(m.replStopMedianMs)} sleep=${fmt(m.replSleepStopMs)} forceReady=${fmt(m.replForceStopReadyMs)} | Tier2=${m.tier2Tier} replStop=${m.tier2ReplStop}`,
   );
 }
 for (const [b, m] of Object.entries(displayMetrics)) {

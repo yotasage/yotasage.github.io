@@ -36,6 +36,8 @@ export interface PythonTerminalProps {
   onSendStdinEof?: () => void;
   onReplPush?: (line: string) => Promise<ReplPushResult>;
   onReplComplete?: (source: string) => Promise<ReplCompletionsResult>;
+  /** Ctrl+C at the REPL prompt in a continuation line: drop the unfinished statement. */
+  onReplCancelInput?: () => void;
   onExternalLink: (url: string) => void;
 }
 
@@ -61,6 +63,7 @@ const PythonTerminal = React.forwardRef<PythonTerminalHandle, PythonTerminalProp
       onSendStdinEof,
       onReplPush,
       onReplComplete,
+      onReplCancelInput,
       onExternalLink,
     },
     ref,
@@ -89,6 +92,7 @@ const PythonTerminal = React.forwardRef<PythonTerminalHandle, PythonTerminalProp
     const onSendStdinEofRef = useRef(onSendStdinEof);
     const onReplPushRef = useRef(onReplPush);
     const onReplCompleteRef = useRef(onReplComplete);
+    const onReplCancelInputRef = useRef(onReplCancelInput);
     const onExternalLinkRef = useRef(onExternalLink);
 
     themeRef.current = theme;
@@ -99,6 +103,10 @@ const PythonTerminal = React.forwardRef<PythonTerminalHandle, PythonTerminalProp
     onSendStdinEofRef.current = onSendStdinEof;
     onReplPushRef.current = onReplPush;
     onReplCompleteRef.current = onReplComplete;
+    onReplCancelInputRef.current = onReplCancelInput;
+    // Read at call time, so a language switch does not rebuild the terminal through submitReplLine.
+    const tRef = useRef(t);
+    tRef.current = t;
     onExternalLinkRef.current = onExternalLink;
 
     const [ready, setReady] = useState(false);
@@ -164,6 +172,10 @@ const PythonTerminal = React.forwardRef<PythonTerminalHandle, PythonTerminalProp
 
         try {
           const res = await onReplPushRef.current(line);
+          if (res.forceStopped) {
+            // Force Stop restarted Python: say so, since the REPL's variables are gone.
+            writeRaw(`KeyboardInterrupt\r\n\x1b[33m${tRef.current('python.replForceStopped')}\r\n\x1b[0m`);
+          }
           if (res.status === 'incomplete') {
             printReplPrompt(true);
           } else {
@@ -259,10 +271,15 @@ const PythonTerminal = React.forwardRef<PythonTerminalHandle, PythonTerminalProp
               if (mode === 'console') {
                 lineBufRef.current = '';
                 onStopRef.current?.();
-              } else {
+              } else if (replBusyRef.current) {
+                // A line is running: stop it, as Ctrl+C does in the Console (KeyboardInterrupt follows).
+                onStopRef.current?.();
+              } else if (!replDisabledRef.current) {
+                // At the prompt, as in Python: drop the input (and an unfinished statement) with KeyboardInterrupt.
+                if (replContinuationRef.current) onReplCancelInputRef.current?.();
                 lineBufRef.current = '';
                 replHistIdxRef.current = -1;
-                writeRaw('^C\r\n');
+                writeRaw('^C\r\nKeyboardInterrupt\r\n');
                 printReplPrompt(false);
               }
               return false;

@@ -5,7 +5,7 @@
 // The worker creates the display SABs and sends them in display.open, because a Tier 1 run never returns
 // to the worker's event loop and so could not receive a page reply (notes-P7a.md).
 
-// Control SAB slots 4..15 (slots 0..3 are the S3 stdin/interrupt slots in protocol.ts).
+// Control SAB slots 4..14 (slots 0..3 are the S3 stdin/interrupt slots in protocol.ts).
 export const CTRL_DISPLAY_STATE = 4; // worker: id of the open display (generation, >= 1), 0 = none
 export const CTRL_FB_SEQ = 5; // worker: frames presented
 export const CTRL_FB_MID = 6; // both: triple-buffer middle slot = (id << 3) | FB_NEW | index
@@ -18,7 +18,7 @@ export const CTRL_EV_TAIL = 10; // worker: events read
 export const CTRL_ACK = 12; // page: display.batch messages received (the worker keeps one in flight)
 export const CTRL_EV_DROPPED = 13; // page: events dropped because the ring was full
 export const CTRL_CLOSE_REQ = 14; // page: id of the display the visitor closed (renderer.requestClose)
-// Slot 15 stays reserved.
+// Slot 15 is CTRL_INTERRUPT_ACK in protocol.ts (F2).
 
 export const FB_NEW = 4; // bit 2 of CTRL_FB_MID: the middle slot holds a frame the page has not shown
 export const FB_INDEX_MASK = 3;

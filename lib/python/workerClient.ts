@@ -12,6 +12,7 @@ import {
 import {
   CONTROL_SAB_BYTES,
   CTRL_INTERRUPT,
+  CTRL_INTERRUPT_ACK,
   CTRL_STDIN_LEN,
   CTRL_STDIN_STATE,
   SIGINT,
@@ -99,7 +100,21 @@ export interface PackageListResult {
 export interface ReplPushResult {
   readonly status: 'complete' | 'incomplete' | 'syntax-error' | 'error';
   readonly error?: PythonErrorInfo;
+  /** Stop ended the line (KeyboardInterrupt), softly or by Force Stop. */
+  readonly interrupted?: boolean;
+  /** Force Stop ended the line: the worker was restarted, so the REPL namespace starts fresh. */
+  readonly forceStopped?: boolean;
 }
+
+/** What the busy states ('running' / 'stopping') are busy with: a script run or a REPL line. */
+export type PythonActivity = 'run' | 'repl' | null;
+
+const REPL_INTERRUPT_ERROR: PythonErrorInfo = {
+  type: 'KeyboardInterrupt',
+  message: '',
+  formatted: 'KeyboardInterrupt\n',
+  frames: [],
+};
 
 export interface ReplCompletionsResult {
   readonly completions: readonly string[];
@@ -176,6 +191,8 @@ export class PythonWorkerClient {
   private stdinView: Uint8Array | null = null;
 
   private _state: PythonClientState = 'idle';
+  private _activity: PythonActivity = null;
+  private replResetPending = false;
   private _readyInfo: ReadyInfo | null = null;
   private _securityStatus: SecurityStatusInfo | null = null;
   private _activeStdin: { seq: number; mode: 'sab' | 'jspi' } | null = null;
@@ -239,6 +256,11 @@ export class PythonWorkerClient {
 
   get state(): PythonClientState {
     return this._state;
+  }
+
+  /** 'run' or 'repl' while the state is 'running' or 'stopping' (Stop works for both), else null. */
+  get activity(): PythonActivity {
+    return this._activity;
   }
 
   get readyInfo(): ReadyInfo | null {
@@ -422,6 +444,7 @@ export class PythonWorkerClient {
     const id = this.nextId++;
     this._activeStdin = null;
     this.pendingTransfer = null;
+    this._activity = 'run';
     this.setState('running');
 
     const syncRev =
@@ -543,7 +566,7 @@ export class PythonWorkerClient {
   }
 
   /**
-   * Stops the active run.
+   * Stops the active run or REPL line (activity 'run' or 'repl').
    * - Tier 1: writes SIGINT + 10 ms re-assert timer (S3 Pyodide race workaround) and escalates
    *   to Force Stop (worker.terminate() + warm restart) after softStopTimeoutMs (default 1.5 s).
    * - Tier 2 / 3: immediately Force Stops and restarts the worker.
@@ -561,6 +584,7 @@ export class PythonWorkerClient {
     this.clearStopTimers();
 
     const ctrl = this.ctrlView;
+    Atomics.store(ctrl, CTRL_INTERRUPT_ACK, 0);
     const pulse = () => {
       Atomics.store(ctrl, CTRL_INTERRUPT, SIGINT);
       Atomics.notify(ctrl, CTRL_INTERRUPT, 1);
@@ -579,7 +603,8 @@ export class PythonWorkerClient {
         this.clearStopTimers();
         return;
       }
-      if (Atomics.load(ctrl, CTRL_INTERRUPT) === 0) {
+      // Not once the runtime caught this Stop's KeyboardInterrupt (a REPL line's cleanup must not be hit again).
+      if (Atomics.load(ctrl, CTRL_INTERRUPT) === 0 && Atomics.load(ctrl, CTRL_INTERRUPT_ACK) === 0) {
         pulse();
       }
     }, this.sigintRetryIntervalMs);
@@ -616,6 +641,8 @@ export class PythonWorkerClient {
 
     const run = this.pendingRun;
     this.pendingRun = null;
+    const repl = this.pendingRepl;
+    this.pendingRepl = null;
 
     this.terminateWorkerOnly();
     this.initPromise = null;
@@ -632,6 +659,7 @@ export class PythonWorkerClient {
         durationMs: 0,
       });
     }
+    repl?.resolve({ status: 'error', error: REPL_INTERRUPT_ERROR, interrupted: true, forceStopped: true });
 
     await this.start();
   }
@@ -647,15 +675,32 @@ export class PythonWorkerClient {
         'REPL blocked (fail-closed): network block could not be confirmed in Off mode.',
       );
     }
-    if (this._state === 'running' || this._state === 'stopping') {
-      throw new Error('Cannot push to REPL while a script is running');
+    if (this._state === 'running' || this._state === 'stopping' || this.pendingRepl) {
+      throw new Error('Cannot push to REPL while a script or another line is running');
     }
 
     const id = this.nextId++;
+    this._activeStdin = null;
+    this.pendingTransfer = null;
+    // A REPL line is busy like a run: Stop (SIGINT, re-assert, Force Stop escalation) reaches it.
+    this._activity = 'repl';
+    this.setState('running', 'Running REPL line…');
+    // repl.py's repl_push drops an unfinished statement first when the line starts with ETX
+    // (Ctrl+C, which the terminal never sends as input).
+    const sent = this.replResetPending ? `\x03${line}` : line;
+    this.replResetPending = false;
     return new Promise<ReplPushResult>((resolve, reject) => {
       this.pendingRepl = { id, resolve, reject };
-      this.post({ type: 'repl.push', id, line });
+      this.post({ type: 'repl.push', id, line: sent });
     });
+  }
+
+  /**
+   * Ctrl+C at an idle REPL prompt: drops the lines of an unfinished statement (as Python's
+   * KeyboardInterrupt at the prompt does). Not a busy state: nothing runs.
+   */
+  replCancelInput(): void {
+    if (!this._activity) this.replResetPending = true;
   }
 
   /** Requests tab completions from the persistent REPL console. */
@@ -779,6 +824,7 @@ export class PythonWorkerClient {
 
   private rejectInFlight(reason: string): void {
     const err = new Error(reason);
+    this._activity = null;
     if (this.pendingInit) {
       const p = this.pendingInit;
       this.pendingInit = null;
@@ -813,6 +859,7 @@ export class PythonWorkerClient {
 
   private handleWorkerCrash(reason: string): void {
     this.clearStopTimers();
+    this._activity = null;
     this._activeStdin = null;
     this.pendingTransfer = null;
     this.terminateWorkerOnly();
@@ -903,6 +950,7 @@ export class PythonWorkerClient {
         this.clearStopTimers();
         this._activeStdin = null;
         this.pendingTransfer = null;
+        this._activity = null;
         this.setState(this.isFailClosedBlocked ? 'blocked' : 'ready');
         const p = this.pendingRun;
         this.pendingRun = null;
@@ -919,11 +967,17 @@ export class PythonWorkerClient {
 
       case 'repl.result': {
         if (this.pendingRepl && this.pendingRepl.id === msg.id) {
+          this.clearStopTimers();
+          this._activeStdin = null;
+          this.pendingTransfer = null;
           const p = this.pendingRepl;
           this.pendingRepl = null;
+          this._activity = null;
+          this.setState(this.isFailClosedBlocked ? 'blocked' : 'ready');
           p.resolve({
             status: msg.status,
             ...(msg.error ? { error: msg.error } : {}),
+            ...(msg.error?.type === 'KeyboardInterrupt' ? { interrupted: true } : {}),
           });
         }
         break;
