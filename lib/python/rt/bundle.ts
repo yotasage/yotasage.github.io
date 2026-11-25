@@ -10,6 +10,7 @@ export const YOTASAGE_RT_MODULES = [
   'repl.py',
   'mpl_backend.py',
   'packages.py',
+  'vdisplay.py',
 ] as const;
 
 export type YotasageRtModuleName = (typeof YOTASAGE_RT_MODULES)[number];
@@ -24,5 +25,6 @@ export function getYotasageRtModuleUrls(): Record<YotasageRtModuleName, string> 
     'repl.py': `${base}repl.py`,
     'mpl_backend.py': `${base}mpl_backend.py`,
     'packages.py': `${base}packages.py`,
+    'vdisplay.py': `${base}vdisplay.py`,
   };
 }

@@ -6,7 +6,7 @@
 // Flags:
 //   --no-build              Skip running `npm run build:export` when out/python/harness.html exists
 //   PYTHON_BROWSERS=edge,firefox,webkit  Restrict browser list (default: all 3)
-//   PYTHON_PARTS=corpus,security,fs,plots,examples,packages  Restrict Part B parts (default: all)
+//   PYTHON_PARTS=corpus,security,fs,plots,examples,packages,display  Restrict Part B parts (default: all)
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium, firefox, webkit } from 'playwright-core';
 
 import { runCorpusChecks } from './corpus-checks.mjs';
+import { runDisplayChecks } from './display-checks.mjs';
 import { runExamplesChecks } from './examples-checks.mjs';
 import { runFsChecks } from './fs-checks.mjs';
 import { runPackagesChecks } from './packages-checks.mjs';
@@ -33,7 +34,7 @@ const BROWSERS = (process.env.PYTHON_BROWSERS || 'edge,firefox,webkit')
   .map((s) => s.trim().toLowerCase())
   .filter(Boolean);
 const PARTS = new Set(
-  (process.env.PYTHON_PARTS || 'corpus,security,fs,plots,examples,packages')
+  (process.env.PYTHON_PARTS || 'corpus,security,fs,plots,examples,packages,display')
     .split(',')
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean),
@@ -114,6 +115,7 @@ if (!noBuild || !existsSync(join(outDir, 'python', 'harness.html'))) {
 
 const servers = await startHarnessServers(outDir, { primaryPort: 3023, secondaryPort: 3024 });
 const browserMetrics = {};
+const displayMetrics = {};
 
 try {
   for (const b of BROWSERS) {
@@ -172,6 +174,13 @@ try {
           record,
         });
       }
+
+      if (PARTS.has('display')) {
+        displayMetrics[b] = await runDisplayChecks(b, browser, {
+          primaryOrigin: servers.primaryOrigin,
+          record,
+        });
+      }
     } catch (err) {
       totalFailed += 1;
       const msg = err instanceof Error ? err.message : String(err);
@@ -199,6 +208,13 @@ for (const [b, m] of Object.entries(browserMetrics)) {
   const fmt = (v) => (typeof v === 'number' ? `${v.toFixed(1)} ms` : 'n/a');
   console.log(
     `  ${b} (${m.version}): SoftStop(20) min=${fmt(m.stopMinMs)} median=${fmt(m.stopMedianMs)} p95=${fmt(m.stopP95Ms)} max=${fmt(m.stopMaxMs)} | sleepStop=${fmt(m.sleepStopMs)} | asyncioStop=${fmt(m.asyncioStopMs)} | forceStopTotal=${fmt(m.forceStopTotalMs)} restart=${fmt(m.forceStopRestartMs)} | Tier2=${m.tier2Tier}`,
+  );
+}
+for (const [b, m] of Object.entries(displayMetrics)) {
+  const n = (v, d = 1) => (typeof v === 'number' ? v.toFixed(d) : 'n/a');
+  const st = (o) => (o ? `${n(o.median)}/${n(o.max)} ms` : 'n/a');
+  console.log(
+    `  ${b} display: paced ${n(m.pacedFps)} fps (rAF ${n(m.rafHz)} Hz, busy ${n(m.pacedBusy, 2)}) | busy loop drawn ${n(m.busyDrawn)}/s, max rAF gap ${n(m.busyMaxGap)} ms, page ${n(m.pageCostMs, 2)} ms/frame | Stop median/max: busy ${st(m.stopBusy)}, fallback ${st(m.stopFallback)}, wait_frame ${st(m.stopWaitFrame)}, wait_event ${st(m.stopWaitEvent)} | input median: wait_event ${n(m.inputWaitEventMs, 2)} ms, paced ${n(m.inputPacedMs, 2)} ms | hidden present ${n(m.hidden?.fps, 2)} fps, busy ${n(m.hidden?.busy1, 2)}`,
   );
 }
 

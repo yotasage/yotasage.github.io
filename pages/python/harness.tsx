@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import PageHead from '../../components/PageHead';
 import { clearAllPythonData } from '../../components/Python/clearData';
@@ -26,6 +26,8 @@ import {
   registerPythonServiceWorker,
 } from '../../lib/python/tiers';
 import type { BrowserCapabilityInfo, SwRegistrationResult } from '../../lib/python/tiers';
+import { DisplayRenderer } from '../../lib/python/display/renderer';
+import * as displayProtocol from '../../lib/python/displayProtocol';
 import { PythonWorkerClient } from '../../lib/python/workerClient';
 import type {
   PlotEvent,
@@ -69,6 +71,10 @@ export interface PythonHarnessApi {
   readonly createRestorer: (options: PackageRestorerOptions) => PackageRestorer;
   readonly spawnRawWorker: () => Worker;
   readonly spawnRawStorageWorker: () => Worker;
+  /** P7a: a renderer drawing the client's display onto the harness canvas (320x240 CSS px box). */
+  readonly createDisplayRenderer: (client: PythonWorkerClient) => DisplayRenderer;
+  readonly displayCanvas: () => HTMLCanvasElement | null;
+  readonly displayProtocol: typeof displayProtocol;
 }
 
 declare global {
@@ -81,6 +87,7 @@ export default function PythonHarnessPage() {
   const [status, setStatus] = useState<string>('initializing');
   const [policyMode, setPolicyMode] = useState<string>('off');
   const [tierLabel, setTierLabel] = useState<string>('unknown');
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,6 +133,13 @@ export default function PythonHarnessPage() {
         createRestorer: (options) => new PackageRestorer(options),
         spawnRawWorker: () => new Worker(getPythonWorkerUrl(), { type: 'module' }),
         spawnRawStorageWorker: () => new Worker(getPythonStorageWorkerUrl(), { type: 'module' }),
+        createDisplayRenderer: (client) => {
+          const canvas = canvasRef.current;
+          if (!canvas) throw new Error('harness display canvas is not mounted');
+          return new DisplayRenderer(client, canvas);
+        },
+        displayCanvas: () => canvasRef.current,
+        displayProtocol,
       };
     };
 
@@ -179,6 +193,13 @@ export default function PythonHarnessPage() {
         <p data-testid="harness-status">Status: {status}</p>
         <p data-testid="harness-mode">Network mode: {policyMode}</p>
         <p data-testid="harness-tier">Capability: {tierLabel}</p>
+        <canvas
+          ref={canvasRef}
+          data-testid="harness-display"
+          width={1}
+          height={1}
+          style={{ width: 320, height: 240, imageRendering: 'pixelated', background: '#000' }}
+        />
       </main>
     </>
   );

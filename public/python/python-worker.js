@@ -33,7 +33,7 @@ const STDIN_INTERRUPTED = 5;
 const WORKSPACE_ROOT = '/workspace';
 const MAX_DELTA_FILE_BYTES = 50 * 1024 * 1024;
 const MAX_IMPORT_SCAN_BYTES = 256 * 1024;
-const RT_FILES = ['__init__.py', 'stdio.py', 'shims.py', 'runner.py', 'repl.py', 'mpl_backend.py', 'packages.py'];
+const RT_FILES = ['__init__.py', 'stdio.py', 'shims.py', 'runner.py', 'repl.py', 'mpl_backend.py', 'packages.py', 'vdisplay.py'];
 const WHEEL_DIR = '/tmp/yotasage-wheels';
 const WHEEL_NAME_RE = /^[A-Za-z0-9._+-]{1,251}\.whl$/;
 
@@ -1035,6 +1035,7 @@ async function handleInit(msg) {
     },
   });
 
+  (await import('./display-host.js')).installDisplayHost(pyodide, ctrlView, activeTier);
   await installRuntimePackage(runtimeBaseUrl);
 
   const pythonVersion = String(

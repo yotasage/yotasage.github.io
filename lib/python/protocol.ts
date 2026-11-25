@@ -12,6 +12,8 @@ import type {
   PackageMainToWorkerMessage,
   PackageWorkerToMainMessage,
 } from './packageProtocol';
+import { validateDisplayMessage } from './displayProtocol';
+import type { DisplayWorkerMessage } from './displayProtocol';
 
 export type CapabilityTier = 1 | 2 | 3;
 
@@ -24,7 +26,7 @@ export const CTRL_INTERRUPT = 0; // Main stores SIGINT (2) + Atomics.notify; ali
 export const CTRL_STDIN_STATE = 1; // STDIN_* state machine
 export const CTRL_STDIN_LEN = 2; // UTF-8 byte count in stdinSab (0..65536)
 export const CTRL_STDIN_SEQ = 3; // Monotonic request sequence number
-// Slots 4..15 (bytes 16..63) reserved for S4 display (frameCounter, eventsHead, eventsTail, rpc).
+// Slots 4..15 (bytes 16..63): the display (CTRL_DISPLAY_STATE ... CTRL_EV_DROPPED in displayProtocol.ts).
 
 export const SIGINT = 2;
 
@@ -251,7 +253,8 @@ export type WorkerToMainMessage =
       readonly id?: number;
       readonly message: string;
     }
-  | PackageWorkerToMainMessage;
+  | PackageWorkerToMainMessage
+  | DisplayWorkerMessage;
 
 export type ValidationResult =
   | { readonly ok: true; readonly message: WorkerToMainMessage }
@@ -684,6 +687,11 @@ export function validateWorkerMessage(raw: unknown): ValidationResult {
     case 'pkg.result':
     case 'pkg.list.result':
       return validatePackageMessage(raw);
+
+    case 'display.open':
+    case 'display.close':
+    case 'display.batch':
+      return validateDisplayMessage(raw);
 
     default:
       return { ok: false, reason: `Unknown worker message type "${raw.type}"` };

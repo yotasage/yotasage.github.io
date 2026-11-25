@@ -33,6 +33,8 @@ import type {
   SecurityStatusInfo,
   WorkerToMainMessage,
 } from './protocol';
+import { CTRL_EV_HEAD, CTRL_VSYNC } from './displayProtocol';
+import type { DisplayWorkerMessage } from './displayProtocol';
 import { checkInstallRequest } from './packageProtocol';
 import type {
   PackageFailure,
@@ -144,6 +146,11 @@ export interface PythonClientListeners {
   plot?: (plot: PlotEvent) => void;
   crash?: (reason: string) => void;
   droppedMessage?: (reason: string) => void;
+  /**
+   * Validated display.* messages (P7a) with the control SAB of the worker that sent them, or null
+   * without SAB. When the worker goes away a synthetic { type: 'display.close', id: 0 } closes any display.
+   */
+  display?: (msg: DisplayWorkerMessage, control: Int32Array | null) => void;
 }
 
 interface PendingStdinTransfer {
@@ -217,6 +224,7 @@ export class PythonWorkerClient {
   private sigintRetryTimer: ReturnType<typeof setInterval> | null = null;
   private forceStopTimer: ReturnType<typeof setTimeout> | null = null;
   private listeners = new Set<PythonClientListeners>();
+  private displayAnnounced = false;
 
   constructor(options: PythonWorkerClientOptions = {}) {
     this.networkMode = options.networkMode ?? 'off';
@@ -558,6 +566,9 @@ export class PythonWorkerClient {
       Atomics.notify(ctrl, CTRL_INTERRUPT, 1);
       Atomics.compareExchange(ctrl, CTRL_STDIN_STATE, STDIN_REQUEST, STDIN_INTERRUPTED);
       Atomics.notify(ctrl, CTRL_STDIN_STATE, 1);
+      // Wake a display wait (wait_frame / present while hidden, wait_event) so it raises at once.
+      Atomics.notify(ctrl, CTRL_VSYNC, 1);
+      Atomics.notify(ctrl, CTRL_EV_HEAD, 1);
     };
     pulse();
 
@@ -752,6 +763,10 @@ export class PythonWorkerClient {
   }
 
   private terminateWorkerOnly(): void {
+    if (this.displayAnnounced) {
+      this.displayAnnounced = false;
+      this.emit('display', { type: 'display.close', id: 0 }, null);
+    }
     if (this.worker) {
       this.worker.onmessage = null;
       this.worker.onerror = null;
@@ -981,6 +996,13 @@ export class PythonWorkerClient {
         }
         break;
       }
+
+      case 'display.open':
+      case 'display.close':
+      case 'display.batch':
+        if (msg.type === 'display.open') this.displayAnnounced = true;
+        this.emit('display', msg, this.ctrlView);
+        break;
 
       case 'error': {
         if (this.pendingInit && (msg.id === undefined || this.pendingInit.id === msg.id)) {
