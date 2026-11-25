@@ -1,0 +1,600 @@
+/* Python Playground — Files sidebar, multi-tab Monaco bar, drag-drop, examples, W5 & lock notices */
+
+/* Trusted second-tab Web Locks banner (rendered outside program output) */
+.lockBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-radius: var(--ds-radius-ctrl);
+  border: 1px solid var(--ds-warn);
+  background: var(--ds-warn-soft);
+  color: var(--ds-ink);
+  font-size: 13px;
+}
+
+.lockBannerBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 240px;
+}
+
+.lockBannerTitle {
+  font-weight: 700;
+  color: var(--ds-ink);
+}
+
+.lockBannerDesc {
+  color: var(--ds-ink-2);
+  line-height: 1.4;
+}
+
+.lockBannerBtn {
+  padding: 6px 12px;
+  border-radius: var(--ds-radius-sm);
+  border: 1px solid var(--ds-warn);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.lockBannerBtn:hover {
+  background: var(--ds-well);
+}
+
+/* W5 dismissible upload notice (rendered outside program output) */
+.w5Notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--ds-radius-ctrl);
+  border: 1px solid var(--ds-warn);
+  background: var(--ds-warn-soft);
+  color: var(--ds-ink);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.w5DismissBtn {
+  padding: 3px 8px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* 3-column workspace override when desktop Files sidebar is open */
+.workspaceWithFiles {
+  grid-template-columns: 260px minmax(0, 1.05fr) minmax(0, 0.95fr);
+}
+
+/* Files sidebar panel */
+.filesPane {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-surface-solid);
+  box-shadow: var(--ds-shadow-card);
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+}
+
+.filesPaneDragOver {
+  border-color: var(--ds-accent);
+  box-shadow: 0 0 0 2px var(--ds-accent-soft);
+}
+
+.filesHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  flex-shrink: 0;
+}
+
+.filesTitle {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ds-ink-2);
+}
+
+.filesToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-surface);
+  flex-shrink: 0;
+}
+
+.iconActionBtn {
+  padding: 4px 7px;
+  border-radius: 6px;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink-2);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.iconActionBtn:hover:not(:disabled) {
+  background: var(--ds-well);
+  color: var(--ds-ink);
+}
+
+.iconActionBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Examples picker row */
+.examplesBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-surface);
+  flex-shrink: 0;
+}
+
+.examplesSelect {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
+  font-size: 12px;
+}
+
+/* Inline create/rename/move/delete form inside Files panel */
+.inlineForm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  flex-shrink: 0;
+}
+
+.inlineFormLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ds-ink-2);
+}
+
+.inlineFormInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 13px;
+}
+
+.inlineFormRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.inlineConfirmText {
+  font-size: 12px;
+  color: var(--ds-ink);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.inlineError {
+  margin: 6px 8px 0;
+  padding: 7px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--ds-bad);
+  background: var(--ds-bad-soft);
+  color: var(--ds-bad);
+  font-size: 12px;
+  line-height: 1.4;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+  flex-shrink: 0;
+  word-break: break-word;
+}
+
+.inlineErrorClose {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 3px;
+  flex-shrink: 0;
+}
+
+/* Scrollable file tree */
+.treeScroll {
+  flex: 1 1 auto;
+  min-height: 120px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 6px 4px;
+}
+
+.treeEmpty {
+  padding: 16px 10px;
+  font-size: 12px;
+  color: var(--ds-ink-3);
+  text-align: center;
+}
+
+.treeRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--ds-ink);
+}
+
+.treeRow:hover {
+  background: var(--ds-well);
+}
+
+.treeRowActive {
+  background: var(--ds-accent-soft);
+  color: var(--ds-accent);
+  font-weight: 600;
+}
+
+.treeMainBtn {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 1px 0;
+}
+
+.treeIcon {
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--ds-ink-3);
+}
+
+.treeName {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--ds-font-mono);
+  font-size: 12px;
+}
+
+.newBadge {
+  flex-shrink: 0;
+  padding: 1px 5px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-good-soft);
+  color: var(--ds-good);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.treeSize {
+  flex-shrink: 0;
+  font-family: var(--ds-font-mono);
+  font-size: 10.5px;
+  color: var(--ds-ink-3);
+}
+
+.treeActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  opacity: 0.65;
+}
+
+.treeRow:hover .treeActions,
+.treeRow:focus-within .treeActions,
+.treeRowActive .treeActions {
+  opacity: 1;
+}
+
+.treeActBtn {
+  border: none;
+  background: transparent;
+  color: var(--ds-ink-3);
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.treeActBtn:hover:not(:disabled) {
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+}
+
+.treeActBtnDanger:hover:not(:disabled) {
+  background: var(--ds-bad-soft);
+  color: var(--ds-bad);
+}
+
+.treeActBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Drop overlay */
+.dropOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px;
+  text-align: center;
+  background: rgba(37, 99, 235, 0.12);
+  backdrop-filter: blur(2px);
+  border: 2px dashed var(--ds-accent);
+  border-radius: var(--ds-radius-card);
+  color: var(--ds-ink);
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+/* Storage usage footer */
+.storageFooter {
+  padding: 7px 10px;
+  border-top: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--ds-ink-3);
+}
+
+.storageRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-family: var(--ds-font-mono);
+}
+
+.storageBarTrack {
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--ds-border);
+  overflow: hidden;
+}
+
+.storageBarFill {
+  height: 100%;
+  background: var(--ds-accent);
+  border-radius: 999px;
+  transition: width 150ms ease;
+}
+
+.storageBarFillWarn {
+  background: var(--ds-warn);
+}
+
+.storageQuotaLine {
+  font-size: 10.5px;
+  color: var(--ds-ink-3);
+}
+
+.dropHintLine {
+  font-size: 10.5px;
+  color: var(--ds-ink-3);
+}
+
+/* Multi-tab editor bar */
+.editorTabBar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px 0;
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-shrink: 0;
+  min-width: 0;
+  scrollbar-width: thin;
+}
+
+.editorTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border-radius: 6px 6px 0 0;
+  border: var(--ds-border-w) solid transparent;
+  border-bottom: none;
+  background: transparent;
+  color: var(--ds-ink-2);
+  font-family: var(--ds-font-mono);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 180px;
+  flex-shrink: 0;
+}
+
+.editorTab:hover {
+  background: var(--ds-surface);
+  color: var(--ds-ink);
+}
+
+.editorTabActive {
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-weight: 600;
+  border-color: var(--ds-border);
+  margin-bottom: -1px;
+  padding-bottom: 6px;
+}
+
+.editorTabLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dirtyDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ds-accent);
+  flex-shrink: 0;
+}
+
+.editorTabClose {
+  border: none;
+  background: transparent;
+  color: var(--ds-ink-3);
+  font-size: 13px;
+  line-height: 1;
+  padding: 0 2px;
+  border-radius: 3px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.editorTabClose:hover {
+  background: var(--ds-well);
+  color: var(--ds-ink);
+}
+
+.editorTabRightMeta {
+  margin-left: auto;
+  padding: 0 6px 4px;
+  font-family: var(--ds-font-mono);
+  font-size: 11px;
+  color: var(--ds-ink-3);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Binary file placeholder (upgraded to rich viewers in P4b) */
+.binaryPlaceholder {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+  color: var(--ds-ink-2);
+  background: var(--ds-surface-solid);
+}
+
+.binaryFileName {
+  font-family: var(--ds-font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ds-ink);
+  word-break: break-all;
+}
+
+.binaryMeta {
+  font-size: 12.5px;
+  color: var(--ds-ink-3);
+  max-width: 360px;
+  line-height: 1.5;
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.runTargetHint {
+  font-family: var(--ds-font-mono);
+  font-size: 11px;
+  opacity: 0.9;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: bottom;
+}
+
+@media (max-width: 899px) {
+  .workspaceWithFiles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .filesPane {
+    min-height: 440px;
+  }
+
+  .editorTabRightMeta {
+    display: none;
+  }
+
+  .runTargetHint {
+    display: none;
+  }
+}

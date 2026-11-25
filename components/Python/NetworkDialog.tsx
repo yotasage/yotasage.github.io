@@ -16,7 +16,7 @@ export interface NetworkDialogProps {
   open: boolean;
   currentPolicy: NetworkPolicy;
   onClose: () => void;
-  onBeforeClear?: () => void;
+  onBeforeClear?: () => void | Promise<void>;
 }
 
 interface ParsedHostsState {
@@ -33,12 +33,29 @@ export default function NetworkDialog({
   const { t } = useI18n();
   const titleId = useId();
   const cardRef = useRef<HTMLDivElement | null>(null);
+  const openRef = useRef(open);
+  const onCloseRef = useRef(onClose);
+  openRef.current = open;
+  onCloseRef.current = onClose;
 
   const [selectedMode, setSelectedMode] = useState<NetworkMode>(currentPolicy.mode);
   const [hostsText, setHostsText] = useState(currentPolicy.hosts.join('\n'));
   const [allConfirmed, setAllConfirmed] = useState(false);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && openRef.current) {
+        e.preventDefault();
+        onCloseRef.current();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown, true);
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -51,18 +68,10 @@ export default function NetworkDialog({
     const prev = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     cardRef.current?.focus();
 
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
     return () => {
-      window.removeEventListener('keydown', onKeyDown);
       prev?.focus?.();
     };
-  }, [open, currentPolicy, onClose]);
+  }, [open, currentPolicy]);
 
   const parsedHosts = useMemo<ParsedHostsState>(() => {
     const tokens = hostsText
@@ -128,8 +137,7 @@ export default function NetworkDialog({
 
   const handleClearAll = async () => {
     setClearing(true);
-    onBeforeClear?.();
-    await clearAllPythonData();
+    await clearAllPythonData({ beforeDelete: onBeforeClear });
   };
 
   return (

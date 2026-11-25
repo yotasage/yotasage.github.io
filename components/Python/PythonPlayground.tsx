@@ -1,12 +1,15 @@
 // Main Python Playground workspace controller (/python/main).
-// Coordinates SW registration, W1/W4/W7/W8/W9 security gates, PythonWorkerClient lifecycle,
-// Monaco editor, xterm.js Console + REPL, traceback line jumps, and responsive desktop/phone layout.
+// Coordinates SW registration, Web Locks single-tab ownership, Option 3B Storage Worker,
+// W1/W4/W5/W7/W8/W9 security gates, PythonWorkerClient lifecycle, File Tree, multi-tab
+// Monaco Editor with autosave, xterm.js Console + REPL, multi-file traceback jumps,
+// and responsive desktop/phone layout.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { OFF_NETWORK_POLICY, parseNetworkPolicyFromSearch } from '../../lib/python/network';
 import type { NetworkPolicy } from '../../lib/python/network';
-import type { CapabilityTier, PythonErrorInfo, SecurityStatusInfo } from '../../lib/python/protocol';
+import { baseName } from '../../lib/python/paths';
+import type { CapabilityTier, SecurityStatusInfo } from '../../lib/python/protocol';
 import { detectBrowserCapabilities, registerPythonServiceWorker } from '../../lib/python/tiers';
 import {
   PythonClientState,
@@ -18,15 +21,14 @@ import {
 import { useI18n } from '../../lib/ui/i18n';
 import { useDesignSystemPage, useTheme } from '../../lib/ui/theme';
 import styles from '../../styles/Python.module.css';
+import fileStyles from '../../styles/PythonFiles.module.css';
 import PillTabs, { PillTabItem } from '../UI/PillTabs';
 import ToolHeader from '../UI/ToolHeader';
+import { extractWorkspaceJumps, TracebackJump } from './fileHelpers';
+import FileTree from './FileTree';
 import NetworkBanner from './NetworkBanner';
 import NetworkDialog from './NetworkDialog';
-import PythonEditor, {
-  DEFAULT_PYTHON_CODE,
-  EditorErrorMarker,
-  PythonEditorHandle,
-} from './PythonEditor';
+import PythonEditor, { EditorErrorMarker, PythonEditorHandle } from './PythonEditor';
 import PythonTerminal, { PythonTerminalHandle, TerminalMode } from './PythonTerminal';
 import {
   W1_ACK_KEY,
@@ -35,39 +37,9 @@ import {
   W7FailClosedDialog,
   W8ExternalLinkDialog,
 } from './SecurityDialogs';
+import { useWorkspace } from './useWorkspace';
 
-type MobilePane = 'editor' | 'output';
-
-interface TracebackJump {
-  readonly line: number;
-  readonly fn: string;
-}
-
-function extractMainPyJumps(error: PythonErrorInfo | undefined): TracebackJump[] {
-  if (!error) return [];
-  const seen = new Set<number>();
-  const jumps: TracebackJump[] = [];
-  for (const frame of error.frames) {
-    const file = frame.file.replace(/\\/g, '/');
-    if (file === '/workspace/main.py' || file === 'main.py' || file.endsWith('/main.py')) {
-      if (frame.line > 0 && !seen.has(frame.line)) {
-        seen.add(frame.line);
-        jumps.push({ line: frame.line, fn: frame.fn || '<module>' });
-      }
-    }
-  }
-  if (jumps.length === 0 && error.formatted) {
-    const re = /File "(?:\/workspace\/)?main\.py", line (\d+)/g;
-    for (const match of error.formatted.matchAll(re)) {
-      const line = Number(match[1]);
-      if (Number.isInteger(line) && line > 0 && !seen.has(line)) {
-        seen.add(line);
-        jumps.push({ line, fn: '<module>' });
-      }
-    }
-  }
-  return jumps;
-}
+type MobilePane = 'editor' | 'output' | 'files';
 
 export default function PythonPlayground() {
   useDesignSystemPage('#2563eb', '#60a5fa');
@@ -105,6 +77,7 @@ export default function PythonPlayground() {
   // Panes & responsive state
   const [outputTab, setOutputTab] = useState<TerminalMode>('console');
   const [mobilePane, setMobilePane] = useState<MobilePane>('editor');
+  const [showFilesSidebar, setShowFilesSidebar] = useState(true);
   const [isNarrow, setIsNarrow] = useState(false);
   const [swSettled, setSwSettled] = useState(false);
 
@@ -149,14 +122,30 @@ export default function PythonPlayground() {
     };
   }, []);
 
-  const canBootWorker =
+  const canBootStorage =
     hydrated && swSettled && !w1Open && (policy.mode === 'off' || w4LoadApproved);
 
-  // 2. Instantiate and boot PythonWorkerClient strictly AFTER W1 & W4 approvals!
+  // 2. Option 3B Storage Worker + Web Locks + Multi-Tab Workspace state
+  const workspace = useWorkspace({
+    swSettled,
+    canBootStorage,
+    editorRef,
+  });
+
+  const handleWorkerFsChangedRef = useRef(workspace.handleWorkerFsChanged);
+  handleWorkerFsChangedRef.current = workspace.handleWorkerFsChanged;
+
+  const canBootWorker =
+    canBootStorage && workspace.lockStatus === 'acquired' && workspace.storageReady;
+
+  // 3. Instantiate and boot PythonWorkerClient strictly AFTER W1, W4, Web Lock & Storage boot!
   useEffect(() => {
     if (!canBootWorker) return;
 
-    const client = new PythonWorkerClient({ networkMode: policy.mode });
+    const client = new PythonWorkerClient({
+      networkMode: policy.mode,
+      storageClient: workspace.storageRef.current,
+    });
     clientRef.current = client;
 
     const unsub = client.subscribe({
@@ -198,6 +187,9 @@ export default function PythonPlayground() {
       linkRequest: (url) => {
         setPendingExternalUrl(url);
       },
+      fsChanged: (change) => {
+        void handleWorkerFsChangedRef.current(change);
+      },
       crash: (reason) => {
         setCrashReason(reason);
         setAwaitingStdin(false);
@@ -222,7 +214,18 @@ export default function PythonPlayground() {
       client.dispose();
       clientRef.current = null;
     };
-  }, [canBootWorker, policy.mode]);
+  }, [canBootWorker, policy.mode, workspace.storageRef]);
+
+  const runTarget = useMemo(() => {
+    if (workspace.activePath && workspace.activePath.toLowerCase().endsWith('.py')) {
+      return workspace.activePath;
+    }
+    if (workspace.entries.some((e) => !e.isDir && e.path === 'main.py')) {
+      return 'main.py';
+    }
+    const firstPy = workspace.entries.find((e) => !e.isDir && e.path.toLowerCase().endsWith('.py'));
+    return firstPy?.path ?? 'main.py';
+  }, [workspace.activePath, workspace.entries]);
 
   const handleAcknowledgeW1 = useCallback(() => {
     try {
@@ -246,6 +249,10 @@ export default function PythonPlayground() {
     window.location.reload();
   }, []);
 
+  const handleCloseNetworkDialog = useCallback(() => {
+    setNetworkDialogOpen(false);
+  }, []);
+
   const handleConfirmExternalLink = useCallback((url: string) => {
     setPendingExternalUrl(null);
     window.open(url, '_blank', 'noopener,noreferrer');
@@ -262,8 +269,10 @@ export default function PythonPlayground() {
       return;
     }
 
-    const code = editorRef.current?.getValue() ?? DEFAULT_PYTHON_CODE;
-    editorRef.current?.setErrorMarkers([]);
+    // Synchronously flush all dirty Monaco tabs to IndexedDB & worker MEMFS before running.
+    await workspace.flushDirtyTabs();
+    workspace.clearRunCreatedBadges();
+    editorRef.current?.clearAllErrorMarkers();
     setTracebackJumps([]);
     setLastRunSummary('');
     setCrashReason(null);
@@ -273,8 +282,8 @@ export default function PythonPlayground() {
     }
 
     try {
-      const res = await client.run(code, {
-        filename: '/workspace/main.py',
+      const res = await client.run(undefined, {
+        filename: runTarget,
         allowUnconfirmed,
       });
       setAwaitingStdin(false);
@@ -293,21 +302,25 @@ export default function PythonPlayground() {
       }
 
       if (res.error) {
-        const jumps = extractMainPyJumps(res.error);
+        const jumps = extractWorkspaceJumps(res.error);
         setTracebackJumps(jumps);
         if (jumps.length > 0) {
-          const markers: EditorErrorMarker[] = jumps.map((j) => ({
-            line: j.line,
-            message: `${res.error!.type}: ${res.error!.message}`,
-          }));
-          editorRef.current?.setErrorMarkers(markers);
+          const byPath = new Map<string, EditorErrorMarker[]>();
+          for (const j of jumps) {
+            const list = byPath.get(j.path) ?? [];
+            list.push({ line: j.line, message: `${res.error.type}: ${res.error.message}` });
+            byPath.set(j.path, list);
+          }
+          for (const [path, markers] of byPath) {
+            editorRef.current?.setErrorMarkers(markers, path);
+          }
         }
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       consoleRef.current?.writeStderr(`${msg}\n`);
     }
-  }, [allowUnconfirmed, isNarrow, t]);
+  }, [allowUnconfirmed, isNarrow, runTarget, t, workspace]);
 
   const handleStop = useCallback(() => {
     void clientRef.current?.stop();
@@ -325,7 +338,7 @@ export default function PythonPlayground() {
     if (!client) return;
     setCrashReason(null);
     setTracebackJumps([]);
-    editorRef.current?.setErrorMarkers([]);
+    editorRef.current?.clearAllErrorMarkers();
     void client
       .restart()
       .then((info) => {
@@ -366,15 +379,32 @@ export default function PythonPlayground() {
     return client.replComplete(source);
   }, []);
 
-  const handleJumpToLine = useCallback((line: number) => {
-    if (isNarrow) {
-      setMobilePane('editor');
-    }
-    requestAnimationFrame(() => {
-      editorRef.current?.jumpToLine(line);
-    });
-  }, [isNarrow]);
+  const handleJumpToTraceback = useCallback(
+    async (jump: TracebackJump) => {
+      await workspace.openFile(jump.path);
+      if (isNarrow) {
+        setMobilePane('editor');
+      }
+      requestAnimationFrame(() => {
+        editorRef.current?.jumpToLine(jump.line);
+      });
+    },
+    [isNarrow, workspace],
+  );
 
+  const handleOpenFileFromTree = useCallback(
+    (path: string) => {
+      void workspace.openFile(path, { focus: !isNarrow }).then((ok) => {
+        if (ok && isNarrow) {
+          setMobilePane('editor');
+          requestAnimationFrame(() => editorRef.current?.layout());
+        }
+      });
+    },
+    [isNarrow, workspace],
+  );
+
+  const isLockedByOtherTab = workspace.lockStatus === 'blocked';
   const activeTier = readyInfo?.tier ?? detectedTier;
   const isRunning = clientState === 'running' || clientState === 'stopping';
   const isBlockedGate =
@@ -385,6 +415,7 @@ export default function PythonPlayground() {
 
   const canRun =
     canBootWorker &&
+    !isLockedByOtherTab &&
     (clientState === 'ready' || (clientState === 'blocked' && allowUnconfirmed)) &&
     !isBlockedGate;
 
@@ -398,6 +429,7 @@ export default function PythonPlayground() {
           : t('python.networkAllShort');
 
   const statusLabel = (() => {
+    if (isLockedByOtherTab) return t('python.filesReadOnlyLocked');
     if (policy.mode !== 'off' && !w4LoadApproved) return t('python.statusWaitingApproval');
     switch (clientState) {
       case 'booting':
@@ -446,10 +478,12 @@ export default function PythonPlayground() {
         id: 'output',
         label: outputTab === 'repl' ? t('python.tabRepl') : t('python.tabConsole'),
       },
+      { id: 'files', label: t('python.tabFiles') },
     ],
     [t, outputTab],
   );
 
+  const showFilesPane = isNarrow ? mobilePane === 'files' : showFilesSidebar;
   const showEditorPane = !isNarrow || mobilePane === 'editor';
   const showOutputPane = !isNarrow || mobilePane === 'output';
 
@@ -518,9 +552,52 @@ export default function PythonPlayground() {
           </div>
         </details>
 
+        {/* Trusted second-tab Web Locks notice (outside program output) */}
+        {isLockedByOtherTab && (
+          <div
+            className={fileStyles.lockBanner}
+            role="alert"
+            data-testid="python-lock-banner"
+          >
+            <div className={fileStyles.lockBannerBody}>
+              <div className={fileStyles.lockBannerTitle}>{t('python.lockBannerTitle')}</div>
+              <div className={fileStyles.lockBannerDesc}>{t('python.lockBannerDesc')}</div>
+            </div>
+            <button
+              type="button"
+              className={fileStyles.lockBannerBtn}
+              onClick={() => {
+                void workspace.attemptLock();
+              }}
+              data-testid="python-lock-retry"
+            >
+              {t('python.lockBannerRetry')}
+            </button>
+          </div>
+        )}
+
         {/* Action toolbar */}
         <div className={styles.toolbar} role="toolbar" aria-label={t('python.title')}>
           <div className={styles.toolbarLeft}>
+            {!isNarrow && (
+              <button
+                type="button"
+                className={styles.secondaryBtn}
+                aria-pressed={showFilesSidebar}
+                onClick={() => {
+                  setShowFilesSidebar((prev) => !prev);
+                  requestAnimationFrame(() => {
+                    editorRef.current?.layout();
+                    consoleRef.current?.fit();
+                    replRef.current?.fit();
+                  });
+                }}
+                data-testid="python-toggle-files-btn"
+              >
+                {showFilesSidebar ? t('python.toggleFilesHide') : t('python.toggleFilesShow')}
+              </button>
+            )}
+
             <button
               type="button"
               className={styles.runBtn}
@@ -528,10 +605,11 @@ export default function PythonPlayground() {
               onClick={() => {
                 void handleRun();
               }}
-              title={t('python.runTitle')}
+              title={t('python.runTitle', { file: runTarget })}
               data-testid="python-run-btn"
             >
-              &#9654; {t('python.run')}
+              &#9654; {t('python.run')}{' '}
+              <span className={fileStyles.runTargetHint}>{baseName(runTarget)}</span>
             </button>
 
             {isRunning && (
@@ -559,7 +637,7 @@ export default function PythonPlayground() {
               </>
             )}
 
-            {(clientState === 'crashed' || clientState === 'ready') && (
+            {(clientState === 'crashed' || clientState === 'ready') && !isLockedByOtherTab && (
               <button
                 type="button"
                 className={clientState === 'crashed' ? styles.restartBtnHighlight : styles.secondaryBtn}
@@ -594,7 +672,7 @@ export default function PythonPlayground() {
                 styles.statusPill,
                 clientState === 'running' || clientState === 'stopping'
                   ? styles.statusPillRunning
-                  : clientState === 'crashed' || isBlockedGate
+                  : clientState === 'crashed' || isBlockedGate || isLockedByOtherTab
                     ? styles.statusPillBad
                     : clientState === 'ready'
                       ? styles.statusPillGood
@@ -622,7 +700,7 @@ export default function PythonPlayground() {
           </div>
         )}
 
-        {/* Phone pane switcher */}
+        {/* Phone pane switcher: Editor | Console | Files */}
         {isNarrow && (
           <div className={styles.mobileTabsRow}>
             <PillTabs
@@ -632,7 +710,7 @@ export default function PythonPlayground() {
                 setMobilePane(next);
                 requestAnimationFrame(() => {
                   if (next === 'editor') editorRef.current?.layout();
-                  else {
+                  else if (next === 'output') {
                     consoleRef.current?.fit();
                     replRef.current?.fit();
                   }
@@ -644,25 +722,65 @@ export default function PythonPlayground() {
           </div>
         )}
 
-        {/* Main 2-column workspace */}
-        <div className={styles.workspace}>
-          {/* Left: Monaco Editor */}
+        {/* Main 3-column (desktop with Files) or 2-column / 1-column workspace */}
+        <div
+          className={[
+            styles.workspace,
+            !isNarrow && showFilesSidebar ? fileStyles.workspaceWithFiles : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        >
+          {/* Files Sidebar / Phone Files Tab */}
+          {showFilesPane && (
+            <FileTree
+              entries={workspace.entries}
+              activePath={workspace.activePath}
+              runCreatedPaths={workspace.runCreatedPaths}
+              stats={workspace.stats}
+              storageEstimate={workspace.storageEstimate}
+              disabled={isLockedByOtherTab || !workspace.storageReady}
+              errorMessage={workspace.errorMessage}
+              w5NoticeVisible={workspace.w5NoticeVisible}
+              onDismissError={workspace.dismissError}
+              onDismissW5={workspace.dismissW5}
+              onOpenFile={handleOpenFileFromTree}
+              onCreateFile={workspace.createFile}
+              onCreateFolder={workspace.createFolder}
+              onRename={workspace.renamePath}
+              onMove={workspace.movePath}
+              onDelete={workspace.deletePath}
+              onDownload={(path) => {
+                void workspace.downloadFile(path);
+              }}
+              onUploadFiles={workspace.uploadFiles}
+              onImportZip={workspace.importZip}
+              onExportZip={workspace.exportZip}
+              onLoadExample={workspace.loadExample}
+            />
+          )}
+
+          {/* Middle: Multi-tab Monaco Editor */}
           <section
             className={styles.paneCard}
             style={{ display: showEditorPane ? 'flex' : 'none' }}
             aria-label={t('python.tabEditor')}
           >
-            <div className={styles.paneHeader}>
-              <span className={styles.fileChip}>{t('python.editorFile')}</span>
-              <span className={styles.shortcutHint}>Ctrl+Enter</span>
-            </div>
             {swSettled ? (
               <PythonEditor
                 ref={editorRef}
-                initialCode={DEFAULT_PYTHON_CODE}
+                tabs={workspace.tabs}
+                activePath={workspace.activePath}
                 theme={resolvedTheme}
+                readOnly={isLockedByOtherTab}
+                onSelectTab={workspace.selectTab}
+                onCloseTab={workspace.closeTab}
                 onRun={() => {
                   void handleRun();
+                }}
+                onContentChange={workspace.handleEditorContentChange}
+                onDownloadFile={(path) => {
+                  void workspace.downloadFile(path);
                 }}
               />
             ) : (
@@ -701,13 +819,19 @@ export default function PythonPlayground() {
                 <span className={styles.tracebackLabel}>{t('python.tracebackLabel')}</span>
                 {tracebackJumps.map((j) => (
                   <button
-                    key={j.line}
+                    key={`${j.path}:${j.line}`}
                     type="button"
                     className={styles.tracebackChip}
-                    onClick={() => handleJumpToLine(j.line)}
-                    data-testid={`python-tb-line-${j.line}`}
+                    onClick={() => {
+                      void handleJumpToTraceback(j);
+                    }}
+                    data-testid={
+                      j.path === 'main.py'
+                        ? `python-tb-line-${j.line}`
+                        : `python-tb-${j.path}-${j.line}`
+                    }
                   >
-                    {t('python.tracebackLine', { line: j.line })}
+                    {t('python.tracebackLine', { file: j.path, line: j.line })}
                   </button>
                 ))}
               </div>
@@ -732,7 +856,7 @@ export default function PythonPlayground() {
                   mode="repl"
                   visible={showOutputPane && outputTab === 'repl'}
                   theme={resolvedTheme}
-                  replDisabled={isRunning || !readyInfo || isBlockedGate}
+                  replDisabled={isRunning || !readyInfo || isBlockedGate || isLockedByOtherTab}
                   replBanner={
                     readyInfo
                       ? t('python.replReadyBanner', { version: readyInfo.pythonVersion })
@@ -782,10 +906,11 @@ export default function PythonPlayground() {
       <NetworkDialog
         open={networkDialogOpen}
         currentPolicy={policy}
-        onClose={() => setNetworkDialogOpen(false)}
-        onBeforeClear={() => {
+        onClose={handleCloseNetworkDialog}
+        onBeforeClear={async () => {
           clientRef.current?.dispose();
           clientRef.current = null;
+          await workspace.shutdownForClear();
         }}
       />
     </div>

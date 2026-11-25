@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium, firefox, webkit } from 'playwright-core';
 
 import { startHarnessServers } from './servers.mjs';
+import { runFilesUiSuite } from './ui-files-checks.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '../../..');
@@ -922,6 +923,18 @@ async function runBrowserSuite(browserName, browser, baseUrl) {
           return `Phone horizontal overflow on Console: ${JSON.stringify(overflowConsole)}`;
         }
 
+        // Switch to Files tab on phone -> File Tree visible with 0 horizontal overflow
+        await paneTablist.getByRole('tab', { name: 'Files' }).click();
+        await page.getByTestId('python-files-panel').waitFor({ state: 'visible', timeout: 5000 });
+        await page.getByTestId('python-tree-item-main.py').waitFor({ state: 'visible', timeout: 5000 });
+        const overflowFiles = await page.evaluate(() => ({
+          scrollWidth: document.documentElement.scrollWidth,
+          innerWidth: window.innerWidth,
+        }));
+        if (overflowFiles.scrollWidth > overflowFiles.innerWidth + 1) {
+          return `Phone horizontal overflow on Files: ${JSON.stringify(overflowFiles)}`;
+        }
+
         // Switch back to Editor, set script with input(), Run, submit via phone input bar
         await paneTablist.getByRole('tab', { name: 'Editor' }).click();
         await page.getByTestId('python-editor-wrap').waitFor({ state: 'visible', timeout: 5000 });
@@ -955,6 +968,18 @@ async function runBrowserSuite(browserName, browser, baseUrl) {
       await ctx.close();
     }
   }
+
+  // =========================================================================
+  // Suite 5: P3b Files Workspace (multi-file CRUD, reload persistence,
+  //          fs.changed badges, examples, W5 upload, ZIP import/export, Web Locks)
+  // =========================================================================
+  await runFilesUiSuite(browserName, browser, baseUrl, {
+    record,
+    waitIsolatedMain,
+    waitMonacoAndPyodideReady,
+    waitTerminalContains,
+    attachErrorTracker,
+  });
 }
 
 let servers = null;

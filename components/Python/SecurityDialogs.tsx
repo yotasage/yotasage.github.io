@@ -29,24 +29,36 @@ function ModalFrame({
   children,
 }: ModalFrameProps) {
   const cardRef = useRef<HTMLDivElement | null>(null);
+  const openRef = useRef(open);
+  const dismissibleRef = useRef(dismissible);
+  const onDismissRef = useRef(onDismiss);
+  openRef.current = open;
+  dismissibleRef.current = dismissible;
+  onDismissRef.current = onDismiss;
+
+  // Register capture-phase Escape listener on mount so Escape is never missed between DOM paint
+  // and post-paint useEffect (or swallowed by focused Monaco/xterm children).
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && openRef.current && dismissibleRef.current && onDismissRef.current) {
+        e.preventDefault();
+        onDismissRef.current();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown, true);
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) return;
     const prev = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     cardRef.current?.focus();
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && dismissible && onDismiss) {
-        e.preventDefault();
-        onDismiss();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
     return () => {
-      window.removeEventListener('keydown', onKeyDown);
       prev?.focus?.();
     };
-  }, [open, dismissible, onDismiss]);
+  }, [open]);
 
   if (!open) return null;
 
