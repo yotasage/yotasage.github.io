@@ -1167,21 +1167,17 @@ async function handleRun(msg) {
         // ignore reconciliation error during error path
       }
     }
+    const c = (await import('./interrupt.js')).classifyError(err);
+    if (c.interrupted) postStderr(c.error.formatted);
     flushStreamDecoders();
-    const message = err instanceof Error ? err.message : String(err);
     self.postMessage({
       type: 'run.end',
       id: msg.id,
       ok: false,
-      exitCode: 1,
-      interrupted: false,
+      exitCode: c.interrupted ? 130 : 1,
+      interrupted: c.interrupted,
       durationMs: Math.max(0, performance.now() - t0),
-      error: {
-        type: 'RuntimeError',
-        message,
-        formatted: `${message}\n`,
-        frames: [],
-      },
+      error: c.error,
     });
   } finally {
     isRunActive = false;
@@ -1220,19 +1216,10 @@ async function handleReplPush(msg) {
       ...(res.error ? { error: res.error } : {}),
     });
   } catch (err) {
+    const c = (await import('./interrupt.js')).classifyError(err);
+    if (c.interrupted) postStderr(c.error.formatted);
     flushStreamDecoders();
-    const message = err instanceof Error ? err.message : String(err);
-    self.postMessage({
-      type: 'repl.result',
-      id: msg.id,
-      status: 'error',
-      error: {
-        type: 'RuntimeError',
-        message,
-        formatted: `${message}\n`,
-        frames: [],
-      },
-    });
+    self.postMessage({ type: 'repl.result', id: msg.id, status: 'error', error: c.error });
   } finally {
     dropGlobals('_yotasage_repl_line');
     resetRunBuffers();

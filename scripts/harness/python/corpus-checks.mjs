@@ -501,6 +501,87 @@ export async function runCorpusChecks(browserName, browser, { primaryOrigin, rec
       return true;
     });
 
+    // 12b. Stop immediately after Run / a REPL line is a clean interrupt (never an internal RuntimeError)
+    await record(browserName, 'Stop immediately after Run is a clean interrupt (20 trials + REPL)', async () => {
+      const errorsBefore = pageErrors.length;
+      const out = await page.evaluate(async () => {
+        const client = window.__testClient;
+        const delays = [0, 5, 10, 20, 40];
+        const bad = [];
+        const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+        const within = (p, ms, tag) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(`${tag} hung > ${ms} ms`)), ms))]);
+        const okAfter = async (tag) => {
+          const r = await client.run('print("AFTER_OK")\n');
+          if (!r.ok || r.interrupted) bad.push(`${tag}: following run failed ${JSON.stringify(r)}`);
+        };
+        for (let i = 0; i < 20; i += 1) {
+          const d = delays[i % delays.length];
+          let stopPromise = null;
+          let stderr = '';
+          const unsub = client.subscribe({
+            stderr: (t) => { stderr += t; },
+            state: (s) => {
+              if (s === 'running' && !stopPromise) setTimeout(() => { stopPromise = client.stop(); }, d);
+            },
+          });
+          try {
+            const r = await client.run('x = 0\nwhile True:\n    x += 1\n');
+            if (stopPromise) await stopPromise;
+            const errType = r.error && r.error.type;
+            if (!r.interrupted || r.forceStopped || errType === 'RuntimeError' || r.exitCode !== 130
+              || (errType && errType !== 'KeyboardInterrupt') || stderr.includes('RuntimeError')) {
+              bad.push(`run trial ${i + 1} (${d} ms): ${JSON.stringify(r)} stderr=${JSON.stringify(stderr.slice(0, 200))}`);
+            }
+          } finally {
+            unsub();
+          }
+          await okAfter(`run trial ${i + 1}`);
+          if (bad.length) break;
+        }
+        // REPL line: replPush does not enter the running state (the page's Stop does nothing then), so write SIGINT to
+        // the control buffer as Stop does, d ms after the line starts printing.
+        for (let i = 0; i < 10 && !bad.length; i += 1) {
+          const d = delays[i % delays.length];
+          const ctrl = client.ctrlView;
+          let done = false;
+          const pulse = () => { Atomics.store(ctrl, 0, 2); Atomics.notify(ctrl, 0, 1); };
+          let timer = null;
+          const unsub = client.subscribe({
+            stdout: (t) => {
+              if (timer || !t.includes('REPL_GO')) return;
+              setTimeout(() => {
+                pulse();
+                timer = setInterval(() => { if (!done && Atomics.load(ctrl, 0) === 0) pulse(); }, 150);
+              }, d);
+              timer = -1;
+            },
+          });
+          let r;
+          try {
+            r = await within(client.replPush('exec("print(\'REPL_GO\', flush=True)\\nwhile True: pass")'), 8000, `repl trial ${i + 1} (${d} ms)`);
+          } finally {
+            done = true;
+            if (timer && timer !== -1) clearInterval(timer);
+            unsub();
+          }
+          const errType = r.error && r.error.type;
+          if (r.status !== 'error' || errType !== 'KeyboardInterrupt') {
+            bad.push(`repl trial ${i + 1} (${d} ms): ${JSON.stringify(r).slice(0, 400)}`);
+          }
+          const next = await within(client.replPush('1 + 1'), 8000, `repl follow-up ${i + 1}`);
+          if (next.status !== 'complete') bad.push(`repl trial ${i + 1}: following line ${JSON.stringify(next)}`);
+        }
+        return bad;
+      });
+      // Pyodide's web loop also reports the KeyboardInterrupt of an interrupted REPL line as an uncaught page error
+      // (the page's Stop never reaches a REPL line); those, and only those, belong to this check.
+      for (let k = pageErrors.length - 1; k >= errorsBefore; k -= 1) {
+        if (pageErrors[k].includes('pyodide/console.py') && pageErrors[k].includes('KeyboardInterrupt')) pageErrors.splice(k, 1);
+      }
+      if (out.length) return out[0];
+      return true;
+    });
+
     // 13. Force Stop escalation on uninterruptible native NumPy SVD + warm restart (< 3000 ms)
     await record(browserName, 'Force Stop escalation & warm restart (< 3000 ms)', async () => {
       // Preload numpy before timing Force Stop so native SVD runs immediately

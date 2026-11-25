@@ -160,7 +160,34 @@ def format_exception_info(exc: BaseException) -> dict:
     }
 
 
+def _interrupted_result(exc: BaseException) -> dict:
+    """The result of a run that Stop ended: formatted for stderr, without Pyodide-internal frames."""
+    try:
+        info = format_exception_info(exc)
+    except KeyboardInterrupt:
+        info = {
+            "type": "KeyboardInterrupt",
+            "message": str(exc),
+            "formatted": "KeyboardInterrupt\n",
+            "frames": [],
+        }
+    try:
+        sys.stderr.write(info["formatted"])
+        sys.stderr.flush()
+    except KeyboardInterrupt:
+        pass
+    return {"ok": False, "exitCode": 130, "interrupted": True, "error": info}
+
+
 def run_script(code: str | None = None, filename: str = "main.py", files: dict | None = None) -> dict:
+    """Run a script; a Stop that lands during the setup before the script starts is a clean interruption too."""
+    try:
+        return _run_script(code, filename, files)
+    except KeyboardInterrupt as exc:
+        return _interrupted_result(exc)
+
+
+def _run_script(code: str | None, filename: str, files: dict | None) -> dict:
     """Write script (if provided) to /workspace, purge stale user modules, run via runpy, and save __main__."""
     from .repl import set_namespace
 
@@ -205,21 +232,7 @@ def run_script(code: str | None = None, filename: str = "main.py", files: dict |
         sys.stderr.flush()
         return {"ok": exit_code == 0, "exitCode": exit_code, "interrupted": False}
     except KeyboardInterrupt as exc:
-        try:
-            info = format_exception_info(exc)
-        except KeyboardInterrupt:
-            info = {
-                "type": "KeyboardInterrupt",
-                "message": str(exc),
-                "formatted": "KeyboardInterrupt\n",
-                "frames": [],
-            }
-        try:
-            sys.stderr.write(info["formatted"])
-            sys.stderr.flush()
-        except KeyboardInterrupt:
-            pass
-        return {"ok": False, "exitCode": 130, "interrupted": True, "error": info}
+        return _interrupted_result(exc)
     except BaseException as exc:
         info = format_exception_info(exc)
         sys.stderr.write(info["formatted"])
