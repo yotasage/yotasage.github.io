@@ -6,6 +6,7 @@
 // route a dedicated worker's requests, so there micropip is pointed (from the console, as user code
 // could) at a same-origin canned index served by servers.mjs under /__mock-pypi/; the CSP side of
 // ?net=pkg stays covered by security-checks.mjs. Every package call has its own timeout.
+// Part 2 (P5b) is packages-restore-checks.mjs; PYTHON_PKG_ONLY=restore runs only that part.
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -14,14 +15,15 @@ import { fileURLToPath } from 'node:url';
 import { strToU8, zipSync } from 'fflate';
 
 import { waitHarnessReady } from './corpus-checks.mjs';
+import { runPackageRestoreChecks } from './packages-restore-checks.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const LOCK_INFO = JSON.parse(readFileSync(resolve(here, '../../../public/pyodide/pyodide-lock.json'), 'utf8')).info;
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1']);
-const PYPI_HOSTS = new Set(['pypi.org', 'files.pythonhosted.org']);
+export const PYPI_HOSTS = new Set(['pypi.org', 'files.pythonhosted.org']);
 const CALL_MS = 20000;
 
-function isExternal(url) {
+export function isExternal(url) {
   try {
     const u = new URL(url);
     return /^(https?|wss?):$/.test(u.protocol) && !LOCAL_HOSTS.has(u.hostname);
@@ -31,10 +33,10 @@ function isExternal(url) {
 }
 
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
-const b64 = (bytes) => Buffer.from(bytes).toString('base64');
+export const b64 = (bytes) => Buffer.from(bytes).toString('base64');
 
 /** A pure-Python wheel: `<mod>/__init__.py` with hello(), METADATA (with Requires-Dist), WHEEL, RECORD. */
-function buildWheel(name, version, { tag = 'py3-none-any', requires = [], body = '' } = {}) {
+export function buildWheel(name, version, { tag = 'py3-none-any', requires = [], body = '' } = {}) {
   const dist = name.replace(/-/g, '_');
   const info = `${dist}-${version}.dist-info`;
   const files = {
@@ -50,7 +52,7 @@ function buildWheel(name, version, { tag = 'py3-none-any', requires = [], body =
   return { name, version, fileName: `${dist}-${version}-${tag}.whl`, bytes, sha256: sha256(bytes) };
 }
 
-const W = {
+export const W = {
   tinypkg: buildWheel('tinypkg', '1.0.0'),
   native: buildWheel('nativex', '1.0.0', { tag: 'cp311-cp311-manylinux_2_17_x86_64' }),
   needs: buildWheel('tinyneeds', '1.0.0', { requires: ['notbundledxyz'] }),
@@ -89,7 +91,7 @@ function wheelByFile(fileName) {
 }
 
 /** Route reply for the real PyPI hosts (Edge/Firefox). */
-function fulfillPypi(url) {
+export function fulfillPypi(url) {
   const u = new URL(url);
   if (u.hostname === 'pypi.org') {
     const m = /^\/simple\/([^/]+)\/$/.exec(u.pathname);
@@ -150,7 +152,7 @@ async function openPkgHarness(browser, primaryOrigin, search, { fulfill = null, 
 }
 
 /** Pushes console lines; returns each line's status/error/ms plus all stdout and stderr. */
-function repl(page, lines, ms = CALL_MS) {
+export function repl(page, lines, ms = CALL_MS) {
   return page.evaluate(async ({ lines: ls, ms: limit }) => {
     const { client, withTimeout } = window.__pk;
     let out = '';
@@ -170,7 +172,7 @@ function repl(page, lines, ms = CALL_MS) {
   }, { lines, ms });
 }
 
-function run(page, code, opts = {}, ms = CALL_MS) {
+export function run(page, code, opts = {}, ms = CALL_MS) {
   return page.evaluate(async ({ code: src, opts: o, ms: limit }) => {
     const { client, withTimeout } = window.__pk;
     let out = '';
@@ -186,7 +188,7 @@ function run(page, code, opts = {}, ms = CALL_MS) {
 }
 
 /** pkg.install; wheel items carry `b64` instead of bytes (decoded in the page). */
-function install(page, items, ms = CALL_MS) {
+export function install(page, items, ms = CALL_MS) {
   return page.evaluate(async ({ items: its, ms: limit }) => {
     const { client, withTimeout, fromB64 } = window.__pk;
     const real = its.map(({ b64: data, ...rest }) => (data ? { ...rest, bytes: fromB64(data) } : rest));
@@ -214,6 +216,11 @@ export async function runPackagesChecks(browserName, browser, { primaryOrigin, s
   const name = (s) => `P5a Packages: ${s}`;
   const workerRouting = browserName !== 'webkit';
   setMockPypi(mockPypi(primaryOrigin));
+  if (process.env.PYTHON_PKG_ONLY === 'restore') {
+    // Iterating on part 2 only (P5b).
+    await runPackageRestoreChecks(browserName, browser, { primaryOrigin, record });
+    return;
+  }
 
   // --- Off mode (default), Tier 1 -------------------------------------------------------------
   const off = await openPkgHarness(browser, primaryOrigin, '');
@@ -497,4 +504,7 @@ export async function runPackagesChecks(browserName, browser, { primaryOrigin, s
     await t2.page.evaluate(() => window.__pk?.client.dispose()).catch(() => {});
     await t2.ctx.close().catch(() => {});
   }
+
+  // --- Part 2 (P5b): manifest, saved wheels, restore, tampering, removal, Clear all data ----------
+  await runPackageRestoreChecks(browserName, browser, { primaryOrigin, record });
 }

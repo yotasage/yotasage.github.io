@@ -132,6 +132,8 @@ export interface PythonWorkerClientOptions {
 
 export interface PythonClientListeners {
   state?: (state: PythonClientState, detail?: string) => void;
+  /** Each worker start (first start, restart, Force Stop, crash recovery); before start() resolves. */
+  ready?: (info: ReadyInfo) => void;
   status?: (phase: string, message: string) => void;
   security?: (status: SecurityStatusInfo) => void;
   stdout?: (text: string) => void;
@@ -202,6 +204,7 @@ export class PythonWorkerClient {
     }
   >();
 
+  private gate: Promise<void> | null = null;
   private pendingPkg = new Map<
     number,
     {
@@ -395,6 +398,7 @@ export class PythonWorkerClient {
     if (!this._readyInfo) {
       await this.start();
     }
+    await this.passGate();
     if (this._state === 'running' || this._state === 'stopping') {
       throw new Error('A Python script is already running');
     }
@@ -625,6 +629,7 @@ export class PythonWorkerClient {
     if (!this._readyInfo) {
       await this.start();
     }
+    await this.passGate();
     if (this.isFailClosedBlocked && !options.allowUnconfirmed) {
       throw new Error(
         'REPL blocked (fail-closed): network block could not be confirmed in Off mode.',
@@ -700,6 +705,24 @@ export class PythonWorkerClient {
       });
       this.post({ type: 'pkg.install', id, items, reason }, transfer);
     });
+  }
+
+  /**
+   * Runs and console lines wait until `p` settles (P5b: the package restore that a `ready` listener
+   * starts, so kept packages are installed before the first run after each start). Never rejects them.
+   */
+  holdUntil(p: Promise<unknown>): void {
+    const gate: Promise<void> = p.then(
+      () => undefined,
+      () => undefined,
+    ).then(() => {
+      if (this.gate === gate) this.gate = null;
+    });
+    this.gate = gate;
+  }
+
+  private async passGate(): Promise<void> {
+    while (this.gate) await this.gate;
   }
 
   /** Lists every package installed in this worker session (bundled, page-installed, by code). */
@@ -829,6 +852,7 @@ export class PythonWorkerClient {
         this.setState(this.isFailClosedBlocked ? 'blocked' : 'ready');
         const p = this.pendingInit;
         this.pendingInit = null;
+        this.emit('ready', info);
         p.resolve(info);
         break;
       }

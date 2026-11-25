@@ -53,6 +53,7 @@ import {
   checkInstallRequest,
 } from '../../../lib/python/packageProtocol.ts';
 import { detectCapabilityTier } from '../../../lib/python/tiers.ts';
+import { runPackageUnitChecks } from './package-unit-checks.mjs';
 import { exportWorkspaceZip, importZipBytes } from '../../../lib/python/zip.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -823,6 +824,8 @@ export async function runUnitChecks() {
     const modEx = getPythonExample('modules');
     assert.ok(modEx && modEx.files['modules/main.py'] && modEx.files['modules/helpers.py']);
   });
+
+  await runPackageUnitChecks(check);
 
   return { passed, failed, failures };
 }

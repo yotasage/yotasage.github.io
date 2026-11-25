@@ -4,7 +4,7 @@
 // - Creates direct MessageChannel ports for python-worker.js hydration and write-through deltas.
 // - Registers active clients so clearAllPythonData() can close IndexedDB cleanly before deleteDatabase.
 
-import { getPythonStorageWorkerUrl } from './origin';
+import { getPythonStorageWorkerUrl, getPythonWheelWorkerUrl } from './origin';
 
 export type StorageErrorCode =
   | 'CAP_EXCEEDED'
@@ -13,6 +13,7 @@ export type StorageErrorCode =
   | 'NOT_FOUND'
   | 'EXISTS'
   | 'WORKER_CLOSED'
+  | 'HASH_MISMATCH'
   | 'UNKNOWN';
 
 export class StorageWorkerError extends Error {
@@ -75,8 +76,36 @@ export interface StorageChangeEvent {
   readonly stats: WorkspaceStats;
 }
 
+/** Saved wheel caps (separate from the workspace caps): 50 MiB per wheel, 200 MiB and 64 wheels in all. */
+export const MAX_SAVED_WHEEL_BYTES = 50 * 1024 * 1024;
+export const MAX_SAVED_WHEELS_TOTAL_BYTES = 200 * 1024 * 1024;
+export const MAX_SAVED_WHEEL_COUNT = 64;
+
+export interface WheelStoreStats {
+  readonly count: number;
+  readonly totalBytes: number;
+  readonly maxWheelBytes: number;
+  readonly maxTotalBytes: number;
+  readonly maxCount: number;
+}
+
+export interface SavedWheelMeta {
+  readonly sha256: string;
+  /** Empty for rows not written by the storage worker (user code can write IndexedDB). */
+  readonly fileName: string;
+  readonly size: number;
+}
+
+export interface SavedWheel extends SavedWheelMeta {
+  readonly storedAt: number;
+  /** Untrusted until hashed against the page's manifest (see packageRestore.ts). */
+  readonly bytes: Uint8Array;
+}
+
 export interface StorageClientListeners {
   change?: (event: StorageChangeEvent) => void;
+  /** Another tab still holds an older database version open (upgrade waits for it). */
+  blocked?: (message: string) => void;
   quotaExceeded?: (message: string) => void;
   capExceeded?: (message: string) => void;
   error?: (message: string) => void;
@@ -111,6 +140,8 @@ export class PythonStorageClient {
   private readonly encoder = new TextEncoder();
   private readonly decoder = new TextDecoder('utf-8');
   private worker: Worker | null = null;
+  /** /python/wheel-worker.js (saved wheels), started on the first wheel call after the schema is open. */
+  private wheelWorker: Promise<Worker> | null = null;
   private nextId = 1;
   private pending = new Map<number, PendingRpc>();
   private listeners = new Set<StorageClientListeners>();
@@ -188,6 +219,8 @@ export class PythonStorageClient {
       for (const l of this.listeners) l.quotaExceeded?.(msg.message);
     } else if (msg.type === 'storage.capExceeded' && typeof msg.message === 'string') {
       for (const l of this.listeners) l.capExceeded?.(msg.message);
+    } else if (msg.type === 'storage.blocked' && typeof msg.message === 'string') {
+      for (const l of this.listeners) l.blocked?.(msg.message);
     }
   }
 
@@ -383,6 +416,73 @@ export class PythonStorageClient {
     return this.call('clearWorkspace');
   }
 
+  private ensureWheelWorker(): Promise<Worker> {
+    if (this._closed) return Promise.reject(new StorageWorkerError('WORKER_CLOSED', 'Storage client has been closed'));
+    if (!this.wheelWorker) {
+      // The storage worker owns the schema (v2 adds the wheels store), so it opens the database first.
+      this.wheelWorker = this.call('stats').then(() => {
+        if (this._closed) throw new StorageWorkerError('WORKER_CLOSED', 'Storage client has been closed');
+        const worker = new Worker(getPythonWheelWorkerUrl(), { type: 'module' });
+        worker.onmessage = (event: MessageEvent) => this.handleMessage(event.data);
+        worker.onerror = (event: ErrorEvent) => {
+          event.preventDefault();
+          this.wheelWorker = null;
+          this.rejectAllPending(new StorageWorkerError('UNKNOWN', event.message || 'Wheel worker crashed unexpectedly'));
+        };
+        return worker;
+      });
+      this.wheelWorker.catch(() => {
+        this.wheelWorker = null;
+      });
+    }
+    return this.wheelWorker;
+  }
+
+  private async wheelCall<T>(op: string, payload: Record<string, unknown> = {}, transfer: Transferable[] = []): Promise<T> {
+    const worker = await this.ensureWheelWorker();
+    const id = this.nextId++;
+    return new Promise<T>((resolve, reject) => {
+      this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject });
+      worker.postMessage({ id, op, ...payload }, transfer);
+    });
+  }
+
+  /**
+   * Saves wheel bytes under their SHA-256 (the storage worker hashes them again and refuses a
+   * mismatch with HASH_MISMATCH). The bytes are copied, so the caller keeps its array.
+   */
+  putWheel(
+    sha256: string,
+    fileName: string,
+    bytes: Uint8Array,
+  ): Promise<{ readonly sha256: string; readonly fileName: string; readonly size: number; readonly stats: WheelStoreStats }> {
+    const copy = bytes.slice();
+    return this.wheelCall('wheel.put', { sha256, fileName, bytes: copy }, [copy.buffer]);
+  }
+
+  /** The saved row for `sha256`, or null. The bytes are untrusted: hash them before use. */
+  getWheel(sha256: string): Promise<SavedWheel | null> {
+    return this.wheelCall<SavedWheel | null>('wheel.get', { sha256 });
+  }
+
+  deleteWheel(sha256: string): Promise<{ readonly deleted: number }> {
+    return this.wheelCall('wheel.delete', { sha256 });
+  }
+
+  /** Every row (also rows user code added), read from keys and indexes only. */
+  listWheels(): Promise<{ readonly wheels: readonly SavedWheelMeta[]; readonly stats: WheelStoreStats }> {
+    return this.wheelCall('wheel.list');
+  }
+
+  wheelStats(): Promise<WheelStoreStats> {
+    return this.wheelCall<WheelStoreStats>('wheel.stats');
+  }
+
+  /** Deletes every saved wheel whose sha256 is not in `keep`. */
+  pruneWheels(keep: readonly string[]): Promise<{ readonly deleted: number }> {
+    return this.wheelCall('wheel.prune', { keep: [...keep] });
+  }
+
   /** Creates a direct MessageChannel between the Storage Worker and python-worker.js, returning port2. */
   async createPythonPort(): Promise<MessagePort> {
     const channel = new MessageChannel();
@@ -453,6 +553,17 @@ export class PythonStorageClient {
   }
 
   private terminateWorker(): void {
+    const wheel = this.wheelWorker;
+    this.wheelWorker = null;
+    if (wheel) {
+      void wheel.then(
+        (w) => {
+          w.postMessage({ id: -1, op: 'close' });
+          w.terminate();
+        },
+        () => undefined,
+      );
+    }
     const worker = this.worker;
     this.worker = null;
     if (worker) {

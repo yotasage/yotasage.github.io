@@ -190,7 +190,9 @@ async function handleSameOriginFetch(event, req, url) {
     headers.set('Referrer-Policy', 'no-referrer');
   } else if (isWorker) {
     const policy =
-      url.pathname === '/python/storage-worker.js' || url.pathname === '/python/pdf-worker.js'
+      url.pathname === '/python/storage-worker.js' ||
+      url.pathname === '/python/wheel-worker.js' ||
+      url.pathname === '/python/pdf-worker.js'
         ? { mode: 'off', hosts: [] }
         : await resolveWorkerPolicy(event);
     headers.set('Cross-Origin-Opener-Policy', 'same-origin');

@@ -2,13 +2,17 @@
 // Option 3B Dedicated Storage Worker (/python/storage-worker.js).
 // - Runs under /python/coi-sw.js with strict Off CSP (connect-src 'self', worker-src 'none').
 // - Never runs untrusted user Python and is never Force Stopped (eliminates WebKit IDB deadlock).
-// - Owns IndexedDB database "python-playground" (v1) storing Uint8Array payloads (never Blob).
+// - Owns IndexedDB database "python-playground" (v2) storing Uint8Array payloads (never Blob).
 // - Enforces path rules and exact uncompressed byte/entry caps outside the untrusted Python worker.
+// - Owns the schema: v2 adds the store "wheels" (saved wheel bytes keyed by SHA-256, P5b), which
+//   /python/wheel-worker.js reads and writes (a module import here would be refused by this worker's
+//   own CSP, worker-src 'none', in Firefox and WebKit).
 
 const DB_NAME = 'python-playground';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_WORKSPACES = 'workspaces';
 const STORE_FILES = 'files';
+const STORE_WHEELS = 'wheels';
 
 const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50 MiB
 const MAX_WORKSPACE_BYTES = 150 * 1024 * 1024; // 150 MiB
@@ -123,6 +127,72 @@ function enqueue(ws, task) {
   return next;
 }
 
+function upgradeSchema(database, tx) {
+  if (!database.objectStoreNames.contains(STORE_WORKSPACES)) {
+    database.createObjectStore(STORE_WORKSPACES, { keyPath: 'id' });
+  }
+  if (!database.objectStoreNames.contains(STORE_FILES)) {
+    const store = database.createObjectStore(STORE_FILES, { keyPath: ['ws', 'path'] });
+    store.createIndex('by_ws', 'ws', { unique: false });
+  }
+  // A "wheels" store someone else made with another shape is replaced (its rows are untrusted anyway).
+  if (database.objectStoreNames.contains(STORE_WHEELS)) {
+    const existing = tx.objectStore(STORE_WHEELS);
+    if (existing.keyPath !== 'sha256' || existing.autoIncrement) database.deleteObjectStore(STORE_WHEELS);
+  }
+  const wheels = database.objectStoreNames.contains(STORE_WHEELS)
+    ? tx.objectStore(STORE_WHEELS)
+    : database.createObjectStore(STORE_WHEELS, { keyPath: 'sha256' });
+  if (!wheels.indexNames.contains('by_size')) wheels.createIndex('by_size', 'size', { unique: false });
+  if (!wheels.indexNames.contains('by_name')) wheels.createIndex('by_name', 'fileName', { unique: false });
+}
+
+/** True when every store and index this worker uses exists with the expected shape. */
+function schemaOk(database) {
+  const names = database.objectStoreNames;
+  if (!names.contains(STORE_WORKSPACES) || !names.contains(STORE_FILES) || !names.contains(STORE_WHEELS)) {
+    return false;
+  }
+  try {
+    const tx = database.transaction([STORE_FILES, STORE_WHEELS], 'readonly');
+    const wheels = tx.objectStore(STORE_WHEELS);
+    return (
+      tx.objectStore(STORE_FILES).indexNames.contains('by_ws') &&
+      wheels.keyPath === 'sha256' &&
+      wheels.indexNames.contains('by_size') &&
+      wheels.indexNames.contains('by_name')
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Opens (and upgrades) the database. v1 → v2 only adds stores, so all v1 data stays. If someone
+ * (user code can open this database too) raised the version or left out a store, the database is
+ * opened at its own version and upgraded one step further to add what is missing.
+ */
+function openAt(version) {
+  return new Promise((resolve, reject) => {
+    const req = version === undefined ? indexedDB.open(DB_NAME) : indexedDB.open(DB_NAME, version);
+    req.onupgradeneeded = () => {
+      upgradeSchema(req.result, req.transaction);
+    };
+    req.onblocked = () => {
+      // Another tab still holds an older version open; its storage worker closes on versionchange.
+      self.postMessage({
+        type: 'storage.blocked',
+        message: 'Another tab is still using older saved data. Close or reload it to continue.',
+      });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => {
+      const err = req.error;
+      reject(err && err.name === 'VersionError' ? makeError('VERSION', err.message) : err);
+    };
+  });
+}
+
 function openDb() {
   if (isClosed) {
     return Promise.reject(makeError('WORKER_CLOSED', 'Storage worker has been closed'));
@@ -130,29 +200,27 @@ function openDb() {
   if (db) return Promise.resolve(db);
   if (dbOpenPromise) return dbOpenPromise;
 
-  dbOpenPromise = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = () => {
-      const database = req.result;
-      if (!database.objectStoreNames.contains(STORE_WORKSPACES)) {
-        database.createObjectStore(STORE_WORKSPACES, { keyPath: 'id' });
-      }
-      if (!database.objectStoreNames.contains(STORE_FILES)) {
-        const store = database.createObjectStore(STORE_FILES, { keyPath: ['ws', 'path'] });
-        store.createIndex('by_ws', 'ws', { unique: false });
-      }
+  dbOpenPromise = (async () => {
+    let database;
+    try {
+      database = await openAt(DB_VERSION);
+    } catch (err) {
+      if (!err || err.code !== 'VERSION') throw err;
+      database = await openAt(undefined);
+    }
+    if (!schemaOk(database)) {
+      const next = database.version + 1;
+      database.close();
+      database = await openAt(next);
+    }
+    db = database;
+    db.onversionchange = () => {
+      closeDbImmediately();
     };
-    req.onsuccess = () => {
-      db = req.result;
-      db.onversionchange = () => {
-        closeDbImmediately();
-      };
-      resolve(db);
-    };
-    req.onerror = () => {
-      dbOpenPromise = null;
-      reject(makeError('UNKNOWN', req.error ? req.error.message : 'Failed to open IndexedDB'));
-    };
+    return db;
+  })().catch((err) => {
+    dbOpenPromise = null;
+    throw err && err.code ? err : makeError('UNKNOWN', err && err.message ? err.message : 'Failed to open IndexedDB');
   });
   return dbOpenPromise;
 }

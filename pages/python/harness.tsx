@@ -15,6 +15,10 @@ import { getPythonStorageWorkerUrl, getPythonWorkerUrl } from '../../lib/python/
 import { MAX_FILE_BYTES, normalizeWorkspacePath } from '../../lib/python/paths';
 import { MAX_PLOT_BYTES, validateWorkerMessage } from '../../lib/python/protocol';
 import type { PlotExportFormat } from '../../lib/python/protocol';
+import { PackageRestorer } from '../../lib/python/packageRestore';
+import type { PackageRestorerOptions } from '../../lib/python/packageRestore';
+import * as packages from '../../lib/python/packages';
+import * as requirements from '../../lib/python/requirements';
 import { PythonStorageClient } from '../../lib/python/storageClient';
 import {
   detectBrowserCapabilities,
@@ -60,6 +64,9 @@ export interface PythonHarnessApi {
     format: PlotExportFormat,
   ) => Promise<PlotExportResult>;
   readonly createStorageClient: (workspaceId?: string) => PythonStorageClient;
+  readonly packages: typeof packages;
+  readonly requirements: typeof requirements;
+  readonly createRestorer: (options: PackageRestorerOptions) => PackageRestorer;
   readonly spawnRawWorker: () => Worker;
   readonly spawnRawStorageWorker: () => Worker;
 }
@@ -114,6 +121,9 @@ export default function PythonHarnessPage() {
         onPlot: (client, cb) => client.onPlot(cb),
         exportPlot: (client, plotId, format) => client.exportPlot(plotId, format),
         createStorageClient: (workspaceId) => new PythonStorageClient(workspaceId),
+        packages,
+        requirements,
+        createRestorer: (options) => new PackageRestorer(options),
         spawnRawWorker: () => new Worker(getPythonWorkerUrl(), { type: 'module' }),
         spawnRawStorageWorker: () => new Worker(getPythonStorageWorkerUrl(), { type: 'module' }),
       };
