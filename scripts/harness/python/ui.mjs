@@ -19,6 +19,7 @@ import { chromium, firefox, webkit } from 'playwright-core';
 
 import { startHarnessServers } from './servers.mjs';
 import { runFilesUiSuite } from './ui-files-checks.mjs';
+import { runPlotsUiSuite } from './ui-plots-checks.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '../../..');
@@ -43,14 +44,14 @@ function setCell(feature, browser, val) {
   table.set(feature, row);
 }
 
-async function record(browser, name, fn, note = '') {
+async function record(browser, name, fn, note = '', timeoutMs = 60000) {
   let res;
   let timer = null;
   try {
     res = await Promise.race([
       fn(),
       new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error('timed out after 60s')), 60000);
+        timer = setTimeout(() => reject(new Error(`timed out after ${Math.round(timeoutMs / 1000)}s`)), timeoutMs);
       }),
     ]);
   } catch (err) {
@@ -935,6 +936,17 @@ async function runBrowserSuite(browserName, browser, baseUrl) {
           return `Phone horizontal overflow on Files: ${JSON.stringify(overflowFiles)}`;
         }
 
+        // Switch to Plots tab on phone -> Plots panel visible with 0 horizontal overflow
+        await paneTablist.getByRole('tab', { name: /Plots/ }).click();
+        await page.getByTestId('python-plots-panel').waitFor({ state: 'visible', timeout: 5000 });
+        const overflowPlots = await page.evaluate(() => ({
+          scrollWidth: document.documentElement.scrollWidth,
+          innerWidth: window.innerWidth,
+        }));
+        if (overflowPlots.scrollWidth > overflowPlots.innerWidth + 1) {
+          return `Phone horizontal overflow on Plots: ${JSON.stringify(overflowPlots)}`;
+        }
+
         // Switch back to Editor, set script with input(), Run, submit via phone input bar
         await paneTablist.getByRole('tab', { name: 'Editor' }).click();
         await page.getByTestId('python-editor-wrap').waitFor({ state: 'visible', timeout: 5000 });
@@ -974,6 +986,19 @@ async function runBrowserSuite(browserName, browser, baseUrl) {
   //          fs.changed badges, examples, W5 upload, ZIP import/export, Web Locks)
   // =========================================================================
   await runFilesUiSuite(browserName, browser, baseUrl, {
+    record,
+    waitIsolatedMain,
+    waitMonacoAndPyodideReady,
+    waitTerminalContains,
+    attachErrorTracker,
+  });
+
+  // =========================================================================
+  // Suite 6: P4b Plots Gallery & Hardened File Viewers
+  //          (Matplotlib + SVG export, PIL.Image.show, PDF canvas, CSV/JSON,
+  //           SVG/HTML XSS isolation, 100-plot Blob URL leak check)
+  // =========================================================================
+  await runPlotsUiSuite(browserName, browser, baseUrl, {
     record,
     waitIsolatedMain,
     waitMonacoAndPyodideReady,

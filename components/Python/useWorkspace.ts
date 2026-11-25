@@ -95,6 +95,7 @@ export function useWorkspace({ swSettled, canBootStorage, editorRef }: UseWorksp
   const [runCreatedPaths, setRunCreatedPaths] = useState<ReadonlySet<string>>(() => new Set());
   const [w5NoticeVisible, setW5NoticeVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fileVersion, setFileVersion] = useState(0);
 
   const tabsRef = useRef<readonly EditorTabItem[]>(tabs);
   const activePathRef = useRef<string | null>(activePath);
@@ -389,6 +390,7 @@ export function useWorkspace({ swSettled, canBootStorage, editorRef }: UseWorksp
           copy[idx] = res.entry;
           return copy;
         });
+        setFileVersion((v) => v + 1);
         return true;
       } catch (err) {
         setErrorMessage(formatStorageError(err));
@@ -604,7 +606,7 @@ export function useWorkspace({ swSettled, canBootStorage, editorRef }: UseWorksp
     [editorRef, formatStorageError, lockStatus, persistTabsState, refreshListing],
   );
 
-  const downloadFile = useCallback(
+      const downloadFile = useCallback(
     async (path: string) => {
       const client = storageRef.current;
       if (!client || client.isClosed) return;
@@ -618,6 +620,18 @@ export function useWorkspace({ swSettled, canBootStorage, editorRef }: UseWorksp
     },
     [formatStorageError],
   );
+
+  const readFileBytes = useCallback(async (path: string): Promise<Uint8Array | null> => {
+    const client = storageRef.current;
+    if (!client || client.isClosed) return null;
+    try {
+      const data = await client.read(path);
+      if (!data || data.isDir) return null;
+      return data.bytes ?? new Uint8Array(0);
+    } catch {
+      return null;
+    }
+  }, []);
 
   const uploadFiles = useCallback(
     async (items: readonly { path: string; file: File }[], dirs: readonly string[] = []) => {
@@ -662,6 +676,7 @@ export function useWorkspace({ swSettled, canBootStorage, editorRef }: UseWorksp
         }
 
         if (triggeredW5) setW5NoticeVisible(true);
+        setFileVersion((v) => v + 1);
         await refreshListing();
         if (firstUploadedPath && !tabsRef.current.some((tab) => tab.path === firstUploadedPath)) {
           await openFile(firstUploadedPath);
@@ -708,6 +723,7 @@ export function useWorkspace({ swSettled, canBootStorage, editorRef }: UseWorksp
           }
         }
 
+        setFileVersion((v) => v + 1);
         await refreshListing();
         const firstImportedFile = result.files.find((f) => !f.isDir);
         if (firstImportedFile) {
@@ -774,6 +790,7 @@ export function useWorkspace({ swSettled, canBootStorage, editorRef }: UseWorksp
           ),
         );
 
+        setFileVersion((v) => v + 1);
         await refreshListing();
         for (const path of Object.keys(ex.files)) {
           if (path !== ex.entryFile) {
@@ -847,6 +864,7 @@ export function useWorkspace({ swSettled, canBootStorage, editorRef }: UseWorksp
         }
       }
 
+      setFileVersion((v) => v + 1);
       await refreshListing();
     },
     [decodeUtf8, editorRef, persistTabsState, refreshListing],
@@ -883,10 +901,12 @@ export function useWorkspace({ swSettled, canBootStorage, editorRef }: UseWorksp
     runCreatedPaths,
     w5NoticeVisible,
     errorMessage,
+    fileVersion,
     attemptLock,
     dismissError: () => setErrorMessage(null),
     dismissW5: () => setW5NoticeVisible(false),
     openFile,
+    readFileBytes,
     selectTab,
     closeTab,
     handleEditorContentChange,

@@ -1,0 +1,577 @@
+/* Python Playground — Plots gallery and hardened inline file viewers (Image/SVG, PDF, CSV/JSON, HTML) */
+
+.plotsPane {
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: var(--ds-surface-solid);
+}
+
+.viewerFrame {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  border-top: 2px solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+}
+
+.viewerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  flex-shrink: 0;
+}
+
+.viewerHeaderLeft,
+.viewerHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.viewerOutputBadge {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ds-ink-2);
+  padding: 2px 7px;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  white-space: nowrap;
+}
+
+.viewerPathChip {
+  font-family: var(--ds-font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ds-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 240px;
+}
+
+.viewerMeta {
+  font-family: var(--ds-font-mono);
+  font-size: 11px;
+  color: var(--ds-ink-3);
+  white-space: nowrap;
+}
+
+/* Trusted control bar above plot / viewer stage */
+.stageToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-surface);
+  flex-shrink: 0;
+}
+
+.stageToolbarGroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.toolBtn {
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink-2);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolBtn:hover:not(:disabled) {
+  background: var(--ds-well);
+  color: var(--ds-ink);
+}
+
+.toolBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.toolBtnActive {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  color: var(--ds-accent);
+}
+
+.toolBtnDanger {
+  border-color: var(--ds-bad);
+  color: var(--ds-bad);
+}
+
+.toolBtnDanger:hover:not(:disabled) {
+  background: var(--ds-bad-soft);
+  color: var(--ds-bad);
+}
+
+.zoomReadout {
+  font-family: var(--ds-font-mono);
+  font-size: 11px;
+  color: var(--ds-ink-3);
+  padding: 0 4px;
+  min-width: 38px;
+  text-align: center;
+}
+
+/* Plot info bar */
+.plotMetaBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 5px 10px;
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.plotMetaLeft {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.plotIndexBadge {
+  font-family: var(--ds-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-accent-soft);
+  color: var(--ds-accent);
+}
+
+.plotSourceBadge {
+  font-family: var(--ds-font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-surface-solid);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  color: var(--ds-ink-2);
+}
+
+.plotTitle {
+  font-weight: 600;
+  color: var(--ds-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 240px;
+}
+
+.noticeBar {
+  padding: 6px 10px;
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-warn-soft);
+  color: var(--ds-ink);
+  font-size: 12px;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.errorBanner {
+  margin: 10px;
+  padding: 10px 12px;
+  border-radius: var(--ds-radius-sm);
+  border: 1px solid var(--ds-bad);
+  background: var(--ds-bad-soft);
+  color: var(--ds-bad);
+  font-size: 12.5px;
+  line-height: 1.45;
+  flex-shrink: 0;
+}
+
+/* Image / plot scrollable pan stage */
+.imageStage {
+  flex: 1 1 auto;
+  min-height: 200px;
+  min-width: 0;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  box-sizing: border-box;
+  background: var(--ds-well);
+  user-select: none;
+}
+
+.imageStageZoomed {
+  align-items: flex-start;
+  justify-content: flex-start;
+  cursor: grab;
+}
+
+.imageStageDragging {
+  cursor: grabbing;
+}
+
+.checkerboard {
+  background-color: #d8dce3;
+  background-image:
+    linear-gradient(45deg, #f3f5f8 25%, transparent 25%),
+    linear-gradient(-45deg, #f3f5f8 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #f3f5f8 75%),
+    linear-gradient(-45deg, transparent 75%, #f3f5f8 75%);
+  background-size: 16px 16px;
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
+}
+
+:global(html[data-ds-theme="dark"]) .checkerboard {
+  background-color: #1f232b;
+  background-image:
+    linear-gradient(45deg, #2d333f 25%, transparent 25%),
+    linear-gradient(-45deg, #2d333f 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #2d333f 75%),
+    linear-gradient(-45deg, transparent 75%, #2d333f 75%);
+}
+
+.stageImgFit {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+  background: #ffffff;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
+}
+
+.stageImgTransparent {
+  background: transparent;
+}
+
+.stageImgZoomed {
+  display: block;
+  max-width: none;
+  max-height: none;
+  background: #ffffff;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
+  flex-shrink: 0;
+}
+
+/* Thumbnail strip at bottom of Plots gallery */
+.thumbStrip {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 8px 10px;
+  border-top: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-surface);
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-shrink: 0;
+  scrollbar-width: thin;
+}
+
+.thumbCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 108px;
+  flex-shrink: 0;
+  padding: 5px;
+  border-radius: var(--ds-radius-sm);
+  border: 2px solid var(--ds-border);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.thumbCard:hover {
+  border-color: var(--ds-border-strong);
+}
+
+.thumbCardActive {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+}
+
+.thumbImgWrap {
+  width: 100%;
+  height: 62px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thumbImg {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.thumbMetaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  font-family: var(--ds-font-mono);
+  font-size: 10px;
+  color: var(--ds-ink-2);
+}
+
+.thumbTitle {
+  font-size: 10.5px;
+  color: var(--ds-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thumbDeleteBtn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink-2);
+  font-size: 12px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.thumbDeleteBtn:hover {
+  background: var(--ds-bad-soft);
+  border-color: var(--ds-bad);
+  color: var(--ds-bad);
+}
+
+.emptyState {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 28px 20px;
+  text-align: center;
+  color: var(--ds-ink-3);
+}
+
+.emptyTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ds-ink-2);
+}
+
+.emptyDesc {
+  font-size: 12.5px;
+  max-width: 340px;
+  line-height: 1.5;
+}
+
+/* PDF canvas stage */
+.pdfStage {
+  flex: 1 1 auto;
+  min-height: 220px;
+  overflow: auto;
+  padding: 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  background: var(--ds-well);
+}
+
+.pdfCanvas {
+  display: block;
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+  border-radius: 2px;
+  max-width: none;
+}
+
+/* CSV / TSV table viewer */
+.dataStage {
+  flex: 1 1 auto;
+  min-height: 180px;
+  overflow: auto;
+  background: var(--ds-surface-solid);
+}
+
+.csvTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--ds-font-mono);
+  font-size: 12px;
+  color: var(--ds-ink);
+}
+
+.csvTable th,
+.csvTable td {
+  padding: 6px 10px;
+  border: 1px solid var(--ds-border);
+  text-align: left;
+  vertical-align: top;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 320px;
+}
+
+.csvTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--ds-well);
+  font-weight: 700;
+  color: var(--ds-ink);
+}
+
+.csvTable tbody tr:nth-child(even) {
+  background: var(--ds-surface);
+}
+
+.jsonPre {
+  margin: 0;
+  padding: 12px 14px;
+  font-family: var(--ds-font-mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ds-ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Sandboxed HTML viewer */
+.htmlNoticeBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-surface);
+  font-size: 12px;
+  color: var(--ds-ink-2);
+  flex-shrink: 0;
+}
+
+.htmlNoticeWarn {
+  background: var(--ds-warn-soft);
+  color: var(--ds-ink);
+}
+
+.htmlToggleLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--ds-ink);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.htmlIframe {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 260px;
+  border: none;
+  background: #ffffff;
+}
+
+/* Tab bar Preview | Code switcher */
+.modeToggleGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  padding: 2px;
+  border-radius: 6px;
+  background: var(--ds-surface-solid);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  flex-shrink: 0;
+  margin-bottom: 3px;
+}
+
+.modeToggleBtn {
+  border: none;
+  background: transparent;
+  color: var(--ds-ink-2);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.modeToggleBtnActive {
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+}
+
+@media (max-width: 899px) {
+  .plotsPane {
+    min-height: 400px;
+  }
+
+  .imageStage {
+    min-height: 240px;
+    height: 44vh;
+  }
+
+  .viewerPathChip {
+    max-width: 150px;
+  }
+}

@@ -4,7 +4,7 @@
 // a binary placeholder with Download for non-text/large files (upgraded to rich viewers in P4b).
 
 import type * as MonacoApi from 'monaco-editor';
-import React, { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 
 import { baseName, formatByteSize } from '../../lib/python/paths';
 import { useI18n } from '../../lib/ui/i18n';
@@ -12,7 +12,13 @@ import { loadMonaco, MonacoNamespace } from '../../lib/ui/monacoLoader';
 import type { ResolvedTheme } from '../../lib/ui/theme';
 import styles from '../../styles/Python.module.css';
 import fileStyles from '../../styles/PythonFiles.module.css';
-import { getMonacoLanguageForPath } from './fileHelpers';
+import plotStyles from '../../styles/PythonPlots.module.css';
+import {
+  getFileViewerKind,
+  getMonacoLanguageForPath,
+  isDualModeViewerKind,
+} from './fileHelpers';
+import FileViewer from './FileViewer';
 
 export const DEFAULT_PYTHON_CODE = `# Python 3.14 running locally in your browser (Pyodide)
 import sys
@@ -61,6 +67,8 @@ export interface PythonEditorProps {
   activePath: string | null;
   theme: ResolvedTheme;
   readOnly?: boolean;
+  fileVersion?: number;
+  readFileBytes?: (path: string) => Promise<Uint8Array | null>;
   onSelectTab: (path: string) => void;
   onCloseTab: (path: string) => void;
   onRun: () => void;
@@ -137,6 +145,8 @@ const PythonEditor = React.forwardRef<PythonEditorHandle, PythonEditorProps>(fun
     activePath,
     theme,
     readOnly = false,
+    fileVersion = 0,
+    readFileBytes,
     onSelectTab,
     onCloseTab,
     onRun,
@@ -164,6 +174,13 @@ const PythonEditor = React.forwardRef<PythonEditorHandle, PythonEditorProps>(fun
 
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [tabViewModes, setTabViewModes] = useState<Record<string, 'preview' | 'code'>>({});
+
+  const getLiveText = useCallback((path: string): string | null => {
+    const managed = modelsRef.current.get(path);
+    if (managed) return managed.model.getValue();
+    return textCacheRef.current.get(path) ?? null;
+  }, []);
 
   onRunRef.current = onRun;
   onChangeRef.current = onContentChange;
@@ -347,12 +364,27 @@ const PythonEditor = React.forwardRef<PythonEditorHandle, PythonEditorProps>(fun
     [tabs, activePath],
   );
 
+  const activeViewerKind = activeTab ? getFileViewerKind(activeTab.path) : null;
+  const activeIsDualMode = Boolean(
+    activeTab && !activeTab.isBinary && isDualModeViewerKind(activeViewerKind),
+  );
+  const activeViewMode: 'preview' | 'code' =
+    activeTab && activeIsDualMode ? (tabViewModes[activeTab.path] ?? 'preview') : 'preview';
+  const showViewer = Boolean(
+    activeTab &&
+      activeViewerKind &&
+      readFileBytes &&
+      (activeTab.isBinary || activeViewMode === 'preview'),
+  );
+  const showMonaco = Boolean(activeTab && !activeTab.isBinary && !showViewer);
+
   useEffect(() => {
     if (!ready) return;
-    if (activeTab && !activeTab.isBinary) {
+    if (activeTab && !activeTab.isBinary && showMonaco) {
       activateModel(activeTab.path);
+      requestAnimationFrame(() => editorRef.current?.layout());
     }
-  }, [ready, activeTab?.path, activeTab?.isBinary]);
+  }, [ready, activeTab?.path, activeTab?.isBinary, showMonaco]);
 
   useImperativeHandle(
     ref,
@@ -533,8 +565,6 @@ const PythonEditor = React.forwardRef<PythonEditorHandle, PythonEditorProps>(fun
     return counts;
   }, [tabs]);
 
-  const showMonaco = Boolean(activeTab && !activeTab.isBinary);
-
   return (
     <>
       <div
@@ -593,7 +623,53 @@ const PythonEditor = React.forwardRef<PythonEditorHandle, PythonEditorProps>(fun
             </div>
           );
         })}
-        <span className={fileStyles.editorTabRightMeta}>Ctrl+Enter</span>
+
+        {activeIsDualMode && activeTab && (
+          <div
+            className={plotStyles.modeToggleGroup}
+            role="group"
+            aria-label={t('python.viewerModeAria')}
+            data-testid="python-viewer-mode-toggle"
+          >
+            <button
+              type="button"
+              className={[
+                plotStyles.modeToggleBtn,
+                activeViewMode === 'preview' ? plotStyles.modeToggleBtnActive : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              aria-pressed={activeViewMode === 'preview'}
+              onClick={() =>
+                setTabViewModes((prev) => ({ ...prev, [activeTab.path]: 'preview' }))
+              }
+              data-testid="python-viewer-mode-preview"
+            >
+              {t('python.viewerPreview')}
+            </button>
+            <button
+              type="button"
+              className={[
+                plotStyles.modeToggleBtn,
+                activeViewMode === 'code' ? plotStyles.modeToggleBtnActive : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              aria-pressed={activeViewMode === 'code'}
+              onClick={() => setTabViewModes((prev) => ({ ...prev, [activeTab.path]: 'code' }))}
+              data-testid="python-viewer-mode-code"
+            >
+              {t('python.viewerCode')}
+            </button>
+          </div>
+        )}
+
+        <span
+          className={fileStyles.editorTabRightMeta}
+          style={activeIsDualMode ? { marginLeft: 4 } : undefined}
+        >
+          Ctrl+Enter
+        </span>
       </div>
 
       <div className={styles.editorWrap} data-testid="python-editor-wrap">
@@ -612,7 +688,19 @@ const PythonEditor = React.forwardRef<PythonEditorHandle, PythonEditorProps>(fun
           </div>
         )}
 
-        {activeTab && activeTab.isBinary && (
+        {showViewer && activeTab && activeViewerKind && readFileBytes && (
+          <FileViewer
+            path={activeTab.path}
+            kind={activeViewerKind}
+            size={activeTab.size}
+            fileVersion={fileVersion}
+            readFileBytes={readFileBytes}
+            getLiveText={getLiveText}
+            onDownload={onDownloadFile}
+          />
+        )}
+
+        {!showViewer && activeTab && activeTab.isBinary && (
           <div className={fileStyles.binaryPlaceholder} data-testid="python-binary-placeholder">
             <div className={fileStyles.binaryFileName}>{activeTab.path}</div>
             <p className={fileStyles.binaryMeta}>

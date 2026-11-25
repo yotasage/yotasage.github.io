@@ -161,7 +161,13 @@ self.addEventListener('fetch', (event) => {
 
 async function handleSameOriginFetch(event, req, url) {
   // Always use network / browser HTTP cache — NEVER Cache Storage.
-  const response = await fetch(req);
+  // For /python/pdf-worker.js, serve /pdfjs/pdf.worker.min.mjs directly from this
+  // in-scope URL so WebKit/Firefox get COEP/CORP headers without a secondary module import.
+  const fetchTarget =
+    url.pathname === '/python/pdf-worker.js'
+      ? new Request('/pdfjs/pdf.worker.min.mjs', { credentials: 'same-origin' })
+      : req;
+  const response = await fetch(fetchTarget);
   if (response.status === 0) return response;
 
   const headers = new Headers(response.headers);
@@ -184,7 +190,7 @@ async function handleSameOriginFetch(event, req, url) {
     headers.set('Referrer-Policy', 'no-referrer');
   } else if (isWorker) {
     const policy =
-      url.pathname === '/python/storage-worker.js'
+      url.pathname === '/python/storage-worker.js' || url.pathname === '/python/pdf-worker.js'
         ? { mode: 'off', hosts: [] }
         : await resolveWorkerPolicy(event);
     headers.set('Cross-Origin-Opener-Policy', 'same-origin');

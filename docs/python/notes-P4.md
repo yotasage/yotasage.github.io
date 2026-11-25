@@ -1,0 +1,18 @@
+# Python Playground — Phase 4 Notes (Plots Gallery & Hardened File Viewers, v1 Complete)
+
+## Scope Delivered (P4a + P4b)
+- **Engine (P4a):** Custom Matplotlib `FigureCanvasAgg` backend (`yotasage_rt.mpl_backend`), zero-boot-cost lazy `PIL.Image.show` hook (`sys.meta_path`), bounded live-figure eviction (`MAX_LIVE_FIGURES = 16`), on-demand vector `SVG`/`PDF` re-export, and strict PNG signature + 25 MiB cap validation in `lib/python/protocol.ts`.
+- **Plots Gallery (P4b):** `components/Python/usePlots.ts` + `components/Python/PlotsGallery.tsx` framed inside the `Program output` container (`Console | REPL | Plots` on desktop; `Editor | Console | Files | Plots` on phone) with unread count badge, 120-plot history cap, Fit / 100% / Zoom / drag-to-pan, write-only Copy PNG, Download PNG, live Export SVG & Export PDF with eviction notice, thumbnail history strip, and deterministic `URL.revokeObjectURL` cleanup across delete, eviction, Clear all, and unmount.
+- **Hardened Inline Viewers (P4b):** `FileViewer.tsx`, `PdfPreview.tsx`, and `DataTableViewer.tsx` framed as `Program output` with zero `innerHTML`/`dangerouslySetInnerHTML`:
+  - **Images & SVG (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.svg`):** rendered strictly through `<img src={blobUrl}>` (never inline `<svg>`, `<object>`, or `<iframe>`), checkerboard toggle, Fit / 100% / Zoom, natural dimensions, Download, and guaranteed `URL.revokeObjectURL` cleanup.
+  - **PDF (`.pdf`):** canvas-only via `lib/pdf/pdfjs.ts` (QuickJS stripped by `copy-pdfjs-assets.mjs`, `enableXfa: false`, self-hosted `/pdfjs/` already in `coi-sw.js` `ALLOWED_PREFIXES`), page navigation, zoom (`75%–150%`), clean `close()`/`destroy()` teardown, Download, and plain `<a href="/pdf/main">` hard-navigation link.
+  - **CSV / TSV & JSON (`.csv`, `.tsv`, `.json`):** pure React text nodes, RFC-4180 parser with 500-row table cap, formatted JSON `<pre>` + invalid-JSON alert, and **Preview | Code** toggle in the tab bar.
+  - **Sandboxed HTML (`.html`, `.htm`):** default `<iframe sandbox="" srcDoc={...}>` (zero script execution, opaque origin); opt-in **"Allow scripts (sandboxed, offline)"** resets to OFF on every file change and switches to `sandbox="allow-scripts"` (never `allow-same-origin`, `allow-top-navigation`, or `allow-popups`) with an injected `default-src 'none'` zero-connect `<meta http-equiv="Content-Security-Policy">`.
+
+## S0 / P4 Decision: `lib/pdf/handoff.ts` vs. Download + Hard Link
+- `lib/pdf/handoff.ts` stores transferred PDF bytes in an in-memory JavaScript module variable shared only across Next.js SPA client-side route transitions.
+- Because `/python/main` runs under `COOP: same-origin` + `COEP: require-corp` (`coi-sw.js`) while `/pdf/*` runs non-isolated (and requires a full hard `<a href>` navigation to exit cross-origin isolation cleanly), an SPA handoff cannot cross the isolation boundary without leaking COOP/COEP into `/pdf/*`.
+- Therefore, `PdfPreview.tsx` provides a direct **Download** button plus a plain hard `<a href="/pdf/main">` (**Open PDF tools**) link so visitors can save the PDF and open PDF tools cleanly in a non-isolated page load.
+
+## Verification
+- Verified across **Edge (`msedge`)**, **Firefox**, and **WebKit** against the real zero-header static export (`out/`) via `npm --prefix scripts/harness/python run ui` (including `ui-plots-checks.mjs`: Matplotlib 2-plot badge + SVG export, `PIL.Image.show()`, inline PDF canvas pixel rendering with 0 COEP errors, CSV/JSON viewers + Code toggle, SVG & HTML XSS isolation tests, 100-plot Blob URL leak check = 0 leaks, and `375×812` phone `Plots` tab 0-overflow check) and repo-wide `npm run verify`.

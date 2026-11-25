@@ -84,6 +84,31 @@ const MONACO_LANGUAGE_MAP: Readonly<Record<string, string>> = {
   '.log': 'plaintext',
 };
 
+export type FileViewerKind = 'image' | 'svg' | 'pdf' | 'csv' | 'tsv' | 'json' | 'html' | null;
+
+const VIEWER_KIND_MAP: Readonly<Record<string, Exclude<FileViewerKind, null>>> = {
+  '.png': 'image',
+  '.jpg': 'image',
+  '.jpeg': 'image',
+  '.gif': 'image',
+  '.webp': 'image',
+  '.svg': 'svg',
+  '.pdf': 'pdf',
+  '.csv': 'csv',
+  '.tsv': 'tsv',
+  '.json': 'json',
+  '.html': 'html',
+  '.htm': 'html',
+};
+
+export function getFileViewerKind(path: string): FileViewerKind {
+  return VIEWER_KIND_MAP[fileExtension(path)] ?? null;
+}
+
+export function isDualModeViewerKind(kind: FileViewerKind): boolean {
+  return kind === 'svg' || kind === 'html' || kind === 'csv' || kind === 'tsv' || kind === 'json';
+}
+
 export function getMonacoLanguageForPath(path: string): string {
   const ext = fileExtension(path);
   return MONACO_LANGUAGE_MAP[ext] ?? 'plaintext';

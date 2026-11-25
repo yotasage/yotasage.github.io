@@ -9,9 +9,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { OFF_NETWORK_POLICY, parseNetworkPolicyFromSearch } from '../../lib/python/network';
 import type { NetworkPolicy } from '../../lib/python/network';
 import { baseName } from '../../lib/python/paths';
-import type { CapabilityTier, SecurityStatusInfo } from '../../lib/python/protocol';
+import type {
+  CapabilityTier,
+  PlotExportFormat,
+  SecurityStatusInfo,
+} from '../../lib/python/protocol';
 import { detectBrowserCapabilities, registerPythonServiceWorker } from '../../lib/python/tiers';
 import {
+  PlotExportResult,
   PythonClientState,
   PythonWorkerClient,
   ReadyInfo,
@@ -28,8 +33,9 @@ import { extractWorkspaceJumps, TracebackJump } from './fileHelpers';
 import FileTree from './FileTree';
 import NetworkBanner from './NetworkBanner';
 import NetworkDialog from './NetworkDialog';
+import PlotsGallery from './PlotsGallery';
 import PythonEditor, { EditorErrorMarker, PythonEditorHandle } from './PythonEditor';
-import PythonTerminal, { PythonTerminalHandle, TerminalMode } from './PythonTerminal';
+import PythonTerminal, { PythonTerminalHandle } from './PythonTerminal';
 import {
   W1_ACK_KEY,
   W1FirstVisitDialog,
@@ -37,9 +43,11 @@ import {
   W7FailClosedDialog,
   W8ExternalLinkDialog,
 } from './SecurityDialogs';
+import { usePlots } from './usePlots';
 import { useWorkspace } from './useWorkspace';
 
-type MobilePane = 'editor' | 'output' | 'files';
+type OutputTab = 'console' | 'repl' | 'plots';
+type MobilePane = 'editor' | 'output' | 'files' | 'plots';
 
 export default function PythonPlayground() {
   useDesignSystemPage('#2563eb', '#60a5fa');
@@ -51,7 +59,8 @@ export default function PythonPlayground() {
   const consoleRef = useRef<PythonTerminalHandle | null>(null);
   const replRef = useRef<PythonTerminalHandle | null>(null);
   const clientRef = useRef<PythonWorkerClient | null>(null);
-  const outputTabRef = useRef<TerminalMode>('console');
+  const outputTabRef = useRef<OutputTab>('console');
+  const isPlotsVisibleRef = useRef(false);
 
   // Hydration-safe client state
   const [hydrated, setHydrated] = useState(false);
@@ -75,13 +84,26 @@ export default function PythonPlayground() {
   const [tracebackJumps, setTracebackJumps] = useState<readonly TracebackJump[]>([]);
 
   // Panes & responsive state
-  const [outputTab, setOutputTab] = useState<TerminalMode>('console');
+  const [outputTab, setOutputTab] = useState<OutputTab>('console');
   const [mobilePane, setMobilePane] = useState<MobilePane>('editor');
   const [showFilesSidebar, setShowFilesSidebar] = useState(true);
   const [isNarrow, setIsNarrow] = useState(false);
   const [swSettled, setSwSettled] = useState(false);
 
   outputTabRef.current = outputTab;
+  const isPlotsVisible = isNarrow ? mobilePane === 'plots' : outputTab === 'plots';
+  isPlotsVisibleRef.current = isPlotsVisible;
+
+  // Plots gallery state & guaranteed Blob URL lifecycle
+  const plots = usePlots(isPlotsVisibleRef);
+  const addPlotRef = useRef(plots.addPlot);
+  addPlotRef.current = plots.addPlot;
+
+  useEffect(() => {
+    if (isPlotsVisible && plots.unreadCount > 0) {
+      plots.clearUnread();
+    }
+  }, [isPlotsVisible, plots.unreadCount, plots.clearUnread]);
 
   // 1. Parse URL policy, W1 acknowledgement, viewport width, and register coi-sw.js on client mount.
   useEffect(() => {
@@ -189,6 +211,9 @@ export default function PythonPlayground() {
       },
       fsChanged: (change) => {
         void handleWorkerFsChangedRef.current(change);
+      },
+      plot: (event) => {
+        addPlotRef.current(event);
       },
       crash: (reason) => {
         setCrashReason(reason);
@@ -379,6 +404,17 @@ export default function PythonPlayground() {
     return client.replComplete(source);
   }, []);
 
+  const handleExportPlot = useCallback(
+    async (plotId: string, format: PlotExportFormat): Promise<PlotExportResult> => {
+      const client = clientRef.current;
+      if (!client) {
+        return { ok: false, plotId, format, error: t('python.plotsExportEvicted') };
+      }
+      return client.exportPlot(plotId, format);
+    },
+    [t],
+  );
+
   const handleJumpToTraceback = useCallback(
     async (jump: TracebackJump) => {
       await workspace.openFile(jump.path);
@@ -463,12 +499,17 @@ export default function PythonPlayground() {
         ? t('python.tier2Desc')
         : t('python.tier3Desc');
 
-  const outputTabs = useMemo<readonly PillTabItem<TerminalMode>[]>(
+  const outputTabs = useMemo<readonly PillTabItem<OutputTab>[]>(
     () => [
       { id: 'console', label: t('python.tabConsole') },
       { id: 'repl', label: t('python.tabRepl'), disabled: isRunning },
+      {
+        id: 'plots',
+        label: t('python.tabPlots'),
+        badge: plots.unreadCount > 0 ? plots.unreadCount : undefined,
+      },
     ],
-    [t, isRunning],
+    [t, isRunning, plots.unreadCount],
   );
 
   const mobileTabs = useMemo<readonly PillTabItem<MobilePane>[]>(
@@ -479,13 +520,18 @@ export default function PythonPlayground() {
         label: outputTab === 'repl' ? t('python.tabRepl') : t('python.tabConsole'),
       },
       { id: 'files', label: t('python.tabFiles') },
+      {
+        id: 'plots',
+        label: t('python.tabPlots'),
+        badge: plots.unreadCount > 0 ? plots.unreadCount : undefined,
+      },
     ],
-    [t, outputTab],
+    [t, outputTab, plots.unreadCount],
   );
 
   const showFilesPane = isNarrow ? mobilePane === 'files' : showFilesSidebar;
   const showEditorPane = !isNarrow || mobilePane === 'editor';
-  const showOutputPane = !isNarrow || mobilePane === 'output';
+  const showOutputPane = !isNarrow || mobilePane === 'output' || mobilePane === 'plots';
 
   return (
     <div className={styles.page} data-ds="v2">
@@ -700,7 +746,7 @@ export default function PythonPlayground() {
           </div>
         )}
 
-        {/* Phone pane switcher: Editor | Console | Files */}
+        {/* Phone pane switcher: Editor | Console | Files | Plots */}
         {isNarrow && (
           <div className={styles.mobileTabsRow}>
             <PillTabs
@@ -708,6 +754,12 @@ export default function PythonPlayground() {
               value={mobilePane}
               onChange={(next) => {
                 setMobilePane(next);
+                if (next === 'plots') {
+                  setOutputTab('plots');
+                  plots.clearUnread();
+                } else if (next === 'output' && outputTab === 'plots') {
+                  setOutputTab('console');
+                }
                 requestAnimationFrame(() => {
                   if (next === 'editor') editorRef.current?.layout();
                   else if (next === 'output') {
@@ -773,6 +825,8 @@ export default function PythonPlayground() {
                 activePath={workspace.activePath}
                 theme={resolvedTheme}
                 readOnly={isLockedByOtherTab}
+                fileVersion={workspace.fileVersion}
+                readFileBytes={workspace.readFileBytes}
                 onSelectTab={workspace.selectTab}
                 onCloseTab={workspace.closeTab}
                 onRun={() => {
@@ -805,7 +859,15 @@ export default function PythonPlayground() {
                 <PillTabs
                   items={outputTabs}
                   value={outputTab}
-                  onChange={(next) => setOutputTab(next)}
+                  onChange={(next) => {
+                    setOutputTab(next);
+                    if (next === 'plots') {
+                      plots.clearUnread();
+                      if (isNarrow) setMobilePane('plots');
+                    } else if (isNarrow) {
+                      setMobilePane('output');
+                    }
+                  }}
                   ariaLabel={t('python.outputNavAria')}
                   size="sm"
                   variant="subtle"
@@ -842,7 +904,7 @@ export default function PythonPlayground() {
                 <PythonTerminal
                   ref={consoleRef}
                   mode="console"
-                  visible={showOutputPane && outputTab === 'console'}
+                  visible={showOutputPane && !isPlotsVisible && outputTab === 'console'}
                   theme={resolvedTheme}
                   awaitingStdin={awaitingStdin}
                   onStop={handleStop}
@@ -854,7 +916,7 @@ export default function PythonPlayground() {
                 <PythonTerminal
                   ref={replRef}
                   mode="repl"
-                  visible={showOutputPane && outputTab === 'repl'}
+                  visible={showOutputPane && !isPlotsVisible && outputTab === 'repl'}
                   theme={resolvedTheme}
                   replDisabled={isRunning || !readyInfo || isBlockedGate || isLockedByOtherTab}
                   replBanner={
@@ -865,6 +927,17 @@ export default function PythonPlayground() {
                   onReplPush={handleReplPush}
                   onReplComplete={handleReplComplete}
                   onExternalLink={(url) => setPendingExternalUrl(url)}
+                />
+
+                <PlotsGallery
+                  visible={showOutputPane && isPlotsVisible}
+                  plots={plots.plots}
+                  selectedPlotId={plots.selectedPlotId}
+                  exportDisabled={isRunning || !readyInfo || isLockedByOtherTab}
+                  onSelectPlot={plots.selectPlot}
+                  onDeletePlot={plots.deletePlot}
+                  onClearAll={plots.clearAllPlots}
+                  onExportPlot={handleExportPlot}
                 />
               </>
             ) : (
@@ -908,6 +981,7 @@ export default function PythonPlayground() {
         currentPolicy={policy}
         onClose={handleCloseNetworkDialog}
         onBeforeClear={async () => {
+          plots.clearAllPlots();
           clientRef.current?.dispose();
           clientRef.current = null;
           await workspace.shutdownForClear();
