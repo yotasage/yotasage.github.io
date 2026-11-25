@@ -3,6 +3,7 @@
 import os
 import sys
 
+from .packages import install_packages
 from .repl import repl_complete, repl_push, reset_console, set_namespace
 from .runner import WORKSPACE_ROOT, ensure_workspace, get_last_namespace, run_script
 from .shims import YotaSyncEventLoop, install_shims
@@ -25,13 +26,14 @@ __all__ = [
 ]
 
 
-def install_runtime(tier: int, network_mode: str) -> None:
-    """Install MPLBACKEND, stdio, shims (incl. lazy PIL hook), workspace, and REPL."""
+def install_runtime(tier: int, network_mode: str, origin: str = "") -> None:
+    """Install MPLBACKEND, stdio, shims (incl. lazy PIL hook), packages hooks, workspace, and REPL."""
     # Set custom matplotlib backend BEFORE matplotlib is ever imported (architecture.md §8).
     os.environ["MPLBACKEND"] = "module://yotasage_rt.mpl_backend"
     ensure_workspace()
     install_stdio(tier)
     install_shims(tier, network_mode)
+    install_packages(tier, network_mode, origin)
     set_namespace(get_last_namespace())
 
 

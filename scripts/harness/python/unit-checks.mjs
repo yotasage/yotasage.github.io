@@ -46,6 +46,12 @@ import {
   MAX_TRACEBACK_FRAMES,
   validateWorkerMessage,
 } from '../../../lib/python/protocol.ts';
+import {
+  MAX_PACKAGE_ITEMS,
+  MAX_WHEEL_BYTES,
+  PACKAGE_ERROR_KINDS,
+  checkInstallRequest,
+} from '../../../lib/python/packageProtocol.ts';
 import { detectCapabilityTier } from '../../../lib/python/tiers.ts';
 import { exportWorkspaceZip, importZipBytes } from '../../../lib/python/zip.ts';
 
@@ -525,6 +531,81 @@ export async function runUnitChecks() {
   });
 
   // 5. tiers.ts: detectCapabilityTier across all combinations
+  await check('packageProtocol.ts: pkg.result / pkg.list.result / run.end / ready package fields & install requests', () => {
+    const sha = 'a'.repeat(64);
+    const info = {
+      name: 'tinypkg', version: '1.0.0', source: 'pypi', sha256: sha,
+      url: 'https://files.pythonhosted.org/packages/aa/bb/tinypkg-1.0.0-py3-none-any.whl',
+      fileName: 'tinypkg-1.0.0-py3-none-any.whl', depends: ['tinydep'], imports: ['tinypkg'],
+    };
+    const fail = (kind) => ({ requirement: 'x>=1', kind, message: 'Friendly text.', detail: 'raw' });
+    const valid = [
+      { type: 'pkg.result', id: 3, installed: [info], failed: PACKAGE_ERROR_KINDS.map(fail) },
+      { type: 'pkg.result', id: 3, installed: [], failed: [{ ...fail('version-not-found'), info: '1.0.0, 2.0.0' }] },
+      { type: 'pkg.result', id: 4, installed: [], failed: [], refused: 'run-active' },
+      { type: 'pkg.list.result', id: 5, packages: [{ name: 'numpy', version: '2.2.5', source: 'bundled', depends: [], imports: ['numpy'] }] },
+      { type: 'pkg.list.result', id: 5, packages: [], refused: 'not-ready' },
+      { type: 'run.end', id: 1, ok: false, exitCode: 1, interrupted: false, durationMs: 3, missingPackages: ['sympy'] },
+      { type: 'ready', id: 1, pyodideVersion: '314.0.8', pythonVersion: '3.14.2', tier: 1, crossOriginIsolated: true, canRunSync: true, abiVersion: '2026_0', platform: 'emscripten_5_0_3' },
+      { type: 'status', phase: 'installing', message: 'Installing packages…' },
+    ];
+    for (const m of valid) {
+      const r = validateWorkerMessage(m);
+      assert.equal(r.ok, true, `rejected valid ${m.type}: ${r.ok ? '' : r.reason}`);
+    }
+    const ready = validateWorkerMessage({ ...valid[6], abiVersion: undefined, platform: undefined });
+    assert.equal(ready.ok && ready.message.type === 'ready' && ready.message.abiVersion, '');
+    const bad = (patch) => ({ type: 'pkg.result', id: 3, installed: [{ ...info, ...patch }], failed: [] });
+    const invalid = [
+      bad({ url: 'http://files.pythonhosted.org/x.whl' }),
+      bad({ url: 'https://evil.example/x.whl' }),
+      bad({ url: 'https://user:pw@files.pythonhosted.org/x.whl' }),
+      bad({ url: 'https://files.pythonhosted.org:8443/x.whl' }),
+      bad({ sha256: 'A'.repeat(64) }),
+      bad({ name: '<img src=x>' }),
+      bad({ name: 'n'.repeat(129) }),
+      bad({ source: 'cdn' }),
+      bad({ fileName: '../evil.whl' }),
+      bad({ depends: ['ok', 'bad name'] }),
+      bad({ imports: ['1abc'] }),
+      bad({ version: 'v 1' }),
+      { type: 'pkg.result', id: 3, installed: [], failed: [{ ...fail('pwned') }] },
+      { type: 'pkg.result', id: 3, installed: [], failed: [{ ...fail('other'), detail: 'd'.repeat(8193) }] },
+      { type: 'pkg.result', id: 3, installed: [], failed: [{ ...fail('other'), info: 'i'.repeat(513) }] },
+      { type: 'pkg.result', id: 3, installed: Array(MAX_PACKAGE_ITEMS + 1).fill(info), failed: [] },
+      { type: 'pkg.result', id: -1, installed: [], failed: [] },
+      { type: 'pkg.result', id: 3, installed: [], failed: [], refused: 'yes' },
+      { type: 'pkg.result', id: 3, installed: {}, failed: [] },
+      { type: 'pkg.list.result', id: 3 },
+      { type: 'run.end', id: 1, ok: true, exitCode: 0, interrupted: false, durationMs: 1, missingPackages: ['a b'] },
+      { type: 'run.end', id: 1, ok: true, exitCode: 0, interrupted: false, durationMs: 1, missingPackages: Array(65).fill('x') },
+      { ...valid[6], abiVersion: '2026 0' },
+      { type: 'pkg.install', id: 1, items: [], reason: 'user' },
+    ];
+    for (const m of invalid) {
+      assert.equal(validateWorkerMessage(m).ok, false, `accepted invalid ${JSON.stringify(m).slice(0, 160)}`);
+    }
+    const wheel = { kind: 'wheel', fileName: 'tinypkg-1.0.0-py3-none-any.whl', sha256: sha, bytes: new Uint8Array(4) };
+    assert.equal(checkInstallRequest([{ kind: 'bundled', name: 'numpy' }, { kind: 'pypi', requirement: 'rich>=13' }, wheel], 'user'), null);
+    assert.equal(checkInstallRequest([{ kind: 'pypi', requirement: 'x', url: info.url, sha256: sha }], 'restore'), null);
+    const badRequests = [
+      [[], 'user'],
+      [[{ kind: 'bundled', name: 'bad name' }], 'user'],
+      [[{ kind: 'pypi', requirement: '  ' }], 'user'],
+      [[{ kind: 'pypi', requirement: 'x', url: info.url }], 'restore'],
+      [[{ kind: 'pypi', requirement: 'x', url: 'https://evil.example/x.whl', sha256: sha }], 'restore'],
+      [[{ ...wheel, fileName: 'a/b.whl' }], 'user'],
+      [[{ ...wheel, sha256: 'xyz' }], 'user'],
+      [[{ ...wheel, bytes: new Uint8Array(0) }], 'user'],
+      [[{ ...wheel, bytes: new Uint8Array(MAX_WHEEL_BYTES + 1) }], 'user'],
+      [[{ kind: 'url', url: 'https://x' }], 'user'],
+      [[wheel], 'worker'],
+    ];
+    badRequests.forEach(([items, reason], i) => {
+      assert.notEqual(checkInstallRequest(items, reason), null, `accepted bad request #${i}`);
+    });
+  });
+
   await check('tiers.ts: detectCapabilityTier across all (crossOriginIsolated, canRunSync) combinations', () => {
     assert.deepEqual(detectCapabilityTier(true, true), {
       tier: 1,

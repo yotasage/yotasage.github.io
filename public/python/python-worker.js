@@ -33,7 +33,9 @@ const STDIN_INTERRUPTED = 5;
 const WORKSPACE_ROOT = '/workspace';
 const MAX_DELTA_FILE_BYTES = 50 * 1024 * 1024;
 const MAX_IMPORT_SCAN_BYTES = 256 * 1024;
-const RT_FILES = ['__init__.py', 'stdio.py', 'shims.py', 'runner.py', 'repl.py', 'mpl_backend.py'];
+const RT_FILES = ['__init__.py', 'stdio.py', 'shims.py', 'runner.py', 'repl.py', 'mpl_backend.py', 'packages.py'];
+const WHEEL_DIR = '/tmp/yotasage-wheels';
+const WHEEL_NAME_RE = /^[A-Za-z0-9._+-]{1,251}\.whl$/;
 
 let pyodide = null;
 let ctrlView = null;
@@ -52,6 +54,8 @@ let storagePort = null;
 let workspaceRootNode = null;
 let suppressWriteThrough = false;
 let isRunActive = false;
+let runInProgress = false;
+let pkgQueue = Promise.resolve();
 let appliedStorageRev = 0;
 let portReqId = 1;
 const pendingPortRpcs = new Map();
@@ -878,8 +882,18 @@ import sys
 if '/' not in sys.path:
     sys.path.insert(0, '/')
 import yotasage_rt
-yotasage_rt.install_runtime(${activeTier}, ${JSON.stringify(networkMode)})
+yotasage_rt.install_runtime(${activeTier}, ${JSON.stringify(networkMode)}, ${JSON.stringify(self.location.origin)})
 `);
+}
+
+function dropGlobals(...names) {
+  for (const name of names) {
+    try {
+      pyodide.globals.delete(name);
+    } catch {
+      // ignore
+    }
+  }
 }
 
 function pyResultToPlain(pyVal) {
@@ -1027,6 +1041,7 @@ async function handleInit(msg) {
     pyodide.runPython('import sys; ".".join(map(str, sys.version_info[:3]))'),
   );
   const pyodideVersion = String(pyodide.version || 'unknown');
+  const lockInfo = pyResultToPlain(pyodide.runPython('import yotasage_rt.packages as p; p.runtime_info()')) || {};
 
   self.postMessage({ type: 'status', phase: 'ready', message: 'Python ready' });
   self.postMessage({
@@ -1037,7 +1052,17 @@ async function handleInit(msg) {
     tier: activeTier,
     crossOriginIsolated: isolated,
     canRunSync,
+    abiVersion: String(lockInfo.abiVersion || ''),
+    platform: String(lockInfo.platform || ''),
   });
+}
+
+async function postFsDiff(preSnap) {
+  const diff = reconcileAndDiff(preSnap, snapshotWorkspace());
+  await flushStoragePort();
+  if (diff.created.length > 0 || diff.modified.length > 0 || diff.deleted.length > 0) {
+    self.postMessage({ type: 'fs.changed', ...diff });
+  }
 }
 
 async function handleRun(msg) {
@@ -1045,6 +1070,8 @@ async function handleRun(msg) {
     self.postMessage({ type: 'error', id: msg.id, message: 'Pyodide is not initialized' });
     return;
   }
+  runInProgress = true;
+  await pkgQueue;
 
   const rawFilename = msg.filename || 'main.py';
   const relFilename = normalizeRelPath(rawFilename) || 'main.py';
@@ -1117,19 +1144,9 @@ async function handleRun(msg) {
       interrupted: false,
     };
 
-    const postSnap = snapshotWorkspace();
-    const diff = reconcileAndDiff(preSnap, postSnap);
-    await flushStoragePort();
-    if (diff.created.length > 0 || diff.modified.length > 0 || diff.deleted.length > 0) {
-      self.postMessage({
-        type: 'fs.changed',
-        created: diff.created,
-        modified: diff.modified,
-        deleted: diff.deleted,
-      });
-    }
-
+    await postFsDiff(preSnap);
     flushStreamDecoders();
+    const missing = pyResultToPlain(pyodide.runPython('import yotasage_rt.packages as p; p.take_missing()'));
     self.postMessage({
       type: 'run.end',
       id: msg.id,
@@ -1138,22 +1155,13 @@ async function handleRun(msg) {
       interrupted: Boolean(result.interrupted),
       durationMs: Math.max(0, performance.now() - t0),
       ...(result.error ? { error: result.error } : {}),
+      ...(Array.isArray(missing) && missing.length > 0 ? { missingPackages: missing } : {}),
     });
   } catch (err) {
     isRunActive = false;
     if (preSnap) {
       try {
-        const postSnap = snapshotWorkspace();
-        const diff = reconcileAndDiff(preSnap, postSnap);
-        await flushStoragePort();
-        if (diff.created.length > 0 || diff.modified.length > 0 || diff.deleted.length > 0) {
-          self.postMessage({
-            type: 'fs.changed',
-            created: diff.created,
-            modified: diff.modified,
-            deleted: diff.deleted,
-          });
-        }
+        await postFsDiff(preSnap);
       } catch {
         // ignore reconciliation error during error path
       }
@@ -1176,11 +1184,8 @@ async function handleRun(msg) {
     });
   } finally {
     isRunActive = false;
-    try {
-      pyodide.globals.delete('_yotasage_run_filename');
-    } catch {
-      // ignore cleanup error
-    }
+    runInProgress = false;
+    dropGlobals('_yotasage_run_filename');
     resetRunBuffers();
     self.postMessage({ type: 'status', phase: 'idle', message: 'Python ready' });
   }
@@ -1192,9 +1197,15 @@ async function handleReplPush(msg) {
     return;
   }
 
+  await pkgQueue;
   resetRunBuffers();
   try {
-    pyodide.globals.set('_yotasage_repl_line', String(msg.line ?? ''));
+    const line = String(msg.line ?? '');
+    if (/import/.test(line)) {
+      // Load bundled packages a console line imports, as handleRun does for scripts.
+      await pyodide.loadPackagesFromImports(line.trim()).catch(() => {});
+    }
+    pyodide.globals.set('_yotasage_repl_line', line);
     const raw = await pyodide.runPythonAsync(
       'import yotasage_rt; await yotasage_rt.repl_push(_yotasage_repl_line)',
     );
@@ -1222,11 +1233,7 @@ async function handleReplPush(msg) {
       },
     });
   } finally {
-    try {
-      pyodide.globals.delete('_yotasage_repl_line');
-    } catch {
-      // ignore
-    }
+    dropGlobals('_yotasage_repl_line');
     resetRunBuffers();
   }
 }
@@ -1251,11 +1258,7 @@ function handleReplComplete(msg) {
   } catch {
     self.postMessage({ type: 'repl.completions', id: msg.id, completions: [], start: 0 });
   } finally {
-    try {
-      pyodide.globals.delete('_yotasage_repl_src');
-    } catch {
-      // ignore
-    }
+    dropGlobals('_yotasage_repl_src');
   }
 }
 
@@ -1263,15 +1266,10 @@ function handlePlotExport(msg) {
   const id = String(msg.id ?? '');
   const plotId = String(msg.plotId ?? '');
   const format = msg.format === 'pdf' ? 'pdf' : 'svg';
+  const fail = (error) =>
+    self.postMessage({ type: 'plot.export.result', id, ok: false, plotId, format, error });
   if (!pyodide) {
-    self.postMessage({
-      type: 'plot.export.result',
-      id,
-      ok: false,
-      plotId,
-      format,
-      error: 'Pyodide is not initialized',
-    });
+    fail('Pyodide is not initialized');
     return;
   }
   try {
@@ -1288,32 +1286,60 @@ function handlePlotExport(msg) {
         [bytes.buffer],
       );
     } else {
-      self.postMessage({
-        type: 'plot.export.result',
-        id,
-        ok: false,
-        plotId,
-        format,
-        error: String((res && (res.error || res.reason)) || 'Plot export failed'),
-      });
+      fail(String((res && (res.error || res.reason)) || 'Plot export failed'));
     }
   } catch (err) {
-    self.postMessage({
-      type: 'plot.export.result',
-      id,
-      ok: false,
-      plotId,
-      format,
-      error: err instanceof Error ? err.message : String(err),
-    });
+    fail(err instanceof Error ? err.message : String(err));
   } finally {
-    try {
-      pyodide.globals.delete('_yotasage_exp_id');
-      pyodide.globals.delete('_yotasage_exp_fmt');
-    } catch {
-      // ignore
-    }
+    dropGlobals('_yotasage_exp_id', '_yotasage_exp_fmt');
   }
+}
+
+// Package operations run between runs, one at a time; refused while a run is active.
+function handlePkg(msg) {
+  const isList = msg.type === 'pkg.list';
+  const reply = (body) =>
+    self.postMessage({ type: isList ? 'pkg.list.result' : 'pkg.result', id: msg.id, ...body });
+  const empty = isList ? { packages: [] } : { installed: [], failed: [] };
+  if (!pyodide || runInProgress) {
+    reply({ ...empty, refused: pyodide ? 'run-active' : 'not-ready' });
+    return;
+  }
+  pkgQueue = pkgQueue.then(async () => {
+    try {
+      if (isList) {
+        const raw = pyodide.runPython('import yotasage_rt.packages as p; p.list_installed()');
+        reply({ packages: pyResultToPlain(raw) || [] });
+        return;
+      }
+      self.postMessage({ type: 'status', phase: 'installing', message: 'Installing packages…' });
+      const items = [];
+      for (const it of Array.isArray(msg.items) ? msg.items.slice(0, 500) : []) {
+        if (!it || typeof it !== 'object') continue;
+        const { bytes, ...rest } = it;
+        if (it.kind === 'wheel' && bytes instanceof Uint8Array && WHEEL_NAME_RE.test(String(it.fileName))) {
+          pyodide.FS.mkdirTree(WHEEL_DIR);
+          pyodide.FS.writeFile(`${WHEEL_DIR}/${it.fileName}`, bytes);
+        }
+        items.push(rest);
+      }
+      pyodide.globals.set('_yotasage_pkg_items', JSON.stringify(items));
+      const raw = await pyodide.runPythonAsync(
+        'import yotasage_rt.packages as p; await p.install(_yotasage_pkg_items)',
+      );
+      const res = pyResultToPlain(raw) || {};
+      reply({ installed: res.installed || [], failed: res.failed || [] });
+    } catch (err) {
+      const detail = (err instanceof Error ? err.message : String(err)).slice(0, 8000);
+      reply(isList ? empty : {
+        installed: [],
+        failed: [{ requirement: '', kind: 'other', message: "Packages couldn't be installed.", detail }],
+      });
+    } finally {
+      dropGlobals('_yotasage_pkg_items');
+      if (!isList) self.postMessage({ type: 'status', phase: 'idle', message: 'Python ready' });
+    }
+  });
 }
 
 function handleStdinReply(msg) {
@@ -1376,6 +1402,10 @@ self.addEventListener('message', (event) => {
       break;
     case 'plot.export':
       handlePlotExport(msg);
+      break;
+    case 'pkg.install':
+    case 'pkg.list':
+      handlePkg(msg);
       break;
     default:
       break;

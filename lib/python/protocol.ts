@@ -3,6 +3,15 @@
 
 import type { NetworkMode } from './network';
 import { MAX_WORKSPACE_ENTRIES, normalizeWorkspacePath } from './paths';
+import {
+  isLockTag,
+  validateMissingPackages,
+  validatePackageMessage,
+} from './packageProtocol';
+import type {
+  PackageMainToWorkerMessage,
+  PackageWorkerToMainMessage,
+} from './packageProtocol';
 
 export type CapabilityTier = 1 | 2 | 3;
 
@@ -137,7 +146,8 @@ export type MainToWorkerMessage =
       readonly id: string;
       readonly plotId: string;
       readonly format: PlotExportFormat;
-    };
+    }
+  | PackageMainToWorkerMessage;
 
 export type WorkerToMainMessage =
   | {
@@ -146,7 +156,7 @@ export type WorkerToMainMessage =
     }
   | {
       readonly type: 'status';
-      readonly phase: 'booting' | 'loading-packages' | 'ready' | 'running' | 'idle';
+      readonly phase: StatusPhase;
       readonly message: string;
     }
   | {
@@ -157,6 +167,9 @@ export type WorkerToMainMessage =
       readonly tier: CapabilityTier;
       readonly crossOriginIsolated: boolean;
       readonly canRunSync: boolean;
+      /** From the Pyodide lock file, e.g. 2026_0 and emscripten_5_0_3 ('' if a worker left them out). */
+      readonly abiVersion: string;
+      readonly platform: string;
     }
   | {
       readonly type: 'stdout';
@@ -188,6 +201,8 @@ export type WorkerToMainMessage =
       readonly interrupted: boolean;
       readonly durationMs: number;
       readonly error?: PythonErrorInfo;
+      /** Bundled packages a run imported without the pre-run scan seeing it (missed-import finder). */
+      readonly missingPackages?: readonly string[];
     }
   | {
       readonly type: 'repl.result';
@@ -235,14 +250,23 @@ export type WorkerToMainMessage =
       readonly type: 'error';
       readonly id?: number;
       readonly message: string;
-    };
+    }
+  | PackageWorkerToMainMessage;
 
 export type ValidationResult =
   | { readonly ok: true; readonly message: WorkerToMainMessage }
   | { readonly ok: false; readonly reason: string };
 
 const VALID_MODES = new Set<string>(['off', 'pkg', 'hosts', 'all']);
-const VALID_PHASES = new Set<string>(['booting', 'loading-packages', 'ready', 'running', 'idle']);
+export type StatusPhase = 'booting' | 'loading-packages' | 'installing' | 'ready' | 'running' | 'idle';
+const VALID_PHASES = new Set<string>([
+  'booting',
+  'loading-packages',
+  'installing',
+  'ready',
+  'running',
+  'idle',
+]);
 const VALID_REPL_STATUSES = new Set<string>(['complete', 'incomplete', 'syntax-error', 'error']);
 const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] as const;
 
@@ -363,7 +387,7 @@ export function validateWorkerMessage(raw: unknown): ValidationResult {
         ok: true,
         message: {
           type: 'status',
-          phase: raw.phase as 'booting' | 'loading-packages' | 'ready' | 'running' | 'idle',
+          phase: raw.phase as StatusPhase,
           message: raw.message,
         },
       };
@@ -380,6 +404,12 @@ export function validateWorkerMessage(raw: unknown): ValidationResult {
       if (typeof raw.crossOriginIsolated !== 'boolean' || typeof raw.canRunSync !== 'boolean') {
         return { ok: false, reason: 'Invalid capability booleans in ready' };
       }
+      if (
+        (raw.abiVersion !== undefined && !isLockTag(raw.abiVersion)) ||
+        (raw.platform !== undefined && !isLockTag(raw.platform))
+      ) {
+        return { ok: false, reason: 'Invalid abiVersion or platform in ready' };
+      }
       return {
         ok: true,
         message: {
@@ -390,6 +420,8 @@ export function validateWorkerMessage(raw: unknown): ValidationResult {
           tier: raw.tier,
           crossOriginIsolated: raw.crossOriginIsolated,
           canRunSync: raw.canRunSync,
+          abiVersion: typeof raw.abiVersion === 'string' ? raw.abiVersion : '',
+          platform: typeof raw.platform === 'string' ? raw.platform : '',
         },
       };
     }
@@ -435,6 +467,12 @@ export function validateWorkerMessage(raw: unknown): ValidationResult {
         if (!parsed) return { ok: false, reason: 'Invalid run.end error payload' };
         error = parsed;
       }
+      let missingPackages: string[] | undefined;
+      if (raw.missingPackages !== undefined) {
+        const parsed = validateMissingPackages(raw.missingPackages);
+        if (!parsed) return { ok: false, reason: 'Invalid run.end missingPackages' };
+        missingPackages = parsed;
+      }
       return {
         ok: true,
         message: {
@@ -445,6 +483,7 @@ export function validateWorkerMessage(raw: unknown): ValidationResult {
           interrupted: raw.interrupted,
           durationMs: raw.durationMs,
           ...(error ? { error } : {}),
+          ...(missingPackages ? { missingPackages } : {}),
         },
       };
     }
@@ -641,6 +680,10 @@ export function validateWorkerMessage(raw: unknown): ValidationResult {
         },
       };
     }
+
+    case 'pkg.result':
+    case 'pkg.list.result':
+      return validatePackageMessage(raw);
 
     default:
       return { ok: false, reason: `Unknown worker message type "${raw.type}"` };

@@ -180,6 +180,9 @@ def run_script(code: str | None = None, filename: str = "main.py", files: dict |
     purge_user_modules()
     _set_script_dir(script_path)
 
+    from . import packages
+
+    packages.set_run_active(True)
     try:
         ns = runpy.run_path(script_path, run_name="__main__")
         _last_main_namespace.clear()
@@ -222,3 +225,5 @@ def run_script(code: str | None = None, filename: str = "main.py", files: dict |
         sys.stderr.write(info["formatted"])
         sys.stderr.flush()
         return {"ok": False, "exitCode": 1, "interrupted": False, "error": info}
+    finally:
+        packages.set_run_active(False)

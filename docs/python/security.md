@@ -67,8 +67,10 @@ User code could unregister the service worker (service workers are reachable fro
 
 ### 2.7 Packages
 
-- Off: bundled packages and uploaded wheels only. The install box says so.
-- Package index: `micropip` works against the two hosts above. All Pyodide packages are served from the site itself, so no CDN is needed.
+- Off: bundled packages, uploaded wheels and **saved copies of kept PyPI wheels** (D20: bytes stored locally and checked against the page-only manifest's SHA-256; nothing is fetched). The install box says so. User code calling `micropip.install` gets an empty index list from `yotasage_rt` (no request at all, which also avoids WebKit's never-settling blocked fetch) and a clear "network access is off" error.
+- Package index: `micropip` works against the two hosts above. All Pyodide packages are served from the site itself, so no CDN is needed. `yotasage_rt` refuses any index or wheel URL outside those hosts (and the site's own origin) before fetching. Online installs from the page (panel, requirements import) exist only in this mode (D21); in Everything mode the panel says to reload in Package index mode.
+- Packages installed by user code in Package index mode need no W6; they are marked "installed by code", last for the session and can never be kept (D23). Keeping a package takes the visitor's click.
+- Page-started installs are a `pkg.install` worker operation between runs, refused while a run is active (D24). In a Tier 1 run, `micropip.install` raises at once instead of hanging. No worker message can keep, restore or install anything: `pkg.result` and `pkg.list.result` are validated data (names, hashes, `files.pythonhosted.org` URLs only).
 - Importing a `requirements.txt` or a lock file never installs anything the current mode cannot reach; it shows what was skipped and why.
 
 ## 3. Storage and cache rules
@@ -77,7 +79,7 @@ User code could unregister the service worker (service workers are reachable fro
 - **Never run code from storage that user code can write.** Cache Storage and IndexedDB are writable by the worker. Therefore: runtime code (Pyodide, the service worker's own files) is not kept in Cache Storage. It comes from the HTTP cache, or from a precache whose entries are checked against a build-time SHA-256 list on every use (S1 decides; if neither is cheap, the tool simply works online-only after the first visit).
 - The service worker serves only URLs on a build-time allow-list, never arbitrary cache hits, so a fake entry written into a cache under an in-scope URL is never served.
 - Bundled and downloaded packages are verified against the lock file's SHA-256 before installation. Uploaded wheels are hashed when stored and again when used.
-- Kept packages are **restored lazily** (when a run first needs them) and shown in the list, never silently at boot. A manifest rewritten by user code cannot install anything the mode forbids.
+- Kept packages are **restored lazily** (before the first run or console line after each worker start) and shown in the list, never silently at boot. The manifest lives in `localStorage` `python:packages-v1`, which the worker cannot reach (D22); only wheel bytes live in IndexedDB (`python-playground` v2, store `wheels`), and bytes are installed only when their SHA-256 matches that manifest. Edited IndexedDB therefore cannot install anything the manifest and the mode do not allow.
 - Caps: file size, workspace size, number of plots and open tabs, with notices and Force stop. Show storage use. The storage quota is shared by all tools of the site, so a script that fills it affects the other tools; the cap is what protects them.
 
 ## 4. Hardening the page against worker output

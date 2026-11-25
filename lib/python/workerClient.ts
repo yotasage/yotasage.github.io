@@ -33,6 +33,14 @@ import type {
   SecurityStatusInfo,
   WorkerToMainMessage,
 } from './protocol';
+import { checkInstallRequest } from './packageProtocol';
+import type {
+  PackageFailure,
+  PackageInfo,
+  PackageInstallItem,
+  PackageInstallReason,
+  PackageRefusal,
+} from './packageProtocol';
 import type { PythonStorageClient } from './storageClient';
 
 export type PythonClientState =
@@ -50,6 +58,9 @@ export interface ReadyInfo {
   readonly tier: CapabilityTier;
   readonly crossOriginIsolated: boolean;
   readonly canRunSync: boolean;
+  /** Pyodide ABI and platform from the lock file (e.g. 2026_0, emscripten_5_0_3). */
+  readonly abiVersion: string;
+  readonly platform: string;
 }
 
 export interface RunOptions {
@@ -67,6 +78,20 @@ export interface RunResult {
   readonly durationMs: number;
   readonly forceStopped?: boolean;
   readonly error?: PythonErrorInfo;
+  /** Bundled packages the run imported that the pre-run scan missed (offer to load and rerun). */
+  readonly missingPackages?: readonly string[];
+}
+
+export interface PackageInstallResult {
+  readonly installed: readonly PackageInfo[];
+  readonly failed: readonly PackageFailure[];
+  /** Set when the worker refused the operation (a run is active, or Python isn't ready). */
+  readonly refused?: PackageRefusal;
+}
+
+export interface PackageListResult {
+  readonly packages: readonly PackageInfo[];
+  readonly refused?: PackageRefusal;
 }
 
 export interface ReplPushResult {
@@ -173,6 +198,15 @@ export class PythonWorkerClient {
     string,
     {
       resolve: (res: PlotExportResult) => void;
+      reject: (err: Error) => void;
+    }
+  >();
+
+  private pendingPkg = new Map<
+    number,
+    {
+      list: boolean;
+      resolve: (res: PackageInstallResult | PackageListResult) => void;
       reject: (err: Error) => void;
     }
   >();
@@ -346,12 +380,13 @@ export class PythonWorkerClient {
     return this.initPromise;
   }
 
-  /** Terminates the current worker and boots a clean replacement. */
+  /** Terminates the current worker and boots a clean replacement (also when Python is idle). */
   async restart(): Promise<ReadyInfo> {
     this.clearStopTimers();
     this.rejectInFlight('Python worker restarted');
     this.terminateWorkerOnly();
     this.initPromise = null;
+    this._readyInfo = null;
     return this.start();
   }
 
@@ -568,6 +603,9 @@ export class PythonWorkerClient {
 
     this.terminateWorkerOnly();
     this.initPromise = null;
+    // Without this, start() would return the old ReadyInfo and leave no worker when Python is idle.
+    this._readyInfo = null;
+    this.rejectInFlight('Python worker was force-stopped');
 
     if (run) {
       run.resolve({
@@ -634,6 +672,50 @@ export class PythonWorkerClient {
     });
   }
 
+  /**
+   * Installs packages as a worker operation between runs (never during one: the worker refuses).
+   * Wheel bytes are transferred. Each failure carries a `kind` for the page's own message.
+   */
+  async installPackages(
+    items: readonly PackageInstallItem[],
+    reason: PackageInstallReason = 'user',
+  ): Promise<PackageInstallResult> {
+    const problem = checkInstallRequest(items, reason);
+    if (problem) throw new Error(`Invalid package install request: ${problem}`);
+    if (!this._readyInfo) await this.start();
+    if (this._state === 'running' || this._state === 'stopping') {
+      // The worker refuses too; in Tier 1 it could not even read the message until the run ends.
+      return { installed: [], failed: [], refused: 'run-active' };
+    }
+    const id = this.nextId++;
+    const transfer: Transferable[] = [];
+    for (const item of items) {
+      if (item.kind === 'wheel' && !transfer.includes(item.bytes.buffer)) transfer.push(item.bytes.buffer);
+    }
+    return new Promise<PackageInstallResult>((resolve, reject) => {
+      this.pendingPkg.set(id, {
+        list: false,
+        resolve: resolve as (res: PackageInstallResult | PackageListResult) => void,
+        reject,
+      });
+      this.post({ type: 'pkg.install', id, items, reason }, transfer);
+    });
+  }
+
+  /** Lists every package installed in this worker session (bundled, page-installed, by code). */
+  async listPackages(): Promise<PackageListResult> {
+    if (!this._readyInfo) await this.start();
+    const id = this.nextId++;
+    return new Promise<PackageListResult>((resolve, reject) => {
+      this.pendingPkg.set(id, {
+        list: true,
+        resolve: resolve as (res: PackageInstallResult | PackageListResult) => void,
+        reject,
+      });
+      this.post({ type: 'pkg.list', id });
+    });
+  }
+
   dispose(): void {
     this.clearStopTimers();
     this.rejectInFlight('Python worker client disposed');
@@ -681,6 +763,11 @@ export class PythonWorkerClient {
     if (this.pendingPlotExports.size > 0) {
       const pending = [...this.pendingPlotExports.values()];
       this.pendingPlotExports.clear();
+      for (const p of pending) p.reject(err);
+    }
+    if (this.pendingPkg.size > 0) {
+      const pending = [...this.pendingPkg.values()];
+      this.pendingPkg.clear();
       for (const p of pending) p.reject(err);
     }
   }
@@ -735,6 +822,8 @@ export class PythonWorkerClient {
           tier: msg.tier,
           crossOriginIsolated: msg.crossOriginIsolated,
           canRunSync: msg.canRunSync,
+          abiVersion: msg.abiVersion,
+          platform: msg.platform,
         };
         this._readyInfo = info;
         this.setState(this.isFailClosedBlocked ? 'blocked' : 'ready');
@@ -783,6 +872,7 @@ export class PythonWorkerClient {
           interrupted: msg.interrupted,
           durationMs: msg.durationMs,
           ...(msg.error ? { error: msg.error } : {}),
+          ...(msg.missingPackages ? { missingPackages: msg.missingPackages } : {}),
         });
         break;
       }
@@ -848,6 +938,23 @@ export class PythonWorkerClient {
           ...(msg.bytes ? { bytes: msg.bytes } : {}),
           ...(msg.error !== undefined ? { error: msg.error } : {}),
         });
+        break;
+      }
+
+      case 'pkg.result':
+      case 'pkg.list.result': {
+        const pending = this.pendingPkg.get(msg.id);
+        if (!pending || pending.list !== (msg.type === 'pkg.list.result')) {
+          this.emit('droppedMessage', `Ignored unexpected or mismatched ${msg.type}`);
+          break;
+        }
+        this.pendingPkg.delete(msg.id);
+        const refused = msg.refused ? { refused: msg.refused } : {};
+        if (msg.type === 'pkg.list.result') {
+          pending.resolve({ packages: msg.packages, ...refused });
+        } else {
+          pending.resolve({ installed: msg.installed, failed: msg.failed, ...refused });
+        }
         break;
       }
 

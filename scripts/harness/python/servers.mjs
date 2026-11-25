@@ -74,9 +74,26 @@ function resolveStaticFile(outDir, rawPathname) {
 }
 
 export async function startHarnessServers(outDir, { primaryPort = 3023, secondaryPort = 3024 } = {}) {
+  // Same-origin canned package index for packages-checks.mjs (served by the harness only, never in
+  // out/): WebKit does not route a dedicated worker's requests, so micropip is pointed here instead.
+  let mockPypi = null;
+  const mockHits = [];
+
   // 1. Primary static server (http://localhost:3023) — ZERO COOP/COEP/CORP/CSP/Permissions/Referrer headers!
   const primaryServer = http.createServer((req, res) => {
     const url = new URL(req.url || '/', `http://localhost:${primaryPort}`);
+    if (url.pathname.startsWith('/__mock-pypi/')) {
+      mockHits.push(url.pathname);
+      const reply = mockPypi ? mockPypi(url.pathname) : null;
+      if (!reply) {
+        res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end('Not Found');
+        return;
+      }
+      res.writeHead(reply.status ?? 200, { 'Cache-Control': 'no-store', ...reply.headers });
+      res.end(reply.body);
+      return;
+    }
     const filePath = resolveStaticFile(outDir, url.pathname);
     if (!filePath) {
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
@@ -207,6 +224,11 @@ export async function startHarnessServers(outDir, { primaryPort = 3023, secondar
     primaryOrigin: `http://localhost:${primaryPort}`,
     secondaryOrigin: `http://127.0.0.1:${secondaryPort}`,
     getHits: () => [...hits],
+    setMockPypi: (fn) => {
+      mockPypi = fn;
+      mockHits.length = 0;
+    },
+    getMockHits: () => [...mockHits],
     resetHits: () => {
       hits.length = 0;
     },

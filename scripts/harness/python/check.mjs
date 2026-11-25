@@ -6,7 +6,7 @@
 // Flags:
 //   --no-build              Skip running `npm run build:export` when out/python/harness.html exists
 //   PYTHON_BROWSERS=edge,firefox,webkit  Restrict browser list (default: all 3)
-//   PYTHON_PARTS=corpus,security,fs,plots,examples  Restrict Part B parts (default: all)
+//   PYTHON_PARTS=corpus,security,fs,plots,examples,packages  Restrict Part B parts (default: all)
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -17,6 +17,7 @@ import { chromium, firefox, webkit } from 'playwright-core';
 import { runCorpusChecks } from './corpus-checks.mjs';
 import { runExamplesChecks } from './examples-checks.mjs';
 import { runFsChecks } from './fs-checks.mjs';
+import { runPackagesChecks } from './packages-checks.mjs';
 import { runPlotChecks } from './plot-checks.mjs';
 import { runSecurityChecks } from './security-checks.mjs';
 import { startHarnessServers } from './servers.mjs';
@@ -32,7 +33,7 @@ const BROWSERS = (process.env.PYTHON_BROWSERS || 'edge,firefox,webkit')
   .map((s) => s.trim().toLowerCase())
   .filter(Boolean);
 const PARTS = new Set(
-  (process.env.PYTHON_PARTS || 'corpus,security,fs,plots,examples')
+  (process.env.PYTHON_PARTS || 'corpus,security,fs,plots,examples,packages')
     .split(',')
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean),
@@ -159,6 +160,15 @@ try {
       if (PARTS.has('examples')) {
         await runExamplesChecks(b, browser, {
           primaryOrigin: servers.primaryOrigin,
+          record,
+        });
+      }
+
+      if (PARTS.has('packages')) {
+        await runPackagesChecks(b, browser, {
+          primaryOrigin: servers.primaryOrigin,
+          setMockPypi: servers.setMockPypi,
+          getMockHits: servers.getMockHits,
           record,
         });
       }

@@ -5,7 +5,7 @@
 | Page | `/python/main` (`pages/python/main.tsx`) |
 | Branch | `python` (one commit per step; agents never push) |
 | Written | 2026-11-23, from `README.md`, `CLAUDE.md` and `docs/agent-workflow.md`; the network policy and security part were added the same day. The other docs and the code were **not** read; step S0 reads what it needs |
-| Status | v1 complete! Q1–Q8 resolved; S0–S3, S5, S6, and P1–P4 complete (2026-11-25). Ready for the owner to try before Phase 2 (P5–P6 Packages) |
+| Status | v1 complete! Q1–Q8 resolved; S0–S3, S5, S6, P1–P4, E1a/E1b, P5r and P5a complete (2026-11-25). Phase 2 (packages) under way: P5b next |
 
 This plan replaces an earlier draft that was written without access to the repo. Where the two differ, this one is right.
 
@@ -48,7 +48,7 @@ A Python environment that runs entirely in the browser, in the style of the othe
 | D3 | **Monaco** (through `@monaco-editor/loader` pointed at a local `public/monaco/` copy) and **xterm.js**, loaded lazily | Owner's choice. The loader's default CDN is not allowed. S6 confirms the setup under Turbopack |
 | D4 | Own **display layer** with two surfaces: canvas (immediate mode) and widgets (retained mode, DOM). No SDL or pygame-ce | Owner's decision. Pyodide has no Tk; its SDL route is experimental and main-thread only |
 | D5 | Persistent virtual file system, default **IDBFS** in the worker (S5 decides) | Files must survive a worker restart and a reload |
-| D6 | Packages: a curated set self-hosted in `public/pyodide/`; a manifest in IndexedDB restored lazily; online installs only in the **Package index** network mode (D13) | Keeps "no third-party requests" the default; no separate switch |
+| D6 | Packages: a curated set self-hosted in `public/pyodide/`; a manifest restored lazily (kept in `localStorage`, D22); online installs only in the **Package index** network mode (D13) | Keeps "no third-party requests" the default; no separate switch |
 | D7 | A custom matplotlib backend feeds a Plots gallery | Pyodide's backends need the DOM, which a worker lacks |
 | D8 | PDFs are viewed with the existing `lib/pdf/pdfjs.ts` and `public/pdfjs/`, not an iframe of `/pdf/reader` | An iframe may be blocked under COEP; reuse avoids a second viewer |
 | D9 | Run = `runpy.run_path` as `__main__` in a fresh namespace; the REPL shares the last run's namespace | Standard semantics, real tracebacks |
@@ -62,6 +62,16 @@ A Python environment that runs entirely in the browser, in the style of the othe
 | D17 | **Origin:** v1 on the site's own origin with the hardening in security.md; the runtime's origin is named in one place so a second origin stays possible; a second origin is **required** before any share-by-link feature (Q8) | Other sites that run untrusted code use a dedicated origin; GitHub Pages cannot do an isolated cross-origin iframe, so a second origin would be a separate site |
 | D18 | **Trusted UI stays outside program output**, and no worker message carries authority | A program can forge messages and draw fake dialogs |
 | D19 | The service worker also sends `frame-ancestors 'none'`, a `Permissions-Policy` and `Referrer-Policy`; the worker policy leaves out `'unsafe-eval'` | Cheap defence in depth |
+
+### P5 decisions (packages, from [notes-P5.md](notes-P5.md) §13, 2026-11-25)
+
+| ID | Decision | Why |
+|---|---|---|
+| D20 | Kept PyPI packages keep a **saved copy of their wheel bytes** (IndexedDB store `wheels`, P5b), hash-checked against the page-only manifest, and restore in **every** mode, Off included, labelled "PyPI (saved copy)". Off still never fetches anything | Strictly local and verified, so Off stays offline; far more useful than skipping them |
+| D21 | Online installs (Packages panel, requirements import) only in **Package index** mode (D6 unchanged); in Everything mode the panel says to reload in Package index mode | One mode that means "PyPI only" |
+| D22 | The manifest lives in `localStorage` `python:packages-v1` (page-only: the worker has no `localStorage`); wheel bytes in IndexedDB `python-playground` v2, store `wheels`. Clear all data removes both (P5b verifies) | User code can write IndexedDB, so a manifest there could become a lasting backdoor (D15) |
+| D23 | Packages installed by user code (`micropip.install` in the console or a Tier 2 script) in Package index mode need no W6, are marked source `code`, last for the session and can never be kept | The mode already lets that code fetch and run anything from PyPI; what outlives the session needs the visitor's click |
+| D24 | Page-started installs run as a `pkg.install` worker operation **between runs** (refused while a run is active), after W6 (P6). PEP 723 `# /// script` blocks are not built now (BL204); WebKit's never-settling CSP-blocked `pyfetch` is BL205 | A Tier 1 script cannot await an install (notes-P5.md finding 2); between runs works in every tier |
 
 ## Questions for the owner
 
@@ -93,7 +103,9 @@ Ask before the named step; do not guess.
 | E1a | Examples: programs + engine checks | Done |
 | E1b | Examples tab | Done |
 | P5r | Packages research | Done (notes-P5.md) |
-| P5, P6 | Packages: engine, page | Not started |
+| P5a | Packages: install engine | Done (`notes-P5a.md`) |
+| P5b | Packages: manifest, wheels, restore | Not started |
+| P6 | Packages: page | Not started |
 | S4 | Display transport spike | Not started |
 | P7, P8 | Display: engine, page | Not started |
 | P9 to P11 | Widget surface, tkinter subset, turtle (after go/no-go gate post-P8) | Not started |
