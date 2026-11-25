@@ -113,7 +113,9 @@ Ask before the named step; do not guess.
 | U1 | Bundled packages section, Examples search, picker removed | Done |
 | U2 | File multi-select delete, Reset workspace | Done (`useTreeSelection.ts`, `WorkspaceDialogs.tsx`, storage `deleteMany`, `ui-selection-checks.mjs`) |
 | U3 | Package pills on example cards, searchable | Done (`packages` on each example, unit-check against the imports, `ui-examples-checks.mjs`) |
-| L1, L2 | Dockable layout and view presets | Not started |
+| L1 | Dockable layout research | Done (notes-L1.md) |
+| L2a | Layout model, panel hosts, presets | Not started |
+| L2b | Drag and drop, Move to, Custom mode | Not started |
 | P9 to P11 | Widget surface, tkinter subset, turtle (after go/no-go gate post-P8) | Not started |
 | P12 | Polish, visitor docs, CLAUDE.md and README | Not started |
 
