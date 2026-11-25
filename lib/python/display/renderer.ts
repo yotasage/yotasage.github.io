@@ -1,12 +1,22 @@
-// Page side of the Python display (P7a): receives display.* from PythonWorkerClient, draws the shared
-// framebuffer onto a canvas every animation frame, paces the worker (vsync counter, hidden flag) and
-// writes input into the events ring. Framework-free; P8's Display panel wraps it.
-// Design: docs/python/notes-S4.md §6-§8; slot use and the one-window rule: docs/python/notes-P7a.md.
+// Page side of the Python display (P7a, P7b): receives display.* from PythonWorkerClient, draws each
+// frame onto a canvas every animation frame (the framebuffer's pixels, or black when the frame has
+// none, then the frame's draw commands through commands.ts), paces the worker (vsync counter, hidden
+// flag), writes input into the events ring and passes on the visitor's close and resize requests.
+// Framework-free; P8's Display panel wraps it.
+// Design: docs/python/notes-S4.md §6-§8; slots and rules: docs/python/notes-P7a.md, notes-P7b.md.
 // Everything in the shared buffers is written by the program and is untrusted: sizes come from the
 // validated display.open (clamped to 1920x1080, buffers of exactly that size), indices are checked,
 // and Python never sends CSS, markup or URLs here.
 
+import { createDrawScratch, drawBatch } from './commands';
 import {
+  CMD_F_EXTERNAL,
+  CMD_F_PIXELS,
+  CMD_HEADER_BYTES,
+  CMD_SLOT_BYTES,
+  CMD_SLOT_PAYLOAD,
+  CTRL_ACK,
+  CTRL_CLOSE_REQ,
   CTRL_DISPLAY_STATE,
   CTRL_EV_DROPPED,
   CTRL_EV_HEAD,
@@ -26,10 +36,13 @@ import {
   EV_POINTER_MOVE,
   EV_POINTER_UP,
   EV_RECORD_BYTES,
+  EV_RESIZE,
   EV_WHEEL,
   FB_ID_SHIFT,
   FB_INDEX_MASK,
   FB_NEW,
+  MAX_DISPLAY_HEIGHT,
+  MAX_DISPLAY_WIDTH,
   MOD_ALT,
   MOD_CTRL,
   MOD_META,
@@ -69,6 +82,16 @@ export interface DisplayStats {
   readonly eventsCoalesced: number;
   /** Events lost because the ring was full (CTRL_EV_DROPPED). */
   readonly eventsDropped: number;
+  /** Draw-command records drawn. */
+  readonly commandsDrawn: number;
+  /** Frames whose commands stopped at a bad record (or held an impossible slot length). */
+  readonly batchErrors: number;
+  /** Why the last bad batch stopped, or null. */
+  readonly lastBatchError: string | null;
+  /** display.batch messages received (frames whose commands did not fit a slot). */
+  readonly batchesReceived: number;
+  /** Frames drawn with commands from a display.batch message. */
+  readonly externalDrawn: number;
 }
 
 export interface DisplayRendererOptions {
@@ -91,6 +114,25 @@ interface PendingMove {
   readonly mods: number;
   readonly t: number;
 }
+
+interface ReceivedBatch {
+  readonly seq: number;
+  readonly bytes: Uint8Array;
+}
+
+const emptyStats = () => ({
+  framesDrawn: 0,
+  rafTicks: 0,
+  maxRafGapMs: 0,
+  drawMs: 0,
+  eventsWritten: 0,
+  eventsCoalesced: 0,
+  commandsDrawn: 0,
+  batchErrors: 0,
+  lastBatchError: null as string | null,
+  batchesReceived: 0,
+  externalDrawn: 0,
+});
 
 const encoder = new TextEncoder();
 // TextEncoder.encodeInto refuses shared memory, so text is encoded here first and then copied.
@@ -127,6 +169,16 @@ export class DisplayRenderer {
   private evF64: Float64Array | null = null;
   private evF32: Float32Array | null = null;
   private evU8: Uint8Array | null = null;
+  private cmdU8: Uint8Array | null = null;
+  private cmdI32: Int32Array | null = null;
+  /** Private copy of a command slot: decoded from here so the program cannot change it meanwhile. */
+  private readonly cmdCopy = new Uint8Array(CMD_SLOT_PAYLOAD);
+  private readonly scratch = createDrawScratch();
+  /** The newest display.batch messages (at most 2), by frame seq. */
+  private batches: ReceivedBatch[] = [];
+  /** Seq of the frame in `front` waiting for its display.batch (0: none) and its flags. */
+  private pendingSeq = 0;
+  private pendingFlags = 0;
   private image: ImageData | null = null;
   private frameBytes = 0;
   private front = 2;
@@ -138,14 +190,7 @@ export class DisplayRenderer {
   private unbindInput: (() => void) | null = null;
   private disposed = false;
   private _info: DisplayInfo | null = null;
-  private s = {
-    framesDrawn: 0,
-    rafTicks: 0,
-    maxRafGapMs: 0,
-    drawMs: 0,
-    eventsWritten: 0,
-    eventsCoalesced: 0,
-  };
+  private s = emptyStats();
 
   private readonly onVisibility = () => this.applyHidden();
   private readonly tick = (now: number) => this.frame(now);
@@ -182,7 +227,7 @@ export class DisplayRenderer {
   }
 
   resetStats(): void {
-    this.s = { framesDrawn: 0, rafTicks: 0, maxRafGapMs: 0, drawMs: 0, eventsWritten: 0, eventsCoalesced: 0 };
+    this.s = emptyStats();
     this.lastRafAt = 0;
   }
 
@@ -195,8 +240,25 @@ export class DisplayRenderer {
       this.open(msg, control);
     } else if (msg.type === 'display.close') {
       if (this._info && (msg.id === 0 || msg.id === this._info.id)) this.close();
+    } else if (control) {
+      this.receiveBatch(msg, control);
     }
-    // display.batch: drawn by P7b's batch renderer.
+  }
+
+  /** A frame's commands that did not fit its slot: acknowledged at once (the worker sends the next only then). */
+  private receiveBatch(msg: Extract<DisplayWorkerMessage, { type: 'display.batch' }>, control: Int32Array): void {
+    Atomics.add(control, CTRL_ACK, 1);
+    Atomics.notify(control, CTRL_ACK);
+    this.s.batchesReceived += 1;
+    if (!this._info?.open || msg.id !== this._info.id || control !== this.ctrl) return;
+    const b = { seq: msg.seq, bytes: new Uint8Array(msg.buf) };
+    this.batches.push(b);
+    if (this.batches.length > 2) this.batches.shift();
+    if (this.pendingSeq === msg.seq && this.isCurrent()) {
+      this.pendingSeq = 0;
+      this.batches = [];
+      this.drawFrame(this.pendingFlags, b.bytes, true);
+    }
   }
 
   private open(msg: Extract<DisplayWorkerMessage, { type: 'display.open' }>, control: Int32Array): void {
@@ -208,6 +270,10 @@ export class DisplayRenderer {
     this.evF64 = new Float64Array(msg.eventsSab);
     this.evF32 = new Float32Array(msg.eventsSab);
     this.evU8 = new Uint8Array(msg.eventsSab);
+    this.cmdU8 = new Uint8Array(msg.cmdSab);
+    this.cmdI32 = new Int32Array(msg.cmdSab);
+    this.batches = [];
+    this.pendingSeq = 0;
     this.frameBytes = msg.width * msg.height * 4;
     this.front = 2;
     if (this.canvas.width !== msg.width) this.canvas.width = msg.width;
@@ -231,9 +297,13 @@ export class DisplayRenderer {
   private close(): void {
     this.stopLoop();
     this.pendingMove = null;
-    if (!this._info) return;
+    if (!this._info?.open) return;
     this._info = { ...this._info, open: false };
     this.fb = null;
+    this.cmdU8 = null;
+    this.cmdI32 = null;
+    this.batches = [];
+    this.pendingSeq = 0;
     this.evI32 = null;
     this.evF64 = null;
     this.evF32 = null;
@@ -290,24 +360,131 @@ export class DisplayRenderer {
     this.rafHandle = requestAnimationFrame(this.tick);
   }
 
-  /** Takes the newest presented frame (triple-buffer swap) and draws it; false when there is none. */
+  /**
+   * Takes the newest presented frame (triple-buffer swap) and draws its pixels and commands, which
+   * share the slot index; false when there is none. A frame whose commands come by display.batch
+   * waits in `front` until the message arrives (or a newer frame replaces it).
+   */
   private drawNewest(): boolean {
     const ctrl = this.ctrl;
     const info = this._info;
-    if (!ctrl || !info || !this.fb || !this.image || !this.ctx2d) return false;
+    const cmdI32 = this.cmdI32;
+    if (!ctrl || !info || !this.fb || !cmdI32 || !this.cmdU8) return false;
     const mid = Atomics.load(ctrl, CTRL_FB_MID);
     if (mid >>> FB_ID_SHIFT !== info.id || (mid & FB_NEW) === 0 || (mid & FB_INDEX_MASK) > 2) return false;
     if (Atomics.compareExchange(ctrl, CTRL_FB_MID, mid, (info.id << FB_ID_SHIFT) | this.front) !== mid) {
       return false; // the worker swapped in a newer frame meanwhile: take it next frame
     }
     this.front = mid & FB_INDEX_MASK;
+    this.pendingSeq = 0;
+    const h = (this.front * CMD_SLOT_BYTES) >> 2;
+    const len = cmdI32[h];
+    const flags = cmdI32[h + 1];
+    const seq = cmdI32[h + 2];
+    if (flags & CMD_F_EXTERNAL) {
+      const i = this.batches.findIndex((b) => b.seq === seq);
+      if (i >= 0) {
+        const b = this.batches[i];
+        this.batches.splice(0, i + 1);
+        return this.drawFrame(flags, b.bytes, true);
+      }
+      if (this.batches.every((b) => b.seq < seq)) {
+        this.pendingSeq = seq; // posted before the swap; its message is still on the way
+        this.pendingFlags = flags;
+        return false;
+      }
+      return this.drawFrame(flags, null, false); // replaced by a newer batch: pixels only
+    }
+    if (len < 0 || len > CMD_SLOT_PAYLOAD) {
+      this.s.batchErrors += 1;
+      this.s.lastBatchError = `command slot length ${len}`;
+      return this.drawFrame(flags, null, false);
+    }
+    let cmds: Uint8Array | null = null;
+    if (len > 0) {
+      const base = this.front * CMD_SLOT_BYTES + CMD_HEADER_BYTES;
+      this.cmdCopy.set(this.cmdU8.subarray(base, base + len));
+      cmds = this.cmdCopy.subarray(0, len);
+    }
+    return this.drawFrame(flags, cmds, false);
+  }
+
+  /** Draws the frame in `front`: its pixels (or black), then its commands. */
+  private drawFrame(flags: number, cmds: Uint8Array | null, external: boolean): boolean {
+    const info = this._info;
+    const ctx = this.ctx2d;
+    if (!info || !ctx || !this.fb || !this.image) return false;
     const t0 = performance.now();
-    const off = this.front * this.frameBytes;
-    this.image.data.set(this.fb.subarray(off, off + this.frameBytes));
-    this.ctx2d.putImageData(this.image, 0, 0);
+    if (flags & CMD_F_PIXELS) {
+      const off = this.front * this.frameBytes;
+      this.image.data.set(this.fb.subarray(off, off + this.frameBytes));
+      ctx.putImageData(this.image, 0, 0);
+    } else {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, info.width, info.height);
+    }
+    if (cmds) {
+      const r = drawBatch(ctx, cmds, this.scratch);
+      this.s.commandsDrawn += r.records;
+      if (r.error) {
+        this.s.batchErrors += 1;
+        this.s.lastBatchError = r.error;
+      }
+      if (external) this.s.externalDrawn += 1;
+    }
     this.s.drawMs += performance.now() - t0;
     this.s.framesDrawn += 1;
     return true;
+  }
+
+  /**
+   * Draws an untrusted batch straight onto the canvas (the harness's malformed-batch checks; P8 has
+   * no use for it). The bytes are copied first; the result says how far drawing got.
+   */
+  drawRawBatch(bytes: Uint8Array): { records: number; error: string | null } {
+    const ctx = this.ctx2d ?? this.canvas.getContext('2d');
+    if (!ctx) return { records: 0, error: 'no canvas context' };
+    return drawBatch(ctx, bytes.slice(), this.scratch);
+  }
+
+  /**
+   * The visitor closed the Display panel (P8): the program's display becomes closed (`d.closed`,
+   * a "close" event, its waits end at once) and the last frame stays on the canvas. False when no
+   * display is open.
+   */
+  requestClose(): boolean {
+    const ctrl = this.ctrl;
+    const info = this._info;
+    if (!ctrl || !info?.open) return false;
+    if (this.isCurrent()) {
+      Atomics.store(ctrl, CTRL_CLOSE_REQ, info.id);
+      Atomics.notify(ctrl, CTRL_VSYNC);
+      Atomics.notify(ctrl, CTRL_EV_HEAD);
+      Atomics.notify(ctrl, CTRL_ACK);
+    }
+    this.close();
+    return true;
+  }
+
+  /**
+   * Offers the program a new size (P8 calls it when the panel's box changes, for displays opened
+   * with scale="window" only): a "resize" event with x, y = width, height, clamped to 1920x1080.
+   * The program decides whether to follow it with d.resize(); the display keeps its size until then.
+   */
+  requestResize(width: number, height: number): boolean {
+    const info = this._info;
+    if (!info?.open || info.scale !== 'window') return false;
+    const w = Math.min(MAX_DISPLAY_WIDTH, Math.max(1, clampInt(width)));
+    const h = Math.min(MAX_DISPLAY_HEIGHT, Math.max(1, clampInt(height)));
+    const ok = this.write(EV_RESIZE, (base) => {
+      const i = base >> 2;
+      const i32 = this.evI32 as Int32Array;
+      i32[i + 1] = w;
+      i32[i + 2] = h;
+      (this.evF64 as Float64Array)[(base + 24) >> 3] = this.now();
+    });
+    if (!ok) this.drop();
+    return ok;
   }
 
   /** PNG of the frame on the canvas (the newest presented one), or null before the first frame. */
@@ -320,7 +497,7 @@ export class DisplayRenderer {
     out.height = info.height;
     const ctx = out.getContext('2d');
     if (!ctx) return Promise.resolve(null);
-    ctx.putImageData(this.image, 0, 0);
+    ctx.drawImage(this.canvas, 0, 0);
     return new Promise((resolve) => out.toBlob((b) => resolve(b), 'image/png'));
   }
 

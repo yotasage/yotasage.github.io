@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import PageHead from '../../components/PageHead';
 import { clearAllPythonData } from '../../components/Python/clearData';
-import { PYTHON_EXAMPLES } from '../../lib/python/examples';
+import { DISPLAY_EXAMPLES, PYTHON_EXAMPLES } from '../../lib/python/examples';
 import {
   buildNetworkPolicyUrl,
   buildPageCsp,
@@ -26,6 +26,7 @@ import {
   registerPythonServiceWorker,
 } from '../../lib/python/tiers';
 import type { BrowserCapabilityInfo, SwRegistrationResult } from '../../lib/python/tiers';
+import * as displayCommands from '../../lib/python/display/commands';
 import { DisplayRenderer } from '../../lib/python/display/renderer';
 import * as displayProtocol from '../../lib/python/displayProtocol';
 import { PythonWorkerClient } from '../../lib/python/workerClient';
@@ -75,6 +76,9 @@ export interface PythonHarnessApi {
   readonly createDisplayRenderer: (client: PythonWorkerClient) => DisplayRenderer;
   readonly displayCanvas: () => HTMLCanvasElement | null;
   readonly displayProtocol: typeof displayProtocol;
+  /** P7b: the batch decoder (malformed-batch checks) and the display examples (not listed until P8). */
+  readonly displayCommands: typeof displayCommands;
+  readonly displayExamples: typeof DISPLAY_EXAMPLES;
 }
 
 declare global {
@@ -140,6 +144,8 @@ export default function PythonHarnessPage() {
         },
         displayCanvas: () => canvasRef.current,
         displayProtocol,
+        displayCommands,
+        displayExamples: DISPLAY_EXAMPLES,
       };
     };
 

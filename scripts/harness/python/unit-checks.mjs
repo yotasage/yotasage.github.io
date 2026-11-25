@@ -9,6 +9,7 @@ import vm from 'node:vm';
 import { zipSync } from 'fflate';
 
 import {
+  DISPLAY_EXAMPLES,
   getPythonExample,
   getPythonExampleTagKey,
   PYTHON_EXAMPLE_TAGS,
@@ -798,8 +799,18 @@ export async function runUnitChecks() {
       const key = getPythonExampleTagKey(tag);
       assert.ok(examplesEn[key] && examplesNb[key], `Missing tag label ${key}`);
     }
-    for (const id of requiredIds) {
-      const ex = getPythonExample(id);
+    // P7b: the display examples follow the same rules but are not listed until P8's Display panel.
+    assert.deepEqual(
+      DISPLAY_EXAMPLES.map((ex) => ex.id),
+      ['bouncing_ball', 'paint', 'numpy_fractal', 'fps_loop'],
+    );
+    for (const ex of DISPLAY_EXAMPLES) {
+      assert.equal(ex.tag, 'display');
+      assert.equal(getPythonExample(ex.id), undefined, `"${ex.id}" is listed before the Display panel exists`);
+    }
+    const byId = new Map([...PYTHON_EXAMPLES, ...DISPLAY_EXAMPLES].map((ex) => [ex.id, ex]));
+    for (const id of [...requiredIds, ...DISPLAY_EXAMPLES.map((ex) => ex.id)]) {
+      const ex = byId.get(id);
       assert.ok(ex, `Missing example "${id}"`);
       assert.ok(PYTHON_EXAMPLE_TAGS.includes(ex.tag), `Unknown tag "${ex.tag}" for ${id}`);
       for (const key of [ex.titleKey, ex.descriptionKey]) {

@@ -3,8 +3,10 @@
 // present() loop keeps the page's frames coming, Stop in busy / wait_frame / wait_event loops raises
 // KeyboardInterrupt (never ConversionError, also on the buffer fallback), input latency through the
 // events ring, the hidden throttle, size caps, forged display.* messages, the one-window rule and the
-// Tier 2 error. Numbers are printed so the step notes can quote them.
+// Tier 2 error. Numbers are printed so the step notes can quote them. P7b's draw-command checks are in
+// display-draw-checks.mjs and run at the end of this part.
 import { waitHarnessReady } from './corpus-checks.mjs';
+import { runDisplayDrawChecks } from './display-draw-checks.mjs';
 
 const median = (a) => {
   if (a.length === 0) return NaN;
@@ -58,6 +60,13 @@ function installRunner() {
             renderer.setHidden(Boolean(op.hidden));
           } else if (op.do === 'push') {
             pushes.push(doPushes(op.list));
+          } else if (op.do === 'resize') {
+            snaps[op.name || 'resize'] = renderer.requestResize(op.w, op.h);
+          } else if (op.do === 'close') {
+            snaps[op.name || 'close'] = { ok: renderer.requestClose(), epoch: performance.timeOrigin + performance.now() };
+          } else if (op.do === 'pixel') {
+            const g = window.__pythonHarness.displayCanvas().getContext('2d');
+            snaps[op.name] = Array.from(g.getImageData(op.x, op.y, 1, 1).data);
           }
         };
         if (op.delay) timers.push(setTimeout(run, op.delay));
@@ -65,6 +74,7 @@ function installRunner() {
       }
     };
     const on = plan.on || {};
+    if (plan.start) fire(plan.start);
     const unsub = client.subscribe({
       stdout: (t) => {
         out += t;
@@ -93,7 +103,7 @@ function installRunner() {
   };
 }
 
-async function openDisplayHarness(browser, primaryOrigin) {
+export async function openDisplayHarness(browser, primaryOrigin) {
   const ctx = await browser.newContext({ viewport: { width: 900, height: 700 } });
   const page = await ctx.newPage();
   const pageErrors = [];
@@ -523,23 +533,29 @@ print("POSTED")
         const { validateWorkerMessage } = window.__pythonHarness;
         const fb = new SharedArrayBuffer(3 * 1920 * 1080 * 4);
         const ev = new SharedArrayBuffer(256 * 96);
-        const v = validateWorkerMessage({ type: 'display.open', id: 5, width: 5000, height: 4000.7, title: 'a\u0007b\u202e', scale: 'pixel', fbSab: fb, eventsSab: ev });
-        const s = validateWorkerMessage({ type: 'display.open', id: 5, width: 10, height: 10, title: 't', scale: 9, fbSab: new SharedArrayBuffer(1200), eventsSab: ev });
+        const cmd = new SharedArrayBuffer(3 * 256 * 1024);
+        const v = validateWorkerMessage({ type: 'display.open', id: 5, width: 5000, height: 4000.7, title: 'a\u0007b\u202e', scale: 'pixel', fbSab: fb, eventsSab: ev, cmdSab: cmd });
+        const s = validateWorkerMessage({ type: 'display.open', id: 5, width: 10, height: 10, title: 't', scale: 9, fbSab: new SharedArrayBuffer(1200), eventsSab: ev, cmdSab: cmd });
+        const noCmd = validateWorkerMessage({ type: 'display.open', id: 5, width: 10, height: 10, title: 't', scale: 'fit', fbSab: new SharedArrayBuffer(1200), eventsSab: ev });
+        const badSeq = validateWorkerMessage({ type: 'display.batch', id: 5, seq: 0, buf: new ArrayBuffer(8) });
         return {
           n: window.__disp.dropped.length,
           id: window.__disp.renderer.info?.id,
           v: v.ok ? { w: v.message.width, h: v.message.height, t: v.message.title, s: v.message.scale } : v.reason,
           scaleOk: s.ok,
+          noCmdOk: noCmd.ok,
+          badSeqOk: badSeq.ok,
         };
       });
       if (after.n - before.n !== 6) return `dropped ${after.n - before.n} of 6`;
       if (after.id !== before.id) return 'a forged display.open replaced the display';
       if (JSON.stringify(after.v) !== JSON.stringify({ w: 1920, h: 1080, t: 'ab', s: 'pixel' })) return `validator ${JSON.stringify(after.v)}`;
       if (after.scaleOk) return 'scale 9 accepted';
+      if (after.noCmdOk || after.badSeqOk) return 'display.open without cmdSab or display.batch with seq 0 accepted';
       return true;
     });
 
-    await check('one window: a new Display closes the old; close(); Clock; canvas reserved', async () => {
+    await check('one window: a new Display closes the old; close(); Clock; canvas', async () => {
       const r = await run(
         `d1 = vd.Display(10, 10, title="One")
 d2 = vd.Display(20, 12, title="Two")
@@ -549,10 +565,8 @@ try:
     print("OLD PRESENTED")
 except vd.DisplayError:
     print("OLD REFUSED")
-try:
-    d2.canvas
-except NotImplementedError:
-    print("CANVAS RESERVED")
+if isinstance(d2.canvas, vd.Canvas) and d2.canvas is d2.canvas:
+    print("CANVAS OK")
 c = vd.Clock()
 for _ in range(16):
     c.tick(30)
@@ -567,7 +581,7 @@ print("AFTER", d2.closed)
       );
       const bad = fail(r, 'one window');
       if (bad) return bad;
-      if (!r.out.includes('CLOSED True False') || !r.out.includes('OLD REFUSED') || !r.out.includes('CANVAS RESERVED') || !r.out.includes('AFTER True')) {
+      if (!r.out.includes('CLOSED True False') || !r.out.includes('OLD REFUSED') || !r.out.includes('CANVAS OK') || !r.out.includes('AFTER True')) {
         return r.out;
       }
       const fps = Number(/FPS (\d+)/.exec(r.out)?.[1]);
@@ -616,5 +630,6 @@ print("AFTER", d2.closed)
   } finally {
     await t2.close();
   }
+  Object.assign(metrics, await runDisplayDrawChecks(browserName, browser, { primaryOrigin, record }));
   return metrics;
 }

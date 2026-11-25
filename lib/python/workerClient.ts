@@ -33,7 +33,7 @@ import type {
   SecurityStatusInfo,
   WorkerToMainMessage,
 } from './protocol';
-import { CTRL_EV_HEAD, CTRL_VSYNC } from './displayProtocol';
+import { CTRL_ACK, CTRL_EV_HEAD, CTRL_VSYNC } from './displayProtocol';
 import type { DisplayWorkerMessage } from './displayProtocol';
 import { checkInstallRequest } from './packageProtocol';
 import type {
@@ -566,9 +566,10 @@ export class PythonWorkerClient {
       Atomics.notify(ctrl, CTRL_INTERRUPT, 1);
       Atomics.compareExchange(ctrl, CTRL_STDIN_STATE, STDIN_REQUEST, STDIN_INTERRUPTED);
       Atomics.notify(ctrl, CTRL_STDIN_STATE, 1);
-      // Wake a display wait (wait_frame / present while hidden, wait_event) so it raises at once.
+      // Wake a display wait (wait_frame / present while hidden, wait_event, a batch ack) so it raises at once.
       Atomics.notify(ctrl, CTRL_VSYNC, 1);
       Atomics.notify(ctrl, CTRL_EV_HEAD, 1);
+      Atomics.notify(ctrl, CTRL_ACK, 1);
     };
     pulse();
 

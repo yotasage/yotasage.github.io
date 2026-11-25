@@ -19,6 +19,7 @@ export const en = {
   'python.exampleTag.basics': 'Basics',
   'python.exampleTag.science': 'Science',
   'python.exampleTag.plots': 'Plots',
+  'python.exampleTag.display': 'Display',
   'python.exampleTag.files': 'Files',
   'python.exampleTag.async': 'Async',
   'python.exampleTag.network': 'Network',
@@ -51,6 +52,15 @@ export const en = {
   'python.example.network_probe.desc': 'Tests which sites a program can reach under the current Network setting.',
   'python.example.install_package.title': 'Install a package',
   'python.example.install_package.desc': 'Uses rich from PyPI once you add it in the Packages tab, and says how until then.',
+  // Display examples (lib/python/examples/display.ts; listed by P8 with the Display panel)
+  'python.example.bouncing_ball.title': 'Bouncing ball',
+  'python.example.bouncing_ball.desc': 'Draws a ball bouncing around the Display panel at 60 frames a second.',
+  'python.example.paint.title': 'Paint',
+  'python.example.paint.desc': 'Draw with the mouse or a finger; keys 1-4 change the colour and c clears.',
+  'python.example.numpy_fractal.title': 'NumPy Mandelbrot',
+  'python.example.numpy_fractal.desc': 'Computes the Mandelbrot set with NumPy and shows it band by band.',
+  'python.example.fps_loop.title': '60 fps animation',
+  'python.example.fps_loop.desc': 'Animates NumPy pixels and 200 shapes every frame and prints the frame rate.',
 } as const;
 
 export const nb: Record<keyof typeof en, string> = {
@@ -72,6 +82,7 @@ export const nb: Record<keyof typeof en, string> = {
   'python.exampleTag.basics': 'Grunnleggende',
   'python.exampleTag.science': 'Vitenskap',
   'python.exampleTag.plots': 'Plott',
+  'python.exampleTag.display': 'Skjerm',
   'python.exampleTag.files': 'Filer',
   'python.exampleTag.async': 'Asynkront',
   'python.exampleTag.network': 'Nettverk',
@@ -104,4 +115,12 @@ export const nb: Record<keyof typeof en, string> = {
   'python.example.network_probe.desc': 'Tester hvilke nettsteder et program når med gjeldende nettverksinnstilling.',
   'python.example.install_package.title': 'Installer en pakke',
   'python.example.install_package.desc': 'Bruker rich fra PyPI når du har lagt den til i Pakker-fanen, og forklarer hvordan inntil da.',
+  'python.example.bouncing_ball.title': 'Sprettende ball',
+  'python.example.bouncing_ball.desc': 'Tegner en ball som spretter rundt i skjermpanelet med 60 bilder i sekundet.',
+  'python.example.paint.title': 'Tegneprogram',
+  'python.example.paint.desc': 'Tegn med musen eller en finger; tastene 1-4 bytter farge og c tømmer.',
+  'python.example.numpy_fractal.title': 'NumPy-Mandelbrot',
+  'python.example.numpy_fractal.desc': 'Regner ut Mandelbrot-mengden med NumPy og viser den bånd for bånd.',
+  'python.example.fps_loop.title': '60 fps-animasjon',
+  'python.example.fps_loop.desc': 'Animerer NumPy-piksler og 200 figurer hvert bilde og skriver ut bildefrekvensen.',
 };

@@ -11,6 +11,8 @@ import type { PythonExample } from './types';
 export type { PythonExample, PythonExampleTag } from './types';
 export { getPythonExampleTagKey, PYTHON_EXAMPLE_TAGS } from './types';
 export { NETWORK_PROBE_HOSTS } from './network';
+// Display examples: exported for P8, which lists them once the Display panel exists.
+export { DISPLAY_EXAMPLES } from './display';
 
 export const PYTHON_EXAMPLES: readonly PythonExample[] = [
   helloExample,

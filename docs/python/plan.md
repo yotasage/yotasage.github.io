@@ -108,7 +108,7 @@ Ask before the named step; do not guess.
 | P6 | Packages: page | Done (Packages tab, W6, `ui-packages-checks.mjs`) |
 | S4 | Display transport spike | Done (`notes-S4.md`) |
 | P7a | Display engine core | Done (`notes-P7a.md`) |
-| P7b | Display draw commands and examples | Not started |
+| P7b | Display draw commands and examples | Done (`notes-P7b.md`) |
 | P8 | Display page | Not started |
 | P9 to P11 | Widget surface, tkinter subset, turtle (after go/no-go gate post-P8) | Not started |
 | P12 | Polish, visitor docs, CLAUDE.md and README | Not started |
