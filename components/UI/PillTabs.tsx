@@ -95,8 +95,8 @@ export default function PillTabs<T extends string = string>({
 
         return (
           <button
-            {...extra}
             key={item.id}
+            {...extra}
             ref={(el) => {
               buttonRefs.current[index] = el;
             }}

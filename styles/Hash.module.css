@@ -1,0 +1,1203 @@
+/* ==========================================================================
+   Hash Generator & Verifier (/hash/main) — Design System v2
+   Uses --ds-* tokens exclusively for Light, Dark, and High Contrast AAA.
+   ========================================================================== */
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  width: 100%;
+  max-width: 1380px;
+  margin: 0 auto;
+  padding: 20px 20px 64px;
+  flex: 1;
+}
+
+.workspacePanel[hidden] {
+  display: none;
+}
+
+.lead {
+  margin: 0 0 18px;
+  max-width: 82ch;
+  color: var(--ds-ink-2);
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+/* --------------------------------------------------------------------------
+   Quick Mode Banner
+   -------------------------------------------------------------------------- */
+
+.quickBanner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 16px;
+  padding: 11px 16px;
+  border-radius: var(--ds-radius-ctrl);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  background: var(--ds-accent-soft);
+  color: var(--ds-ink);
+  font-size: 0.875rem;
+}
+
+.quickBannerText {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--ds-ink-2);
+}
+
+.quickBadge {
+  font-weight: 700;
+  color: var(--ds-accent);
+  font-size: 0.82rem;
+}
+
+.quickActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* --------------------------------------------------------------------------
+   Shared Surface Cards & Buttons
+   -------------------------------------------------------------------------- */
+
+.workbenchStack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.card {
+  padding: 18px 20px;
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  min-width: 0;
+}
+
+.cardHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 14px;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+  letter-spacing: -0.016em;
+  color: var(--ds-ink);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0.4rem 0.9rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.button:hover:not(:disabled),
+.button:focus-visible {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  color: var(--ds-ink);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.primaryButton {
+  composes: button;
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+}
+
+.primaryButton:hover:not(:disabled),
+.primaryButton:focus-visible {
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  filter: brightness(1.06);
+}
+
+.buttonSmall {
+  composes: button;
+  min-height: 30px;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.79rem;
+}
+
+.buttonDanger {
+  composes: button;
+  min-height: 30px;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.79rem;
+}
+
+.buttonDanger:hover:not(:disabled),
+.buttonDanger:focus-visible {
+  border-color: var(--ds-bad);
+  background: var(--ds-bad-soft);
+  color: var(--ds-bad);
+}
+
+.segmented {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  gap: 2px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-well);
+}
+
+.segBtn {
+  min-height: 28px;
+  padding: 0.2rem 0.65rem;
+  border: none;
+  border-radius: calc(var(--ds-radius-sm) - 2px);
+  background: transparent;
+  color: var(--ds-ink-2);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.segBtn:hover {
+  color: var(--ds-ink);
+}
+
+.segBtnActive {
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+/* --------------------------------------------------------------------------
+   Toolbar: Algorithms, Format & HMAC
+   -------------------------------------------------------------------------- */
+
+.toolbarTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 12px;
+}
+
+.presetRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.presetBtn {
+  min-height: 28px;
+  padding: 0.2rem 0.6rem;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  color: var(--ds-ink-2);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.presetBtn:hover {
+  border-color: var(--ds-accent);
+  color: var(--ds-ink);
+  background: var(--ds-accent-soft);
+}
+
+.algoGroups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+}
+
+.algoGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.groupLabel {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--ds-ink-3);
+}
+
+.algoRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.algoToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 0.28rem 0.72rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.8rem;
+  font-weight: 550;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.algoToggle:hover {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+}
+
+.algoToggleActive,
+.algoToggleActive:hover {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  font-weight: 650;
+}
+
+.toolbarOptions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ds-border);
+}
+
+.optionGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.83rem;
+  color: var(--ds-ink-2);
+}
+
+.checkboxLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.83rem;
+  font-weight: 500;
+  color: var(--ds-ink-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkboxLabel input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--ds-accent);
+  cursor: pointer;
+}
+
+.hmacRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--ds-border);
+}
+
+.hmacInput {
+  flex: 1 1 260px;
+  min-width: 0;
+  height: 36px;
+  padding: 0 0.75rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.84rem;
+}
+
+.hmacInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.mutedNote {
+  font-size: 0.79rem;
+  color: var(--ds-ink-3);
+}
+
+/* --------------------------------------------------------------------------
+   Verifier & Cross-Field Comparison Panel
+   -------------------------------------------------------------------------- */
+
+.verifyGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.verifyCol {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.compareCol {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-left: 18px;
+  border-left: 1px solid var(--ds-border);
+  min-width: 0;
+}
+
+.fieldLabel {
+  display: block;
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--ds-ink);
+}
+
+.expectedRow {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.expectedInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 38px;
+  padding: 0 0.8rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.84rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.expectedInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.metaLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 0.8rem;
+  color: var(--ds-ink-3);
+}
+
+.verdictBox {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  font-size: 0.84rem;
+}
+
+.verdictMatch {
+  border-color: color-mix(in srgb, var(--ds-good) 45%, transparent);
+  background: var(--ds-good-soft);
+}
+
+.verdictMismatch {
+  border-color: color-mix(in srgb, var(--ds-bad) 45%, transparent);
+  background: var(--ds-bad-soft);
+}
+
+.verdictWarn {
+  border-color: color-mix(in srgb, var(--ds-warn) 45%, transparent);
+  background: var(--ds-warn-soft);
+}
+
+.verdictHeadline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-weight: 650;
+  color: var(--ds-ink);
+}
+
+.statusGoodText {
+  color: var(--ds-good);
+}
+
+.statusBadText {
+  color: var(--ds-bad);
+}
+
+.statusWarnText {
+  color: var(--ds-warn);
+}
+
+.verdictSub {
+  margin: 0;
+  color: var(--ds-ink-2);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+/* Diff Preview */
+
+.diffBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-surface-solid);
+  font-size: 0.8rem;
+}
+
+.diffHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  color: var(--ds-ink-2);
+  font-weight: 600;
+}
+
+.diffLine {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+}
+
+.diffTag {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ds-ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diffCode {
+  font-family: var(--ds-font-mono);
+  font-size: 0.78rem;
+  word-break: break-all;
+  line-height: 1.45;
+  color: var(--ds-ink);
+}
+
+.diffSame {
+  color: var(--ds-ink-2);
+}
+
+.diffChanged {
+  background: var(--ds-bad-soft);
+  color: var(--ds-bad);
+  border-radius: 2px;
+  padding: 0 1px;
+  font-weight: 650;
+}
+
+/* Cross-field groups & pairwise controls */
+
+.groupList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.groupItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 6px 10px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-surface-solid);
+  font-size: 0.82rem;
+}
+
+.groupIndex {
+  font-family: var(--ds-font-mono);
+  font-size: 0.76rem;
+  font-weight: 650;
+  color: var(--ds-accent);
+}
+
+.pairControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.select {
+  height: 32px;
+  padding: 0 0.6rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  max-width: 100%;
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+/* --------------------------------------------------------------------------
+   Input Fields Header & List
+   -------------------------------------------------------------------------- */
+
+.fieldsHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+
+.fieldsTitleWrap {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.fieldsCount {
+  font-family: var(--ds-font-mono);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ds-ink-3);
+}
+
+.fieldsActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.fieldsList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.hiddenFileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Individual Field Card (Left: Input · Right: Per-Field Output Digests)
+   -------------------------------------------------------------------------- */
+
+.fieldCard {
+  composes: card;
+  padding: 16px 18px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.fieldCardDropOver {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.fieldCardMatched {
+  border-color: color-mix(in srgb, var(--ds-good) 52%, transparent);
+}
+
+.fieldCardHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--ds-border);
+}
+
+.fieldNameWrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 200px;
+}
+
+.fieldNumber {
+  font-family: var(--ds-font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ds-ink-3);
+  flex-shrink: 0;
+}
+
+.fieldNameInput {
+  flex: 1 1 140px;
+  min-width: 110px;
+  max-width: 280px;
+  height: 30px;
+  padding: 0 0.55rem;
+  border: var(--ds-border-w) solid transparent;
+  border-radius: var(--ds-radius-sm);
+  background: transparent;
+  color: var(--ds-ink);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 650;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.fieldNameInput:hover {
+  border-color: var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+}
+
+.fieldNameInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  background: var(--ds-surface-solid);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.fieldControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.fieldBody {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.78fr) minmax(0, 1.55fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.inputPane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 8.2rem;
+  padding: 0.6rem 0.75rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.86rem;
+  line-height: 1.5;
+  resize: vertical;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.textarea:hover:not(:disabled) {
+  border-color: var(--ds-accent);
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.inputFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+  font-size: 0.78rem;
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ds-ink-3);
+}
+
+.inputError {
+  color: var(--ds-bad);
+  font-family: var(--ds-font-ui);
+  font-weight: 550;
+  font-size: 0.8rem;
+}
+
+/* File Dropzone Inside Field */
+
+.fileZone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 8.2rem;
+  padding: 16px;
+  border: 1.5px dashed var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.fileZone:hover {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+}
+
+.fileZoneTitle {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ds-ink);
+}
+
+.fileZoneSub {
+  font-size: 0.79rem;
+  color: var(--ds-ink-3);
+}
+
+.fileInfoBox {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+}
+
+.fileMetaRow {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.fileName {
+  font-weight: 650;
+  font-size: 0.9rem;
+  color: var(--ds-ink);
+  word-break: break-all;
+}
+
+.fileDetails {
+  font-family: var(--ds-font-mono);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ds-ink-3);
+}
+
+.fileActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Output Hashes List Per Field */
+
+.outputPane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.outputEmpty {
+  display: flex;
+  align-items: center;
+  min-height: 8.2rem;
+  padding: 14px 16px;
+  border: var(--ds-border-w) dashed var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  color: var(--ds-ink-3);
+  font-size: 0.86rem;
+}
+
+.digestList {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.digestRow {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  gap: 8px 10px;
+  align-items: center;
+  padding: 7px 10px;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.digestRowVerified {
+  border-color: color-mix(in srgb, var(--ds-good) 55%, transparent);
+  background: var(--ds-good-soft);
+}
+
+.digestRowPeerMatch {
+  border-color: color-mix(in srgb, var(--ds-accent) 42%, transparent);
+  background: var(--ds-accent-soft);
+}
+
+.digestAlgoCol {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.digestAlgoName {
+  font-family: var(--ds-font-mono);
+  font-size: 0.79rem;
+  font-weight: 700;
+  color: var(--ds-ink);
+  white-space: nowrap;
+}
+
+.digestAlgoBits {
+  font-family: var(--ds-font-mono);
+  font-size: 0.71rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ds-ink-3);
+}
+
+.digestValueCol {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.digestOutput {
+  display: block;
+  width: 100%;
+  font-family: var(--ds-font-mono);
+  font-size: 0.79rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  color: var(--ds-ink);
+  word-break: break-all;
+  user-select: all;
+}
+
+.digestStatusLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.statusVerifiedLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ds-good);
+}
+
+.statusPeerLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ds-accent);
+}
+
+.digestActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 0.55rem;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: 6px;
+  background: var(--ds-well);
+  color: var(--ds-ink-2);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.iconBtn:hover {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  color: var(--ds-ink);
+}
+
+.iconBtnCopied {
+  border-color: var(--ds-good);
+  background: var(--ds-good-soft);
+  color: var(--ds-good);
+}
+
+/* --------------------------------------------------------------------------
+   Teaching & Guide Sections
+   -------------------------------------------------------------------------- */
+
+.teachingGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.guideLayout {
+  max-width: 980px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.guideHeader h2 {
+  margin: 0 0 6px;
+  font-size: 1.42rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--ds-ink);
+}
+
+.guideHeader p {
+  margin: 0;
+  color: var(--ds-ink-2);
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+.guideGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.guideCard p {
+  margin: 0.45rem 0 0;
+  color: var(--ds-ink-2);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 10px;
+}
+
+.guideTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.guideTable th,
+.guideTable td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--ds-border);
+  text-align: left;
+  color: var(--ds-ink);
+  vertical-align: top;
+}
+
+.guideTable th {
+  color: var(--ds-ink-2);
+  font-weight: 600;
+  background: var(--ds-well);
+  white-space: nowrap;
+}
+
+.guideTable td:first-child {
+  white-space: nowrap;
+}
+
+.guideTable td code {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.guideTable tr:last-child td {
+  border-bottom: none;
+}
+
+.monoNum {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.statusTagRecommended {
+  color: var(--ds-good);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.statusTagLegacy {
+  color: var(--ds-warn);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.statusTagChecksum {
+  color: var(--ds-ink-2);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive Breakpoints
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 980px) {
+  .verifyGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .compareCol {
+    padding-left: 0;
+    padding-top: 14px;
+    border-left: none;
+    border-top: 1px solid var(--ds-border);
+  }
+
+  .fieldBody {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .teachingGrid,
+  .guideGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .main {
+    padding: 14px 12px 48px;
+  }
+
+  .card,
+  .fieldCard {
+    padding: 14px;
+  }
+
+  .digestRow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .digestAlgoCol {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .digestActions {
+    justify-content: flex-end;
+  }
+
+  .diffLine {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}

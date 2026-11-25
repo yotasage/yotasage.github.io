@@ -21,6 +21,7 @@ import { en as emWavesEn, nb as emWavesNb } from './i18n/emWaves';
 import { en as emWhys1En, nb as emWhys1Nb } from './i18n/emWhys1';
 import { en as emWhys2En, nb as emWhys2Nb } from './i18n/emWhys2';
 import { en as emWhys3En, nb as emWhys3Nb } from './i18n/emWhys3';
+import { en as hashEn, nb as hashNb } from './i18n/hash';
 import { en as homeEn, nb as homeNb } from './i18n/home';
 import { en as notepadEn, nb as notepadNb } from './i18n/notepad';
 import { en as paintEn, nb as paintNb } from './i18n/paint';
@@ -110,6 +111,7 @@ export const en = {
   ...resistorDesignEn,
   ...resistorRefEn,
   ...resistorTheoryEn,
+  ...hashEn,
   ...textcaseEn,
   ...qrGenEn,
   ...qrReadEn,
@@ -181,6 +183,7 @@ export const nb: Record<TranslationKey, string> = {
   ...resistorDesignNb,
   ...resistorRefNb,
   ...resistorTheoryNb,
+  ...hashNb,
   ...textcaseNb,
   ...qrGenNb,
   ...qrReadNb,

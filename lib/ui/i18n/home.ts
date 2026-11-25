@@ -88,6 +88,10 @@ export const en = {
   'home.tool.paint.category': 'Images',
   'home.tool.paint.desc':
     'Paint.NET-style raster editor with layers, crop, resize, scale down, rotate, black & white color styles, Paint.NET Ctrl+C/V clipboard sync, and dockable panels.',
+  'home.tool.hash.title': 'Hash generator',
+  'home.tool.hash.category': 'Hashing & Checksums',
+  'home.tool.hash.desc':
+    'Generate MD5, SHA-1, SHA-2, SHA-3, BLAKE2, RIPEMD-160, CRC32, and Adler-32 digests across multiple text or file inputs at once, verify expected hashes, and compare fields side by side.',
   'home.tool.textcase.title': 'Text case converter',
   'home.tool.textcase.category': 'Text',
   'home.tool.textcase.desc':
@@ -111,6 +115,7 @@ export const en = {
   'home.tool.base64.tags': 'Data URL|HTML · CSS · MD|PNG · JPEG · WebP|Live preview',
   'home.tool.paint.tags': 'Layers|Crop · Resize · Scale down|Rotate|B&W styles|Paint.NET Ctrl+C/V',
   'home.tool.notepad.tags': 'Monaco Editor|Code · CSV · TeX|Side-by-side · Grid|Diff · Regex|Auto-saved',
+  'home.tool.hash.tags': 'MD5 · SHA-2 · SHA-3|BLAKE2 · CRC32|Multi-field · Files|Verifier · Diff',
   'home.tool.textcase.tags': 'Sentence · Title|UPPER · lower|camelCase|snake_case|kebab-case',
 } as const;
 
@@ -204,6 +209,10 @@ export const nb: Record<keyof typeof en, string> = {
   'home.tool.paint.category': 'Bilder',
   'home.tool.paint.desc':
     'Paint.NET-inspirert bildeeditor med lag, beskjæring, nedskalering, rotering, svart-hvitt fargestiler, Ctrl+C/V mot Paint.NET og flyttbare paneler.',
+  'home.tool.hash.title': 'Hash-generator',
+  'home.tool.hash.category': 'Hashing og kontrollsummer',
+  'home.tool.hash.desc':
+    'Generer MD5-, SHA-1-, SHA-2-, SHA-3-, BLAKE2-, RIPEMD-160-, CRC32- og Adler-32-summer for flere tekst- eller filfelt samtidig, verifiser forventede hasher og sammenlign felt side om side.',
   'home.tool.textcase.title': 'Tekstformatkonverterer',
   'home.tool.textcase.category': 'Tekst',
   'home.tool.textcase.desc':
@@ -227,5 +236,6 @@ export const nb: Record<keyof typeof en, string> = {
   'home.tool.base64.tags': 'Data-URL|HTML · CSS · MD|PNG · JPEG · WebP|Direktevisning',
   'home.tool.paint.tags': 'Lag|Beskjær · Skalering|Roter|Svart-hvitt-stiler|Paint.NET Ctrl+C/V',
   'home.tool.notepad.tags': 'Monaco-editor|Kode · CSV · TeX|Side ved side · Rutenett|Diff · Regex|Autolagret',
+  'home.tool.hash.tags': 'MD5 · SHA-2 · SHA-3|BLAKE2 · CRC32|Flere felt · Filer|Verifiserer · Diff',
   'home.tool.textcase.tags': 'Setning · Tittel|STORE · små|camelCase|snake_case|kebab-case',
 };

@@ -2,7 +2,7 @@ import React from 'react';
 
 // Icons for the tool cards on the main page, in the style of components/PdfTools/ToolIcon.tsx. Filled shapes use
 // currentColor, which the <svg> sets to the tool's colour.
-export type HomeIconName = 'boolean' | 'calculator' | 'integral' | 'derivative' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'python' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
+export type HomeIconName = 'boolean' | 'calculator' | 'integral' | 'derivative' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'python' | 'hash' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
 
 const SAMPLES: [number, number][] = [[6, 24], [12, 12], [18, 12], [24, 24], [30, 36], [36, 36], [42, 24]];
 
@@ -131,6 +131,13 @@ const ICONS: Record<HomeIconName, React.ReactNode> = {
       <path d="M24 42c6.6 0 8-2.4 8-6v-4H22v-2.5h13.5c4 0 6.5-2.5 6.5-7 0-4.3-2.1-7-5.5-7H33v4.2c0 3.4-2.8 6.3-6.3 6.3h-9.2c-2.8 0-5 2.2-5 5V36c0 3.6 2.8 6 11.5 6Z" opacity={0.75} />
       <circle cx={20} cy={11.5} r={1.8} fill="currentColor" stroke="none" />
       <circle cx={28} cy={36.5} r={1.8} fill="currentColor" stroke="none" />
+    </>
+  ),
+  // Hash generator & verifier: shield outline enclosing a crisp hash (#) symbol and verification check.
+  hash: (
+    <>
+      <path d="M24 5l15 5.5v11.5c0 9.8-6.4 16.9-15 20.5C15.4 38.9 9 31.8 9 22V10.5L24 5z" />
+      <path d="M19.5 16.5l-2 14M29.5 16.5l-2 14M15 20.5h17M14 26.5h17" />
     </>
   ),
   textcase: (
