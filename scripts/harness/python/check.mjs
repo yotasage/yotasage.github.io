@@ -15,6 +15,7 @@ import { chromium, firefox, webkit } from 'playwright-core';
 
 import { runCorpusChecks } from './corpus-checks.mjs';
 import { runFsChecks } from './fs-checks.mjs';
+import { runPlotChecks } from './plot-checks.mjs';
 import { runSecurityChecks } from './security-checks.mjs';
 import { startHarnessServers } from './servers.mjs';
 import { runUnitChecks } from './unit-checks.mjs';
@@ -130,6 +131,11 @@ try {
       });
 
       await runFsChecks(b, browser, {
+        primaryOrigin: servers.primaryOrigin,
+        record,
+      });
+
+      await runPlotChecks(b, browser, {
         primaryOrigin: servers.primaryOrigin,
         record,
       });

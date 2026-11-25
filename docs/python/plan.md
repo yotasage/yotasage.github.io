@@ -89,7 +89,7 @@ Ask before the named step; do not guess.
 | P2 | Page: layout, Monaco, terminal, card, i18n, network settings, warnings | Done (`notes-P2.md`) |
 | S5 | Persistence spike | Done (`notes-S5.md`) |
 | P3 | Files | Done (`notes-P3.md`) |
-| P4 | Plots and viewers. **v1 ends here: the owner tries it** | In progress (P4a) |
+| P4 | Plots and viewers. **v1 ends here: the owner tries it** | In progress (P4b) |
 | P5, P6 | Packages: engine, page | Not started |
 | S4 | Display transport spike | Not started |
 | P7, P8 | Display: engine, page | Not started |

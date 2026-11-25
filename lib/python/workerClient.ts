@@ -27,6 +27,8 @@ import type {
   CapabilityTier,
   FsChangeInfo,
   MainToWorkerMessage,
+  PlotExportFormat,
+  PlotSource,
   PythonErrorInfo,
   SecurityStatusInfo,
   WorkerToMainMessage,
@@ -77,6 +79,25 @@ export interface ReplCompletionsResult {
   readonly start: number;
 }
 
+export interface PlotEvent {
+  readonly plotId: string;
+  readonly title: string;
+  readonly width: number;
+  readonly height: number;
+  readonly pngBytes: Uint8Array;
+  readonly canExportVector: boolean;
+  readonly source: PlotSource;
+  readonly createdAt: number;
+}
+
+export interface PlotExportResult {
+  readonly ok: boolean;
+  readonly plotId: string;
+  readonly format: PlotExportFormat;
+  readonly bytes?: Uint8Array;
+  readonly error?: string;
+}
+
 export interface PythonWorkerClientOptions {
   readonly networkMode?: NetworkMode;
   readonly softStopTimeoutMs?: number;
@@ -93,6 +114,7 @@ export interface PythonClientListeners {
   stdinRequest?: (seq: number, mode: 'sab' | 'jspi') => void;
   linkRequest?: (url: string) => void;
   fsChanged?: (change: FsChangeInfo) => void;
+  plot?: (plot: PlotEvent) => void;
   crash?: (reason: string) => void;
   droppedMessage?: (reason: string) => void;
 }
@@ -147,6 +169,13 @@ export class PythonWorkerClient {
     resolve: (res: ReplCompletionsResult) => void;
     reject: (err: Error) => void;
   } | null = null;
+  private pendingPlotExports = new Map<
+    string,
+    {
+      resolve: (res: PlotExportResult) => void;
+      reject: (err: Error) => void;
+    }
+  >();
 
   private sigintRetryTimer: ReturnType<typeof setInterval> | null = null;
   private forceStopTimer: ReturnType<typeof setTimeout> | null = null;
@@ -192,6 +221,11 @@ export class PythonWorkerClient {
     return () => {
       this.listeners.delete(listener);
     };
+  }
+
+  /** Convenience helper subscribing specifically to plot.new events. */
+  onPlot(listener: (plot: PlotEvent) => void): () => void {
+    return this.subscribe({ plot: listener });
   }
 
   private emit<K extends keyof PythonClientListeners>(
@@ -585,6 +619,21 @@ export class PythonWorkerClient {
     });
   }
 
+  /** Requests an on-demand SVG or PDF vector re-export of a retained live matplotlib plot. */
+  async exportPlot(plotId: string, format: PlotExportFormat): Promise<PlotExportResult> {
+    if (!this.worker || !this._readyInfo) {
+      return { ok: false, plotId, format, error: 'Python worker is not running' };
+    }
+    if (this._state === 'running' || this._state === 'stopping') {
+      return { ok: false, plotId, format, error: 'Cannot export plot while a script is running' };
+    }
+    const id = `plot-exp-${this.nextId++}`;
+    return new Promise<PlotExportResult>((resolve, reject) => {
+      this.pendingPlotExports.set(id, { resolve, reject });
+      this.post({ type: 'plot.export', id, plotId, format });
+    });
+  }
+
   dispose(): void {
     this.clearStopTimers();
     this.rejectInFlight('Python worker client disposed');
@@ -628,6 +677,11 @@ export class PythonWorkerClient {
       const p = this.pendingCompletions;
       this.pendingCompletions = null;
       p.reject(err);
+    }
+    if (this.pendingPlotExports.size > 0) {
+      const pending = [...this.pendingPlotExports.values()];
+      this.pendingPlotExports.clear();
+      for (const p of pending) p.reject(err);
     }
   }
 
@@ -766,6 +820,36 @@ export class PythonWorkerClient {
           deleted: msg.deleted,
         });
         break;
+
+      case 'plot.new':
+        this.emit('plot', {
+          plotId: msg.plotId,
+          title: msg.title,
+          width: msg.width,
+          height: msg.height,
+          pngBytes: msg.pngBytes,
+          canExportVector: msg.canExportVector,
+          source: msg.source,
+          createdAt: msg.createdAt,
+        });
+        break;
+
+      case 'plot.export.result': {
+        const pending = this.pendingPlotExports.get(msg.id);
+        if (!pending) {
+          this.emit('droppedMessage', 'Ignored unexpected or mismatched plot.export.result');
+          break;
+        }
+        this.pendingPlotExports.delete(msg.id);
+        pending.resolve({
+          ok: msg.ok,
+          plotId: msg.plotId,
+          format: msg.format,
+          ...(msg.bytes ? { bytes: msg.bytes } : {}),
+          ...(msg.error !== undefined ? { error: msg.error } : {}),
+        });
+        break;
+      }
 
       case 'error': {
         if (this.pendingInit && (msg.id === undefined || this.pendingInit.id === msg.id)) {

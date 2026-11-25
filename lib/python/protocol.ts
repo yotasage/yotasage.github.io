@@ -35,6 +35,13 @@ export const MAX_COMPLETIONS = 500;
 export const MAX_COMPLETION_ITEM_CHARS = 256;
 export const MAX_LINK_URL_CHARS = 4096;
 export const MAX_FILE_PATH_CHARS = 512;
+export const MAX_PLOT_BYTES = 25 * 1024 * 1024;
+export const MAX_PLOT_ID_CHARS = 64;
+export const MAX_PLOT_TITLE_CHARS = 256;
+export const MAX_PLOT_DIM = 16384;
+
+export type PlotSource = 'matplotlib' | 'pillow';
+export type PlotExportFormat = 'svg' | 'pdf';
 
 export interface PythonErrorFrame {
   readonly file: string;
@@ -124,6 +131,12 @@ export type MainToWorkerMessage =
   | {
       readonly type: 'fs.sync';
       readonly id: number;
+    }
+  | {
+      readonly type: 'plot.export';
+      readonly id: string;
+      readonly plotId: string;
+      readonly format: PlotExportFormat;
     };
 
 export type WorkerToMainMessage =
@@ -199,6 +212,26 @@ export type WorkerToMainMessage =
       readonly deleted: readonly string[];
     }
   | {
+      readonly type: 'plot.new';
+      readonly plotId: string;
+      readonly title: string;
+      readonly width: number;
+      readonly height: number;
+      readonly pngBytes: Uint8Array;
+      readonly canExportVector: boolean;
+      readonly source: PlotSource;
+      readonly createdAt: number;
+    }
+  | {
+      readonly type: 'plot.export.result';
+      readonly id: string;
+      readonly ok: boolean;
+      readonly plotId: string;
+      readonly format: PlotExportFormat;
+      readonly bytes?: Uint8Array;
+      readonly error?: string;
+    }
+  | {
       readonly type: 'error';
       readonly id?: number;
       readonly message: string;
@@ -211,6 +244,15 @@ export type ValidationResult =
 const VALID_MODES = new Set<string>(['off', 'pkg', 'hosts', 'all']);
 const VALID_PHASES = new Set<string>(['booting', 'loading-packages', 'ready', 'running', 'idle']);
 const VALID_REPL_STATUSES = new Set<string>(['complete', 'incomplete', 'syntax-error', 'error']);
+const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] as const;
+
+function hasPngSignature(bytes: Uint8Array): boolean {
+  if (bytes.byteLength < 24) return false;
+  for (let i = 0; i < PNG_MAGIC.length; i += 1) {
+    if (bytes[i] !== PNG_MAGIC[i]) return false;
+  }
+  return true;
+}
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -487,6 +529,97 @@ export function validateWorkerMessage(raw: unknown): ValidationResult {
       return {
         ok: true,
         message: { type: 'fs.changed', created, modified, deleted },
+      };
+    }
+
+    case 'plot.new': {
+      if (!isBoundedString(raw.plotId, MAX_PLOT_ID_CHARS) || raw.plotId.length === 0) {
+        return { ok: false, reason: 'Invalid or empty plotId in plot.new' };
+      }
+      if (!isBoundedString(raw.title, MAX_PLOT_TITLE_CHARS)) {
+        return { ok: false, reason: 'Invalid or oversized title in plot.new' };
+      }
+      if (!isFiniteInt(raw.width, 1, MAX_PLOT_DIM) || !isFiniteInt(raw.height, 1, MAX_PLOT_DIM)) {
+        return { ok: false, reason: 'Invalid plot dimensions in plot.new' };
+      }
+      if (!(raw.pngBytes instanceof Uint8Array)) {
+        return { ok: false, reason: 'plot.new pngBytes must be a Uint8Array' };
+      }
+      if (raw.pngBytes.byteLength > MAX_PLOT_BYTES) {
+        return { ok: false, reason: 'plot.new pngBytes exceeds 25 MiB cap' };
+      }
+      if (!hasPngSignature(raw.pngBytes)) {
+        return { ok: false, reason: 'plot.new pngBytes missing valid PNG signature' };
+      }
+      if (typeof raw.canExportVector !== 'boolean') {
+        return { ok: false, reason: 'Invalid canExportVector in plot.new' };
+      }
+      if (raw.source !== 'matplotlib' && raw.source !== 'pillow') {
+        return { ok: false, reason: 'Invalid source in plot.new' };
+      }
+      if (!isFiniteNonNeg(raw.createdAt)) {
+        return { ok: false, reason: 'Invalid createdAt in plot.new' };
+      }
+      return {
+        ok: true,
+        message: {
+          type: 'plot.new',
+          plotId: raw.plotId,
+          title: raw.title,
+          width: raw.width,
+          height: raw.height,
+          pngBytes: raw.pngBytes,
+          canExportVector: raw.canExportVector,
+          source: raw.source,
+          createdAt: raw.createdAt,
+        },
+      };
+    }
+
+    case 'plot.export.result': {
+      if (!isBoundedString(raw.id, 64) || raw.id.length === 0) {
+        return { ok: false, reason: 'Invalid id in plot.export.result' };
+      }
+      if (typeof raw.ok !== 'boolean') {
+        return { ok: false, reason: 'Invalid ok in plot.export.result' };
+      }
+      if (!isBoundedString(raw.plotId, MAX_PLOT_ID_CHARS) || raw.plotId.length === 0) {
+        return { ok: false, reason: 'Invalid plotId in plot.export.result' };
+      }
+      if (raw.format !== 'svg' && raw.format !== 'pdf') {
+        return { ok: false, reason: 'Invalid format in plot.export.result' };
+      }
+      let bytes: Uint8Array | undefined;
+      if (raw.bytes !== undefined) {
+        if (!(raw.bytes instanceof Uint8Array)) {
+          return { ok: false, reason: 'plot.export.result bytes must be a Uint8Array' };
+        }
+        if (raw.bytes.byteLength === 0 || raw.bytes.byteLength > MAX_PLOT_BYTES) {
+          return { ok: false, reason: 'plot.export.result bytes empty or exceeds 25 MiB cap' };
+        }
+        bytes = raw.bytes;
+      }
+      if (raw.ok && !bytes) {
+        return { ok: false, reason: 'Successful plot.export.result requires bytes' };
+      }
+      let error: string | undefined;
+      if (raw.error !== undefined) {
+        if (!isBoundedString(raw.error, MAX_ERROR_TEXT_CHARS)) {
+          return { ok: false, reason: 'Invalid or oversized error in plot.export.result' };
+        }
+        error = raw.error;
+      }
+      return {
+        ok: true,
+        message: {
+          type: 'plot.export.result',
+          id: raw.id,
+          ok: raw.ok,
+          plotId: raw.plotId,
+          format: raw.format,
+          ...(bytes ? { bytes } : {}),
+          ...(error !== undefined ? { error } : {}),
+        },
       };
     }
 

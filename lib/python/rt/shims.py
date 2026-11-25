@@ -1,10 +1,12 @@
 """Browser Python shims: interruptible sleep, YotaSyncEventLoop, webbrowser, subprocess."""
 
 import asyncio
+import io
 import math
 import os
 import selectors
 import subprocess
+import sys
 import time
 import urllib.parse
 import webbrowser
@@ -14,6 +16,123 @@ import yotasage_host
 
 _ORIG_SLEEP = time.sleep
 _ORIG_ASYNCIO_RUN = asyncio.run
+_plot_counter = 0
+_MAX_PLOT_TITLE_CHARS = 256
+
+
+def next_plot_id() -> str:
+    """Return a session-monotonic plot identifier shared across Matplotlib and Pillow."""
+    global _plot_counter
+    _plot_counter += 1
+    return f"plot-{_plot_counter}"
+
+
+def emit_plot_png(
+    plot_id: str,
+    title: str,
+    width: int,
+    height: int,
+    png_bytes: bytes,
+    can_export_vector: bool,
+    source: str,
+) -> None:
+    """Transfer rendered PNG bytes to the JS worker host as a plot.new event."""
+    js_bytes = pyodide.ffi.to_js(png_bytes)
+    yotasage_host.emit_plot(
+        str(plot_id),
+        str(title)[:_MAX_PLOT_TITLE_CHARS],
+        int(width),
+        int(height),
+        js_bytes,
+        bool(can_export_vector),
+        str(source),
+    )
+
+
+def _patch_pil_image(image_mod) -> None:
+    img_cls = getattr(image_mod, "Image", None)
+    if img_cls is None or getattr(img_cls, "_yotasage_show_patched", False):
+        return
+
+    def _yotasage_pil_show(self, title=None) -> None:
+        buf = io.BytesIO()
+        try:
+            self.save(buf, format="PNG")
+        except (OSError, ValueError):
+            buf.seek(0)
+            buf.truncate(0)
+            self.convert("RGBA").save(buf, format="PNG")
+        png_bytes = buf.getvalue()
+        buf.close()
+        width, height = self.size
+        clean_title = str(title).strip() if title is not None else ""
+        plot_title = (clean_title or "Image")[:_MAX_PLOT_TITLE_CHARS]
+        emit_plot_png(
+            next_plot_id(),
+            plot_title,
+            int(width),
+            int(height),
+            png_bytes,
+            False,
+            "pillow",
+        )
+
+    img_cls.show = _yotasage_pil_show
+    img_cls._yotasage_show_patched = True
+
+
+class _PilImageLoader:
+    """Wraps PIL.Image's real loader to patch Image.show immediately after execution."""
+
+    def __init__(self, wrapped) -> None:
+        self._wrapped = wrapped
+
+    def create_module(self, spec):
+        if hasattr(self._wrapped, "create_module"):
+            return self._wrapped.create_module(spec)
+        return None
+
+    def exec_module(self, module) -> None:
+        self._wrapped.exec_module(module)
+        _patch_pil_image(module)
+
+    def __getattr__(self, name: str):
+        return getattr(self._wrapped, name)
+
+
+class _PilImageFinder:
+    """Zero-overhead meta_path hook that patches PIL.Image lazily on first import."""
+
+    def find_spec(self, fullname: str, path, target=None):
+        if fullname != "PIL.Image":
+            return None
+        for finder in list(sys.meta_path):
+            if finder is self:
+                continue
+            find_spec = getattr(finder, "find_spec", None)
+            if find_spec is None:
+                continue
+            spec = find_spec(fullname, path, target)
+            if (
+                spec is not None
+                and spec.loader is not None
+                and hasattr(spec.loader, "exec_module")
+            ):
+                spec.loader = _PilImageLoader(spec.loader)
+                return spec
+        return None
+
+
+def install_pil_hook() -> None:
+    """Hook PIL.Image.Image.show lazily without importing Pillow at boot."""
+    existing = sys.modules.get("PIL.Image")
+    if existing is not None:
+        _patch_pil_image(existing)
+        return
+    for finder in sys.meta_path:
+        if isinstance(finder, _PilImageFinder):
+            return
+    sys.meta_path.insert(0, _PilImageFinder())
 
 
 class _InterruptibleSelector(selectors.BaseSelector):
@@ -148,3 +267,5 @@ def install_shims(tier: int, network_mode: str) -> None:
     subprocess.call = _unsupported_process
     subprocess.check_call = _unsupported_process
     subprocess.check_output = _unsupported_process
+
+    install_pil_hook()

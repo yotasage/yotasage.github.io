@@ -33,7 +33,7 @@ const STDIN_INTERRUPTED = 5;
 const WORKSPACE_ROOT = '/workspace';
 const MAX_DELTA_FILE_BYTES = 50 * 1024 * 1024;
 const MAX_IMPORT_SCAN_BYTES = 256 * 1024;
-const RT_FILES = ['__init__.py', 'stdio.py', 'shims.py', 'runner.py', 'repl.py'];
+const RT_FILES = ['__init__.py', 'stdio.py', 'shims.py', 'runner.py', 'repl.py', 'mpl_backend.py'];
 
 let pyodide = null;
 let ctrlView = null;
@@ -892,6 +892,23 @@ function pyResultToPlain(pyVal) {
   return pyVal;
 }
 
+function extractBytesCopy(raw) {
+  if (raw instanceof Uint8Array) return raw.slice();
+  if (raw && typeof raw.getBuffer === 'function') {
+    const buf = raw.getBuffer('u8');
+    try {
+      return buf.data.slice();
+    } finally {
+      buf.release();
+    }
+  }
+  if (raw && typeof raw.toJs === 'function') {
+    const jsVal = raw.toJs();
+    return jsVal instanceof Uint8Array ? jsVal.slice() : new Uint8Array(jsVal);
+  }
+  return new Uint8Array(raw || 0);
+}
+
 async function handleInit(msg) {
   const { id, payload } = msg;
   networkMode = payload.networkMode || 'off';
@@ -984,6 +1001,23 @@ async function handleInit(msg) {
     request_stdin_jspi: requestStdinJspi,
     emit_link_request: (url) => {
       self.postMessage({ type: 'link.request', url: String(url) });
+    },
+    emit_plot: (plotId, title, width, height, pngBytesRaw, canExportVector, source) => {
+      const pngBytes = extractBytesCopy(pngBytesRaw);
+      self.postMessage(
+        {
+          type: 'plot.new',
+          plotId: String(plotId),
+          title: String(title || ''),
+          width: Math.max(1, Number(width) | 0),
+          height: Math.max(1, Number(height) | 0),
+          pngBytes,
+          canExportVector: Boolean(canExportVector),
+          source: source === 'pillow' ? 'pillow' : 'matplotlib',
+          createdAt: Date.now(),
+        },
+        [pngBytes.buffer],
+      );
     },
   });
 
@@ -1225,6 +1259,63 @@ function handleReplComplete(msg) {
   }
 }
 
+function handlePlotExport(msg) {
+  const id = String(msg.id ?? '');
+  const plotId = String(msg.plotId ?? '');
+  const format = msg.format === 'pdf' ? 'pdf' : 'svg';
+  if (!pyodide) {
+    self.postMessage({
+      type: 'plot.export.result',
+      id,
+      ok: false,
+      plotId,
+      format,
+      error: 'Pyodide is not initialized',
+    });
+    return;
+  }
+  try {
+    pyodide.globals.set('_yotasage_exp_id', plotId);
+    pyodide.globals.set('_yotasage_exp_fmt', format);
+    const raw = pyodide.runPython(
+      'import yotasage_rt; yotasage_rt.export_live_plot(_yotasage_exp_id, _yotasage_exp_fmt)',
+    );
+    const res = pyResultToPlain(raw);
+    if (res && res.ok && res.bytes) {
+      const bytes = extractBytesCopy(res.bytes);
+      self.postMessage(
+        { type: 'plot.export.result', id, ok: true, plotId, format, bytes },
+        [bytes.buffer],
+      );
+    } else {
+      self.postMessage({
+        type: 'plot.export.result',
+        id,
+        ok: false,
+        plotId,
+        format,
+        error: String((res && (res.error || res.reason)) || 'Plot export failed'),
+      });
+    }
+  } catch (err) {
+    self.postMessage({
+      type: 'plot.export.result',
+      id,
+      ok: false,
+      plotId,
+      format,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  } finally {
+    try {
+      pyodide.globals.delete('_yotasage_exp_id');
+      pyodide.globals.delete('_yotasage_exp_fmt');
+    } catch {
+      // ignore
+    }
+  }
+}
+
 function handleStdinReply(msg) {
   if (!jspiStdinResolver || jspiStdinResolver.seq !== msg.seq) return;
   const resolver = jspiStdinResolver;
@@ -1282,6 +1373,9 @@ self.addEventListener('message', (event) => {
       break;
     case 'fs.sync':
       void hydrateWorkspaceFromStorage();
+      break;
+    case 'plot.export':
+      handlePlotExport(msg);
       break;
     default:
       break;

@@ -8,6 +8,7 @@ export const YOTASAGE_RT_MODULES = [
   'shims.py',
   'runner.py',
   'repl.py',
+  'mpl_backend.py',
 ] as const;
 
 export type YotasageRtModuleName = (typeof YOTASAGE_RT_MODULES)[number];
@@ -20,5 +21,6 @@ export function getYotasageRtModuleUrls(): Record<YotasageRtModuleName, string> 
     'shims.py': `${base}shims.py`,
     'runner.py': `${base}runner.py`,
     'repl.py': `${base}repl.py`,
+    'mpl_backend.py': `${base}mpl_backend.py`,
   };
 }
