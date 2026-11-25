@@ -6,21 +6,26 @@
 
 import React from 'react';
 
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/EmSim.module.css';
-import { TOPIC_TITLE, WHYS } from './whys';
+import { topicTitle, whyLabel, whyText } from './emText';
+import { WHYS } from './whys';
 
 /** One line; `bare` leaves out the control's name (for a line right under its only control). */
 export const Why = React.memo(function Why({ k, bare }: { k: string; bare?: boolean }) {
+  const { t, locale } = useI18n();
   const why = WHYS[k];
   if (!why) throw new Error(`Unknown short line "${k}" on the EM simulation page.`);
+  const label = whyLabel(k, locale);
+  const text = whyText(k, locale);
   return (
     <span className={styles.why} data-why={k}>
-      {!bare && <b className={styles.whyLabel}>{why.label}: </b>}
-      {why.text}
+      {!bare && <b className={styles.whyLabel}>{label}: </b>}
+      {text}
       {why.topic && (
         <>
           {' '}
-          <a href={`#${why.topic}`} className={styles.whyLink} data-why-link={k} aria-label={`${why.label}: theory, ${TOPIC_TITLE[why.topic] ?? why.topic}`}>→&nbsp;theory</a>
+          <a href={`#${why.topic}`} className={styles.whyLink} data-why-link={k} aria-label={t('em.why.aria', { label, topic: topicTitle(why.topic, locale) })}>{t('em.why.link')}</a>
         </>
       )}
     </span>

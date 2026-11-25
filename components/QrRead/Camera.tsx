@@ -9,6 +9,8 @@ import { framePixels, snapshot } from '../../lib/qrread/images';
 import { busy, scan } from '../../lib/qrread/scanClient';
 import type { Detection, FormatSet } from '../../lib/qrread/zxing';
 import { hex } from '../../lib/qrread/bytes';
+import { translate, useI18n } from '../../lib/ui/i18n';
+import type { Locale } from '../../lib/ui/translations';
 import styles from '../../styles/QrRead.module.css';
 
 /** Longest side of the frames that are read: enough for a code a third of the view wide, fast on phones. */
@@ -30,15 +32,18 @@ export interface CameraHit {
 
 const keyOf = (d: Detection) => `${d.format}:${hex(d.bytes, '')}`;
 
-function explain(error: unknown): string {
+function explain(error: unknown, locale: Locale): string {
   const name = (error as { name?: string })?.name;
-  if (name === 'NotAllowedError' || name === 'SecurityError') return 'Camera access was not allowed. Allow it for this site in the browser’s settings (often the icon left of the address) and try again.';
-  if (name === 'NotFoundError' || name === 'OverconstrainedError') return 'No camera was found on this device.';
-  if (name === 'NotReadableError' || name === 'AbortError') return 'The camera could not be started: another app or tab may be using it.';
-  return `The camera could not be started${error instanceof Error && error.message ? `: ${error.message}` : '.'}`;
+  if (name === 'NotAllowedError' || name === 'SecurityError') return translate(locale, 'qrread.cam.errDenied');
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') return translate(locale, 'qrread.cam.errNotFound');
+  if (name === 'NotReadableError' || name === 'AbortError') return translate(locale, 'qrread.cam.errInUse');
+  return error instanceof Error && error.message
+    ? translate(locale, 'qrread.cam.errGenericMsg', { msg: error.message })
+    : translate(locale, 'qrread.cam.errGeneric');
 }
 
 export default function Camera({ formats, onHit }: { formats: FormatSet; onHit: (hit: CameraHit) => void }) {
+  const { t, locale } = useI18n();
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const streamRef = React.useRef<MediaStream | null>(null);
@@ -132,8 +137,8 @@ export default function Camera({ formats, onHit }: { formats: FormatSet; onHit: 
     setError('');
     if (!navigator.mediaDevices?.getUserMedia) {
       setError(window.isSecureContext
-        ? 'This browser does not give pages access to a camera.'
-        : 'The camera only works on pages opened over HTTPS, or on this computer as localhost. Open this page with https:// to use it.');
+        ? t('qrread.cam.errNoApi')
+        : t('qrread.cam.errHttps'));
       setStatus('error');
       return;
     }
@@ -160,9 +165,9 @@ export default function Camera({ formats, onHit }: { formats: FormatSet; onHit: 
       loop(run);
     } catch (e) {
       stop('error');
-      setError(explain(e));
+      setError(explain(e, locale));
     }
-  }, [loop, stop]);
+  }, [loop, stop, t, locale]);
 
   const resume = () => {
     setStatus('on');
@@ -196,7 +201,7 @@ export default function Camera({ formats, onHit }: { formats: FormatSet; onHit: 
   const live = status === 'on' || status === 'paused';
   return (
     <section className={styles.card} aria-labelledby="camera-title">
-      <h2 id="camera-title">Camera</h2>
+      <h2 id="camera-title">{t('qrread.cam.title')}</h2>
       <div className={styles.cameraBox} data-status={status} hidden={!live && status !== 'starting'}>
         <video ref={videoRef} className={styles.video} playsInline muted autoPlay />
         {overlay && (
@@ -213,42 +218,42 @@ export default function Camera({ formats, onHit }: { formats: FormatSet; onHit: 
         )}
         {status === 'paused' && (
           <div className={styles.pausedBar}>
-            <span>Code read: see below.</span>
-            <button type="button" className={styles.button} onClick={resume}>Scan another</button>
+            <span>{t('qrread.cam.codeRead')}</span>
+            <button type="button" className={styles.button} onClick={resume}>{t('qrread.cam.scanAnother')}</button>
           </div>
         )}
       </div>
       {error && <p className={styles.bad} role="alert">{error}</p>}
       <div className={styles.controlRow}>
-        {!live && status !== 'starting' && <button type="button" className={styles.primaryButton} onClick={() => start()}>Start camera</button>}
-        {status === 'starting' && <span className={styles.muted}>Starting the camera…</span>}
-        {live && <button type="button" className={styles.button} onClick={() => stop()}>Stop camera</button>}
+        {!live && status !== 'starting' && <button type="button" className={styles.primaryButton} onClick={() => start()}>{t('qrread.cam.start')}</button>}
+        {status === 'starting' && <span className={styles.muted}>{t('qrread.cam.starting')}</span>}
+        {live && <button type="button" className={styles.button} onClick={() => stop()}>{t('qrread.cam.stop')}</button>}
         {live && devices.length > 1 && (
           <label className={styles.inline}>
-            <span>Camera</span>
+            <span>{t('qrread.cam.title')}</span>
             <select className={styles.select} value={deviceId} onChange={(e) => start(e.target.value)}>
-              {devices.map((d, i) => <option key={d.deviceId || i} value={d.deviceId}>{d.label || `Camera ${i + 1}`}</option>)}
+              {devices.map((d, i) => <option key={d.deviceId || i} value={d.deviceId}>{d.label || t('qrread.cam.cameraNum', { n: i + 1 })}</option>)}
             </select>
           </label>
         )}
         {live && caps.torch && (
-          <button type="button" className={styles.button} aria-pressed={torch} onClick={() => applyTorch(!torch)}>{torch ? 'Light off' : 'Light on'}</button>
+          <button type="button" className={styles.button} aria-pressed={torch} onClick={() => applyTorch(!torch)}>{torch ? t('qrread.cam.lightOff') : t('qrread.cam.lightOn')}</button>
         )}
         <label className={styles.checkbox}>
           <input type="checkbox" checked={keep} onChange={(e) => setKeep(e.target.checked)} />
-          <span>Keep scanning (add each new code)</span>
+          <span>{t('qrread.cam.keepScanning')}</span>
         </label>
       </div>
       {live && caps.zoom && (
         <label className={styles.zoom}>
-          <span>Zoom {zoom.toFixed(1)}×</span>
+          <span>{t('qrread.cam.zoom', { z: zoom.toFixed(1) })}</span>
           <input type="range" min={caps.zoom.min} max={caps.zoom.max} step={caps.zoom.step} value={zoom} onChange={(e) => applyZoom(Number(e.target.value))} />
         </label>
       )}
       <p className={styles.muted}>
         {live
-          ? `${count ? `${count} code${count === 1 ? '' : 's'} read. ` : 'Point the camera at a code. '}${fps ? `Reading ${fps} frames a second.` : ''}`
-          : 'Point your camera at one or more codes. The video stays on this device; frames are only read here.'}
+          ? `${count ? (count === 1 ? t('qrread.cam.countOne') : t('qrread.cam.countMany', { n: count })) : t('qrread.cam.pointPrompt')}${fps ? t('qrread.cam.fps', { fps }) : ''}`
+          : t('qrread.cam.idleHint')}
       </p>
     </section>
   );

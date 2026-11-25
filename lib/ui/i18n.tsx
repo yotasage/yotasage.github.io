@@ -19,17 +19,29 @@ function interpolate(template: string, vars?: TranslationVars): string {
   );
 }
 
+export type TFunc = (key: TranslationKey | (string & {}), vars?: TranslationVars) => string;
+
 export interface I18nContextValue {
   locale: Locale;
   setLocale: (next: Locale) => void;
   toggleLocale: () => void;
-  t: (key: TranslationKey | (string & {}), vars?: TranslationVars) => string;
+  t: TFunc;
   locales: readonly Locale[];
 }
 
+export function translate(
+  locale: Locale,
+  key: TranslationKey | (string & {}),
+  vars?: TranslationVars,
+): string {
+  const activeDict = TRANSLATIONS[locale] as Record<string, string>;
+  const fallbackDict = TRANSLATIONS.en as Record<string, string>;
+  const raw = activeDict[key] ?? fallbackDict[key] ?? key;
+  return interpolate(raw, vars);
+}
+
 function defaultT(key: TranslationKey | (string & {}), vars?: TranslationVars): string {
-  const dict = TRANSLATIONS.en as Record<string, string>;
-  return interpolate(dict[key] ?? key, vars);
+  return translate('en', key, vars);
 }
 
 const I18nContext = createContext<I18nContextValue>({

@@ -59,5 +59,5 @@ export const nb: Record<keyof typeof en, string> = {
   'pdf.roadmapLink': 'veikartet',
   'pdf.teaching.privacyTitle': 'Slik fungerer lokal PDF-behandling i nettleseren',
   'pdf.teaching.privacyBody':
-    'Hvert PDF-verktøy kjører direkte i nettleseren med JavaScript og selvhostet WebAssembly (pdf-lib, pdf.js, QPDF, Ghostscript og Tesseract OCR) i Web Workers. Filene blir i enhetens minne, kan kjedes videre mellom verktøy via Continue with…, og berører aldri en server.',
+    'Hvert PDF-verktøy kjører direkte i nettleseren med JavaScript og selvhostet WebAssembly (pdf-lib, pdf.js, QPDF, Ghostscript og Tesseract OCR) i Web Workers. Filene blir i enhetens minne, kan kjedes videre mellom verktøy via Fortsett med…, og berører aldri en server.',
 };

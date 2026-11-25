@@ -32,12 +32,14 @@ import {
   advance, axisTicks, axesOf, COMP_TEXT, focusBox, framePixels, outlineOf, PLAY_CLIP, playerViews, playScale, psText, rasterOf, rasterSize, siText,
   SPEEDS, viewBox, VIEW_TEXT, FPS_1X,
 } from '../../lib/emsim/wavesPlayer';
-import { driveText, DRIVE_MODES, MODE_TEXT, trackOf } from '../../lib/emsim/wavesPlayer';
+import { DRIVE_MODES, MODE_TEXT, trackOf } from '../../lib/emsim/wavesPlayer';
 import type { DriveMode, Outline, PlayScale, Raster, Ring } from '../../lib/emsim/wavesPlayer';
+import { useI18n } from '../../lib/ui/i18n';
 import base from '../../styles/EmSim.module.css';
 import css from '../../styles/EmSimTrace.module.css';
 import vcss from '../../styles/EmSimVia.module.css';
 import wcss from '../../styles/EmSimWaves.module.css';
+import { emT } from './emText';
 import { Why } from './Why';
 import type View3DComponent from './WavesView3D';
 
@@ -122,7 +124,7 @@ export class Engine {
     this.stats.draws++;
     const t = psText(f.t);
     if (this.slider) { this.slider.value = String(i); this.slider.setAttribute('aria-valuetext', t); }
-    if (this.time) this.time.textContent = `${t} · frame ${i + 1} of ${this.n}`;
+    if (this.time) this.time.textContent = emT('em.wav.frameOf', { t, i: i + 1, n: this.n });
     this.root?.setAttribute('data-player-frame', String(i));
   }
 
@@ -183,6 +185,7 @@ function push(a: number[], x: number): void {
 const reduced = () => typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export default function WavesPlayer({ store, snap, views, geom, unit }: Props) {
+  const { t: tr } = useI18n();
   const pviews = useMemo(() => playerViews(snap.slices, views), [snap, views]);
   const [vi, setVi] = useState(0);
   const [ci, setCi] = useState(0);
@@ -276,6 +279,10 @@ export default function WavesPlayer({ store, snap, views, geom, unit }: Props) {
   const [open3d, setOpen3d] = useState(false);
   const t3d = useRef(0);
 
+  const viewLabel = (k: keyof typeof VIEW_TEXT) => tr(`em.wav.view.${k}`) || VIEW_TEXT[k];
+  const modeLabelText = (m: DriveMode) => tr(`em.wav.mode.${m}`) || MODE_TEXT[m];
+  const driveLabel = tk.mode === 'diff' ? tr('em.wav.drive.diff') : tk.mode === 'common' ? tr('em.wav.drive.cm') : pair ? tr('em.wav.drive.pairSingle') : tr('em.wav.drive.single');
+
   return (
     <div ref={root} className={wcss.player} data-waves-player data-player-view={view.view} data-player-comp={compSet} data-player-slice={src.join(',')} data-player-mode={pair ? tk.mode : ''}
       data-player-frames={n} data-player-playing={playing} data-player-speed={speed} data-player-loop={loop}
@@ -283,18 +290,18 @@ export default function WavesPlayer({ store, snap, views, geom, unit }: Props) {
       <Why k="waves-player" bare />
       <div className={wcss.playerTools}>
         {pviews.length > 1 && (
-          <div className={base.seg} role="group" aria-label="Slice" data-player-views={pviews.length}>
-            {pviews.map((v, i) => <button key={i} type="button" aria-pressed={i === vi} onClick={() => { setVi(i); setCi(0); }} data-player-view-set={v.view}>{VIEW_TEXT[v.view]}</button>)}
+          <div className={base.seg} role="group" aria-label={tr('em.wav.sliceAria')} data-player-views={pviews.length}>
+            {pviews.map((v, i) => <button key={i} type="button" aria-pressed={i === vi} onClick={() => { setVi(i); setCi(0); }} data-player-view-set={v.view}>{viewLabel(v.view)}</button>)}
           </div>
         )}
         {view.comps.length > 1 && (
-          <div className={base.seg} role="group" aria-label="Field" data-player-comps={view.comps.length}>
+          <div className={base.seg} role="group" aria-label={tr('em.wav.fieldAria')} data-player-comps={view.comps.length}>
             {view.comps.map((c, i) => <button key={c} type="button" aria-pressed={i === k} onClick={() => setCi(i)} data-player-comp-set={c}>{COMP_TEXT[c]}</button>)}
           </div>
         )}
         {pair && (
-          <div className={base.seg} role="group" aria-label="Drive" data-player-modes>
-            {DRIVE_MODES.map((m) => <button key={m} type="button" aria-pressed={m === tk.mode} onClick={() => setMode(m)} data-player-mode-set={m}>{MODE_TEXT[m]}</button>)}
+          <div className={base.seg} role="group" aria-label={tr('em.wav.driveAria')} data-player-modes>
+            {DRIVE_MODES.map((m) => <button key={m} type="button" aria-pressed={m === tk.mode} onClick={() => setMode(m)} data-player-mode-set={m}>{modeLabelText(m)}</button>)}
           </div>
         )}
       </div>
@@ -307,7 +314,7 @@ export default function WavesPlayer({ store, snap, views, geom, unit }: Props) {
       <div ref={fig} className={wcss.figure}>
         <div className={wcss.figBox} style={{ width: lay.W, height: lay.H }}>
           <canvas ref={canvas} className={wcss.canvas} style={{ left: M.l, top: M.t, width: lay.w, height: lay.h }}
-            role="img" aria-label={`${comp} ${VIEW_TEXT[view.view].toLowerCase()}, ${UNIT_TEXT[unit]} axes`} data-player-canvas />
+            role="img" aria-label={tr('em.wav.canvasAria', { comp, view: viewLabel(view.view).toLowerCase(), unit: UNIT_TEXT[unit] })} data-player-canvas />
           <svg className={wcss.overlay} width={lay.W} height={lay.H} viewBox={`0 0 ${lay.W} ${lay.H}`} aria-hidden="true" data-player-outline={svg.items}>
             <g className={wcss.copper}>{svg.copper}</g>
             <g>{svg.beside}</g>
@@ -322,17 +329,17 @@ export default function WavesPlayer({ store, snap, views, geom, unit }: Props) {
 
       <div className={wcss.transport}>
         <button type="button" className={`${base.button} ${wcss.play}`} onClick={() => setPlaying((p) => !p)} data-player-play disabled={n < 2}>
-          {playing ? 'Pause' : 'Play'}
+          {playing ? tr('em.wav.pause') : tr('em.wav.play')}
         </button>
-        <input ref={slider} type="range" className={wcss.scrub} min={0} max={Math.max(0, n - 1)} step={1} defaultValue={0} aria-label="Time" data-player-time
+        <input ref={slider} type="range" className={wcss.scrub} min={0} max={Math.max(0, n - 1)} step={1} defaultValue={0} aria-label={tr('em.wav.timeAria')} data-player-time
           onChange={(e) => eng.seek(Number(e.currentTarget.value))} />
-        <span ref={time} className={wcss.time} data-player-time-text>{n ? `${psText(t0)} · frame 1 of ${n}` : ''}</span>
+        <span ref={time} className={wcss.time} data-player-time-text>{n ? tr('em.wav.frameOf', { t: psText(t0), i: 1, n }) : ''}</span>
       </div>
       <div className={wcss.transport}>
-        <div className={base.seg} role="group" aria-label="Speed" data-player-speeds>
+        <div className={base.seg} role="group" aria-label={tr('em.wav.speedAria')} data-player-speeds>
           {SPEEDS.map((s) => <button key={s} type="button" aria-pressed={s === speed} onClick={() => setSpeed(s)} data-player-speed-set={s}>{speedText(s)}</button>)}
         </div>
-        <button type="button" className={base.button} aria-pressed={loop} onClick={() => setLoop((l) => !l)} data-player-loop-set>Loop</button>
+        <button type="button" className={base.button} aria-pressed={loop} onClick={() => setLoop((l) => !l)} data-player-loop-set>{tr('em.wav.loop')}</button>
       </div>
       <div className={vcss.whyRow}>
         <Why k="waves-play" />
@@ -343,8 +350,8 @@ export default function WavesPlayer({ store, snap, views, geom, unit }: Props) {
 
       <div className={css.fieldScale} data-player-scale data-lo={ps.scale.lo} data-hi={ps.scale.hi}>
         <div className={css.fieldScaleHead}>
-          <span>{comp} (V/m{ps.signed ? ', signed, zero in the middle' : ''})</span>
-          <span>{siText(ps.scale.lo, 'V/m')} to {siText(ps.scale.hi, 'V/m')}</span>
+          <span>{comp} (V/m{ps.signed ? tr('em.wav.signedMid') : ''})</span>
+          <span>{tr('em.wav.rangeTo', { lo: siText(ps.scale.lo, 'V/m'), hi: siText(ps.scale.hi, 'V/m') })}</span>
         </div>
         <div className={css.fieldBar} style={{ backgroundImage: bar.url ? `url(${bar.url})` : undefined }} />
         <div className={css.fieldTicks} aria-hidden="true">
@@ -353,8 +360,8 @@ export default function WavesPlayer({ store, snap, views, geom, unit }: Props) {
           ))}
         </div>
         <div className={css.fieldNote}>
-          One scale for all {n} frames, for <span data-player-drive-note>{driveText(tk.mode, pair)}</span>; its top holds {pct} % of the values, the rest
-          (up to {siText(ps.max, 'V/m')}, at copper edges) is drawn in the top colour. At 1× the run plays in {(n / FPS_1X).toFixed(0)} s.
+          {tr('em.wav.scaleNote1', { n })}<span data-player-drive-note>{driveLabel}</span>
+          {tr('em.wav.scaleNote2', { pct, max: siText(ps.max, 'V/m'), sec: (n / FPS_1X).toFixed(0) })}
         </div>
       </div>
       <Why k="waves-scale" bare />
@@ -362,11 +369,11 @@ export default function WavesPlayer({ store, snap, views, geom, unit }: Props) {
       <div className={vcss.v3dShell} data-waves3d-shell>
         <button type="button" className={base.button} aria-expanded={open3d} aria-pressed={open3d} data-waves3d-open
           onClick={() => { t3d.current = performance.now(); setOpen3d((o) => !o); }}>
-          {open3d ? 'Close the 3D view' : '3D view'}
+          {open3d ? tr('em.wav.close3d') : tr('em.wav.open3d')}
         </button>
         <Why k="waves-3d" />
         {open3d && (
-          <Suspense fallback={<p className={vcss.dim} data-waves3d-loading>Loading the 3D view…</p>}>
+          <Suspense fallback={<p className={vcss.dim} data-waves3d-loading>{tr('em.wav.loading3d')}</p>}>
             <View3D eng={eng} store={store} snap={snap} views={pviews} comp={compSet} mode={tk.mode} geom={geom} n={n}
               playing={playing} onPlay={() => setPlaying((p) => !p)} t0={t3d.current} />
           </Suspense>

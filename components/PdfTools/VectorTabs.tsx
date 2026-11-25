@@ -20,6 +20,8 @@ import {
 import { formatPageRanges } from '../../lib/pdf/pages';
 import { openPdf, renderPage } from '../../lib/pdf/pdfjs';
 import { pdfBytesToSvg, pdfPageRegionToSvg } from '../../lib/pdf/pdfToSvg';
+import { translate, useI18n } from '../../lib/ui/i18n';
+import type { Locale } from '../../lib/ui/translations';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 import { Field, NumberInput, Select } from '../UI/Fields';
@@ -68,6 +70,7 @@ export async function scanSourceFormVectors(
   createUrl: (bytes: Uint8Array, mime: string) => string,
   shouldAbort: () => boolean,
   onProgress?: (fraction: number, label: string) => void,
+  locale: Locale = 'en',
 ): Promise<FormVectorItem[]> {
   const forms = await extractFormXObjects(
     source.bytes,
@@ -80,7 +83,10 @@ export async function scanSourceFormVectors(
   for (let i = 0; i < forms.length; i++) {
     if (shouldAbort()) return items;
     const form = forms[i];
-    onProgress?.(0.5 + (i / forms.length) * 0.5, `Converting vector ${i + 1} of ${forms.length} to SVG`);
+    onProgress?.(
+      0.5 + (i / forms.length) * 0.5,
+      translate(locale, 'pdf.vec.convertingVector', { i: i + 1, total: forms.length }),
+    );
     await nextFrame();
 
     const svgRes = await pdfBytesToSvg(form.pdfBytes);
@@ -104,7 +110,12 @@ export async function scanSourceFormVectors(
       warnings: svgRes.warnings,
     });
   }
-  onProgress?.(1, `Found ${items.length} vector graphic${items.length === 1 ? '' : 's'}`);
+  onProgress?.(
+    1,
+    items.length === 1
+      ? translate(locale, 'pdf.vec.foundOne')
+      : translate(locale, 'pdf.vec.foundMany', { count: items.length }),
+  );
   return items;
 }
 
@@ -218,6 +229,7 @@ export async function exportAllBoxes(
   pngDpi: number,
   activeDoc: { sourceId: string; doc: PDFDocumentProxy } | null,
   onProgress?: (fraction: number, label: string) => void,
+  locale: Locale = 'en',
 ): Promise<void> {
   if (!boxes.length) return;
   const srcById = new Map(sources.map((s) => [s.id, s]));
@@ -226,9 +238,9 @@ export async function exportAllBoxes(
   if (boxes.length === 1 && format !== 'svg+pdf') {
     const src = srcById.get(boxes[0].sourceId);
     if (!src) return;
-    onProgress?.(0.3, `Exporting ${boxes[0].label}…`);
+    onProgress?.(0.3, translate(locale, 'pdf.vec.exportingBox', { label: boxes[0].label }));
     await exportSingleBox(boxes[0], src, format, pngDpi, activeDoc);
-    onProgress?.(1, 'Done');
+    onProgress?.(1, translate(locale, 'pdf.vec.done'));
     return;
   }
 
@@ -295,7 +307,10 @@ export async function exportAllBoxes(
               const ops = await page.getOperatorList();
               for (let i = 0; i < pageBoxes.length; i++) {
                 const b = pageBoxes[i];
-                onProgress?.(doneSteps / Math.max(1, totalSteps), `Converting ${b.label} to SVG…`);
+                onProgress?.(
+                  doneSteps / Math.max(1, totalSteps),
+                  translate(locale, 'pdf.vec.convertingSvg', { label: b.label }),
+                );
                 await nextFrame();
                 const res = await pdfPageRegionToSvg(page, ops, b.rect);
                 const stem = safeFileName(b.label, `figure-p${pageIdx + 1}`);
@@ -314,7 +329,10 @@ export async function exportAllBoxes(
           if (wantPng) {
             for (let i = 0; i < pageBoxes.length; i++) {
               const b = pageBoxes[i];
-              onProgress?.(doneSteps / Math.max(1, totalSteps), `Rendering ${b.label} to PNG…`);
+              onProgress?.(
+                doneSteps / Math.max(1, totalSteps),
+                translate(locale, 'pdf.vec.renderingPng', { label: b.label }),
+              );
               await nextFrame();
               const pngBytes = await cropPageRegionToPng(doc, pageIdx, b.rect, pngDpi);
               const stem = safeFileName(b.label, `figure-p${pageIdx + 1}`);
@@ -334,7 +352,12 @@ export async function exportAllBoxes(
   const baseZip = firstSrc ? `${safeFileName(baseName(firstSrc.name), 'document')}-figures` : 'extracted-figures';
   const zip = zipFiles(outFiles);
   download(zip, `${baseZip}.zip`, 'application/zip');
-  onProgress?.(1, `Exported ${outFiles.length} file${outFiles.length === 1 ? '' : 's'}`);
+  onProgress?.(
+    1,
+    outFiles.length === 1
+      ? translate(locale, 'pdf.vec.exportedOne')
+      : translate(locale, 'pdf.vec.exportedMany', { count: outFiles.length }),
+  );
 }
 
 /* ---------- Tab 2: Embedded Vectors (Form XObjects) ---------- */
@@ -350,16 +373,16 @@ export function EmbeddedVectorsPanel({
   scanning: boolean;
   onSwitchToCrop: () => void;
 }) {
+  const { t } = useI18n();
   if (!scanning && vectors.length === 0) {
     return (
       <div className={styles.options}>
         <p className={styles.note}>
-          No embedded vector Form XObjects were found in the loaded PDF{sourcesCount === 1 ? '' : 's'}.
-          Many PDFs draw charts, schematics, and diagrams directly on the page rather than as separate Form XObjects.
+          {sourcesCount === 1 ? t('pdf.vec.noneOne') : t('pdf.vec.noneMany')}
         </p>
         <div>
           <button type="button" className={styles.buttonSmall} onClick={onSwitchToCrop}>
-            Open Detect &amp; crop figures &rarr;
+            {t('pdf.vec.openDetectCrop')}
           </button>
         </div>
       </div>
@@ -375,10 +398,10 @@ export function EmbeddedVectorsPanel({
             <div className={[styles.thumb, styles.thumbPaper].join(' ')}>
               <img src={item.svgUrl} alt={item.stem} loading="lazy" />
             </div>
-            <span className={styles.badgeVector}>Vector</span>
+            <span className={styles.badgeVector}>{t('pdf.vec.badgeVector')}</span>
             {item.warnings.length > 0 && (
               <span className={styles.badgeWarn} title={item.warnings.join(' ')}>
-                ! Note
+                {t('pdf.vec.badgeNote')}
               </span>
             )}
             <div className={styles.fileName} title={item.stem}>{item.stem}</div>
@@ -386,7 +409,9 @@ export function EmbeddedVectorsPanel({
               {Math.round(item.widthPt)} &times; {Math.round(item.heightPt)} pt
             </div>
             <div className={styles.fileMeta}>
-              {item.pages.length === 1 ? `Page ${pageList}` : `Pages ${pageList}`}
+              {item.pages.length === 1
+                ? t('pdf.vec.pageOne', { list: pageList })
+                : t('pdf.vec.pagesMany', { list: pageList })}
               {sourcesCount > 1 ? ` · ${item.sourceName}` : ''}
             </div>
             <div className={styles.cardFooter}>
@@ -427,6 +452,7 @@ export function EmbeddedVectorsSidebar({
   busy: boolean;
   progress: { fraction: number; label: string };
 }) {
+  const { t } = useI18n();
   const totalSvgBytes = React.useMemo(
     () => vectors.reduce((sum, v) => sum + v.svgBytes.length, 0),
     [vectors],
@@ -457,7 +483,7 @@ export function EmbeddedVectorsSidebar({
     <>
       {vectors.length > 1 && (
         <div className={styles.options}>
-          <Field label="ZIP file name">
+          <Field label={t('pdf.vec.zipName')}>
             <input
               className={fieldStyles.input}
               value={zipName}
@@ -469,22 +495,20 @@ export function EmbeddedVectorsSidebar({
 
       <div className={styles.summaryBox}>
         <div className={styles.summaryRow}>
-          <span>Embedded vectors</span>
+          <span>{t('pdf.vec.embeddedVectors')}</span>
           <span>{vectors.length}</span>
         </div>
         <div className={styles.summaryRow}>
-          <span>Total SVG size</span>
+          <span>{t('pdf.vec.totalSvgSize')}</span>
           <span>{formatBytes(totalSvgBytes)}</span>
         </div>
         <div className={styles.summaryRow}>
-          <span>Total PDF size</span>
+          <span>{t('pdf.vec.totalPdfSize')}</span>
           <span>{formatBytes(totalPdfBytes)}</span>
         </div>
       </div>
 
-      <p className={styles.note}>
-        Vector PDF downloads are 100% lossless copies of each Form XObject. SVG previews convert paths, clips, images, and text labels for direct editing.
-      </p>
+      <p className={styles.note}>{t('pdf.vec.losslessNote')}</p>
 
       <button
         type="button"
@@ -492,7 +516,9 @@ export function EmbeddedVectorsSidebar({
         disabled={busy || vectors.length === 0}
         onClick={() => downloadAllVectors('svg')}
       >
-        {vectors.length === 1 ? 'Download SVG' : `Download all SVG (${vectors.length}, ZIP)`}
+        {vectors.length === 1
+          ? t('pdf.vec.downloadSvg')
+          : t('pdf.vec.downloadAllSvg', { count: vectors.length })}
       </button>
 
       <button
@@ -502,8 +528,8 @@ export function EmbeddedVectorsSidebar({
         onClick={() => downloadAllVectors('pdf')}
       >
         {vectors.length === 1
-          ? 'Download Vector PDF'
-          : `Download all Vector PDF (${vectors.length}, ZIP)`}
+          ? t('pdf.vec.downloadVectorPdf')
+          : t('pdf.vec.downloadAllVectorPdf', { count: vectors.length })}
       </button>
 
       {busy && <Progress fraction={progress.fraction} label={progress.label} />}
@@ -552,12 +578,9 @@ export function DetectCropPanel({
   onDetectAllPages: () => void;
   busy: boolean;
 }) {
+  const { t } = useI18n();
   if (!unlockedSources.length) {
-    return (
-      <p className={styles.note}>
-        Unlock or add a valid PDF to inspect pages and detect or crop figures.
-      </p>
-    );
+    return <p className={styles.note}>{t('pdf.vec.unlockNote')}</p>;
   }
 
   return (
@@ -566,7 +589,7 @@ export function DetectCropPanel({
         {unlockedSources.length > 1 && (
           <select
             className={styles.canvasSourceSelect}
-            aria-label="Active PDF document"
+            aria-label={t('pdf.vec.activeDocAria')}
             value={activeSourceId}
             onChange={(e) => onSelectSource(e.target.value)}
           >
@@ -583,10 +606,10 @@ export function DetectCropPanel({
             disabled={!doc || pageIndex <= 0}
             onClick={() => onPageChange(Math.max(0, pageIndex - 1))}
           >
-            &larr; Prev
+            {t('pdf.vec.prev')}
           </button>
           <span className={styles.canvasPageInfo}>
-            Page {pageCount > 0 ? pageIndex + 1 : 0} / {pageCount}
+            {t('pdf.vec.pageOf', { current: pageCount > 0 ? pageIndex + 1 : 0, total: pageCount })}
           </span>
           <button
             type="button"
@@ -594,7 +617,7 @@ export function DetectCropPanel({
             disabled={!doc || pageIndex >= pageCount - 1}
             onClick={() => onPageChange(Math.min(pageCount - 1, pageIndex + 1))}
           >
-            Next &rarr;
+            {t('pdf.vec.next')}
           </button>
         </div>
 
@@ -606,7 +629,7 @@ export function DetectCropPanel({
           disabled={!doc || busy}
           onClick={onDetectPage}
         >
-          Auto-detect page
+          {t('pdf.vec.autoDetectPage')}
         </button>
         <button
           type="button"
@@ -614,13 +637,11 @@ export function DetectCropPanel({
           disabled={!doc || busy}
           onClick={onDetectAllPages}
         >
-          Auto-detect all pages
+          {t('pdf.vec.autoDetectAll')}
         </button>
       </div>
 
-      <p className={styles.canvasTip}>
-        Drag on empty canvas to draw a figure box, click a box to move or resize handles, or use arrow keys (Shift = 5 pt) and Delete.
-      </p>
+      <p className={styles.canvasTip}>{t('pdf.vec.canvasTip')}</p>
 
       <FigureCanvas
         doc={doc}
@@ -694,11 +715,12 @@ export function DetectCropSidebar({
   onDownloadAll: () => void;
   pageBoxesCount: number;
 }) {
+  const { t } = useI18n();
   const formatLabel =
     exportFormat === 'svg'
       ? 'SVG'
       : exportFormat === 'pdf'
-        ? 'Vector PDF'
+        ? t('pdf.vec.vectorPdf')
         : exportFormat === 'png'
           ? 'PNG'
           : 'SVG + PDF';
@@ -706,15 +728,15 @@ export function DetectCropSidebar({
   return (
     <>
       <div className={styles.options}>
-        <h3>Detection settings</h3>
+        <h3>{t('pdf.vec.detectionSettings')}</h3>
         <div className={styles.optionRowThree}>
-          <Field label="Merge gap (pt)">
+          <Field label={t('pdf.vec.mergeGap')}>
             <NumberInput value={mergeGapPt} onChange={onMergeGapChange} min={0} max={100} />
           </Field>
-          <Field label="Min size (pt)">
+          <Field label={t('pdf.vec.minSize')}>
             <NumberInput value={minSizePt} onChange={onMinSizeChange} min={8} max={400} />
           </Field>
-          <Field label="Padding (pt)">
+          <Field label={t('pdf.vec.padding')}>
             <NumberInput value={paddingPt} onChange={onPaddingChange} min={0} max={50} />
           </Field>
         </div>
@@ -723,13 +745,13 @@ export function DetectCropSidebar({
       {selectedBox && (
         <div className={styles.inspectorBox}>
           <div className={styles.inspectorHeader}>
-            <span>Selected figure</span>
+            <span>{t('pdf.vec.selectedFigure')}</span>
             <span className={styles.inspectorMeta}>
-              p.{selectedBox.pageIndex + 1} · {Math.round(selectedBox.rect.width)} &times; {Math.round(selectedBox.rect.height)} pt
+              {t('pdf.vec.pageShort', { n: selectedBox.pageIndex + 1 })} · {Math.round(selectedBox.rect.width)} &times; {Math.round(selectedBox.rect.height)} pt
             </span>
           </div>
 
-          <Field label="Label (filename)">
+          <Field label={t('pdf.vec.labelFilename')}>
             <input
               className={fieldStyles.input}
               value={selectedBox.label}
@@ -744,21 +766,21 @@ export function DetectCropSidebar({
               disabled={busy}
               onClick={() => onTightenBox(selectedBox.id)}
             >
-              Snap / Tighten
+              {t('pdf.vec.snapTighten')}
             </button>
             <button
               type="button"
               className={styles.buttonSmall}
               onClick={() => onPadBox(selectedBox.id, 4)}
             >
-              Pad +4 pt
+              {t('pdf.vec.padPlus')}
             </button>
             <button
               type="button"
               className={styles.buttonSmall}
               onClick={() => onPadBox(selectedBox.id, -4)}
             >
-              Shrink &minus;4 pt
+              {t('pdf.vec.shrinkMinus')}
             </button>
           </div>
 
@@ -768,14 +790,14 @@ export function DetectCropSidebar({
               className={styles.buttonSmall}
               onClick={() => onDuplicateBox(selectedBox.id)}
             >
-              Duplicate
+              {t('pdf.vec.duplicate')}
             </button>
             <button
               type="button"
               className={styles.buttonSmall}
               onClick={() => onDeleteBox(selectedBox.id)}
             >
-              Delete
+              {t('pdf.vec.delete')}
             </button>
           </div>
 
@@ -786,7 +808,7 @@ export function DetectCropSidebar({
               disabled={busy}
               onClick={() => onDownloadBox(selectedBox, 'svg')}
             >
-              Download SVG
+              {t('pdf.vec.downloadSvg')}
             </button>
             <button
               type="button"
@@ -794,7 +816,7 @@ export function DetectCropSidebar({
               disabled={busy}
               onClick={() => onDownloadBox(selectedBox, 'pdf')}
             >
-              Download PDF
+              {t('pdf.vec.downloadPdf')}
             </button>
             <button
               type="button"
@@ -802,7 +824,7 @@ export function DetectCropSidebar({
               disabled={busy}
               onClick={() => onDownloadBox(selectedBox, 'png')}
             >
-              Download PNG
+              {t('pdf.vec.downloadPng')}
             </button>
           </div>
         </div>
@@ -811,10 +833,12 @@ export function DetectCropSidebar({
       {notice && <p className={fieldStyles.warning}>{notice}</p>}
 
       <div className={styles.options}>
-        <h3>Figures ({boxes.length})</h3>
+        <h3>{t('pdf.vec.figuresHeading', { count: boxes.length })}</h3>
         {boxes.length === 0 ? (
           <p className={styles.note}>
-            No figure boxes yet. Click <strong>Auto-detect page</strong> or drag on the page canvas.
+            {t('pdf.vec.noFiguresPrefix')}
+            <strong>{t('pdf.vec.autoDetectPage')}</strong>
+            {t('pdf.vec.noFiguresSuffix')}
           </p>
         ) : (
           <div className={styles.boxList}>
@@ -835,7 +859,7 @@ export function DetectCropSidebar({
                   >
                     <span className={styles.boxListTitle} title={box.label}>{box.label}</span>
                     <span className={styles.boxListMeta}>
-                      p.{box.pageIndex + 1} · {Math.round(box.rect.width)} &times; {Math.round(box.rect.height)} pt
+                      {t('pdf.vec.pageShort', { n: box.pageIndex + 1 })} · {Math.round(box.rect.width)} &times; {Math.round(box.rect.height)} pt
                     </span>
                   </button>
                   <div className={styles.boxListActions}>
@@ -843,7 +867,7 @@ export function DetectCropSidebar({
                       type="button"
                       className={styles.miniBtn}
                       disabled={busy}
-                      title="Download SVG"
+                      title={t('pdf.vec.downloadSvg')}
                       onClick={() => onDownloadBox(box, 'svg')}
                     >
                       SVG
@@ -852,7 +876,7 @@ export function DetectCropSidebar({
                       type="button"
                       className={styles.miniBtn}
                       disabled={busy}
-                      title="Download PDF"
+                      title={t('pdf.vec.downloadPdf')}
                       onClick={() => onDownloadBox(box, 'pdf')}
                     >
                       PDF
@@ -860,8 +884,8 @@ export function DetectCropSidebar({
                     <button
                       type="button"
                       className={[styles.miniBtn, styles.miniBtnDanger].join(' ')}
-                      title={`Delete ${box.label}`}
-                      aria-label={`Delete ${box.label}`}
+                      title={t('pdf.canvas.deleteNamed', { label: box.label })}
+                      aria-label={t('pdf.canvas.deleteNamed', { label: box.label })}
                       onClick={() => onDeleteBox(box.id)}
                     >
                       &times;
@@ -881,14 +905,14 @@ export function DetectCropSidebar({
               disabled={pageBoxesCount === 0}
               onClick={onClearPage}
             >
-              Clear page
+              {t('pdf.vec.clearPage')}
             </button>
             <button
               type="button"
               className={styles.buttonSmall}
               onClick={onClearAll}
             >
-              Clear all
+              {t('pdf.vec.clearAll')}
             </button>
           </div>
         )}
@@ -896,19 +920,19 @@ export function DetectCropSidebar({
 
       <div className={styles.options}>
         <div className={styles.optionRow}>
-          <Field label="Export format">
+          <Field label={t('pdf.vec.exportFormat')}>
             <Select
               value={exportFormat}
               onChange={onExportFormatChange}
               options={[
                 ['svg', 'SVG'],
-                ['pdf', 'Vector PDF'],
+                ['pdf', t('pdf.vec.vectorPdf')],
                 ['png', 'PNG'],
                 ['svg+pdf', 'SVG + PDF'],
               ]}
             />
           </Field>
-          <Field label="PNG DPI">
+          <Field label={t('pdf.vec.pngDpi')}>
             <NumberInput value={pngDpi} onChange={onPngDpiChange} min={72} max={600} />
           </Field>
         </div>
@@ -921,8 +945,10 @@ export function DetectCropSidebar({
         onClick={onDownloadAll}
       >
         {boxes.length === 1 && exportFormat !== 'svg+pdf'
-          ? `Download figure (${formatLabel})`
-          : `Download all (${boxes.length} ${boxes.length === 1 ? 'box' : 'boxes'}, ZIP)`}
+          ? t('pdf.vec.downloadFigure', { format: formatLabel })
+          : boxes.length === 1
+            ? t('pdf.vec.downloadAllOne')
+            : t('pdf.vec.downloadAllMany', { count: boxes.length })}
       </button>
 
       {busy && <Progress fraction={progress.fraction} label={progress.label} />}

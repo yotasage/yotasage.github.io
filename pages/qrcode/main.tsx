@@ -47,13 +47,6 @@ import styles from '../../styles/QrGen.module.css';
 type WorkspaceId = 'workbench' | 'guide';
 type ControlTabId = 'content' | 'symbol' | 'encoding' | 'style' | 'decrypt';
 
-const SYMBOLOGY_OPTIONS: [string, string][] = [
-  ['qr2', 'QR Code Model 2'],
-  ['qr1', 'QR Code Model 1'],
-  ['micro', 'Micro QR Code'],
-  ['rmqr', 'rMQR Code (rectangular)'],
-];
-
 // Proprietary Denso Wave formats, listed so it is clear why they cannot be produced here.
 const UNAVAILABLE_SYMBOLOGIES = ['SQRC', 'Frame QR', 'iQR Code'];
 
@@ -85,9 +78,13 @@ function effectiveEcLevel(requested: EcLevel, available: EcLevel[]): EcLevel {
   return lower.length ? lower[lower.length - 1] : available[0];
 }
 
-function splitData(data: string | Uint8Array, parts: number): (string | Uint8Array)[] {
+function splitData(
+  data: string | Uint8Array,
+  parts: number,
+  errMsg: (count: number, parts: number) => string,
+): (string | Uint8Array)[] {
   const units = typeof data === 'string' ? [...data] : Array.from(data);
-  if (units.length < parts) throw new QrEncodeError(`There are only ${units.length} characters, which cannot be split into ${parts} symbols.`);
+  if (units.length < parts) throw new QrEncodeError(errMsg(units.length, parts));
   const size = Math.ceil(units.length / parts);
   const out: (string | Uint8Array)[] = [];
   for (let i = 0; i < units.length; i += size) {
@@ -113,10 +110,10 @@ function download(data: string | Uint8Array, type: string, name: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function canvasBytes(canvas: HTMLCanvasElement, type: string, quality?: number): Promise<Uint8Array> {
+function canvasBytes(canvas: HTMLCanvasElement, type: string, quality: number | undefined, errText: string): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
     canvas.toBlob(async (blob) => {
-      if (!blob) reject(new Error('The browser could not create the image.'));
+      if (!blob) reject(new Error(errText));
       else resolve(new Uint8Array(await blob.arrayBuffer()));
     }, type, quality);
   });
@@ -240,7 +237,7 @@ export default function QrCodeGenerator() {
     };
     try {
       if (saEnabled && symbology === 'qr2') {
-        if (mode === 'manual') throw new QrEncodeError('Structured Append splits the content form data; it cannot be combined with manual segments.');
+        if (mode === 'manual') throw new QrEncodeError(t('qrgen.err.saManual'));
         let bytes: ArrayLike<number>;
         try {
           bytes = typeof payload.data === 'string' ? encodeString(payload.data, charset) : payload.data;
@@ -248,7 +245,7 @@ export default function QrCodeGenerator() {
           bytes = typeof payload.data === 'string' ? new TextEncoder().encode(payload.data) : payload.data;
         }
         const parity = structuredAppendParity(bytes);
-        const parts = splitData(payload.data, saTotal);
+        const parts = splitData(payload.data, saTotal, (count, p) => t('qrgen.err.splitTooShort', { count, parts: p }));
         return {
           symbols: parts.map((part, index) => encode(part, { ...opts, structuredAppend: { index, total: parts.length, parity } })),
           error: null,
@@ -257,11 +254,11 @@ export default function QrCodeGenerator() {
       return { symbols: [encode(mode === 'manual' ? '' : payload.data, opts)], error: null };
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
-      return { symbols: [], error: e instanceof QrEncodeError ? message : `Unexpected error: ${message}` };
+      return { symbols: [], error: e instanceof QrEncodeError ? message : t('qrgen.err.unexpected', { msg: message }) };
     }
   }, [
     payload, symbology, version, minVersion, rmqrHeight, rmqrWidth, rmqrPreference, effectiveEc, boostEc, mask, mode,
-    manualSegments, allowKanji, charset, eciChoice, eciValue, effectiveFnc1, aimIndicator, saEnabled, saTotal,
+    manualSegments, allowKanji, charset, eciChoice, eciValue, effectiveFnc1, aimIndicator, saEnabled, saTotal, t,
   ]);
 
   const symbols = result.symbols;
@@ -281,19 +278,19 @@ export default function QrCodeGenerator() {
   if (payload?.note) warnings.push(payload.note);
   if (current) {
     warnings.push(...current.warnings);
-    if (symbology === 'qr1') warnings.push('Model 1 is obsolete. Most phone cameras and apps cannot read it; zxing-cpp based readers can.');
-    if (symbology === 'micro' || symbology === 'rmqr') warnings.push(`Many phone cameras do not read ${SYMBOLOGY_LABELS[symbology]} yet. Test with the reader that will be used.`);
-    if (quietZone < STANDARD_QUIET_ZONE[symbology]) warnings.push(`The quiet zone is smaller than the ${STANDARD_QUIET_ZONE[symbology]} modules the standard requires.`);
+    if (symbology === 'qr1') warnings.push(t('qrgen.warn.qr1'));
+    if (symbology === 'micro' || symbology === 'rmqr') warnings.push(t('qrgen.warn.microRmqr', { sym: SYMBOLOGY_LABELS[symbology] }));
+    if (quietZone < STANDARD_QUIET_ZONE[symbology]) warnings.push(t('qrgen.warn.quietZone', { std: STANDARD_QUIET_ZONE[symbology] }));
     if (renderOptions.logo) {
       const cov = logoCoverage(current, renderOptions.logo);
       const row = ecRow(current.symbology, current.version, current.ecLevel ?? 'L');
       const recoverable = current.ecLevel ? row[0] / 2 / (row[0] + row[2]) : 0;
       const coveredPct = (100 * cov.covered) / cov.dataModules;
-      warnings.push(`The logo hides ${coveredPct.toFixed(1)} % of the data modules; this level can restore about ${(100 * recoverable).toFixed(0)} % of the codewords.`);
-      if (cov.covered / cov.dataModules > recoverable * 0.6) warnings.push('That leaves little or no margin. Use a smaller logo or a higher error correction level, and test the symbol.');
-      if (cov.functionCovered > 0) warnings.push('The logo covers finder, timing or alignment patterns, which readers need to locate the symbol.');
+      warnings.push(t('qrgen.warn.logoCov', { covered: coveredPct.toFixed(1), rec: (100 * recoverable).toFixed(0) }));
+      if (cov.covered / cov.dataModules > recoverable * 0.6) warnings.push(t('qrgen.warn.logoMargin'));
+      if (cov.functionCovered > 0) warnings.push(t('qrgen.warn.logoFunc'));
     }
-    if (foreground.toLowerCase() === background.toLowerCase()) warnings.push('Foreground and background colours are the same.');
+    if (foreground.toLowerCase() === background.toLowerCase()) warnings.push(t('qrgen.warn.sameColor'));
   }
 
   const dpi = pxPerModule / (moduleMm / 25.4);
@@ -307,6 +304,7 @@ export default function QrCodeGenerator() {
   async function exportAs(format: 'png' | 'jpg' | 'svg' | 'pdf') {
     if (!current) return;
     setExportError(null);
+    const blobErr = t('qrgen.err.canvasBlob');
     try {
       if (format === 'svg') {
         const [w, h] = totalModules.map((m) => `${Number((m * moduleMm).toFixed(3))}mm`);
@@ -323,14 +321,14 @@ export default function QrCodeGenerator() {
           ctx.fillStyle = transparent ? '#ffffff' : background;
           ctx.fillRect(0, 0, c.width, c.height);
           ctx.drawImage(img, 0, 0, c.width, c.height);
-          logoJpeg = { jpeg: await canvasBytes(c, 'image/jpeg', 0.92), width: c.width, height: c.height };
+          logoJpeg = { jpeg: await canvasBytes(c, 'image/jpeg', 0.92, blobErr), width: c.width, height: c.height };
         }
         download(toPdf(current, renderOptions, moduleMm, logoJpeg, fileName || 'QR code'), 'application/pdf', exportName('pdf'));
       } else {
         const canvas = document.createElement('canvas');
         drawToCanvas(canvas, current, renderOptions, pxPerModule, format === 'jpg');
-        if (format === 'png') download(pngWithDpi(await canvasBytes(canvas, 'image/png'), dpi), 'image/png', exportName('png'));
-        else download(jpegWithDpi(await canvasBytes(canvas, 'image/jpeg', jpegQuality / 100), dpi), 'image/jpeg', exportName('jpg'));
+        if (format === 'png') download(pngWithDpi(await canvasBytes(canvas, 'image/png', undefined, blobErr), dpi), 'image/png', exportName('png'));
+        else download(jpegWithDpi(await canvasBytes(canvas, 'image/jpeg', jpegQuality / 100, blobErr), dpi), 'image/jpeg', exportName('jpg'));
       }
     } catch (e) {
       setExportError(e instanceof Error ? e.message : String(e));
@@ -344,14 +342,20 @@ export default function QrCodeGenerator() {
       const dataUrl = String(reader.result);
       const image = new Image();
       image.onload = () => setLogoImage({ dataUrl, image, aspect: (image.naturalWidth || 1) / (image.naturalHeight || 1) });
-      image.onerror = () => setExportError('The logo file could not be read as an image.');
+      image.onerror = () => setExportError(t('qrgen.err.logoRead'));
       image.src = dataUrl;
     };
     reader.readAsDataURL(file);
   }
 
+  const symbologyOptions: [string, string][] = [
+    ['qr2', t('qrgen.sym.qr2')],
+    ['qr1', t('qrgen.sym.qr1')],
+    ['micro', t('qrgen.sym.micro')],
+    ['rmqr', t('qrgen.sym.rmqr')],
+  ];
   const [vLo, vHi] = versionRange(symbology);
-  const versionOptions: [string, string][] = [['auto', 'Auto (smallest that fits)'], ...range(vLo, vHi).map((v) => [String(v), versionLabel(symbology, v)] as [string, string])];
+  const versionOptions: [string, string][] = [['auto', t('qrgen.sym.versionAuto')], ...range(vLo, vHi).map((v) => [String(v), versionLabel(symbology, v)] as [string, string])];
   const maskCount = symbology === 'micro' ? 4 : 8;
   const rmqrHeights = Array.from(new Set(RMQR_SIZES.map(([, h]) => h)));
   const rmqrWidths = Array.from(new Set(RMQR_SIZES.map(([w]) => w))).sort((a, b) => a - b);
@@ -391,10 +395,10 @@ export default function QrCodeGenerator() {
     <div className={styles.page} data-ds="v2">
       <PageHead
         title={t('qrgen.pageTitle')}
-        description="Create QR Code Model 2, Model 1, Micro QR, and rMQR symbols with control over version, error correction, mask, encoding, and PNG, SVG, JPG, or PDF export."
+        description={t('qrgen.metaDesc')}
         path="/qrcode/main"
         ogImage="/og/qr-tools.png"
-        ogAlt="QR code generator displaying a scannable QR symbol with encoding and export controls"
+        ogAlt={t('qrgen.title')}
       />
 
       <ToolHeader<WorkspaceId>
@@ -450,21 +454,27 @@ export default function QrCodeGenerator() {
                 <section className={styles.card}>
                   <h2>{t('qrgen.tab.content')}</h2>
                   <div className={styles.fieldGrid}>
-                    <Field label="Content type" help={type.description} wide>
+                    <Field label={t('qrgen.content.typeLabel')} help={t(`qrgen.ct.${type.id}.desc`)} wide>
                       <Select
                         value={typeId}
                         onChange={setTypeId}
-                        options={CONTENT_TYPES.map((ct) => [ct.id, ct.label] as [string, string])}
+                        options={CONTENT_TYPES.map((ct) => [ct.id, t(`qrgen.ct.${ct.id}.label`)] as [string, string])}
                       />
                     </Field>
                   </div>
-                  <h3>{type.label}</h3>
+                  <h3>{t(`qrgen.ct.${type.id}.label`)}</h3>
                   <ContentForm type={type} values={values} onChange={(v) => setValuesByType({ ...valuesByType, [typeId]: v })} />
                   {payloadError && <p className={styles.warning}>{payloadError}</p>}
                   {payload && (
                     <>
-                      <h3>Encoded payload ({typeof payload.data === 'string' ? `${[...payload.data].length} characters` : `${payload.data.length} bytes`})</h3>
-                      <pre className={[styles.payload, styles.mono].join(' ')}>{describePayload(payload.data) || '(empty)'}</pre>
+                      <h3>
+                        {t('qrgen.content.payloadTitle', {
+                          size: typeof payload.data === 'string'
+                            ? t('qrgen.content.chars', { n: [...payload.data].length })
+                            : t('qrgen.content.bytes', { n: payload.data.length }),
+                        })}
+                      </h3>
+                      <pre className={[styles.payload, styles.mono].join(' ')}>{describePayload(payload.data) || t('qrgen.content.empty')}</pre>
                     </>
                   )}
                 </section>
@@ -489,17 +499,17 @@ export default function QrCodeGenerator() {
                 <section className={styles.card}>
                   <h2>{t('qrgen.tab.symbol')}</h2>
                   <div className={styles.fieldGrid}>
-                    <Field label="Symbol type">
+                    <Field label={t('qrgen.sym.typeLabel')}>
                       <select className={styles.select} value={symbology} onChange={(e) => changeSymbology(e.target.value as Symbology)}>
-                        {SYMBOLOGY_OPTIONS.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
-                        {UNAVAILABLE_SYMBOLOGIES.map((name) => <option key={name} disabled>{name} (proprietary, see Guide)</option>)}
+                        {symbologyOptions.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+                        {UNAVAILABLE_SYMBOLOGIES.map((name) => <option key={name} disabled>{t('qrgen.sym.proprietary', { name })}</option>)}
                       </select>
                     </Field>
-                    <Field label="Version">
+                    <Field label={t('qrgen.sym.versionLabel')}>
                       <Select value={String(version)} onChange={(v) => setVersion(v === 'auto' ? 'auto' : Number(v))} options={versionOptions} />
                     </Field>
                     {version === 'auto' && symbology !== 'rmqr' && (
-                      <Field label="Smallest version allowed">
+                      <Field label={t('qrgen.sym.minVersionLabel')}>
                         <Select
                           value={String(minVersion)}
                           onChange={(v) => setMinVersion(Number(v))}
@@ -509,45 +519,49 @@ export default function QrCodeGenerator() {
                     )}
                     {version === 'auto' && symbology === 'rmqr' && (
                       <>
-                        <Field label="Height">
+                        <Field label={t('qrgen.sym.heightLabel')}>
                           <Select
                             value={String(rmqrHeight)}
                             onChange={(v) => setRmqrHeight(v === 'auto' ? 'auto' : Number(v))}
-                            options={[['auto', 'Any'], ...rmqrHeights.map((h) => [String(h), `${h} modules`] as [string, string])]}
+                            options={[['auto', t('qrgen.sym.any')], ...rmqrHeights.map((h) => [String(h), t('qrgen.sym.nModules', { n: h })] as [string, string])]}
                           />
                         </Field>
-                        <Field label="Width">
+                        <Field label={t('qrgen.sym.widthLabel')}>
                           <Select
                             value={String(rmqrWidth)}
                             onChange={(v) => setRmqrWidth(v === 'auto' ? 'auto' : Number(v))}
-                            options={[['auto', 'Any'], ...rmqrWidths.map((w) => [String(w), `${w} modules`] as [string, string])]}
+                            options={[['auto', t('qrgen.sym.any')], ...rmqrWidths.map((w) => [String(w), t('qrgen.sym.nModules', { n: w })] as [string, string])]}
                           />
                         </Field>
-                        <Field label="Prefer">
+                        <Field label={t('qrgen.sym.preferLabel')}>
                           <Select
                             value={rmqrPreference}
                             onChange={setRmqrPreference}
-                            options={[['area', 'Smallest area'], ['height', 'Lowest height'], ['width', 'Shortest width']]}
+                            options={[
+                              ['area', t('qrgen.sym.prefArea')],
+                              ['height', t('qrgen.sym.prefHeight')],
+                              ['width', t('qrgen.sym.prefWidth')],
+                            ]}
                           />
                         </Field>
                       </>
                     )}
-                    <Field label="Error correction level">
+                    <Field label={t('qrgen.sym.ecLabel')}>
                       <Select
                         value={effectiveEc}
                         onChange={setEcLevel}
-                        options={ecChoices.map((l) => [l, symbology === 'micro' && version === 1 ? 'Detection only (M1)' : EC_LABELS[l]] as [EcLevel, string])}
+                        options={ecChoices.map((l) => [l, symbology === 'micro' && version === 1 ? t('qrgen.sym.ecM1') : EC_LABELS[l]] as [EcLevel, string])}
                       />
                     </Field>
-                    <Field label="Data mask" help={symbology === 'rmqr' ? 'rMQR always uses the same mask.' : 'Auto evaluates every mask with the rules from the standard.'}>
+                    <Field label={t('qrgen.sym.maskLabel')} help={symbology === 'rmqr' ? t('qrgen.sym.maskHelpRmqr') : t('qrgen.sym.maskHelpAuto')}>
                       <Select
                         value={String(mask)}
                         disabled={symbology === 'rmqr'}
                         onChange={(v) => setMask(v === 'auto' ? 'auto' : Number(v))}
-                        options={[['auto', 'Auto (best score)'], ...range(0, maskCount - 1).map((m) => [String(m), `Mask ${m}`] as [string, string])]}
+                        options={[['auto', t('qrgen.sym.maskAuto')], ...range(0, maskCount - 1).map((m) => [String(m), t('qrgen.sym.maskNum', { n: m })] as [string, string])]}
                       />
                     </Field>
-                    <Checkbox wide label="Raise the error correction level as long as the data still fits in the chosen version" checked={boostEc} onChange={setBoostEc} />
+                    <Checkbox wide label={t('qrgen.sym.boostEc')} checked={boostEc} onChange={setBoostEc} />
                   </div>
                 </section>
 
@@ -571,59 +585,67 @@ export default function QrCodeGenerator() {
                 <section className={styles.card}>
                   <h2>{t('qrgen.tab.encoding')}</h2>
                   <div className={styles.fieldGrid}>
-                    <Field label="Mode" help="Auto finds the mix of numeric, alphanumeric, byte and Kanji segments with the fewest bits.">
+                    <Field label={t('qrgen.enc.modeLabel')} help={t('qrgen.enc.modeHelp')}>
                       <Select
                         value={mode}
                         onChange={setMode}
                         options={[
-                          ['auto', 'Auto (optimal segments)'],
-                          ['numeric', 'Numeric only'],
-                          ['alphanumeric', 'Alphanumeric only'],
-                          ['byte', 'Byte only'],
-                          ['kanji', 'Kanji only'],
-                          ['manual', 'Manual segments'],
+                          ['auto', t('qrgen.enc.modeAuto')],
+                          ['numeric', t('qrgen.enc.modeNumeric')],
+                          ['alphanumeric', t('qrgen.enc.modeAlpha')],
+                          ['byte', t('qrgen.enc.modeByte')],
+                          ['kanji', t('qrgen.enc.modeKanji')],
+                          ['manual', t('qrgen.enc.modeManual')],
                         ]}
                       />
                     </Field>
-                    <Field label="Byte mode character set">
+                    <Field label={t('qrgen.enc.charsetLabel')}>
                       <Select
                         value={charset}
                         onChange={setCharset}
                         options={(Object.keys(CHARSET_LABELS) as Charset[]).map((c) => [c, CHARSET_LABELS[c]] as [Charset, string])}
                       />
                     </Field>
-                    <Field label="ECI designator" help={eciSupported ? 'Tells the reader which character set byte mode uses. Auto adds it only for non-ASCII text.' : 'Not available for this symbol type.'}>
+                    <Field label={t('qrgen.enc.eciLabel')} help={eciSupported ? t('qrgen.enc.eciHelp') : t('qrgen.enc.notAvail')}>
                       <Select
                         value={eciChoice}
                         disabled={!eciSupported}
                         onChange={setEciChoice}
-                        options={[['auto', 'Auto'], ['none', 'Never'], ['custom', 'Custom assignment number']]}
+                        options={[
+                          ['auto', t('qrgen.enc.eciAuto')],
+                          ['none', t('qrgen.enc.eciNone')],
+                          ['custom', t('qrgen.enc.eciCustom')],
+                        ]}
                       />
                     </Field>
                     {eciChoice === 'custom' && eciSupported && (
-                      <Field label="ECI assignment number" help="3 = ISO-8859-1, 20 = Shift JIS, 26 = UTF-8, 899 = binary">
+                      <Field label={t('qrgen.enc.eciNumLabel')} help={t('qrgen.enc.eciNumHelp')}>
                         <NumberInput value={eciValue} onChange={setEciValue} min={0} max={999999} />
                       </Field>
                     )}
-                    <Field label="FNC1 / application" help={gs1FromContent ? 'Set by the GS1 content type.' : fnc1Supported ? undefined : 'Not available for this symbol type.'}>
+                    <Field label={t('qrgen.enc.fnc1Label')} help={gs1FromContent ? t('qrgen.enc.fnc1Gs1Help') : fnc1Supported ? undefined : t('qrgen.enc.notAvail')}>
                       <Select
                         value={effectiveFnc1}
                         disabled={gs1FromContent || !fnc1Supported}
                         onChange={setFnc1}
-                        options={[['none', 'None'], ['gs1', 'GS1 (FNC1 in first position)'], ['aim', 'AIM application (FNC1 in second position)']]}
+                        options={[
+                          ['none', t('qrgen.enc.fnc1None')],
+                          ['gs1', t('qrgen.enc.fnc1Gs1')],
+                          ['aim', t('qrgen.enc.fnc1Aim')],
+                        ]}
                       />
                     </Field>
                     {effectiveFnc1 === 'aim' && (
-                      <Field label="Application indicator" help="Two digits or one letter.">
+                      <Field label={t('qrgen.enc.aimLabel')} help={t('qrgen.enc.aimHelp')}>
                         <input className={styles.input} value={aimIndicator} maxLength={2} onChange={(e) => setAimIndicator(e.target.value)} />
                       </Field>
                     )}
-                    <Checkbox wide label="Allow Kanji mode in Auto (13 bits per Shift JIS character instead of 24 bits of UTF-8)" checked={allowKanji} onChange={setAllowKanji} />
+                    <Checkbox wide label={t('qrgen.enc.allowKanji')} checked={allowKanji} onChange={setAllowKanji} />
                     {symbology === 'qr2' && (
                       <>
-                        <Checkbox wide label="Split the data over several symbols (Structured Append)" checked={saEnabled} onChange={setSaEnabled} />
+                        <Checkbox wide label={t('qrgen.enc.saLabel')} checked={saEnabled} onChange={setSaEnabled} />
                         {saEnabled && (
-                          <Field label="Number of symbols">
+                          <Field label={t('qrgen.enc.saTotal')}>
                             <NumberInput value={saTotal} onChange={setSaTotal} min={2} max={16} />
                           </Field>
                         )}
@@ -659,31 +681,39 @@ export default function QrCodeGenerator() {
                 <section className={styles.card}>
                   <h2>{t('qrgen.tab.style')}</h2>
                   <div className={styles.fieldGrid}>
-                    <Field label="Foreground"><input className={styles.color} type="color" value={foreground} onChange={(e) => setForeground(e.target.value)} /></Field>
-                    <Field label="Background"><input className={styles.color} type="color" value={background} disabled={transparent} onChange={(e) => setBackground(e.target.value)} /></Field>
-                    <Field label="Module shape">
-                      <Select value={shape} onChange={setShape} options={[['square', 'Square'], ['rounded', 'Rounded squares'], ['dots', 'Dots']]} />
+                    <Field label={t('qrgen.style.fg')}><input className={styles.color} type="color" value={foreground} onChange={(e) => setForeground(e.target.value)} /></Field>
+                    <Field label={t('qrgen.style.bg')}><input className={styles.color} type="color" value={background} disabled={transparent} onChange={(e) => setBackground(e.target.value)} /></Field>
+                    <Field label={t('qrgen.style.shape')}>
+                      <Select
+                        value={shape}
+                        onChange={setShape}
+                        options={[
+                          ['square', t('qrgen.style.shapeSquare')],
+                          ['rounded', t('qrgen.style.shapeRounded')],
+                          ['dots', t('qrgen.style.shapeDots')],
+                        ]}
+                      />
                     </Field>
-                    <Field label={`Quiet zone (modules, standard ${STANDARD_QUIET_ZONE[symbology]})`}>
+                    <Field label={t('qrgen.style.quietZone', { std: STANDARD_QUIET_ZONE[symbology] })}>
                       <NumberInput value={quietZone} onChange={setQuietZone} min={0} max={20} />
                     </Field>
-                    <Checkbox wide label="Transparent background (PNG, SVG and PDF; JPG uses white)" checked={transparent} onChange={setTransparent} />
-                    <Checkbox wide label="Keep finder, timing and alignment patterns square" checked={squareFunctionPatterns} onChange={setSquareFunctionPatterns} />
+                    <Checkbox wide label={t('qrgen.style.transparent')} checked={transparent} onChange={setTransparent} />
+                    <Checkbox wide label={t('qrgen.style.squareFunc')} checked={squareFunctionPatterns} onChange={setSquareFunctionPatterns} />
                   </div>
 
-                  <h3>Logo</h3>
+                  <h3>{t('qrgen.style.logoHeading')}</h3>
                   <div className={styles.fieldGrid}>
-                    <Field label="Image file" wide help="Drawn over the centre and relies on error correction to stay readable.">
+                    <Field label={t('qrgen.style.logoFile')} wide help={t('qrgen.style.logoHelp')}>
                       <input className={styles.input} type="file" accept="image/*" onChange={(e) => loadLogo(e.target.files?.[0])} />
                     </Field>
                     {logoImage && (
                       <>
-                        <Field label="Logo height (% of the symbol)"><NumberInput value={logoScale} onChange={setLogoScale} min={5} max={60} /></Field>
-                        <Field label="Cleared margin (modules)"><NumberInput value={logoPadding} onChange={setLogoPadding} min={0} max={10} /></Field>
-                        <Checkbox label="Remove the data modules under the logo" checked={logoClear} onChange={setLogoClear} />
-                        <Checkbox label="Background colour behind the logo" checked={logoBackdrop} onChange={setLogoBackdrop} />
+                        <Field label={t('qrgen.style.logoHeight')}><NumberInput value={logoScale} onChange={setLogoScale} min={5} max={60} /></Field>
+                        <Field label={t('qrgen.style.logoMargin')}><NumberInput value={logoPadding} onChange={setLogoPadding} min={0} max={10} /></Field>
+                        <Checkbox label={t('qrgen.style.logoClear')} checked={logoClear} onChange={setLogoClear} />
+                        <Checkbox label={t('qrgen.style.logoBackdrop')} checked={logoBackdrop} onChange={setLogoBackdrop} />
                         <div className={styles.fieldWide}>
-                          <button type="button" className={styles.buttonSmall} onClick={() => setLogoImage(null)}>Remove logo</button>
+                          <button type="button" className={styles.buttonSmall} onClick={() => setLogoImage(null)}>{t('qrgen.style.logoRemove')}</button>
                         </div>
                       </>
                     )}
@@ -691,12 +721,12 @@ export default function QrCodeGenerator() {
 
                   <hr className={styles.sectionDivider} />
 
-                  <h3>Export settings</h3>
+                  <h3>{t('qrgen.style.exportHeading')}</h3>
                   <div className={styles.fieldGrid}>
-                    <Field label="File name"><input className={styles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} /></Field>
-                    <Field label="Pixels per module (PNG, JPG)"><NumberInput value={pxPerModule} onChange={setPxPerModule} min={1} max={100} /></Field>
-                    <Field label="Module size in mm (SVG, PDF, print DPI)"><NumberInput value={moduleMm} onChange={setModuleMm} min={0.05} max={50} step={0.05} /></Field>
-                    <Field label="JPG quality (%)"><NumberInput value={jpegQuality} onChange={setJpegQuality} min={10} max={100} /></Field>
+                    <Field label={t('qrgen.style.fileName')}><input className={styles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} /></Field>
+                    <Field label={t('qrgen.style.pxPerMod')}><NumberInput value={pxPerModule} onChange={setPxPerModule} min={1} max={100} /></Field>
+                    <Field label={t('qrgen.style.modMm')}><NumberInput value={moduleMm} onChange={setModuleMm} min={0.05} max={50} step={0.05} /></Field>
+                    <Field label={t('qrgen.style.jpgQuality')}><NumberInput value={jpegQuality} onChange={setJpegQuality} min={10} max={100} /></Field>
                   </div>
                 </section>
 
@@ -752,9 +782,14 @@ export default function QrCodeGenerator() {
                 <h3>{t('qrgen.preview.download')}</h3>
                 {current && (
                   <p className={styles.help}>
-                    PNG/JPG: {totalModules[0] * pxPerModule} × {totalModules[1] * pxPerModule} px at {dpi.toFixed(0)} DPI ·
-                    SVG/PDF: {(totalModules[0] * moduleMm).toFixed(1)} × {(totalModules[1] * moduleMm).toFixed(1)} mm.
-                    {symbols.length > 1 && ' Exports the selected symbol.'}
+                    {t('qrgen.preview.exportSummary', {
+                      pxW: totalModules[0] * pxPerModule,
+                      pxH: totalModules[1] * pxPerModule,
+                      dpi: dpi.toFixed(0),
+                      mmW: (totalModules[0] * moduleMm).toFixed(1),
+                      mmH: (totalModules[1] * moduleMm).toFixed(1),
+                    })}
+                    {symbols.length > 1 && t('qrgen.preview.exportSelected')}
                   </p>
                 )}
                 <div className={styles.exportBar}>
@@ -785,68 +820,65 @@ export default function QrCodeGenerator() {
             </div>
 
             <section className={styles.card}>
-              <h2>The QR code family</h2>
+              <h2>{t('qrgen.guide.familyTitle')}</h2>
               <dl className={styles.typeList}>
-                <dt>QR Code Model 2 (ISO/IEC 18004)</dt>
-                <dd>The QR code everyone knows. Versions 1 to 40, from 21 × 21 to 177 × 177 modules, holding up to 7089 digits or 2953 bytes. Supports ECI, Structured Append, and FNC1 (GS1).</dd>
-                <dt>QR Code Model 1</dt>
-                <dd>The original 1994 specification, versions 1 to 14 (up to 73 × 73 modules). Uses extension patterns along the right and bottom edges instead of alignment patterns, with no ECI. Kept for completeness; few phone cameras read it.</dd>
-                <dt>Micro QR Code</dt>
-                <dd>A single finder pattern and a 2-module quiet zone, versions M1 to M4 (11 × 11 to 17 × 17 modules), for very small amounts of data such as component part numbers. M1 holds up to 5 digits and only detects errors.</dd>
-                <dt>rMQR Code (ISO/IEC 23941)</dt>
-                <dd>Rectangular Micro QR, 32 sizes from R7×43 to R17×139, built for narrow spaces such as cables, tubes, and the edge of a PCB or label. Supports error correction levels M and H only.</dd>
-                <dt className={styles.unavailable}>SQRC (not available)</dt>
-                <dd>A proprietary Denso Wave format with public and key-protected private data. The <em>Password-protected text</em> content type on this page is an open AES-GCM alternative: any scanner reads the cipher text, and the Decrypt tab restores it locally with your password.</dd>
-                <dt className={styles.unavailable}>Frame QR (not available)</dt>
-                <dd>A proprietary Denso Wave format with an empty canvas area for pictures. Adding a logo with cleared modules under Style &amp; Export produces a standard-compatible equivalent backed by Reed-Solomon error correction.</dd>
-                <dt className={styles.unavailable}>iQR Code (not available)</dt>
-                <dd>A larger square or rectangular Denso Wave format without a published public specification.</dd>
+                <dt>{t('qrgen.guide.qr2Dt')}</dt>
+                <dd>{t('qrgen.guide.qr2Dd')}</dd>
+                <dt>{t('qrgen.guide.qr1Dt')}</dt>
+                <dd>{t('qrgen.guide.qr1Dd')}</dd>
+                <dt>{t('qrgen.guide.microDt')}</dt>
+                <dd>{t('qrgen.guide.microDd')}</dd>
+                <dt>{t('qrgen.guide.rmqrDt')}</dt>
+                <dd>{t('qrgen.guide.rmqrDd')}</dd>
+                <dt className={styles.unavailable}>{t('qrgen.guide.sqrcDt')}</dt>
+                <dd>{t('qrgen.guide.sqrcDd')}</dd>
+                <dt className={styles.unavailable}>{t('qrgen.guide.frameDt')}</dt>
+                <dd>{t('qrgen.guide.frameDd')}</dd>
+                <dt className={styles.unavailable}>{t('qrgen.guide.iqrDt')}</dt>
+                <dd>{t('qrgen.guide.iqrDd')}</dd>
               </dl>
               <p className={styles.help} style={{ marginTop: 14 }}>
-                Background: <a href="https://www.qrcode.com/en/codes/" target="_blank" rel="noopener noreferrer">qrcode.com — types of QR codes</a>.
-                The encoder is verified against zxing-cpp, segno, and standard reference symbols. Everything runs locally in your browser.
+                {t('qrgen.guide.bgPrefix')}
+                <a href="https://www.qrcode.com/en/codes/" target="_blank" rel="noopener noreferrer">{t('qrgen.guide.bgLink')}</a>
+                {t('qrgen.guide.bgSuffix')}
               </p>
             </section>
 
             <div className={styles.guideGrid}>
               <section className={styles.card}>
-                <h2>Error correction &amp; logo rule</h2>
-                <p>
-                  QR codes use Reed-Solomon coding over GF(256) to recover erased or misread codewords without re-scanning.
-                  Higher levels consume more modules but tolerate scratches, low contrast, or a centre logo.
-                </p>
+                <h2>{t('qrgen.guide.ecTitle')}</h2>
+                <p>{t('qrgen.guide.ecIntro')}</p>
                 <table className={styles.guideTable}>
                   <thead>
                     <tr>
-                      <th>Level</th>
-                      <th>Recovery</th>
-                      <th>Typical use</th>
+                      <th>{t('qrgen.guide.thLevel')}</th>
+                      <th>{t('qrgen.guide.thRecovery')}</th>
+                      <th>{t('qrgen.guide.thTypicalUse')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr><td><strong>L</strong></td><td className={styles.mono}>~7 %</td><td>Clean screens, maximum capacity</td></tr>
-                    <tr><td><strong>M</strong></td><td className={styles.mono}>~15 %</td><td>General print &amp; everyday labels</td></tr>
-                    <tr><td><strong>Q</strong></td><td className={styles.mono}>~25 %</td><td>Industrial labels, small centre logo</td></tr>
-                    <tr><td><strong>H</strong></td><td className={styles.mono}>~30 %</td><td>Harsh surfaces, larger centre logo</td></tr>
+                    <tr><td><strong>L</strong></td><td className={styles.mono}>~7 %</td><td>{t('qrgen.guide.useL')}</td></tr>
+                    <tr><td><strong>M</strong></td><td className={styles.mono}>~15 %</td><td>{t('qrgen.guide.useM')}</td></tr>
+                    <tr><td><strong>Q</strong></td><td className={styles.mono}>~25 %</td><td>{t('qrgen.guide.useQ')}</td></tr>
+                    <tr><td><strong>H</strong></td><td className={styles.mono}>~30 %</td><td>{t('qrgen.guide.useH')}</td></tr>
                   </tbody>
                 </table>
                 <p className={styles.help} style={{ marginTop: 10 }}>
-                  <strong>Logo rule:</strong> keep the logo comfortably below half of the recoverable codeword budget (this tool calculates live coverage warnings), and never cover finder, timing, or alignment patterns.
+                  <strong>{t('qrgen.guide.logoRuleLead')}</strong>
+                  {t('qrgen.guide.logoRuleBody')}
                 </p>
               </section>
 
               <section className={styles.card}>
-                <h2>Quiet zones &amp; encoding modes</h2>
-                <p>
-                  A <strong>quiet zone</strong> is an unbroken margin of background colour around the symbol so the scanner can detect the 1:1:3:1:1 finder ratio:
-                </p>
+                <h2>{t('qrgen.guide.quietTitle')}</h2>
+                <p>{t('qrgen.guide.quietIntro')}</p>
                 <dl className={styles.typeList}>
-                  <dt>Quiet zone standards</dt>
-                  <dd><strong>4 modules</strong> on all four sides for Model 2 and Model 1 (ISO/IEC 18004); <strong>2 modules</strong> for Micro QR and rMQR (ISO/IEC 23941).</dd>
-                  <dt>Encoding modes</dt>
-                  <dd><strong>Numeric</strong> (0–9): 3.33 bits/char · <strong>Alphanumeric</strong> (0–9, A–Z, space, $%*+-./:): 5.5 bits/char · <strong>Byte</strong>: 8 bits/byte (UTF-8 via ECI 26 or ISO-8859-1 via ECI 3) · <strong>Kanji</strong>: 13 bits per Shift JIS character.</dd>
-                  <dt>FNC1 &amp; Structured Append</dt>
-                  <dd>FNC1 flags GS1 or AIM application data; Structured Append splits a large payload across up to 16 linked Model 2 symbols with an XOR parity byte.</dd>
+                  <dt>{t('qrgen.guide.quietStdDt')}</dt>
+                  <dd>{t('qrgen.guide.quietStdDd')}</dd>
+                  <dt>{t('qrgen.guide.modesDt')}</dt>
+                  <dd>{t('qrgen.guide.modesDd')}</dd>
+                  <dt>{t('qrgen.guide.fnc1Dt')}</dt>
+                  <dd>{t('qrgen.guide.fnc1Dd')}</dd>
                 </dl>
               </section>
             </div>

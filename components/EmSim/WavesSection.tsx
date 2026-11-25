@@ -41,14 +41,13 @@ import { takeWavesAsk, WAVES_EVENT } from './wavesSuggest';
 import type { WavesKindAsk } from './wavesSuggest';
 import { feedTheory } from './theoryFeed';
 import { Why } from './Why';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TFunc } from '../../lib/ui/i18n';
 import WavesPlayer from './WavesPlayer';
 import { freeFrames, heldFrames } from './WavesPlayer';
 import type { FrameStore } from './WavesPlayer';
 
 const TRS = [15e-12, 35e-12, 100e-12];
-const NO_CURSOR = 'Move over a plot, tap it or use the arrow keys on it for a reading.';
-/** fullwave-verify.md §3: the frozen limits of the FDTD against openEMS (M6.4c). */
-const CHECKED = 'The full-wave engine was checked against openEMS on six vias and an LVDS pair line: TDR within 2.5 Ω, |S| within 0.10 to 10 GHz and 0.15 to 20 GHz, a via’s impedance and delay within 12 %, a stub’s notch within 8 %.';
 
 type Phase = 'idle' | 'running' | 'done' | 'refused' | 'error' | 'cancelled';
 interface Done { res: FdtdResult; view: WavesView; setup: Setup; spec: WavesSpec; pv: Preview; elapsed: number; estimate: number; backend: string; where: string; store: FrameStore | null }
@@ -56,12 +55,12 @@ interface Done { res: FdtdResult; view: WavesView; setup: Setup; spec: WavesSpec
 const sText = (s: number) => (s < 60 ? `${s < 10 ? s.toFixed(1) : s.toFixed(0)} s` : s < 3600 ? `${(s / 60).toFixed(1)} min` : `${(s / 3600).toFixed(1)} h`);
 /** M9.1b: why a run is on the CPU when the visitor did not ask for it (no WebGPU, no adapter, a software adapter), in
  * the visitor's words; null when the GPU is there or the CPU was chosen. */
-function cpuWhy(dev: DeviceInfo | null, backend: 'auto' | 'js'): { code: string; long: string; short: string } | null {
+function cpuWhy(dev: DeviceInfo | null, backend: 'auto' | 'js', tr: TFunc): { code: string; long: string; short: string } | null {
   if (!dev || dev.gpu.ok || backend === 'js') return null;
   const r = (dev.gpu as { reason: string }).reason;
-  if (/no WebGPU/.test(r)) return { code: 'none', short: 'this browser offers no WebGPU', long: 'This browser does not offer WebGPU, the way a web page can compute on the graphics card, so the run is on the CPU.' };
-  if (/no GPU adapter/.test(r)) return { code: 'noadapter', short: 'WebGPU found no graphics card it may use', long: 'This browser has WebGPU but found no graphics card it may use (it can be turned off, or the card or its driver is not supported), so the run is on the CPU.' };
-  return { code: 'software', short: 'WebGPU offers only a software stand-in here', long: 'WebGPU here offers only a software stand-in for a graphics card, no faster than the CPU, so the run is on the CPU.' };
+  if (/no WebGPU/.test(r)) return { code: 'none', short: tr('em.wav.cpu.noneShort'), long: tr('em.wav.cpu.noneLong') };
+  if (/no GPU adapter/.test(r)) return { code: 'noadapter', short: tr('em.wav.cpu.noAdapterShort'), long: tr('em.wav.cpu.noAdapterLong') };
+  return { code: 'software', short: tr('em.wav.cpu.softShort'), long: tr('em.wav.cpu.softLong') };
 }
 
 const big = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(2)} M` : n >= 1e3 ? `${(n / 1e3).toFixed(0)} k` : String(n));
@@ -70,6 +69,7 @@ const sameSpec = (a: WavesSpec, b: WavesSpec) => a.kind === b.kind && a.tr === b
 interface Props { setup: Setup; unit?: LengthUnit }
 
 export default function WavesSection({ setup, unit = 'mm' }: Props) {
+  const { t: trFn, locale } = useI18n();
   const [kind, setKind] = useState<WaveKind>(() => takeWavesAsk() ?? 'via');
   const [tr, setTr] = useState(35e-12);
   const [length, setLength] = useState(WAVES_LENGTH);
@@ -190,38 +190,36 @@ export default function WavesSection({ setup, unit = 'mm' }: Props) {
   }, [pv, done]);
   const runs = pv ? pv.ports.length : 0;
   const total = pv?.est ? pv.est.seconds * runs : NaN;
-  const why = cpuWhy(dev, backend);
+  const why = cpuWhy(dev, backend, trFn);
   const refuse = pv ? pv.verdicts.filter((v) => v.level === 'refuse') : [];
   const frac = prog ? Math.min(1, (prog.run + prog.step / Math.max(1, prog.steps)) / Math.max(1, prog.runs)) : 0;
+  const numLoc = locale === 'nb' ? 'nb-NO' : 'en-GB';
 
   return (
     <div ref={box} className={wcss.waves} data-waves data-waves-phase={phase} data-waves-frames={frames} data-waves-held={info ? `${info.held.buffers}/${info.held.bytes}` : ''}>
-      <p className={base.lede}>
-        A full-wave run steps Maxwell’s equations in time on a 3D grid (FDTD), on your graphics card with WebGPU or on
-        the CPU. It shows what the quasi-static model leaves out: the plane cavity, the feeds over antipads, far return vias.
-      </p>
+      <p className={base.lede}>{trFn('em.wav.lede')}</p>
       <div className={css.tools}>
-        <div className={base.seg} role="group" aria-label="What to run" data-waves-kind={kind}>
-          <button type="button" aria-pressed={kind === 'via'} onClick={() => setKind('via')} data-waves-kind-set="via">The via</button>
-          <button type="button" aria-pressed={kind === 'trace'} onClick={() => setKind('trace')} data-waves-kind-set="trace">The trace</button>
+        <div className={base.seg} role="group" aria-label={trFn('em.wav.whatAria')} data-waves-kind={kind}>
+          <button type="button" aria-pressed={kind === 'via'} onClick={() => setKind('via')} data-waves-kind-set="via">{trFn('em.wav.theVia')}</button>
+          <button type="button" aria-pressed={kind === 'trace'} onClick={() => setKind('trace')} data-waves-kind-set="trace">{trFn('em.wav.theTrace')}</button>
         </div>
         {kind === 'trace' && (
           <div className={stk.field} data-field="waves.length">
-            <label className={stk.fieldLabel} htmlFor="waves-length">Length between the planes</label>
+            <label className={stk.fieldLabel} htmlFor="waves-length">{trFn('em.wav.lengthLabel')}</label>
             <div className={stk.valueRow}>
               <NumInput id="waves-length" className={base.input} shown={String(length)} aria-invalid={lenReason ? true : undefined} data-waves-length
-                parse={(x) => readPlain(x, { min: 0.5, max: 1000, what: 'The length' })} onReason={setLenReason} onValue={setLength} />
+                parse={(x) => readPlain(x, { min: 0.5, max: 1000, what: trFn('em.wav.lengthWhat') })} onReason={setLenReason} onValue={setLength} />
               <span className={stk.unit}>mm</span>
             </div>
             {lenReason && <p className={stk.reason} role="alert">{lenReason}</p>}
           </div>
         )}
-        <div className={vcss.presets} role="group" aria-label="Rise time" data-waves-tr={Math.round(tr * 1e12)}>
+        <div className={vcss.presets} role="group" aria-label={trFn('em.wav.riseAria')} data-waves-tr={Math.round(tr * 1e12)}>
           {TRS.map((t) => <button key={t} type="button" className={base.button} aria-pressed={t === tr} onClick={() => setTr(t)} data-waves-tr-set={Math.round(t * 1e12)}>{Math.round(t * 1e12)} ps</button>)}
         </div>
-        <div className={base.seg} role="group" aria-label="Where it runs" data-waves-backend-choice={backend}>
-          <button type="button" aria-pressed={backend === 'auto'} onClick={() => setBackend('auto')} data-waves-backend-set="auto">GPU if it can</button>
-          <button type="button" aria-pressed={backend === 'js'} onClick={() => setBackend('js')} data-waves-backend-set="js">CPU</button>
+        <div className={base.seg} role="group" aria-label={trFn('em.wav.whereAria')} data-waves-backend-choice={backend}>
+          <button type="button" aria-pressed={backend === 'auto'} onClick={() => setBackend('auto')} data-waves-backend-set="auto">{trFn('em.wav.gpuIfCan')}</button>
+          <button type="button" aria-pressed={backend === 'js'} onClick={() => setBackend('js')} data-waves-backend-set="js">{trFn('em.wav.cpu')}</button>
         </div>
       </div>
       <div className={vcss.whyRow}>
@@ -233,27 +231,33 @@ export default function WavesSection({ setup, unit = 'mm' }: Props) {
 
       <div className={wcss.estimate} data-waves-estimate={pv ? (pv.est ? 'ready' : 'none') : 'pending'} data-backend={pv?.backend} data-cells={pv?.est?.cells}
         data-steps={pv?.est?.steps} data-mem={pv?.est?.memory.total} data-snap-mem={pv?.snapBytes} data-pair={pv?.pair} data-runs={runs} data-seconds={total} data-rate-from={pv?.rateFrom} data-refused={refuse.length > 0}>
-        {!pv ? <p className={css.small}>Working out the estimate…</p> : (
+        {!pv ? <p className={css.small}>{trFn('em.wav.estWorking')}</p> : (
           <>
             {why && pv.backend === 'js' ? (
               <p className={css.small} data-waves-backend={pv.backend} data-waves-fallback={why.code}>
-                {why.long} It does the same steps on one core, often a hundred times slower than a graphics card{pv.est ? <>: this run takes about <b>{sText(total)}</b></> : ''}.
-                The trace with the 100 ps rise is the quickest case; Edge or Chrome on a computer with a graphics card run it in seconds.
+                {why.long} {trFn('em.wav.cpuFallbackTail')}{pv.est ? <>{trFn('em.wav.cpuFallbackTime')} <b>{sText(total)}</b></> : ''}.
+                {' '}{trFn('em.wav.cpuFallbackHint')}
               </p>
-            ) : <p className={css.small} data-waves-backend={pv.backend}>{pv.backend === 'webgpu' ? `Runs on the GPU: ${pv.reason}` : `Runs on the CPU. ${pv.reason}`}</p>}
+            ) : <p className={css.small} data-waves-backend={pv.backend}>{pv.backend === 'webgpu' ? trFn('em.wav.runsGpu', { reason: pv.reason }) : trFn('em.wav.runsCpu', { reason: pv.reason })}</p>}
             {pv.est && (
               <p className={css.small}>
-                {big(pv.est.cells)} cells, {(pv.est.memory.total / 1048576).toFixed(0)} MiB, up to {pv.est.steps.toLocaleString('en-GB')} steps for each of {runs} excitation{runs === 1 ? '' : 's'}:
-                about <b>{sText(total)}</b> {pv.rateFrom === 'measured' ? 'on this device (measured by the last run).' : '(from a typical rate; the run measures this device first).'}
-                {pv.snapBytes > 0 && <> The waves’ frames take {(pv.snapBytes / 1048576).toFixed(0)} MiB{pv.pair ? ', entry A’s and entry B’s, so the player can show entry A driven alone and the differential and common drive without another run' : ''}.</>}
+                {trFn('em.wav.estLine1', {
+                  cells: big(pv.est.cells),
+                  mem: (pv.est.memory.total / 1048576).toFixed(0),
+                  steps: pv.est.steps.toLocaleString(numLoc),
+                  runs,
+                  exc: runs === 1 ? trFn('em.wav.excOne') : trFn('em.wav.excMany'),
+                })}{' '}
+                <b>{sText(total)}</b> {pv.rateFrom === 'measured' ? trFn('em.wav.rateMeasured') : trFn('em.wav.rateTypical')}
+                {pv.snapBytes > 0 && <> {trFn('em.wav.snapLine', { mem: (pv.snapBytes / 1048576).toFixed(0), pair: pv.pair ? trFn('em.wav.snapPair') : '' })}</>}
               </p>
             )}
             {pv.verdicts.length > 0 && (
               <ul className={base.issues} data-waves-verdicts={pv.verdicts.length}>
-                {pv.verdicts.map((v, i) => <li key={i} data-waves-verdict={v.code}><span className={base.level} data-level={v.level === 'refuse' ? 'error' : 'warn'}>{v.level === 'refuse' ? 'too big' : 'note'}</span>{v.message}</li>)}
+                {pv.verdicts.map((v, i) => <li key={i} data-waves-verdict={v.code}><span className={base.level} data-level={v.level === 'refuse' ? 'error' : 'warn'}>{v.level === 'refuse' ? trFn('em.wav.tooBig') : trFn('em.wav.note')}</span>{v.message}</li>)}
               </ul>
             )}
-            {pv.offer && <p className={css.small} data-waves-offer={pv.offer.s}>A mesh {pv.offer.s.toFixed(2)}× coarser would take about {sText(pv.offer.seconds * runs)}{pv.offer.limitedBy ? ` (as coarse as the ${pv.offer.limitedBy === 'barrel' ? 'barrel' : 'thinnest dielectric'} allows)` : ''}.</p>}
+            {pv.offer && <p className={css.small} data-waves-offer={pv.offer.s}>{trFn('em.wav.offer', { s: pv.offer.s.toFixed(2), time: sText(pv.offer.seconds * runs), lim: pv.offer.limitedBy ? trFn('em.wav.offerLim', { what: pv.offer.limitedBy === 'barrel' ? trFn('em.wav.offerBarrel') : trFn('em.wav.offerDiel') }) : '' })}</p>}
             {pv.notes.filter((n) => n.level === 'error' || n.code === 'feed-over-return').map((n, i) => <p key={i} className={n.level === 'error' ? stk.reason : css.small} data-waves-note={n.code}>{n.message}</p>)}
           </>
         )}
@@ -262,29 +266,36 @@ export default function WavesSection({ setup, unit = 'mm' }: Props) {
 
       <div className={wcss.runRow}>
         <button ref={runBtn} type="button" className={`${base.button} ${wcss.run}`} onClick={() => void run()} disabled={!pv || !pv.est || refuse.length > 0 || !!(kind === 'trace' && lenReason)} data-waves-run>
-          {phase === 'running' || done ? 'Run again' : 'Run'}
+          {phase === 'running' || done ? trFn('em.wav.runAgain') : trFn('em.wav.run')}
         </button>
-        {phase === 'running' && <button type="button" className={base.button} onClick={cancel} onFocus={() => { onCancel.current = true; }} onBlur={(e) => { if (e.relatedTarget) onCancel.current = false; }} data-waves-cancel>Cancel</button>}
+        {phase === 'running' && <button type="button" className={base.button} onClick={cancel} onFocus={() => { onCancel.current = true; }} onBlur={(e) => { if (e.relatedTarget) onCancel.current = false; }} data-waves-cancel>{trFn('em.wav.cancel')}</button>}
       </div>
       <div className={wcss.progress} data-waves-progress={phase === 'running' ? frac : phase}>
-        <Calm name="waves" read={() => (phase === 'running' ? (bk ? `Running on the ${bk.backend === 'webgpu' ? 'GPU' : 'CPU'}.` : 'Preparing the run.') : lineOf(document.querySelector('[data-waves-progress] > p')))} />
+        <Calm name="waves" read={() => (phase === 'running' ? (bk ? trFn('em.wav.calmRunning', { hw: bk.backend === 'webgpu' ? 'GPU' : 'CPU' }) : trFn('em.wav.calmPreparing')) : lineOf(document.querySelector('[data-waves-progress] > p')))} />
         {phase === 'running' ? (
           <>
-            <progress max={1} value={frac} aria-label="Run progress" />
+            <progress max={1} value={frac} aria-label={trFn('em.wav.progressAria')} />
             <p className={css.small}>
-              {bk ? (bk.backend === 'webgpu' ? 'On the GPU. ' : why ? `On the CPU, as ${why.short}. ` : `On the CPU: ${bk.reason} `) : 'Preparing the run… '}
-              {prog ? `Excitation ${prog.run + 1} of ${prog.runs}, step ${prog.step.toLocaleString('en-GB')} of ${prog.steps.toLocaleString('en-GB')}${Number.isFinite(prog.eta) ? `, about ${sText(prog.eta / 1000)} left` : ''}, energy ${Number.isFinite(prog.energyDb) ? `${prog.energyDb.toFixed(0)} dB` : '–'}.` : info ? `Started: ${big(info.cells)} cells, about ${sText(info.seconds * info.runs)}.` : 'Measuring this device…'}
+              {bk ? (bk.backend === 'webgpu' ? trFn('em.wav.onGpu') : why ? trFn('em.wav.onCpuWhy', { short: why.short }) : trFn('em.wav.onCpuReason', { reason: bk.reason })) : trFn('em.wav.preparing')}
+              {prog ? trFn('em.wav.progLine', {
+                run: prog.run + 1,
+                runs: prog.runs,
+                step: prog.step.toLocaleString(numLoc),
+                steps: prog.steps.toLocaleString(numLoc),
+                eta: Number.isFinite(prog.eta) ? trFn('em.wav.progEta', { time: sText(prog.eta / 1000) }) : '',
+                energy: Number.isFinite(prog.energyDb) ? `${prog.energyDb.toFixed(0)} dB` : '–',
+              }) : info ? trFn('em.wav.progStarted', { cells: big(info.cells), time: sText(info.seconds * info.runs) }) : trFn('em.wav.measuring')}
             </p>
           </>
         ) : (
           <p className={css.small}>
-            {phase === 'cancelled' ? 'Cancelled.' : phase === 'error' ? `The run failed: ${error}` : phase === 'refused' ? 'The run was refused:' : done ? `Done in ${sText(done.elapsed)} on the ${done.backend === 'webgpu' ? 'GPU' : 'CPU'}${Number.isFinite(done.estimate) ? ` (estimated ${sText(done.estimate)})` : ''}.` : 'Not run yet.'}
+            {phase === 'cancelled' ? trFn('em.wav.cancelled') : phase === 'error' ? trFn('em.wav.failed', { error }) : phase === 'refused' ? trFn('em.wav.refused') : done ? trFn('em.wav.done', { elapsed: sText(done.elapsed), hw: done.backend === 'webgpu' ? 'GPU' : 'CPU', est: Number.isFinite(done.estimate) ? trFn('em.wav.doneEst', { time: sText(done.estimate) }) : '' }) : trFn('em.wav.notRun')}
           </p>
         )}
         {phase === 'refused' && refusal && (
           <ul className={base.issues} data-waves-refused={refusal.verdicts.length}>
-            {refusal.verdicts.map((v, i) => <li key={i} data-waves-verdict={v.code}><span className={base.level} data-level="error">{v.level}</span>{v.message}</li>)}
-            {refusal.notes.filter((n) => n.level === 'error').map((n, i) => <li key={`n${i}`}><span className={base.level} data-level="error">error</span>{n.message}</li>)}
+            {refusal.verdicts.map((v, i) => <li key={i} data-waves-verdict={v.code}><span className={base.level} data-level="error">{v.level === 'refuse' ? trFn('em.wav.tooBig') : trFn('em.wav.note')}</span>{v.message}</li>)}
+            {refusal.notes.filter((n) => n.level === 'error').map((n, i) => <li key={`n${i}`}><span className={base.level} data-level="error">{trFn('em.wav.error')}</span>{n.message}</li>)}
           </ul>
         )}
       </div>
@@ -292,7 +303,7 @@ export default function WavesSection({ setup, unit = 'mm' }: Props) {
       <Why k="waves-progress" bare />
 
       {done && <WavesResults d={done} stale={stale} unit={unit} />}
-      <p className={css.small} data-waves-checked>{CHECKED}</p>
+      <p className={css.small} data-waves-checked>{trFn('em.wav.checked')}</p>
       <Why k="waves-checked" bare />
     </div>
   );
@@ -301,67 +312,71 @@ export default function WavesSection({ setup, unit = 'mm' }: Props) {
 const NOTE_LEVEL: Record<string, string> = { error: 'error', warning: 'warn', info: 'note' };
 
 function WavesResults({ d, stale, unit }: { d: Done; stale: boolean; unit: LengthUnit }) {
+  const { t: trFn } = useI18n();
   const v = d.view, T = v.fw.tdr, Q = v.qs;
   const [tCur, setTCur] = useState(NaN);
   const [fCur, setFCur] = useState(NaN);
   const ts = useMemo(() => Array.from(T.t), [T]);
   const tDomain = useMemo(() => [ts[0], ts[ts.length - 1]] as [number, number], [ts]);
   const tScale = useMemo(() => timeScale({ min: tDomain[0], max: tDomain[1] }), [tDomain]);
-  const qName = d.spec.kind === 'via' ? 'Via model' : 'Line (2D solver)';
-  const two = (fw: ArrayLike<number>, qs: ArrayLike<number> | null | undefined): PlotSeries[] => [{ name: 'Full-wave', ys: Array.from(fw) }, ...(qs ? [{ name: qName, ys: Array.from(qs) }] : [])];
-  const zS = useMemo(() => two(T.z, Q?.tdr?.z), [T, Q]); // eslint-disable-line react-hooks/exhaustive-deps
-  const tdtS = useMemo(() => (T.tdt ? two(T.tdt, Q?.tdr?.tdt) : null), [T, Q]); // eslint-disable-line react-hooks/exhaustive-deps
-  const s11 = useMemo(() => two(v.fw.db[0], Q?.db[0]), [v, Q]); // eslint-disable-line react-hooks/exhaustive-deps
-  const s21 = useMemo(() => two(v.fw.db[1], Q?.db[1]), [v, Q]); // eslint-disable-line react-hooks/exhaustive-deps
+  const qName = d.spec.kind === 'via' ? trFn('em.wav.viaModel') : trFn('em.wav.line2d');
+  const fwName = trFn('em.wav.fullWave');
+  const noCursor = trFn('em.wav.noCursor');
+  const two = (fw: ArrayLike<number>, qs: ArrayLike<number> | null | undefined): PlotSeries[] => [{ name: fwName, ys: Array.from(fw) }, ...(qs ? [{ name: qName, ys: Array.from(qs) }] : [])];
+  const zS = useMemo(() => two(T.z, Q?.tdr?.z), [T, Q, fwName, qName]); // eslint-disable-line react-hooks/exhaustive-deps
+  const tdtS = useMemo(() => (T.tdt ? two(T.tdt, Q?.tdr?.tdt) : null), [T, Q, fwName, qName]); // eslint-disable-line react-hooks/exhaustive-deps
+  const s11 = useMemo(() => two(v.fw.db[0], Q?.db[0]), [v, Q, fwName, qName]); // eslint-disable-line react-hooks/exhaustive-deps
+  const s21 = useMemo(() => two(v.fw.db[1], Q?.db[1]), [v, Q, fwName, qName]); // eslint-disable-line react-hooks/exhaustive-deps
   const fDomain = useMemo(() => [0, v.f[v.f.length - 1]] as [number, number], [v]);
   const tAt = (t: number) => `${Number((t * tScale.k).toFixed(tScale.unit === 'ps' ? 1 : 4))} ${tScale.unit}`;
   const read = (xs: number[], ss: PlotSeries[], x: number, fmt: (y: number) => string) => ss.map((s) => { const y = readAt(xs, s.ys, x); return `${s.name} ${Number.isFinite(y) ? fmt(y) : '–'}`; }).join(', ');
   const zName = v.pair ? 'Zdiff' : 'Z';
-  const zRead = (t: number) => (Number.isFinite(t) ? `${tAt(t)}: ${zName} ${read(ts, zS, t, (y) => `${y.toFixed(2)} Ω`)}` : NO_CURSOR);
-  const tdtRead = (t: number) => (Number.isFinite(t) && tdtS ? `${tAt(t)}: ${read(ts, tdtS, t, (y) => y.toFixed(4))}` : NO_CURSOR);
-  const sRead = (q: 0 | 1, ss: PlotSeries[]) => (f: number) => (Number.isFinite(f) ? `${f.toFixed(2)} GHz: ${v.names[q]} ${read(v.f, ss, f, (y) => (y <= DB_FLOOR ? `below ${DB_FLOOR} dB` : `${y.toFixed(2)} dB`))}`.replace(/-/g, '−') : NO_CURSOR);
-  const lines = useMemo(() => [{ y: v.zRef, name: `Port ${v.zRef.toFixed(0)} Ω` }], [v]);
+  const zRead = (t: number) => (Number.isFinite(t) ? `${tAt(t)}: ${zName} ${read(ts, zS, t, (y) => `${y.toFixed(2)} Ω`)}` : noCursor);
+  const tdtRead = (t: number) => (Number.isFinite(t) && tdtS ? `${tAt(t)}: ${read(ts, tdtS, t, (y) => y.toFixed(4))}` : noCursor);
+  const sRead = (q: 0 | 1, ss: PlotSeries[]) => (f: number) => (Number.isFinite(f) ? `${f.toFixed(2)} GHz: ${v.names[q]} ${read(v.f, ss, f, (y) => (y <= DB_FLOOR ? trFn('em.wav.belowDb', { db: DB_FLOOR }) : `${y.toFixed(2)} dB`))}`.replace(/-/g, '−') : noCursor);
+  const lines = useMemo(() => [{ y: v.zRef, name: trFn('em.wav.portRef', { z: v.zRef.toFixed(0) }) }], [v, trFn]);
   const notSettled = d.res.status.some((s) => s === 'done'), unstable = d.res.status.some((s) => s === 'unstable');
   const eeffOff = d.res.eeff.filter((e) => e.flag);
   // the run's warnings once each (the mesh's notes repeat per feed edge; its info lines say what the notes above say)
   const notes = d.res.notes.filter((n, i, a) => n.level === 'warning' && a.findIndex((m) => m.message === n.message) === i);
   const shifted = v.shift.some((x) => Math.abs(x) > 1e-6);
+  const diffParen = v.pair ? trFn('em.wav.diffParen') : '';
   return (
     <div className={vcss.plots} data-waves-results data-stale={stale} data-pair={v.pair} data-elapsed={d.elapsed} data-run-s={d.res.ms / 1000} data-estimate={d.estimate} data-backend={d.backend} data-where={d.where}>
-      {stale && <p className={css.small} data-waves-stale>The setup changed since this run; the result is for the earlier one. Run again for this one.</p>}
+      {stale && <p className={css.small} data-waves-stale>{trFn('em.wav.stale')}</p>}
       {d.res.snap && (
         <>
-          <h4 className={vcss.h4}>The waves</h4>
+          <h4 className={vcss.h4}>{trFn('em.wav.theWaves')}</h4>
           {d.store && d.store.frames.length > 0
             ? <WavesPlayer key={d.res.ms + d.elapsed} store={d.store} snap={d.res.snap} views={d.pv.views} geom={d.pv.geom} unit={unit} />
-            : <p className={css.small} data-waves-player-gone>{stale ? 'The waves of this run were let go when the setup changed; run again to see them.' : 'The waves of this run were let go when the next run started.'}</p>}
+            : <p className={css.small} data-waves-player-gone>{stale ? trFn('em.wav.framesGoneStale') : trFn('em.wav.framesGoneNext')}</p>}
         </>
       )}
-      <h4 className={vcss.h4}>TDR and TDT</h4>
+      <h4 className={vcss.h4}>{trFn('em.wav.tdrTdt')}</h4>
       <Why k="waves-plots" bare />
-      <Plot name="waves-tdr" title={`Impedance${v.pair ? ' (differential)' : ''} (Ω)`} xs={ts} series={zS} xDomain={tDomain} xScale={tScale}
-        xLabel={`Time (${tScale.unit}), there and back from the port`} cursor={tCur} onCursor={setTCur} readout={zRead} lines={lines} stale={stale} />
-      {tdtS && <Plot name="waves-tdt" title={`Step through${v.pair ? ' (differential)' : ''}`} xs={ts} series={tdtS} xDomain={tDomain} xScale={tScale}
-        xLabel={`Time (${tScale.unit}) from the step at the port`} cursor={tCur} onCursor={setTCur} readout={tdtRead} stale={stale} />}
-      <h4 className={vcss.h4}>S-parameters</h4>
-      <Plot name="waves-s11" title={`|${v.names[0]}| (dB)`} xs={v.f} series={s11} xDomain={fDomain} xLabel="Frequency (GHz)" cursor={fCur} onCursor={setFCur} readout={sRead(0, s11)} stale={stale} />
-      <Plot name="waves-s21" title={`|${v.names[1]}| (dB)`} xs={v.f} series={s21} xDomain={fDomain} xLabel="Frequency (GHz)" cursor={fCur} onCursor={setFCur} readout={sRead(1, s21)} stale={stale} />
+      <Plot name="waves-tdr" title={trFn('em.wav.impTitle', { diff: diffParen })} xs={ts} series={zS} xDomain={tDomain} xScale={tScale}
+        xLabel={trFn('em.wav.timeBack', { unit: tScale.unit })} cursor={tCur} onCursor={setTCur} readout={zRead} lines={lines} stale={stale} />
+      {tdtS && <Plot name="waves-tdt" title={trFn('em.wav.stepTitle', { diff: diffParen })} xs={ts} series={tdtS} xDomain={tDomain} xScale={tScale}
+        xLabel={trFn('em.wav.timeStep', { unit: tScale.unit })} cursor={tCur} onCursor={setTCur} readout={tdtRead} stale={stale} />}
+      <h4 className={vcss.h4}>{trFn('em.wav.sparams')}</h4>
+      <Plot name="waves-s11" title={`|${v.names[0]}| (dB)`} xs={v.f} series={s11} xDomain={fDomain} xLabel={trFn('em.wav.freqGhz')} cursor={fCur} onCursor={setFCur} readout={sRead(0, s11)} stale={stale} />
+      <Plot name="waves-s21" title={`|${v.names[1]}| (dB)`} xs={v.f} series={s21} xDomain={fDomain} xLabel={trFn('em.wav.freqGhz')} cursor={fCur} onCursor={setFCur} readout={sRead(1, s21)} stale={stale} />
       <p className={css.small} data-waves-about>
-        A {Math.round(d.spec.tr * 1e12)} ps edge, ports at {WAVES_Z0} Ω{v.pair ? ' (100 Ω differential)' : ''}, the run’s S to {v.fS.toFixed(1)} GHz.
-        {shifted && ` The run’s ports were moved along their feeds to the model’s feed ends (${v.shift.map((x) => `${x >= 0 ? '+' : '−'}${Math.abs(x).toFixed(2)}`).join(', ')} mm).`}
-        {Q && Number.isFinite(Q.fValid) && Q.fValid < v.fS && ` The via model holds to ${Q.fValid.toFixed(1)} GHz.`}
-        {!Q && (d.spec.kind === 'via' ? ' The via model has no result for this via.' : ' No quasi-static curve for coupled traces yet.')}
-        {v.pair && ' Every port of the pair is driven in turn and Sdd is formed from that 4-port; its feeds are de-embedded with one wave speed each, so the coupled feeds’ terms are a little rough.'}
+        {trFn('em.wav.aboutBase', { tr: Math.round(d.spec.tr * 1e12), z0: WAVES_Z0, diff: v.pair ? trFn('em.wav.aboutDiff') : '', fS: v.fS.toFixed(1) })}
+        {shifted && trFn('em.wav.aboutShifted', { shifts: v.shift.map((x) => `${x >= 0 ? '+' : '−'}${Math.abs(x).toFixed(2)}`).join(', ') })}
+        {Q && Number.isFinite(Q.fValid) && Q.fValid < v.fS && trFn('em.wav.aboutValid', { fValid: Q.fValid.toFixed(1) })}
+        {!Q && (d.spec.kind === 'via' ? trFn('em.wav.aboutNoVia') : trFn('em.wav.aboutNoCoupled'))}
+        {v.pair && trFn('em.wav.aboutPair')}
       </p>
       <div data-waves-notes={notes.length + eeffOff.length + (notSettled ? 1 : 0) + (unstable ? 1 : 0)}>
         {notSettled || unstable || eeffOff.length || notes.length ? (
           <ul className={base.issues}>
-            {unstable && <li data-waves-run-note="unstable"><span className={base.level} data-level="error">error</span>The run went unstable; its result is not to be trusted.</li>}
-            {notSettled && <li data-waves-run-note="not-settled"><span className={base.level} data-level="warn">note</span>The fields had not died down when the run reached its last step; the lowest frequencies are less sure.</li>}
-            {eeffOff.map((e, i) => <li key={`e${i}`} data-waves-run-note="eeff"><span className={base.level} data-level="warn">note</span>A feed’s εeff from the run is {(e.diff * 100).toFixed(1)} % off the 2D solver’s ({e.eeff.toFixed(3)} against {e.eeff2d.toFixed(3)}).</li>)}
-            {notes.map((n, i) => <li key={`n${i}`} data-waves-run-note={n.code}><span className={base.level} data-level={NOTE_LEVEL[n.level] ?? 'note'}>{n.level === 'warning' ? 'note' : n.level}</span>{n.message}</li>)}
+            {unstable && <li data-waves-run-note="unstable"><span className={base.level} data-level="error">{trFn('em.wav.error')}</span>{trFn('em.wav.unstable')}</li>}
+            {notSettled && <li data-waves-run-note="not-settled"><span className={base.level} data-level="warn">{trFn('em.wav.note')}</span>{trFn('em.wav.notSettled')}</li>}
+            {eeffOff.map((e, i) => <li key={`e${i}`} data-waves-run-note="eeff"><span className={base.level} data-level="warn">{trFn('em.wav.note')}</span>{trFn('em.wav.eeffOff', { pct: (e.diff * 100).toFixed(1), eeff: e.eeff.toFixed(3), eeff2d: e.eeff2d.toFixed(3) })}</li>)}
+            {notes.map((n, i) => <li key={`n${i}`} data-waves-run-note={n.code}><span className={base.level} data-level={NOTE_LEVEL[n.level] ?? 'note'}>{n.level === 'warning' || n.level === 'info' ? trFn('em.wav.note') : trFn('em.wav.error')}</span>{n.message}</li>)}
           </ul>
-        ) : <p className={css.small}>No notes: the run settled and its feeds agree with the 2D solver.</p>}
+        ) : <p className={css.small}>{trFn('em.wav.noNotes')}</p>}
       </div>
       <Why k="waves-notes" bare />
     </div>

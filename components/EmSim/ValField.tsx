@@ -8,6 +8,7 @@ import { TYPED } from '../../lib/emsim/stackup';
 import type { Tol, Val } from '../../lib/emsim/stackup';
 import { UNIT_TEXT, readLength, readPlain, readTolerance } from '../../lib/emsim/units';
 import type { LengthUnit, Read } from '../../lib/emsim/units';
+import { useI18n } from '../../lib/ui/i18n';
 import base from '../../styles/EmSim.module.css';
 import css from '../../styles/EmSimStackup.module.css';
 import { fieldText, sourceTag, tolField } from './format';
@@ -74,6 +75,7 @@ export interface ValFieldProps {
 }
 
 export default function ValField({ name, label, x, unit, digits, onChange, nullable, zero, negative, min, max, onFocus, placeholder }: ValFieldProps) {
+  const { t, locale } = useI18n();
   const id = useId();
   const [reason, setReason] = useState('');
   const [tolReason, setTolReason] = useState('');
@@ -82,7 +84,7 @@ export default function ValField({ name, label, x, unit, digits, onChange, nulla
     return unit ? readLength(t, unit, { zero, negative }) : readPlain(t, { min, max, what: label });
   };
   const parseTol = (t: string): Read<Tol> => (t.trim() ? readTolerance(t, unit ?? 'mm', !unit) : { ok: true, value: null });
-  const tag = x ? sourceTag(x.src) : null;
+  const tag = x ? sourceTag(x.src, locale) : null;
   return (
     <div className={css.field} data-field={name} onFocus={onFocus}>
       <label htmlFor={id} className={css.fieldLabel}>{label}</label>
@@ -91,7 +93,7 @@ export default function ValField({ name, label, x, unit, digits, onChange, nulla
           id={id}
           className={base.input}
           shown={x ? fieldText(x.v, unit, digits) : ''}
-          placeholder={nullable ? (placeholder ?? 'not stated') : undefined}
+          placeholder={nullable ? (placeholder ?? t('em.val.notStated')) : undefined}
           aria-invalid={reason ? true : undefined}
           parse={parse}
           onReason={setReason}
@@ -103,8 +105,8 @@ export default function ValField({ name, label, x, unit, digits, onChange, nulla
         <NumInput
           className={css.tol}
           shown={x ? tolField(x.tol, unit, digits) : ''}
-          placeholder="± none"
-          aria-label={`Tolerance of ${label}`}
+          placeholder={t('em.val.tolPlaceholder')}
+          aria-label={t('em.val.tolAria', { label })}
           aria-invalid={tolReason ? true : undefined}
           disabled={!x}
           parse={parseTol}
@@ -113,7 +115,7 @@ export default function ValField({ name, label, x, unit, digits, onChange, nulla
         />
         {tag && <span className={css.src} data-kind={tag.kind}>{tag.text}</span>}
       </div>
-      {(reason || tolReason) && <p className={css.reason} role="alert">{reason || `Tolerance: ${tolReason}`}</p>}
+      {(reason || tolReason) && <p className={css.reason} role="alert">{reason || t('em.val.tolErr', { reason: tolReason })}</p>}
     </div>
   );
 }

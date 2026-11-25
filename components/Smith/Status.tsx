@@ -4,6 +4,7 @@
 
 import React from 'react';
 
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Smith.module.css';
 
 /** The short lines, always shown. */
@@ -27,17 +28,18 @@ export const STATUS_COMING =
   'checked in Edge, Firefox and Safari’s engine, by touch, and for speed.';
 
 export function Status() {
+  const { t } = useI18n();
   return (
     <div className={styles.statusWrap}>
-      <aside id="status" className={styles.status} aria-label="Status of this tool">
+      <aside id="status" className={styles.status} aria-label={t('sm.status.aria')}>
         <p className={styles.statusLine}>
-          <strong>{STATUS_LEAD}</strong> {STATUS_NOW}
+          <strong>{t('sm.status.lead')}</strong> {t('sm.status.now')}
         </p>
-        <p className={styles.statusLine}>{STATUS_CHECKED}</p>
+        <p className={styles.statusLine}>{t('sm.status.checked')}</p>
         <details className={styles.statusMore}>
-          <summary>More</summary>
-          <p className={styles.statusLine}>{STATUS_ASSUMES}</p>
-          <p className={styles.statusLine}>{STATUS_COMING}</p>
+          <summary>{t('sm.status.more')}</summary>
+          <p className={styles.statusLine}>{t('sm.status.assumes')}</p>
+          <p className={styles.statusLine}>{t('sm.status.coming')}</p>
         </details>
       </aside>
     </div>

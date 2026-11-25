@@ -37,6 +37,7 @@ import {
   UNLOCK,
   WATERMARK,
 } from '../../lib/pdf/tools';
+import { TranslationKey, useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PdfTools.module.css';
 
 const PDF_TARGETS: PdfTool[] = [
@@ -83,14 +84,15 @@ export function ContinueWith({
   files: HandoffFile[];
   targets?: PdfTool[];
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   if (!files.length) return null;
 
-  const targets = (customTargets ?? PDF_TARGETS).filter((t) => t.id !== currentToolId);
+  const targets = (customTargets ?? PDF_TARGETS).filter((tool) => tool.id !== currentToolId);
 
   return (
     <div className={styles.chainRow}>
-      <span className={styles.chainLabel}>Continue with…</span>
+      <span className={styles.chainLabel}>{t('pdf.ui.continueWith')}</span>
       {targets.map((tool) => (
         <button
           key={tool.id}
@@ -101,7 +103,7 @@ export function ContinueWith({
             void router.push(tool.href);
           }}
         >
-          {tool.title}
+          {t(`pdf.tool.${tool.id}.title` as TranslationKey)}
         </button>
       ))}
     </div>

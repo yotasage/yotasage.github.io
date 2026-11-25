@@ -3,13 +3,15 @@ import React from 'react';
 import { PdfCompareView } from '../../components/PdfTools/PdfCompareView';
 import { PdfPage } from '../../components/PdfTools/ToolPage';
 import { COMPARE } from '../../lib/pdf/tools';
+import { useI18n } from '../../lib/ui/i18n';
 
 export default function ComparePdfPage() {
+  const { t } = useI18n();
   return (
     <PdfPage
       title={COMPARE.title}
       showHub
-      lead="Compare two PDF documents side-by-side, with pixel diff overlays, a swipe curtain, and reading-order text diffs — all locally in your browser."
+      lead={t('pdf.p.compare.lead')}
     >
       <PdfCompareView />
     </PdfPage>

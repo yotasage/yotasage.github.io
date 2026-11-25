@@ -11,10 +11,12 @@ import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { ROUNDING_FLOOR, formatAmount, formatReturnLoss } from '../../lib/quantity';
 import { M_ANGLE, M_MAG, M_RL, M_VSWR, M_ZI, M_ZR, METRIC_STRIDE, evaluateCircuit } from '../../lib/smith/network';
 import type { Circuit } from '../../lib/smith/network';
-import { KIND_NAMES, SWEEP_LIMIT_DB, formValue, formsOf } from '../../lib/smith/state';
+import { SWEEP_LIMIT_DB, formValue, formsOf } from '../../lib/smith/state';
 import type { SweepSetting } from '../../lib/smith/state';
 import type { BandFigures } from '../../lib/smith/sweep';
 import { toDegrees } from '../../lib/smith/convert';
+import { useI18n } from '../../lib/ui/i18n';
+import type { Locale } from '../../lib/ui/translations';
 import styles from '../../styles/Smith.module.css';
 import css from '../../styles/SmithSweep.module.css';
 import rc from '../../styles/SmithReport.module.css';
@@ -25,6 +27,7 @@ import { nodeName } from './pathLayer';
 import type { PlotView } from './plotView';
 import { SCALE_ROOM_PX } from './gridSvg';
 import { complexText, gammaPolarText } from './readout';
+import { formLabel, getSmithLocale, kindName } from './smithText';
 import { Figures } from './SweepPlot';
 import type { TraceLayer } from './traceLayer';
 import { Why } from './Why';
@@ -40,14 +43,14 @@ export interface ReportProps {
 }
 
 /** A part's values in words: every form of its card but the normalised ones ("C = 31.83 pF, X = −50 Ω"). */
-export function partText(c: Circuit, i: number, d: number): string {
+export function partText(c: Circuit, i: number, d: number, locale: Locale = getSmithLocale()): string {
   const p = c.parts[i];
   const vals = formsOf(p.kind).filter((f) => f.id !== 'n').map((f) => {
     const v = formValue(f.id, p, c);
     const t = f.unit === 'λ' ? `${formatAmount(v, '', d)} λ` : f.unit === '°' ? `${formatAmount(v, '', d)}°` : formatAmount(v, f.unit, d);
-    return `${f.label} = ${t}`;
+    return `${formLabel(f, locale)} = ${t}`;
   });
-  return `${KIND_NAMES[p.kind]}: ${vals.join(', ')}`;
+  return `${kindName(p.kind, locale)}: ${vals.join(', ')}`;
 }
 
 /** A node's texts: z (normalised), Z in Ω, Γ (polar), VSWR, return loss, at f0. */
@@ -67,7 +70,6 @@ export function reportNodeTexts(c: Circuit, d: number): string[][] {
   return out;
 }
 
-const NODE_HEADS = ['z', 'Z', 'Γ', 'VSWR', 'Return loss'];
 /** The plot's print size in px (its viewBox): about the width of A4 or Letter inside the margins. */
 const PLOT_W = 680, PLOT_H = 240;
 /** Room kept around the chart's disc for the rim's scales and labels (box px): the grid's own, and a little more. */
@@ -111,6 +113,7 @@ function chartCopy(v: ChartView): HTMLElement | null {
 }
 
 function Report({ circuit, sweep, digits, search, layer, chart }: ReportProps) {
+  const { t, locale } = useI18n();
   const chartBox = useRef<HTMLDivElement>(null);
   const plotBox = useRef<HTMLDivElement>(null);
   const stamp = useRef<HTMLSpanElement>(null);
@@ -151,7 +154,7 @@ function Report({ circuit, sweep, digits, search, layer, chart }: ReportProps) {
     if (copy || !v) chartBox.current?.replaceChildren(...(copy ? [copy] : []));
     const plot = sweep ? (layer()?.plot as PlotView | null) : null;
     plotBox.current?.replaceChildren(...(plot && plot.shown ? [plot.printCopy(PLOT_W, PLOT_H)] : []));
-    if (stamp.current) stamp.current.textContent = new Date().toLocaleString();
+    if (stamp.current) stamp.current.textContent = new Date().toLocaleString(locale === 'nb' ? 'nb-NO' : undefined);
   };
   useEffect(() => {
     const before = () => prepare.current();
@@ -163,17 +166,18 @@ function Report({ circuit, sweep, digits, search, layer, chart }: ReportProps) {
 
   const d = digits, n = circuit.parts.length;
   const nodes = useMemo(() => reportNodeTexts(circuit, d), [circuit, d]);
-  const parts = useMemo(() => circuit.parts.map((_, i) => partText(circuit, i, d)), [circuit, d]);
+  const parts = useMemo(() => circuit.parts.map((_, i) => partText(circuit, i, d, locale)), [circuit, d, locale]);
+  const nodeHeads = ['z', 'Z', 'Γ', 'VSWR', t('sm.rp.returnLoss')];
   const input = nodes[n];
   const band = sweep?.band;
   const link = `${where}?${search}`;
 
   return (
-    <section className={rc.report} aria-label="Report" data-report="">
+    <section className={rc.report} aria-label={t('sm.rp.aria')} data-report="">
       <h2 className={`${styles.panelTitle} ${rc.title}`} id="smith-report">
-        <span className={rc.head}><span className={rc.screen}>Report</span><span className={rc.print}>Smith chart report</span> <Why k="report" /></span>
+        <span className={rc.head}><span className={rc.screen}>{t('sm.rp.title')}</span><span className={rc.print}>{t('sm.rp.printTitle')}</span> <Why k="report" /></span>
         <span className={rc.print} ref={stamp} data-report-stamp="" />
-        <button type="button" className={`${styles.button} ${rc.printButton}`} data-print-report="" onClick={() => { prepare.current(); window.print(); }}>Print report</button>
+        <button type="button" className={`${styles.button} ${rc.printButton}`} data-print-report="" onClick={() => { prepare.current(); window.print(); }}>{t('sm.rp.printBtn')}</button>
       </h2>
 
       {/* The body is skipped off screen (rc.lazy); the head and the link stay outside it: a fixed short-line bubble
@@ -185,37 +189,37 @@ function Report({ circuit, sweep, digits, search, layer, chart }: ReportProps) {
 
       <div className={rc.grid}>
         <div className={rc.block} data-report-circuit="">
-          <h3 className={css.sub}>Circuit</h3>
+          <h3 className={css.sub}>{t('sm.rp.circuit')}</h3>
           <dl className={rc.list}>
             <div><dt>Z0</dt><dd data-r="z0">{formatAmount(circuit.z0, 'Ω', d)}</dd></div>
             <div><dt>f0</dt><dd data-r="f0">{hzText(circuit.f0, d)}</dd></div>
-            <div><dt>Load</dt><dd data-r="load">{complexText(circuit.loadR, circuit.loadX, 'Ω', d, ROUNDING_FLOOR * circuit.z0)}</dd></div>
+            <div><dt>{t('sm.rp.load')}</dt><dd data-r="load">{complexText(circuit.loadR, circuit.loadX, 'Ω', d, ROUNDING_FLOOR * circuit.z0)}</dd></div>
           </dl>
-          <p className={rc.note}>{n === 0 ? 'No parts: the input is the load.' : `${n} part${n === 1 ? '' : 's'}, from the load to the input:`}</p>
-          {n > 0 && <ol className={rc.parts}>{parts.map((t, i) => <li key={i} data-r-part={i}>{t}</li>)}</ol>}
+          <p className={rc.note}>{n === 0 ? t('sm.rp.noParts') : n === 1 ? t('sm.rp.onePart') : t('sm.rp.nParts', { n })}</p>
+          {n > 0 && <ol className={rc.parts}>{parts.map((txt, i) => <li key={i} data-r-part={i}>{txt}</li>)}</ol>}
         </div>
         <div className={rc.block} data-report-input="">
-          <h3 className={css.sub}>The input at f0</h3>
+          <h3 className={css.sub}>{t('sm.rp.inputAtF0')}</h3>
           <dl className={rc.list}>
             <div><dt>z</dt><dd data-r="z">{input[0]}</dd></div>
             <div><dt>Z</dt><dd data-r="Z">{input[1]}</dd></div>
             <div><dt>Γ</dt><dd data-r="gamma">{input[2]}</dd></div>
             <div><dt>VSWR</dt><dd data-r="vswr">{input[3]}</dd></div>
-            <div><dt>Return loss</dt><dd data-r="rl">{input[4]}</dd></div>
+            <div><dt>{t('sm.rp.returnLoss')}</dt><dd data-r="rl">{input[4]}</dd></div>
           </dl>
         </div>
       </div>
 
       <div className={rc.block} data-report-nodes="">
-        <h3 className={css.sub}>Nodes at f0</h3>
-        <div className={css.tableWrap} tabIndex={0} role="region" aria-label="Node table">
+        <h3 className={css.sub}>{t('sm.rp.nodesAtF0')}</h3>
+        <div className={css.tableWrap} tabIndex={0} role="region" aria-label={t('sm.rp.nodeTableAria')}>
           <table className={css.table}>
-            <thead><tr><th scope="col">Node</th>{NODE_HEADS.map((h) => <th key={h} scope="col">{h}</th>)}</tr></thead>
+            <thead><tr><th scope="col">{t('sm.rp.colNode')}</th>{nodeHeads.map((h) => <th key={h} scope="col">{h}</th>)}</tr></thead>
             <tbody>
               {nodes.map((r, k) => (
                 <tr key={k} data-r-node={k}>
                   <th scope="row">{nodeName(k, n)}</th>
-                  {r.map((t, j) => <td key={j} data-label={NODE_HEADS[j]}>{t}</td>)}
+                  {r.map((val, j) => <td key={j} data-label={nodeHeads[j]}>{val}</td>)}
                 </tr>
               ))}
             </tbody>
@@ -225,15 +229,21 @@ function Report({ circuit, sweep, digits, search, layer, chart }: ReportProps) {
 
       {sweep && (
         <div className={rc.sweep} data-report-sweep="">
-          <h3 className={css.sub}>Sweep</h3>
+          <h3 className={css.sub}>{t('sm.rp.sweep')}</h3>
           <p className={rc.note} data-r="band">
-            {hzText(band.start, d)} to {hzText(band.stop, d)}, {band.points} points, {band.log ? 'logarithmic' : 'linear'} steps;
-            {' '}limit {formatAmount(sweep.limit ?? SWEEP_LIMIT_DB, 'dB', 4)} return loss; the plot shows {sweep.vswr ? 'VSWR' : 'return loss'}.
+            {t('sm.rp.bandSummary', {
+              start: hzText(band.start, d),
+              stop: hzText(band.stop, d),
+              points: band.points,
+              spacing: t(band.log ? 'sm.rp.log' : 'sm.rp.lin'),
+              limit: formatAmount(sweep.limit ?? SWEEP_LIMIT_DB, 'dB', 4),
+              plotKind: t(sweep.vswr ? 'sm.pl.kindVswr' : 'sm.pl.kindRl'),
+            })}
           </p>
           <div ref={plotBox} className={`${css.plot} ${rc.plotBox}`} data-report-plot="" />
           <div className={`${rc.grid} ${rc.stack}`}>
             <div className={rc.block}>
-              <h3 className={css.sub}>Band figures</h3>
+              <h3 className={css.sub}>{t('sm.rp.bandFigures')}</h3>
               <Figures fig={fig} sweep={sweep} f0={circuit.f0} digits={d} report />
             </div>
             <div className={rc.block}><MarkerTable circuit={circuit} markers={sweep.markers} digits={d} report /></div>
@@ -244,7 +254,7 @@ function Report({ circuit, sweep, digits, search, layer, chart }: ReportProps) {
       </div>
 
       <div className={rc.block} data-report-link="">
-        <h3 className={css.sub}>Link <Why k="report-link" /></h3>
+        <h3 className={css.sub}>{t('sm.rp.link')} <Why k="report-link" /></h3>
         <p className={rc.link} data-r="link">{link}</p>
       </div>
     </section>

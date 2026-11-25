@@ -3,6 +3,7 @@
 
 import React from 'react';
 
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/QrRead.module.css';
 import ResultCard, { Reading } from './ResultCard';
 
@@ -21,6 +22,7 @@ export interface Source {
 export const cardId = (source: number, i: number) => `code-${source}-${i}`;
 
 export default function SourceView({ source, onRemove }: { source: Source; onRemove: () => void }) {
+  const { t } = useI18n();
   const [highlight, setHighlight] = React.useState(-1);
   const goTo = (i: number) => {
     document.getElementById(cardId(source.id, i))?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -37,13 +39,13 @@ export default function SourceView({ source, onRemove }: { source: Source; onRem
       <header className={styles.sourceHead}>
         <h3>{source.name}</h3>
         <span className={styles.muted}>
-          {source.status === 'reading' ? 'Reading…'
+          {source.status === 'reading' ? t('qrread.source.reading')
             : source.status === 'error' ? ''
             : source.kind === 'text' ? ''
-            : found === 0 ? 'No code found'
-            : `${valid} code${valid === 1 ? '' : 's'} read${found > valid ? `, ${found - valid} found but not readable` : ''}`}
+            : found === 0 ? t('qrread.source.noneFound')
+            : `${valid === 1 ? t('qrread.source.readOne') : t('qrread.source.readMany', { n: valid })}${found > valid ? t('qrread.source.unreadableSuffix', { n: found - valid }) : ''}`}
         </span>
-        <button type="button" className={styles.linkButton} onClick={onRemove} aria-label={`Remove ${source.name}`}>Remove</button>
+        <button type="button" className={styles.linkButton} onClick={onRemove} aria-label={t('qrread.source.removeAria', { name: source.name })}>{t('qrread.source.remove')}</button>
       </header>
       {source.error && <p className={styles.bad} role="alert">{source.error}</p>}
       {source.previewUrl && source.width && (
@@ -66,14 +68,13 @@ export default function SourceView({ source, onRemove }: { source: Source; onRem
       )}
       {source.status === 'done' && found === 0 && source.kind !== 'text' && (
         <p className={styles.muted}>
-          No code was found. It helps when the whole code is in the picture with a margin of blank space around it, in
-          focus and taken straight on.{' '}
-          {source.kind !== 'camera' && 'Codes other than QR, Micro QR and rMQR are only looked for when “Other barcodes too” is on.'}
+          {t('qrread.source.noneHint')}{' '}
+          {source.kind !== 'camera' && t('qrread.source.noneOtherHint')}
         </p>
       )}
       <div className={styles.results}>
         {source.readings.map((r, i) => (
-          <ResultCard key={i} reading={r} label={source.kind === 'text' ? 'Text' : String(i + 1)} id={cardId(source.id, i)} highlighted={highlight === i} />
+          <ResultCard key={i} reading={r} label={source.kind === 'text' ? t('qrread.src.text') : String(i + 1)} id={cardId(source.id, i)} highlighted={highlight === i} />
         ))}
       </div>
     </section>

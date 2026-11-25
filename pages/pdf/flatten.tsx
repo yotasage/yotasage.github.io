@@ -22,6 +22,7 @@ import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
 import { pdfPreview } from '../../lib/pdf/pdfjs';
 import { FLATTEN } from '../../lib/pdf/tools';
 import { runFlattenPdf, runInspectAnnotations } from '../../lib/pdf/workerClient';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
@@ -43,6 +44,7 @@ interface ItemResult {
 }
 
 export default function FlattenPdfPage() {
+  const { t } = useI18n();
   const [items, setItems] = React.useState<Item[]>([]);
   const [flattenForms, setFlattenForms] = React.useState(true);
   const [flattenAnnotations, setFlattenAnnotations] = React.useState(true);
@@ -66,7 +68,7 @@ export default function FlattenPdfPage() {
 
   async function addFiles(files: File[]) {
     const pdfs = files.filter(isPdf);
-    setNotice(pdfs.length < files.length ? `${files.length - pdfs.length} file(s) were skipped because they are not PDFs.` : null);
+    setNotice(pdfs.length < files.length ? t('pdf.p.skippedNonPdf', { n: files.length - pdfs.length }) : null);
     const added = await Promise.all(
       pdfs.map(async (file): Promise<Item> => ({
         id: uid(),
@@ -131,7 +133,7 @@ export default function FlattenPdfPage() {
         .catch(() => undefined);
     } catch (e) {
       if (isPasswordError(e)) {
-        setPwError('Incorrect password. Try again.');
+        setPwError(t('pdf.ff.wrongPw'));
       } else {
         update(activeLocked.id, { locked: false, error: errorMessage(e) });
         setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
@@ -143,7 +145,7 @@ export default function FlattenPdfPage() {
 
   function cancelUnlock() {
     if (!activeLocked) return;
-    update(activeLocked.id, { locked: false, error: 'Password required to open this PDF.' });
+    update(activeLocked.id, { locked: false, error: t('pdf.p.pwRequired') });
     setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
     setPwError(null);
   }
@@ -217,33 +219,33 @@ export default function FlattenPdfPage() {
     <PdfPage
       title={FLATTEN.title}
       showHub
-      lead="Bake interactive form fields and visual annotations into static page content so values cannot be edited and render consistently across viewers."
+      lead={t('pdf.flt.lead')}
     >
       <ToolWorkspace
         tool={FLATTEN}
         accept="application/pdf,.pdf"
-        selectLabel="Select PDF files"
-        dropLabel="or drop PDFs here"
+        selectLabel={t('pdf.p.selectPdfs')}
+        dropLabel={t('pdf.p.dropPdfs')}
         hasFiles={items.length > 0}
         onFiles={addFiles}
         toolbar={
           <button type="button" className={styles.buttonSmall} onClick={() => setItems([])}>
-            Remove all
+            {t('pdf.p.removeAll')}
           </button>
         }
         sidebar={
           <>
             <div className={styles.summaryBox}>
               <div className={styles.summaryRow}>
-                <span>Form fields detected</span>
+                <span>{t('pdf.flt.formFieldsDetected')}</span>
                 <span>{totalsBefore.formFields}</span>
               </div>
               <div className={styles.summaryRow}>
-                <span>Visual annotations</span>
+                <span>{t('pdf.flt.visualAnnots')}</span>
                 <span>{totalsBefore.nonWidgetAnnots}</span>
               </div>
               <div className={styles.summaryRow}>
-                <span>Links</span>
+                <span>{t('pdf.flt.links')}</span>
                 <span>{totalsBefore.links}</span>
               </div>
             </div>
@@ -256,8 +258,8 @@ export default function FlattenPdfPage() {
                   onChange={(e) => setFlattenForms(e.target.checked)}
                 />
                 <span>
-                  <strong>Flatten form fields</strong>
-                  <small>Bake text inputs, checkboxes, radio buttons and dropdowns permanently into the page.</small>
+                  <strong>{t('pdf.flt.flattenForms')}</strong>
+                  <small>{t('pdf.flt.flattenFormsDesc')}</small>
                 </span>
               </label>
 
@@ -268,8 +270,8 @@ export default function FlattenPdfPage() {
                   onChange={(e) => setFlattenAnnotations(e.target.checked)}
                 />
                 <span>
-                  <strong>Flatten annotations &amp; markup</strong>
-                  <small>Draw highlights, stamps, comments and freehand drawings into the page content stream.</small>
+                  <strong>{t('pdf.flt.flattenAnnots')}</strong>
+                  <small>{t('pdf.flt.flattenAnnotsDesc')}</small>
                 </span>
               </label>
 
@@ -281,14 +283,14 @@ export default function FlattenPdfPage() {
                   onChange={(e) => setKeepLinks(e.target.checked)}
                 />
                 <span>
-                  <strong>Keep clickable links</strong>
-                  <small>Preserve URL and internal page link annotations.</small>
+                  <strong>{t('pdf.flt.keepLinks')}</strong>
+                  <small>{t('pdf.flt.keepLinksDesc')}</small>
                 </span>
               </label>
             </div>
 
             {!flattenForms && !flattenAnnotations && (
-              <p className={styles.note}>Select at least one option to flatten.</p>
+              <p className={styles.note}>{t('pdf.flt.pickOne')}</p>
             )}
             {notice && <p className={fieldStyles.warning}>{notice}</p>}
 
@@ -298,7 +300,7 @@ export default function FlattenPdfPage() {
               disabled={busy || !canFlatten}
               onClick={runFlatten}
             >
-              Flatten {ready.length > 1 ? `${ready.length} PDFs` : 'PDF'}
+              {ready.length > 1 ? t('pdf.flt.btnMany', { n: ready.length }) : t('pdf.flt.btnOne')}
             </button>
 
             {busy && <Progress fraction={progress.fraction} label={progress.label} />}
@@ -306,21 +308,31 @@ export default function FlattenPdfPage() {
             {done && (
               <div className={styles.result}>
                 <h3>
-                  {outputs.length === 1 ? 'Your PDF is flattened' : `${outputs.length} PDFs are flattened`}
+                  {outputs.length === 1 ? t('pdf.flt.doneOne') : t('pdf.flt.doneMany', { n: outputs.length })}
                 </h3>
                 <p>
-                  Flattened <strong>{totalsAfter.fields}</strong> form field{totalsAfter.fields === 1 ? '' : 's'} and{' '}
-                  <strong>{totalsAfter.annots}</strong> annotation{totalsAfter.annots === 1 ? '' : 's'}
-                  {totalsAfter.kept > 0
-                    ? ` (${totalsAfter.kept} annotation${totalsAfter.kept === 1 ? '' : 's'} kept)`
-                    : ''}
-                  .
+                  {t('pdf.flt.summaryLine', {
+                    fields: t(
+                      totalsAfter.fields === 1 ? 'pdf.flt.summaryFieldsOne' : 'pdf.flt.summaryFieldsMany',
+                      { n: totalsAfter.fields },
+                    ),
+                    annots: t(
+                      totalsAfter.annots === 1 ? 'pdf.flt.summaryAnnotsOne' : 'pdf.flt.summaryAnnotsMany',
+                      { n: totalsAfter.annots },
+                    ),
+                    kept:
+                      totalsAfter.kept > 0
+                        ? t(totalsAfter.kept === 1 ? 'pdf.flt.summaryKeptOne' : 'pdf.flt.summaryKeptMany', {
+                            n: totalsAfter.kept,
+                          })
+                        : '',
+                  })}
                 </p>
                 {totalsAfter.skipped > 0 && (
                   <p className={styles.note}>
-                    {totalsAfter.skipped} annotation{totalsAfter.skipped === 1 ? ' had' : 's had'} no embedded
-                    appearance stream and {totalsAfter.skipped === 1 ? 'was' : 'were'} kept intact to avoid losing
-                    content.
+                    {t(totalsAfter.skipped === 1 ? 'pdf.flt.skippedOne' : 'pdf.flt.skippedMany', {
+                      n: totalsAfter.skipped,
+                    })}
                   </p>
                 )}
                 {outputs.length === 1 ? (
@@ -329,7 +341,7 @@ export default function FlattenPdfPage() {
                     className={styles.primary}
                     onClick={() => download(outputs[0].bytes, outputs[0].name)}
                   >
-                    Download {outputs[0].name}
+                    {t('pdf.ff.downloadNamed', { name: outputs[0].name })}
                   </button>
                 ) : (
                   <button
@@ -337,7 +349,7 @@ export default function FlattenPdfPage() {
                     className={styles.primary}
                     onClick={() => download(zipFiles(outputs), 'flattened-pdfs.zip', 'application/zip')}
                   >
-                    Download all (ZIP)
+                    {t('pdf.p.downloadAllZip')}
                   </button>
                 )}
                 <ContinueWith currentToolId={FLATTEN.id} files={outputs} />
@@ -370,10 +382,10 @@ export default function FlattenPdfPage() {
                 name={item.name}
                 meta={`${
                   item.locked
-                    ? 'Password protected'
+                    ? t('pdf.p.pwProtected')
                     : item.pageCount === null
                       ? '…'
-                      : `${item.pageCount} page${item.pageCount === 1 ? '' : 's'}`
+                      : t(item.pageCount === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany', { n: item.pageCount })
                 } · ${formatBytes(r?.res ? r.res.bytes.length : item.bytes.length)}`}
                 error={item.error ?? r?.error}
                 controls={controls}
@@ -384,7 +396,7 @@ export default function FlattenPdfPage() {
                       className={styles.buttonSmall}
                       onClick={() => download(output.bytes, output.name)}
                     >
-                      Download
+                      {t('pdf.p.download')}
                     </button>
                   )
                 }
@@ -393,18 +405,33 @@ export default function FlattenPdfPage() {
                   <div className={styles.fileMeta}>
                     {r?.res ? (
                       <span className={styles.saved}>
-                        Flattened: {r.res.flattenedFormFields} field{r.res.flattenedFormFields === 1 ? '' : 's'},{' '}
-                        {r.res.flattenedAnnotations} annot{r.res.flattenedAnnotations === 1 ? '' : 's'}
-                        {r.res.skippedWithoutAppearance > 0 ? ` · ${r.res.skippedWithoutAppearance} skipped` : ''}
+                        {t('pdf.flt.cardDone', {
+                          fields: t(
+                            r.res.flattenedFormFields === 1 ? 'pdf.flt.cardFieldOne' : 'pdf.flt.cardFieldMany',
+                            { n: r.res.flattenedFormFields },
+                          ),
+                          annots: t(
+                            r.res.flattenedAnnotations === 1 ? 'pdf.flt.cardAnnotOne' : 'pdf.flt.cardAnnotMany',
+                            { n: r.res.flattenedAnnotations },
+                          ),
+                          skipped:
+                            r.res.skippedWithoutAppearance > 0
+                              ? t('pdf.flt.cardSkipped', { n: r.res.skippedWithoutAppearance })
+                              : '',
+                        })}
                       </span>
                     ) : !s ? (
-                      'Inspecting…'
+                      t('pdf.p.inspecting')
                     ) : s.acroFormFieldCount === 0 && s.totalCount === 0 ? (
-                      'No forms or annotations'
+                      t('pdf.flt.cardNone')
                     ) : (
-                      `${s.acroFormFieldCount} form field${s.acroFormFieldCount === 1 ? '' : 's'} · ${s.totalCount} annotation${
-                        s.totalCount === 1 ? '' : 's'
-                      }`
+                      `${t(
+                        s.acroFormFieldCount === 1 ? 'pdf.flt.summaryFieldsOne' : 'pdf.flt.summaryFieldsMany',
+                        { n: s.acroFormFieldCount },
+                      )} · ${t(
+                        s.totalCount === 1 ? 'pdf.flt.summaryAnnotsOne' : 'pdf.flt.summaryAnnotsMany',
+                        { n: s.totalCount },
+                      )}`
                     )}
                   </div>
                 )}

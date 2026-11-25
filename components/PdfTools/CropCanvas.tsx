@@ -3,6 +3,8 @@ import React from 'react';
 
 import type { NormalizedCropRect } from '../../lib/pdf/crop';
 import { renderPage } from '../../lib/pdf/pdfjs';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
 import styles from '../../styles/PdfTools.module.css';
 
 type HandleDir = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
@@ -18,15 +20,15 @@ interface CropCanvasProps {
 
 const MIN_SPAN = 0.02;
 
-const HANDLES: Array<{ dir: HandleDir; className: string; label: string }> = [
-  { dir: 'nw', className: styles.cropHandleNw, label: 'Resize top-left corner' },
-  { dir: 'n', className: styles.cropHandleN, label: 'Resize top edge' },
-  { dir: 'ne', className: styles.cropHandleNe, label: 'Resize top-right corner' },
-  { dir: 'e', className: styles.cropHandleE, label: 'Resize right edge' },
-  { dir: 'se', className: styles.cropHandleSe, label: 'Resize bottom-right corner' },
-  { dir: 's', className: styles.cropHandleS, label: 'Resize bottom edge' },
-  { dir: 'sw', className: styles.cropHandleSw, label: 'Resize bottom-left corner' },
-  { dir: 'w', className: styles.cropHandleW, label: 'Resize left edge' },
+const HANDLES: Array<{ dir: HandleDir; className: string; labelKey: TranslationKey }> = [
+  { dir: 'nw', className: styles.cropHandleNw, labelKey: 'pdf.canvas.resizeNw' },
+  { dir: 'n', className: styles.cropHandleN, labelKey: 'pdf.canvas.resizeN' },
+  { dir: 'ne', className: styles.cropHandleNe, labelKey: 'pdf.canvas.resizeNe' },
+  { dir: 'e', className: styles.cropHandleE, labelKey: 'pdf.canvas.resizeE' },
+  { dir: 'se', className: styles.cropHandleSe, labelKey: 'pdf.canvas.resizeSe' },
+  { dir: 's', className: styles.cropHandleS, labelKey: 'pdf.canvas.resizeS' },
+  { dir: 'sw', className: styles.cropHandleSw, labelKey: 'pdf.canvas.resizeSw' },
+  { dir: 'w', className: styles.cropHandleW, labelKey: 'pdf.canvas.resizeW' },
 ];
 
 type DragState =
@@ -89,6 +91,7 @@ export function CropCanvas({
   disabled = false,
   onPageSize,
 }: CropCanvasProps) {
+  const { t } = useI18n();
   const stageRef = React.useRef<HTMLDivElement | null>(null);
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const overlayRef = React.useRef<HTMLDivElement | null>(null);
@@ -366,7 +369,7 @@ export function CropCanvas({
               ref={boxRef}
               role="region"
               tabIndex={disabled ? -1 : 0}
-              aria-label="Crop selection. Use arrow keys to nudge, Shift+arrows for larger steps, Alt+arrows to resize."
+              aria-label={t('pdf.canvas.cropSelectionAria')}
               className={[styles.cropBox, disabled ? styles.cropBoxDisabled : ''].join(' ')}
               style={{
                 left: pct(disabled ? 0 : safeRect.left),
@@ -390,7 +393,7 @@ export function CropCanvas({
                     <div
                       key={h.dir}
                       role="slider"
-                      aria-label={h.label}
+                      aria-label={t(h.labelKey)}
                       aria-valuemin={0}
                       aria-valuemax={100}
                       aria-valuenow={Math.round(
@@ -415,7 +418,7 @@ export function CropCanvas({
           </div>
         )}
 
-        {rendering && <div className={styles.figureLoading}>Rendering page…</div>}
+        {rendering && <div className={styles.figureLoading}>{t('pdf.canvas.renderingPage')}</div>}
         {renderError && !rendering && <div className={styles.figureLoading}>{renderError}</div>}
       </div>
     </div>

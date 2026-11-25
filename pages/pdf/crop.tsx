@@ -22,6 +22,7 @@ import { parsePageRanges } from '../../lib/pdf/merge';
 import { openPdf } from '../../lib/pdf/pdfjs';
 import { CROP } from '../../lib/pdf/tools';
 import { runCropPdf, runGetPageBoxes } from '../../lib/pdf/workerClient';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
@@ -61,6 +62,7 @@ function isFullRect(r: NormalizedCropRect): boolean {
 }
 
 export default function CropPdfPage() {
+  const { t } = useI18n();
   const [doc, setDoc] = React.useState<LoadedDoc | null>(null);
   const [pdfProxy, setPdfProxy] = React.useState<PDFDocumentProxy | null>(null);
   const closeProxyRef = React.useRef<(() => Promise<void>) | null>(null);
@@ -122,7 +124,7 @@ export default function CropPdfPage() {
         setLocked({
           name,
           bytes,
-          error: password !== undefined ? 'Incorrect password. Try again.' : null,
+          error: password !== undefined ? t('pdf.ff.wrongPw') : null,
           busy: false,
         });
       } else {
@@ -137,10 +139,10 @@ export default function CropPdfPage() {
   async function loadFile(files: File[]) {
     const pdf = files.find(isPdf);
     if (!pdf) {
-      setNotice('Please select a PDF file.');
+      setNotice(t('pdf.ff.pickPdf'));
       return;
     }
-    setNotice(files.length > 1 ? 'Only the first PDF was opened. Crop PDF works on one file at a time.' : null);
+    setNotice(files.length > 1 ? t('pdf.crop.onlyFirst') : null);
     setLocked(null);
     try {
       const bytes = await readBytes(pdf);
@@ -260,7 +262,7 @@ export default function CropPdfPage() {
     if (scope === 'odd') {
       const odds: number[] = [];
       for (let p = 1; p <= pageCount; p += 2) odds.push(p);
-      return { rangeStr: odds.join(','), count: odds.length, error: odds.length ? null : 'No odd pages.' };
+      return { rangeStr: odds.join(','), count: odds.length, error: odds.length ? null : t('pdf.crop.noOdd') };
     }
     if (scope === 'even') {
       const evens: number[] = [];
@@ -268,11 +270,11 @@ export default function CropPdfPage() {
       return {
         rangeStr: evens.join(','),
         count: evens.length,
-        error: evens.length ? null : 'This document has no even pages.',
+        error: evens.length ? null : t('pdf.crop.noEven'),
       };
     }
     if (!pageRange.trim()) {
-      return { rangeStr: undefined, count: 0, error: 'Enter a page range such as 1-3, 5.' };
+      return { rangeStr: undefined, count: 0, error: t('pdf.crop.enterRange') };
     }
     try {
       const indices = Array.from(new Set(parsePageRanges(pageRange, pageCount)));
@@ -280,7 +282,7 @@ export default function CropPdfPage() {
     } catch (e) {
       return { count: 0, error: errorMessage(e) };
     }
-  }, [doc, scope, pageCount, currentPageNum, pageRange, resetCrop, customPages, activeRect]);
+  }, [doc, scope, pageCount, currentPageNum, pageRange, resetCrop, customPages, activeRect, t]);
 
   const outputName = `${safeFileName(fileName, 'cropped').replace(/\.pdf$/i, '')}.pdf`;
 
@@ -330,7 +332,7 @@ export default function CropPdfPage() {
     <PdfPage
       title={CROP.title}
       showHub
-      lead="Drag the crop frame or enter exact point margins to trim PDF pages cleanly via /CropBox without re-encoding vector text or images."
+      lead={t('pdf.crop.lead')}
     >
       {locked && (
         <PasswordPrompt
@@ -345,15 +347,15 @@ export default function CropPdfPage() {
         />
       )}
       {error && !doc && <div className={styles.error} style={{ marginBottom: '1rem' }}>{error}</div>}
-      {loading && !doc && !locked && <Progress fraction={0.45} label="Loading PDF pages…" />}
+      {loading && !doc && !locked && <Progress fraction={0.45} label={t('pdf.p.loadingPdfPages')} />}
 
       <ToolWorkspace
         tool={CROP}
         accept="application/pdf,.pdf"
         multiple={false}
-        selectLabel="Select a PDF file"
-        dropLabel="or drop a PDF here"
-        addLabel="Replace PDF"
+        selectLabel={t('pdf.p.selectPdfFile')}
+        dropLabel={t('pdf.p.dropPdf')}
+        addLabel={t('pdf.p.replacePdf')}
         hasFiles={!!doc}
         onFiles={loadFile}
         toolbar={
@@ -365,14 +367,14 @@ export default function CropPdfPage() {
                 disabled={pageIndex <= 0}
                 onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
               >
-                &larr; Prev
+                {t('pdf.p.prev')}
               </button>
               <input
                 type="number"
                 className={styles.pageNavInput}
                 min={1}
                 max={Math.max(1, pageCount)}
-                aria-label="Current page number"
+                aria-label={t('pdf.crop.curPageAria')}
                 value={pageJump}
                 onChange={(e) => jumpToPage(e.target.value)}
                 onBlur={() => setPageJump(String(pageIndex + 1))}
@@ -384,18 +386,18 @@ export default function CropPdfPage() {
                 disabled={pageIndex >= pageCount - 1}
                 onClick={() => setPageIndex((i) => Math.min(pageCount - 1, i + 1))}
               >
-                Next &rarr;
+                {t('pdf.p.next')}
               </button>
             </div>
             <button type="button" className={styles.buttonSmall} onClick={clearDoc}>
-              Close
+              {t('pdf.ff.close')}
             </button>
           </>
         }
         sidebar={
           <>
             <Checkbox
-              label="Reset PDF CropBox to full MediaBox"
+              label={t('pdf.crop.resetBox')}
               checked={resetCrop}
               onChange={setResetCrop}
             />
@@ -404,18 +406,18 @@ export default function CropPdfPage() {
               <>
                 <div className={styles.presetRow}>
                   <button type="button" className={styles.presetBtn} onClick={() => applyTrimPreset(0.05)}>
-                    Trim 5%
+                    {t('pdf.crop.trim5')}
                   </button>
                   <button type="button" className={styles.presetBtn} onClick={() => applyTrimPreset(0.1)}>
-                    Trim 10%
+                    {t('pdf.crop.trim10')}
                   </button>
                   <button type="button" className={styles.presetBtn} onClick={() => updateActiveRect(FULL_RECT)}>
-                    Reset selection
+                    {t('pdf.crop.resetSel')}
                   </button>
                 </div>
 
                 <div className={styles.marginGrid4}>
-                  <Field label="Top (pt)">
+                  <Field label={t('pdf.crop.topPt')}>
                     <NumberInput
                       value={marginTopPt}
                       min={0}
@@ -424,7 +426,7 @@ export default function CropPdfPage() {
                       onChange={(v) => setMarginPt('top', v)}
                     />
                   </Field>
-                  <Field label="Right (pt)">
+                  <Field label={t('pdf.crop.rightPt')}>
                     <NumberInput
                       value={marginRightPt}
                       min={0}
@@ -433,7 +435,7 @@ export default function CropPdfPage() {
                       onChange={(v) => setMarginPt('right', v)}
                     />
                   </Field>
-                  <Field label="Bottom (pt)">
+                  <Field label={t('pdf.crop.bottomPt')}>
                     <NumberInput
                       value={marginBottomPt}
                       min={0}
@@ -442,7 +444,7 @@ export default function CropPdfPage() {
                       onChange={(v) => setMarginPt('bottom', v)}
                     />
                   </Field>
-                  <Field label="Left (pt)">
+                  <Field label={t('pdf.crop.leftPt')}>
                     <NumberInput
                       value={marginLeftPt}
                       min={0}
@@ -455,22 +457,22 @@ export default function CropPdfPage() {
               </>
             )}
 
-            <Field label="Apply to">
+            <Field label={t('pdf.crop.applyTo')}>
               <Select
                 value={scope}
                 onChange={setScope}
                 options={[
-                  ['all', 'All pages'],
-                  ['current', 'Current page only (or custom pages)'],
-                  ['odd', 'Odd pages (1, 3, 5…)'],
-                  ['even', 'Even pages (2, 4, 6…)'],
-                  ['range', 'Custom page range'],
+                  ['all', t('pdf.p.allPages')],
+                  ['current', t('pdf.crop.scopeCurrent')],
+                  ['odd', t('pdf.crop.scopeOdd')],
+                  ['even', t('pdf.crop.scopeEven')],
+                  ['range', t('pdf.crop.scopeRange')],
                 ]}
               />
             </Field>
 
             {scope === 'range' && (
-              <Field label="Page range" help="1-based ranges such as 1-3, 5, 8-end.">
+              <Field label={t('pdf.p.pageRange')} help={t('pdf.crop.rangeHelp')}>
                 <input
                   className={fieldStyles.input}
                   value={pageRange}
@@ -483,21 +485,21 @@ export default function CropPdfPage() {
             {!resetCrop && customPages.length > 0 && (
               <div className={styles.summaryBox}>
                 <div className={styles.summaryRow}>
-                  <span>Per-page custom crops</span>
+                  <span>{t('pdf.crop.customCrops')}</span>
                   <span>
-                    {customPages.length} page{customPages.length === 1 ? '' : 's'}
+                    {t(customPages.length === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany', { n: customPages.length })}
                   </span>
                 </div>
                 <p className={styles.note}>
-                  Customized: p. {customPages.slice(0, 8).join(', ')}
-                  {customPages.length > 8 ? ` +${customPages.length - 8} more` : ''}
+                  {t('pdf.crop.customizedList', { list: customPages.slice(0, 8).join(', ') })}
+                  {customPages.length > 8 ? t('pdf.crop.moreCount', { n: customPages.length - 8 }) : ''}
                 </p>
                 <div className={styles.presetRow}>
                   <button type="button" className={styles.presetBtn} onClick={applyCurrentToAll}>
-                    Apply current to all
+                    {t('pdf.crop.applyCurrentAll')}
                   </button>
                   <button type="button" className={styles.presetBtn} onClick={() => setPerPageCrops({})}>
-                    Clear custom
+                    {t('pdf.crop.clearCustom')}
                   </button>
                 </div>
               </div>
@@ -505,7 +507,7 @@ export default function CropPdfPage() {
 
             {rangeValidation.error && <p className={fieldStyles.warning}>{rangeValidation.error}</p>}
 
-            <Field label="File name">
+            <Field label={t('pdf.ff.fileName')}>
               <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
             </Field>
 
@@ -519,17 +521,21 @@ export default function CropPdfPage() {
               onClick={applyCrop}
             >
               {busy
-                ? 'Cropping…'
+                ? t('pdf.crop.cropping')
                 : resetCrop
-                  ? `Reset CropBox (${rangeValidation.count} page${rangeValidation.count === 1 ? '' : 's'})`
-                  : `Crop ${rangeValidation.count} page${rangeValidation.count === 1 ? '' : 's'}`}
+                  ? t(rangeValidation.count === 1 ? 'pdf.crop.resetBtnOne' : 'pdf.crop.resetBtnMany', {
+                      n: rangeValidation.count,
+                    })
+                  : t(rangeValidation.count === 1 ? 'pdf.crop.cropBtnOne' : 'pdf.crop.cropBtnMany', {
+                      n: rangeValidation.count,
+                    })}
             </button>
 
             {result && (
               <div className={styles.result}>
-                <h3>PDF cropped</h3>
+                <h3>{t('pdf.crop.doneTitle')}</h3>
                 <p>
-                  Page {currentPageNum} is now{' '}
+                  {t('pdf.crop.doneDetail', { page: currentPageNum })}{' '}
                   <strong>
                     {fmtPt(result.croppedBoxes[pageIndex]?.visualWidth ?? afterW)} ×{' '}
                     {fmtPt(result.croppedBoxes[pageIndex]?.visualHeight ?? afterH)} pt
@@ -543,7 +549,7 @@ export default function CropPdfPage() {
                   className={styles.primary}
                   onClick={() => download(result.bytes, outputName)}
                 >
-                  Download {outputName}
+                  {t('pdf.ff.downloadNamed', { name: outputName })}
                 </button>
                 <ContinueWith currentToolId={CROP.id} files={[{ name: outputName, bytes: result.bytes }]} />
               </div>
@@ -556,33 +562,35 @@ export default function CropPdfPage() {
             <div className={styles.fileBanner}>
               <strong>{doc.name}</strong>
               <span className={styles.fileBannerMeta}>
-                {pageCount} page{pageCount === 1 ? '' : 's'} · {formatBytes(doc.bytes.length)}
+                {t(pageCount === 1 ? 'pdf.p.pagesAndSizeOne' : 'pdf.p.pagesAndSizeMany', {
+                  n: pageCount,
+                  size: formatBytes(doc.bytes.length),
+                })}
               </span>
               {hasPerPageOverride && !resetCrop && (
                 <span className={[styles.previewBadge, styles.previewBadgeInfo].join(' ')}>
-                  Custom crop on page {currentPageNum}
+                  {t('pdf.crop.customBadge', { n: currentPageNum })}
                 </span>
               )}
               {resetCrop && (
                 <span className={[styles.previewBadge, styles.previewBadgeWarn].join(' ')}>
-                  Resetting to MediaBox
+                  {t('pdf.crop.resetBadge')}
                 </span>
               )}
             </div>
 
             <div className={styles.dimReadout}>
               <span>
-                Before: <strong>{fmtPt(visW)} × {fmtPt(visH)} pt</strong> ({fmtMm(visW)} × {fmtMm(visH)} mm)
+                {t('pdf.crop.before')} <strong>{fmtPt(visW)} × {fmtPt(visH)} pt</strong> ({fmtMm(visW)} × {fmtMm(visH)} mm)
               </span>
               <span>
-                &rarr; After: <strong>{fmtPt(afterW)} × {fmtPt(afterH)} pt</strong> ({fmtMm(afterW)} × {fmtMm(afterH)}{' '}
+                {t('pdf.crop.after')} <strong>{fmtPt(afterW)} × {fmtPt(afterH)} pt</strong> ({fmtMm(afterW)} × {fmtMm(afterH)}{' '}
                 mm)
               </span>
             </div>
 
             <p className={styles.canvasTip}>
-              Drag handles or inside the box to adjust the crop. Click the box to nudge with arrow keys (Shift for
-              larger steps, Alt+arrows to resize).
+              {t('pdf.crop.tip')}
             </p>
 
             <CropCanvas

@@ -24,14 +24,16 @@ import { realStubs } from '../../lib/emsim/viaGeom';
 import type { ViaStructure } from '../../lib/emsim/via';
 import { Why } from './Why';
 import { askWaves, suggestFullWave } from './wavesSuggest';
+import { useI18n } from '../../lib/ui/i18n';
 
 /** The line under the flags (M7.1a): why a full-wave run would check this via, with the link that opens it. */
 function WavesHint({ r }: { r: ViaModelResult }) {
-  const why = suggestFullWave(r);
+  const { t, locale } = useI18n();
+  const why = suggestFullWave(r, locale);
   return (
     <p className={css.small} data-via-next data-waves-suggest={why.length}>
-      {why.length ? `A full-wave run would check this via: ${why.join('; ')}. ` : 'The model holds for this via and edge; a full-wave run checks it. '}
-      <a href="#waves" onClick={() => askWaves('via')} data-waves-open>Run it in Waves</a>
+      {why.length ? t('em.via.wavesCheck', { reasons: why.join('; ') }) : t('em.via.wavesHolds')}
+      <a href="#waves" onClick={() => askWaves('via')} data-waves-open>{t('em.via.runInWaves')}</a>
     </p>
   );
 }
@@ -95,6 +97,7 @@ export function pieceRows(s: Stackup, pieces: ViaPiece[]): { names: string; len:
 
 // M3.1b: `quick` (a drag's fast path, without error estimates): the values without their errors, and a note.
 function ViaResults({ r, s, v, state, stale, message, ms, unit, digits, quick = false }: { r: ViaModelResult | null; s: Stackup; v: ViaStructure; state: RunState; stale: boolean; message: string; ms: number; unit: LengthUnit; digits: number; quick?: boolean }) {
+  const { t: tr } = useI18n();
   const z = quick ? 0 : 1;
   const ok = r && r.ok;
   const pair = ok && r.n === 2;
@@ -109,11 +112,14 @@ function ViaResults({ r, s, v, state, stale, message, ms, unit, digits, quick = 
   const relSec = L ? 0.5 * (rel + (L.lineC * rel + dCe) / Ctot) : 0;
   const nodes = ok ? r.nodes.filter((n) => n.layer) : [];
   const stubs = ok ? realStubs(s, v, r.stubs) : [];
+  const partLabel = (part: string) => (part === 'top-stub' ? tr('em.via.part.top-stub') : part === 'bottom-stub' ? tr('em.via.part.bottom-stub') : part);
+  const lvlLabel = (lvl: string) => (lvl === 'info' ? tr('em.via.lvl.info') : lvl === 'warning' ? tr('em.via.lvl.warning') : lvl === 'error' ? tr('em.via.lvl.error') : lvl);
+  const assumeLabel = (a: string) => (a in ASSUME_TEXT ? tr(`em.via.assume.${a}`) : a);
   return (
     <div className={css.results} data-via-results data-state={state} data-stale={stale} data-n={ok ? r.n : 0} data-ms={ok ? r.ms.toFixed(2) : ''} data-rt={ms.toFixed(1)}>
       <div className={css.resultsHead}>
-        <h3 className={base.h3}>Results</h3>
-        {state === 'running' ? <span className={css.busy}>Solving…</span> : quick && <span className={css.busy} data-via-quick>Coarse while dragging</span>}
+        <h3 className={base.h3}>{tr('em.via.results')}</h3>
+        {state === 'running' ? <span className={css.busy}>{tr('em.via.solving')}</span> : quick && <span className={css.busy} data-via-quick>{tr('em.via.coarseDrag')}</span>}
       </div>
       <Calm name="via-results" within="#via, header" read={() => (stale || state === 'running' ? '' : lineOf(document.querySelector('[data-via-results] dl')) || lineOf(document.querySelector('[data-via-results] [data-via-invalid], [data-via-results] [data-results-failed]')))} />
       <Why k="via-solve" bare />
@@ -126,35 +132,35 @@ function ViaResults({ r, s, v, state, stale, message, ms, unit, digits, quick = 
           <dl className={css.grid}>
             {pair ? (
               <>
-                <V big name="barrel-zdiff" label={`Barrel Zdiff (εr ${core.er})`} v={core.zdiff} e={core.zdiff * relD} floor={FLOOR.ohm} unit="Ω" />
-                <V name="barrel-zcm" label="Barrel Zcm" v={core.zcm} e={core.zcm * relC} floor={FLOOR.ohm} unit="Ω" />
-                <V big name="section-zdiff" label="Via section Zdiff" v={L.zdiff} e={L.zdiff * (0.5 * relD + 0.5 * (L.lineC * relD + dCe) / Ctot)} floor={FLOOR.ohm} unit="Ω" />
-                <V name="section-zcm" label="Via section Zcm" v={L.zcm} e={L.zcm * (0.5 * relC + 0.5 * (L.lineC * relC + dCe) / Ctot)} floor={FLOOR.ohm} unit="Ω" />
+                <V big name="barrel-zdiff" label={tr('em.via.barrelZdiff', { er: core.er })} v={core.zdiff} e={core.zdiff * relD} floor={FLOOR.ohm} unit="Ω" />
+                <V name="barrel-zcm" label={tr('em.via.barrelZcm')} v={core.zcm} e={core.zcm * relC} floor={FLOOR.ohm} unit="Ω" />
+                <V big name="section-zdiff" label={tr('em.via.secZdiff')} v={L.zdiff} e={L.zdiff * (0.5 * relD + 0.5 * (L.lineC * relD + dCe) / Ctot)} floor={FLOOR.ohm} unit="Ω" />
+                <V name="section-zcm" label={tr('em.via.secZcm')} v={L.zcm} e={L.zcm * (0.5 * relC + 0.5 * (L.lineC * relC + dCe) / Ctot)} floor={FLOOR.ohm} unit="Ω" />
               </>
             ) : (
               <>
-                <V big name="barrel-z" label={`Barrel Z (εr ${core.er})`} v={core.z0} e={core.z0 * rel} floor={FLOOR.ohm} unit="Ω" />
-                <V big name="section-z" label="Via section √(L/C)" v={L.z} e={L.z * relSec} floor={FLOOR.ohm} unit="Ω" />
+                <V big name="barrel-z" label={tr('em.via.barrelZ', { er: core.er })} v={core.z0} e={core.z0 * rel} floor={FLOOR.ohm} unit="Ω" />
+                <V big name="section-z" label={tr('em.via.secZ')} v={L.z} e={L.z * relSec} floor={FLOOR.ohm} unit="Ω" />
               </>
             )}
-            <V name="delay" label="Delay through" v={ps(L.delay)} e={ps(L.delay) * relSec} floor={0.01} unit="ps" si={1e12} />
-            <V name="L" label={pair ? 'L (each via)' : 'L'} v={L.L[0][0] * 1e9} e={L.L[0][0] * 1e9 * rel} floor={0.001} unit="nH" si={1e9} />
-            <V name="C" label={pair ? 'C (each via)' : 'C'} v={Ctot * 1e15} e={(L.lineC * rel + dCe) * 1e15} floor={0.1} unit="fF" si={1e15} note={<>of which pads and planes <Num name="dcsum" label="Pads and planes" text={qText(L.dCsum * 1e15, dCe * 1e15, 0.1).v} v={L.dCsum} scale={1e15} /> fF</>} />
+            <V name="delay" label={tr('em.via.delayThrough')} v={ps(L.delay)} e={ps(L.delay) * relSec} floor={0.01} unit="ps" si={1e12} />
+            <V name="L" label={pair ? tr('em.via.lEach') : 'L'} v={L.L[0][0] * 1e9} e={L.L[0][0] * 1e9 * rel} floor={0.001} unit="nH" si={1e9} />
+            <V name="C" label={pair ? tr('em.via.cEach') : 'C'} v={Ctot * 1e15} e={(L.lineC * rel + dCe) * 1e15} floor={0.1} unit="fF" si={1e15} note={<>{tr('em.via.ofWhichPads')}<Num name="dcsum" label={tr('em.via.padsPlanes')} text={qText(L.dCsum * 1e15, dCe * 1e15, 0.1).v} v={L.dCsum} scale={1e15} /> fF</>} />
           </dl>
           <div className={vcss.whyRow}><Why k="via-barrel-z" /><Why k="via-section-z" /><Why k="via-delay" /><Why k="via-lc" /><Why k="eq-via-open" /></div>
 
-          <h4 className={vcss.h4}>Barrel, piece by piece</h4>
+          <h4 className={vcss.h4}>{tr('em.via.barrelPieces')}</h4>
           <div className={vcss.tableScroll}>
             <table className={vcss.table} data-via-segments={r.pieces.length}>
-              <thead><tr><th>Through</th><th>Length</th><th>εr</th>{pair ? <><th>Zdiff Ω</th><th>Zcm Ω</th></> : <th>Z Ω</th>}<th>Delay ps</th></tr></thead>
+              <thead><tr><th>{tr('em.via.colThrough')}</th><th>{tr('em.via.colLength')}</th><th>εr</th>{pair ? <><th>Zdiff Ω</th><th>Zcm Ω</th></> : <th>Z Ω</th>}<th>{tr('em.via.colDelayPs')}</th></tr></thead>
               <tbody>
                 {pieceRows(s, r.pieces).map((p, i) => (
                   <tr key={i} data-via-seg={p.part}>
-                    <td>{p.names}{p.part !== 'through' ? ` (${p.part})` : ''}</td>
+                    <td>{p.names}{p.part !== 'through' ? ` (${partLabel(p.part)})` : ''}</td>
                     <td>{lenText(p.len, unit, Math.min(digits, 3))}</td>
                     <td>{p.er}</td>
-                    {pair ? <><td>{qText(p.zdiff, p.zdiff * relD, FLOOR.ohm).v}</td><td>{qText(p.zcm, p.zcm * relC, FLOOR.ohm).v}</td></> : <td><Num name={`piece.${p.first}.z`} label={`Z of ${p.names}`} text={qText(p.z, p.z * rel, FLOOR.ohm).v} v={p.z} /></td>}
-                    <td>{p.count === 1 ? <Num name={`piece.${p.first}.delay`} label={`Delay of ${p.names}`} text={ps(p.delay).toFixed(2)} v={p.delay} scale={1e12} /> : ps(p.delay).toFixed(2)}</td>
+                    {pair ? <><td>{qText(p.zdiff, p.zdiff * relD, FLOOR.ohm).v}</td><td>{qText(p.zcm, p.zcm * relC, FLOOR.ohm).v}</td></> : <td><Num name={`piece.${p.first}.z`} label={tr('em.via.zOf', { names: p.names })} text={qText(p.z, p.z * rel, FLOOR.ohm).v} v={p.z} /></td>}
+                    <td>{p.count === 1 ? <Num name={`piece.${p.first}.delay`} label={tr('em.via.delayOf', { names: p.names })} text={ps(p.delay).toFixed(2)} v={p.delay} scale={1e12} /> : ps(p.delay).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -162,10 +168,10 @@ function ViaResults({ r, s, v, state, stale, message, ms, unit, digits, quick = 
           </div>
           <Why k="via-segments" bare />
 
-          <h4 className={vcss.h4}>Pads and planes</h4>
+          <h4 className={vcss.h4}>{tr('em.via.padsPlanes')}</h4>
           <div className={vcss.tableScroll}>
             <table className={vcss.table} data-via-crossings={nodes.length}>
-              <thead><tr><th>Layer</th><th>ΔC{pair ? ' (each via)' : ''}</th></tr></thead>
+              <thead><tr><th>{tr('em.via.colLayer')}</th><th>ΔC{pair ? tr('em.via.eachViaParen') : ''}</th></tr></thead>
               <tbody>
                 {nodes.map((n, i) => {
                   const t = qText(n.dC * 1e15, z * n.dCErr * 1e15, 0.01);
@@ -176,25 +182,29 @@ function ViaResults({ r, s, v, state, stale, message, ms, unit, digits, quick = 
           </div>
           <Why k="via-crossings" bare />
 
-          <h4 className={vcss.h4}>Stubs</h4>
+          <h4 className={vcss.h4}>{tr('em.via.stubs')}</h4>
           {stubs.length ? (
             <ul className={vcss.list}>
-              {stubs.map((st) => (
-                <li key={st.side} data-via-stub-result={st.side} data-f={st.fRes ?? NaN} data-f0={st.fFormula}>
-                  The {st.side} stub, {lenText(st.length, unit, Math.min(digits, 3))}, {Number.isFinite(st.fRes) ? <>resonates at <b className={css.num}>{(st.fRes / 1e9).toFixed(2)} GHz</b> with its pads</> : <>has no resonance with its pads below twice the bare one</>} (<Num name={`stub.${st.side}`} label={`The ${st.side} stub bare`} text={(st.fFormula / 1e9).toFixed(2)} v={st.fFormula} scale={1e-9} /> GHz bare, c₀/4ℓ√εr).
-                </li>
-              ))}
+              {stubs.map((st) => {
+                const sideText = tr(st.side === 'entry' ? 'em.via.entry' : 'em.via.exit');
+                return (
+                  <li key={st.side} data-via-stub-result={st.side} data-f={st.fRes ?? NaN} data-f0={st.fFormula}>
+                    {tr('em.via.stubPrefix', { side: sideText, len: lenText(st.length, unit, Math.min(digits, 3)) })}
+                    {Number.isFinite(st.fRes) ? <>{tr('em.via.stubResPre')}<b className={css.num}>{(st.fRes / 1e9).toFixed(2)} GHz</b>{tr('em.via.stubResPost')}</> : tr('em.via.stubNoRes')} (<Num name={`stub.${st.side}`} label={tr('em.via.stubBareLabel', { side: sideText })} text={(st.fFormula / 1e9).toFixed(2)} v={st.fFormula} scale={1e-9} />{tr('em.via.stubBareTail')}
+                  </li>
+                );
+              })}
             </ul>
-          ) : <p className={css.small} data-via-stub-result="none">No stub: the barrel ends on the signal layers.</p>}
+          ) : <p className={css.small} data-via-stub-result="none">{tr('em.via.noStub')}</p>}
           <Why k="via-stubs" bare />
 
           {r.feeds.length > 0 && (
             <>
-              <h4 className={vcss.h4}>Feed traces</h4>
+              <h4 className={vcss.h4}>{tr('em.via.feedTraces')}</h4>
               <ul className={vcss.list}>
                 {r.feeds.map((f) => (
                   <li key={f.side} data-via-feed-result={f.side} data-z={f.z0}>
-                    {f.side === 'entry' ? 'In' : 'Out'} on {f.layer}: {lenText(f.length, unit, Math.min(digits, 3))} to the pad, <b className={css.num}>{f.z0.toFixed(2)} Ω</b>, εeff {f.eeff.toFixed(3)}
+                    {tr('em.via.feedLinePre', { dir: tr(f.side === 'entry' ? 'em.via.feedIn' : 'em.via.feedOut'), layer: f.layer, len: lenText(f.length, unit, Math.min(digits, 3)) })}<b className={css.num}>{f.z0.toFixed(2)} Ω</b>, εeff {f.eeff.toFixed(3)}
                   </li>
                 ))}
               </ul>
@@ -203,26 +213,26 @@ function ViaResults({ r, s, v, state, stale, message, ms, unit, digits, quick = 
           )}
 
           <p className={css.small} data-via-valid={r.valid.fMax}>
-            The model holds to <b>{(r.valid.fMax / 1e9).toFixed(1)} GHz</b>{r.valid.cavity <= r.valid.fMax ? ' (the plane cavity: above it the radial wave between the planes takes power past the return vias)' : ''}; its lumped parts to <Num name="valid" label="Lumped parts hold to" text={(r.valid.lumped / 1e9).toFixed(1)} v={r.valid.lumped} scale={1e-9} /> GHz (λ/8). Flags are for a {ps(r.tr).toFixed(0)} ps edge, whose band reaches <Num name="band" label="The edge’s band" text={(r.band / 1e9).toFixed(1)} v={r.band} scale={1e-9} /> GHz.
+            {tr('em.via.valid1')}<b>{(r.valid.fMax / 1e9).toFixed(1)} GHz</b>{r.valid.cavity <= r.valid.fMax ? tr('em.via.validCavity') : ''}{tr('em.via.valid2')}<Num name="valid" label={tr('em.via.validLumpedLbl')} text={(r.valid.lumped / 1e9).toFixed(1)} v={r.valid.lumped} scale={1e-9} />{tr('em.via.valid3', { tr: ps(r.tr).toFixed(0) })}<Num name="band" label={tr('em.via.validBandLbl')} text={(r.band / 1e9).toFixed(1)} v={r.band} scale={1e-9} /> GHz.
           </p>
           <Why k="via-valid" bare />
 
-          <h4 className={vcss.h4}>Flags</h4>
+          <h4 className={vcss.h4}>{tr('em.via.flags')}</h4>
           {r.flags.length ? (
             <ul className={base.issues} data-via-flags={r.flags.length}>
               {r.flags.map((f, i) => (
                 <li key={i} data-via-flag={f.code} data-numbers={f.numbers.join(' ')}>
-                  <span className={base.level} data-level={f.level === 'error' ? 'error' : f.level === 'warning' ? 'warn' : 'note'}>{f.level === 'info' ? 'note' : f.level}</span>{f.message}
+                  <span className={base.level} data-level={f.level === 'error' ? 'error' : f.level === 'warning' ? 'warn' : 'note'}>{lvlLabel(f.level)}</span>{f.message}
                 </li>
               ))}
             </ul>
-          ) : <p className={css.small} data-via-flags="0">None: the model holds for this via and edge.</p>}
+          ) : <p className={css.small} data-via-flags="0">{tr('em.via.noFlags')}</p>}
           <Why k="via-flags" bare />
 
           <details className={css.details} data-via-assumptions>
-            <summary>What the model assumes</summary>
+            <summary>{tr('em.via.assumptions')}</summary>
             <ul className={vcss.list}>
-              {r.assumptions.map((a) => <li key={a} data-via-assume={a}>{ASSUME_TEXT[a] ?? a}</li>)}
+              {r.assumptions.map((a) => <li key={a} data-via-assume={a}>{assumeLabel(a)}</li>)}
             </ul>
           </details>
           <Why k="via-assumptions" bare />
@@ -233,7 +243,7 @@ function ViaResults({ r, s, v, state, stale, message, ms, unit, digits, quick = 
       )}
       {r && !r.ok && r.flags.length > 0 && (
         <ul className={base.issues} data-via-flags={r.flags.length}>
-          {r.flags.map((f, i) => <li key={i} data-via-flag={f.code} data-numbers={f.numbers.join(' ')}><span className={base.level} data-level="error">{f.level}</span>{f.message}</li>)}
+          {r.flags.map((f, i) => <li key={i} data-via-flag={f.code} data-numbers={f.numbers.join(' ')}><span className={base.level} data-level="error">{lvlLabel(f.level)}</span>{f.message}</li>)}
         </ul>
       )}
       {r && !r.ok && r.flags.some((f) => f.code === 'no-return') && <WavesHint r={r} />}

@@ -19,6 +19,7 @@ import { LINE, QUARTER, SERIES_C, SERIES_L, SERIES_R, SHUNT_C, SHUNT_L, SHUNT_R,
 import { askOf } from '../../lib/smith/state';
 import type { Circuit as StateCircuit } from '../../lib/smith/state';
 import { BETA, COLOUR_KEYS, ColourKey, Spec, Subject, Var, ellVar, sentinel, specsFor, subjectName, texOf, v } from './mathRows';
+import { eqTitle } from './smithText';
 
 /** The registry ids that have a derivation, in the registry's order. */
 export const DERIVATION_IDS: readonly string[] = EQUATIONS.filter((e) => e.steps.length > 0).map((e) => e.id);
@@ -222,7 +223,7 @@ export function derivation(c: Circuit, id: string, subject: Subject | null, digi
     return out;
   });
   return {
-    id, title: eq.title, tex: sidesOf(eq.tree).map((x) => tex(x, deco)), assumptions: eq.assumptions, owner: eq.owner, steps, targets,
+    id, title: eqTitle(id, eq.title), tex: sidesOf(eq.tree).map((x) => tex(x, deco)), assumptions: eq.assumptions, owner: eq.owner, steps, targets,
     source: sp && steps.some((s) => s.nums.length) ? subjectName(c, subject!) : '', binding,
   };
 }

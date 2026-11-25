@@ -18,10 +18,12 @@ import { modelScene, planeComp, planeViews, viewPlace, waveBox } from '../../lib
 import type { PlanePlace } from '../../lib/emsim/waves3d';
 import { COMP_TEXT, framePixels, playScale, psText, rasterOf, siText, trackOf, VIEW_TEXT } from '../../lib/emsim/wavesPlayer';
 import type { DriveMode, PlayerView, PlayScale, Raster } from '../../lib/emsim/wavesPlayer';
+import { useI18n } from '../../lib/ui/i18n';
 import base from '../../styles/EmSim.module.css';
 import css from '../../styles/EmSimTrace.module.css';
 import vcss from '../../styles/EmSimVia.module.css';
 import wcss from '../../styles/EmSimWaves.module.css';
+import { emT } from './emText';
 import { colorsOf, createVia3D, followTheme } from './via3dRender';
 import type { Via3D } from './via3dRender';
 import { barOf } from './WavesPlayer';
@@ -44,6 +46,7 @@ const FIT = 0.72; // the first view a little closer than the Via section's (the 
 const STEP = Math.PI / 24; // a key's turn
 
 export default function WavesView3D({ eng, store, snap, views, comp, mode, geom, n, playing, onPlay, t0 }: Props) {
+  const { t: tr } = useI18n();
   const host = useRef<HTMLDivElement>(null);
   const slider = useRef<HTMLInputElement>(null);
   const time = useRef<HTMLSpanElement>(null);
@@ -106,7 +109,7 @@ export default function WavesView3D({ eng, store, snap, views, comp, mode, geom,
     v?.drawWaves(i);
     const f0 = s.frames[i];
     if (slider.current) { slider.current.value = String(i); if (f0) slider.current.setAttribute('aria-valuetext', psText(f0.t)); }
-    if (time.current && f0) time.current.textContent = `${psText(f0.t)} · frame ${i + 1} of ${nn}`;
+    if (time.current && f0) time.current.textContent = emT('em.wav.frameOf', { t: psText(f0.t), i: i + 1, n: nn });
     host.current?.parentElement?.setAttribute('data-waves3d-frame', String(i));
   }, [eng]);
   const current = () => (eng.shown >= 0 ? eng.shown : Math.max(0, Math.min(eng.n - 1, Math.floor(eng.pos))));
@@ -124,7 +127,7 @@ export default function WavesView3D({ eng, store, snap, views, comp, mode, geom,
       x.onFrame = () => setOpenMs(performance.now() - t0);
       x.setColors(colorsOf(el));
       setView(x);
-    }, (e: unknown) => { if (live) setErr(`The 3D view needs WebGL, which this browser did not give (${e instanceof Error ? e.message : String(e)}).`); });
+    }, (e: unknown) => { if (live) setErr(emT('em.wav.webglErr', { msg: e instanceof Error ? e.message : String(e) })); });
     eng.listeners.add(paint);
     eng.watch(el);
     return () => {
@@ -176,36 +179,37 @@ export default function WavesView3D({ eng, store, snap, views, comp, mode, geom,
 
   const bars = useMemo(() => planes.map((p) => barOf(p.ps)), [planes]);
   const shown = planes.filter((_, k) => on[k]).length;
+  const viewLabel = (k: keyof typeof VIEW_TEXT) => tr(`em.wav.view.${k}`) || VIEW_TEXT[k];
 
   return (
     <div className={vcss.v3d} data-waves3d data-waves3d-ready={!!view && Number.isFinite(openMs)} data-open-ms={Number.isFinite(openMs) ? openMs.toFixed(0) : ''}
       data-waves3d-planes={planes.length} data-waves3d-shown={shown}>
       <div ref={host} className={vcss.v3dHost} tabIndex={0} onKeyDown={onKey} data-waves3d-host
-        aria-label="The run's structure in 3D with the waves on its cut planes: drag or use the arrow keys to turn, wheel, pinch or + and − to zoom, right-drag or two fingers to pan" role="img" />
+        aria-label={tr('em.wav.host3dAria')} role="img" />
       {err && <p className={css.refused} role="alert" data-waves3d-error>{err}</p>}
       <div className={wcss.transport}>
-        <button type="button" className={`${base.button} ${wcss.play}`} onClick={onPlay} data-waves3d-play disabled={n < 2}>{playing ? 'Pause' : 'Play'}</button>
-        <input ref={slider} type="range" className={wcss.scrub} min={0} max={Math.max(0, n - 1)} step={1} defaultValue={current()} aria-label="Time in the 3D view" data-waves3d-time
+        <button type="button" className={`${base.button} ${wcss.play}`} onClick={onPlay} data-waves3d-play disabled={n < 2}>{playing ? tr('em.wav.pause') : tr('em.wav.play')}</button>
+        <input ref={slider} type="range" className={wcss.scrub} min={0} max={Math.max(0, n - 1)} step={1} defaultValue={current()} aria-label={tr('em.wav.time3dAria')} data-waves3d-time
           onChange={(e) => eng.seek(Number(e.currentTarget.value))} />
         <span ref={time} className={wcss.time} data-waves3d-time-text />
       </div>
       <div className={vcss.viewTools}>
-        <div className={base.seg} role="group" aria-label="Planes shown" data-waves3d-plane-set>
+        <div className={base.seg} role="group" aria-label={tr('em.wav.planesAria')} data-waves3d-plane-set>
           {planes.map((p, k) => (
             <button key={k} type="button" aria-pressed={on[k]} data-waves3d-plane={p.view.view}
-              onClick={() => setOn((o) => o.map((x, j) => (j === k ? !x : x)))}>{VIEW_TEXT[p.view.view]}</button>
+              onClick={() => setOn((o) => o.map((x, j) => (j === k ? !x : x)))}>{viewLabel(p.view.view)}</button>
           ))}
         </div>
-        <button type="button" className={base.button} data-waves3d-reset onClick={() => view?.reset()}>Reset view</button>
-        {cutOn && <button type="button" className={base.button} aria-pressed={cut} data-waves3d-cut onClick={() => setCut((c) => !c)}>Cut away the near half</button>}
-        <button type="button" className={base.button} aria-pressed={laminate} data-waves3d-laminate onClick={() => setLaminate((l) => !l)}>Show the laminate</button>
+        <button type="button" className={base.button} data-waves3d-reset onClick={() => view?.reset()}>{tr('em.wav.resetView')}</button>
+        {cutOn && <button type="button" className={base.button} aria-pressed={cut} data-waves3d-cut onClick={() => setCut((c) => !c)}>{tr('em.wav.cutNear')}</button>}
+        <button type="button" className={base.button} aria-pressed={laminate} data-waves3d-laminate onClick={() => setLaminate((l) => !l)}>{tr('em.wav.showLam')}</button>
       </div>
       <Whys ks={`waves-3d-planes waves-3d-reset${cutOn ? ' waves-3d-cut' : ''} waves-3d-laminate`} />
       {planes.map((p, k) => on[k] && (
         <div key={k} className={css.fieldScale} data-waves3d-scale={p.view.view} data-lo={p.ps.scale.lo} data-hi={p.ps.scale.hi} data-comp={p.comp}>
           <div className={css.fieldScaleHead}>
-            <span>{VIEW_TEXT[p.view.view]}: {COMP_TEXT[p.comp]} (V/m{p.ps.signed ? ', signed' : ''})</span>
-            <span>{siText(p.ps.scale.lo, 'V/m')} to {siText(p.ps.scale.hi, 'V/m')}</span>
+            <span>{viewLabel(p.view.view)}: {COMP_TEXT[p.comp]} (V/m{p.ps.signed ? tr('em.wav.signed') : ''})</span>
+            <span>{tr('em.wav.rangeTo', { lo: siText(p.ps.scale.lo, 'V/m'), hi: siText(p.ps.scale.hi, 'V/m') })}</span>
           </div>
           <div className={css.fieldBar} style={{ backgroundImage: bars[k].url ? `url(${bars[k].url})` : undefined }} />
           <div className={css.fieldTicks} aria-hidden="true">
@@ -216,8 +220,12 @@ export default function WavesView3D({ eng, store, snap, views, comp, mode, geom,
         </div>
       ))}
       <p className={css.caption} data-waves3d-counts={JSON.stringify(scene.counts)}>
-        The run’s structure with its copper see-through{cutOn && cut ? `, cut along the plane “${VIEW_TEXT[planes[cutOn.k].view.view]}”,` : ''} and {shown} of {planes.length} cut plane{planes.length === 1 ? '' : 's'} on, each on its own fixed scale for
-        the whole run; a plane shows the field chosen above where it has it, else its own (a top view’s Ez). Same frame and clock as the player above.
+        {tr('em.wav.cap3d', {
+          cut: cutOn && cut ? tr('em.wav.cap3dCut', { name: viewLabel(planes[cutOn.k].view.view) }) : '',
+          shown,
+          total: planes.length,
+          planes: planes.length === 1 ? tr('em.wav.planeOne') : tr('em.wav.planeMany'),
+        })}
       </p>
     </div>
   );

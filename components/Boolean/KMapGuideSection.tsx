@@ -6,7 +6,7 @@ import {
   type KMapWorkedExample,
 } from '../../lib/boolean/kmapGuide';
 import { exportKMapLatex, formatKMapCornerVars } from '../../lib/boolean/qm';
-import { useI18n } from '../../lib/ui/i18n';
+import { type TranslationKey, useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Boolean.module.css';
 import dStyles from '../../styles/BooleanDiagrams.module.css';
 import KatexSpan from '../KatexSpan';
@@ -26,6 +26,14 @@ function WorkedKMapCard({
   onOpenExampleInKMap: (expr: string) => void;
 }) {
   const { t } = useI18n();
+  const tx = (key: string, fallback: string) => {
+    const k = key as TranslationKey;
+    const res = t(k);
+    return res === k ? fallback : res;
+  };
+  const exTitle = tx(`boolean.kmapGuide.ex.${example.id}.title`, example.title);
+  const exSubtitle = tx(`boolean.kmapGuide.ex.${example.id}.subtitle`, example.subtitle);
+  const exTakeaway = tx(`boolean.kmapGuide.ex.${example.id}.takeaway`, example.keyTakeaway);
   const [activeGroupId, setActiveGroupId] = useState<string>(example.groups[0]?.id ?? '');
   const [copiedLatex, setCopiedLatex] = useState(false);
 
@@ -93,9 +101,9 @@ function WorkedKMapCard({
             <span className={[dStyles.kmapDiffBadge, diffClass].join(' ')}>
               {t(`boolean.kmapGuide.diff.${example.difficulty}`)}
             </span>
-            <h3 className={styles.identityTitle}>{example.title}</h3>
+            <h3 className={styles.identityTitle}>{exTitle}</h3>
           </div>
-          <p className={styles.identitySummary}>{example.subtitle}</p>
+          <p className={styles.identitySummary}>{exSubtitle}</p>
         </div>
         <div className={styles.btnRow}>
           <button
@@ -141,7 +149,7 @@ function WorkedKMapCard({
         >
           <table
             className={[dStyles.kmapTable, dStyles.selectableTable].join(' ')}
-            aria-label={`${example.title} Karnaugh map`}
+            aria-label={t('boolean.kmapGuide.mapAria', { title: exTitle })}
           >
             <thead>
               <tr>
@@ -233,7 +241,7 @@ function WorkedKMapCard({
                 onClick={() => setActiveGroupId(grp.id)}
               >
                 <span className={dStyles.kmapSwatch} style={{ backgroundColor: color }} />
-                <span>{grp.label}:</span>
+                <span>{tx(`boolean.kmapGuide.grp.${grp.id}.label`, grp.label)}:</span>
                 <KatexSpan text={grp.termLatex} />
               </button>
             );
@@ -249,15 +257,17 @@ function WorkedKMapCard({
                 .join(' ')}
             >
               <div>
-                <strong>Cells:</strong> {activeGroup.cells.map((m) => `m${m}`).join(', ')}
+                <strong>{t('boolean.kmapGuide.cells')}</strong> {activeGroup.cells.map((m) => `m${m}`).join(', ')}
               </div>
               <div>
-                <strong>Dropped:</strong> {activeGroup.eliminatedVars}
+                <strong>{t('boolean.kmapGuide.dropped')}</strong>{' '}
+                {tx(`boolean.kmapGuide.grp.${activeGroup.id}.elim`, activeGroup.eliminatedVars)}
               </div>
               <div>
-                <strong>Kept:</strong> {activeGroup.keptVars}
+                <strong>{t('boolean.kmapGuide.kept')}</strong>{' '}
+                {tx(`boolean.kmapGuide.grp.${activeGroup.id}.kept`, activeGroup.keptVars)}
               </div>
-              <div>{activeGroup.explanation}</div>
+              <div>{tx(`boolean.kmapGuide.grp.${activeGroup.id}.expl`, activeGroup.explanation)}</div>
             </div>
           )}
         </div>
@@ -265,13 +275,13 @@ function WorkedKMapCard({
 
       <ol className={dStyles.kmapStepList}>
         {example.walkthrough.map((step, i) => (
-          <li key={i}>{step}</li>
+          <li key={i}>{tx(`boolean.kmapGuide.ex.${example.id}.w${i}`, step)}</li>
         ))}
       </ol>
 
       <div className={styles.theoryBox}>
-        <span className={styles.theoryPrefix}>Key takeaway:</span>
-        <span>{example.keyTakeaway}</span>
+        <span className={styles.theoryPrefix}>{t('boolean.kmapGuide.takeaway')}</span>
+        <span>{exTakeaway}</span>
       </div>
     </article>
   );
@@ -279,6 +289,11 @@ function WorkedKMapCard({
 
 export default function KMapGuideSection({ onOpenExampleInKMap }: KMapGuideSectionProps) {
   const { t } = useI18n();
+  const tx = (key: string, fallback: string) => {
+    const k = key as TranslationKey;
+    const res = t(k);
+    return res === k ? fallback : res;
+  };
 
   return (
     <div className={styles.workspacePanel} data-testid="kmap-guide-section">
@@ -295,22 +310,26 @@ export default function KMapGuideSection({ onOpenExampleInKMap }: KMapGuideSecti
             <article key={ch.id} className={dStyles.theoryTopicCard}>
               <div className={dStyles.kmapChapterHead}>
                 <span className={dStyles.kmapChapterNum}>{ch.stepNumber}</span>
-                <h3 className={styles.identityTitle}>{ch.title}</h3>
+                <h3 className={styles.identityTitle}>
+                  {tx(`boolean.kmapGuide.ch.${ch.id}.title`, ch.title)}
+                </h3>
               </div>
               {ch.formulaLatex && (
                 <div className={styles.identityFormula}>
                   <KatexSpan text={ch.formulaLatex} />
                 </div>
               )}
-              <p className={styles.identitySummary}>{ch.summary}</p>
+              <p className={styles.identitySummary}>
+                {tx(`boolean.kmapGuide.ch.${ch.id}.summary`, ch.summary)}
+              </p>
               <ul className={dStyles.theoryBulletList}>
                 {ch.bullets.map((b, idx) => (
-                  <li key={idx}>{b}</li>
+                  <li key={idx}>{tx(`boolean.kmapGuide.ch.${ch.id}.b${idx}`, b)}</li>
                 ))}
               </ul>
               <div className={styles.theoryBox}>
-                <span className={styles.theoryPrefix}>Tip:</span>
-                <span>{ch.tip}</span>
+                <span className={styles.theoryPrefix}>{t('boolean.kmapGuide.tip')}</span>
+                <span>{tx(`boolean.kmapGuide.ch.${ch.id}.tip`, ch.tip)}</span>
               </div>
             </article>
           ))}
@@ -321,9 +340,7 @@ export default function KMapGuideSection({ onOpenExampleInKMap }: KMapGuideSecti
         <div className={styles.cardHeader}>
           <div>
             <h2 className={styles.cardTitle}>{t('boolean.kmapGuide.examplesTitle')}</h2>
-            <p className={styles.lead}>
-              Follow the three progressive examples below, clicking each group to inspect how adjacent cells merge and why certain loops are essential or redundant.
-            </p>
+            <p className={styles.lead}>{t('boolean.kmapGuide.examplesIntro')}</p>
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import React from 'react';
 
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PcbViewer.module.css';
 
 export type FullscreenTab = 'layers' | 'stats' | 'parts' | 'tools';
@@ -27,11 +28,12 @@ export default function FullscreenDrawer({
   partsContent,
   toolsContent,
 }: FullscreenDrawerProps) {
+  const { t } = useI18n();
   const tabs: Array<{ id: FullscreenTab; label: string }> = [
-    { id: 'layers', label: `Layers (${layerCount})` },
-    { id: 'stats', label: 'Stats' },
-    ...(hasParts ? [{ id: 'parts' as const, label: 'Parts' }] : []),
-    { id: 'tools', label: 'Tools' },
+    { id: 'layers', label: t('pcb.ws.cardLayers', { n: layerCount }) },
+    { id: 'stats', label: t('pcb.fs.stats') },
+    ...(hasParts ? [{ id: 'parts' as const, label: t('pcb.fs.parts') }] : []),
+    { id: 'tools', label: t('pcb.fs.tools') },
   ];
 
   const effectiveTab: FullscreenTab = activeTab === 'parts' && !hasParts ? 'tools' : activeTab;
@@ -43,9 +45,9 @@ export default function FullscreenDrawer({
         aria-hidden="true"
         onClick={onClose}
       />
-      <aside className={styles.fsDrawer} aria-label="Full screen tools and layers">
+      <aside className={styles.fsDrawer} aria-label={t('pcb.fs.aria')}>
         <div className={styles.fsDrawerHeader}>
-          <div className={styles.fsDrawerTabs} role="tablist" aria-label="Full screen panels">
+          <div className={styles.fsDrawerTabs} role="tablist" aria-label={t('pcb.fs.tabsAria')}>
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -65,8 +67,8 @@ export default function FullscreenDrawer({
           <button
             type="button"
             className={styles.fsDrawerClose}
-            aria-label="Close panel"
-            title="Close panel"
+            aria-label={t('pcb.fs.close')}
+            title={t('pcb.fs.close')}
             onClick={onClose}
           >
             &times;

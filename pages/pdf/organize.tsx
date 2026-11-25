@@ -12,6 +12,7 @@ import { normalizeRotation, PageSpec } from '../../lib/pdf/pages';
 import { PdfThumbPool } from '../../lib/pdf/thumbs';
 import { ORGANIZE } from '../../lib/pdf/tools';
 import { runBuildPdfFromPages } from '../../lib/pdf/workerClient';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
@@ -66,6 +67,7 @@ function rotationTag(deg: number): string {
 }
 
 export default function OrganizePdfPage() {
+  const { t } = useI18n();
   const [sources, setSources] = React.useState<SourceDoc[]>([]);
   const [entries, setEntries] = React.useState<OrganizeEntry[]>([]);
   const [undoStack, setUndoStack] = React.useState<OrganizeEntry[][]>([]);
@@ -152,7 +154,7 @@ export default function OrganizePdfPage() {
 
   async function addFiles(files: File[]) {
     const pdfs = files.filter(isPdf);
-    setNotice(pdfs.length < files.length ? `${files.length - pdfs.length} file(s) were skipped because they are not PDFs.` : null);
+    setNotice(pdfs.length < files.length ? t('pdf.p.skippedNonPdf', { n: files.length - pdfs.length }) : null);
     if (!pdfs.length) return;
     setError(null);
     setLoading(true);
@@ -214,7 +216,7 @@ export default function OrganizePdfPage() {
       setPendingLocked((prev) => prev.slice(1));
     } catch (e) {
       if (isPasswordError(e)) {
-        setPwError('Incorrect password. Try again.');
+        setPwError(t('pdf.ff.wrongPw'));
       } else {
         setError(errorMessage(e));
         setPendingLocked((prev) => prev.slice(1));
@@ -252,7 +254,7 @@ export default function OrganizePdfPage() {
         return {
           width: swap ? height : width,
           height: swap ? width : height,
-          sizeLabel: blankOrientation === 'landscape' ? 'Blank (landscape)' : 'Blank (match)',
+          sizeLabel: blankOrientation === 'landscape' ? t('pdf.p.org.blankLandscape') : t('pdf.p.org.blankMatch'),
         };
       }
     }
@@ -262,7 +264,7 @@ export default function OrganizePdfPage() {
     return {
       width: landscape ? sz.h : sz.w,
       height: landscape ? sz.w : sz.h,
-      sizeLabel: `Blank (${key.toUpperCase()})`,
+      sizeLabel: t('pdf.p.org.blankSize', { size: key.toUpperCase() }),
     };
   }
 
@@ -360,7 +362,7 @@ export default function OrganizePdfPage() {
           rotation: e.rotation,
           blankAspect: e.width / Math.max(1, e.height),
           label: e.sizeLabel,
-          meta: rot ? `Turned ${rot}` : `${Math.round(e.width * 25.4 / 72)} × ${Math.round(e.height * 25.4 / 72)} mm`,
+          meta: rot ? t('pdf.p.turned', { rot }) : `${Math.round(e.width * 25.4 / 72)} × ${Math.round(e.height * 25.4 / 72)} mm`,
         };
       }
       const src = sourceMap.get(e.sourceId);
@@ -370,12 +372,12 @@ export default function OrganizePdfPage() {
         pool: src?.pool ?? null,
         pageIndex: e.pageIndex,
         rotation: e.rotation,
-        label: `Page ${e.pageIndex + 1}`,
-        meta: [multiSource ? src?.name : null, rot ? `Turned ${rot}` : null].filter(Boolean).join(' · ') || undefined,
+        label: t('pdf.ff.pageN', { n: e.pageIndex + 1 }),
+        meta: [multiSource ? src?.name : null, rot ? t('pdf.p.turned', { rot }) : null].filter(Boolean).join(' · ') || undefined,
         sourceTag: multiSource && src ? { label: src.name, color: src.color } : undefined,
       };
     });
-  }, [entries, sourceMap, sources.length]);
+  }, [entries, sourceMap, sources.length, t]);
 
   function handleReorder(nextGrid: PageGridItem[]) {
     const byId = new Map(entries.map((e) => [e.id, e]));
@@ -417,13 +419,17 @@ export default function OrganizePdfPage() {
     }
   }
 
-  const targetLabel = selectedIds.size > 0 ? `${selectedIds.size} selected` : 'all pages';
+  const targetLabel = selectedIds.size > 0 ? t('pdf.p.org.selected', { n: selectedIds.size }) : t('pdf.p.allPages');
+  const blankSizeOptions: [BlankSizeChoice, string][] = React.useMemo(() => [
+    ['match', t('pdf.p.org.matchSize')],
+    ...BLANK_SIZE_OPTIONS.slice(1),
+  ], [t]);
 
   return (
     <PdfPage
       title={ORGANIZE.title}
       showHub
-      lead="Drag pages into any order, combine pages from multiple PDFs, rotate, duplicate, delete or insert blank pages. Use the drag handle or arrows on touch screens."
+      lead={t('pdf.p.org.lead')}
     >
       {pendingLocked.length > 0 && (
         <PasswordPrompt
@@ -436,80 +442,83 @@ export default function OrganizePdfPage() {
         />
       )}
       {error && !sources.length && <div className={styles.error} style={{ marginBottom: '1rem' }}>{error}</div>}
-      {loading && !sources.length && !pendingLocked.length && <Progress fraction={0.4} label="Opening PDF…" />}
+      {loading && !sources.length && !pendingLocked.length && <Progress fraction={0.4} label={t('pdf.p.opening')} />}
       <ToolWorkspace
         tool={ORGANIZE}
         accept="application/pdf,.pdf"
-        selectLabel="Select PDF files"
-        dropLabel="or drop one or more PDFs here"
-        addLabel="+ Add PDFs"
+        selectLabel={t('pdf.p.selectPdfs')}
+        dropLabel={t('pdf.p.dropOneOrMore')}
+        addLabel={t('pdf.p.addPdfs')}
         hasFiles={sources.length > 0}
         onFiles={addFiles}
         toolbar={
           <>
-            <button type="button" className={styles.buttonSmall} onClick={() => insertBlank()}>+ Blank page</button>
-            <button type="button" className={styles.buttonSmall} disabled={entries.length < 2} onClick={reverseOrder}>Reverse</button>
-            <button type="button" className={styles.buttonSmall} disabled={!undoStack.length} onClick={undo}>Undo</button>
-            <button type="button" className={styles.buttonSmall} disabled={!redoStack.length} onClick={redo}>Redo</button>
-            <button type="button" className={styles.buttonSmall} onClick={clearAll}>Clear all</button>
+            <button type="button" className={styles.buttonSmall} onClick={() => insertBlank()}>{t('pdf.p.org.blankBtn')}</button>
+            <button type="button" className={styles.buttonSmall} disabled={entries.length < 2} onClick={reverseOrder}>{t('pdf.p.org.reverse')}</button>
+            <button type="button" className={styles.buttonSmall} disabled={!undoStack.length} onClick={undo}>{t('pdf.p.undo')}</button>
+            <button type="button" className={styles.buttonSmall} disabled={!redoStack.length} onClick={redo}>{t('pdf.p.redo')}</button>
+            <button type="button" className={styles.buttonSmall} onClick={clearAll}>{t('pdf.ff.clearAll')}</button>
           </>
         }
         sidebar={
           <>
             <div className={styles.options}>
-              <h3>Rotate ({targetLabel})</h3>
+              <h3>{t('pdf.p.org.rotateHeading', { target: targetLabel })}</h3>
               <div className={styles.buttonRow}>
-                <button type="button" className={styles.buttonSmall} disabled={!entries.length} onClick={() => rotateTarget(-90)}>↺ Left</button>
-                <button type="button" className={styles.buttonSmall} disabled={!entries.length} onClick={() => rotateTarget(90)}>↻ Right</button>
+                <button type="button" className={styles.buttonSmall} disabled={!entries.length} onClick={() => rotateTarget(-90)}>{t('pdf.p.rotLeft')}</button>
+                <button type="button" className={styles.buttonSmall} disabled={!entries.length} onClick={() => rotateTarget(90)}>{t('pdf.p.rotRight')}</button>
                 <button type="button" className={styles.buttonSmall} disabled={!entries.length} onClick={() => rotateTarget(180)}>180°</button>
               </div>
 
               {selectedIds.size > 0 && (
                 <>
-                  <h3>Selection ({selectedIds.size})</h3>
+                  <h3>{t('pdf.p.org.selectionHeading', { n: selectedIds.size })}</h3>
                   <div className={styles.buttonRow}>
-                    <button type="button" className={styles.buttonSmall} onClick={duplicateSelected}>Duplicate</button>
-                    <button type="button" className={styles.buttonSmall} onClick={removeSelected}>Delete</button>
+                    <button type="button" className={styles.buttonSmall} onClick={duplicateSelected}>{t('pdf.p.duplicate')}</button>
+                    <button type="button" className={styles.buttonSmall} onClick={removeSelected}>{t('pdf.p.delete')}</button>
                   </div>
                 </>
               )}
 
-              <h3>Insert blank page</h3>
-              <Field label="Blank page size">
-                <Select value={blankSize} onChange={setBlankSize} options={BLANK_SIZE_OPTIONS} />
+              <h3>{t('pdf.p.org.insertBlankHeading')}</h3>
+              <Field label={t('pdf.p.org.blankPageSize')}>
+                <Select value={blankSize} onChange={setBlankSize} options={blankSizeOptions} />
               </Field>
-              <Field label="Orientation">
+              <Field label={t('pdf.p.orientation')}>
                 <Select
                   value={blankOrientation}
                   onChange={setBlankOrientation}
-                  options={[['portrait', 'Portrait'], ['landscape', 'Landscape']]}
+                  options={[['portrait', t('pdf.p.portrait')], ['landscape', t('pdf.p.landscape')]]}
                 />
               </Field>
               <button type="button" className={styles.button} onClick={() => insertBlank()}>
-                + Insert blank page {selectedIds.size > 0 ? 'after selection' : 'at end'}
+                {selectedIds.size > 0 ? t('pdf.p.org.insertAfterSel') : t('pdf.p.org.insertAtEnd')}
               </button>
 
-              <Field label="File name">
+              <Field label={t('pdf.ff.fileName')}>
                 <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
               </Field>
             </div>
 
             <p className={styles.note}>
-              {sources.length} source PDF{sources.length === 1 ? '' : 's'} · <strong>{entries.length}</strong> page{entries.length === 1 ? '' : 's'} in output.
+              {t('pdf.p.org.summary', {
+                sources: t(sources.length === 1 ? 'pdf.p.org.srcOne' : 'pdf.p.org.srcMany', { n: sources.length }),
+                pages: t(entries.length === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany', { n: entries.length }),
+              })}
             </p>
             {notice && <p className={fieldStyles.warning}>{notice}</p>}
-            {entries.length === 0 && sources.length > 0 && <p className={fieldStyles.warning}>Add a page or click Undo before saving.</p>}
+            {entries.length === 0 && sources.length > 0 && <p className={fieldStyles.warning}>{t('pdf.p.org.emptyWarn')}</p>}
             <button type="button" className={styles.primary} disabled={!canSave} onClick={save}>
-              Save organized PDF
+              {t('pdf.p.org.save')}
             </button>
             {busy && <Progress fraction={progress.fraction} label={progress.label} />}
             {error && <div className={styles.error}>{error}</div>}
             {result && (
               <div className={styles.result}>
-                <h3>Your PDF is ready</h3>
-                <p>{result.pages} page{result.pages === 1 ? '' : 's'}, {formatBytes(result.bytes.length)}.</p>
+                <h3>{t('pdf.p.pdfReady')}</h3>
+                <p>{t(result.pages === 1 ? 'pdf.p.pagesAndSizeOne' : 'pdf.p.pagesAndSizeMany', { n: result.pages, size: formatBytes(result.bytes.length) })}</p>
                 <button type="button" className={styles.primary} onClick={() => download(result.bytes, outputName)}>
-                  Download {outputName}
+                  {t('pdf.ff.downloadNamed', { name: outputName })}
                 </button>
                 <ContinueWith currentToolId={ORGANIZE.id} files={[{ name: outputName, bytes: result.bytes }]} />
               </div>
@@ -524,16 +533,16 @@ export default function OrganizePdfPage() {
                 <span key={s.id} className={styles.sourceRow}>
                   {sources.length > 1 && <span className={styles.sourceDot} style={{ backgroundColor: s.color }} />}
                   <strong>{s.name}</strong>
-                  <span className={styles.fileBannerMeta}>({s.pageCount}p)</span>
+                  <span className={styles.fileBannerMeta}>{t('pdf.p.org.pagesShort', { n: s.pageCount })}</span>
                 </span>
               ))}
-              {loading && <span className={styles.fileBannerMeta}>Adding PDF…</span>}
+              {loading && <span className={styles.fileBannerMeta}>{t('pdf.p.org.adding')}</span>}
             </div>
             <PageSelectionBar
               items={gridItems}
               selectedIds={selectedIds}
               onChange={setSelectedIds}
-              rangePlaceholder="Select pages, e.g. 1-3, 5, 8-"
+              rangePlaceholder={t('pdf.p.org.rangePh')}
             />
             <PageGrid
               items={gridItems}
@@ -544,8 +553,8 @@ export default function OrganizePdfPage() {
                 <button
                   type="button"
                   className={styles.iconButton}
-                  title="Delete page"
-                  aria-label={`Delete ${item.label}`}
+                  title={t('pdf.p.org.deletePage')}
+                  aria-label={t('pdf.p.org.deleteAria', { label: item.label })}
                   onClick={() => removeAt(index)}
                 >
                   &times;
@@ -556,8 +565,8 @@ export default function OrganizePdfPage() {
                   <button
                     type="button"
                     className={styles.iconButton}
-                    title="Rotate left 90°"
-                    aria-label="Rotate left"
+                    title={t('pdf.p.rotLeftTitle')}
+                    aria-label={t('pdf.p.rotLeftAria')}
                     onClick={() => rotateAt(index, -90)}
                   >
                     &#x21BA;
@@ -565,8 +574,8 @@ export default function OrganizePdfPage() {
                   <button
                     type="button"
                     className={styles.iconButton}
-                    title="Rotate right 90°"
-                    aria-label="Rotate right"
+                    title={t('pdf.p.rotRightTitle')}
+                    aria-label={t('pdf.p.rotRightAria')}
                     onClick={() => rotateAt(index, 90)}
                   >
                     &#x21BB;
@@ -574,8 +583,8 @@ export default function OrganizePdfPage() {
                   <button
                     type="button"
                     className={styles.iconButton}
-                    title="Duplicate page"
-                    aria-label="Duplicate page"
+                    title={t('pdf.p.org.dupPage')}
+                    aria-label={t('pdf.p.org.dupPage')}
                     onClick={() => duplicateAt(index)}
                   >
                     &#x29C9;
@@ -583,8 +592,8 @@ export default function OrganizePdfPage() {
                   <button
                     type="button"
                     className={styles.iconButton}
-                    title="Insert blank page after"
-                    aria-label="Insert blank page after"
+                    title={t('pdf.p.org.insertAfter')}
+                    aria-label={t('pdf.p.org.insertAfter')}
                     onClick={() => insertBlank(index)}
                   >
                     +

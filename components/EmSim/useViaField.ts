@@ -20,6 +20,8 @@ import { feedExport } from './exportFeed';
 import { FieldStore } from './useFieldMap';
 import type { FieldMod } from './useFieldMap';
 import type { Box } from '../../lib/emsim/viaGeom';
+import type { Locale } from '../../lib/ui/translations';
+import { emT, getEmLocale } from './emText';
 
 export type ViaFieldQty = 'phi' | 'E' | 'lines';
 export type ViaFieldDrive = 'differential' | 'common' | 'one';
@@ -30,9 +32,13 @@ export const VIA_DRIVE_LABEL: Record<ViaFieldDrive, string> = { differential: 'D
 
 /** The barrels' voltages of the top view. */
 export const viaDriveV = (f: ViaFieldSettings, pair: boolean): number[] => (!pair ? [1] : f.drive === 'differential' ? [0.5, -0.5] : f.drive === 'common' ? [1, 1] : [1, 0]);
-export function viaDriveText(which: 'side' | 'top', f: ViaFieldSettings, pair: boolean): string {
-  if (which === 'side') return pair ? 'one via of the pair alone at 1 V in its coaxial wall, as the via model solves it' : 'the via at 1 V in its coaxial wall, as the via model solves it';
-  return pair ? `the cut between the planes, ${VIA_DRIVE_LABEL[f.drive].replace(/^./, (c) => c.toLowerCase())}` : 'the cut between the planes, the via at 1 V';
+export function viaDriveText(which: 'side' | 'top', f: ViaFieldSettings, pair: boolean, locale: Locale = getEmLocale()): string {
+  if (which === 'side') return emT(pair ? 'em.via.fld.drvSidePair' : 'em.via.fld.drvSideOne', undefined, locale);
+  if (pair) {
+    const drv = emT(`em.via.fld.drv.${f.drive}` as 'em.via.fld.drv.differential', undefined, locale).replace(/^./, (c) => c.toLowerCase());
+    return emT('em.via.fld.drvTopPair', { drive: drv }, locale);
+  }
+  return emT('em.via.fld.drvTopOne', undefined, locale);
 }
 
 /** A FieldStore with what the side view's probe needs: the map's radius (the wall, a pair at most half the pitch). */
@@ -133,12 +139,12 @@ export function useViaField(which: 'side' | 'top', f: ViaFieldSettings | undefin
             store.rLim = r.rLim; store.wall = r.wall;
             store.set({ painted: mod.prepare(r.grid, qty, scaleKind, { contours: r.contours, lines: r.lines, surface: null }), state: 'done', message: '' });
             record('done', rr.cached);
-          } else store.set({ painted: null, state: 'error', message: r.reason || 'No field.' });
+          } else store.set({ painted: null, state: 'error', message: r.reason || emT('em.fld.noField') });
         }
         flush.current();
       }, (e: unknown) => {
         if (inflight.current === id) inflight.current = 0;
-        store.set({ state: 'error', message: `The field could not be computed: ${e instanceof Error ? e.message : String(e)}` });
+        store.set({ state: 'error', message: emT('em.fld.computeErr', { msg: e instanceof Error ? e.message : String(e) }) });
       });
     };
     if (dragging) { waiting.current = send; flush.current(); return; }

@@ -10,6 +10,7 @@ import { ROUNDING_FLOOR, formatAmount, formatReturnLoss } from '../../lib/quanti
 import { gammaAngle, toDegrees } from '../../lib/smith/convert';
 import type { Circuit } from '../../lib/smith/network';
 import { markersAt, sweepCircuit } from '../../lib/smith/sweep';
+import { useI18n } from '../../lib/ui/i18n';
 import css from '../../styles/SmithSweep.module.css';
 import { complexText, gammaPolarText } from './readout';
 import { Why } from './Why';
@@ -35,25 +36,25 @@ export function markerTexts(circuit: Circuit, markers: readonly number[], digits
   ]);
 }
 
-const HEADS = ['f', 'Z', 'Γ', 'VSWR', 'Return loss'];
-
 function MarkerTable({ circuit, markers, digits, report }: MarkerTableProps) {
+  const { t } = useI18n();
+  const heads = ['f', 'Z', 'Γ', 'VSWR', t('sm.mk.colRl')];
   const rows = useMemo(() => markerTexts(circuit, markers, digits), [circuit, markers, digits]);
   const rowAttr = report ? 'data-r-marker' : 'data-marker-row';
   return (
     <div {...{ [report ? 'data-r-markers' : 'data-marker-table']: '' }}>
-      <h3 className={css.sub}>Markers {!report && <Why k="sweep-table" />}</h3>
+      <h3 className={css.sub}>{t('sm.mk.title')} {!report && <Why k="sweep-table" />}</h3>
       {rows.length === 0 ? (
-        <p className={css.hint}>{report ? 'No markers.' : 'No markers yet: tap or click the trace or the plot, or use Add marker.'}</p>
+        <p className={css.hint}>{t(report ? 'sm.mk.noneReport' : 'sm.mk.none')}</p>
       ) : (
-        <div className={css.tableWrap} {...(report ? {} : { tabIndex: 0, role: 'region', 'aria-label': 'Marker table' })}>
+        <div className={css.tableWrap} {...(report ? {} : { tabIndex: 0, role: 'region', 'aria-label': t('sm.mk.tableAria') })}>
           <table className={css.table}>
-            <thead><tr><th scope="col">#</th>{HEADS.map((h) => <th key={h} scope="col">{h}</th>)}</tr></thead>
+            <thead><tr><th scope="col">#</th>{heads.map((h) => <th key={h} scope="col">{h}</th>)}</tr></thead>
             <tbody>
               {rows.map((r, i) => (
                 <tr key={i} {...{ [rowAttr]: i }}>
                   <th scope="row">M{i + 1}</th>
-                  {r.map((t, j) => <td key={j} data-col={j} data-label={HEADS[j]}>{t}</td>)}
+                  {r.map((val, j) => <td key={j} data-col={j} data-label={heads[j]}>{val}</td>)}
                 </tr>
               ))}
             </tbody>

@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { moveItem } from '../../lib/pdf/files';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PdfTools.module.css';
 
 // A grid of cards that can be reordered by dragging, or with the arrow buttons on each card.
@@ -94,6 +95,7 @@ export function FileCard({ index, thumb, thumbRotation = 0, name, meta, error, c
   actions?: React.ReactNode;
   children?: React.ReactNode;
 }) {
+  const { t } = useI18n();
   return (
     <>
       <div className={styles.thumb}>
@@ -105,11 +107,11 @@ export function FileCard({ index, thumb, thumbRotation = 0, name, meta, error, c
               className={thumbRotation % 180 ? styles.sideways : undefined}
               style={thumbRotation ? { transform: `rotate(${thumbRotation}deg)` } : undefined}
             />
-          : <span className={styles.thumbPlaceholder}>{error ? 'No preview' : 'Loading…'}</span>}
+          : <span className={styles.thumbPlaceholder}>{error ? t('pdf.ui.noPreview') : t('pdf.ui.loading')}</span>}
       </div>
       {index !== undefined && <span className={styles.badge}>{index + 1}</span>}
       <div className={styles.cardActions}>
-        <button type="button" className={styles.iconButton} title="Remove" aria-label="Remove" onClick={controls.remove}>&times;</button>
+        <button type="button" className={styles.iconButton} title={t('pdf.ui.remove')} aria-label={t('pdf.ui.remove')} onClick={controls.remove}>&times;</button>
       </div>
       <div className={styles.fileName} title={name}>{name}</div>
       {meta && <div className={styles.fileMeta}>{meta}</div>}
@@ -119,8 +121,8 @@ export function FileCard({ index, thumb, thumbRotation = 0, name, meta, error, c
         <div className={styles.cardFooter}>
           {controls.sortable && (
             <>
-              <button type="button" className={styles.iconButton} title="Move earlier" aria-label="Move earlier" disabled={!controls.canMoveBack} onClick={controls.moveBack}>&larr;</button>
-              <button type="button" className={styles.iconButton} title="Move later" aria-label="Move later" disabled={!controls.canMoveForward} onClick={controls.moveForward}>&rarr;</button>
+              <button type="button" className={styles.iconButton} title={t('pdf.ui.moveEarlier')} aria-label={t('pdf.ui.moveEarlier')} disabled={!controls.canMoveBack} onClick={controls.moveBack}>&larr;</button>
+              <button type="button" className={styles.iconButton} title={t('pdf.ui.moveLater')} aria-label={t('pdf.ui.moveLater')} disabled={!controls.canMoveForward} onClick={controls.moveForward}>&rarr;</button>
             </>
           )}
           <span className={styles.toolbarSpacer} />

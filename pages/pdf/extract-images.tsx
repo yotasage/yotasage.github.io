@@ -44,6 +44,7 @@ import { formatPageRanges } from '../../lib/pdf/pages';
 import { openPdf } from '../../lib/pdf/pdfjs';
 import { EXTRACT_IMAGES } from '../../lib/pdf/tools';
 import { runExtractImagesFromPdf } from '../../lib/pdf/workerClient';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
@@ -64,6 +65,7 @@ interface OpenDocHandle {
 const MIN_BOX_PT = 8;
 
 export default function ExtractImagesPage() {
+  const { locale, t } = useI18n();
   const [activeTab, setActiveTab] = React.useState<ActiveTab>('raster');
   const [sources, setSources] = React.useState<SourcePdf[]>([]);
 
@@ -167,7 +169,7 @@ export default function ExtractImagesPage() {
     const epoch = vectorEpochRef.current;
     activeVectorScansRef.current += 1;
     setVectorBusy(true);
-    setVectorProgress({ fraction: 0, label: 'Scanning vector Form XObjects…' });
+    setVectorProgress({ fraction: 0, label: t('pdf.p.xi.scanVec') });
 
     try {
       for (let i = 0; i < scannable.length; i++) {
@@ -196,6 +198,7 @@ export default function ExtractImagesPage() {
                 });
               }
             },
+            locale,
           );
           if (vectorEpochRef.current !== epoch || !sourcesRef.current.some((s) => s.id === src.id)) {
             for (const u of createdUrls) revokeUrl(u);
@@ -213,7 +216,7 @@ export default function ExtractImagesPage() {
       activeVectorScansRef.current = Math.max(0, activeVectorScansRef.current - 1);
       if (activeVectorScansRef.current === 0) setVectorBusy(false);
     }
-  }, [createUrl, revokeUrl]);
+  }, [createUrl, revokeUrl, locale, t]);
 
   const scanSources = React.useCallback(
     async (targets: SourcePdf[], minSize: number, replaceExisting: boolean, alsoScanVectors: boolean) => {
@@ -235,7 +238,7 @@ export default function ExtractImagesPage() {
       const epoch = epochRef.current;
       activeScansRef.current += 1;
       setBusy(true);
-      setProgress({ fraction: 0, label: 'Scanning PDFs…' });
+      setProgress({ fraction: 0, label: t('pdf.p.xi.scanPdfs') });
 
       const unlockedForVectors: SourcePdf[] = [];
 
@@ -305,7 +308,7 @@ export default function ExtractImagesPage() {
         void scanVectorsForSources(unlockedForVectors);
       }
     },
-    [createUrl, revokeUrl, scanVectorsForSources],
+    [createUrl, revokeUrl, scanVectorsForSources, t],
   );
 
   // Re-scan currently loaded PDFs whenever the applied raster min-size filter changes.
@@ -374,7 +377,7 @@ export default function ExtractImagesPage() {
     const pdfs = files.filter(isPdf);
     setNotice(
       pdfs.length < files.length
-        ? `${files.length - pdfs.length} file(s) were skipped because they are not PDFs.`
+        ? t('pdf.p.skippedNonPdf', { n: files.length - pdfs.length })
         : null,
     );
     if (!pdfs.length) return;
@@ -454,7 +457,7 @@ export default function ExtractImagesPage() {
       void scanVectorsForSources([unlockedSrc]);
     } catch (e) {
       if (isPasswordError(e)) {
-        setPwError('Incorrect password. Try again.');
+        setPwError(t('pdf.ff.wrongPw'));
       } else {
         const updated = sourcesRef.current.map((s) =>
           s.id === activeLocked.id
@@ -474,7 +477,7 @@ export default function ExtractImagesPage() {
     if (!activeLocked) return;
     const updated = sourcesRef.current.map((s) =>
       s.id === activeLocked.id
-        ? { ...s, locked: false, scanning: false, error: 'Password required to open this PDF.' }
+        ? { ...s, locked: false, scanning: false, error: t('pdf.p.pwRequired') }
         : s,
     );
     sourcesRef.current = updated;
@@ -616,13 +619,13 @@ export default function ExtractImagesPage() {
           sourceId: activeSourceId,
           pageIndex,
           rect,
-          label: `Fig p${pageIndex + 1}-${countOnPage + 1}`,
+          label: t('pdf.p.xi.figLabel', { p: pageIndex + 1, n: countOnPage + 1 }),
         };
         return [...prev, nextBox];
       });
       setSelectedBoxId(id);
     },
-    [activeSourceId, pageIndex],
+    [activeSourceId, pageIndex, t],
   );
 
   const handleUpdateBox = React.useCallback((id: string, rect: ViewportRect) => {
@@ -682,7 +685,7 @@ export default function ExtractImagesPage() {
       const copy: FigureBox = {
         ...target,
         id: newId,
-        label: `${target.label} copy`,
+        label: t('pdf.p.xi.copySuffix', { label: target.label }),
         auto: false,
         rect: {
           ...target.rect,
@@ -693,7 +696,7 @@ export default function ExtractImagesPage() {
       return [...prev, copy];
     });
     setSelectedBoxId(newId);
-  }, []);
+  }, [t]);
 
   const handleTightenBox = React.useCallback(
     async (id: string) => {
@@ -704,12 +707,12 @@ export default function ExtractImagesPage() {
 
       setCropNotice(null);
       setCropBusy(true);
-      setCropProgress({ fraction: 0.4, label: 'Analyzing vector bounds…' });
+      setCropProgress({ fraction: 0.4, label: t('pdf.p.xi.analyzingBounds') });
       try {
         const idx = await getPageVectorIndex(target.sourceId, doc, target.pageIndex);
         const tight = tightenRegionToContent(idx, target.rect, paddingPt);
         if (!tight) {
-          setCropNotice('No vector paths, images, or text were found inside that box.');
+          setCropNotice(t('pdf.p.xi.noContentInBox'));
         } else {
           setBoxes((prev) => prev.map((b) => (b.id === id ? { ...b, rect: tight } : b)));
         }
@@ -719,14 +722,14 @@ export default function ExtractImagesPage() {
         setCropBusy(false);
       }
     },
-    [boxes, getPageVectorIndex, paddingPt],
+    [boxes, getPageVectorIndex, paddingPt, t],
   );
 
   const handleDetectPage = React.useCallback(async () => {
     if (!activeDoc || !activeSourceId) return;
     setCropNotice(null);
     setCropBusy(true);
-    setCropProgress({ fraction: 0.3, label: `Detecting figures on page ${pageIndex + 1}…` });
+    setCropProgress({ fraction: 0.3, label: t('pdf.p.xi.detectingPage', { p: pageIndex + 1 }) });
     try {
       const idx = await getPageVectorIndex(activeSourceId, activeDoc, pageIndex);
       const detected = detectFiguresOnPage(idx, { mergeGapPt, minSizePt, paddingPt });
@@ -735,7 +738,7 @@ export default function ExtractImagesPage() {
         sourceId: activeSourceId,
         pageIndex,
         rect: d.rect,
-        label: `Fig p${pageIndex + 1}-${i + 1}`,
+        label: t('pdf.p.xi.figLabel', { p: pageIndex + 1, n: i + 1 }),
         auto: true,
       }));
       setBoxes((prev) => [
@@ -745,14 +748,14 @@ export default function ExtractImagesPage() {
       if (newBoxes.length > 0) {
         setSelectedBoxId(newBoxes[0].id);
       } else {
-        setCropNotice(`No figures detected on page ${pageIndex + 1}. Try lowering Min size or draw a box manually.`);
+        setCropNotice(t('pdf.p.xi.noneOnPage', { p: pageIndex + 1 }));
       }
     } catch (e) {
       setCropNotice(errorMessage(e));
     } finally {
       setCropBusy(false);
     }
-  }, [activeDoc, activeSourceId, pageIndex, getPageVectorIndex, mergeGapPt, minSizePt, paddingPt]);
+  }, [activeDoc, activeSourceId, pageIndex, getPageVectorIndex, mergeGapPt, minSizePt, paddingPt, t]);
 
   const handleDetectAllPages = React.useCallback(async () => {
     if (!activeDoc || !activeSourceId) return;
@@ -764,7 +767,7 @@ export default function ExtractImagesPage() {
       for (let p = 0; p < total; p++) {
         setCropProgress({
           fraction: (p + 0.2) / Math.max(1, total),
-          label: `Analyzing page ${p + 1} of ${total}…`,
+          label: t('pdf.p.xi.analyzingPageOf', { p: p + 1, total }),
         });
         await nextFrame();
         const idx = await getPageVectorIndex(activeSourceId, activeDoc, p);
@@ -775,7 +778,7 @@ export default function ExtractImagesPage() {
             sourceId: activeSourceId,
             pageIndex: p,
             rect: d.rect,
-            label: `Fig p${p + 1}-${i + 1}`,
+            label: t('pdf.p.xi.figLabel', { p: p + 1, n: i + 1 }),
             auto: true,
           });
         });
@@ -788,14 +791,14 @@ export default function ExtractImagesPage() {
         setSelectedBoxId(collected[0].id);
         setPageIndex(collected[0].pageIndex);
       } else {
-        setCropNotice('No figures were auto-detected in this PDF. Try adjusting Min size or draw boxes directly.');
+        setCropNotice(t('pdf.p.xi.noneInPdf'));
       }
     } catch (e) {
       setCropNotice(errorMessage(e));
     } finally {
       setCropBusy(false);
     }
-  }, [activeDoc, activeSourceId, getPageVectorIndex, mergeGapPt, minSizePt, paddingPt]);
+  }, [activeDoc, activeSourceId, getPageVectorIndex, mergeGapPt, minSizePt, paddingPt, t]);
 
   const handleJumpToBox = React.useCallback((box: FigureBox) => {
     setActiveSourceId(box.sourceId);
@@ -810,7 +813,7 @@ export default function ExtractImagesPage() {
       if (!src) return;
       setCropNotice(null);
       setCropBusy(true);
-      setCropProgress({ fraction: 0.4, label: `Exporting ${box.label} (${format.toUpperCase()})…` });
+      setCropProgress({ fraction: 0.4, label: t('pdf.p.xi.exportingBox', { label: box.label, fmt: format.toUpperCase() }) });
       try {
         await exportSingleBox(box, src, format, pngDpi, openDocRef.current);
       } catch (e) {
@@ -819,24 +822,24 @@ export default function ExtractImagesPage() {
         setCropBusy(false);
       }
     },
-    [pngDpi],
+    [pngDpi, t],
   );
 
   const handleDownloadAllBoxes = React.useCallback(async () => {
     if (!boxes.length) return;
     setCropNotice(null);
     setCropBusy(true);
-    setCropProgress({ fraction: 0.05, label: 'Preparing figure export…' });
+    setCropProgress({ fraction: 0.05, label: t('pdf.p.xi.prepExport') });
     try {
       await exportAllBoxes(boxes, sourcesRef.current, exportFormat, pngDpi, openDocRef.current, (f, label) => {
         setCropProgress({ fraction: f, label });
-      });
+      }, locale);
     } catch (e) {
       setCropNotice(errorMessage(e));
     } finally {
       setCropBusy(false);
     }
-  }, [boxes, exportFormat, pngDpi]);
+  }, [boxes, exportFormat, pngDpi, locale, t]);
 
   const selectedBox = React.useMemo(
     () => boxes.find((b) => b.id === selectedBoxId) ?? null,
@@ -852,20 +855,20 @@ export default function ExtractImagesPage() {
     <>
       <div className={styles.options}>
         <Checkbox
-          label="Skip tiny images (spacers & icons)"
+          label={t('pdf.p.xi.skipTiny')}
           checked={skipTiny}
           onChange={setSkipTiny}
         />
         {skipTiny && (
           <Field
-            label="Minimum dimension (px)"
-            help="Images narrower or shorter than this are ignored."
+            label={t('pdf.p.xi.minDim')}
+            help={t('pdf.p.xi.minDimHelp')}
           >
             <NumberInput value={minPx} onChange={setMinPx} min={1} max={1000} />
           </Field>
         )}
         {images.length > 1 && (
-          <Field label="ZIP file name">
+          <Field label={t('pdf.p.zipFileName')}>
             <input
               className={fieldStyles.input}
               value={zipName}
@@ -880,26 +883,26 @@ export default function ExtractImagesPage() {
 
       <div className={styles.summaryBox}>
         <div className={styles.summaryRow}>
-          <span>Extracted images</span>
+          <span>{t('pdf.p.xi.extractedImages')}</span>
           <span>{images.length}</span>
         </div>
         <div className={styles.summaryRow}>
-          <span>Original JPG</span>
+          <span>{t('pdf.p.xi.origJpg')}</span>
           <span>{jpgCount}</span>
         </div>
         <div className={styles.summaryRow}>
-          <span>Lossless PNG</span>
+          <span>{t('pdf.p.xi.losslessPng')}</span>
           <span>{pngCount}</span>
         </div>
         <div className={styles.summaryRow}>
-          <span>Total size</span>
+          <span>{t('pdf.p.xi.totalSize')}</span>
           <span>{formatBytes(totalBytes)}</span>
         </div>
       </div>
 
       {totalSkipped > 0 && (
         <p className={styles.note}>
-          {totalSkipped} unsupported image{totalSkipped === 1 ? '' : 's'} (e.g. CMYK, JPEG 2000, JBIG2 or 1-bit masks) {totalSkipped === 1 ? 'was' : 'were'} skipped.
+          {t(totalSkipped === 1 ? 'pdf.p.xi.skippedOne' : 'pdf.p.xi.skippedMany', { n: totalSkipped })}
         </p>
       )}
       {notice && <p className={fieldStyles.warning}>{notice}</p>}
@@ -911,8 +914,8 @@ export default function ExtractImagesPage() {
         onClick={downloadAllRaster}
       >
         {images.length === 1
-          ? 'Download image'
-          : `Download all (${images.length} images, ZIP)`}
+          ? t('pdf.p.xi.dlImg')
+          : t('pdf.p.xi.dlAllImgs', { n: images.length })}
       </button>
 
       {busy && <Progress fraction={progress.fraction} label={progress.label} />}
@@ -976,17 +979,17 @@ export default function ExtractImagesPage() {
     <PdfPage
       title={EXTRACT_IMAGES.title}
       showHub
-      lead="Extract embedded raster images (original JPGs or lossless PNGs), standalone vector Form XObjects (SVG/PDF), or auto-detect and crop inline vector figures right from the page."
+      lead={t('pdf.p.xi.lead')}
     >
       <ToolWorkspace
         tool={EXTRACT_IMAGES}
         accept="application/pdf,.pdf"
-        selectLabel="Select PDF files"
-        dropLabel="or drop PDFs here"
-        addLabel="+ Add PDFs"
+        selectLabel={t('pdf.p.selectPdfs')}
+        dropLabel={t('pdf.p.dropPdfs')}
+        addLabel={t('pdf.p.addPdfs')}
         hasFiles={sources.length > 0}
         onFiles={addFiles}
-        toolbar={<button type="button" className={styles.buttonSmall} onClick={clearAll}>Remove all</button>}
+        toolbar={<button type="button" className={styles.buttonSmall} onClick={clearAll}>{t('pdf.p.removeAll')}</button>}
         sidebar={activeSidebar}
       >
         {activeLocked && (
@@ -1006,18 +1009,18 @@ export default function ExtractImagesPage() {
               <span className={styles.sourceChipName} title={src.name}>{src.name}</span>
               <span className={styles.sourceChipMeta}>
                 {src.scanning
-                  ? 'Scanning…'
+                  ? t('pdf.p.xi.scanning')
                   : src.locked
-                    ? 'Password protected'
+                    ? t('pdf.p.pwProtected')
                     : src.error
                       ? src.error
-                      : `${src.imageCount} image${src.imageCount === 1 ? '' : 's'}`}
+                      : t(src.imageCount === 1 ? 'pdf.p.xi.imgCountOne' : 'pdf.p.xi.imgCountMany', { n: src.imageCount })}
               </span>
               <button
                 type="button"
                 className={styles.iconButton}
-                title={`Remove ${src.name}`}
-                aria-label={`Remove ${src.name}`}
+                title={t('pdf.p.xi.removeSrc', { name: src.name })}
+                aria-label={t('pdf.p.xi.removeSrc', { name: src.name })}
                 onClick={() => removeSource(src.id)}
               >
                 &times;
@@ -1026,7 +1029,7 @@ export default function ExtractImagesPage() {
           ))}
         </div>
 
-        <div className={styles.tabBar} role="tablist" aria-label="Extraction mode">
+        <div className={styles.tabBar} role="tablist" aria-label={t('pdf.p.xi.tabAria')}>
           <button
             type="button"
             role="tab"
@@ -1034,7 +1037,7 @@ export default function ExtractImagesPage() {
             className={[styles.tab, activeTab === 'raster' ? styles.tabActive : ''].join(' ')}
             onClick={() => setActiveTab('raster')}
           >
-            Raster images
+            {t('pdf.p.xi.tabRaster')}
             <span className={styles.tabBadge}>{images.length}</span>
           </button>
           <button
@@ -1044,7 +1047,7 @@ export default function ExtractImagesPage() {
             className={[styles.tab, activeTab === 'vectors' ? styles.tabActive : ''].join(' ')}
             onClick={() => setActiveTab('vectors')}
           >
-            Embedded vectors
+            {t('pdf.p.xi.tabVectors')}
             <span className={styles.tabBadge}>{vectors.length}</span>
           </button>
           <button
@@ -1054,7 +1057,7 @@ export default function ExtractImagesPage() {
             className={[styles.tab, activeTab === 'crop' ? styles.tabActive : ''].join(' ')}
             onClick={() => setActiveTab('crop')}
           >
-            Detect &amp; crop figures
+            {t('pdf.p.xi.tabCrop')}
             {boxes.length > 0 && <span className={styles.tabBadge}>{boxes.length}</span>}
           </button>
         </div>
@@ -1063,10 +1066,10 @@ export default function ExtractImagesPage() {
           <>
             {!busy && images.length === 0 && (
               <p className={styles.note}>
-                No extractable images were found{skipTiny ? ` at least ${appliedMinSize} px on each side` : ''}.
-                {totalSkipped > 0 ? ' Some embedded images use unsupported encodings (such as CMYK or JPEG 2000).' : ''}
-                {' '}To rasterize entire pages instead, use{' '}
-                <Link href="/pdf/pdf-to-images" className={styles.textLink}>PDF to images</Link>.
+                {t('pdf.p.xi.noFound')}{skipTiny ? t('pdf.p.xi.noFoundMin', { px: appliedMinSize }) : ''}.
+                {totalSkipped > 0 ? t('pdf.p.xi.noFoundUnsup') : ''}
+                {t('pdf.p.xi.toRasterize')}
+                <Link href="/pdf/pdf-to-images" className={styles.textLink}>{t('pdf.tool.pdf-to-images.title')}</Link>.
               </p>
             )}
 
@@ -1081,14 +1084,14 @@ export default function ExtractImagesPage() {
                         <img src={item.url} alt={item.name} loading="lazy" />
                       </div>
                       <span className={isJpeg ? styles.badgeJpg : styles.badgePng}>
-                        {isJpeg ? 'Original JPG' : 'Lossless PNG'}
+                        {isJpeg ? t('pdf.p.xi.origJpg') : t('pdf.p.xi.losslessPng')}
                       </span>
                       <div className={styles.fileName} title={item.name}>{item.name}</div>
                       <div className={styles.fileMeta}>
                         {item.width} &times; {item.height} &middot; {formatBytes(item.bytes.length)}
                       </div>
                       <div className={styles.fileMeta}>
-                        {item.pages.length === 1 ? `Page ${pageList}` : `Pages ${pageList}`}
+                        {t(item.pages.length === 1 ? 'pdf.p.xi.pageOne' : 'pdf.p.xi.pageMany', { list: pageList })}
                         {sources.length > 1 ? ` · ${item.sourceName}` : ''}
                       </div>
                       <div className={styles.cardFooter}>
@@ -1098,7 +1101,7 @@ export default function ExtractImagesPage() {
                           style={{ width: '100%' }}
                           onClick={() => download(item.bytes, item.name, item.mime)}
                         >
-                          Download
+                          {t('pdf.p.download')}
                         </button>
                       </div>
                     </li>

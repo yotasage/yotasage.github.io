@@ -8,6 +8,7 @@
 import React, { createContext, useSyncExternalStore } from 'react';
 
 import type { BibEntry } from '../../lib/bibtex';
+import { useI18n } from '../../lib/ui/i18n';
 import type Bibliography from '../Bibliography';
 import css from '../../styles/EmSimTrace.module.css';
 
@@ -125,11 +126,12 @@ export const EqEnv = createContext<{ references: readonly BibEntry[]; bib: Bibli
  * the shown unit) for the harness. `label` names it for screen readers and the panel.
  */
 export function EqNum({ section, name, label, text, v, scale = 1, className }: { section: EqRequest['section']; name: string; label: string; text: string; v: number; scale?: number; className?: string }) {
+  const { t } = useI18n();
   const q = useEqRequest();
   const on = q !== null && q.section === section && q.name === name;
   return (
     <button type="button" className={`${css.eqNum}${className ? ` ${className}` : ''}`} data-eq-open={name} data-eq-section={section} data-v={v} data-scale={scale}
-      aria-expanded={on} aria-label={`${label} ${text}: show its equation`} onClick={(e) => openEq(section, name, label, e.currentTarget)}>
+      aria-expanded={on} aria-label={t('em.eq.openAria', { label, text })} onClick={(e) => openEq(section, name, label, e.currentTarget)}>
       {text}
     </button>
   );

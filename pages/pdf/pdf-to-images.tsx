@@ -9,6 +9,7 @@ import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
 import { pdfToImages } from '../../lib/pdf/pdfToImages';
 import { PdfThumbPool } from '../../lib/pdf/thumbs';
 import { PDF_TO_IMAGES } from '../../lib/pdf/tools';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
@@ -31,6 +32,7 @@ type ImageFormat = 'jpeg' | 'png';
 type DpiPreset = '72' | '150' | '300' | 'custom';
 
 export default function PdfToImagesPage() {
+  const { t } = useI18n();
   const [doc, setDoc] = React.useState<LoadedDoc | null>(null);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [format, setFormat] = React.useState<ImageFormat>('jpeg');
@@ -72,7 +74,7 @@ export default function PdfToImagesPage() {
         setLocked({
           name,
           bytes,
-          error: password !== undefined ? 'Incorrect password. Try again.' : null,
+          error: password !== undefined ? t('pdf.ff.wrongPw') : null,
           busy: false,
         });
       } else {
@@ -87,10 +89,10 @@ export default function PdfToImagesPage() {
   async function loadFile(files: File[]) {
     const pdf = files.find(isPdf);
     if (!pdf) {
-      setNotice('Please select a PDF file.');
+      setNotice(t('pdf.ff.pickPdf'));
       return;
     }
-    setNotice(files.length > 1 ? 'Only the first PDF was opened.' : null);
+    setNotice(files.length > 1 ? t('pdf.p.onlyFirst') : null);
     setLocked(null);
     try {
       const bytes = await readBytes(pdf);
@@ -122,9 +124,9 @@ export default function PdfToImagesPage() {
       id: `p-${i}`,
       pool: doc.pool,
       pageIndex: i,
-      label: `Page ${i + 1}`,
+      label: t('pdf.ff.pageN', { n: i + 1 }),
     }));
-  }, [doc]);
+  }, [doc, t]);
 
   const selectedIndices = React.useMemo(() => {
     if (!doc) return [];
@@ -156,7 +158,7 @@ export default function PdfToImagesPage() {
         },
         (fraction, label) => setProgress({ fraction, label }),
       );
-      if (!files.length) throw new Error('No pages were rendered.');
+      if (!files.length) throw new Error(t('pdf.p.p2i.noRendered'));
 
       const ext = format === 'jpeg' ? 'jpg' : 'png';
       const mime = format === 'jpeg' ? 'image/jpeg' : 'image/png';
@@ -193,7 +195,7 @@ export default function PdfToImagesPage() {
     <PdfPage
       title={PDF_TO_IMAGES.title}
       showHub
-      lead="Render every page of a PDF—or just the pages you select—into JPG or lossless PNG images at the resolution you choose."
+      lead={t('pdf.p.p2i.lead')}
     >
       {locked && (
         <PasswordPrompt
@@ -208,73 +210,73 @@ export default function PdfToImagesPage() {
         />
       )}
       {error && !doc && <div className={styles.error} style={{ marginBottom: '1rem' }}>{error}</div>}
-      {loading && !doc && !locked && <Progress fraction={0.4} label="Opening PDF…" />}
+      {loading && !doc && !locked && <Progress fraction={0.4} label={t('pdf.p.opening')} />}
       <ToolWorkspace
         tool={PDF_TO_IMAGES}
         accept="application/pdf,.pdf"
         multiple={false}
-        selectLabel="Select a PDF file"
-        dropLabel="or drop a PDF here"
-        addLabel="Replace PDF"
+        selectLabel={t('pdf.p.selectPdf')}
+        dropLabel={t('pdf.p.dropPdf')}
+        addLabel={t('pdf.p.replacePdf')}
         hasFiles={!!doc}
         onFiles={loadFile}
-        toolbar={<button type="button" className={styles.buttonSmall} onClick={clearDoc}>Close</button>}
+        toolbar={<button type="button" className={styles.buttonSmall} onClick={clearDoc}>{t('pdf.ff.close')}</button>}
         sidebar={
           <>
             <div className={styles.options}>
-              <Field label="Image format">
+              <Field label={t('pdf.p.p2i.format')}>
                 <Select
                   value={format}
                   onChange={setFormat}
                   options={[
-                    ['jpeg', 'JPG (smaller files)'],
-                    ['png', 'PNG (lossless)'],
+                    ['jpeg', t('pdf.p.p2i.fmtJpg')],
+                    ['png', t('pdf.p.p2i.fmtPng')],
                   ]}
                 />
               </Field>
-              <Field label="Resolution">
+              <Field label={t('pdf.p.p2i.resolution')}>
                 <Select
                   value={dpiPreset}
                   onChange={setDpiPreset}
                   options={[
-                    ['72', '72 DPI (screen)'],
-                    ['150', '150 DPI (standard)'],
-                    ['300', '300 DPI (print)'],
-                    ['custom', 'Custom DPI'],
+                    ['72', t('pdf.p.p2i.dpi72')],
+                    ['150', t('pdf.p.p2i.dpi150')],
+                    ['300', t('pdf.p.p2i.dpi300')],
+                    ['custom', t('pdf.p.p2i.dpiCustom')],
                   ]}
                 />
               </Field>
               {dpiPreset === 'custom' && (
-                <Field label="Custom DPI (36–600)">
+                <Field label={t('pdf.p.p2i.customDpiLabel')}>
                   <NumberInput value={customDpi} onChange={setCustomDpi} min={36} max={600} />
                 </Field>
               )}
               {format === 'jpeg' && (
-                <Field label="JPEG quality (%)">
+                <Field label={t('pdf.p.jpegQuality')}>
                   <NumberInput value={quality} onChange={setQuality} min={10} max={100} />
                 </Field>
               )}
-              <Field label={targetCount === 1 ? 'File name' : 'ZIP file name'}>
+              <Field label={targetCount === 1 ? t('pdf.ff.fileName') : t('pdf.p.zipFileName')}>
                 <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
               </Field>
             </div>
             <p className={styles.note}>
               {selectedIndices.length > 0
-                ? <>Rendering <strong>{selectedIndices.length}</strong> of {doc?.pageCount ?? 0} selected page{selectedIndices.length === 1 ? '' : 's'} at {dpi} DPI.</>
-                : <>All <strong>{doc?.pageCount ?? 0}</strong> page{doc?.pageCount === 1 ? '' : 's'} will be rendered at {dpi} DPI. Click pages to convert only a selection.</>}
+                ? t(selectedIndices.length === 1 ? 'pdf.p.p2i.noteSelOne' : 'pdf.p.p2i.noteSelMany', { n: selectedIndices.length, total: doc?.pageCount ?? 0, dpi })
+                : t((doc?.pageCount ?? 0) === 1 ? 'pdf.p.p2i.noteAllOne' : 'pdf.p.p2i.noteAllMany', { n: doc?.pageCount ?? 0, dpi })}
             </p>
             {notice && <p className={fieldStyles.warning}>{notice}</p>}
             <button type="button" className={styles.primary} disabled={!canRun} onClick={renderImages}>
-              Convert {targetCount} page{targetCount === 1 ? '' : 's'} to {format === 'jpeg' ? 'JPG' : 'PNG'}
+              {t(targetCount === 1 ? 'pdf.p.p2i.btnOne' : 'pdf.p.p2i.btnMany', { n: targetCount, fmt: format === 'jpeg' ? 'JPG' : 'PNG' })}
             </button>
             {busy && <Progress fraction={progress.fraction} label={progress.label} />}
             {error && <div className={styles.error}>{error}</div>}
             {result && (
               <div className={styles.result}>
-                <h3>{result.count === 1 ? 'Your image is ready' : `${result.count} images are ready`}</h3>
+                <h3>{result.count === 1 ? t('pdf.p.p2i.readyOne') : t('pdf.p.p2i.readyMany', { n: result.count })}</h3>
                 <p>{formatBytes(result.bytes.length)}.</p>
                 <button type="button" className={styles.primary} onClick={() => download(result.bytes, result.name, result.type)}>
-                  Download {result.name}
+                  {t('pdf.ff.downloadNamed', { name: result.name })}
                 </button>
               </div>
             )}
@@ -286,21 +288,21 @@ export default function PdfToImagesPage() {
             <div className={styles.fileBanner}>
               <strong>{doc.name}</strong>
               <span className={styles.fileBannerMeta}>
-                {doc.pageCount} page{doc.pageCount === 1 ? '' : 's'} · {formatBytes(doc.bytes.length)}
+                {t(doc.pageCount === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany', { n: doc.pageCount })} · {formatBytes(doc.bytes.length)}
               </span>
             </div>
             <PageSelectionBar
               items={items}
               selectedIds={selectedIds}
               onChange={setSelectedIds}
-              rangePlaceholder="Optional pages to convert, e.g. 1-3, 5 (empty = all)"
+              rangePlaceholder={t('pdf.p.p2i.rangePh')}
             />
             <PageGrid
               items={items}
               selectedIds={selectedIds}
               onSelectChange={setSelectedIds}
               renderBadgeExtra={(item) => (
-                selectedIds.has(item.id) ? <span className={styles.pillAccent}>Export</span> : null
+                selectedIds.has(item.id) ? <span className={styles.pillAccent}>{t('pdf.p.p2i.badge')}</span> : null
               )}
             />
           </>

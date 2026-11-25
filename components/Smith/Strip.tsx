@@ -2,14 +2,16 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { formatAmount, readAmount } from '../../lib/quantity';
 import {
-  Circuit, f0Problem, Form, formsOf, formValue, insertPart, KIND_CODES, KIND_NAMES, KIND_ORDER, KIND_SHORT,
+  Circuit, f0Problem, Form, formsOf, formValue, insertPart, KIND_CODES, KIND_ORDER,
   askOf, circuitInputGamma, loadRProblem, loadXProblem, MAX_PARTS, movePart, newPart, Part, PartKind, readForm, removePart,
-  sameUnknown, toggleUnknown, Unknown, unknownName, VALUE_NAMES, withForm, withFree, withPart, z0Problem,
+  sameUnknown, toggleUnknown, Unknown, withForm, withFree, withPart, z0Problem,
   sameCircuit,
 } from '../../lib/smith/state';
 import {
   LINE, QUARTER, SERIES_C, SERIES_L, SERIES_R, SHUNT_C, SHUNT_L, SHUNT_R, STUB_OPEN, STUB_SHORT,
 } from '../../lib/smith/parts';
+import { translate, useI18n } from '../../lib/ui/i18n';
+import type { Locale } from '../../lib/ui/translations';
 import type Bibliography from '../Bibliography';
 import { hasLock, kindLocked, valueLocked } from '../../lib/smith/lesson';
 import type { Lesson } from '../../lib/smith/lesson';
@@ -19,6 +21,7 @@ import type { Move } from './Explain';
 import { partColour } from './pathLayer';
 import { readoutTexts } from './readout';
 import { ShowEq } from './ShowEq';
+import { formHint, formLabel, kindName, kindShort, localizeProblem, unitWord, unknownLabel, valueName } from './smithText';
 import { Why, WhyLine } from './Why';
 import { FIELD_WHY } from './whys';
 
@@ -164,19 +167,28 @@ export function Field({ label, hint, shown, edit, name, revision, why, locked }:
   );
 }
 
-const reason = (text: string, v: number | null, unit: string, problem: string): string =>
-  v === null ? (text.trim() ? `cannot read “${text.trim()}”${unit ? ` as ${unit}` : ' as a number'}` : 'empty') : problem;
-
-const UNIT_WORD: Record<string, string> = { Ω: 'ohms', S: 'siemens', H: 'henries', F: 'farads', Hz: 'hertz', λ: 'wavelengths', '°': 'degrees' };
+const reason = (text: string, v: number | null, unit: string, problem: string, locale: Locale): string =>
+  v === null
+    ? (text.trim()
+      ? (unit ? translate(locale, 'sm.err.cannotReadAs', { text: text.trim(), unit }) : translate(locale, 'sm.err.cannotReadNum', { text: text.trim() }))
+      : translate(locale, 'sm.err.empty'))
+    : localizeProblem(problem, locale);
 
 // ---------------------------------------------------------------------------------------------------------------
 
-const INPUT_SHOWN = [[0, 'z', 'normalised'], [1, 'Z', 'in Ω'], [4, 'Γ', 'polar'], [6, 'VSWR', ''], [7, 'Return loss', '']] as const;
 const INPUT_KEYS = ['z', 'Z', 'y', 'Y', 'gamma', 'gammaRect', 'vswr', 'rl', 'note'];
 
-export default function Strip({ circuit, onChange, issues, issuesOf = 'link', selected: chosen, onSelect, onHover, revision, drawKind = -1, onDraw, digits, bib, lock, noSolve, noRead }: StripProps) {
+export default function Strip({ circuit, onChange, issues, issuesOf, selected: chosen, onSelect, onHover, revision, drawKind = -1, onDraw, digits, bib, lock, noSolve, noRead }: StripProps) {
+  const { t, locale } = useI18n();
   const c = circuit;
   const n = c.parts.length;
+  const inputShown = [
+    [0, 'z', t('sm.chart.hintNorm')],
+    [1, 'Z', t('sm.chart.hintInUnit', { unit: 'Ω' })],
+    [4, 'Γ', t('sm.chart.hintPolar')],
+    [6, 'VSWR', ''],
+    [7, t('sm.chart.returnLoss'), ''],
+  ] as const;
   // M6.3b: the locks. A kind-locked part cannot be removed or moved, nor another moved onto its place; with the parts'
   // list locked nothing is added; a new part goes only where it shifts no locked part (the source side of them).
   const ls = lock?.lesson ?? null, lockWhy = lock?.why ?? '';
@@ -288,26 +300,26 @@ export default function Strip({ circuit, onChange, issues, issuesOf = 'link', se
     circuitInputGamma(g, 0, c);
     readoutTexts(g[0], g[1], c.z0, out);
     return out;
-  }, [c, digits]);
+  }, [c, digits, locale]);
 
   const param = (name: string, label: string, unit: string, value: number, problem: (v: number) => string, set: (v: number) => Circuit, infinite = false, why = '', locked = '') => (
-    <Field name={name} label={label} why={why || undefined} revision={revision} locked={locked} shown={formatAmount(value, unit, DIGITS)} edit={(t) => {
-      const v = readAmount(t, unit, infinite);
-      const why = reason(t, v, UNIT_WORD[unit] ?? unit, v === null ? '' : problem(v));
-      if (!why) onChange(set(v), `field:${name}`);
-      return why;
+    <Field name={name} label={label} why={why || undefined} revision={revision} locked={locked} shown={formatAmount(value, unit, DIGITS)} edit={(txt) => {
+      const v = readAmount(txt, unit, infinite);
+      const err = reason(txt, v, unitWord(unit, locale), v === null ? '' : problem(v), locale);
+      if (!err) onChange(set(v), `field:${name}`);
+      return err;
     }} />
   );
 
   const part = selected >= 0 ? c.parts[selected] : null;
   const partField = (p: Part, i: number, form: Form) => (
-    <Field key={form.id} name={`p${i + 1}-${form.id}`} label={form.label} hint={form.hint} why={FIELD_WHY[form.id]} revision={revision}
+    <Field key={form.id} name={`p${i + 1}-${form.id}`} label={formLabel(form, locale)} hint={formHint(form, locale)} why={FIELD_WHY[form.id]} revision={revision}
       locked={valueLocked(ls, i) ? lockWhy : ''} shown={formText(form, formValue(form.id, p, c))}
-      edit={(t) => {
-        const v = readForm(form, t);
-        if (v === null) return reason(t, v, UNIT_WORD[form.unit] ?? '', '');
+      edit={(txt) => {
+        const v = readForm(form, txt);
+        if (v === null) return reason(txt, v, form.unit ? unitWord(form.unit, locale) : '', '', locale);
         const next = withForm(form.id, p, v, c);
-        if (typeof next === 'string') return next;
+        if (typeof next === 'string') return localizeProblem(next, locale);
         onChange(withPart(c, i, next), `field:p${i + 1}-${form.id}`);
         return '';
       }} />
@@ -320,27 +332,28 @@ export default function Strip({ circuit, onChange, issues, issuesOf = 'link', se
   const mark = (u: Unknown) => {
     const { circuit: next, dropped } = toggleUnknown(c, u);
     onChange(next);
-    setMarkNote(dropped ? { text: `At most two at a time: ${unknownName(c, dropped)} is no longer solved for.`, after: next } : null);
+    setMarkNote(dropped ? { text: t('sm.strip.maxTwoNote', { name: unknownLabel(c, dropped, locale) }), after: next } : null);
   };
   const solveRow = (p: Part, i: number) => {
     const value = ask.unknowns.find((u) => sameUnknown(u, { part: i, param: 'value' }));
     const zc = ask.unknowns.some((u) => sameUnknown(u, { part: i, param: 'zc' }));
     const lc = p.kind === SERIES_L || p.kind === SERIES_C || p.kind === SHUNT_L || p.kind === SHUNT_C;
     const hasZc = p.kind === LINE || p.kind === STUB_OPEN || p.kind === STUB_SHORT;
+    const valLbl = valueName(p.kind, locale);
     return (
       <div className={styles.solveRow} data-solve-row="">
-        <span className={styles.solveLabel}>Solve for</span>
+        <span className={styles.solveLabel}>{t('sm.strip.solveFor')}</span>
         <button type="button" className={`${styles.button} ${styles.toggle}`} aria-pressed={!!value} data-solve-mark="value"
           onClick={() => mark({ part: i, param: 'value' })}
-          title={`Let the solver find this part’s ${VALUE_NAMES[p.kind]} (at most two unknowns at a time)`}>{VALUE_NAMES[p.kind]}</button>
+          title={t('sm.strip.solveMarkTitle', { val: valLbl })}>{valLbl}</button>
         {hasZc && (
           <button type="button" className={`${styles.button} ${styles.toggle}`} aria-pressed={zc} data-solve-mark="zc"
-            onClick={() => mark({ part: i, param: 'zc' })} title="Let the solver find this line’s Zc">Zc</button>
+            onClick={() => mark({ part: i, param: 'zc' })} title={t('sm.strip.solveZcTitle')}>Zc</button>
         )}
         {lc && value && (
-          <label className={styles.solveFree} title={p.kind === SERIES_L || p.kind === SERIES_C ? 'A series reactance: the sign of the answer picks L or C' : 'A shunt susceptance: the sign of the answer picks L or C'}>
+          <label className={styles.solveFree} title={t(p.kind === SERIES_L || p.kind === SERIES_C ? 'sm.strip.solveFreeSeries' : 'sm.strip.solveFreeShunt')}>
             <input type="checkbox" data-solve-free="" checked={!!value.free} onChange={(e) => onChange(withFree(c, i, e.target.checked))} />
-            L or C
+            {t('sm.strip.solveFree')}
           </label>
         )}
         <Why k="solve-mark" />
@@ -350,59 +363,65 @@ export default function Strip({ circuit, onChange, issues, issuesOf = 'link', se
     );
   };
 
-  const positions: { at: number; text: string }[] = [{ at: -1, text: 'at the source end' }];
-  if (n > 0 && lastLocked < 0) positions.push({ at: 0, text: 'at the load end' });
-  for (let i = Math.max(1, lastLocked + 1); i < n; i++) positions.push({ at: i, text: `between ${i} and ${i + 1}` });
+  const positions: { at: number; text: string }[] = [{ at: -1, text: t('sm.strip.posSource') }];
+  if (n > 0 && lastLocked < 0) positions.push({ at: 0, text: t('sm.strip.posLoad') });
+  for (let i = Math.max(1, lastLocked + 1); i < n; i++) positions.push({ at: i, text: t('sm.strip.posBetween', { a: i, b: i + 1 }) });
 
   return (
     <section className={styles.panel} aria-labelledby="smith-circuit" data-circuit="">
-      <h2 className={styles.panelTitle} id="smith-circuit">Circuit <span className={styles.panelNote}>ideal parts, lossless lines</span></h2>
+      <h2 className={styles.panelTitle} id="smith-circuit">{t('sm.strip.title')} <span className={styles.panelNote}>{t('sm.strip.note')}</span></h2>
       {issues && issues.length > 0 && (
         <div className={styles.linkIssues} role="status">
-          <strong>The {issuesOf} could not be read in full:</strong>
-          <ul>{issues.map((t, i) => <li key={i}>{t}</li>)}</ul>
+          <strong>{t('sm.strip.issuesHead', { of: issuesOf ?? t('sm.main.issuesLink') })}</strong>
+          <ul>{issues.map((txt, i) => <li key={i}>{txt}</li>)}</ul>
         </div>
       )}
       <div className={styles.params}>
         {param('z0', 'Z0', 'Ω', c.z0, z0Problem, (v) => ({ ...c, z0: v }), false, 'z0', hasLock(ls, 'z0') ? lockWhy : '')}
         {param('f0', 'f0', 'Hz', c.f0, f0Problem, (v) => ({ ...c, f0: v }), false, 'f0', hasLock(ls, 'f0') ? lockWhy : '')}
-        {!noRead && param('loadR', 'Load R', 'Ω', c.loadR, loadRProblem, (v) => ({ ...c, loadR: v, loadX: v === Infinity ? 0 : c.loadX }), true, 'load', hasLock(ls, 'zl') ? lockWhy : '')}
-        {!noRead && param('loadX', 'Load X', 'Ω', c.loadX, loadXProblem, (v) => ({ ...c, loadX: v }), false, 'load', hasLock(ls, 'zl') ? lockWhy : '')}
+        {!noRead && param('loadR', t('sm.strip.loadR'), 'Ω', c.loadR, loadRProblem, (v) => ({ ...c, loadR: v, loadX: v === Infinity ? 0 : c.loadX }), true, 'load', hasLock(ls, 'zl') ? lockWhy : '')}
+        {!noRead && param('loadX', t('sm.strip.loadX'), 'Ω', c.loadX, loadXProblem, (v) => ({ ...c, loadX: v }), false, 'load', hasLock(ls, 'zl') ? lockWhy : '')}
       </div>
 
-      <div className={styles.strip} role="toolbar" aria-label="Parts from the source (left) to the load (right); arrows choose, Alt+arrows move, Delete removes" data-strip="">
-        <span className={styles.stripEnd}>Source</span>
-        <span className={styles.stripArrow} aria-hidden="true" title="The chart's path runs from the load to the source">←</span>
-        {n === 0 && <span className={styles.stripEmpty}>no parts</span>}
+      <div className={styles.strip} role="toolbar" aria-label={t('sm.strip.toolbarAria')} data-strip="">
+        <span className={styles.stripEnd}>{t('sm.strip.source')}</span>
+        <span className={styles.stripArrow} aria-hidden="true" title={t('sm.strip.arrowTitle')}>←</span>
+        {n === 0 && <span className={styles.stripEmpty}>{t('sm.strip.noParts')}</span>}
         {c.parts.map((_, k) => {
           const i = n - 1 - k, p = c.parts[i], main = formsOf(p.kind)[0];
           const value = formText(main, formValue(main.id, p, c));
           return (
             <button key={ids.current[i]} type="button" className={styles.tile} data-tile={i} data-kind={KIND_CODES[p.kind]}
               ref={(el) => { tiles.current[i] = el; }} style={{ color: partColour(i) }} aria-pressed={i === selected}
-              tabIndex={i === selected ? 0 : -1} aria-label={`Part ${i + 1}: ${KIND_NAMES[p.kind]}, ${value}${marked(i) ? ', solved for' : ''}${kindFixed(i) ? `, locked: ${lockWhy}` : ''}`}
+              tabIndex={i === selected ? 0 : -1} aria-label={t('sm.strip.tileAria', {
+                n: i + 1,
+                kind: kindName(p.kind, locale),
+                value,
+                solved: marked(i) ? t('sm.strip.tileSolved') : '',
+                locked: kindFixed(i) ? t('sm.strip.tileLocked', { why: lockWhy }) : '',
+              })}
               data-unknown={marked(i) ? '' : undefined} data-locked={kindFixed(i) ? '' : undefined}
               onClick={() => setSel(i)} onKeyDown={tileKey(i)}
               onMouseEnter={() => onHover?.(i)} onMouseLeave={() => onHover?.(-1)} onFocus={() => onHover?.(i)} onBlur={() => onHover?.(-1)}>
               <PartSymbol kind={p.kind} />
-              <span className={styles.tileName}>{i + 1} {KIND_SHORT[p.kind]}</span>
+              <span className={styles.tileName}>{i + 1} {kindShort(p.kind, locale)}</span>
               <span className={styles.tileValue} data-tile-value="">{value}</span>
             </button>
           );
         })}
-        <span className={styles.stripEnd}>Load</span>
+        <span className={styles.stripEnd}>{t('sm.strip.load')}</span>
         <Why k="strip" />
       </div>
 
       {part && (
         <div className={styles.card} key={ids.current[selected]} data-card={selected} style={{ '--card': partColour(selected) } as React.CSSProperties}>
           <div className={styles.cardHead}>
-            <span className={styles.cardName}>{selected + 1} · {KIND_NAMES[part.kind]}<ShowEq subject={{ t: 'part', i: selected }} k="part" what={`part ${selected + 1}`} back="the part card" /></span>
+            <span className={styles.cardName}>{selected + 1} · {kindName(part.kind, locale)}<ShowEq subject={{ t: 'part', i: selected }} k="part" what={t('sm.strip.partWhat', { n: selected + 1 })} back={t('sm.strip.backCard')} /></span>
             <span className={styles.cardActions}>
               {kindFixed(selected) && <LockMark id="smith-card-lock" why={lockWhy} />}
-              <button type="button" className={styles.button} data-move="source" disabled={!canMove(selected, selected + 1)} onClick={() => move(selected, selected + 1)} title="Move towards the source (Alt+←)" aria-label="Move towards the source">←</button>
-              <button type="button" className={styles.button} data-move="load" disabled={!canMove(selected, selected - 1)} onClick={() => move(selected, selected - 1)} title="Move towards the load (Alt+→)" aria-label="Move towards the load">→</button>
-              <button type="button" className={styles.button} data-remove="" disabled={listLocked || selected <= lastLocked} onClick={() => remove(selected)} title="Remove (Delete)">Remove</button>
+              <button type="button" className={styles.button} data-move="source" disabled={!canMove(selected, selected + 1)} onClick={() => move(selected, selected + 1)} title={t('sm.strip.moveSourceTitle')} aria-label={t('sm.strip.moveSource')}>←</button>
+              <button type="button" className={styles.button} data-move="load" disabled={!canMove(selected, selected - 1)} onClick={() => move(selected, selected - 1)} title={t('sm.strip.moveLoadTitle')} aria-label={t('sm.strip.moveLoad')}>→</button>
+              <button type="button" className={styles.button} data-remove="" disabled={listLocked || selected <= lastLocked} onClick={() => remove(selected)} title={t('sm.strip.removeTitle')}>{t('sm.strip.remove')}</button>
               <Why k="card" />
             </span>
           </div>
@@ -411,11 +430,11 @@ export default function Strip({ circuit, onChange, issues, issuesOf = 'link', se
           <div className={styles.forms}>{formsOf(part.kind).map((form) => partField(part, selected, form))}</div>
           <div className={styles.explainBar}>
             <button type="button" className={`${styles.button} ${styles.toggle}`} aria-pressed={explainFull} data-explain-open=""
-              onClick={() => setExplainFull(!explainFull)}>Explain</button>
+              onClick={() => setExplainFull(!explainFull)}>{t('sm.strip.explain')}</button>
             <Why k="explain" />
             {shownMove && (
               <button type="button" className={styles.button} data-explain-close="" onClick={() => setHiddenMove(shownMove.seq)}
-                aria-label="Hide the explanation of the last move">Hide move</button>
+                aria-label={t('sm.strip.hideMoveAria')}>{t('sm.strip.hideMove')}</button>
             )}
           </div>
           <Explain circuit={c} i={selected} digits={digits ?? 4} bib={bib ?? null} move={shownMove} full={explainFull} />
@@ -424,37 +443,36 @@ export default function Strip({ circuit, onChange, issues, issuesOf = 'link', se
 
       {n === 0 && (
         <p className={styles.emptyNote} data-empty="">
-          No parts: the chart shows the load alone. Choose a kind below and press Add, or press Draw and drag the part
-          out of the input (In) on the chart.
+          {t('sm.strip.emptyNote')}
         </p>
       )}
 
       <div className={styles.addRow}>
-        <select ref={addSelect} className={styles.select} data-add-kind="" aria-label="Kind of part to add" value={addKind} onChange={(e) => { const k = Number(e.target.value) as PartKind; setAddKind(k); if (drawKind >= 0) onDraw?.(k); }}>
-          {KIND_ORDER.map((k) => <option key={k} value={k}>{KIND_NAMES[k]}</option>)}
+        <select ref={addSelect} className={styles.select} data-add-kind="" aria-label={t('sm.strip.addKindAria')} value={addKind} onChange={(e) => { const k = Number(e.target.value) as PartKind; setAddKind(k); if (drawKind >= 0) onDraw?.(k); }}>
+          {KIND_ORDER.map((k) => <option key={k} value={k}>{kindName(k, locale)}</option>)}
         </select>
-        <select className={styles.select} data-add-at="" aria-label="Where to add it" value={addAt > n - 1 ? -1 : addAt} onChange={(e) => setAddAt(Number(e.target.value))}>
+        <select className={styles.select} data-add-at="" aria-label={t('sm.strip.addAtAria')} value={addAt > n - 1 ? -1 : addAt} onChange={(e) => setAddAt(Number(e.target.value))}>
           {positions.map(({ at, text }) => <option key={at} value={at}>{text}</option>)}
         </select>
         <span className={styles.addGroup}>
-          <button type="button" className={styles.button} data-add="" onClick={add} disabled={n >= MAX_PARTS || listLocked}>Add</button>
+          <button type="button" className={styles.button} data-add="" onClick={add} disabled={n >= MAX_PARTS || listLocked}>{t('sm.strip.add')}</button>
           <Why k="add" />
         </span>
         {onDraw && (
           <span className={styles.addGroup}>
             <button type="button" className={`${styles.button} ${styles.toggle}`} data-draw="" aria-pressed={drawKind >= 0}
               disabled={n >= MAX_PARTS || listLocked} onClick={() => onDraw(drawKind >= 0 ? -1 : addKind)}
-              title="Draw: drag from the input (In) on the chart to add this kind at the source end; Escape cancels">Draw</button>
+              title={t('sm.strip.drawTitle')}>{t('sm.strip.draw')}</button>
             <Why k="draw" />
           </span>
         )}
       </div>
 
-      {listLocked && <p className={styles.readNote} data-parts-locked="">The parts’ list is locked: {lockWhy}</p>}
+      {listLocked && <p className={styles.readNote} data-parts-locked="">{t('sm.strip.partsLocked', { why: lockWhy })}</p>}
       {!noRead && <>
-      <h3 className={styles.subTitle}><span>Circuit input <Why k="input" /><ShowEq subject={{ t: 'node', k: n }} k="input" what="the circuit input" back="the circuit input" /></span><span className={styles.panelNote}>at f0</span></h3>
+      <h3 className={styles.subTitle}><span>{t('sm.strip.circuitInput')} <Why k="input" /><ShowEq subject={{ t: 'node', k: n }} k="input" what={t('sm.strip.backInput')} back={t('sm.strip.backInput')} /></span><span className={styles.panelNote}>{t('sm.strip.atF0')}</span></h3>
       <dl className={styles.readout} data-input-box="">
-        {INPUT_SHOWN.map(([k, label, hint]) => (
+        {inputShown.map(([k, label, hint]) => (
           <div key={k} className={styles.readRow}>
             <dt>{label}{hint && <span className={styles.readHint}> {hint}</span>}</dt>
             <dd data-input={INPUT_KEYS[k]}>{inputTexts[k]}</dd>

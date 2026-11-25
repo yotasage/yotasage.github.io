@@ -36,6 +36,8 @@ import { FieldFoot, FieldOverlay, FieldProbe } from './FieldView';
 import type { ProbeApi } from './FieldView';
 import type { FieldSettings } from './fieldTypes';
 import { driveText } from './fieldTypes';
+import { useI18n } from '../../lib/ui/i18n';
+import { kindName } from './emText';
 import { useFieldMap } from './useFieldMap';
 import type { FieldEnv } from './useFieldMap';
 
@@ -80,6 +82,7 @@ interface Props {
 interface Drag { key: HandleKey; def: HandleDef; Z: (y: number) => number; px: number; py: number; raf: number; last: number }
 
 function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit, sel = null, onSelect, fields, fieldEnv, still = false }: Props) {
+  const { t, locale } = useI18n();
   const box = useRef<HTMLDivElement>(null);
   const content = useRef<SVGGElement>(null);
   const pzRef = useRef<PanZoom | null>(null);
@@ -188,7 +191,8 @@ function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit, sel = nul
   // A drawn view: the gesture's transform is no longer needed.
   useLayoutEffect(() => { content.current?.removeAttribute('transform'); }, [view]);
 
-  const defs = useMemo(() => (sec && !still ? traceHandles(s, st) : []), [s, st, sec, still]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const defs = useMemo(() => (sec && !still ? traceHandles(s, st) : []), [s, st, sec, still, locale]);
   const defsRef = useRef(defs);
   defsRef.current = defs;
 
@@ -325,10 +329,10 @@ function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit, sel = nul
     const plane = (id: string, face: number, dir: 1 | -1, what: string) => {
       const i = layerIndex(s, id);
       if (i < 0) return;
-      const t = z[i] - z[i + 1];
-      const y1 = y(face), y2 = y(face + dir * t);
+      const th = z[i] - z[i + 1];
+      const y1 = y(face), y2 = y(face + dir * th);
       body.push(<rect key={`p${id}`} x={xl} width={xr - xl} y={Math.min(y1, y2)} height={r(Math.max(Math.abs(y2 - y1), 1))} fill="var(--copper)" stroke="var(--copper-edge)" strokeWidth={0.75} data-plane={what} />);
-      const text = `${s.layers[i].name} · plane`;
+      const text = t('em.td.planeLabel', { name: s.layers[i].name });
       const near = dir < 0 ? Math.min(y1, y2) - 4 : Math.max(y1, y2) + 12, far = dir < 0 ? Math.max(y1, y2) + 12 : Math.min(y1, y2) - 4;
       const [lx, ly] = labelSpot(Wv - 6, 6.4 * text.length + 4, [near, far], hpos, Wv, view.h);
       labels.push(<text key={`l${id}`} x={r(lx)} y={r(ly)} textAnchor="end" data-plane-label={what}>{text}</text>);
@@ -355,7 +359,7 @@ function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit, sel = nul
       }
     }
     const sigLayer = s.layers[layerIndex(s, st.kind === 'general' ? (st.signals[0]?.layer ?? st.layer) : st.layer)];
-    if (sigLayer && Number.isFinite(sigTop)) labels.push(<text key="sig" x={6} y={14}>{`${sigLayer.name} · signal`}</text>);
+    if (sigLayer && Number.isFinite(sigTop)) labels.push(<text key="sig" x={6} y={14}>{t('em.td.sigLabel', { name: sigLayer.name })}</text>);
     // Handles: a pill along the axis it moves on, a 32 px target, the value shown while dragged or focused.
     const keyStep = lenText(stepOf(k, KEY_PX), unit, 2);
     for (const d of defs) {
@@ -399,7 +403,7 @@ function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit, sel = nul
         className={css.drawing}
         data-trace-view
         tabIndex={sec ? 0 : -1}
-        aria-label={probeMode ? 'Cross-section view: arrow keys move the probe (Shift finer), wheel, pinch or + and − zoom, 0 shows all' : 'Cross-section view: drag or arrow keys pan, wheel, pinch or + and − zoom, 0 shows all'}
+        aria-label={probeMode ? t('em.td.ariaProbe') : t('em.td.ariaPan')}
         style={{ height: sec && fit ? H + 2 : undefined }}
         onKeyDownCapture={onBoxKey}
         onPointerMove={onBoxMove}
@@ -407,7 +411,7 @@ function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit, sel = nul
         {sec && fit ? (
           <>
             {fieldOn && <canvas ref={canvas} className={css.fieldCanvas} width={Math.round(W * dpr)} height={Math.round(H * dpr)} style={{ width: W, height: H }} data-field-canvas aria-hidden="true" />}
-            <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className={fieldOn ? css.overField : undefined} role="group" aria-label={`Cross-section of the ${st.kind} as the solver sees it${widen ? ', thin layers widened' : ', to scale'}`}>
+            <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className={fieldOn ? css.overField : undefined} role="group" aria-label={t('em.td.svgAria', { kind: kindName(st.kind, locale), scale: widen ? t('em.td.scaleWidened') : t('em.td.scaleTrue') })}>
               {!mapShown && <rect x={0} y={0} width={W} height={H} fill="var(--air)" />}
               <g ref={content}>
                 {body}
@@ -415,30 +419,30 @@ function TraceDrawing({ s, st, sec, reason, unit, digits, widen, edit, sel = nul
                 {handles}
               </g>
             </svg>
-            <button type="button" className={css.resetView} data-trace-reset onClick={resetView} disabled={atFit} aria-label="Show the whole cross-section" title="Show the whole cross-section (0)">
+            <button type="button" className={css.resetView} data-trace-reset onClick={resetView} disabled={atFit} aria-label={t('em.td.resetAria')} title={t('em.td.resetTitle')}>
               <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" aria-hidden="true"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" /></svg>
             </button>
           </>
         ) : (
-          <p className={css.noDrawing} data-no-drawing>{reason || 'Nothing to draw.'}</p>
+          <p className={css.noDrawing} data-no-drawing>{reason || t('em.td.nothing')}</p>
         )}
       </div>
       {fieldOn && sec && fit && <FieldProbe api={probe} mod={fm.mod} store={fm.store} sec={sec} s={s} view={view} map={map} unit={unit} digits={digits} keys={probeMode} />}
       {refused && <p className={css.refused} role="alert" data-handle-refused>{refused}</p>}
       {fieldOn && fm.mod && <FieldFoot mod={fm.mod} store={fm.store} drive={driveText(fields!, sec ? sec.signals : 1)} />}
       {!mapShown && <div className={css.caption}>
-        <span className={css.key} style={{ background: 'var(--copper)' }} />copper
-        <span className={css.key} style={{ background: 'var(--core)' }} />core
-        <span className={css.key} style={{ background: 'var(--prepreg)' }} />prepreg
-        <span className={css.key} style={{ background: 'var(--mask)' }} />mask
-        <span className={css.key} style={{ background: 'var(--air)' }} />air
+        <span className={css.key} style={{ background: 'var(--copper)' }} />{t('em.stkDraw.copper')}
+        <span className={css.key} style={{ background: 'var(--core)' }} />{t('em.stkDraw.core')}
+        <span className={css.key} style={{ background: 'var(--prepreg)' }} />{t('em.stkDraw.prepreg')}
+        <span className={css.key} style={{ background: 'var(--mask)' }} />{t('em.stkDraw.mask')}
+        <span className={css.key} style={{ background: 'var(--air)' }} />{t('em.stkDraw.air')}
       </div>}
       {fit && (
         <div className={css.caption}>
           <span className={css.scale}><span className={css.scaleBar} style={{ width: Math.round(bar * k) }} />{lenText(bar, unit, Math.max(3, digits - 1))}</span>
-          {' '}· {widen ? 'across to scale; thin layers widened top to bottom' : 'to scale both ways'}. Layers beyond the reference planes do not change the result and are not drawn.
-          {st.kind === 'general' && ' Tap a conductor to select it in the list.'}
-          {defs.length > 0 && ' Drag the handles (or focus one and use the arrow keys) to change widths, gaps and heights; drag the picture to pan, wheel or pinch to zoom.'}
+          {' '}· {widen ? t('em.td.capWidened') : t('em.td.capTrue')}{t('em.td.capRest')}
+          {st.kind === 'general' && t('em.td.capGen')}
+          {defs.length > 0 && t('em.td.capHandles')}
         </div>
       )}
     </figure>

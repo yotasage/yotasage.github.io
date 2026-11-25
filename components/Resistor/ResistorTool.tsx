@@ -114,7 +114,7 @@ function routeForHash(rawHash: string): HashRoute | null {
 export default function ResistorTool({ references }: { references: BibEntry[] }) {
   useDesignSystemPage('#2563eb', '#5aa2f0');
   useReplayHighlight();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { mode, setMode } = useExperienceMode();
 
   const [workspace, setWorkspace] = useState<WorkspaceId>('workbench');
@@ -157,7 +157,7 @@ export default function ResistorTool({ references }: { references: BibEntry[] })
     return made;
   }, [references, hasValue, hasOhms]);
   const stepSeries = seriesChoice ?? usualSeries(tolerance);
-  const resolved = useMemo(() => resolveView(view, reading, text, tolerance), [view, reading, text, tolerance]);
+  const resolved = useMemo(() => resolveView(view, reading, text, tolerance, locale), [view, reading, text, tolerance, locale]);
 
   // If the user switches to Quick mode while viewing Combinations or Design, fall back cleanly to Lookup.
   useEffect(() => {

@@ -113,12 +113,17 @@ export default function PdfTools() {
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
+  const getToolTitle = (tool: PdfTool): string => t(`pdf.tool.${tool.id}.title` as TranslationKey);
+  const getToolDesc = (tool: PdfTool): string => t(`pdf.tool.${tool.id}.desc` as TranslationKey);
+
   const filteredTools = useMemo(() => {
     return ALL_INDEXED_TOOLS.filter(({ tool, categoryTitle }) => {
       if (activeCategory !== 'all' && categoryTitle !== activeCategory) return false;
       if (!normalizedQuery) return true;
       const localizedCat = getCategoryLabel(categoryTitle);
-      const haystack = `${tool.title} ${tool.description} ${tool.id} ${categoryTitle} ${localizedCat}`.toLowerCase();
+      const locTitle = getToolTitle(tool);
+      const locDesc = getToolDesc(tool);
+      const haystack = `${tool.title} ${tool.description} ${locTitle} ${locDesc} ${tool.id} ${categoryTitle} ${localizedCat}`.toLowerCase();
       return haystack.includes(normalizedQuery);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -228,12 +233,12 @@ export default function PdfTools() {
                 <span className={styles.toolCategory}>{getCategoryLabel(categoryTitle)}</span>
               </div>
               <h3 className={styles.toolTileTitle}>
-                <span>{tool.title}</span>
+                <span>{getToolTitle(tool)}</span>
                 <span className={styles.toolArrow} aria-hidden="true">
                   &rarr;
                 </span>
               </h3>
-              <p>{tool.description}</p>
+              <p>{getToolDesc(tool)}</p>
             </Link>
           ))}
         </div>

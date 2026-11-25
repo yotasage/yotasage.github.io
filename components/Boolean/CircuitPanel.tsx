@@ -383,7 +383,9 @@ function SingleCircuitView({
         <div>
           <h3 className={dStyles.subPaneTitle}>{title}</h3>
           <span className={styles.metaInline}>
-            {graph.nodes.filter((n) => n.kind === 'gate').length} gates
+            {t('boolean.circuit.gatesCount', {
+              count: graph.nodes.filter((n) => n.kind === 'gate').length,
+            })}
             {!isQuick && ` · ${t('boolean.circuit.criticalPath', { delay: crit.delayNs })}`}
           </span>
         </div>
@@ -433,7 +435,7 @@ function SingleCircuitView({
                 : undefined
             }
             role="img"
-            aria-label={`${title} schematic`}
+            aria-label={t('boolean.circuit.schematicAria', { title })}
           >
           {/* Overlap-free orthogonal wires with channel tracks and bypass lanes */}
           {graph.edges.map((edge) => {
@@ -576,7 +578,10 @@ function SingleCircuitView({
                   }
                 >
                   <title>
-                    {`${node.id} (${marking}): ${node.exprText} — delay ${delayNs} ns (click to edit)`}
+                    {t('boolean.circuit.gateDelayTitle', {
+                      label: `${node.id} (${marking}): ${node.exprText}`,
+                      delay: delayNs,
+                    })}
                   </title>
                   {renderGateSymbol(
                     node,
@@ -599,7 +604,7 @@ function SingleCircuitView({
           tabIndex={0}
           aria-orientation="horizontal"
           aria-label={t('boolean.circuit.resizeHint')}
-          title={`${t('boolean.circuit.resizeHint')} (double-click to reset)`}
+          title={t('boolean.circuit.resizeDoubleClick', { hint: t('boolean.circuit.resizeHint') })}
           data-testid={`circuit-resize-handle-${which}`}
           className={[
             dStyles.circuitResizeHandle,
@@ -625,7 +630,7 @@ function SingleCircuitView({
             {selectedGate.netName} = {selectedGate.exprText}):
           </span>
           <label className={dStyles.delayField}>
-            <span>Instance delay (ns)</span>
+            <span>{t('boolean.circuit.instanceDelay')}</span>
             <input
               type="number"
               min={0}
@@ -645,7 +650,7 @@ function SingleCircuitView({
               className={[styles.btnGhost, styles.btnSmall].join(' ')}
               onClick={() => onEditGateDelay(which, selectedGate.id, null)}
             >
-              Use global ({typeDelays[selectedGate.gateType]} ns)
+              {t('boolean.circuit.useGlobal', { delay: typeDelays[selectedGate.gateType] })}
             </button>
           )}
         </div>
@@ -712,13 +717,15 @@ export default function CircuitPanel({
         <div className={styles.stepsTitleGroup}>
           <h2 className={styles.cardTitle}>{t('boolean.circuit.title')}</h2>
           <span className={styles.metaInline}>
-            {bothVisible ? (useSideBySide ? 'side-by-side' : 'stacked') : 'single view'}
+            {bothVisible
+              ? (useSideBySide ? t('boolean.view.sideBySide') : t('boolean.view.stacked')).toLowerCase()
+              : t('boolean.circuit.singleView')}
           </span>
         </div>
 
         <div className={styles.stepsControls}>
           {bothVisible && (
-            <div className={styles.segmented} role="group" aria-label="Circuit layout">
+            <div className={styles.segmented} role="group" aria-label={t('boolean.circuit.layoutAria')}>
               <button
                 type="button"
                 aria-pressed={paneLayout === 'side-by-side'}
@@ -774,7 +781,7 @@ export default function CircuitPanel({
             {showGateMarkings ? t('boolean.circuit.markingsOn') : t('boolean.circuit.markingsOff')}
           </button>
 
-          <div className={styles.segmented} role="group" aria-label="Circuit symbol style">
+          <div className={styles.segmented} role="group" aria-label={t('boolean.circuit.symbolStyleAria')}>
             <button
               type="button"
               aria-pressed={symbolStyle === 'ieee'}

@@ -102,20 +102,20 @@ export default function TextCase() {
                 <table className={styles.guideTable}>
                   <thead>
                     <tr>
-                      <th>Style</th>
-                      <th>Prepositions (4+ letters)</th>
-                      <th>Example</th>
+                      <th>{t('textcase.guide.thStyle')}</th>
+                      <th>{t('textcase.guide.thPrep')}</th>
+                      <th>{t('textcase.guide.thExample')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
                       <td>Chicago</td>
-                      <td>Lowercase (<code>with</code>, <code>between</code>)</td>
+                      <td>{t('textcase.guide.chicagoRule')} (<code>with</code>, <code>between</code>)</td>
                       <td>Signal Flow between Stages with Noise</td>
                     </tr>
                     <tr>
                       <td>APA</td>
-                      <td>Capitalized (<code>With</code>, <code>Between</code>)</td>
+                      <td>{t('textcase.guide.apaRule')} (<code>With</code>, <code>Between</code>)</td>
                       <td>Signal Flow Between Stages With Noise</td>
                     </tr>
                   </tbody>
@@ -129,18 +129,18 @@ export default function TextCase() {
               <table className={styles.guideTable}>
                 <thead>
                   <tr>
-                    <th>Convention</th>
-                    <th>Example</th>
-                    <th>Typical usage</th>
+                    <th>{t('textcase.guide.thConvention')}</th>
+                    <th>{t('textcase.guide.thExample')}</th>
+                    <th>{t('textcase.guide.thUsage')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr><td><code>camelCase</code></td><td><code>sampleRateHz</code></td><td>JavaScript, TypeScript, Java, Swift variables &amp; functions</td></tr>
-                  <tr><td><code>PascalCase</code></td><td><code>SampleRateHz</code></td><td>Classes, React components, TypeScript types, C#</td></tr>
-                  <tr><td><code>snake_case</code></td><td><code>sample_rate_hz</code></td><td>Python, Rust, SQL columns, C identifiers</td></tr>
-                  <tr><td><code>CONSTANT_CASE</code></td><td><code>SAMPLE_RATE_HZ</code></td><td>Constants, environment variables, C macros</td></tr>
-                  <tr><td><code>kebab-case</code></td><td><code>sample-rate-hz</code></td><td>URLs, CSS classes, HTML attributes, CLI flags</td></tr>
-                  <tr><td><code>dot.case</code></td><td><code>sample.rate.hz</code></td><td>Configuration keys, i18n keys, package namespaces</td></tr>
+                  <tr><td><code>camelCase</code></td><td><code>sampleRateHz</code></td><td>{t('textcase.guide.useCamel')}</td></tr>
+                  <tr><td><code>PascalCase</code></td><td><code>SampleRateHz</code></td><td>{t('textcase.guide.usePascal')}</td></tr>
+                  <tr><td><code>snake_case</code></td><td><code>sample_rate_hz</code></td><td>{t('textcase.guide.useSnake')}</td></tr>
+                  <tr><td><code>CONSTANT_CASE</code></td><td><code>SAMPLE_RATE_HZ</code></td><td>{t('textcase.guide.useConstant')}</td></tr>
+                  <tr><td><code>kebab-case</code></td><td><code>sample-rate-hz</code></td><td>{t('textcase.guide.useKebab')}</td></tr>
+                  <tr><td><code>dot.case</code></td><td><code>sample.rate.hz</code></td><td>{t('textcase.guide.useDot')}</td></tr>
                 </tbody>
               </table>
             </article>

@@ -18,6 +18,7 @@ import { encodeLink } from '../../lib/emsim/link';
 import type { NPort } from '../../lib/emsim/nport';
 import { PROJECT_EXTENSION, PROJECT_MAX_BYTES, projectJson } from '../../lib/emsim/project';
 import type { Setup } from '../../lib/emsim/setup';
+import { useI18n } from '../../lib/ui/i18n';
 import base from '../../styles/EmSim.module.css';
 import css from '../../styles/EmSimExport.module.css';
 import { useExportFeed } from './exportFeed';
@@ -55,6 +56,7 @@ const FORMATS: [Format, string][] = [['csv', 'CSV'], ['touchstone', 'Touchstone'
 const slug = (s: string) => s.replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '');
 
 export default function DataExport({ setup, opened, openText }: { setup: Setup; opened: OpenedNote | null; openText: OpenText }) {
+  const { t } = useI18n();
   const feed = useExportFeed();
   const [pick, setPick] = useState('trace');
   const [format, setFormat] = useState<Format>('csv');
@@ -67,17 +69,17 @@ export default function DataExport({ setup, opened, openText }: { setup: Setup; 
   const sets = useMemo<DataSet[]>(() => {
     const out: DataSet[] = [];
     const tr = feed.trace, sw = feed.sweepRun, v = feed.viaRun;
-    if (tr) out.push({ id: 'trace', label: 'Trace: line results and matrices', file: 'trace-results', raw: tr, csv: (m) => traceCsv(tr, m) });
-    if (sw) out.push({ id: 'sweep', label: `Sweep of ${sw.label}`, file: `sweep-${slug(sw.input)}`, raw: sw, csv: (m) => sweepCsv(sw, m) });
+    if (tr) out.push({ id: 'trace', label: t('em.dat.setTrace'), file: 'trace-results', raw: tr, csv: (m) => traceCsv(tr, m) });
+    if (sw) out.push({ id: 'sweep', label: t('em.dat.setSweep', { label: sw.label }), file: `sweep-${slug(sw.input)}`, raw: sw, csv: (m) => sweepCsv(sw, m) });
     if (v && v.ok) {
-      out.push({ id: 'via', label: 'Via: model results', file: 'via-results', raw: v, csv: (m) => viaCsv(v, m) });
-      if (v.tdr) out.push({ id: 'via-tdr', label: 'Via: TDR and TDT', file: 'via-tdr', raw: v, csv: (m) => tdrCsv(v, m) });
-      if (v.nport) out.push({ id: 'via-s', label: v.n === 2 ? 'Via: S-parameters (4-port and mixed-mode)' : 'Via: S-parameters (2-port)', file: 'via-s-params', raw: v, csv: (m) => sparamCsv(v.nport, v.mixed, m), nport: v.nport });
+      out.push({ id: 'via', label: t('em.dat.setVia'), file: 'via-results', raw: v, csv: (m) => viaCsv(v, m) });
+      if (v.tdr) out.push({ id: 'via-tdr', label: t('em.dat.setViaTdr'), file: 'via-tdr', raw: v, csv: (m) => tdrCsv(v, m) });
+      if (v.nport) out.push({ id: 'via-s', label: v.n === 2 ? t('em.dat.setViaS4') : t('em.dat.setViaS2'), file: 'via-s-params', raw: v, csv: (m) => sparamCsv(v.nport, v.mixed, m), nport: v.nport });
     }
     return out;
-  }, [feed.trace, feed.sweepRun, feed.viaRun]);
+  }, [feed.trace, feed.sweepRun, feed.viaRun, t]);
   const set = sets.find((s) => s.id === pick) ?? sets[0] ?? null;
-  const tsWhy = set ? touchstoneRefusal(set.nport ?? null) : 'Nothing solved yet.';
+  const tsWhy = set ? touchstoneRefusal(set.nport ?? null) : t('em.dat.nothingSolved');
   const fmt: Format = format === 'touchstone' && !tsWhy ? 'touchstone' : 'csv';
 
   useEffect(() => { setMsg(''); }, [set?.id, fmt, numbers]);
@@ -94,14 +96,14 @@ export default function DataExport({ setup, opened, openText }: { setup: Setup; 
     if (fmt === 'touchstone' && set.nport) return { text: touchstone(set.nport, { format: numbers, date, link }), file: `via${touchstoneExt(set.nport)}`, type: 'text/plain' };
     return { text: set.csv({ date, link }), file: `${set.file}.csv`, type: 'text/csv' };
   };
-  const failed = (e: unknown) => setMsg(e instanceof DOMException && e.name === 'NotAllowedError' ? 'The browser did not allow the copy; use Save.' : e instanceof Error ? e.message : String(e));
+  const failed = (e: unknown) => setMsg(e instanceof DOMException && e.name === 'NotAllowedError' ? t('em.exp.copyDenied') : e instanceof Error ? e.message : String(e));
   const copy = async () => {
     try {
       const m = make();
       if (!m) return;
-      if (!navigator.clipboard) { setMsg('This browser gives the page no clipboard here; use Save.'); return; }
+      if (!navigator.clipboard) { setMsg(t('em.exp.noClipboard')); return; }
       await navigator.clipboard.writeText(m.text);
-      setMsg(`${fmt === 'touchstone' ? 'Touchstone' : 'CSV'} copied (${m.text.split('\r\n').length - 1} lines).`);
+      setMsg(t('em.dat.copied', { fmt: fmt === 'touchstone' ? 'Touchstone' : 'CSV', n: m.text.split('\r\n').length - 1 }));
     } catch (e) { failed(e); }
   };
   const save = () => {
@@ -109,7 +111,7 @@ export default function DataExport({ setup, opened, openText }: { setup: Setup; 
       const m = make();
       if (!m) return;
       download(new Blob([m.text], { type: m.type }), m.file);
-      setMsg(`Saved ${m.file}.`);
+      setMsg(t('em.exp.savedFile', { file: m.file }));
     } catch (e) { failed(e); }
   };
 
@@ -118,72 +120,72 @@ export default function DataExport({ setup, opened, openText }: { setup: Setup; 
     const text = projectJson(setup, undefined, jlcResolve);
     last.current = { id: 'project', text };
     download(new Blob([text], { type: 'application/json' }), `em-sim${PROJECT_EXTENSION}`);
-    setPmsg(`Saved em-sim${PROJECT_EXTENSION}.`);
+    setPmsg(t('em.exp.savedFile', { file: `em-sim${PROJECT_EXTENSION}` }));
   };
   const openFile = (f: File | undefined) => {
     if (!f) return;
-    if (f.size > PROJECT_MAX_BYTES) { setPmsg(`${f.name} was not opened: the file is too large to be a project of this tool.`); return; }
-    f.text().then((t) => openText(t, f.name), (e) => setPmsg(`The file could not be read: ${e instanceof Error ? e.message : String(e)}`));
+    if (f.size > PROJECT_MAX_BYTES) { setPmsg(t('em.dat.tooLarge', { name: f.name })); return; }
+    f.text().then((txt) => openText(txt, f.name), (e) => setPmsg(t('em.dat.readFail', { msg: e instanceof Error ? e.message : String(e) })));
   };
   const copyLink = async () => {
     try {
-      if (!navigator.clipboard) { setPmsg('This browser gives the page no clipboard here; the address bar has the same link.'); return; }
+      if (!navigator.clipboard) { setPmsg(t('em.dat.noClipLink')); return; }
       await navigator.clipboard.writeText(window.location.href);
-      setPmsg('Link copied: it opens this page with this setup.');
+      setPmsg(t('em.dat.linkCopied'));
     } catch (e) { setPmsg(e instanceof Error ? e.message : String(e)); }
   };
   useEffect(() => { if (opened) setPmsg(''); }, [opened]);
 
   return (
     <div ref={root} className={css.data} data-data-ready data-set={set ? set.id : ''} data-format={fmt}>
-      <h3 className={base.h3} id="export-data">Data</h3>
-      <p className={base.lede}>The numbers behind the results as CSV, the via’s S-parameters as Touchstone, and the whole setup as a project file. Made in your browser; nothing is sent anywhere.</p>
+      <h3 className={base.h3} id="export-data">{t('em.dat.heading')}</h3>
+      <p className={base.lede}>{t('em.dat.lede')}</p>
       <div className={css.controls}>
         <label className={css.ctl}>
-          <span className={css.label}>Data</span>
+          <span className={css.label}>{t('em.dat.heading')}</span>
           <select className={base.select} value={set ? set.id : ''} onChange={(e) => setPick(e.target.value)} disabled={!set} data-data-set>
-            {sets.length ? sets.map((s) => <option key={s.id} value={s.id}>{s.label}</option>) : <option value="">Nothing solved yet</option>}
+            {sets.length ? sets.map((s) => <option key={s.id} value={s.id}>{s.label}</option>) : <option value="">{t('em.dat.nothingSolvedOpt')}</option>}
           </select>
         </label>
-        <div className={css.ctl} role="group" aria-label="File format">
-          <span className={css.label}>File</span>
+        <div className={css.ctl} role="group" aria-label={t('em.dat.fileAria')}>
+          <span className={css.label}>{t('em.dat.file')}</span>
           <span className={base.seg}>
-            {FORMATS.map(([f, t]) => (
-              <button key={f} type="button" aria-pressed={fmt === f} disabled={f === 'touchstone' && !!tsWhy} title={f === 'touchstone' && tsWhy ? `For the via’s S-parameters. ${tsWhy}` : undefined} onClick={() => setFormat(f)} data-data-format={f}>{t}</button>
+            {FORMATS.map(([f, label]) => (
+              <button key={f} type="button" aria-pressed={fmt === f} disabled={f === 'touchstone' && !!tsWhy} title={f === 'touchstone' && tsWhy ? t('em.dat.tsHint', { why: tsWhy }) : undefined} onClick={() => setFormat(f)} data-data-format={f}>{label}</button>
             ))}
           </span>
         </div>
-        <div className={css.ctl} role="group" aria-label="Touchstone numbers">
-          <span className={css.label}>Numbers</span>
+        <div className={css.ctl} role="group" aria-label={t('em.dat.numbersAria')}>
+          <span className={css.label}>{t('em.dat.numbers')}</span>
           <span className={base.seg}>
-            {TOUCHSTONE_FORMATS.map((n) => <button key={n} type="button" aria-pressed={numbers === n} disabled={fmt !== 'touchstone'} onClick={() => setNumbers(n)} data-data-numbers={n}>{n === 'RI' ? 'Re, Im' : n === 'MA' ? 'Mag, angle' : 'dB, angle'}</button>)}
+            {TOUCHSTONE_FORMATS.map((n) => <button key={n} type="button" aria-pressed={numbers === n} disabled={fmt !== 'touchstone'} onClick={() => setNumbers(n)} data-data-numbers={n}>{n === 'RI' ? t('em.dat.numRI') : n === 'MA' ? t('em.dat.numMA') : t('em.dat.numDB')}</button>)}
           </span>
         </div>
       </div>
       <Whys ks="data-set data-format data-numbers" />
       <div className={css.actions}>
-        <button type="button" className={base.button} onClick={copy} disabled={!set} data-data-copy>Copy</button>
-        <button type="button" className={base.button} onClick={save} disabled={!set} data-data-save>{fmt === 'touchstone' && set?.nport ? `Save ${touchstoneExt(set.nport)}` : 'Save .csv'}</button>
+        <button type="button" className={base.button} onClick={copy} disabled={!set} data-data-copy>{t('em.exp.copy')}</button>
+        <button type="button" className={base.button} onClick={save} disabled={!set} data-data-save>{fmt === 'touchstone' && set?.nport ? t('em.dat.saveExt', { ext: touchstoneExt(set.nport) }) : t('em.dat.saveCsv')}</button>
         <span className={css.msg} role="status" aria-live="polite" data-data-msg>{msg}</span>
       </div>
       <Whys ks="data-copy data-save" />
-      {!sets.length && <p className={css.note} data-data-none>Results appear here once solved: the trace’s, a finished sweep’s and the via’s.</p>}
+      {!sets.length && <p className={css.note} data-data-none>{t('em.dat.noneNote')}</p>}
 
-      <h3 className={`${base.h3} ${css.subhead}`} id="export-project">Project</h3>
+      <h3 className={`${base.h3} ${css.subhead}`} id="export-project">{t('em.dat.project')}</h3>
       <div className={css.actions}>
-        <button type="button" className={base.button} onClick={saveProject} data-project-save>Save project</button>
-        <button type="button" className={base.button} onClick={() => fileInput.current?.click()} data-project-open>Open project…</button>
+        <button type="button" className={base.button} onClick={saveProject} data-project-save>{t('em.dat.saveProject')}</button>
+        <button type="button" className={base.button} onClick={() => fileInput.current?.click()} data-project-open>{t('em.dat.openProject')}</button>
         <input ref={fileInput} type="file" accept={`${PROJECT_EXTENSION},.json,application/json`} hidden onChange={(e) => { openFile(e.target.files?.[0]); e.target.value = ''; }} data-project-input />
-        <button type="button" className={base.button} onClick={copyLink} data-project-link>Copy link</button>
+        <button type="button" className={base.button} onClick={copyLink} data-project-link>{t('em.dat.copyLink')}</button>
         <span className={css.msg} role="status" aria-live="polite" data-project-msg>{pmsg}</span>
       </div>
       <Whys ks="project-save project-open project-link" />
-      <p className={css.note}>Or drop a project file anywhere on the page.</p>
+      <p className={css.note}>{t('em.dat.dropNote')}</p>
       {opened && (
         <div className={`${base.notice} ${opened.ok ? '' : css.refused}`} role="status" data-project-note data-ok={opened.ok} key={opened.at}>
           {opened.ok
-            ? <p className={css.noteText}>Opened {opened.name}{opened.issues.length ? ', with these notes:' : '.'} Undo goes back to the setup before.</p>
-            : <p className={css.noteText}>{opened.name} was not opened: {opened.message}</p>}
+            ? <p className={css.noteText}>{t('em.dat.openedOk', { name: opened.name, notes: opened.issues.length ? t('em.dat.openedNotes') : '.' })}</p>
+            : <p className={css.noteText}>{t('em.dat.openedFail', { name: opened.name, msg: opened.message })}</p>}
           <IssueList issues={opened.issues} />
         </div>
       )}

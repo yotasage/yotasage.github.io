@@ -14,6 +14,8 @@ import {
   EXAMPLES, Figure, NodeRef, Quantity, answerCheck, exampleById, guideFigure, nodeGammas, stepDone,
 } from '../../lib/smith/examples';
 import type { Circuit } from '../../lib/smith/state';
+import { translate, useI18n } from '../../lib/ui/i18n';
+import type { Locale, TranslationKey } from '../../lib/ui/translations';
 import { ChallengeList } from './Challenge';
 import type { ChallengeListProps } from './Challenge';
 import { LessonMaker } from './Lesson';
@@ -21,6 +23,11 @@ import type { LessonMakerProps } from './Lesson';
 import { Why, followTopic } from './Why';
 
 export type Grid = 'Z' | 'Y' | 'ZY';
+
+const exText = (locale: Locale, key: string, fallback: string): string => {
+  const out = translate(locale, key as TranslationKey);
+  return out === key ? fallback : out;
+};
 
 // ---------------------------------------------------------------------------------------------------------------
 // The section
@@ -36,6 +43,7 @@ export interface LearnSectionProps {
 
 /** The Learn section: the examples in examples.md's order, the challenges and the lesson-link maker. */
 export const LearnSection = memo(function LearnSection({ open, onLoad, challenges, maker }: LearnSectionProps) {
+  const { t, locale } = useI18n();
   // `maker` changes with every commit (it carries the circuit); the rest only with what it shows, so a commit renders
   // the maker's summary and nothing else of the section.
   const blocked = !!challenges.blocked;
@@ -46,23 +54,22 @@ export const LearnSection = memo(function LearnSection({ open, onLoad, challenge
           <button type="button" className={learn.item} data-example={ex.id} aria-current={open === ex.id ? 'true' : undefined}
             disabled={blocked} onClick={() => onLoad(ex.id)}>
             <span className={learn.num}>E{i + 1}</span>
-            <span className={learn.itemTitle}>{ex.title}</span>
-            <span className={learn.itemIntro}>{ex.intro}</span>
+            <span className={learn.itemTitle}>{exText(locale, `sm.exm.${ex.id}.title`, ex.title)}</span>
+            <span className={learn.itemIntro}>{exText(locale, `sm.exm.${ex.id}.intro`, ex.intro)}</span>
           </button>
         </li>
       ))}
     </ol>
-  ), [open, onLoad, blocked]);
+  ), [open, onLoad, blocked, locale]);
   const list = useMemo(() => <ChallengeList {...challenges} />, [challenges]);
   return (
     <div className={learn.wrap}>
       <section id="learn" className={`${theoryCss.section} ${learn.section}`} aria-labelledby="learn-title">
-        <h2 className={theoryCss.sectionHead} id="learn-title">Learn</h2>
+        <h2 className={theoryCss.sectionHead} id="learn-title">{t('sm.lr.title')}</h2>
         <p className={learn.lead}>
-          Each example loads a circuit and a guide beside the chart that says what to do and ticks each step when your
-          circuit gets there. <Why k="learn" />
+          {t('sm.lr.lead')} <Why k="learn" />
         </p>
-        <h3 className={learn.listHead}>Worked examples <Why k="learn-example" /></h3>
+        <h3 className={learn.listHead}>{t('sm.lr.worked')} <Why k="learn-example" /></h3>
         {examples}
         {list}
         <LessonMaker {...maker} />
@@ -74,11 +81,16 @@ export const LearnSection = memo(function LearnSection({ open, onLoad, challenge
 // ---------------------------------------------------------------------------------------------------------------
 // Words and numbers
 
-const LABEL: Readonly<Record<Quantity | 'z', string>> = {
-  mag: '|Γ|', angle: '∠Γ', vswr: 'VSWR', rl: 'Return loss', r: 'r', x: 'x', g: 'g', b: 'b', R: 'R', Q: 'Q', z: 'z',
-};
 const UNIT: Readonly<Partial<Record<Quantity, string>>> = { angle: '°', rl: ' dB', R: ' Ω' };
-const where = (node: NodeRef): string => (node === 'in' ? 'at the input' : node === 0 ? 'at the load' : `at node ${node}`);
+const qtyLabel = (q: Quantity | 'z', locale: Locale): string => {
+  if (q === 'rl') return translate(locale, 'sm.lr.rl');
+  if (q === 'mag') return '|Γ|';
+  if (q === 'angle') return '∠Γ';
+  if (q === 'vswr') return 'VSWR';
+  return q;
+};
+const where = (node: NodeRef, locale: Locale): string =>
+  node === 'in' ? translate(locale, 'sm.lr.atInput') : node === 0 ? translate(locale, 'sm.lr.atLoad') : translate(locale, 'sm.lr.atNode', { n: node });
 
 /** A number at the digits setting, with a true minus sign. */
 const num = (v: number, digits: number): string => {
@@ -99,13 +111,14 @@ export function readAnswer(text: string): number | null {
 }
 
 function FigureLine({ f, digits }: { f: Figure; digits: number }) {
+  const { t, locale } = useI18n();
   const value = f.q === 'z' ? complex(f.value, f.im, digits) : `${num(f.value, digits)}${UNIT[f.q as Quantity] ?? ''}`;
-  const target = f.of === 'centre' ? `done at ≤ ${plain(f.target)}`
-    : f.of === 'near' ? `to reach: ${plain(f.target)} ${f.tim < 0 ? '−' : '+'} j${plain(Math.abs(f.tim))}`
-      : f.of === 'circle' ? `to reach: ${plain(f.target)}` : '';
+  const target = f.of === 'centre' ? t('sm.lr.doneAt', { v: plain(f.target) })
+    : f.of === 'near' ? t('sm.lr.toReach', { v: `${plain(f.target)} ${f.tim < 0 ? '−' : '+'} j${plain(Math.abs(f.tim))}` })
+      : f.of === 'circle' ? t('sm.lr.toReach', { v: plain(f.target) }) : '';
   return (
     <p className={learn.figure} data-guide-figure={f.of} data-raw={f.value} data-raw-im={f.q === 'z' ? f.im : undefined}>
-      {LABEL[f.q]} {where(f.node)}: {value}{target && <> · {target}</>}
+      {qtyLabel(f.q, locale)} {where(f.node, locale)}: {value}{target && <> · {target}</>}
     </p>
   );
 }
@@ -124,6 +137,7 @@ export interface GuideProps {
 
 /** The guide panel; the page gives it a new key for every load, so a load starts at step 1. */
 export const Guide = memo(function Guide({ id, circuit, grid, digits, onLoad, onClose }: GuideProps) {
+  const { t, locale } = useI18n();
   const ex = exampleById(id);
   const index = ex ? EXAMPLES.indexOf(ex) : -1;
   const [step, setStep] = useState(0);
@@ -175,61 +189,66 @@ export const Guide = memo(function Guide({ id, circuit, grid, digits, onLoad, on
     setUnread(v === null);
     setAnswer(v);
   };
-  const askWhat = ask ? `${LABEL[ask.quantity]} ${where(ask.node)}${UNIT[ask.quantity] ? ` in${UNIT[ask.quantity]}` : ''}` : '';
+  const askWhat = ask ? `${qtyLabel(ask.quantity, locale)} ${where(ask.node, locale)}${UNIT[ask.quantity] ? t('sm.lr.inUnit', { unit: UNIT[ask.quantity]! }) : ''}` : '';
+  const exTitle = exText(locale, `sm.exm.${ex.id}.title`, ex.title);
+  const exIntro = exText(locale, `sm.exm.${ex.id}.intro`, ex.intro);
+  const stepDo = exText(locale, `sm.exm.${ex.id}.s${step}.do`, s.do);
+  const stepHint = exText(locale, `sm.exm.${ex.id}.s${step}.hint`, s.hint);
+  const nextTitle = nextEx ? exText(locale, `sm.exm.${nextEx.id}.title`, nextEx.title) : '';
 
   return (
     <section className={learn.guide} aria-labelledby="smith-guide" data-guide={ex.id} data-step={step} data-done={done ? '' : undefined}>
       <h2 className={learn.head} id="smith-guide" ref={head} tabIndex={-1}>
-        Guide · E{index + 1} of {EXAMPLES.length} <Why k="guide" />
+        {t('sm.lr.guideHead', { n: index + 1, total: EXAMPLES.length })} <Why k="guide" />
       </h2>
-      <p className={learn.title}>{ex.title}</p>
-      <p className={learn.intro}>{ex.intro}</p>
+      <p className={learn.title}>{exTitle}</p>
+      <p className={learn.intro}>{exIntro}</p>
       <p className={learn.step} ref={stepRef} tabIndex={-1} data-guide-do="">
-        <span className={learn.stepNo}>Step {step + 1} of {ex.steps.length}</span>
-        {s.do}{' '}
+        <span className={learn.stepNo}>{t('sm.lr.stepOf', { n: step + 1, total: ex.steps.length })}</span>
+        {stepDo}{' '}
         <a href={`#${s.topic}`} className={styles.whyLink} data-guide-theory=""
-          onClick={(e) => followTopic(s.topic, e.currentTarget)}>→ theory</a>
+          onClick={(e) => followTopic(s.topic, e.currentTarget)}>{t('sm.lr.toTheory')}</a>
       </p>
       {ask && (
         <form className={learn.answer} onSubmit={check} data-guide-answer="">
           <span className={learn.answerHead}>
-            <label htmlFor="smith-guide-answer">Your answer: {askWhat}</label>
+            <label htmlFor="smith-guide-answer">{t('sm.lr.yourAnswer', { what: askWhat })}</label>
             <Why k="guide-answer" topic={s.topic} />
           </span>
           <input id="smith-guide-answer" className={styles.input} value={draft} inputMode="decimal" autoComplete="off" spellCheck={false}
             aria-invalid={(unread || (answer !== null && !done)) || undefined} aria-describedby="smith-guide-state"
             onChange={(e) => setDraft(e.target.value)} />
-          <button type="submit" className={`${styles.button} ${learn.btn}`} data-guide-check="">Check</button>
+          <button type="submit" className={`${styles.button} ${learn.btn}`} data-guide-check="">{t('sm.lr.check')}</button>
         </form>
       )}
       <p className={learn.state} id="smith-guide-state" role="status" data-done={done ? '' : undefined} data-guide-state="">
         {done
-          ? <><span className={learn.tick} aria-hidden="true">✓</span> Done{last ? ': the example is finished.' : '.'}</>
-          : unread ? 'Type a number.'
-            : ask && answer !== null ? `Not within ±${plain(ask.tol)} of the value the chart shows there.`
-              : 'Not yet.'}
+          ? <><span className={learn.tick} aria-hidden="true">✓</span> {t(last ? 'sm.lr.doneLast' : 'sm.lr.done')}</>
+          : unread ? t('sm.lr.typeNum')
+            : ask && answer !== null ? t('sm.lr.notWithin', { tol: plain(ask.tol) })
+              : t('sm.lr.notYet')}
       </p>
       {figure && <FigureLine f={figure} digits={digits} />}
       <div className={learn.hintRow}>
         <button type="button" className={`${styles.button} ${styles.toggle} ${learn.btn}`} aria-pressed={hint} data-guide-hint=""
-          onClick={() => setHint(!hint)}>Hint</button>
+          onClick={() => setHint(!hint)}>{t('sm.lr.hint')}</button>
         <Why k="guide-hint" topic={s.topic} />
       </div>
-      {hint && <p className={learn.hint}><strong>Hint:</strong> <span data-guide-hint-text="">{s.hint}</span></p>}
+      {hint && <p className={learn.hint}><strong>{t('sm.lr.hintLabel')}</strong> <span data-guide-hint-text="">{stepHint}</span></p>}
       <div className={learn.bar}>
         <button type="button" className={`${styles.button} ${learn.btn}`} data-guide-back="" disabled={step === 0}
-          onClick={() => go(step - 1)}>Back</button>
+          onClick={() => go(step - 1)}>{t('sm.lr.back')}</button>
         {!last && (
           <button type="button" className={`${styles.button} ${learn.btn} ${learn.next}`} data-guide-next="" disabled={!done}
-            onClick={() => go(step + 1)}>Next</button>
+            onClick={() => go(step + 1)}>{t('sm.lr.next')}</button>
         )}
         {last && nextEx && (
           <button type="button" className={`${styles.button} ${learn.btn} ${learn.next}`} data-guide-next-example="" disabled={!done}
-            onClick={() => onLoad(nextEx.id)} title={nextEx.title}>Next example</button>
+            onClick={() => onLoad(nextEx.id)} title={nextTitle}>{t('sm.lr.nextExample')}</button>
         )}
         <span className={learn.space} />
         <button type="button" className={`${styles.button} ${learn.btn}`} data-guide-close="" onClick={onClose}
-          aria-label="Close the guide">Close</button>
+          aria-label={t('sm.lr.closeAria')}>{t('sm.lr.close')}</button>
       </div>
     </section>
   );

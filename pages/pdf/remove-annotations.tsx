@@ -19,6 +19,8 @@ import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
 import { parsePageRanges } from '../../lib/pdf/merge';
 import { REMOVE_ANNOTATIONS } from '../../lib/pdf/tools';
 import { runInspectAnnotations, runRemoveAnnotations } from '../../lib/pdf/workerClient';
+import { translate, useI18n } from '../../lib/ui/i18n';
+import type { Locale, TranslationKey } from '../../lib/ui/translations';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
@@ -38,38 +40,39 @@ interface LockedFile {
 
 type PresetId = 'all' | 'comments' | 'links' | 'custom';
 
-const SUBTYPE_LABELS: Record<string, string> = {
-  Text: 'Text comments',
-  FreeText: 'Text boxes',
-  Highlight: 'Highlights',
-  Underline: 'Underlines',
-  StrikeOut: 'Strikethroughs',
-  Squiggly: 'Squiggly lines',
-  Link: 'Links',
-  Widget: 'Form widgets',
-  Stamp: 'Stamps',
-  Ink: 'Freehand ink',
-  Line: 'Lines',
-  Square: 'Rectangles',
-  Circle: 'Ellipses',
-  Polygon: 'Polygons',
-  PolyLine: 'Polylines',
-  Caret: 'Carets',
-  Popup: 'Comment popups',
-  FileAttachment: 'Attachments',
-  Sound: 'Audio',
-  Movie: 'Movies',
-  Screen: 'Media screens',
-  Redact: 'Redactions',
-  Watermark: 'Watermarks',
-  TrapNet: 'Trap networks',
-  PrinterMark: 'Printer marks',
-  '3D': '3D annotations',
-  RichMedia: 'Rich media',
+const SUBTYPE_KEYS: Record<string, TranslationKey> = {
+  Text: 'pdf.rma.st.Text',
+  FreeText: 'pdf.rma.st.FreeText',
+  Highlight: 'pdf.rma.st.Highlight',
+  Underline: 'pdf.rma.st.Underline',
+  StrikeOut: 'pdf.rma.st.StrikeOut',
+  Squiggly: 'pdf.rma.st.Squiggly',
+  Link: 'pdf.rma.st.Link',
+  Widget: 'pdf.rma.st.Widget',
+  Stamp: 'pdf.rma.st.Stamp',
+  Ink: 'pdf.rma.st.Ink',
+  Line: 'pdf.rma.st.Line',
+  Square: 'pdf.rma.st.Square',
+  Circle: 'pdf.rma.st.Circle',
+  Polygon: 'pdf.rma.st.Polygon',
+  PolyLine: 'pdf.rma.st.PolyLine',
+  Caret: 'pdf.rma.st.Caret',
+  Popup: 'pdf.rma.st.Popup',
+  FileAttachment: 'pdf.rma.st.FileAttachment',
+  Sound: 'pdf.rma.st.Sound',
+  Movie: 'pdf.rma.st.Movie',
+  Screen: 'pdf.rma.st.Screen',
+  Redact: 'pdf.rma.st.Redact',
+  Watermark: 'pdf.rma.st.Watermark',
+  TrapNet: 'pdf.rma.st.TrapNet',
+  PrinterMark: 'pdf.rma.st.PrinterMark',
+  '3D': 'pdf.rma.st.3D',
+  RichMedia: 'pdf.rma.st.RichMedia',
 };
 
-function subtypeLabel(subtype: string): string {
-  return SUBTYPE_LABELS[subtype] ?? subtype;
+function subtypeLabel(subtype: string, locale: Locale): string {
+  const key = SUBTYPE_KEYS[subtype];
+  return key ? translate(locale, key) : subtype;
 }
 
 function subtypesForPreset(preset: Exclude<PresetId, 'custom'>, summary: AnnotationSummary): Set<string> {
@@ -80,6 +83,7 @@ function subtypesForPreset(preset: Exclude<PresetId, 'custom'>, summary: Annotat
 }
 
 export default function RemoveAnnotationsPage() {
+  const { locale, t } = useI18n();
   const [doc, setDoc] = React.useState<LoadedDoc | null>(null);
   const [locked, setLocked] = React.useState<LockedFile | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -117,7 +121,7 @@ export default function RemoveAnnotationsPage() {
         setLocked({
           name,
           bytes,
-          error: password !== undefined ? 'Incorrect password. Try again.' : null,
+          error: password !== undefined ? t('pdf.ff.wrongPw') : null,
           busy: false,
         });
       } else {
@@ -132,10 +136,10 @@ export default function RemoveAnnotationsPage() {
   async function loadFile(files: File[]) {
     const pdf = files.find(isPdf);
     if (!pdf) {
-      setNotice('Please select a PDF file.');
+      setNotice(t('pdf.ff.pickPdf'));
       return;
     }
-    setNotice(files.length > 1 ? 'Only the first PDF was opened. Remove annotations works on one PDF at a time.' : null);
+    setNotice(files.length > 1 ? t('pdf.rma.onlyFirst') : null);
     setLocked(null);
     try {
       const bytes = await readBytes(pdf);
@@ -227,7 +231,7 @@ export default function RemoveAnnotationsPage() {
     <PdfPage
       title={REMOVE_ANNOTATIONS.title}
       showHub
-      lead="Inspect every annotation subtype inside a PDF and selectively strip comments, highlights, links, or form widgets across all or chosen pages."
+      lead={t('pdf.rma.lead')}
     >
       {locked && (
         <PasswordPrompt
@@ -242,15 +246,15 @@ export default function RemoveAnnotationsPage() {
         />
       )}
       {error && !doc && <div className={styles.error} style={{ marginBottom: '1rem' }}>{error}</div>}
-      {loading && !doc && !locked && <Progress fraction={0.4} label="Inspecting annotations…" />}
+      {loading && !doc && !locked && <Progress fraction={0.4} label={t('pdf.rma.inspecting')} />}
 
       <ToolWorkspace
         tool={REMOVE_ANNOTATIONS}
         accept="application/pdf,.pdf"
         multiple={false}
-        selectLabel="Select a PDF file"
-        dropLabel="or drop a PDF here"
-        addLabel="Replace PDF"
+        selectLabel={t('pdf.p.selectPdfFile')}
+        dropLabel={t('pdf.p.dropPdf')}
+        addLabel={t('pdf.p.replacePdf')}
         hasFiles={!!doc}
         onFiles={loadFile}
         toolbar={
@@ -262,7 +266,7 @@ export default function RemoveAnnotationsPage() {
                   className={styles.buttonSmall}
                   onClick={() => applyPreset('all')}
                 >
-                  Select all
+                  {t('pdf.rma.selectAll')}
                 </button>
                 <button
                   type="button"
@@ -272,23 +276,23 @@ export default function RemoveAnnotationsPage() {
                     setSelectedSubtypes(new Set());
                   }}
                 >
-                  Select none
+                  {t('pdf.rma.selectNone')}
                 </button>
               </>
             )}
             <button type="button" className={styles.buttonSmall} onClick={clearDoc}>
-              Close
+              {t('pdf.ff.close')}
             </button>
           </>
         }
         sidebar={
           <>
-            <div className={styles.levelList} role="radiogroup" aria-label="Annotation removal preset">
+            <div className={styles.levelList} role="radiogroup" aria-label={t('pdf.rma.presetAria')}>
               <label className={[styles.level, preset === 'all' ? styles.levelSelected : ''].join(' ')}>
                 <input type="radio" name="annotPreset" checked={preset === 'all'} onChange={() => applyPreset('all')} />
                 <span>
-                  <strong>All annotations</strong>
-                  <small>Remove every annotation subtype found in the document.</small>
+                  <strong>{t('pdf.rma.presetAll')}</strong>
+                  <small>{t('pdf.rma.presetAllDesc')}</small>
                 </span>
               </label>
               <label className={[styles.level, preset === 'comments' ? styles.levelSelected : ''].join(' ')}>
@@ -299,8 +303,8 @@ export default function RemoveAnnotationsPage() {
                   onChange={() => applyPreset('comments')}
                 />
                 <span>
-                  <strong>Comments &amp; markup only</strong>
-                  <small>Strip comments, highlights, stamps and shapes while keeping links and form widgets.</small>
+                  <strong>{t('pdf.rma.presetComments')}</strong>
+                  <small>{t('pdf.rma.presetCommentsDesc')}</small>
                 </span>
               </label>
               <label className={[styles.level, preset === 'links' ? styles.levelSelected : ''].join(' ')}>
@@ -311,8 +315,8 @@ export default function RemoveAnnotationsPage() {
                   onChange={() => applyPreset('links')}
                 />
                 <span>
-                  <strong>Links only</strong>
-                  <small>Remove clickable hyperlink annotations while keeping comments and forms.</small>
+                  <strong>{t('pdf.rma.presetLinks')}</strong>
+                  <small>{t('pdf.rma.presetLinksDesc')}</small>
                 </span>
               </label>
               <label className={[styles.level, preset === 'custom' ? styles.levelSelected : ''].join(' ')}>
@@ -323,27 +327,28 @@ export default function RemoveAnnotationsPage() {
                   onChange={() => setPreset('custom')}
                 />
                 <span>
-                  <strong>Custom selection</strong>
-                  <small>Toggle individual annotation subtypes in the breakdown card.</small>
+                  <strong>{t('pdf.rma.presetCustom')}</strong>
+                  <small>{t('pdf.rma.presetCustomDesc')}</small>
                 </span>
               </label>
             </div>
 
             <Field
-              label="Page range (optional)"
+              label={t('pdf.p.pageRangeOpt')}
               help={
                 pageRange.trim()
                   ? pageRangeValidation.ok
-                    ? `Applies to ${pageRangeValidation.count} of ${doc?.summary.pageCount ?? 0} page${
-                        pageRangeValidation.count === 1 ? '' : 's'
-                      }.`
+                    ? t(
+                        pageRangeValidation.count === 1 ? 'pdf.rma.rangeAppliesOne' : 'pdf.rma.rangeAppliesMany',
+                        { n: pageRangeValidation.count, total: doc?.summary.pageCount ?? 0 },
+                      )
                     : undefined
-                  : 'Leave blank for all pages (e.g. 1-3, 5, 8-).'
+                  : t('pdf.rma.rangeHelpBlank')
               }
             >
               <input
                 className={fieldStyles.input}
-                placeholder="All pages (e.g. 1-3, 5)"
+                placeholder={t('pdf.rma.rangePlaceholder')}
                 value={pageRange}
                 onChange={(e) => setPageRange(e.target.value)}
               />
@@ -351,42 +356,47 @@ export default function RemoveAnnotationsPage() {
             {pageRangeValidation.error && <div className={styles.fileError}>{pageRangeValidation.error}</div>}
 
             <Checkbox
-              label="Also remove empty AcroForm dictionary"
+              label={t('pdf.rma.removeAcroForm')}
               checked={removeAcroFormIfEmpty}
               onChange={setRemoveAcroFormIfEmpty}
             />
 
-            <Field label="File name">
+            <Field label={t('pdf.ff.fileName')}>
               <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
             </Field>
 
             {doc && doc.summary.totalCount > 0 && selectedSubtypes.size === 0 && (
-              <p className={styles.note}>No matching annotation subtypes selected for removal.</p>
+              <p className={styles.note}>{t('pdf.rma.noneSelected')}</p>
             )}
             {notice && <p className={fieldStyles.warning}>{notice}</p>}
             {error && <div className={styles.error}>{error}</div>}
 
             <button type="button" className={styles.primary} disabled={!canRun} onClick={runRemove}>
               {busy
-                ? 'Removing…'
+                ? t('pdf.rma.removing')
                 : targetedAnnotationCount > 0
-                  ? `Remove ${targetedAnnotationCount} annotation${targetedAnnotationCount === 1 ? '' : 's'}`
-                  : 'Remove annotations'}
+                  ? t(targetedAnnotationCount === 1 ? 'pdf.rma.btnCountOne' : 'pdf.rma.btnCountMany', {
+                      n: targetedAnnotationCount,
+                    })
+                  : t('pdf.rma.btnDefault')}
             </button>
 
             {result && (
               <div className={styles.result}>
-                <h3>Annotations updated</h3>
+                <h3>{t('pdf.rma.doneTitle')}</h3>
                 <p>
-                  Removed <strong>{result.removedCount}</strong> annotation{result.removedCount === 1 ? '' : 's'};{' '}
-                  <strong>{result.remainingCount}</strong> remaining · {formatBytes(result.bytes.length)}.
+                  {t(result.removedCount === 1 ? 'pdf.rma.doneOne' : 'pdf.rma.doneMany', {
+                    removed: result.removedCount,
+                    remaining: result.remainingCount,
+                    size: formatBytes(result.bytes.length),
+                  })}
                 </p>
                 <button
                   type="button"
                   className={styles.primary}
                   onClick={() => download(result.bytes, outputName)}
                 >
-                  Download {outputName}
+                  {t('pdf.ff.downloadNamed', { name: outputName })}
                 </button>
                 <ContinueWith
                   currentToolId={REMOVE_ANNOTATIONS.id}
@@ -402,37 +412,43 @@ export default function RemoveAnnotationsPage() {
             <div className={styles.fileBanner}>
               <strong>{doc.name}</strong>
               <span className={styles.fileBannerMeta}>
-                {doc.summary.pageCount} page{doc.summary.pageCount === 1 ? '' : 's'} · {formatBytes(doc.bytes.length)}
+                {t(doc.summary.pageCount === 1 ? 'pdf.p.pagesAndSizeOne' : 'pdf.p.pagesAndSizeMany', {
+                  n: doc.summary.pageCount,
+                  size: formatBytes(doc.bytes.length),
+                })}
               </span>
               <span className={doc.summary.totalCount > 0 ? styles.statusPending : styles.statusKept}>
-                {doc.summary.totalCount} annotation{doc.summary.totalCount === 1 ? '' : 's'} on{' '}
-                {doc.summary.pagesWithAnnotations} page{doc.summary.pagesWithAnnotations === 1 ? '' : 's'}
+                {t(doc.summary.totalCount === 1 ? 'pdf.rma.bannerAnnotsOne' : 'pdf.rma.bannerAnnotsMany', {
+                  n: doc.summary.totalCount,
+                  pages: t(
+                    doc.summary.pagesWithAnnotations === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany',
+                    { n: doc.summary.pagesWithAnnotations },
+                  ),
+                })}
               </span>
               {doc.summary.hasAcroForm && (
                 <span className={styles.statusLeft}>
-                  AcroForm ({doc.summary.acroFormFieldCount} field{doc.summary.acroFormFieldCount === 1 ? '' : 's'})
+                  {t(doc.summary.acroFormFieldCount === 1 ? 'pdf.rma.acroFormOne' : 'pdf.rma.acroFormMany', {
+                    n: doc.summary.acroFormFieldCount,
+                  })}
                 </span>
               )}
             </div>
 
             <div className={styles.metaCard}>
-              <h3>Annotation breakdown</h3>
+              <h3>{t('pdf.rma.breakdownTitle')}</h3>
               {doc.summary.subtypes.length === 0 ? (
                 <p className={styles.note}>
-                  No annotations were found on any page of this PDF.
-                  {doc.summary.hasAcroForm
-                    ? ' An AcroForm dictionary is still present in the catalog and can be removed with the option in the sidebar.'
-                    : ''}
+                  {t('pdf.rma.noAnnotsFound')}
+                  {doc.summary.hasAcroForm ? t('pdf.rma.acroFormStill') : ''}
                 </p>
               ) : (
                 <>
-                  <p className={styles.note}>
-                    Checked subtypes will be removed (along with any child comment popups tied to removed annotations).
-                  </p>
+                  <p className={styles.note}>{t('pdf.rma.checkedNote')}</p>
                   <div className={styles.chipGrid}>
                     {doc.summary.subtypes.map(({ subtype, count }) => {
                       const checked = selectedSubtypes.has(subtype);
-                      const label = subtypeLabel(subtype);
+                      const label = subtypeLabel(subtype, locale);
                       return (
                         <label
                           key={subtype}

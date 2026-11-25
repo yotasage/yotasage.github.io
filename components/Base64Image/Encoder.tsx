@@ -36,21 +36,6 @@ interface ImageData {
   height: number;
 }
 
-const OUTPUT_OPTIONS: [Output, string][] = [
-  ['dataUrl', 'Data URL'],
-  ['base64', 'Base64 only'],
-  ['html', 'HTML <img> tag'],
-  ['css', 'CSS background-image'],
-  ['markdown', 'Markdown image'],
-];
-
-const IMAGE_OPTIONS: [ImageMode, string][] = [
-  ['original', 'Original file, unchanged'],
-  ['png', 'Convert to PNG'],
-  ['jpeg', 'Convert to JPEG'],
-  ['webp', 'Convert to WebP'],
-];
-
 // A text box with many megabytes of text makes the page slow, so long outputs are shown cut short.
 const SHOWN_CHARACTERS = 1_000_000;
 
@@ -66,6 +51,19 @@ function utf8OrNull(bytes: Uint8Array): string | null {
 
 export default function Encoder() {
   const { t } = useI18n();
+  const outputOptions: [Output, string][] = [
+    ['dataUrl', t('base64.opt.dataUrl')],
+    ['base64', t('base64.opt.base64')],
+    ['html', t('base64.opt.html')],
+    ['css', t('base64.opt.css')],
+    ['markdown', t('base64.opt.markdown')],
+  ];
+  const imageOptions: [ImageMode, string][] = [
+    ['original', t('base64.opt.imgOriginal')],
+    ['png', t('base64.opt.imgPng')],
+    ['jpeg', t('base64.opt.imgJpeg')],
+    ['webp', t('base64.opt.imgWebp')],
+  ];
   const [source, setSource] = React.useState<Source | null>(null);
   const [cameraOpen, setCameraOpen] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
@@ -229,14 +227,14 @@ export default function Encoder() {
           <div className={styles.preview}>
             {source.image
               ? <img src={source.url} alt="" className={styles.image} />
-              : <span className={styles.noPreview}>{source.format.image ? `This browser cannot show ${source.format.name} images.` : 'Not an image.'}</span>}
+              : <span className={styles.noPreview}>{source.format.image ? t('base64.enc.noPreviewFmt', { name: source.format.name }) : t('base64.enc.notImage')}</span>}
           </div>
           <table className={styles.info}>
             <tbody>
-              <tr><th>File</th><td className={styles.breakAll}>{source.name}</td></tr>
-              <tr><th>Type</th><td>{source.format.name} ({source.format.mime})</td></tr>
-              {source.image && <tr><th>Size</th><td>{source.width} × {source.height} px</td></tr>}
-              <tr><th>File size</th><td>{formatBytes(source.bytes.length)} ({count(source.bytes.length)} bytes)</td></tr>
+              <tr><th>{t('base64.enc.thFile')}</th><td className={styles.breakAll}>{source.name}</td></tr>
+              <tr><th>{t('base64.enc.thType')}</th><td>{source.format.name} ({source.format.mime})</td></tr>
+              {source.image && <tr><th>{t('base64.enc.thSize')}</th><td>{source.width} × {source.height} px</td></tr>}
+              <tr><th>{t('base64.enc.thFileSize')}</th><td>{formatBytes(source.bytes.length)} ({count(source.bytes.length)} {t('base64.enc.bytesUnit')})</td></tr>
             </tbody>
           </table>
           <div className={styles.buttonRow}>
@@ -253,19 +251,19 @@ export default function Encoder() {
 
           <h3>{t('base64.encoder.imageSection')}</h3>
           <div className={styles.fieldGrid}>
-            <Field label="Image data" help={canConvert ? 'Converting can make the text much shorter, and removes metadata such as EXIF and GPS.' : 'This browser cannot open the file, so it can only be encoded as it is.'}>
-              <Select value={canConvert ? imageMode : 'original'} disabled={!canConvert} onChange={setImageMode} options={IMAGE_OPTIONS} />
+            <Field label={t('base64.enc.imageDataLabel')} help={canConvert ? t('base64.enc.imageDataHelp') : t('base64.enc.imageDataNoOpen')}>
+              <Select value={canConvert ? imageMode : 'original'} disabled={!canConvert} onChange={setImageMode} options={imageOptions} />
             </Field>
             {converting && (
               <>
-                <Field label={`Width in px (height ${height} px)`}>
+                <Field label={t('base64.enc.widthLabel', { height })}>
                   <NumberInput value={width} onChange={setWidth} min={1} max={16384} />
                 </Field>
                 {imageMode !== 'png' && (
-                  <Field label="Quality (%)"><NumberInput value={quality} onChange={setQuality} min={1} max={100} /></Field>
+                  <Field label={t('base64.enc.qualityLabel')}><NumberInput value={quality} onChange={setQuality} min={1} max={100} /></Field>
                 )}
                 {imageMode === 'jpeg' && (
-                  <Field label="Background (for transparent areas)">
+                  <Field label={t('base64.enc.bgLabel')}>
                     <input className={styles.color} type="color" value={background} onChange={(e) => setBackground(e.target.value)} />
                   </Field>
                 )}
@@ -273,36 +271,43 @@ export default function Encoder() {
             )}
           </div>
           {converting && data && data.format.mime !== `image/${imageMode}` && (
-            <p className={styles.warning}>This browser cannot write {imageMode.toUpperCase()} images, so it made a {data.format.name} image.</p>
+            <p className={styles.warning}>{t('base64.enc.cantWriteFmt', { wanted: imageMode.toUpperCase(), actual: data.format.name })}</p>
           )}
           {converting && data && (
             <p className={styles.help}>
-              Converted: {data.format.name}, {data.width} × {data.height} px, {formatBytes(data.bytes.length)}
-              {' '}({data.bytes.length <= source.bytes.length ? `${Math.round(100 - (100 * data.bytes.length) / source.bytes.length)} % smaller` : `${Math.round((100 * data.bytes.length) / source.bytes.length - 100)} % larger`} than the original).
-              {' '}<button type="button" className={styles.linkButton} onClick={() => download(data.bytes, `${name}.${data.format.ext}`, data.format.mime)}>Download it</button>
+              {t('base64.enc.convertedSummary', {
+                name: data.format.name,
+                w: data.width,
+                h: data.height,
+                size: formatBytes(data.bytes.length),
+                delta: data.bytes.length <= source.bytes.length
+                  ? t('base64.enc.smaller', { pct: Math.round(100 - (100 * data.bytes.length) / source.bytes.length) })
+                  : t('base64.enc.larger', { pct: Math.round((100 * data.bytes.length) / source.bytes.length - 100) }),
+              })}
+              {' '}<button type="button" className={styles.linkButton} onClick={() => download(data.bytes, `${name}.${data.format.ext}`, data.format.mime)}>{t('base64.enc.downloadIt')}</button>
             </p>
           )}
           {convertError && <div className={styles.error}>{convertError}</div>}
 
           <h3>{t('base64.encoder.outputSection')}</h3>
           <div className={styles.fieldGrid}>
-            <Field label="Format">
-              <Select value={output} onChange={setOutput} options={OUTPUT_OPTIONS} />
+            <Field label={t('base64.enc.formatLabel')}>
+              <Select value={output} onChange={setOutput} options={outputOptions} />
             </Field>
             {isSvg && output !== 'base64' && (
-              <Field label="SVG in the data URL" help={svgSizes && `${count(svgSizes.percent)} characters percent-encoded, ${count(svgSizes.base64)} as Base64.`}>
-                <Select value={svgEncoding} onChange={setSvgEncoding} options={[['base64', 'Base64'], ['percent', 'Text, percent-encoded']]} />
+              <Field label={t('base64.enc.svgInUrlLabel')} help={svgSizes ? t('base64.enc.svgSizesHelp', { percent: count(svgSizes.percent), base64: count(svgSizes.base64) }) : undefined}>
+                <Select value={svgEncoding} onChange={setSvgEncoding} options={[['base64', 'Base64'], ['percent', t('base64.opt.svgPercent')]]} />
               </Field>
             )}
             {output === 'base64' && (
               <>
-                <Field label="Alphabet">
-                  <Select value={alphabet} onChange={setAlphabet} options={[['standard', 'Standard (+ /)'], ['url', 'URL-safe (- _)']]} />
+                <Field label={t('base64.enc.alphabetLabel')}>
+                  <Select value={alphabet} onChange={setAlphabet} options={[['standard', t('base64.opt.alphaStd')], ['url', t('base64.opt.alphaUrl')]]} />
                 </Field>
-                <Field label="Line length">
-                  <Select value={lineLength} onChange={setLineLength} options={[['0', 'One line'], ['64', '64 characters (PEM)'], ['76', '76 characters (MIME)']]} />
+                <Field label={t('base64.enc.lineLengthLabel')}>
+                  <Select value={lineLength} onChange={setLineLength} options={[['0', t('base64.opt.lineOne')], ['64', t('base64.opt.line64')], ['76', t('base64.opt.line76')]]} />
                 </Field>
-                <Checkbox label="Padding (= at the end)" checked={padding} onChange={setPadding} />
+                <Checkbox label={t('base64.enc.paddingLabel')} checked={padding} onChange={setPadding} />
               </>
             )}
           </div>
@@ -313,14 +318,14 @@ export default function Encoder() {
                 className={[styles.textarea, styles.spaced].join(' ')}
                 readOnly
                 spellCheck={false}
-                aria-label="Output"
+                aria-label={t('base64.encoder.outputSection')}
                 value={text.length > SHOWN_CHARACTERS ? `${text.slice(0, SHOWN_CHARACTERS)}…` : text}
                 onFocus={(e) => e.currentTarget.select()}
               />
               <p className={styles.help}>
-                {count(text.length)} characters for {count(data.bytes.length)} bytes
-                {data.bytes.length > 0 && ` (${Math.round((100 * text.length) / data.bytes.length - 100)} % longer)`}.
-                {text.length > SHOWN_CHARACTERS && ` The box shows the first ${count(SHOWN_CHARACTERS)}; Copy and Download use all of it.`}
+                {t('base64.enc.outputStats', { chars: count(text.length), bytes: count(data.bytes.length) })}
+                {data.bytes.length > 0 && t('base64.enc.longerPct', { pct: Math.round((100 * text.length) / data.bytes.length - 100) })}.
+                {text.length > SHOWN_CHARACTERS && t('base64.enc.truncated', { shown: count(SHOWN_CHARACTERS) })}
               </p>
               <div className={styles.buttonRow}>
                 <button type="button" className={styles.primaryButton} onClick={copy}>
@@ -333,7 +338,7 @@ export default function Encoder() {
               {copyError && <p className={styles.warning}>{copyError}</p>}
             </>
           ) : (
-            !convertError && <p className={styles.help}>Converting…</p>
+            !convertError && <p className={styles.help}>{t('base64.enc.converting')}</p>
           )}
         </>
       )}

@@ -5,6 +5,7 @@
 
 import React from 'react';
 
+import { useI18n } from '../../lib/ui/i18n';
 import css from '../../styles/EmSimTheory.module.css';
 
 /** An arrow from (x1, y1) to (x2, y2) with a filled head, in the class's colour. */
@@ -22,6 +23,7 @@ function Arrow({ x1, y1, x2, y2, cls, head = 7 }: { x1: number; y1: number; x2: 
 
 /** Figure 1: one cell of Yee's grid, E along three edges and η₀·H normal to three faces, half a cell apart. */
 export function YeeCellFigure() {
+  const { t } = useI18n();
   const s = 140, ox = 150, oy = 228;
   // an oblique view: x to the right, y into the page (up and right), z up
   const P = (x: number, y: number, z: number): [number, number] => [ox + s * (x + 0.55 * y), oy - s * (z + 0.38 * y)];
@@ -40,10 +42,10 @@ export function YeeCellFigure() {
       </g>
     );
   };
-  const lab = (x: number, y: number, z: number, t: string, dx = 0, dy = 0) => { const p = P(x, y, z); return <text x={p[0] + dx} y={p[1] + dy} className={css.svgText} textAnchor="middle">{t}</text>; };
+  const lab = (x: number, y: number, z: number, txt: string, dx = 0, dy = 0) => { const p = P(x, y, z); return <text x={p[0] + dx} y={p[1] + dy} className={css.svgText} textAnchor="middle">{txt}</text>; };
   return (
     <figure className={css.figure} data-figure="fw-yee-cell">
-      <svg className={`${css.svg} ${css.fwSvg}`} viewBox="0 0 440 270" role="img" aria-label="One cell of Yee's grid: the electric field's components on three edges, the magnetic field's at the centres of three faces">
+      <svg className={`${css.svg} ${css.fwSvg}`} viewBox="0 0 440 270" role="img" aria-label={t('em.th2.wf.yeeAria')}>
         <g className={css.svgAxis}><path d={hidden.join(' ')} strokeDasharray="4 4" /></g>
         <g className={css.svgLine}><path d={front.join(' ')} /></g>
         {arrow([0.5, 0, 0], [1, 0, 0], css.fwE, 'Ex', -8, 18)}
@@ -54,19 +56,17 @@ export function YeeCellFigure() {
         {arrow([0.5, 0.5, 1], [0, 0, 1], css.fwH, 'Hz', 10, -4)}
         {lab(0.5, 0, 0, 'Δx', 0, 34)}
         {lab(0, 0, 0.5, 'Δz', -44, 20)}
-        <text x={8} y={20} className={`${css.svgText} ${css.fwEText}`}>E on the edges</text>
-        <text x={8} y={38} className={`${css.svgText} ${css.fwHText}`}>η₀·H on the faces</text>
+        <text x={8} y={20} className={`${css.svgText} ${css.fwEText}`}>{t('em.th2.wf.yeeE')}</text>
+        <text x={8} y={38} className={`${css.svgText} ${css.fwHText}`}>{t('em.th2.wf.yeeH')}</text>
       </svg>
-      <figcaption>
-        One cell of Yee’s grid. Each electric component lies along an edge, each magnetic component at the centre of a
-        face, normal to it: half a cell apart, so every E sits inside a ring of H and every H inside a ring of E.
-      </figcaption>
+      <figcaption>{t('em.th2.wf.yeeCap')}</figcaption>
     </figure>
   );
 }
 
 /** Figure 2: E at whole steps and η₀·H at half steps, each computed from the other. */
 export function LeapfrogFigure() {
+  const { t } = useI18n();
   const x0 = 66, dx = 128, yE = 46, yH = 106, n = 6;
   const tick = (k: number) => x0 + k * (dx / 2);
   const steps = ['n−1', 'n−½', 'n', 'n+½', 'n+1', 'n+3⁄2'];
@@ -86,17 +86,14 @@ export function LeapfrogFigure() {
   }
   return (
     <figure className={css.figure} data-figure="fw-leapfrog">
-      <svg className={`${css.svg} ${css.fwSvg}`} viewBox="0 0 440 158" role="img" aria-label="The leapfrog in time: E at whole steps, H at half steps, each new value from the other field half a step before">
+      <svg className={`${css.svg} ${css.fwSvg}`} viewBox="0 0 440 158" role="img" aria-label={t('em.th2.wf.leapAria')}>
         <path className={css.svgAxis} d={`M${x0 - 14} 135 H${tick(n - 1) + 30}`} />
         <text x={tick(n - 1) + 4} y={124} className={css.svgText}>t / Δt</text>
         <text x={8} y={yE + 4} className={`${css.svgText} ${css.fwEText}`}>E</text>
         <text x={8} y={yH + 4} className={`${css.svgText} ${css.fwHText}`}>η₀·H</text>
         {parts}
       </svg>
-      <figcaption>
-        The leapfrog: each new H follows from E half a step before (the curl of E around its face), each new E from H half a
-        step before (the curl of H around its edge). Nothing is solved; every cell does the same short update.
-      </figcaption>
+      <figcaption>{t('em.th2.wf.leapCap')}</figcaption>
     </figure>
   );
 }
@@ -104,6 +101,7 @@ export function LeapfrogFigure() {
 /** Figure 3: a barrel's circle on a few cells, staircased (whole cells copper) beside conformal (each cut edge counts with
  *  its part outside the copper). */
 export function ConformalFigure() {
+  const { t } = useI18n();
   const N = 8, c = 24, pad = 14, cx = pad + 4.1 * c, cy = pad + 3.95 * c, r = 2.75 * c;
   const inside = (x: number, y: number) => (x - cx) ** 2 + (y - cy) ** 2 < r * r;
   const grid: string[] = [];
@@ -148,18 +146,14 @@ export function ConformalFigure() {
           {cells}
           <path className={css.fwGrid} d={grid.join(' ')} />
           <circle cx={cx} cy={cy} r={r} className={css.fwCircle} />
-        </>, 'A round barrel staircased: every cell whose centre lies in the circle is copper', 'Staircased')}
+        </>, t('em.th2.wf.stairAria'), t('em.th2.wf.stairName'))}
         {box(<>
           <circle cx={cx} cy={cy} r={r} className={css.fwCopper} />
           <path className={css.fwGrid} d={grid.join(' ')} />
           <path className={css.fwCut} d={cut.join(' ')} />
-        </>, 'The same barrel with conformal cells: each edge the circle cuts counts with its part outside the copper', 'Conformal')}
+        </>, t('em.th2.wf.confAria'), t('em.th2.wf.confName'))}
       </div>
-      <figcaption>
-        A barrel’s circle on the grid. Staircased, whole cells are copper and the barrel’s edge moves by up to half a cell;
-        conformal, each edge the circle cuts (drawn thick) counts only with its part outside the copper, so the update
-        sees the true circle.
-      </figcaption>
+      <figcaption>{t('em.th2.wf.confCap')}</figcaption>
     </figure>
   );
 }

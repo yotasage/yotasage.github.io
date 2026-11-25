@@ -6,6 +6,7 @@ import { copperIds, etchOffset, layerIndex, val } from '../../lib/emsim/stackup'
 import type { CopperLayer, Stackup, Val } from '../../lib/emsim/stackup';
 import { DEFAULT_W, KIND_INFO, MAX_SIGNALS, TRACE_KINDS, presetStructure, structureIssues } from '../../lib/emsim/structure';
 import type { Structure, TraceKind } from '../../lib/emsim/structure';
+import { emT } from './emText';
 
 // The presets of the section's kind list (the general arrangement is offered on its own, M2.1d).
 export const KINDS = TRACE_KINDS.filter((k) => k.kind !== 'general');
@@ -114,9 +115,9 @@ const errorOf = (s: Stackup, t: Structure) => structureIssues(s, t).find((q) => 
 // A new trace on layer `id`, as wide as the last one, in the free place nearest the centre: a gap between features
 // wide enough, else beside them. The structure or why it cannot take one.
 export function addSignal(s: Stackup, st: Structure, id: string): { st: Structure } | { reason: string } {
-  if (st.signals.length >= MAX_SIGNALS) return { reason: `A structure has at most ${MAX_SIGNALS} traces.` };
+  if (st.signals.length >= MAX_SIGNALS) return { reason: emT('em.gen.errMax', { max: MAX_SIGNALS }) };
   const L = layerIndex(s, id);
-  if (L < 0) return { reason: 'Choose a copper layer for the trace.' };
+  if (L < 0) return { reason: emT('em.gen.errPickTrace') };
   const w = st.signals.length ? st.signals[st.signals.length - 1].w : typed(DEFAULT_W);
   const { iv } = occupied(s, st, L);
   const cand: number[] = [];
@@ -128,7 +129,7 @@ export function addSignal(s: Stackup, st: Structure, id: string): { st: Structur
     if (Number.isFinite(lo)) cand.push(lo - GAP - w.v / 2);
   }
   cand.sort((a, b) => Math.abs(a) - Math.abs(b));
-  if (!cand.length) return { reason: `There is no room for a trace on ${s.layers[L].name}: grounds run to both edges.` };
+  if (!cand.length) return { reason: emT('em.gen.errNoRoom', { layer: s.layers[L].name }) };
   let why = '';
   for (const u of cand) {
     const t: Structure = { ...st, signals: [...st.signals, { layer: id, w, u: typed(Number(u.toPrecision(12))) }] };
@@ -143,9 +144,9 @@ export function addSignal(s: Stackup, st: Structure, id: string): { st: Structur
 // layer) to the edge, on the right when that side is free, else on the left.
 export function addGround(s: Stackup, st: Structure, id: string): { st: Structure } | { reason: string } {
   const L = layerIndex(s, id);
-  if (L < 0) return { reason: 'Choose a copper layer for the ground.' };
+  if (L < 0) return { reason: emT('em.gen.errPickGround') };
   let { iv, left, right } = occupied(s, st, L);
-  if (left && right) return { reason: `${s.layers[L].name} already has ground to both edges.` };
+  if (left && right) return { reason: emT('em.gen.errBothEdges', { layer: s.layers[L].name }) };
   if (!iv.length) iv = st.signals.map((g) => [g.u.v - g.w.v / 2, g.u.v + g.w.v / 2] as [number, number]);
   const fin = iv.flat().filter(Number.isFinite);
   const hi = fin.length ? Math.max(...fin) : 0, lo = fin.length ? Math.min(...fin) : 0;
@@ -160,11 +161,11 @@ export function removeFeature(st: Structure, sel: GenSel): { st: Structure } | {
   const [what, n] = sel.split('.');
   const i = Number(n);
   if (what === 'sig') {
-    if (!st.signals[i]) return { reason: 'Select a trace or ground to remove.' };
-    if (st.signals.length <= 1) return { reason: 'A structure keeps at least one trace.' };
+    if (!st.signals[i]) return { reason: emT('em.gen.errSelect') };
+    if (st.signals.length <= 1) return { reason: emT('em.gen.errKeepOne') };
     const signals = st.signals.filter((_, k) => k !== i);
     return { st: { ...st, signals, layer: signals[0].layer } };
   }
-  if (!st.grounds[i]) return { reason: 'Select a trace or ground to remove.' };
+  if (!st.grounds[i]) return { reason: emT('em.gen.errSelect') };
   return { st: { ...st, grounds: st.grounds.filter((_, k) => k !== i) } };
 }

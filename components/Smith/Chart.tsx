@@ -1,5 +1,6 @@
 import React, { ReactNode, useEffect, useLayoutEffect, useRef } from 'react';
 
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Smith.module.css';
 import { ChartView } from './chartView';
 import { READOUT_ROWS } from './mathLink';
@@ -34,17 +35,7 @@ export interface ChartProps {
   below?: ReactNode;
 }
 
-const LABELS: Record<(typeof READOUT_FIELDS)[number], string> = {
-  z: 'z', Z: 'Z', y: 'y', Y: 'Y', gamma: 'Γ', gammaRect: 'Γ', vswr: 'VSWR', rl: 'Return loss', note: '',
-};
-/** What a readout row's "show equation" names (M5.2). */
-const WHATS: Record<(typeof READOUT_FIELDS)[number], string> = {
-  z: 'z', Z: 'Z', y: 'y', Y: 'Y', gamma: 'Γ', gammaRect: 'Γ', vswr: 'the VSWR', rl: 'the return loss', note: '',
-};
 const POINT = { t: 'point' } as const;
-const HINTS: Partial<Record<(typeof READOUT_FIELDS)[number], string>> = {
-  z: 'normalised', y: 'normalised', gamma: 'polar', gammaRect: 'Cartesian',
-};
 
 /**
  * The chart's workspace: the toolbar (grid switch, Fit, Reset, zoom), the focusable box with the grid's <svg> and the
@@ -52,6 +43,7 @@ const HINTS: Partial<Record<(typeof READOUT_FIELDS)[number], string>> = {
  * phones). Everything that changes with the pointer is written by ChartView in its frame loop; React renders this once.
  */
 export default function Chart({ mode, z0 = 50, tools, sideTop, side, onView, after, onReadout, digits, onDigits, noReadout, readoutHidden, below }: ChartProps) {
+  const { t, locale } = useI18n();
   const box = useRef<HTMLDivElement>(null);
   const gridSvg = useRef<SVGSVGElement>(null);
   const top = useRef<SVGSVGElement>(null);
@@ -62,6 +54,16 @@ export default function Chart({ mode, z0 = 50, tools, sideTop, side, onView, aft
   const z0Ref = useRef(z0);
   const readRef = useRef(onReadout);
   readRef.current = onReadout;
+
+  const labels: Record<(typeof READOUT_FIELDS)[number], string> = {
+    z: 'z', Z: 'Z', y: 'y', Y: 'Y', gamma: 'Γ', gammaRect: 'Γ', vswr: 'VSWR', rl: t('sm.chart.returnLoss'), note: '',
+  };
+  const whats: Record<(typeof READOUT_FIELDS)[number], string> = {
+    z: 'z', Z: 'Z', y: 'y', Y: 'Y', gamma: 'Γ', gammaRect: 'Γ', vswr: t('sm.chart.whatVswr'), rl: t('sm.chart.whatRl'), note: '',
+  };
+  const hints: Partial<Record<(typeof READOUT_FIELDS)[number], string>> = {
+    z: t('sm.chart.hintNorm'), y: t('sm.chart.hintNorm'), gamma: t('sm.chart.hintPolar'), gammaRect: t('sm.chart.hintCart'),
+  };
 
   useLayoutEffect(() => {
     const v = new ChartView(box.current, gridSvg.current, top.current);
@@ -88,33 +90,33 @@ export default function Chart({ mode, z0 = 50, tools, sideTop, side, onView, aft
     z0Ref.current = z0;
     const v = view.current;
     if (v) v.onReadout?.(v.readX, v.readY);
-  }, [z0, digits]);
+  }, [z0, digits, locale]);
 
   return (
     <div className={styles.work} ref={frame}>
-      <section className={styles.stage} aria-label="Chart" data-below={below ? '' : undefined}>
+      <section className={styles.stage} aria-label={t('sm.chart.stageAria')} data-below={below ? '' : undefined}>
         <div className={styles.toolbar}>
           {tools}
           <span className={styles.toolSpace} />
           <div className={styles.viewTools}>
-            <span className={styles.zoom} ref={zoomText} aria-label="Zoom" title="Zoom">1.00×</span>
-            <button type="button" className={styles.button} onClick={() => view.current?.fit()} title="Show the whole chart (0 or Home)">Fit</button>
-            <button type="button" className={styles.button} onClick={() => view.current?.reset()} title="Whole chart, no read point">Reset</button>
+            <span className={styles.zoom} ref={zoomText} aria-label={t('sm.chart.zoomAria')} title={t('sm.chart.zoomAria')}>1.00×</span>
+            <button type="button" className={styles.button} onClick={() => view.current?.fit()} title={t('sm.chart.fitTitle')}>{t('sm.chart.fit')}</button>
+            <button type="button" className={styles.button} onClick={() => view.current?.reset()} title={t('sm.chart.resetTitle')}>{t('sm.chart.reset')}</button>
             <Why k="zoom" />
           </div>
         </div>
         <div ref={box} className={styles.chart} tabIndex={0} role="group" data-chart=""
-          aria-label="Smith chart. Arrow keys pan, plus and minus zoom, 0 or Home fits; the readout shows the point at the centre."
+          aria-label={t('sm.chart.boxAria')}
           aria-describedby="smith-chart-keys">
           <svg ref={gridSvg} className={styles.grid} aria-hidden="true" />
           <svg ref={top} className={styles.top} aria-hidden="true" />
         </div>
         <div className={styles.hintRow}>
           <p className={styles.hint} id="smith-chart-keys">
-            <span className={styles.hintFine}>Wheel or pinch to zoom, drag to pan, drag a ring to set its part (Alt: no snapping), hover to read · keys: arrows, + −, 0</span>
-            <span className={styles.hintTouch}>Pinch to zoom, two fingers or a sideways swipe to pan, drag a ring to set its part, tap to read</span>
+            <span className={styles.hintFine}>{t('sm.chart.hintFine')}</span>
+            <span className={styles.hintTouch}>{t('sm.chart.hintTouch')}</span>
           </p>
-          <span className={styles.hintWhys}><Why k="ring" label="Rings" /><Why k="rim" label="Rim scales" /></span>
+          <span className={styles.hintWhys}><Why k="ring" label={t('sm.chart.rings')} /><Why k="rim" label={t('sm.chart.rimScales')} /></span>
         </div>
         {below}
       </section>
@@ -123,10 +125,10 @@ export default function Chart({ mode, z0 = 50, tools, sideTop, side, onView, aft
         {side}
         {!noReadout && <section className={styles.panel} aria-labelledby="smith-readout" data-readout="" hidden={readoutHidden}>
           <h2 className={styles.panelTitle} id="smith-readout">
-            <span>Readout<Why k="show-eq" /></span>
+            <span>{t('sm.chart.readout')}<Why k="show-eq" /></span>
             {onDigits && (
-              <label className={styles.digits} title="Significant digits of the readout, the node table, the circuit input and the equations">
-                <span>Digits</span>
+              <label className={styles.digits} title={t('sm.chart.digitsTitle')}>
+                <span>{t('sm.chart.digits')}</span>
                 <select value={digits} data-digits="" onChange={(e) => onDigits(Number(e.currentTarget.value))}>
                   {DIGIT_CHOICES.map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
@@ -137,14 +139,14 @@ export default function Chart({ mode, z0 = 50, tools, sideTop, side, onView, aft
           <dl className={styles.readout}>
             {READOUT_FIELDS.map((f, i) => f !== 'note' && (
               <div key={f} className={styles.readRow} data-read-row={f}>
-                <dt>{LABELS[f]}{HINTS[f] && <span className={styles.readHint}> {HINTS[f]}</span>}{(f === 'Z' || f === 'Y') && <span className={styles.readHint}> in {f === 'Z' ? 'Ω' : 'S'}</span>}<Why k={`read-${f}`} />
-                  <ShowEq subject={POINT} row={READOUT_ROWS[f]} k={`read:${f}`} what={`${WHATS[f]} at the readout's point`} back="the readout" /></dt>
+                <dt>{labels[f]}{hints[f] && <span className={styles.readHint}> {hints[f]}</span>}{(f === 'Z' || f === 'Y') && <span className={styles.readHint}> {t('sm.chart.hintInUnit', { unit: f === 'Z' ? 'Ω' : 'S' })}</span>}<Why k={`read-${f}`} />
+                  <ShowEq subject={POINT} row={READOUT_ROWS[f]} k={`read:${f}`} what={t('sm.chart.atReadout', { what: whats[f] })} back={t('sm.chart.backReadout')} /></dt>
                 <dd data-field={f} ref={(el) => { values.current[i] = el; }}>–</dd>
               </div>
             ))}
           </dl>
           <p className={styles.readNote} data-field="note" ref={(el) => { values.current[READOUT_FIELDS.indexOf('note')] = el; }} />
-          <p className={styles.readEmpty}>Hover, tap or use the arrow keys on the chart to read a point.</p>
+          <p className={styles.readEmpty}>{t('sm.chart.readEmpty')}</p>
         </section>}
         {after}
       </aside>

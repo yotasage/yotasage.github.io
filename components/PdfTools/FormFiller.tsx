@@ -22,6 +22,8 @@ import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
 import { openPdf, renderPage } from '../../lib/pdf/pdfjs';
 import { FILL_FORMS } from '../../lib/pdf/tools';
 import { runFillFormPdf, runInspectFormFields } from '../../lib/pdf/workerClient';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 import { Checkbox, Field } from '../UI/Fields';
@@ -75,22 +77,14 @@ function isFieldFilled(field: FormFieldInfo, value: FormFieldValue | undefined):
   return typeof value === 'string' && value.trim().length > 0;
 }
 
-function typeLabel(type: FormFieldInfo['type']): string {
-  switch (type) {
-    case 'text':
-      return 'Text';
-    case 'multiline':
-      return 'Multiline';
-    case 'checkbox':
-      return 'Checkbox';
-    case 'radio':
-      return 'Radio';
-    case 'dropdown':
-      return 'Dropdown';
-    case 'optionList':
-      return 'List';
-  }
-}
+const TYPE_LABEL_KEYS: Record<FormFieldInfo['type'], TranslationKey> = {
+  text: 'pdf.ff.typeText',
+  multiline: 'pdf.ff.typeMultiline',
+  checkbox: 'pdf.ff.typeCheckbox',
+  radio: 'pdf.ff.typeRadio',
+  dropdown: 'pdf.ff.typeDropdown',
+  optionList: 'pdf.ff.typeList',
+};
 
 function firstPageOfField(field: FormFieldInfo): number {
   if (field.widgets.length === 0) return -1;
@@ -102,6 +96,7 @@ function firstPageOfField(field: FormFieldInfo): number {
 }
 
 export function FormFiller() {
+  const { t } = useI18n();
   const [doc, setDoc] = React.useState<LoadedFormDoc | null>(null);
   const [pdfProxy, setPdfProxy] = React.useState<PDFDocumentProxy | null>(null);
   const closeProxyRef = React.useRef<(() => Promise<void>) | null>(null);
@@ -265,7 +260,7 @@ export function FormFiller() {
         setLocked({
           name,
           bytes,
-          error: password !== undefined ? 'Incorrect password. Try again.' : null,
+          error: password !== undefined ? t('pdf.ff.wrongPw') : null,
           busy: false,
         });
       } else {
@@ -280,10 +275,10 @@ export function FormFiller() {
   async function loadFile(files: File[]) {
     const pdf = files.find(isPdf);
     if (!pdf) {
-      setNotice('Please select a PDF file.');
+      setNotice(t('pdf.ff.pickPdf'));
       return;
     }
-    setNotice(files.length > 1 ? 'Only the first PDF was opened. Fill PDF forms works on one file at a time.' : null);
+    setNotice(files.length > 1 ? t('pdf.ff.firstOnly') : null);
     setLocked(null);
     try {
       const bytes = await readBytes(pdf);
@@ -475,15 +470,15 @@ export function FormFiller() {
         />
       )}
       {error && !doc && <div className={styles.error} style={{ marginBottom: '1rem' }}>{error}</div>}
-      {loading && !doc && !locked && <Progress fraction={0.45} label="Inspecting PDF form fields…" />}
+      {loading && !doc && !locked && <Progress fraction={0.45} label={t('pdf.ff.inspecting')} />}
 
       <ToolWorkspace
         tool={FILL_FORMS}
         accept="application/pdf,.pdf"
         multiple={false}
-        selectLabel="Select a PDF form"
-        dropLabel="or drop a fillable PDF here"
-        addLabel="Replace PDF"
+        selectLabel={t('pdf.ff.selectLabel')}
+        dropLabel={t('pdf.ff.dropLabel')}
+        addLabel={t('pdf.ff.addLabel')}
         hasFiles={!!doc}
         onFiles={loadFile}
         toolbar={
@@ -495,14 +490,14 @@ export function FormFiller() {
                 disabled={pageIndex <= 0}
                 onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
               >
-                &larr; Prev
+                {t('pdf.vec.prev')}
               </button>
               <input
                 type="number"
                 className={styles.pageNavInput}
                 min={1}
                 max={Math.max(1, pageCount)}
-                aria-label="Page number"
+                aria-label={t('pdf.ff.pageNumAria')}
                 value={pageJump}
                 onChange={(e) => jumpToPage(e.target.value)}
                 onBlur={() => setPageJump(String(pageIndex + 1))}
@@ -514,7 +509,7 @@ export function FormFiller() {
                 disabled={pageIndex >= pageCount - 1}
                 onClick={() => setPageIndex((i) => Math.min(pageCount - 1, i + 1))}
               >
-                Next &rarr;
+                {t('pdf.vec.next')}
               </button>
             </div>
             <span
@@ -523,22 +518,24 @@ export function FormFiller() {
                 fieldsOnCurrentPageCount > 0 ? styles.previewBadgeInfo : styles.previewBadgeWarn,
               ].join(' ')}
             >
-              {fieldsOnCurrentPageCount > 0
-                ? `${fieldsOnCurrentPageCount} field${fieldsOnCurrentPageCount === 1 ? '' : 's'} on page`
-                : 'No fields on page'}
+              {fieldsOnCurrentPageCount === 1
+                ? t('pdf.ff.fieldsOnPageOne')
+                : fieldsOnCurrentPageCount > 1
+                  ? t('pdf.ff.fieldsOnPageMany', { count: fieldsOnCurrentPageCount })
+                  : t('pdf.ff.noFieldsOnPage')}
             </span>
             {nextFieldPage !== null && (
               <button
                 type="button"
                 className={styles.buttonSmall}
                 onClick={() => setPageIndex(nextFieldPage)}
-                title={`Jump to page ${nextFieldPage + 1}`}
+                title={t('pdf.ff.jumpToPage', { n: nextFieldPage + 1 })}
               >
-                Next field (p.{nextFieldPage + 1}) &rarr;
+                {t('pdf.ff.nextFieldBtn', { n: nextFieldPage + 1 })}
               </button>
             )}
             <button type="button" className={styles.buttonSmall} onClick={clearDoc}>
-              Close
+              {t('pdf.ff.close')}
             </button>
           </>
         }
@@ -547,7 +544,7 @@ export function FormFiller() {
             {doc && fields.length > 0 ? (
               <>
                 <div className={styles.formSidebarHead}>
-                  <div className={styles.compareToggle} role="tablist" aria-label="Filter form fields">
+                  <div className={styles.compareToggle} role="tablist" aria-label={t('pdf.ff.filterAria')}>
                     <button
                       type="button"
                       role="tab"
@@ -558,7 +555,7 @@ export function FormFiller() {
                       ].join(' ')}
                       onClick={() => setFieldFilter('all')}
                     >
-                      All ({fields.length})
+                      {t('pdf.ff.allCount', { count: fields.length })}
                     </button>
                     <button
                       type="button"
@@ -570,18 +567,18 @@ export function FormFiller() {
                       ].join(' ')}
                       onClick={() => setFieldFilter('page')}
                     >
-                      Page {pageIndex + 1} ({fieldsOnCurrentPageCount})
+                      {t('pdf.ff.pageCount', { n: pageIndex + 1, count: fieldsOnCurrentPageCount })}
                     </button>
                   </div>
                   <span className={styles.formSidebarMeta}>
-                    {filledFieldsCount}/{fields.length} filled
+                    {t('pdf.ff.filledMeta', { filled: filledFieldsCount, total: fields.length })}
                   </span>
                 </div>
 
                 <div className={styles.formFieldList}>
                   {groupedFields.length === 0 ? (
                     <p className={styles.infoNote}>
-                      No form fields on page {pageIndex + 1}.
+                      {t('pdf.ff.noFieldsOnPageN', { n: pageIndex + 1 })}
                       {nextFieldPage !== null && (
                         <>
                           {' '}
@@ -590,7 +587,7 @@ export function FormFiller() {
                             className={styles.formInlineLink}
                             onClick={() => setPageIndex(nextFieldPage)}
                           >
-                            Jump to page {nextFieldPage + 1}
+                            {t('pdf.ff.jumpToPage', { n: nextFieldPage + 1 })}
                           </button>
                         </>
                       )}
@@ -604,9 +601,11 @@ export function FormFiller() {
                             className={styles.formGroupHeader}
                             onClick={() => setPageIndex(group.pageIndex)}
                           >
-                            <span>Page {group.pageIndex + 1}</span>
+                            <span>{t('pdf.ff.pageN', { n: group.pageIndex + 1 })}</span>
                             <span>
-                              {group.items.length} field{group.items.length === 1 ? '' : 's'}
+                              {group.items.length === 1
+                                ? t('pdf.ff.fieldCountOne')
+                                : t('pdf.ff.fieldCountMany', { count: group.items.length })}
                             </span>
                           </button>
                         )}
@@ -630,14 +629,14 @@ export function FormFiller() {
                                   {field.label}
                                   {field.required && <span className={styles.formReqStar}> *</span>}
                                 </span>
-                                <span className={styles.formTypePill}>{typeLabel(field.type)}</span>
+                                <span className={styles.formTypePill}>{t(TYPE_LABEL_KEYS[field.type])}</span>
                               </div>
                               {field.label !== field.name && (
                                 <span className={styles.formFieldSubname} title={field.name}>
                                   {field.name}
                                 </span>
                               )}
-                              {field.readOnly && <span className={styles.formReadOnlyTag}>Read-only</span>}
+                              {field.readOnly && <span className={styles.formReadOnlyTag}>{t('pdf.ff.readOnly')}</span>}
 
                               {field.type === 'text' && (
                                 <input
@@ -648,7 +647,7 @@ export function FormFiller() {
                                   maxLength={field.maxLength}
                                   readOnly={field.readOnly}
                                   disabled={field.readOnly}
-                                  placeholder="Enter text…"
+                                  placeholder={t('pdf.ff.enterText')}
                                   onFocus={() => focusField(field)}
                                   onChange={(e) => updateValue(field.name, e.target.value)}
                                 />
@@ -663,7 +662,7 @@ export function FormFiller() {
                                   maxLength={field.maxLength}
                                   readOnly={field.readOnly}
                                   disabled={field.readOnly}
-                                  placeholder="Enter text…"
+                                  placeholder={t('pdf.ff.enterText')}
                                   onFocus={() => focusField(field)}
                                   onChange={(e) => updateValue(field.name, e.target.value)}
                                 />
@@ -671,7 +670,7 @@ export function FormFiller() {
 
                               {field.type === 'checkbox' && (
                                 <Checkbox
-                                  label={Boolean(val) ? 'Checked' : 'Unchecked'}
+                                  label={Boolean(val) ? t('pdf.ff.checked') : t('pdf.ff.unchecked')}
                                   checked={Boolean(val)}
                                   onChange={(checked) => {
                                     if (!field.readOnly) updateValue(field.name, checked);
@@ -713,7 +712,7 @@ export function FormFiller() {
                                         updateValue(field.name, '');
                                       }}
                                     >
-                                      Clear
+                                      {t('pdf.ff.clear')}
                                     </button>
                                   )}
                                 </div>
@@ -728,7 +727,7 @@ export function FormFiller() {
                                   onFocus={() => focusField(field)}
                                   onChange={(e) => updateValue(field.name, e.target.value)}
                                 >
-                                  <option value="">— Select —</option>
+                                  <option value="">{t('pdf.ff.selectOpt')}</option>
                                   {(field.options ?? []).map((opt) => (
                                     <option key={opt} value={opt}>
                                       {opt}
@@ -779,19 +778,19 @@ export function FormFiller() {
                     disabled={modifiedCount === 0}
                     onClick={resetChanges}
                   >
-                    Reset changes{modifiedCount > 0 ? ` (${modifiedCount})` : ''}
+                    {modifiedCount > 0 ? t('pdf.ff.resetChangesCount', { count: modifiedCount }) : t('pdf.ff.resetChanges')}
                   </button>
                   <button
                     type="button"
                     className={styles.buttonSmall}
                     onClick={clearAllFields}
                   >
-                    Clear all
+                    {t('pdf.ff.clearAll')}
                   </button>
                 </div>
 
                 <Checkbox
-                  label="Flatten form on save (bake values into static page content)"
+                  label={t('pdf.ff.flattenLabel')}
                   checked={flatten}
                   onChange={(checked) => {
                     setFlatten(checked);
@@ -799,7 +798,7 @@ export function FormFiller() {
                   }}
                 />
 
-                <Field label="File name">
+                <Field label={t('pdf.ff.fileName')}>
                   <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
                 </Field>
 
@@ -812,26 +811,27 @@ export function FormFiller() {
                   disabled={busy}
                   onClick={saveForm}
                 >
-                  {busy
-                    ? 'Saving PDF…'
-                    : flatten
-                      ? 'Save flattened PDF'
-                      : 'Save filled PDF'}
+                  {busy ? t('pdf.ff.saving') : flatten ? t('pdf.ff.saveFlat') : t('pdf.ff.saveFilled')}
                 </button>
 
                 {result && (
                   <div className={styles.result}>
-                    <h3>{result.flattened ? 'Form filled & flattened' : 'Form filled'}</h3>
+                    <h3>{result.flattened ? t('pdf.ff.resFlatTitle') : t('pdf.ff.resTitle')}</h3>
                     <p>
-                      Updated {result.filledCount} field{result.filledCount === 1 ? '' : 's'}
-                      {result.flattened ? ' and flattened to static content' : ''} · {formatBytes(result.bytes.length)}.
+                      {result.flattened
+                        ? result.filledCount === 1
+                          ? t('pdf.ff.resUpdatedFlatOne', { size: formatBytes(result.bytes.length) })
+                          : t('pdf.ff.resUpdatedFlatMany', { count: result.filledCount, size: formatBytes(result.bytes.length) })
+                        : result.filledCount === 1
+                          ? t('pdf.ff.resUpdatedOne', { size: formatBytes(result.bytes.length) })
+                          : t('pdf.ff.resUpdatedMany', { count: result.filledCount, size: formatBytes(result.bytes.length) })}
                     </p>
                     <button
                       type="button"
                       className={styles.primary}
                       onClick={() => download(result.bytes, outputName)}
                     >
-                      Download {outputName}
+                      {t('pdf.ff.downloadNamed', { name: outputName })}
                     </button>
                     <ContinueWith
                       currentToolId={FILL_FORMS.id}
@@ -842,7 +842,7 @@ export function FormFiller() {
               </>
             ) : (
               <div className={styles.infoNote}>
-                This document has no interactive AcroForm fields to fill. You can open another PDF or continue with another tool.
+                {t('pdf.ff.noAcroSidebar')}
                 {doc && (
                   <div style={{ marginTop: '0.65rem' }}>
                     <ContinueWith
@@ -861,7 +861,7 @@ export function FormFiller() {
             <div className={styles.fileBanner}>
               <strong>{doc.name}</strong>
               <span className={styles.fileBannerMeta}>
-                {pageCount} page{pageCount === 1 ? '' : 's'} · {formatBytes(doc.bytes.length)}
+                {pageCount === 1 ? t('pdf.ff.pagesOne') : t('pdf.ff.pagesMany', { count: pageCount })} · {formatBytes(doc.bytes.length)}
               </span>
               <span
                 className={[
@@ -869,21 +869,22 @@ export function FormFiller() {
                   fields.length > 0 ? styles.previewBadgeInfo : styles.previewBadgeWarn,
                 ].join(' ')}
               >
-                {fields.length} fillable field{fields.length === 1 ? '' : 's'}
+                {fields.length === 1 ? t('pdf.ff.fillableOne') : t('pdf.ff.fillableMany', { count: fields.length })}
                 {doc.inspection.unsupportedCount > 0
-                  ? ` (+${doc.inspection.unsupportedCount} button/sig)`
+                  ? t('pdf.ff.unsupportedBadge', { count: doc.inspection.unsupportedCount })
                   : ''}
               </span>
             </div>
 
             {fields.length === 0 && (
               <div className={styles.formEmptyCard}>
-                <h3>No interactive AcroForm fields found</h3>
+                <h3>{t('pdf.ff.noAcroTitle')}</h3>
                 <p>
-                  This PDF appears to be flat or non-interactive — it does not contain fillable AcroForm fields
-                  (text boxes, checkboxes, radio buttons, dropdowns or lists).
+                  {t('pdf.ff.noAcroBody')}
                   {doc.inspection.unsupportedCount > 0 &&
-                    ` (${doc.inspection.unsupportedCount} non-fillable button or signature field${doc.inspection.unsupportedCount === 1 ? '' : 's'} detected.)`}
+                    (doc.inspection.unsupportedCount === 1
+                      ? t('pdf.ff.noAcroUnsupportedOne')
+                      : t('pdf.ff.noAcroUnsupportedMany', { count: doc.inspection.unsupportedCount }))}
                 </p>
                 <ContinueWith
                   currentToolId={FILL_FORMS.id}
@@ -1082,7 +1083,7 @@ export function FormFiller() {
                   </div>
                 )}
 
-                {rendering && <div className={styles.figureLoading}>Rendering page…</div>}
+                {rendering && <div className={styles.figureLoading}>{t('pdf.canvas.renderingPage')}</div>}
               </div>
             </div>
           </>

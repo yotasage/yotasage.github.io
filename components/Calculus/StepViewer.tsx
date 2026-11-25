@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { SolutionStep, StepLayoutMode } from '../../lib/calculus/types';
 import { useI18n } from '../../lib/ui/i18n';
+import { localizeCalculusStep } from '../../lib/ui/localizeCalculusStep';
 import { useExperienceMode } from '../../lib/ui/mode';
 import styles from '../../styles/Calculus.module.css';
 import KatexSpan from '../KatexSpan';
@@ -19,7 +20,7 @@ export interface StepViewerProps {
 }
 
 export default function StepViewer({ steps, onInspectRule }: StepViewerProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { mode, setMode } = useExperienceMode();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -73,10 +74,14 @@ export default function StepViewer({ steps, onInspectRule }: StepViewerProps) {
   const isQuick = mode === 'quick';
 
   const visibleSteps = useMemo(() => {
-    if (!isQuick) return steps;
-    const filtered = steps.filter((s) => !s.minor);
-    return filtered.length > 0 ? filtered : steps;
-  }, [steps, isQuick]);
+    const base = !isQuick
+      ? steps
+      : (() => {
+          const filtered = steps.filter((s) => !s.minor);
+          return filtered.length > 0 ? filtered : steps;
+        })();
+    return locale === 'en' ? base : base.map((s) => localizeCalculusStep(s, locale));
+  }, [steps, isQuick, locale]);
 
   const resolvedLayout: 'split' | 'interleaved' | 'same-side' =
     layoutPref === 'auto'

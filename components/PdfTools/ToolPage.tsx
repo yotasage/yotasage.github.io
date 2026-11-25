@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import React from 'react';
 
 import { PdfTool, TOOL_CATEGORIES } from '../../lib/pdf/tools';
-import { useI18n } from '../../lib/ui/i18n';
+import { TranslationKey, useI18n } from '../../lib/ui/i18n';
 import { useDesignSystemPage } from '../../lib/ui/theme';
 import styles from '../../styles/PdfTools.module.css';
 import PageHead from '../PageHead';
@@ -74,11 +74,15 @@ export function PdfPage({
   const router = useRouter();
   const resolvedPath = path ?? (router.pathname || '/pdf/main');
   const resolvedDescription = resolvePdfDescription(resolvedPath, description);
+  const matchedTool = PDF_TOOLS_BY_HREF.get(resolvedPath);
+  const displayTitle = matchedTool && title === matchedTool.title
+    ? t(`pdf.tool.${matchedTool.id}.title` as TranslationKey)
+    : title;
 
   return (
     <div className={styles.page} data-ds="v2">
       <PageHead
-        title={title}
+        title={displayTitle}
         description={resolvedDescription}
         path={resolvedPath}
         ogImage={ogImage}
@@ -86,7 +90,7 @@ export function PdfPage({
       />
 
       <ToolHeader
-        title={title}
+        title={displayTitle}
         showExperienceMode={false}
         allowWideView
         actions={
@@ -207,7 +211,7 @@ export function ToolWorkspace({
   multiple = true,
   selectLabel,
   dropLabel,
-  addLabel = '+ Add files',
+  addLabel,
   hasFiles,
   onFiles,
   toolbar,
@@ -227,6 +231,9 @@ export function ToolWorkspace({
   children: React.ReactNode;
 }) {
   const { t } = useI18n();
+  const localizedTitle = t(`pdf.tool.${tool.id}.title` as TranslationKey);
+  const localizedDesc = t(`pdf.tool.${tool.id}.desc` as TranslationKey);
+  const resolvedAddLabel = addLabel ?? t('pdf.ui.addFiles');
 
   if (!hasFiles) {
     return (
@@ -237,8 +244,8 @@ export function ToolWorkspace({
         >
           <ToolIcon name={tool.icon} color={tool.color} size={44} />
         </span>
-        <h2>{tool.title}</h2>
-        <p>{tool.description}</p>
+        <h2>{localizedTitle}</h2>
+        <p>{localizedDesc}</p>
         <FilePickerButton accept={accept} multiple={multiple} onFiles={onFiles} className={styles.heroButton}>
           {selectLabel}
         </FilePickerButton>
@@ -257,7 +264,7 @@ export function ToolWorkspace({
       <DropTarget onFiles={onFiles} className={styles.filesPanel}>
         <div className={styles.toolbar}>
           <FilePickerButton accept={accept} multiple={multiple} onFiles={onFiles} className={styles.buttonSmall}>
-            {addLabel}
+            {resolvedAddLabel}
           </FilePickerButton>
           <span className={styles.toolbarSpacer} />
           {toolbar}
@@ -265,7 +272,7 @@ export function ToolWorkspace({
         {children}
       </DropTarget>
       <aside className={styles.sidebar}>
-        <h2>{tool.title}</h2>
+        <h2>{localizedTitle}</h2>
         {sidebar}
       </aside>
     </div>

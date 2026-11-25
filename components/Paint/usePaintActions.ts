@@ -241,7 +241,7 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
           ...layer,
           canvas: resizeCanvasBounds(layer.canvas, targetW, targetH, 'tl'),
         }));
-        commitLayers('Expand for Paste', expanded, activeLayerId, targetW, targetH);
+        commitLayers(t('paint.history.expandForPaste'), expanded, activeLayerId, targetW, targetH);
       }
 
       const px = incoming.width >= targetW ? 0 : Math.floor((targetW - incoming.width) / 2);
@@ -703,7 +703,7 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
           const proj = await deserializeProject(await file.text());
           setSelection(null);
           setCropRect(null);
-          commitLayers('Open Project', proj.layers, proj.layers[proj.layers.length - 1].id, proj.width, proj.height);
+          commitLayers(t('paint.history.openProject'), proj.layers, proj.layers[proj.layers.length - 1].id, proj.width, proj.height);
           return;
         }
         const imgCanvas = await decodeBlobToCanvas(file);
@@ -723,13 +723,13 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
           };
           setSelection(null);
           setCropRect(null);
-          commitLayers('Open Image', [layer], layer.id, imgCanvas.width, imgCanvas.height);
+          commitLayers(t('paint.history.openImage'), [layer], layer.id, imgCanvas.width, imgCanvas.height);
         }
       } catch (err) {
-        showStatus(err instanceof Error ? err.message : 'Failed to open file');
+        showStatus(err instanceof Error ? err.message : t('paint.status.openFailed'));
       }
     },
-    [commitLayers, insertCanvasAsNewLayer, showStatus],
+    [commitLayers, insertCanvasAsNewLayer, showStatus, t],
   );
 
   const handleExportImage = useCallback(

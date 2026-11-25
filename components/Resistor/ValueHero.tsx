@@ -4,6 +4,7 @@ import {
   Reading, SeriesId, errorPct, formatError, formatOhms, formatPct, formatRkm, formatTolerance, neighbours, ohmsParts, series,
   seriesContaining,
 } from '../../lib/resistor';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Resistor.module.css';
 import { CheckIcon, CopyButton, LinkIcon, Ohms, ValueButton } from './parts';
 
@@ -20,6 +21,7 @@ interface Props {
 
 // The current value, very large, and what follows from it at once: whether it is standard, its range, copies.
 export default function ValueHero({ reading, tolerance, stepSeries, onTolerance, onValue }: Props) {
+  const { t } = useI18n();
   const ohms = reading?.ohms;
   const has = ohms !== undefined;
   // Before anything is typed, the value of the field's placeholder (4k7) stands here in the placeholder's colour.
@@ -31,16 +33,16 @@ export default function ValueHero({ reading, tolerance, stepSeries, onTolerance,
 
   return (
     <div className={styles.valueBlock}>
-      <span className={styles.label} id="resistor-value-label">Resistance</span>
+      <span className={styles.label} id="resistor-value-label">{t('res.hero.resistance')}</span>
       <output className={[styles.value, has ? '' : styles.valueEmpty].join(' ')} data-size={size} data-empty={!has} htmlFor="resistor-input" aria-labelledby="resistor-value-label" aria-hidden={!has}>
         {number}<span className={styles.unit}>{unit}</span>
       </output>
 
       <dl className={styles.facts}>
-        <dt className={styles.label}>Standard</dt>
+        <dt className={styles.label}>{t('res.hero.standard')}</dt>
         <dd>
           {!has && <span className={styles.quiet}>–</span>}
-          {has && ohms === 0 && <span>A 0 Ω link (jumper), in no series</span>}
+          {has && ohms === 0 && <span>{t('res.hero.zeroLink')}</span>}
           {member.length > 0 && (
             <>
               <span className={styles.okMark}><CheckIcon size={15} /></span>
@@ -49,15 +51,15 @@ export default function ValueHero({ reading, tolerance, stepSeries, onTolerance,
           )}
           {near && (
             <>
-              <span>No. Nearest in {series(stepSeries).label}:</span>
+              <span>{t('res.hero.noNearest', { series: series(stepSeries).label })}</span>
               <ValueButton ohms={near.nearest} onPick={onValue} />
               <span className={[styles.num, styles.quiet].join(' ')}>{formatError(errorPct(near.nearest, ohms))}</span>
             </>
           )}
         </dd>
 
-        <dt className={styles.label}>Tolerance</dt>
-        <dd role="radiogroup" aria-label="Tolerance in percent">
+        <dt className={styles.label}>{t('res.hero.tolerance')}</dt>
+        <dd role="radiogroup" aria-label={t('res.hero.tolAria')}>
           {tolerances.map((pct) => (
             <button key={pct} type="button" role="radio" aria-checked={pct === tolerance} className={styles.tol} onClick={() => onTolerance(pct)} title={formatTolerance(pct)} aria-label={formatTolerance(pct)}>
               {formatPct(pct).replace(' %', '')}
@@ -66,25 +68,25 @@ export default function ValueHero({ reading, tolerance, stepSeries, onTolerance,
           <span className={styles.quiet}>%</span>
         </dd>
 
-        <dt className={styles.label}>Range</dt>
+        <dt className={styles.label}>{t('res.hero.range')}</dt>
         <dd>
           {has && ohms > 0 ? (
             <>
               <Ohms ohms={ohms * (1 - tolerance / 100)} digits={5} />
-              <span className={styles.quiet}>to</span>
+              <span className={styles.quiet}>{t('res.to')}</span>
               <Ohms ohms={ohms * (1 + tolerance / 100)} digits={5} />
               {reading.tcr !== undefined && <span className={styles.quiet}>· <span className={styles.num}>{reading.tcr} ppm/K</span></span>}
             </>
           ) : <span className={styles.quiet}>–</span>}
         </dd>
 
-        <dt className={styles.label}>Copy</dt>
+        <dt className={styles.label}>{t('res.hero.copy')}</dt>
         <dd>
           {has ? (
             <>
-              <CopyButton text={formatOhms(ohms)} label={<span className={styles.num}>{formatOhms(ohms)}</span>} title={`Copy ${formatOhms(ohms)}`} />
-              <CopyButton text={formatRkm(ohms)} label={<span className={styles.num}>{formatRkm(ohms)}</span>} title={`Copy ${formatRkm(ohms)}`} />
-              <CopyButton text={() => window.location.href} label="Link" title="Copy a link to this result" icon={<LinkIcon />} />
+              <CopyButton text={formatOhms(ohms)} label={<span className={styles.num}>{formatOhms(ohms)}</span>} title={t('res.hero.copyTitle', { val: formatOhms(ohms) })} />
+              <CopyButton text={formatRkm(ohms)} label={<span className={styles.num}>{formatRkm(ohms)}</span>} title={t('res.hero.copyTitle', { val: formatRkm(ohms) })} />
+              <CopyButton text={() => window.location.href} label={t('res.hero.link')} title={t('res.hero.linkTitle')} icon={<LinkIcon />} />
             </>
           ) : <span className={styles.quiet}>–</span>}
         </dd>

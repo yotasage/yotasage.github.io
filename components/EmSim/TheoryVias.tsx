@@ -8,6 +8,7 @@
 import React, { useMemo } from 'react';
 
 import { viaBinding } from '../../lib/emsim/eqvaluesVia';
+import { useI18n } from '../../lib/ui/i18n';
 import css from '../../styles/EmSimTheory.module.css';
 import { Eq, Topic } from './theoryKit';
 import type { Cite, Live } from './theoryKit';
@@ -25,9 +26,9 @@ export const VIA_TOPICS: readonly { id: string; title: string }[] = [
   { id: 'via-sparams', title: 'S-parameters and mixed mode' },
   { id: 'via-limits', title: 'Where the via model stops' },
 ];
-const T = (id: string) => VIA_TOPICS.find((t) => t.id === id)!.title;
 
 export default function TheoryVias({ live, cite }: { live: Live; cite: Cite }) {
+  const { t: tr } = useI18n();
   const fed = useTheoryFeed().via;
   const vlive = useMemo<Live>(() => {
     let b: Record<string, number> = {};
@@ -35,186 +36,110 @@ export default function TheoryVias({ live, cite }: { live: Live; cite: Cite }) {
     return { ...live, b, n: fed && Object.keys(b).length ? fed.r.n : 0 };
   }, [fed, live]);
   const E = (id: string, need?: string) => <Eq id={id} live={vlive} cite={cite} need={need} via />;
+  const abs = tr('em.th2.cite.abstract');
 
   return (
     <div data-theory-vias="">
-      <Topic id="via-line" no={7} title={T('via-line')}>
+      <Topic id="via-line" no={7} title={tr('em.th3.t.via-line')}>
         <p>
-          A via is a short vertical line: the barrel is its signal conductor, and the return vias and the planes around it
-          carry the return current. Between two planes the field around the barrel lies in the horizontal cut, so the tool
-          solves that cut in 2D, as it solves a trace’s cross-section, with the barrel and the return vias as circles.
-          Within one material the cut is an exact TEM line: its impedance is the vacuum value divided by √ε<sub>r</sub>, and
-          its delay is the length times √ε<sub>r</sub> / c<sub>0</sub>. For the 0.6/0.3 via with two return vias 0.8 mm away,
-          the barrel is 127.36 Ω in vacuum, 59.71 Ω in the 0.865 mm core (ε<sub>r</sub> 4.55) and 62.90 Ω in the 3313
-          prepreg (ε<sub>r</sub> 4.1).
+          {tr('em.th3.t7.p1a')}ε<sub>r</sub>{tr('em.th3.t7.p1b')}ε<sub>r</sub>{tr('em.th3.t7.p1c')}c<sub>0</sub>
+          {tr('em.th3.t7.p1d')}ε<sub>r</sub>{tr('em.th3.t7.p1e')}ε<sub>r</sub>{tr('em.th3.t7.p1f')}
         </p>
-        <p className={css.now}>
-          Equations with numbers in them follow the via in the Via section; the numbers in the text are those of the
-          0.6/0.3 via and the LVDS via pair.
-        </p>
+        <p className={css.now}>{tr('em.th3.t7.now')}</p>
         {E('via-barrel-z')}
         {E('via-barrel-delay')}
         <ViaSideFigure />
         <p>
-          <b>Quick estimates.</b> A barrel of diameter d inside a solid ring of return of diameter D is a coaxial line,
-          Z = η<sub>0</sub>/(2π√ε<sub>r</sub>)·ln(D/d){cite('WikiCapacitance')}. With N return vias on a circle a thin-wire
-          estimate adds a term for the gaps between them; for the via above it gives 60.84 Ω, 1.9 % above the solver,
-          because returns 0.8 mm from a 0.3 mm barrel are too close for the thin-wire picture. The tool turns the cut’s
-          vacuum capacitance into the radius R<sub>eq</sub> of the coaxial line with the same capacitance: 1.255 mm here.
+          <b>{tr('em.th3.t7.p2b')}</b>{tr('em.th3.t7.p2a')}η<sub>0</sub>{tr('em.th3.t7.p2c')}ε<sub>r</sub>{tr('em.th3.t7.p2d')}
+          {cite('WikiCapacitance')}{tr('em.th3.t7.p2e')}R<sub>eq</sub>{tr('em.th3.t7.p2f')}
         </p>
         {E('via-coax')}
-        {E('via-quasi-coax', 'With numbers for a single via whose return vias are all at the same distance.')}
+        {E('via-quasi-coax', tr('em.th3.t7.needQuasi'))}
         {E('via-req')}
         <ViaCutFigure />
         <p>
-          <b>The section as one element.</b> Taken whole between its outer pads, the via has the inductance of its barrel
-          lines and their capacitance plus every pad’s and plane’s excess; its impedance is √(L/C) and its delay √(LC). For
-          the 0.6/0.3 via: L 0.681 nH, C 269.7 fF (179.8 fF of barrel line, 90.0 fF at the pads and planes), so
-          √(L/C) = 50.23 Ω and 13.55 ps through the board. Each feed’s 0.6 mm over its plane’s antipad has no plane under it; its
-          return runs in the next plane beyond, which adds 0.31 nH per feed, so with its feeds the via reads 69.38 Ω and 18.72 ps. With a controlled return path, physics-based models treat a via
-          as a line whose impedance can be matched, studied up to 20 GHz{cite('Fan2014', 'abstract')}.
+          <b>{tr('em.th3.t7.p3b')}</b>{tr('em.th3.t7.p3a')}{cite('Fan2014', abs)}.
         </p>
         {E('via-section-l')}
         {E('via-section-c')}
         {E('via-section-z')}
         {E('via-section-delay')}
         <p>
-          A via pair is the same with two barrels: the cut gives Z<sub>diff</sub> and Z<sub>cm</sub> as for a pair of traces
-          (<a href="#pairs">topic 3</a>). For the LVDS pair of 0.22 mm drills 0.7 mm apart with six return vias, the barrel’s
-          Z<sub>diff</sub> is 92.23 Ω in the core and 97.16 Ω in the prepreg; the section as one element is 83.49 Ω
-          differential and 36.63 Ω common, 12.59 ps; with 0.11 mm feeds over the openings (example 3) it reads 89.08 Ω,
-          48.09 Ω and 13.43 ps.
+          {tr('em.th3.t7.p4a')}Z<sub>diff</sub>{tr('em.th3.t7.p4b')}Z<sub>cm</sub>{tr('em.th3.t7.p4c')}
+          <a href="#pairs">{tr('em.th3.t7.topic3')}</a>{tr('em.th3.t7.p4d')}Z<sub>diff</sub>{tr('em.th3.t7.p4e')}
         </p>
         {E('via-section-pair')}
       </Topic>
 
-      <Topic id="via-pads" no={8} title={T('via-pads')}>
+      <Topic id="via-pads" no={8} title={tr('em.th3.t.via-pads')}>
         <p>
-          Where the barrel meets a pad, the pad’s copper adds capacitance to the planes nearby; where it passes a plane, the
-          edge of the opening (the antipad) comes close to the barrel. Both are local: the tool takes each as a shunt
-          capacitance at its layer, the charge in a window around the layer less the barrel line’s own over that window.
-          Pads, antipads and planes are rings around the axis, so the tool solves them as bodies of revolution with ring
-          charges, one via at a time. Quasi-static integral equations give the excess capacitance and inductance of a via
-          with pads and openings, and how they depend on pad and opening size{cite('Kok1993', 'abstract')}.
+          {tr('em.th3.t8.p1a')}{cite('Kok1993', abs)}.
         </p>
         <p>
-          On the 0.6/0.3 via each pad adds about 15.3 fF and each plane crossing with its pad 14.3 fF: 90.0 fF over six
-          layers. So the section, 50.23 Ω, lies below the barrel’s 59.71 Ω: half again as much capacitance at the same
-          inductance. A smaller antipad adds capacitance and lowers the impedance, a larger one does the opposite; the
-          Target finds the size: the 0.6/0.3 via reaches 50 Ω with antipads of Ø1.048 mm instead of 1.8 mm (less capacitance taken off, and shorter runs over them). Drill, pad,
-          antipad and pitch are the means of tuning a differential via, by whether it is too capacitive or too
-          inductive{cite('Vardapetyan2020', 'abstract')}.
+          {tr('em.th3.t8.p2a')}{cite('Vardapetyan2020', abs)}.
         </p>
         {E('via-dc')}
         <ViaPadsFigure />
         <p>
-          The LVDS pair keeps pads only on L1 and L6, 31.5 fF each per via, while its planes’ openings take 4.5 fF away:
-          54.0 fF per via. Between the pair’s two pads the tool estimates the coupling from the barrel’s cut, as
-          −k<sub>12</sub>·ΔC with k<sub>12</sub> = 0.274, and marks it as an estimate: a full-wave run of the pair takes the pads’ coupling in fully.
+          {tr('em.th3.t8.p3a')}k<sub>12</sub>{tr('em.th3.t8.p3b')}k<sub>12</sub>{tr('em.th3.t8.p3c')}
         </p>
         {E('via-pad-coupling')}
-        {E('via-target', 'With numbers in the Via section’s Target, which solves for them.')}
+        {E('via-target', tr('em.th3.t8.needTarget'))}
       </Topic>
 
-      <Topic id="via-return" no={9} title={T('via-return')}>
+      <Topic id="via-return" no={9} title={tr('em.th3.t.via-return')}>
         <p>
-          A via is a line only when its return current has a path beside it: return (stitching) vias joined to the planes
-          the signal changes between{cite('Fan2014', 'abstract')}. Without one, the return current spreads from the antipad
-          into the cavity between the two planes, where the radial wave has no cut-off: it is launched at every frequency.
-          The board’s open edges make that plane pair a cavity with resonances; a 50 × 50 mm board with ε<sub>r</sub> 4.3
-          has its first near 1.45 GHz. Shorting vias around the signal via make the plane pair’s impedance independent of
-          the board’s edges{cite('Chada2009', 'abstract')}, and how far a quasi-static via model holds depends on the distance
-          to the return via{cite('Archambeault2004', 'abstract')}.
+          {tr('em.th3.t9.p1a')}{cite('Fan2014', abs)}{tr('em.th3.t9.p1b')}ε<sub>r</sub>{tr('em.th3.t9.p1c')}
+          {cite('Chada2009', abs)}{tr('em.th3.t9.p1d')}{cite('Archambeault2004', abs)}.
         </p>
         {E('cavity-f')}
-        <p>
-          So the tool refuses a via without return vias and flags one whose nearest return is more than 1.5 mm away:
-          there full-wave runs put the model’s impedance more than about 4 % off. Moving the 0.6/0.3 via’s two returns from 0.8 to 2.5 mm
-          raises its barrel in the core from 59.71 to 108.78 Ω and the section from 50.23 to 68.63 Ω.
-        </p>
+        <p>{tr('em.th3.t9.p2')}</p>
         <ViaReturnFigure />
         <p>
-          <b>The wall rule.</b> The axisymmetric solve closes its domain with a grounded coaxial wall at the returns’
-          R<sub>eq</sub>, so that between the planes it has exactly the cut’s capacitance and what remains at a pad is only
-          the local excess. When R<sub>eq</sub> would lie inside an opening, the tool uses a wider wall and says so. Return
-          vias that an antipad cuts into are flagged too: the 0.6/0.3 via’s antipad edge lies 0.25 mm past its return vias’
-          near edge.
+          <b>{tr('em.th3.t9.p3b')}</b>{tr('em.th3.t9.p3a')}R<sub>eq</sub>{tr('em.th3.t9.p3c')}R<sub>eq</sub>{tr('em.th3.t9.p3d')}
         </p>
         <p>
-          An uneven arrangement of ground vias near a pair raises mode conversion about as much as a length mismatch of its
-          traces{cite('RimoloDonadio2009b', 'abstract')}. In a dense via array, overlapping antipads raise the planes’
-          impedance sharply{cite('Miller2004', 'abstract')}; the tool flags a pair’s round antipads wider than its pitch.
+          {tr('em.th3.t9.p4a')}{cite('RimoloDonadio2009b', abs)}{tr('em.th3.t9.p4b')}{cite('Miller2004', abs)}{tr('em.th3.t9.p4c')}
         </p>
       </Topic>
 
-      <Topic id="via-stubs" no={10} title={T('via-stubs')}>
+      <Topic id="via-stubs" no={10} title={tr('em.th3.t.via-stubs')}>
         <p>
-          Barrel beyond the layer where the signal leaves is a stub: an open line hanging off the path. An open line of
-          length ℓ has the input impedance −jZ<sub>0</sub>·cot(βℓ), zero when βℓ = π/2: a short across the path at the
-          quarter-wave frequency and its odd multiples{cite('SteerVol2', '§2.4')}{cite('Ellingson2018', '§3.16')}. So the
-          bare stub resonates at f = 1/(4τ) = c<sub>0</sub>/(4ℓ√ε<sub>eff</sub>), τ its one-way delay.
+          {tr('em.th3.t10.p1a')}Z<sub>0</sub>{tr('em.th3.t10.p1b')}{cite('SteerVol2', '§2.4')}{cite('Ellingson2018', '§3.16')}
+          {tr('em.th3.t10.p1c')}c<sub>0</sub>{tr('em.th3.t10.p1d')}ε<sub>eff</sub>{tr('em.th3.t10.p1e')}
         </p>
         {E('stub-zin')}
-        {E('stub-quarter', 'With numbers for a via with a stub.')}
+        {E('stub-quarter', tr('em.th3.t10.needStub'))}
         <p>
-          The 0.6/0.3 via leaving on L3, with its 2 mm feed on L1, has 1.335 mm of barrel below it: 9.19 ps, a quarter wave at 27.2 GHz bare; with its
-          pads the stub resonates at 21.8 GHz, where |S<sub>21</sub>| falls to −51.7 dB. The pads load the stub with
-          capacitance and pull its resonance down. The frequency is set by the stub’s length, its depth by the stub’s
-          structure and return paths{cite('Huddar2021', 'abstract')}.
+          {tr('em.th3.t10.p2a')}S<sub>21</sub>{tr('em.th3.t10.p2b')}{cite('Huddar2021', abs)}.
         </p>
         <StubS21Figure />
         <p>
-          Backdrilling drills the unused barrel out from the other side with a wider bit, leaving a short remainder.
-          Backdrilled from the bottom to 1.2 mm, the same via keeps 0.165 mm of stub, which resonates near 215 GHz, far
-          above the band; at 10 GHz the stub cost 0.60 dB of transmission, the backdrilled via 0.10 dB. In a pair, residual
-          stubs that differ by the ±10 mil backdrill tolerance gave 9 Ω of differential impedance variation, mode conversion
-          above −40 dB from 5 GHz and 2–3 ps of skew in simulation{cite('Zhang2020', 'abstract')}. Removing power-via stub
-          resonances in 25 Gbps+ links improved the bit-error rate by seven orders of magnitude, simulated and
-          measured{cite('Park2017', 'abstract')}. The tool flags a stub whose first resonance, with its pads, falls inside the
-          edge’s band.
+          {tr('em.th3.t10.p3a')}{cite('Zhang2020', abs)}{tr('em.th3.t10.p3b')}{cite('Park2017', abs)}{tr('em.th3.t10.p3c')}
         </p>
         <BackdrillSideFigure />
       </Topic>
 
-      <Topic id="via-tdr" no={11} title={T('via-tdr')}>
+      <Topic id="via-tdr" no={11} title={tr('em.th3.t.via-tdr')}>
         <p>
-          A TDR sends a step down the line and shows the impedance the step meets, from the part that comes back:
-          Z = Z<sub>ref</sub>·(1 + ρ)/(1 − ρ), ρ the reflected step. Time on the plot is there and back: a feature at delay τ
-          from the port shows at 2τ. The tool’s step has a Gaussian edge of the chosen 10–90 % rise time; its spectrum is
-          down 3 dB at f<sub>3</sub> = 0.34/t<sub>r</sub> (9.70 GHz at 35 ps), and the S-parameters run to where it is down
-          60 dB (43.3 GHz). The common 0.35/t<sub>r</sub> belongs to a single-pole edge; for the Gaussian edge the factor is
-          0.3396.
+          {tr('em.th3.t11.p1a')}Z<sub>ref</sub>{tr('em.th3.t11.p1b')}f<sub>3</sub>{tr('em.th3.t11.p1c')}
+          t<sub>r</sub>{tr('em.th3.t11.p1d')}t<sub>r</sub>{tr('em.th3.t11.p1e')}
         </p>
         {E('tdr-rho')}
         {E('tdr-z')}
         {E('edge-f3')}
         {E('edge-band')}
-        <p>
-          A feature shorter than the rise time shows as a softened bump or dip, smaller than its true step. On the 0.6/0.3
-          via between 25 mm feeds of 51.50 Ω: at 15 ps the feeds’ runs over the antipads and the barrel
-          show as a bump to 70.17 Ω; at 35 ps it is 60.34 Ω; at 100 ps 56.97 Ω. Extra capacitance (pads, a wide trace)
-          shows as a dip, extra inductance (a barrel far from its returns, a narrow neck) as a bump. The flat parts before
-          and after the via are the feeds’ own impedance: 51.4975 Ω here, the trace’s 51.4976 Ω.
-        </p>
+        <p>{tr('em.th3.t11.p2')}</p>
         <ViaTdrFigure />
-        <p>
-          A feed shows a flat part only when its round trip is longer than the rise time: the default 2 mm feeds (1.7 mm
-          from the pad’s edge) take 20.6 ps there and back, less than 35 ps, so the step never settles on them. With the
-          ports right at the pads the 0.6/0.3 via reads 49.66 to 51.00 Ω at 35 ps. For a pair the TDR drives the two vias in
-          opposite directions against a 100 Ω differential port, or together against 25 Ω for the common mode. The LVDS
-          pair between 25 mm feeds dips from 103.36 to 93.69 Ω at 35 ps, to 90.74 Ω at 15 ps and to 99.30 Ω at 100 ps.
-        </p>
+        <p>{tr('em.th3.t11.p3')}</p>
         {E('tdr-roundtrip')}
       </Topic>
 
-      <Topic id="via-sparams" no={12} title={T('via-sparams')}>
+      <Topic id="via-sparams" no={12} title={tr('em.th3.t.via-sparams')}>
         <p>
-          S-parameters describe the via as a sine wave sees it: S<sub>11</sub> what returns to the port, S<sub>21</sub> what
-          goes through, each against frequency, usually in dB as 20·log<sub>10</sub>|S|. The tool chains the ABCD matrix of
-          every piece (barrel lines, shunt capacitances, stubs, feeds) and turns the product into S at the ports’ impedance.
-          The 0.6/0.3 via with its 2 mm feeds between 50 Ω ports: S<sub>11</sub> −18.0 dB and S<sub>21</sub> −0.07 dB at
-          10 GHz, S<sub>11</sub> −5.0 dB at 25 GHz; most of the reflection comes from the feeds’ runs over the antipads. The model has no losses, so |S<sub>11</sub>|² + |S<sub>21</sub>|² = 1 at
-          every frequency.
+          {tr('em.th3.t12.p1a')}S<sub>11</sub>{tr('em.th3.t12.p1b')}S<sub>21</sub>{tr('em.th3.t12.p1c')}<sub>10</sub>
+          {tr('em.th3.t12.p1d')}S<sub>11</sub>{tr('em.th3.t12.p1e')}S<sub>21</sub>{tr('em.th3.t12.p1f')}
+          S<sub>11</sub>{tr('em.th3.t12.p1g')}S<sub>11</sub>{tr('em.th3.t12.p1h')}S<sub>21</sub>{tr('em.th3.t12.p1i')}
         </p>
         {E('abcd-line')}
         {E('abcd-shunt')}
@@ -222,39 +147,25 @@ export default function TheoryVias({ live, cite }: { live: Live; cite: Cite }) {
         {E('s-db')}
         <ViaSFigure />
         <p>
-          For a pair, the four single-ended ports become mixed-mode ports: differential (S<sub>dd</sub>) referred to 100 Ω,
-          common (S<sub>cc</sub>) to 25 Ω, and S<sub>cd</sub> and S<sub>dc</sub> for conversion between
-          them{cite('BockelmanEisenstadt1995')}. The LVDS pair at 10 GHz: S<sub>dd11</sub> −21.7 dB, S<sub>dd21</sub> −0.03 dB,
-          S<sub>cc11</sub> about −7 dB. A symmetric pair converts nothing between the modes in this model (S<sub>cd21</sub> is
-          rounding noise, below −300 dB); unequal stubs or return vias are what convert{cite('Zhang2020', 'abstract')}
-          {cite('RimoloDonadio2009b', 'abstract')}. The plots fade above the frequency where the lumped parts stop being
-          short (<a href="#via-limits">topic 13</a>).
+          {tr('em.th3.t12.p2a')}S<sub>dd</sub>{tr('em.th3.t12.p2b')}S<sub>cc</sub>{tr('em.th3.t12.p2c')}
+          S<sub>cd</sub>{tr('em.th3.t12.p2d')}S<sub>dc</sub>{tr('em.th3.t12.p2e')}{cite('BockelmanEisenstadt1995')}
+          {tr('em.th3.t12.p2f')}S<sub>dd11</sub>{tr('em.th3.t12.p2g')}S<sub>dd21</sub>{tr('em.th3.t12.p2h')}
+          S<sub>cc11</sub>{tr('em.th3.t12.p2i')}S<sub>cd21</sub>{tr('em.th3.t12.p2j')}
+          {cite('Zhang2020', abs)}{cite('RimoloDonadio2009b', abs)}{tr('em.th3.t12.p2k')}
+          <a href="#via-limits">{tr('em.th3.t12.topic13')}</a>{tr('em.th3.t12.p2l')}
         </p>
         {E('mixed-mode-s')}
         <ViaMixedFigure />
       </Topic>
 
-      <Topic id="via-limits" no={13} title={T('via-limits')}>
+      <Topic id="via-limits" no={13} title={tr('em.th3.t.via-limits')}>
         <p>
-          Each lumped part, a pad’s window or the section as one element, holds while it is short against the wavelength.
-          Quasi-static via circuits lose their usable bandwidth as the structure approaches λ/8{cite('Cartier2007', 'abstract')},
-          so the lumped parts hold to c<sub>0</sub>/(8ℓ√ε<sub>r</sub>) of the longest window: 29.5 GHz for the 0.6/0.3 via (the
-          0.597 mm window at L4, ε<sub>r</sub> 4.55), 23.8 GHz for the LVDS pair. Earlier, the plane cavity: between two planes the barrel
-          launches a radial wave that the return vias cancel only in part, and the tool’s limit is where that wave moves S by 0.1,
-          20.8 GHz for the 0.6/0.3 via with its two returns (full-wave runs leave the model there too). The pair’s opposite currents
-          launch almost none, so its limit stays near 23 GHz. The flags name each case with
-          its numbers: no return via (refused), a far return, a return inside an antipad, overlapping pads or antipads in a
-          pair, a shared antipad, a long lumped part, a stub resonance in the band, a feed over its plane’s antipad, and the
-          wider wall. A shared antipad of a differential via excites higher-order modes, and separate antipads on the outer
-          planes did better mainly at 40–60 GHz in a full-wave study to 100 GHz{cite('Duan2014', 'abstract')}; the tool flags
-          a shared antipad when the band passes 40 GHz. A feed that crosses its plane’s antipad has no plane under it there
-          and is more inductive than the line it is modelled as.
+          {tr('em.th3.t13.p1a')}{cite('Cartier2007', abs)}{tr('em.th3.t13.p1b')}c<sub>0</sub>{tr('em.th3.t13.p1c')}
+          ε<sub>r</sub>{tr('em.th3.t13.p1d')}ε<sub>r</sub>{tr('em.th3.t13.p1e')}{cite('Duan2014', abs)}{tr('em.th3.t13.p1f')}
         </p>
         {E('lambda8')}
         <p>
-          Left out of this model: losses, the return current through the plane cavity, radiation and higher-order modes,
-          and the coupling of a pair’s pads beyond the estimate. A full-wave run in the Waves section solves these on the
-          same vias (<a href="#full-wave">topic 14</a>).
+          {tr('em.th3.t13.p2a')}<a href="#full-wave">{tr('em.th3.t13.topic14')}</a>{tr('em.th3.t13.p2b')}
         </p>
       </Topic>
     </div>

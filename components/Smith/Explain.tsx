@@ -19,7 +19,7 @@ import {
   LINE, QUARTER, SERIES_C, SERIES_L, SERIES_R, SHUNT_C, SHUNT_L, SHUNT_R, STUB_OPEN, STUB_SHORT,
 } from '../../lib/smith/parts';
 import { formatAmount, formatResidual } from '../../lib/quantity';
-import { KIND_NAMES, VALUE_NAMES } from '../../lib/smith/state';
+import { useI18n } from '../../lib/ui/i18n';
 import css from '../../styles/SmithExplain.module.css';
 import mcss from '../../styles/SmithMath.module.css';
 import { openDerivation } from './Derivation';
@@ -28,6 +28,7 @@ import { mathLink } from './mathLink';
 import { markWide, watchWide } from '../Equations/wide';
 import { rowOf, specsFor, v } from './mathRows';
 import { complexText } from './readout';
+import { eqTitle, kindName, valueName as partValueName } from './smithText';
 import { followTopic } from './Why';
 
 /** A change of a part's value the card explains: the part, the value before and a counter that tells moves apart. */
@@ -46,15 +47,13 @@ export interface ExplainProps {
 
 const WIDE = `.${mcss.grid}`;
 const UNIT = ['Ω', 'H', 'F', 'Ω', 'H', 'F', 'λ', 'λ', 'λ', 'Ω'];
-const TOPIC_NAME: Record<string, string> = { 'moving-on-the-chart': 'Moving on the chart', 'transmission-lines': 'Transmission lines' };
-
-const senseWord = (s: Sense): string => (s === CW ? 'clockwise' : s === CCW ? 'counter-clockwise' : 'along the real axis');
 
 function reducedMotion(): boolean {
   return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 export default function Explain({ circuit: c, i, digits, bib, move, full }: ExplainProps) {
+  const { t, locale } = useI18n();
   const d = digits;
   const n = c.parts.length;
   const ex = useMemo(() => (i >= 0 && i < n ? explainPart(c, i) : null), [c, i, n]);
@@ -70,6 +69,7 @@ export default function Explain({ circuit: c, i, digits, bib, move, full }: Expl
   useEffect(() => () => { mathLink.path?.trace(null); }, []);
   if (!ex) return null;
 
+  const senseWord = (s: Sense): string => t(s === CW ? 'sm.exp.cw' : s === CCW ? 'sm.exp.ccw' : 'sm.exp.realAxis');
   const cite = (key: string): React.ReactNode => (bib ? <> {bib.cite(key)}</> : null);
   // Computed numbers by D20: a residual under the floor (|Γ| of an exact match) as its bound, never as 1e−17.
   const num = (x: number, what: string): React.ReactNode => (
@@ -81,16 +81,17 @@ export default function Explain({ circuit: c, i, digits, bib, move, full }: Expl
   const z = (p: Point, what: string): React.ReactNode => (
     <span className={css.num} data-ex={what} data-raw={`${p.zr},${p.zi}`}>{complexText(p.zr, p.zi, '', d)}</span>
   );
-  const name = KIND_NAMES[ex.kind].toLowerCase();
-  const valueName = VALUE_NAMES[ex.kind];
-  const nodeOf = (k: number): string => (k === 0 ? 'the load' : k === n ? 'the input' : `node ${k}`);
+  const name = kindName(ex.kind, locale).toLowerCase();
+  const valueName = partValueName(ex.kind, locale);
+  const nodeOf = (k: number): string => (k === 0 ? t('sm.solve.theLoad') : k === n ? t('sm.solve.theInput') : t('sm.solve.nodeN', { k }));
+  const topicName = (id: string): string => (id === 'transmission-lines' ? t('sm.exp.topicLines') : t('sm.exp.topicMoving'));
   const circleName = (e: Explanation): React.ReactNode => {
     const ci = e.circle;
-    if (!ci) return 'no circle';
-    if (ci.kind === 'rotation') return <>a circle about the centre, radius |Γ| = {num(ci.radius, 'radius')}</>;
-    if (ci.kind === 'line') return <>its line’s circle, centre ({num(ci.cx, 'cx')}, 0), radius {num(ci.radius, 'radius')}</>;
-    if (ci.radius === Infinity) return <>the real axis ({ci.kind} = 0)</>;
-    return <>the {ci.kind} = {num(ci.value, 'kept')} {ci.kind === 'r' || ci.kind === 'g' ? 'circle' : 'arc'}</>;
+    if (!ci) return t('sm.exp.noCircle');
+    if (ci.kind === 'rotation') return <>{t('sm.exp.rotCircle')} {num(ci.radius, 'radius')}</>;
+    if (ci.kind === 'line') return <>{t('sm.exp.lineCircle')} ({num(ci.cx, 'cx')}, 0), {t('sm.exp.radiusWord')} {num(ci.radius, 'radius')}</>;
+    if (ci.radius === Infinity) return t('sm.exp.realAxisEq', { kind: ci.kind });
+    return <>{t('sm.exp.theKindCircle', { kind: ci.kind })} {num(ci.value, 'kept')} {t(ci.kind === 'r' || ci.kind === 'g' ? 'sm.exp.circleWord' : 'sm.exp.arcWord')}</>;
   };
 
   // ---- The move: what the change did.
@@ -100,27 +101,27 @@ export default function Explain({ circuit: c, i, digits, bib, move, full }: Expl
     const lc = k === SERIES_L || k === SERIES_C || k === SHUNT_L || k === SHUNT_C;
     const stub = k === STUB_OPEN || k === STUB_SHORT;
     const coord = a.changes;
-    const rose = mv.dMag > 0 ? 'rose' : mv.dMag < 0 ? 'fell' : 'stayed';
+    const rose = t(mv.dMag > 0 ? 'sm.exp.rose' : mv.dMag < 0 ? 'sm.exp.fell' : 'sm.exp.stayed');
     let why: React.ReactNode = null;
-    if (lc) why = <>Making an L or a C larger always turns its point clockwise, in series or in shunt; making it smaller, counter-clockwise.</>;
-    else if (k === LINE) why = <>A line turns the point about the centre of its own chart, clockwise as it gets longer: the direction the rim’s scale calls “towards the generator”{cite('SteerVol3')}.</>;
-    else if (stub) why = <>A stub adds susceptance and moves along its g circle; its b grows with its length, and a growing b turns the point clockwise round its g circle.</>;
-    else if (k === SERIES_R) why = <>A series resistor adds only r: the point slides along its constant-x arc, towards the open circuit at Γ = +1 as R grows{cite('WikiSmith')}.</>;
-    else if (k === SHUNT_R) why = <>A shunt resistor adds only g: the point slides along its constant-b arc, towards the short at Γ = −1 as R falls{cite('WikiSmith')}.</>;
-    const how = mv.sense === 0 ? 'moved along the real axis' : `turned ${senseWord(mv.sense)}`;
+    if (lc) why = t('sm.exp.whyLC');
+    else if (k === LINE) why = <>{t('sm.exp.whyLine')}{cite('SteerVol3')}.</>;
+    else if (stub) why = t('sm.exp.whyStub');
+    else if (k === SERIES_R) why = <>{t('sm.exp.whySeriesR')}{cite('WikiSmith')}.</>;
+    else if (k === SHUNT_R) why = <>{t('sm.exp.whyShuntR')}{cite('WikiSmith')}.</>;
+    const how = mv.sense === 0 ? t('sm.exp.movedRealAxis') : t('sm.exp.turnedSense', { sense: senseWord(mv.sense) });
     moveBlock = (
       <div className={css.move} data-explain-move="" data-sense={senseWord(mv.sense)}>
         <p className={css.lead}>
-          <strong>{valueName} from {val(mv.oldValue, 'old')} to {val(mv.newValue, 'new')}</strong>
-          {coord && <>: {coord} from {num(b.to, 'old-coord')} to {num(a.to, 'new-coord')} (Δ{coord} = {mv.delta >= 0 ? '+' : '−'}{num(Math.abs(mv.delta), 'delta')})</>}
-          {(k === LINE || stub) && <> (Δℓ = {mv.delta >= 0 ? '+' : '−'}{num(Math.abs(mv.delta), 'delta')} λ{k === LINE ? <>, {num(Math.abs(mv.turns), 'turns')} turns of its chart</> : null})</>}
+          <strong>{valueName} {t('sm.exp.fromWord')} {val(mv.oldValue, 'old')} {t('sm.exp.toWord')} {val(mv.newValue, 'new')}</strong>
+          {coord && <>: {coord} {t('sm.exp.fromWord')} {num(b.to, 'old-coord')} {t('sm.exp.toWord')} {num(a.to, 'new-coord')} (Δ{coord} = {mv.delta >= 0 ? '+' : '−'}{num(Math.abs(mv.delta), 'delta')})</>}
+          {(k === LINE || stub) && <> (Δℓ = {mv.delta >= 0 ? '+' : '−'}{num(Math.abs(mv.delta), 'delta')} λ{k === LINE ? <>, {num(Math.abs(mv.turns), 'turns')} {t('sm.exp.turnsOfChart')}</> : null})</>}
           {k === QUARTER && <> (Δ(Zt/Z0) = {mv.delta >= 0 ? '+' : '−'}{num(Math.abs(mv.delta), 'delta')})</>}
           .
         </p>
         <p>
-          The point at {nodeOf(i + 1)} {how}
-          {k === SERIES_R || k === SHUNT_R ? <>, {mv.approach > 0 ? 'towards' : 'away from'} the {k === SERIES_R ? 'open at Γ = +1' : 'short at Γ = −1'}</> : null}
-          {a.circle && k !== QUARTER ? <> on {circleName(a)}</> : null}, from z = {z(b.end, 'old-z')} to z = {z(a.end, 'new-z')}; |Γ| {rose} from {num(b.end.mag, 'old-mag')} to {num(a.end.mag, 'new-mag')}.
+          {t('sm.exp.pointAtHow', { node: nodeOf(i + 1), how })}
+          {k === SERIES_R || k === SHUNT_R ? <>, {t(mv.approach > 0 ? 'sm.exp.towards' : 'sm.exp.awayFrom')} {t(k === SERIES_R ? 'sm.exp.theOpen' : 'sm.exp.theShort')}</> : null}
+          {a.circle && k !== QUARTER ? <> {t('sm.exp.onWord')} {circleName(a)}</> : null}, {t('sm.exp.fromZ')} {z(b.end, 'old-z')} {t('sm.exp.toZ')} {z(a.end, 'new-z')}{t('sm.exp.magChange', { dir: rose })} {num(b.end.mag, 'old-mag')} {t('sm.exp.toWord')} {num(a.end.mag, 'new-mag')}.
         </p>
         {why && <p className={css.why}>{why}</p>}
       </div>
@@ -133,58 +134,58 @@ export default function Explain({ circuit: c, i, digits, bib, move, full }: Expl
     const e = ex, k = e.kind;
     const rule: React.ReactNode[] = [];
     const series = k <= SERIES_C, shunt = k === SHUNT_R || k === SHUNT_L || k === SHUNT_C || k === STUB_OPEN || k === STUB_SHORT;
-    if (series) rule.push(<>A part in series adds its own impedance: z<sub>in</sub> = z<sub>L</sub> + z<sub>s</sub>{cite('SteerVol3')}.</>);
-    if (shunt) rule.push(<>A part in shunt adds its admittance: y<sub>in</sub> = y<sub>L</sub> + y<sub>p</sub>{cite('SteerVol3')}.</>);
-    if (k === SERIES_L) rule.push(<>An inductor adds x = ωL/Z0 = {num(e.added, 'added')}, which is positive{cite('WikiSmith')}, so r does not change (r = {num(e.kept, 'kept')}) and the point slides along its constant-r circle.</>);
-    if (k === SERIES_C) rule.push(<>A capacitor adds x = −1/(ωCZ0) = {num(e.added, 'added')}, which is negative{cite('WikiSmith')}, so r does not change (r = {num(e.kept, 'kept')}) and the point slides along its constant-r circle.</>);
-    if (k === SERIES_R) rule.push(<>A series resistor adds only r = R/Z0 = {num(e.added, 'added')}: the point slides along its constant-x arc (x = {num(e.kept, 'kept')}), towards the open circuit at Γ = +1 as R grows{cite('WikiSmith')}.</>);
-    if (k === SHUNT_C) rule.push(<>A capacitor adds b = ωCZ0 = {num(e.added, 'added')}, positive{cite('WikiSmith')}; g does not change (g = {num(e.kept, 'kept')}), so the point slides along its constant-g circle.</>);
-    if (k === SHUNT_L) rule.push(<>An inductor adds b = −Z0/(ωL) = {num(e.added, 'added')}, negative{cite('WikiSmith')}; g does not change (g = {num(e.kept, 'kept')}), so the point slides along its constant-g circle.</>);
-    if (k === SHUNT_R) rule.push(<>A shunt resistor adds only g = Z0/R = {num(e.added, 'added')}: the point slides along its constant-b arc (b = {num(e.kept, 'kept')}), towards the short at Γ = −1 as R falls{cite('WikiSmith')}.</>);
-    if (k === STUB_OPEN || k === STUB_SHORT) rule.push(<>Open and shorted stubs are shunt parts too: this one adds b = {num(e.added, 'added')} and moves along its g circle (g = {num(e.kept, 'kept')}).</>);
-    if (k === LINE) rule.push(<>A line turns the point about the centre of its own chart, clockwise as it gets longer{cite('SteerVol3')}; this one is {num(e.value, 'length')} λ long, {num(e.turns, 'turns')} turns of its own chart.</>);
-    if (k === QUARTER) rule.push(<>A λ/4 transformer is a line of Zt a quarter wavelength long: it turns the point clockwise by half a turn of the chart of Zt{cite('SteerVol3')}.</>);
+    if (series) rule.push(<>{t('sm.exp.ruleSeries')} z<sub>in</sub> = z<sub>L</sub> + z<sub>s</sub>{cite('SteerVol3')}.</>);
+    if (shunt) rule.push(<>{t('sm.exp.ruleShunt')} y<sub>in</sub> = y<sub>L</sub> + y<sub>p</sub>{cite('SteerVol3')}.</>);
+    if (k === SERIES_L) rule.push(<>{t('sm.exp.ruleSeriesL1')} {num(e.added, 'added')}{t('sm.exp.ruleSeriesL2')}{cite('WikiSmith')}{t('sm.exp.ruleSeriesL3')} {num(e.kept, 'kept')}{t('sm.exp.ruleSeriesL4')}</>);
+    if (k === SERIES_C) rule.push(<>{t('sm.exp.ruleSeriesC1')} {num(e.added, 'added')}{t('sm.exp.ruleSeriesC2')}{cite('WikiSmith')}{t('sm.exp.ruleSeriesL3')} {num(e.kept, 'kept')}{t('sm.exp.ruleSeriesL4')}</>);
+    if (k === SERIES_R) rule.push(<>{t('sm.exp.ruleSeriesR1')} {num(e.added, 'added')}{t('sm.exp.ruleSeriesR2')} {num(e.kept, 'kept')}{t('sm.exp.ruleSeriesR3')}{cite('WikiSmith')}.</>);
+    if (k === SHUNT_C) rule.push(<>{t('sm.exp.ruleShuntC1')} {num(e.added, 'added')}{t('sm.exp.ruleShuntC2')}{cite('WikiSmith')}{t('sm.exp.ruleShuntC3')} {num(e.kept, 'kept')}{t('sm.exp.ruleShuntC4')}</>);
+    if (k === SHUNT_L) rule.push(<>{t('sm.exp.ruleShuntL1')} {num(e.added, 'added')}{t('sm.exp.ruleShuntL2')}{cite('WikiSmith')}{t('sm.exp.ruleShuntC3')} {num(e.kept, 'kept')}{t('sm.exp.ruleShuntC4')}</>);
+    if (k === SHUNT_R) rule.push(<>{t('sm.exp.ruleShuntR1')} {num(e.added, 'added')}{t('sm.exp.ruleShuntR2')} {num(e.kept, 'kept')}{t('sm.exp.ruleShuntR3')}{cite('WikiSmith')}.</>);
+    if (k === STUB_OPEN || k === STUB_SHORT) rule.push(<>{t('sm.exp.ruleStub1')} {num(e.added, 'added')} {t('sm.exp.ruleStub2')} {num(e.kept, 'kept')}).</>);
+    if (k === LINE) rule.push(<>{t('sm.exp.ruleLine1')}{cite('SteerVol3')}{t('sm.exp.ruleLine2')} {num(e.value, 'length')} {t('sm.exp.ruleLine3')} {num(e.turns, 'turns')} {t('sm.exp.ruleLine4')}</>);
+    if (k === QUARTER) rule.push(<>{t('sm.exp.ruleQuarter')}{cite('SteerVol3')}.</>);
     let way: React.ReactNode = null;
-    if (k === SERIES_L) way = <>Every r circle runs from Γ = +1 round to the point on the real axis where x = 0. As x grows from 0, the point leaves the real axis upwards, so adding inductance in series turns the point <b>clockwise</b> round its r circle{cite('SteerVol3')}.</>;
-    if (k === SERIES_C) way = <>Every r circle runs from Γ = +1 round to the point on the real axis where x = 0. As x grows from 0 the point leaves it upwards, so adding capacitance in series, a negative x, turns it <b>counter-clockwise</b>{cite('SteerVol3')}.</>;
+    if (k === SERIES_L) way = <>{t('sm.exp.waySeriesL1')} <b>{t('sm.exp.cw')}</b> {t('sm.exp.waySeriesL2')}{cite('SteerVol3')}.</>;
+    if (k === SERIES_C) way = <>{t('sm.exp.waySeriesC1')} <b>{t('sm.exp.ccw')}</b>{cite('SteerVol3')}.</>;
     if (k === SHUNT_C || k === SHUNT_L || k === STUB_OPEN || k === STUB_SHORT) {
-      way = <>Every g circle runs from Γ = −1 round to the point on the real axis where b = 0; as b grows from 0 the point leaves it downwards, so a positive b (a shunt capacitor) turns the point clockwise round its g circle and a negative b (a shunt inductor) counter-clockwise{cite('SteerVol3')}. Here: <b>{senseWord(e.sense)}</b>.</>;
+      way = <>{t('sm.exp.wayShunt1')}{cite('SteerVol3')}{t('sm.exp.wayShunt2')} <b>{senseWord(e.sense)}</b>.</>;
     }
-    if (k === SERIES_R || k === SHUNT_R) way = e.sense === 0 ? <>On the real axis the arc is straight.</> : <>On this arc, whose centre is at ({num(e.circle?.cx ?? NaN, 'cx')}, {num(e.circle?.cy ?? NaN, 'cy')}), that way is <b>{senseWord(e.sense)}</b>.</>;
-    if (k === LINE && e.circle?.kind === 'line') way = <>A line whose impedance is not Z0 still draws a circle, centred on the real axis but not at the centre{cite('SteerVol3')}.</>;
+    if (k === SERIES_R || k === SHUNT_R) way = e.sense === 0 ? <>{t('sm.exp.wayStraight')}</> : <>{t('sm.exp.wayArcCentre1')}{num(e.circle?.cx ?? NaN, 'cx')}, {num(e.circle?.cy ?? NaN, 'cy')}{t('sm.exp.wayArcCentre2')} <b>{senseWord(e.sense)}</b>.</>;
+    if (k === LINE && e.circle?.kind === 'line') way = <>{t('sm.exp.wayLineOff')}{cite('SteerVol3')}.</>;
     let circle: React.ReactNode = null;
     if (e.circle && e.circle.radius < Infinity) {
       circle = (k === SERIES_L || k === SERIES_C)
-        ? <>Why a circle: z moves along the straight line r = {num(e.kept, 'kept')}; Γ = (z − 1)/(z + 1) takes every straight line to a circle{cite('WikiMobius')}, here centre ({num(e.circle.cx, 'cx')}, {num(e.circle.cy, 'cy')}), radius {num(e.circle.radius, 'radius')}.</>
-        : <>Why a circle: with its value fixed every ideal part maps the point by Γ′ = (aΓ + b)/(cΓ + d), a Möbius transformation, so turning its value moves the point round a circle{cite('WikiMobius')}: here centre ({num(e.circle.cx, 'cx')}, {num(e.circle.cy, 'cy')}), radius {num(e.circle.radius, 'radius')}.</>;
+        ? <>{t('sm.exp.circleWhyLC1')} {num(e.kept, 'kept')}{t('sm.exp.circleWhyLC2')}{cite('WikiMobius')}{t('sm.exp.hereCentre')}{num(e.circle.cx, 'cx')}, {num(e.circle.cy, 'cy')}), {t('sm.exp.radiusWord')} {num(e.circle.radius, 'radius')}.</>
+        : <>{t('sm.exp.circleWhyMobius')}{cite('WikiMobius')}{t('sm.exp.hereCentreColon')}{num(e.circle.cx, 'cx')}, {num(e.circle.cy, 'cy')}), {t('sm.exp.radiusWord')} {num(e.circle.radius, 'radius')}.</>;
     }
-    const noneText = k === QUARTER ? <>a line of Zt of length 0</> : <>{valueName} = {val(e.none, 'none')}</>;
+    const noneText = k === QUARTER ? <>{t('sm.exp.noneQuarter')}</> : <>{valueName} = {val(e.none, 'none')}</>;
+    const derEq = EQUATION_BY_ID.get(e.derivation);
     arc = (
       <div className={css.arc} data-explain-arc="" data-sense={senseWord(e.sense)}>
-        <h4 className={css.head}>Part {i + 1}’s arc on the chart</h4>
+        <h4 className={css.head}>{t('sm.exp.arcHead', { n: i + 1 })}</h4>
         {e.still ? (
-          <p>Here the part does not move the point: it starts at {nodeOf(i)}, z = {z(e.start, 'start-z')}, which it cannot change.</p>
+          <p>{t('sm.exp.still1', { node: nodeOf(i) })} {z(e.start, 'start-z')}{t('sm.exp.still2')}</p>
         ) : (
           <>
             {rule.map((r, j) => <p key={j}>{r}</p>)}
             {way && <p>{way}</p>}
             {circle && <p>{circle}</p>}
             <p>
-              The arc starts where the part does nothing ({noneText}), at {nodeOf(i)}: z = {z(e.start, 'start-z')}, |Γ| = {num(e.start.mag, 'start-mag')}; it
-              ends at {valueName} = {val(e.value, 'value')}, at {nodeOf(i + 1)}: z = {z(e.end, 'end-z')}, |Γ| = {num(e.end.mag, 'end-mag')}
-              {e.changes ? <> ({e.changes} from {num(e.from, 'from')} to {num(e.to, 'to')})</> : null}. Its length is how much the part does.
+              {t('sm.exp.arcStarts')}{noneText}{t('sm.exp.arcAtNode', { node: nodeOf(i) })} {z(e.start, 'start-z')}, |Γ| = {num(e.start.mag, 'start-mag')}{t('sm.exp.arcEnds', { val: valueName })} {val(e.value, 'value')}{t('sm.exp.arcEndsAt', { node: nodeOf(i + 1) })} {z(e.end, 'end-z')}, |Γ| = {num(e.end.mag, 'end-mag')}
+              {e.changes ? <> ({e.changes} {t('sm.exp.fromWord')} {num(e.from, 'from')} {t('sm.exp.toWord')} {num(e.to, 'to')})</> : null}{t('sm.exp.arcLength')}
             </p>
           </>
         )}
         <Equations c={c} e={e} digits={d} />
         <p className={css.links}>
           <button type="button" className={css.link} data-explain-derive={e.derivation}
-            onClick={(ev) => openDerivation(e.derivation, ev.currentTarget, { t: 'part', i })}>Derive: {EQUATION_BY_ID.get(e.derivation)?.title}</button>
+            onClick={(ev) => openDerivation(e.derivation, ev.currentTarget, { t: 'part', i })}>{t('sm.exp.deriveBtn', { title: derEq ? eqTitle(e.derivation, derEq.title, locale) : '' })}</button>
           <a href={`#${e.topic}`} className={css.link} data-explain-topic={e.topic}
-            onClick={(ev) => followTopic(e.topic, ev.currentTarget)}>→ theory: {TOPIC_NAME[e.topic]}</a>
+            onClick={(ev) => followTopic(e.topic, ev.currentTarget)}>{t('sm.exp.theoryLink', { topic: topicName(e.topic) })}</a>
           {!reducedMotion() && !e.still && (
             <button type="button" className={css.link} data-explain-trace=""
-              onClick={() => mathLink.path?.trace(movePath(c, i, e.none, e.value))}>Trace on the chart</button>
+              onClick={() => mathLink.path?.trace(movePath(c, i, e.none, e.value))}>{t('sm.exp.traceBtn')}</button>
           )}
         </p>
       </div>
@@ -193,7 +194,7 @@ export default function Explain({ circuit: c, i, digits, bib, move, full }: Expl
 
   if (!moveBlock && !arc) return null;
   return (
-    <section className={css.explain} data-explain={i} aria-label={`Explanation of ${name} ${i + 1}`} aria-live="polite">
+    <section className={css.explain} data-explain={i} aria-label={t('sm.exp.sectionAria', { name, n: i + 1 })} aria-live="polite">
       {moveBlock}
       {arc}
     </section>
@@ -202,6 +203,7 @@ export default function Explain({ circuit: c, i, digits, bib, move, full }: Expl
 
 /** The equations that apply, with the numbers put in: the panel's rows of the part and its circle's. */
 function Equations({ c, e, digits }: { c: Circuit; e: Explanation; digits: number }) {
+  const { t, locale } = useI18n();
   const html = useMemo(() => {
     const out: { id: string; title: string; lhs: string; rhs: string; lines: string[]; put?: { lhs: string; rhs: string }; note?: string }[] = [];
     const rows = specsFor(c, { t: 'part', i: e.i });
@@ -218,7 +220,7 @@ function Equations({ c, e, digits }: { c: Circuit; e: Explanation; digits: numbe
       }
       if (spec) {
         const r = rowOf(spec, digits);
-        out.push({ id, title: r.title, lhs: mathHtml(r.lhs), rhs: mathHtml(`{}= ${r.rhs}`), lines: [...r.lines.map((l) => `{}= ${l}`), r.bound ? r.result : `{}= ${r.result}`].map((t) => mathHtml(t)) });
+        out.push({ id, title: r.title, lhs: mathHtml(r.lhs), rhs: mathHtml(`{}= ${r.rhs}`), lines: [...r.lines.map((l) => `{}= ${l}`), r.bound ? r.result : `{}= ${r.result}`].map((txt) => mathHtml(txt)) });
         continue;
       }
       // A circle's equation (no single left side): the symbolic form, then with the kept value put in, and its centre
@@ -230,19 +232,19 @@ function Equations({ c, e, digits }: { c: Circuit; e: Explanation; digits: numbe
       const put = (x: typeof sides[number]): string => tex(x, { value: (nm) => (nm === ci.kind ? kept : undefined) });
       const f = (x: number): string => formatAmount(x, '', digits);
       out.push({
-        id, title: eq.title, lhs: mathHtml(tex(sides[0])), rhs: mathHtml(`{}= ${sides.slice(1).map((x) => tex(x)).join(' = ')}`), lines: [],
+        id, title: eqTitle(id, eq.title, locale), lhs: mathHtml(tex(sides[0])), rhs: mathHtml(`{}= ${sides.slice(1).map((x) => tex(x)).join(' = ')}`), lines: [],
         put: { lhs: mathHtml(put(sides[0])), rhs: mathHtml(`{}= ${sides.slice(1).map(put).join(' = ')}`) },
-        note: `A circle with centre (${f(ci.cx)}, ${f(ci.cy)}) and radius ${f(ci.radius)}.`,
+        note: t('sm.exp.circleNote', { cx: f(ci.cx), cy: f(ci.cy), r: f(ci.radius) }),
       });
     }
     return out;
-  }, [c, e, digits]);
+  }, [c, e, digits, locale, t]);
   // An equation wider than the card scrolls inside its own box, which then takes a Tab stop (wide.ts).
   const list = useRef<HTMLOListElement>(null);
   useEffect(() => { if (list.current) markWide(list.current, WIDE); }, [html]);
   useEffect(() => (list.current ? watchWide(list.current, WIDE) : undefined), []);
   return (
-    <ol className={css.eqs} aria-label="The equations that apply" ref={list}>
+    <ol className={css.eqs} aria-label={t('sm.exp.eqListAria')} ref={list}>
       {html.map((r) => (
         <li key={r.id} className={css.eq} data-explain-eq={r.id}>
           <span className={css.eqTitle}>{r.title}</span>

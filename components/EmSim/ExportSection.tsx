@@ -22,9 +22,11 @@ import { figureSvg } from '../../lib/emsim/figure/svg';
 import { figureTikz } from '../../lib/emsim/figure/tikz';
 import { setupSection } from '../../lib/emsim/lines';
 import type { Setup } from '../../lib/emsim/setup';
+import { useI18n } from '../../lib/ui/i18n';
 import base from '../../styles/EmSim.module.css';
 import css from '../../styles/EmSimExport.module.css';
 import DataExport, { download } from './DataExport';
+import { emT } from './emText';
 import Report from './Report';
 import { useExportFeed } from './exportFeed';
 import type { FedPlot, OpenText, OpenedNote } from './exportFeed';
@@ -41,9 +43,8 @@ const PX_PER_MM = 96 / 25.4;
 const MAX_SIDE = 16384, MAX_AREA = 120e6; // what a canvas holds in every browser
 const SVG_ID = 'emx';
 const QTY_LABEL: Record<string, string> = { phi: 'φ', E: '|E|', lines: '|E|', H: '|H|', charge: 'σ', current: 'J' };
-const COLOURS: [ColourMode, string][] = [['colour', 'Colour'], ['grey', 'Grey'], ['bw', 'B&W']];
+const COLOUR_IDS: ColourMode[] = ['colour', 'grey', 'bw'];
 const FORMATS: [Format, string][] = [['tikz', 'TikZ'], ['svg', 'SVG'], ['png', 'PNG']];
-const SIZES: [SizeId, string][] = [...SIZE_PRESETS.map((p) => [p.id as SizeId, `${p.name} (${p.mm} mm)`] as [SizeId, string]), ['linewidth', '\\linewidth (LaTeX)'], ['custom', 'Other width']];
 
 /** The map of a field view as the figure model takes it. */
 export function mapInput(p: Painted): MapInput {
@@ -65,7 +66,7 @@ const safeName = (s: string) => s.trim().replace(/\.(tex|zip|svg|png)$/i, '').re
 /** The SVG drawn into a canvas at `scale` × 96 px per inch, as PNG bytes. */
 async function pngOf(svg: string, wMm: number, hMm: number, scale: number): Promise<Blob> {
   const w = Math.max(1, Math.round(wMm * scale * PX_PER_MM)), h = Math.max(1, Math.round(hMm * scale * PX_PER_MM));
-  if (w > MAX_SIDE || h > MAX_SIDE || w * h > MAX_AREA) throw new Error(`${w} × ${h} px is more than a browser can draw; choose a smaller scale or width.`);
+  if (w > MAX_SIDE || h > MAX_SIDE || w * h > MAX_AREA) throw new Error(emT('em.exp.pngTooBig', { w, h }));
   const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
   try {
     const img = new Image();
@@ -74,17 +75,18 @@ async function pngOf(svg: string, wMm: number, hMm: number, scale: number): Prom
     const c = document.createElement('canvas');
     c.width = w; c.height = h;
     const ctx = c.getContext('2d');
-    if (!ctx) throw new Error('This browser gave no canvas to draw in.');
+    if (!ctx) throw new Error(emT('em.exp.noCanvas'));
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, w, h);
     ctx.drawImage(img, 0, 0, w, h);
-    return await new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('The picture could not be made.'))), 'image/png'));
+    return await new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error(emT('em.exp.noPng')))), 'image/png'));
   } finally {
     URL.revokeObjectURL(url);
   }
 }
 
 export default function ExportSection({ setup, unit, digits, opened, openText }: { setup: Setup; unit: ShownUnit; digits: number; opened: OpenedNote | null; openText: OpenText }) {
+  const { t } = useI18n();
   const feed = useExportFeed();
   const [pick, setPick] = useState('section');
   const [size, setSize] = useState<SizeId>('column');
@@ -101,32 +103,32 @@ export default function ExportSection({ setup, unit, digits, opened, openText }:
   const num = (v: number) => numText(v, 3);
   const choices = useMemo<Choice[]>(() => {
     const s = setup.stackup, sec = setupSection(setup), w = setup.trace.w.v;
-    const out: Choice[] = [{ id: 'stackup', label: 'Stackup', make: (o) => stackupFigure(s, { ...o, len, num }) }];
+    const out: Choice[] = [{ id: 'stackup', label: t('em.exp.ch.stackup'), make: (o) => stackupFigure(s, { ...o, len, num }) }];
     if (typeof sec !== 'string') {
-      out.push({ id: 'section', label: 'Cross-section', make: (o) => sectionFigure(s, setup.trace, sec, { ...o, len, num }) });
-      if (usable(feed.traceMap)) { const m = feed.traceMap; out.push({ id: 'section-map', label: 'Cross-section with its field map', map: m, make: (o) => sectionFigure(s, setup.trace, sec, { ...o, len, num, map: mapInput(m) }) }); }
+      out.push({ id: 'section', label: t('em.exp.ch.section'), make: (o) => sectionFigure(s, setup.trace, sec, { ...o, len, num }) });
+      if (usable(feed.traceMap)) { const m = feed.traceMap; out.push({ id: 'section-map', label: t('em.exp.ch.sectionMap'), map: m, make: (o) => sectionFigure(s, setup.trace, sec, { ...o, len, num, map: mapInput(m) }) }); }
     }
-    out.push({ id: 'via-side', label: 'Via from the side', make: (o) => viaSideFigure(s, setup.via, w, { ...o, len, num }) });
-    if (usable(feed.viaSide)) { const m = feed.viaSide; out.push({ id: 'via-side-map', label: 'Via from the side with its field map', map: m, make: (o) => viaSideFigure(s, setup.via, w, { ...o, len, num, map: mapInput(m) }) }); }
-    out.push({ id: 'via-top', label: 'Via from above', make: (o) => viaTopFigure(s, setup.via, w, { ...o, len, num }) });
-    if (usable(feed.viaTop)) { const m = feed.viaTop; out.push({ id: 'via-top-map', label: 'Via from above with its field map', map: m, make: (o) => viaTopFigure(s, setup.via, w, { ...o, len, num, map: mapInput(m) }) }); }
+    out.push({ id: 'via-side', label: t('em.exp.ch.viaSide'), make: (o) => viaSideFigure(s, setup.via, w, { ...o, len, num }) });
+    if (usable(feed.viaSide)) { const m = feed.viaSide; out.push({ id: 'via-side-map', label: t('em.exp.ch.viaSideMap'), map: m, make: (o) => viaSideFigure(s, setup.via, w, { ...o, len, num, map: mapInput(m) }) }); }
+    out.push({ id: 'via-top', label: t('em.exp.ch.viaTop'), make: (o) => viaTopFigure(s, setup.via, w, { ...o, len, num }) });
+    if (usable(feed.viaTop)) { const m = feed.viaTop; out.push({ id: 'via-top-map', label: t('em.exp.ch.viaTopMap'), map: m, make: (o) => viaTopFigure(s, setup.via, w, { ...o, len, num, map: mapInput(m) }) }); }
     for (const p of [...feed.sweep, ...feed.via]) out.push({ id: p.id, label: p.label, plot: p, make: (o) => plotFigure(p.spec, o) });
     return out;
     // num is pure
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setup, feed, len]);
+  }, [setup, feed, len, t]);
   const choice = choices.find((c) => c.id === pick) ?? choices.find((c) => c.id === 'section') ?? choices[0];
 
   const width: string | number | null = size === 'custom' ? (readWidth(custom) && !readWidth(custom).linewidth ? custom : null) : size === 'linewidth' ? '\\linewidth' : SIZE_PRESETS.find((p) => p.id === size)?.mm ?? 88;
   const made = useMemo(() => {
-    if (width === null) return { fig: null, svg: '', reason: 'Type a width from 40 to 2000 mm, such as 120, 12 cm or 4.5 in.' };
+    if (width === null) return { fig: null, svg: '', reason: t('em.exp.badWidth') };
     try {
       const fig = choice.make({ width, colour });
       return { fig, svg: figureSvg(fig, { id: SVG_ID }), reason: '' };
     } catch (e) {
-      return { fig: null, svg: '', reason: `This figure could not be drawn: ${e instanceof Error ? e.message : String(e)}` };
+      return { fig: null, svg: '', reason: t('em.exp.drawFail', { msg: e instanceof Error ? e.message : String(e) }) };
     }
-  }, [choice, width, colour]);
+  }, [choice, width, colour, t]);
   const fig = made.fig;
   const file = safeName(name) || (fig ? fig.name : 'figure');
   const tikz = useMemo(() => (fig && format === 'tikz' ? figureTikz(fig) : null), [fig, format]);
@@ -138,27 +140,27 @@ export default function ExportSection({ setup, unit, digits, opened, openText }:
     el.emsimExport = { args: () => plain({ id: choice.id, width, colour, unit, scale, file, format, map: choice.map ? mapInput(choice.map) : null, spec: choice.plot ? choice.plot.spec : null }) };
   });
 
-  const say = (t: string) => setMsg(t);
+  const say = (text: string) => setMsg(text);
   const failed = (e: unknown) => say(e instanceof Error ? e.message : String(e));
   const copy = async () => {
     if (!fig) return;
-    if (!navigator.clipboard) { say('This browser gives the page no clipboard here; use Save.'); return; }
+    if (!navigator.clipboard) { say(t('em.exp.noClipboard')); return; }
     setBusy(true);
     try {
       if (format === 'png') {
-        if (typeof ClipboardItem === 'undefined' || !navigator.clipboard.write) { say('This browser does not copy pictures; use Save for the PNG.'); return; }
+        if (typeof ClipboardItem === 'undefined' || !navigator.clipboard.write) { say(t('em.exp.noCopyImg')); return; }
         const blob = await pngOf(made.svg, fig.width, fig.height, scale);
         await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-        say(`PNG copied (${Math.round(fig.width * scale * PX_PER_MM)} × ${Math.round(fig.height * scale * PX_PER_MM)} px).`);
+        say(t('em.exp.pngCopied', { w: Math.round(fig.width * scale * PX_PER_MM), h: Math.round(fig.height * scale * PX_PER_MM) }));
       } else if (format === 'svg') {
         await navigator.clipboard.writeText(made.svg);
-        say('SVG copied.');
+        say(t('em.exp.svgCopied'));
       } else if (tikz) {
         await navigator.clipboard.writeText(tikz.picture);
-        say(tikz.files.length ? `TikZ picture copied. It needs ${tikz.files.map((f) => f.name).join(' and ')} beside your .tex: Save gives a ZIP with them.` : 'TikZ picture copied; it needs only \\usepackage{tikz}.');
+        say(tikz.files.length ? t('em.exp.tikzCopiedFiles', { files: tikz.files.map((f) => f.name).join(t('em.exp.and')) }) : t('em.exp.tikzCopiedAlone'));
       }
     } catch (e) {
-      failed(e instanceof DOMException && e.name === 'NotAllowedError' ? new Error('The browser did not allow the copy; use Save.') : e);
+      failed(e instanceof DOMException && e.name === 'NotAllowedError' ? new Error(t('em.exp.copyDenied')) : e);
     } finally {
       setBusy(false);
     }
@@ -169,19 +171,19 @@ export default function ExportSection({ setup, unit, digits, opened, openText }:
     try {
       if (format === 'png') {
         download(await pngOf(made.svg, fig.width, fig.height, scale), `${file}.png`);
-        say(`Saved ${file}.png.`);
+        say(t('em.exp.savedFile', { file: `${file}.png` }));
       } else if (format === 'svg') {
         download(new Blob([made.svg], { type: 'image/svg+xml' }), `${file}.svg`);
-        say(`Saved ${file}.svg.`);
+        say(t('em.exp.savedFile', { file: `${file}.svg` }));
       } else if (tikz) {
         if (!tikz.files.length) {
           download(new Blob([tikz.document], { type: 'application/x-tex' }), `${file}.tex`);
-          say(`Saved ${file}.tex: a document that compiles alone; the picture inside it needs only \\usepackage{tikz}.`);
+          say(t('em.exp.savedTex', { file }));
         } else {
           const entries: Record<string, Uint8Array> = { [`${file}.tex`]: strToU8(tikz.document) };
           for (const f of tikz.files) entries[f.name] = f.bytes;
           download(new Blob([zipSync(entries, { level: 6 }) as BlobPart], { type: 'application/zip' }), `${file}.zip`);
-          say(`Saved ${file}.zip: ${file}.tex with ${tikz.files.map((f) => f.name).join(' and ')}; keep them together.`);
+          say(t('em.exp.savedZip', { file, files: tikz.files.map((f) => f.name).join(t('em.exp.and')) }));
         }
       }
     } catch (e) {
@@ -191,59 +193,64 @@ export default function ExportSection({ setup, unit, digits, opened, openText }:
     }
   };
 
+  const sizes: [SizeId, string][] = [
+    ...SIZE_PRESETS.map((p) => [p.id as SizeId, `${t(`em.exp.size.${p.id}`)} (${p.mm} mm)`] as [SizeId, string]),
+    ['linewidth', t('em.exp.size.linewidth')],
+    ['custom', t('em.exp.size.custom')],
+  ];
   const noMaps = !usable(feed.traceMap) && !usable(feed.viaSide) && !usable(feed.viaTop);
   const pngPx = fig ? `${Math.round(fig.width * scale * PX_PER_MM)} × ${Math.round(fig.height * scale * PX_PER_MM)} px` : '';
   return (
     <div ref={root} className={css.root} data-export-ready data-figure={choice.id} data-format={format}>
-      <p className={base.lede}>A figure of what the page shows, at the width of your document, in colour, grey or black and white. It is made here in your browser; nothing is sent anywhere.</p>
+      <p className={base.lede}>{t('em.exp.lede')}</p>
       <div className={css.controls}>
         <label className={css.ctl}>
-          <span className={css.label}>Figure</span>
+          <span className={css.label}>{t('em.exp.figure')}</span>
           <select className={base.select} value={choice.id} onChange={(e) => setPick(e.target.value)} data-export-figure>
             {choices.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
           </select>
         </label>
         <label className={css.ctl}>
-          <span className={css.label}>Width</span>
+          <span className={css.label}>{t('em.exp.width')}</span>
           <select className={base.select} value={size} onChange={(e) => setSize(e.target.value as SizeId)} data-export-size>
-            {SIZES.map(([id, t]) => <option key={id} value={id}>{t}</option>)}
+            {sizes.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
           </select>
         </label>
         {size === 'custom' && (
           <label className={css.ctl}>
-            <span className={css.label}>Width (mm, cm or in)</span>
+            <span className={css.label}>{t('em.exp.widthUnits')}</span>
             <input className={`${base.input} ${css.width}`} value={custom} onChange={(e) => setCustom(e.target.value)} aria-invalid={width === null} inputMode="decimal" data-export-width />
           </label>
         )}
-        <div className={css.ctl} role="group" aria-label="Colours">
-          <span className={css.label}>Colours</span>
+        <div className={css.ctl} role="group" aria-label={t('em.exp.colours')}>
+          <span className={css.label}>{t('em.exp.colours')}</span>
           <span className={base.seg}>
-            {COLOURS.map(([c, t]) => <button key={c} type="button" aria-pressed={colour === c} onClick={() => setColour(c)} data-export-colour={c}>{t}</button>)}
+            {COLOUR_IDS.map((c) => <button key={c} type="button" aria-pressed={colour === c} onClick={() => setColour(c)} data-export-colour={c}>{t(`em.exp.col.${c}`)}</button>)}
           </span>
         </div>
-        <div className={css.ctl} role="group" aria-label="Format">
-          <span className={css.label}>Format</span>
+        <div className={css.ctl} role="group" aria-label={t('em.exp.format')}>
+          <span className={css.label}>{t('em.exp.format')}</span>
           <span className={base.seg}>
-            {FORMATS.map(([f, t]) => <button key={f} type="button" aria-pressed={format === f} onClick={() => setFormat(f)} data-export-format={f}>{t}</button>)}
+            {FORMATS.map(([f, label]) => <button key={f} type="button" aria-pressed={format === f} onClick={() => setFormat(f)} data-export-format={f}>{label}</button>)}
           </span>
         </div>
         <label className={css.ctl}>
-          <span className={css.label}>PNG scale</span>
+          <span className={css.label}>{t('em.exp.pngScale')}</span>
           <select className={base.select} value={scale} onChange={(e) => setScale(Number(e.target.value))} data-export-scale>
             {[1, 2, 3, 4, 5, 6, 7, 8].map((k) => <option key={k} value={k}>{k}×</option>)}
           </select>
         </label>
         <label className={css.ctl}>
-          <span className={css.label}>File name</span>
+          <span className={css.label}>{t('em.exp.fileName')}</span>
           <input className={`${base.input} ${css.name}`} value={name} placeholder={fig ? fig.name : 'figure'} onChange={(e) => setName(e.target.value)} spellCheck={false} data-export-name />
         </label>
       </div>
       <Whys ks="export-figure export-size export-colour export-format export-scale export-name" />
-      {noMaps && <p className={css.note} data-export-maps-note>For a figure with a field map, turn on “Show the fields” in the Trace or the Via section; it appears here once drawn.</p>}
+      {noMaps && <p className={css.note} data-export-maps-note>{t('em.exp.noMaps')}</p>}
       <div className={css.actions}>
-        <button type="button" className={base.button} onClick={copy} disabled={!fig || busy} data-export-copy>Copy</button>
+        <button type="button" className={base.button} onClick={copy} disabled={!fig || busy} data-export-copy>{t('em.exp.copy')}</button>
         <button type="button" className={base.button} onClick={save} disabled={!fig || busy} data-export-save>
-          {format === 'tikz' ? (tikz && tikz.files.length ? 'Save .zip' : 'Save .tex') : format === 'svg' ? 'Save .svg' : 'Save .png'}
+          {format === 'tikz' ? (tikz && tikz.files.length ? t('em.exp.saveZip') : t('em.exp.saveTex')) : format === 'svg' ? t('em.exp.saveSvg') : t('em.exp.savePng')}
         </button>
         <span className={css.msg} role="status" aria-live="polite" data-export-msg>{msg}</span>
       </div>
@@ -252,9 +259,14 @@ export default function ExportSection({ setup, unit, digits, opened, openText }:
       {fig && (
         <figure className={css.figure}>
           <figcaption className={css.caption} data-export-caption>
-            True size: {fig.width.toFixed(fig.width % 1 ? 1 : 0)} × {fig.height.toFixed(1)} mm{fig.linewidth ? ' (\\linewidth, laid out for 160 mm)' : ''}{format === 'png' ? `; the PNG is ${pngPx}` : ''}
+            {t('em.exp.trueSize', {
+              w: fig.width.toFixed(fig.width % 1 ? 1 : 0),
+              h: fig.height.toFixed(1),
+              lw: fig.linewidth ? t('em.exp.lwNote') : '',
+              png: format === 'png' ? t('em.exp.pngNote', { px: pngPx }) : '',
+            })}
           </figcaption>
-          <div className={css.preview} tabIndex={0} role="img" aria-label={`Preview of the figure: ${choice.label}`} data-export-preview data-width-mm={fig.width} data-height-mm={fig.height} dangerouslySetInnerHTML={{ __html: made.svg }} />
+          <div className={css.preview} tabIndex={0} role="img" aria-label={t('em.exp.previewAria', { label: choice.label })} data-export-preview data-width-mm={fig.width} data-height-mm={fig.height} dangerouslySetInnerHTML={{ __html: made.svg }} />
         </figure>
       )}
       <Whys ks="export-preview" />

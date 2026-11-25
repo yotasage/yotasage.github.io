@@ -5,6 +5,7 @@ import React from 'react';
 
 import { codeNow } from '../../lib/qrread/otp';
 import type { Action, Field, OtpAccount, Parsed } from '../../lib/qrread/types';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/QrRead.module.css';
 import { CopyButton, onIos, save, Secret } from './bits';
 
@@ -52,6 +53,7 @@ function ActionButton({ a }: { a: Action }) {
 }
 
 function ImagePreview({ bytes, mime }: { bytes: Uint8Array; mime: string }) {
+  const { t } = useI18n();
   const [url, setUrl] = React.useState<string | null>(null);
   const [size, setSize] = React.useState<string>('');
   React.useEffect(() => {
@@ -62,13 +64,19 @@ function ImagePreview({ bytes, mime }: { bytes: Uint8Array; mime: string }) {
   if (!url) return null;
   return (
     <figure className={styles.imagePreview}>
-      <img src={url} alt="The image stored in the code" onLoad={(e) => setSize(`${e.currentTarget.naturalWidth} × ${e.currentTarget.naturalHeight} pixels`)} onError={() => setSize('This browser cannot show this image.')} />
+      <img
+        src={url}
+        alt={t('qrread.content.imgAlt')}
+        onLoad={(e) => setSize(t('qrread.content.imgSize', { w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight }))}
+        onError={() => setSize(t('qrread.content.imgErr'))}
+      />
       {size && <figcaption>{size}</figcaption>}
     </figure>
   );
 }
 
 function OtpCodes({ accounts }: { accounts: OtpAccount[] }) {
+  const { t } = useI18n();
   const [codes, setCodes] = React.useState<{ code: string | null; left: number }[]>([]);
   const [counters, setCounters] = React.useState(() => accounts.map((a) => a.counter));
   React.useEffect(() => {
@@ -78,8 +86,8 @@ function OtpCodes({ accounts }: { accounts: OtpAccount[] }) {
       if (alive) setCodes(next);
     };
     tick();
-    const t = setInterval(tick, 1000);
-    return () => { alive = false; clearInterval(t); };
+    const timer = setInterval(tick, 1000);
+    return () => { alive = false; clearInterval(timer); };
   }, [accounts, counters]);
   return (
     <div className={styles.otpList}>
@@ -88,8 +96,8 @@ function OtpCodes({ accounts }: { accounts: OtpAccount[] }) {
         const code = c?.code;
         return (
           <div key={i} className={styles.otp}>
-            <span className={styles.otpName}>{[a.issuer, a.account].filter(Boolean).join(' · ') || 'Account'}</span>
-            <span className={styles.otpCode} aria-label="Current code">{code ? `${code.slice(0, Math.ceil(code.length / 2))} ${code.slice(Math.ceil(code.length / 2))}` : code === null && c ? `${a.algorithm} is not available here` : '…'}</span>
+            <span className={styles.otpName}>{[a.issuer, a.account].filter(Boolean).join(' · ') || t('qrread.content.accountFallback')}</span>
+            <span className={styles.otpCode} aria-label={t('qrread.content.currentCodeAria')}>{code ? `${code.slice(0, Math.ceil(code.length / 2))} ${code.slice(Math.ceil(code.length / 2))}` : code === null && c ? t('qrread.content.algUnavailable', { alg: a.algorithm }) : '…'}</span>
             {a.type === 'totp' && c && (
               <span className={styles.otpTimer}>
                 <span className={styles.otpBar} style={{ width: `${(100 * c.left) / a.period}%` }} />
@@ -98,8 +106,8 @@ function OtpCodes({ accounts }: { accounts: OtpAccount[] }) {
             )}
             {a.type === 'hotp' && (
               <span className={styles.otpTimer}>
-                counter {counters[i]}{' '}
-                <button type="button" className={styles.linkButton} onClick={() => setCounters(counters.map((n, j) => (j === i ? n + 1 : n)))}>next</button>
+                {t('qrread.content.counter', { n: counters[i] })}{' '}
+                <button type="button" className={styles.linkButton} onClick={() => setCounters(counters.map((n, j) => (j === i ? n + 1 : n)))}>{t('qrread.content.next')}</button>
               </span>
             )}
             {code && <CopyButton text={code} small />}
@@ -111,6 +119,7 @@ function OtpCodes({ accounts }: { accounts: OtpAccount[] }) {
 }
 
 function Decrypt({ line, onPlain }: { line: string; onPlain: (text: string) => void }) {
+  const { t } = useI18n();
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState('');
   const [busy, setBusy] = React.useState(false);
@@ -124,7 +133,7 @@ function Decrypt({ line, onPlain }: { line: string; onPlain: (text: string) => v
       const { decryptText } = await import('../../lib/qr/payloads');
       onPlain(await decryptText(line, password));
     } catch {
-      setError('Wrong password, or the code is damaged.');
+      setError(t('qrread.content.decryptErr'));
     } finally {
       setBusy(false);
     }
@@ -132,16 +141,17 @@ function Decrypt({ line, onPlain }: { line: string; onPlain: (text: string) => v
   return (
     <form className={styles.decrypt} onSubmit={go}>
       <label>
-        <span>Password</span>
+        <span>{t('qrread.content.password')}</span>
         <input className={styles.input} type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="off" />
       </label>
-      <button type="submit" className={styles.button} disabled={busy}>{busy ? 'Decrypting…' : 'Decrypt'}</button>
+      <button type="submit" className={styles.button} disabled={busy}>{busy ? t('qrread.content.decrypting') : t('qrread.content.decrypt')}</button>
       {error && <p className={styles.bad}>{error}</p>}
     </form>
   );
 }
 
 export default function ContentView({ p, nested }: { p: Parsed; nested?: boolean }) {
+  const { t } = useI18n();
   const [plain, setPlain] = React.useState<string | null>(null);
   const ios = React.useMemo(onIos, []);
   const actions = p.actions.filter((a) => a.only !== 'ios' || ios);
@@ -166,16 +176,16 @@ export default function ContentView({ p, nested }: { p: Parsed; nested?: boolean
       {p.body !== undefined && p.body !== '' && <pre className={styles.body}>{p.body}</pre>}
       {p.encrypted && (plain === null ? <Decrypt line={p.encrypted.line} onPlain={setPlain} /> : (
         <>
-          <h4>Decrypted text</h4>
+          <h4>{t('qrread.content.decryptedTitle')}</h4>
           <pre className={styles.body}>{plain}</pre>
-          <CopyButton text={plain} label="Copy decrypted text" />
+          <CopyButton text={plain} label={t('qrread.content.copyDecrypted')} />
         </>
       ))}
       {actions.length > 0 && <div className={styles.actions}>{actions.map((a) => <ActionButton key={a.label} a={a} />)}</div>}
       {p.notes.length > 0 && <ul className={styles.notes}>{p.notes.map((n) => <li key={n}>{n}</li>)}</ul>}
       {p.inner && (
         <section className={styles.innerSection}>
-          <h4>Inside</h4>
+          <h4>{t('qrread.content.inside')}</h4>
           <ContentView p={p.inner} nested />
         </section>
       )}

@@ -7,6 +7,7 @@ import { Field, NumberInput, Select } from '../../components/UI/Fields';
 import { baseName, download, errorMessage, formatBytes, isImage, OutputFile, safeFileName, uid, zipFiles } from '../../lib/pdf/files';
 import { imagesToPdf, ImagesToPdfOptions, PAGE_SIZES, PageSizeId } from '../../lib/pdf/images';
 import { IMAGES_TO_PDF } from '../../lib/pdf/tools';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
@@ -25,6 +26,7 @@ const PAGE_SIZE_OPTIONS: [PageSizeId, string][] = [
 ];
 
 export default function ImagesToPdf() {
+  const { t } = useI18n();
   const [items, setItems] = React.useState<ImageItem[]>([]);
   const [pageSize, setPageSize] = React.useState<PageSizeId>('a4');
   const [orientation, setOrientation] = React.useState<ImagesToPdfOptions['orientation']>('auto');
@@ -57,7 +59,7 @@ export default function ImagesToPdf() {
 
   function addFiles(files: File[]) {
     const images = files.filter(isImage);
-    setNotice(images.length < files.length ? `${files.length - images.length} file(s) were skipped because they are not images.` : null);
+    setNotice(images.length < files.length ? t('pdf.p.i2p.skippedNonImg', { n: files.length - images.length }) : null);
     setItems((list) => [...list, ...images.map((file) => ({ id: uid(), file, url: URL.createObjectURL(file), rotation: 0, size: null, error: null }))]);
   }
 
@@ -85,61 +87,66 @@ export default function ImagesToPdf() {
     }
   }
 
+  const pageSizeOptions: [PageSizeId, string][] = React.useMemo(() => [
+    ['image', t('pdf.p.i2p.sameAsImage')],
+    ...PAGE_SIZE_OPTIONS.slice(1),
+  ], [t]);
+
   return (
-    <PdfPage title={IMAGES_TO_PDF.title} showHub lead="Convert images to PDF. JPG and PNG files are embedded without re-encoding, so there is no loss of quality; other formats are converted first.">
+    <PdfPage title={IMAGES_TO_PDF.title} showHub lead={t('pdf.p.i2p.lead')}>
       <ToolWorkspace
         tool={IMAGES_TO_PDF}
         accept="image/*"
-        selectLabel="Select images"
-        dropLabel="or drop images here"
+        selectLabel={t('pdf.p.i2p.selectImages')}
+        dropLabel={t('pdf.p.i2p.dropImages')}
         hasFiles={items.length > 0}
         onFiles={addFiles}
         toolbar={
           <>
-            <button type="button" className={styles.buttonSmall} onClick={() => setItems((l) => [...l].sort((a, b) => a.file.name.localeCompare(b.file.name, undefined, { numeric: true })))}>Sort A → Z</button>
-            <button type="button" className={styles.buttonSmall} onClick={() => setItems((l) => [...l].sort((a, b) => a.file.lastModified - b.file.lastModified))}>Sort by date</button>
-            <button type="button" className={styles.buttonSmall} onClick={() => changeItems([])}>Remove all</button>
+            <button type="button" className={styles.buttonSmall} onClick={() => setItems((l) => [...l].sort((a, b) => a.file.name.localeCompare(b.file.name, undefined, { numeric: true })))}>{t('pdf.p.sortAZ')}</button>
+            <button type="button" className={styles.buttonSmall} onClick={() => setItems((l) => [...l].sort((a, b) => a.file.lastModified - b.file.lastModified))}>{t('pdf.p.i2p.sortDate')}</button>
+            <button type="button" className={styles.buttonSmall} onClick={() => changeItems([])}>{t('pdf.p.removeAll')}</button>
           </>
         }
         sidebar={
           <>
             <div className={styles.options}>
-              <Field label="Page size">
-                <Select value={pageSize} onChange={setPageSize} options={PAGE_SIZE_OPTIONS} />
+              <Field label={t('pdf.p.i2p.pageSize')}>
+                <Select value={pageSize} onChange={setPageSize} options={pageSizeOptions} />
               </Field>
               {pageSize !== 'image' && (
                 <div className={styles.optionRow}>
-                  <Field label="Orientation">
-                    <Select value={orientation} onChange={setOrientation} options={[['auto', 'Auto'], ['portrait', 'Portrait'], ['landscape', 'Landscape']]} />
+                  <Field label={t('pdf.p.orientation')}>
+                    <Select value={orientation} onChange={setOrientation} options={[['auto', t('pdf.p.auto')], ['portrait', t('pdf.p.portrait')], ['landscape', t('pdf.p.landscape')]]} />
                   </Field>
-                  <Field label="Image size">
-                    <Select value={placement} onChange={setPlacement} options={[['fit', 'Fit to page'], ['original', 'Actual size']]} />
+                  <Field label={t('pdf.p.i2p.imageSize')}>
+                    <Select value={placement} onChange={setPlacement} options={[['fit', t('pdf.p.i2p.fitPage')], ['original', t('pdf.p.i2p.actualSize')]]} />
                   </Field>
                 </div>
               )}
               <div className={styles.optionRow}>
-                <Field label="Margin (mm)"><NumberInput value={marginMm} onChange={setMarginMm} min={0} max={100} /></Field>
-                {usesDpi && <Field label="Image DPI"><NumberInput value={dpi} onChange={setDpi} min={10} max={1200} /></Field>}
+                <Field label={t('pdf.p.i2p.marginMm')}><NumberInput value={marginMm} onChange={setMarginMm} min={0} max={100} /></Field>
+                {usesDpi && <Field label={t('pdf.p.i2p.imageDpi')}><NumberInput value={dpi} onChange={setDpi} min={10} max={1200} /></Field>}
               </div>
-              {usesDpi && <p className={styles.note}>The DPI decides the printed size: a 3000 px wide image at 150 DPI is 20 inches (508 mm) wide.</p>}
-              <Field label="Output">
-                <Select value={output} onChange={setOutput} options={[['single', 'One PDF with all images'], ['separate', 'One PDF per image (ZIP)']]} />
+              {usesDpi && <p className={styles.note}>{t('pdf.p.i2p.dpiNote')}</p>}
+              <Field label={t('pdf.p.output')}>
+                <Select value={output} onChange={setOutput} options={[['single', t('pdf.p.i2p.outSingle')], ['separate', t('pdf.p.i2p.outSeparate')]]} />
               </Field>
               {!(output === 'separate' && items.length === 1) && (
-                <Field label={output === 'single' ? 'File name' : 'ZIP file name'}>
+                <Field label={output === 'single' ? t('pdf.ff.fileName') : t('pdf.p.zipFileName')}>
                   <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
                 </Field>
               )}
             </div>
             {notice && <p className={fieldStyles.warning}>{notice}</p>}
-            <button type="button" className={styles.primary} disabled={!canConvert} onClick={convert}>Convert to PDF</button>
-            {busy && <Progress fraction={progress} label="Converting…" />}
+            <button type="button" className={styles.primary} disabled={!canConvert} onClick={convert}>{t('pdf.p.i2p.action')}</button>
+            {busy && <Progress fraction={progress} label={t('pdf.p.i2p.busy')} />}
             {error && <div className={styles.error}>{error}</div>}
             {result && (
               <div className={styles.result}>
-                <h3>{result.count === 1 ? 'Your PDF is ready' : `${result.count} PDFs are ready`}</h3>
+                <h3>{result.count === 1 ? t('pdf.p.pdfReady') : t('pdf.p.pdfsReady', { n: result.count })}</h3>
                 <p>{formatBytes(result.bytes.length)}</p>
-                <button type="button" className={styles.primary} onClick={() => download(result.bytes, result.name, result.type)}>Download {result.name}</button>
+                <button type="button" className={styles.primary} onClick={() => download(result.bytes, result.name, result.type)}>{t('pdf.ff.downloadNamed', { name: result.name })}</button>
                 <ContinueWith currentToolId={IMAGES_TO_PDF.id} files={result.pdfs} />
               </div>
             )}
@@ -160,8 +167,8 @@ export default function ImagesToPdf() {
               controls={controls}
               actions={
                 <>
-                  <button type="button" className={styles.iconButton} title="Rotate left" aria-label="Rotate left" onClick={() => rotate(item.id, -90)}>&#x21BA;</button>
-                  <button type="button" className={styles.iconButton} title="Rotate right" aria-label="Rotate right" onClick={() => rotate(item.id, 90)}>&#x21BB;</button>
+                  <button type="button" className={styles.iconButton} title={t('pdf.p.rotLeftAria')} aria-label={t('pdf.p.rotLeftAria')} onClick={() => rotate(item.id, -90)}>&#x21BA;</button>
+                  <button type="button" className={styles.iconButton} title={t('pdf.p.rotRightAria')} aria-label={t('pdf.p.rotRightAria')} onClick={() => rotate(item.id, 90)}>&#x21BB;</button>
                 </>
               }
             >
@@ -172,7 +179,7 @@ export default function ImagesToPdf() {
                   alt=""
                   hidden
                   onLoad={(e) => update(item.id, { size: `${e.currentTarget.naturalWidth} × ${e.currentTarget.naturalHeight} px` })}
-                  onError={() => update(item.id, { error: 'This browser cannot open this image format.' })}
+                  onError={() => update(item.id, { error: t('pdf.p.i2p.badImg') })}
                 />
               )}
             </FileCard>

@@ -11,20 +11,20 @@ interface CameraCaptureProps {
   onClose: () => void;
 }
 
-function cameraErrorText(err: unknown): string {
+function cameraErrorText(err: unknown, t: (key: string, vars?: Record<string, string | number>) => string): string {
   const name = (err as { name?: string })?.name ?? '';
   if (name === 'NotAllowedError' || name === 'SecurityError') {
-    return 'Camera access was denied. Allow camera access in the browser address bar, or use your device camera picker below.';
+    return t('base64.cam.errDenied');
   }
   if (name === 'NotFoundError' || name === 'OverconstrainedError') {
-    return 'No camera was found on this device. You can still use the native camera picker below if your device supports it.';
+    return t('base64.cam.errNotFound');
   }
   if (name === 'NotReadableError' || name === 'TrackStartError') {
-    return 'The camera is already in use by another app or tab. Close it there and try again.';
+    return t('base64.cam.errInUse');
   }
   return err instanceof Error && err.message
-    ? `Could not start the camera: ${err.message}`
-    : 'Could not start the camera.';
+    ? t('base64.cam.errStartMsg', { msg: err.message })
+    : t('base64.cam.errStart');
 }
 
 function timestampName(ext: string): string {
@@ -69,7 +69,7 @@ export default function CameraCapture({ onCapture, onClose }: CameraCaptureProps
 
     async function start() {
       if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-        setError('Live camera preview is not available in this browser or context (HTTPS is required). Use the device camera picker below instead.');
+        setError(t('base64.cam.errUnavailable'));
         setStarting(false);
         return;
       }
@@ -109,7 +109,7 @@ export default function CameraCapture({ onCapture, onClose }: CameraCaptureProps
           }
         }
       } catch (e) {
-        if (!cancelled) setError(cameraErrorText(e));
+        if (!cancelled) setError(cameraErrorText(e, t));
       } finally {
         if (!cancelled) setStarting(false);
       }
@@ -168,7 +168,7 @@ export default function CameraCapture({ onCapture, onClose }: CameraCaptureProps
       stopStream();
       onCapture(file);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to capture photo.');
+      setError(e instanceof Error ? e.message : t('base64.cam.errCapture'));
       setCapturing(false);
     }
   }
@@ -266,8 +266,8 @@ export default function CameraCapture({ onCapture, onClose }: CameraCaptureProps
             value={format}
             onChange={(e) => setFormat(e.target.value as CaptureFormat)}
           >
-            <option value="image/jpeg">JPEG (compact)</option>
-            <option value="image/png">PNG (lossless)</option>
+            <option value="image/jpeg">{t('base64.cam.fmtJpeg')}</option>
+            <option value="image/png">{t('base64.cam.fmtPng')}</option>
           </select>
         )}
 
@@ -281,7 +281,7 @@ export default function CameraCapture({ onCapture, onClose }: CameraCaptureProps
             <option value="">{facing === 'environment' ? t('base64.camera.rear') : t('base64.camera.front')}</option>
             {devices.map((d, idx) => (
               <option key={d.deviceId} value={d.deviceId}>
-                {d.label || `Camera ${idx + 1}`}
+                {d.label || t('base64.cam.cameraNum', { n: idx + 1 })}
               </option>
             ))}
           </select>

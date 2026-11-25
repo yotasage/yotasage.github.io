@@ -27,8 +27,10 @@ import { evaluate } from '../../lib/equations/compile';
 import type { Value } from '../../lib/equations/compile';
 import { valueTex } from '../../lib/equations/tex';
 import type { TexPiece } from '../../lib/equations/tex';
+import { useI18n } from '../../lib/ui/i18n';
 import eqCss from '../../styles/Equations.module.css';
 import css from '../../styles/EmSimEq.module.css';
+import { emT, topicTitle } from './emText';
 import { EqEnv, closeEq, coreIndex, traceEq, viaEq } from './eqLinks';
 import type { EqRequest, EqTarget } from './eqLinks';
 import { Why } from './Why';
@@ -75,12 +77,13 @@ function shortRef(e: BibEntry | undefined, key: string): string {
 }
 
 function Sources({ eq }: { eq: EmEquation }) {
+  const { t } = useI18n();
   const { references, bib } = useContext(EqEnv);
-  if (!eq.sources.length) return <>The tool’s own rule: {eq.derivation}</>;
+  if (!eq.sources.length) return <>{t('em.eq.ownRule', { derivation: eq.derivation })}</>;
   const cited = bib ? bib.citedEntries().map((e) => e.key) : [];
   return (
     <>
-      Source:{' '}
+      {t('em.eq.source')}
       {eq.sources.map((s, i) => {
         const k = cited.indexOf(s.key);
         const at = s.at ? `, ${s.at}` : '';
@@ -121,9 +124,9 @@ export function derivationOf(eq: EmEquation, values: Record<string, Value> | nul
     goal: sidesHtml(sidesOf(eq.tree).map((x) => emTex(x))),
     meta: (
       <>
-        {eq.assumptions.length > 0 && <>Assumes {eq.assumptions.join(', ')}. </>}
+        {eq.assumptions.length > 0 && <>{emT('em.eq.assumes', { assumptions: eq.assumptions.join(', ') })}</>}
         {eq.derivation}{' '}
-        {values ? <>Numbers: the shown result, where every quantity of a step has one.</> : <>Symbols only: the shown result gives this entry no numbers.</>}
+        {values ? <>{emT('em.eq.derivNums')}</> : <>{emT('em.eq.derivSyms')}</>}
       </>
     ),
     steps: eq.steps.map((s) => {
@@ -151,6 +154,7 @@ interface Props {
 }
 
 export default function EqPanel({ req, trace = null, via = null, stale, digits }: Props) {
+  const { t, locale } = useI18n();
   const { values, target } = useMemo(() => boundOf(req, trace, via), [req, trace, via]);
   const eq = target ? EM_EQUATION_BY_ID.get(target.id) ?? null : null;
   const bound = eq ? bindingFor(eq, values) : null;
@@ -190,7 +194,7 @@ export default function EqPanel({ req, trace = null, via = null, stale, digits }
   useEffect(() => (box.current ? watchWide(box.current, LINE) : undefined), []);
 
   const [dOpen, setDOpen] = useState<{ n: number; from: HTMLElement } | null>(null);
-  const view = useMemo(() => (dOpen && eq ? derivationOf(eq, bound ? values : null, digits) : null), [dOpen, eq, bound, values, digits]);
+  const view = useMemo(() => (dOpen && eq ? derivationOf(eq, bound ? values : null, digits) : null), [dOpen, eq, bound, values, digits, locale]);
 
   const topic = eq && TOPIC_TITLE[eq.topic] ? eq.topic : '';
   return (
@@ -199,10 +203,10 @@ export default function EqPanel({ req, trace = null, via = null, stale, digits }
       onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); closeEq(); } }}>
       <div className={css.head}>
         <h4 id="em-eq-title" className={css.title}>{req.label}{eq ? <>: {eq.title}</> : null}</h4>
-        <button type="button" className={css.button} data-eq-close onClick={closeEq} aria-label="Close the equation">Close</button>
+        <button type="button" className={css.button} data-eq-close onClick={closeEq} aria-label={t('em.eq.closeAria')}>{t('em.eq.close')}</button>
       </div>
       {!eq ? (
-        <p className={css.meta} data-eq-gone>This number is not in the results now.</p>
+        <p className={css.meta} data-eq-gone>{t('em.eq.gone')}</p>
       ) : (
         <>
           <div className={css.rows}>
@@ -218,22 +222,22 @@ export default function EqPanel({ req, trace = null, via = null, stale, digits }
             ))}
             {eq.extra && <div className={eqCss.eqn}><span className={eqCss.line} data-eq-line="" dangerouslySetInnerHTML={{ __html: mathHtml(eq.extra) }} /></div>}
           </div>
-          {!bound && <p className={css.note} data-eq-symbols>Symbols only: the shown result does not give every quantity of this equation a number.</p>}
+          {!bound && <p className={css.note} data-eq-symbols>{t('em.eq.symbolsOnly')}</p>}
           {differs && (
             <p className={css.note} data-eq-differs>
-              This structure is not what the equation assumes ({eq.assumptions.join(', ')}): it gives {mineRel.ev.toPrecision(5)}, the solver {mineRel.v.toPrecision(5)} in SI units.
+              {t('em.eq.differs', { assumptions: eq.assumptions.join(', '), ev: mineRel.ev.toPrecision(5), v: mineRel.v.toPrecision(5) })}
             </p>
           )}
           <p className={css.meta}>
-            {eq.assumptions.length > 0 && <>Assumes {eq.assumptions.join(', ')}. </>}
+            {eq.assumptions.length > 0 && <>{t('em.eq.assumes', { assumptions: eq.assumptions.join(', ') })}</>}
             <Sources eq={eq} />
           </p>
           <div className={css.actions}>
             {eq.steps.length > 0 && (
               <button type="button" className={`${css.button} ${css.primary}`} data-eq-derive
-                onClick={(e) => { const from = e.currentTarget; setDOpen((was) => ({ n: (was?.n ?? 0) + 1, from })); }}>Derivation</button>
+                onClick={(e) => { const from = e.currentTarget; setDOpen((was) => ({ n: (was?.n ?? 0) + 1, from })); }}>{t('em.eq.derivation')}</button>
             )}
-            {topic && <a className={css.theory} href={`#${topic}`} data-eq-theory={topic}>→ theory: {TOPIC_TITLE[topic]}</a>}
+            {topic && <a className={css.theory} href={`#${topic}`} data-eq-theory={topic}>{t('em.eq.theoryLink', { topic: topicTitle(topic, locale) })}</a>}
           </div>
           {eq.steps.length > 0 && <Why k="eq-derive" />}
           <DerivationDialog view={view} opening={dOpen?.n ?? 0} from={dOpen?.from ?? null} onClosed={() => setDOpen(null)} titleId="em-derive-title" />

@@ -1,5 +1,7 @@
 import React from 'react';
 
+import { useI18n } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
 import { Checkbox, Field } from '../UI/Fields';
 import styles from '../../styles/PdfTools.module.css';
 import signStyles from '../../styles/PdfSign.module.css';
@@ -15,11 +17,11 @@ export interface SignatureAsset {
   source: 'draw' | 'type' | 'upload';
 }
 
-export const SIGNATURE_INK_COLORS: ReadonlyArray<{ hex: string; label: string }> = [
-  { hex: '#111827', label: 'Ink black' },
-  { hex: '#1d4ed8', label: 'Royal blue' },
-  { hex: '#0f766e', label: 'Deep teal' },
-  { hex: '#991b1b', label: 'Crimson' },
+export const SIGNATURE_INK_COLORS: ReadonlyArray<{ hex: string; label: string; labelKey: TranslationKey }> = [
+  { hex: '#111827', label: 'Ink black', labelKey: 'pdf.signPad.inkBlack' },
+  { hex: '#1d4ed8', label: 'Royal blue', labelKey: 'pdf.signPad.royalBlue' },
+  { hex: '#0f766e', label: 'Deep teal', labelKey: 'pdf.signPad.deepTeal' },
+  { hex: '#991b1b', label: 'Crimson', labelKey: 'pdf.signPad.crimson' },
 ];
 
 type PadMode = 'draw' | 'type' | 'upload';
@@ -37,7 +39,7 @@ interface DrawStroke {
 
 interface TypeStylePreset {
   id: string;
-  name: string;
+  nameKey: TranslationKey;
   fontFamily: string;
   fontStyle: 'italic' | 'normal';
   fontWeight: number;
@@ -46,28 +48,28 @@ interface TypeStylePreset {
 const TYPE_STYLES: TypeStylePreset[] = [
   {
     id: 'script',
-    name: 'Fluid Script',
+    nameKey: 'pdf.signPad.styleScript',
     fontFamily: "'Brush Script MT', 'Segoe Script', 'Apple Chancery', 'Snell Roundhand', cursive",
     fontStyle: 'italic',
     fontWeight: 500,
   },
   {
     id: 'handwriting',
-    name: 'Handwritten',
+    nameKey: 'pdf.signPad.styleHandwritten',
     fontFamily: "'Lucida Handwriting', 'Bradley Hand', 'URW Chancery L', 'Comic Sans MS', cursive",
     fontStyle: 'italic',
     fontWeight: 400,
   },
   {
     id: 'classic-serif',
-    name: 'Classic Serif',
+    nameKey: 'pdf.signPad.styleClassicSerif',
     fontFamily: "'Georgia', 'Palatino Linotype', 'Times New Roman', serif",
     fontStyle: 'italic',
     fontWeight: 400,
   },
   {
     id: 'editorial',
-    name: 'Editorial Bold',
+    nameKey: 'pdf.signPad.styleEditorial',
     fontFamily: "'Palatino Linotype', 'Book Antiqua', 'Georgia', serif",
     fontStyle: 'italic',
     fontWeight: 700,
@@ -324,6 +326,7 @@ export interface SignaturePadProps {
 }
 
 export function SignaturePad({ onCreate, onCancel, defaultLabel, initialFullscreen }: SignaturePadProps) {
+  const { t } = useI18n();
   const [mode, setMode] = React.useState<PadMode>('draw');
   const [fullscreen, setFullscreen] = React.useState<boolean>(Boolean(initialFullscreen));
   const [inkColor, setInkColor] = React.useState<string>(SIGNATURE_INK_COLORS[0].hex);
@@ -493,7 +496,7 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel, initialFullscre
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      setPadError('Could not decode that image. Please choose a PNG, JPG, WebP, or SVG file.');
+      setPadError(t('pdf.signPad.errDecode'));
     };
     img.src = url;
   }
@@ -503,21 +506,21 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel, initialFullscre
     setSaving(true);
     try {
       let offscreen: HTMLCanvasElement | null = null;
-      let autoLabel = defaultLabel || 'Signature';
+      let autoLabel = defaultLabel || t('pdf.canvas.signatureFallback');
 
       if (mode === 'draw') {
         if (strokes.length === 0) {
-          setPadError('Draw your signature on the pad first.');
+          setPadError(t('pdf.signPad.errDrawFirst'));
           return;
         }
         offscreen = exportDrawnStrokesCanvas(strokes);
         if (!offscreen) {
-          setPadError('Draw your signature on the pad first.');
+          setPadError(t('pdf.signPad.errDrawFirst'));
           return;
         }
       } else if (mode === 'type') {
         if (!typedText.trim()) {
-          setPadError('Enter your name or initials to generate a typed signature.');
+          setPadError(t('pdf.signPad.errTypeFirst'));
           return;
         }
         const preset = TYPE_STYLES.find((s) => s.id === typeStyleId) ?? TYPE_STYLES[0];
@@ -525,11 +528,11 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel, initialFullscre
         autoLabel = typedText.trim();
       } else {
         if (!uploadedImg) {
-          setPadError('Choose a signature image to upload first.');
+          setPadError(t('pdf.signPad.errUploadFirst'));
           return;
         }
         offscreen = processUploadedImage(uploadedImg, removeBg, bgThreshold);
-        autoLabel = uploadedName || 'Uploaded signature';
+        autoLabel = uploadedName || t('pdf.signPad.uploadedDefault');
       }
 
       const trimmed = await canvasToPngAsset(offscreen, 12);
@@ -537,7 +540,7 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel, initialFullscre
       offscreen.height = 0;
 
       if (!trimmed) {
-        setPadError('The signature image is completely transparent. Try lowering the background threshold or drawing again.');
+        setPadError(t('pdf.signPad.errTransparent'));
         return;
       }
 
@@ -581,10 +584,10 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel, initialFullscre
       className={fullscreen ? signStyles.sigPadFullscreenBackdrop : styles.sigPadCard}
       role={fullscreen ? 'dialog' : undefined}
       aria-modal={fullscreen || undefined}
-      aria-label={fullscreen ? 'Full screen signature pad' : undefined}
+      aria-label={fullscreen ? t('pdf.signPad.fullscreenAria') : undefined}
     >
       <div className={fullscreen ? signStyles.sigPadFullscreenTop : styles.sigPadHeader}>
-        <h3>Create signature or initials</h3>
+        <h3>{t('pdf.signPad.title')}</h3>
         <div className={signStyles.sigPadHeaderActions}>
           <button
             type="button"
@@ -592,17 +595,17 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel, initialFullscre
             aria-pressed={fullscreen}
             onClick={() => (fullscreen ? exitFullscreen() : setFullscreen(true))}
           >
-            {fullscreen ? 'Exit full screen' : 'Full screen'}
+            {fullscreen ? t('pdf.canvas.exitFullscreen') : t('pdf.canvas.fullscreen')}
           </button>
           {onCancel && !fullscreen && (
             <button type="button" className={styles.miniBtn} onClick={onCancel}>
-              Close
+              {t('pdf.signPad.close')}
             </button>
           )}
         </div>
       </div>
 
-      <div className={styles.tabs} role="tablist" aria-label="Signature creation mode">
+      <div className={styles.tabs} role="tablist" aria-label={t('pdf.signPad.modeAria')}>
         <button
           type="button"
           role="tab"
@@ -613,7 +616,7 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel, initialFullscre
             setPadError(null);
           }}
         >
-          Draw
+          {t('pdf.signPad.modeDraw')}
         </button>
         <button
           type="button"
@@ -625,7 +628,7 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel, initialFullscre
             setPadError(null);
           }}
         >
-          Type
+          {t('pdf.signPad.modeType')}
         </button>
         <button
           type="button"
@@ -637,20 +640,20 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel, initialFullscre
             setPadError(null);
           }}
         >
-          Upload
+          {t('pdf.signPad.modeUpload')}
         </button>
       </div>
 
       {mode === 'draw' && (
         <div className={fullscreen ? signStyles.sigPadFullscreenBody : styles.sigPadBody}>
           <div className={fullscreen ? signStyles.sigPadFullscreenControls : styles.sigControlsRow}>
-            <div className={styles.sigSwatchGroup} role="group" aria-label="Ink color">
+            <div className={styles.sigSwatchGroup} role="group" aria-label={t('pdf.signPad.inkColorAria')}>
               {SIGNATURE_INK_COLORS.map((swatch) => (
                 <button
                   key={swatch.hex}
                   type="button"
-                  title={swatch.label}
-                  aria-label={swatch.label}
+                  title={t(swatch.labelKey)}
+                  aria-label={t(swatch.labelKey)}
                   aria-pressed={inkColor === swatch.hex}
                   className={swatchClass(swatch.hex)}
                   style={{ backgroundColor: swatch.hex }}
@@ -659,7 +662,7 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel, initialFullscre
               ))}
             </div>
             <label className={styles.sigRangeLabel}>
-              <span>Pen {penWidth.toFixed(1)}px</span>
+              <span>{t('pdf.signPad.penWidth', { w: penWidth.toFixed(1) })}</span>
               <input
                 type="range"
                 min={1.5}
@@ -676,7 +679,7 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel, initialFullscre
                 disabled={strokes.length === 0}
                 onClick={() => setStrokes((prev) => prev.slice(0, -1))}
               >
-                Undo stroke
+                {t('pdf.signPad.undoStroke')}
               </button>
               <button
                 type="button"
@@ -684,7 +687,7 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel, initialFullscre
                 disabled={strokes.length === 0}
                 onClick={() => setStrokes([])}
               >
-                Clear
+                {t('pdf.signPad.clear')}
               </button>
             </div>
           </div>
@@ -693,7 +696,7 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel, initialFullscre
             <canvas
               ref={canvasRef}
               className={fullscreen ? signStyles.sigDrawCanvasFullscreen : styles.sigDrawCanvas}
-              aria-label="Signature drawing pad"
+              aria-label={t('pdf.signPad.drawPadAria')}
               onPointerDown={handlePadPointerDown}
               onPointerMove={handlePadPointerMove}
               onPointerUp={finishStroke}
@@ -702,7 +705,7 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel, initialFullscre
             <div className={styles.sigBaseline} aria-hidden="true" />
             {strokes.length === 0 && (
               <span className={styles.sigDrawPlaceholder} aria-hidden="true">
-                Sign here with mouse, touch, or stylus
+                {t('pdf.signPad.drawPlaceholder')}
               </span>
             )}
           </div>
@@ -718,21 +721,21 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel, initialFullscre
                 type="text"
                 value={typedText}
                 maxLength={64}
-                placeholder="Type your full name or initials…"
-                aria-label="Typed signature text"
+                placeholder={t('pdf.signPad.typePlaceholder')}
+                aria-label={t('pdf.signPad.typeInputAria')}
                 onChange={(e) => {
                   setTypedText(e.target.value);
                   setPadError(null);
                 }}
               />
             </div>
-            <div className={styles.sigSwatchGroup} role="group" aria-label="Ink color">
+            <div className={styles.sigSwatchGroup} role="group" aria-label={t('pdf.signPad.inkColorAria')}>
               {SIGNATURE_INK_COLORS.map((swatch) => (
                 <button
                   key={swatch.hex}
                   type="button"
-                  title={swatch.label}
-                  aria-label={swatch.label}
+                  title={t(swatch.labelKey)}
+                  aria-label={t(swatch.labelKey)}
                   aria-pressed={inkColor === swatch.hex}
                   className={swatchClass(swatch.hex)}
                   style={{ backgroundColor: swatch.hex }}
@@ -742,7 +745,7 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel, initialFullscre
             </div>
           </div>
 
-          <div className={styles.sigStyleGrid} role="radiogroup" aria-label="Signature font style">
+          <div className={styles.sigStyleGrid} role="radiogroup" aria-label={t('pdf.signPad.fontStyleAria')}>
             {TYPE_STYLES.map((preset) => {
               const selected = preset.id === typeStyleId;
               return (
@@ -768,7 +771,7 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel, initialFullscre
                   >
                     {typedText.trim() || 'Ada Lovelace'}
                   </span>
-                  <span className={styles.sigStyleName}>{preset.name}</span>
+                  <span className={styles.sigStyleName}>{t(preset.nameKey)}</span>
                 </button>
               );
             })}
@@ -784,9 +787,9 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel, initialFullscre
               className={[styles.buttonSmall, fullscreen ? signStyles.sigTouchBtn : ''].join(' ')}
               onClick={() => uploadInputRef.current?.click()}
             >
-              {uploadedImg ? 'Choose another image' : 'Select signature image'}
+              {uploadedImg ? t('pdf.signPad.chooseAnother') : t('pdf.signPad.selectImage')}
             </button>
-            <span className={styles.note}>PNG, JPG, WebP or SVG — processed locally.</span>
+            <span className={styles.note}>{t('pdf.signPad.uploadNote')}</span>
             <input
               ref={uploadInputRef}
               type="file"
@@ -805,13 +808,13 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel, initialFullscre
             <>
               <div className={styles.sigControlsRow}>
                 <Checkbox
-                  label="Remove light background"
+                  label={t('pdf.signPad.removeBg')}
                   checked={removeBg}
                   onChange={setRemoveBg}
                 />
                 {removeBg && (
                   <label className={styles.sigRangeLabel}>
-                    <span>Threshold {bgThreshold}</span>
+                    <span>{t('pdf.signPad.threshold', { n: bgThreshold })}</span>
                     <input
                       type="range"
                       min={140}
@@ -826,9 +829,9 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel, initialFullscre
 
               <div className={styles.sigUploadPreview}>
                 {uploadPreviewUrl ? (
-                  <img src={uploadPreviewUrl} alt="Processed signature preview" />
+                  <img src={uploadPreviewUrl} alt={t('pdf.signPad.previewAlt')} />
                 ) : (
-                  <span className={styles.note}>No visible pixels at current threshold.</span>
+                  <span className={styles.note}>{t('pdf.signPad.noPixels')}</span>
                 )}
               </div>
             </>
@@ -838,13 +841,13 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel, initialFullscre
 
       <div className={fullscreen ? signStyles.sigPadFullscreenFooter : styles.sigPadFooter}>
         <div className={styles.sigLabelInput}>
-          <Field label="Label (optional)">
+          <Field label={t('pdf.signPad.labelOptional')}>
             <input
               className={fieldStyles.input}
               type="text"
               value={label}
               maxLength={40}
-              placeholder={defaultLabel || 'Signature'}
+              placeholder={defaultLabel || t('pdf.canvas.signatureFallback')}
               onChange={(e) => setLabel(e.target.value)}
             />
           </Field>
@@ -855,7 +858,7 @@ export function SignaturePad({ onCreate, onCancel, defaultLabel, initialFullscre
           disabled={saving || !canSave}
           onClick={() => void handleSave()}
         >
-          {saving ? 'Saving…' : 'Save signature'}
+          {saving ? t('pdf.signPad.saving') : t('pdf.signPad.save')}
         </button>
       </div>
 

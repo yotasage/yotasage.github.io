@@ -10,6 +10,7 @@ import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
 import { PdfThumbPool } from '../../lib/pdf/thumbs';
 import { EXTRACT_PAGES } from '../../lib/pdf/tools';
 import { runExtractPagesPdf } from '../../lib/pdf/workerClient';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
@@ -29,6 +30,7 @@ interface LockedFile {
 }
 
 export default function ExtractPagesPage() {
+  const { t } = useI18n();
   const [doc, setDoc] = React.useState<LoadedDoc | null>(null);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [mode, setMode] = React.useState<'single' | 'separate'>('single');
@@ -64,7 +66,7 @@ export default function ExtractPagesPage() {
         setLocked({
           name,
           bytes,
-          error: password !== undefined ? 'Incorrect password. Try again.' : null,
+          error: password !== undefined ? t('pdf.ff.wrongPw') : null,
           busy: false,
         });
       } else {
@@ -79,10 +81,10 @@ export default function ExtractPagesPage() {
   async function loadFile(files: File[]) {
     const pdf = files.find(isPdf);
     if (!pdf) {
-      setNotice('Please select a PDF file.');
+      setNotice(t('pdf.ff.pickPdf'));
       return;
     }
-    setNotice(files.length > 1 ? 'Only the first PDF was opened.' : null);
+    setNotice(files.length > 1 ? t('pdf.p.onlyFirst') : null);
     setLocked(null);
     try {
       const bytes = await readBytes(pdf);
@@ -114,9 +116,9 @@ export default function ExtractPagesPage() {
       id: `p-${i}`,
       pool: doc.pool,
       pageIndex: i,
-      label: `Page ${i + 1}`,
+      label: t('pdf.ff.pageN', { n: i + 1 }),
     }));
-  }, [doc]);
+  }, [doc, t]);
 
   const selectedIndices = React.useMemo(() => {
     if (!doc) return [];
@@ -175,7 +177,7 @@ export default function ExtractPagesPage() {
     <PdfPage
       title={EXTRACT_PAGES.title}
       showHub
-      lead="Pick the pages you want to pull out of a PDF (click, Shift-click, or type ranges) and save them as one PDF or a ZIP with one PDF per page."
+      lead={t('pdf.p.ext.lead')}
     >
       {locked && (
         <PasswordPrompt
@@ -190,49 +192,51 @@ export default function ExtractPagesPage() {
         />
       )}
       {error && !doc && <div className={styles.error} style={{ marginBottom: '1rem' }}>{error}</div>}
-      {loading && !doc && !locked && <Progress fraction={0.4} label="Opening PDF…" />}
+      {loading && !doc && !locked && <Progress fraction={0.4} label={t('pdf.p.opening')} />}
       <ToolWorkspace
         tool={EXTRACT_PAGES}
         accept="application/pdf,.pdf"
         multiple={false}
-        selectLabel="Select a PDF file"
-        dropLabel="or drop a PDF here"
-        addLabel="Replace PDF"
+        selectLabel={t('pdf.p.selectPdf')}
+        dropLabel={t('pdf.p.dropPdf')}
+        addLabel={t('pdf.p.replacePdf')}
         hasFiles={!!doc}
         onFiles={loadFile}
-        toolbar={<button type="button" className={styles.buttonSmall} onClick={clearDoc}>Close</button>}
+        toolbar={<button type="button" className={styles.buttonSmall} onClick={clearDoc}>{t('pdf.ff.close')}</button>}
         sidebar={
           <>
             <div className={styles.options}>
-              <Field label="Output">
+              <Field label={t('pdf.p.output')}>
                 <Select
                   value={mode}
                   onChange={setMode}
                   options={[
-                    ['single', 'One PDF with selected pages'],
-                    ['separate', 'One PDF per page (ZIP)'],
+                    ['single', t('pdf.p.ext.modeSingle')],
+                    ['separate', t('pdf.p.ext.modeSeparate')],
                   ]}
                 />
               </Field>
-              <Field label={mode === 'single' || selectedIndices.length <= 1 ? 'File name' : 'ZIP file name'}>
+              <Field label={mode === 'single' || selectedIndices.length <= 1 ? t('pdf.ff.fileName') : t('pdf.p.zipFileName')}>
                 <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
               </Field>
             </div>
             <p className={styles.note}>
-              Selected <strong>{selectedIndices.length}</strong> of {doc?.pageCount ?? 0} page{doc?.pageCount === 1 ? '' : 's'}.
+              {t((doc?.pageCount ?? 0) === 1 ? 'pdf.p.ext.selectedOne' : 'pdf.p.ext.selectedMany', { n: selectedIndices.length, total: doc?.pageCount ?? 0 })}
             </p>
             {notice && <p className={fieldStyles.warning}>{notice}</p>}
             <button type="button" className={styles.primary} disabled={!canRun} onClick={applyExtract}>
-              Extract {selectedIndices.length || ''} page{selectedIndices.length === 1 ? '' : 's'}
+              {selectedIndices.length === 0
+                ? t('pdf.p.ext.btnEmpty')
+                : t(selectedIndices.length === 1 ? 'pdf.p.ext.btnOne' : 'pdf.p.ext.btnMany', { n: selectedIndices.length })}
             </button>
             {busy && <Progress fraction={progress.fraction} label={progress.label} />}
             {error && <div className={styles.error}>{error}</div>}
             {result && (
               <div className={styles.result}>
-                <h3>{result.count === 1 ? 'Your PDF is ready' : `${result.count} PDFs are ready`}</h3>
-                <p>{result.pages} page{result.pages === 1 ? '' : 's'}, {formatBytes(result.bytes.length)}.</p>
+                <h3>{result.count === 1 ? t('pdf.p.pdfReady') : t('pdf.p.pdfsReady', { n: result.count })}</h3>
+                <p>{t(result.pages === 1 ? 'pdf.p.pagesAndSizeOne' : 'pdf.p.pagesAndSizeMany', { n: result.pages, size: formatBytes(result.bytes.length) })}</p>
                 <button type="button" className={styles.primary} onClick={() => download(result.bytes, result.name, result.type)}>
-                  Download {result.name}
+                  {t('pdf.ff.downloadNamed', { name: result.name })}
                 </button>
                 {result.count === 1 && (
                   <ContinueWith currentToolId={EXTRACT_PAGES.id} files={[{ name: result.name, bytes: result.bytes }]} />
@@ -247,21 +251,21 @@ export default function ExtractPagesPage() {
             <div className={styles.fileBanner}>
               <strong>{doc.name}</strong>
               <span className={styles.fileBannerMeta}>
-                {doc.pageCount} page{doc.pageCount === 1 ? '' : 's'} · {formatBytes(doc.bytes.length)}
+                {t(doc.pageCount === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany', { n: doc.pageCount })} · {formatBytes(doc.bytes.length)}
               </span>
             </div>
             <PageSelectionBar
               items={items}
               selectedIds={selectedIds}
               onChange={setSelectedIds}
-              rangePlaceholder="Pages to extract, e.g. 1-3, 5, 8-"
+              rangePlaceholder={t('pdf.p.ext.rangePh')}
             />
             <PageGrid
               items={items}
               selectedIds={selectedIds}
               onSelectChange={setSelectedIds}
               renderBadgeExtra={(item) => (
-                selectedIds.has(item.id) ? <span className={styles.pillAccent}>Keep</span> : null
+                selectedIds.has(item.id) ? <span className={styles.pillAccent}>{t('pdf.p.ext.badge')}</span> : null
               )}
             />
           </>

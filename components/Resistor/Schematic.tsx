@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { CircuitId } from '../../lib/resistor';
+import { useI18n } from '../../lib/ui/i18n';
 import css from '../../styles/ResistorDesign.module.css';
 
 // The schematic of a circuit of the design mode: resistors as IEC rectangles, as in the drawings of the
@@ -54,6 +55,7 @@ const Amp = ({ x, y, plusTop }: { x: number; y: number; plusTop?: boolean }) => 
 };
 
 export default function Schematic({ circuit, q }: { circuit: CircuitId; q: Record<string, string> }) {
+  const { t } = useI18n();
   const named = (name: string, text: string) => (text ? `${name} = ${text}` : name);
   const width = 250;
   let height = 120;
@@ -126,7 +128,7 @@ export default function Schematic({ circuit, q }: { circuit: CircuitId; q: Recor
     ) : (
       <>
         <Label x={8} y={36} target>{named('Vout', q.target)}</Label>
-        <Label x={176} y={69}>FB pin</Label>
+        <Label x={176} y={69}>{t('res.sch.fbPin')}</Label>
         <Label x={176} y={82}>{q.vref || 'Vref'}</Label>
         {pin && <Label x={128} y={62} anchor="middle">{q.ifb}</Label>}
       </>
@@ -193,14 +195,14 @@ export default function Schematic({ circuit, q }: { circuit: CircuitId; q: Recor
     texts = (
       <>
         <Label x={8} y={48}>{named('I', q.amps)}</Label>
-        <Label x={238} y={48} anchor="end">load</Label>
+        <Label x={238} y={48} anchor="end">{t('res.sch.load')}</Label>
         <Label x={120} y={92} anchor="middle" target>{named('Vsense', q.target)}</Label>
       </>
     );
   }
 
   return (
-    <svg className={css.schematic} width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Schematic of the circuit">
+    <svg className={css.schematic} width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={t('res.sch.aria')}>
       <g fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round">{body}</g>
       {texts}
     </svg>

@@ -10,8 +10,9 @@ import type { LengthUnit } from '../../lib/emsim/units';
 import css from '../../styles/EmSimTrace.module.css';
 import type { FieldMod, FieldStore } from './useFieldMap';
 import type { Painted } from './fieldPaint';
+import { useI18n } from '../../lib/ui/i18n';
 import Calm from './Calm';
-import { QTY_LABEL } from './fieldTypes';
+import { fieldQtyLabel } from './emText';
 import { lenText } from './format';
 import type { View } from './panZoom';
 import type { WorldMap } from './traceGeom';
@@ -53,22 +54,23 @@ export function FieldFoot({ mod, store, drive }: { mod: FieldMod; store: FieldSt
 }
 
 export function FieldScaleBar({ mod, painted, drive }: { mod: FieldMod; painted: Painted; drive: string }) {
+  const { t, locale } = useI18n();
   const { scale, unit, qty } = painted;
   const b = useMemo(() => mod.bar(scale, BAR_W, unit), [mod, scale, unit]);
-  const kind = scale.kind === 'signed' ? 'signed, zero in the middle' : scale.kind;
+  const kind = scale.kind === 'signed' ? t('em.fld.scaleSigned') : scale.kind === 'log' ? t('em.fld.scaleLog') : t('em.fld.scaleLinear');
   return (
     <div className={css.fieldScale} data-field-scale data-view={JSON.stringify(painted.grid.view)} data-done={painted.done} data-lo={scale.lo} data-hi={scale.hi} data-unit={unit} data-kind={scale.kind} data-qty={qty}>
       <div className={css.fieldScaleHead}>
-        <span>{QTY_LABEL[qty]} ({unit}, {kind})</span>
-        <span>{mod.si(scale.lo, unit)} to {mod.si(scale.hi, unit)}</span>
+        <span>{fieldQtyLabel(qty, locale)} ({unit}, {kind})</span>
+        <span>{t('em.fld.range', { lo: mod.si(scale.lo, unit), hi: mod.si(scale.hi, unit) })}</span>
       </div>
       <div className={css.fieldBar} style={{ backgroundImage: b.url ? `url(${b.url})` : undefined }} />
       <div className={css.fieldTicks} aria-hidden="true">
-        {b.ticks.map((t, i) => (
-          <span key={i} className={i % 2 ? css.tickOdd : undefined} style={{ left: `${(t.t * 100).toFixed(2)}%`, transform: `translateX(${t.t < 0.1 ? 0 : t.t > 0.9 ? -100 : -50}%)` }}>{t.text}</span>
+        {b.ticks.map((tk, i) => (
+          <span key={i} className={i % 2 ? css.tickOdd : undefined} style={{ left: `${(tk.t * 100).toFixed(2)}%`, transform: `translateX(${tk.t < 0.1 ? 0 : tk.t > 0.9 ? -100 : -50}%)` }}>{tk.text}</span>
         ))}
       </div>
-      <div className={css.fieldNote}>For {drive}{qty !== 'charge' && qty !== 'current' ? '; the top of the scale is the 99.5th percentile, as the field is singular at copper corners' : ''}.</div>
+      <div className={css.fieldNote}>{t('em.fld.note', { drive, clip: qty !== 'charge' && qty !== 'current' ? t('em.fld.clip') : '' })}</div>
     </div>
   );
 }
@@ -87,12 +89,13 @@ interface ProbeProps {
 }
 
 export function FieldProbe({ api, mod, store, sec, s, view, map, unit, digits, keys }: ProbeProps) {
+  const { t } = useI18n();
   const [pt, setPt] = useState<Pt | null>(null);
   useStore(store);
   const painted = store.painted;
   useImperativeHandle(api, () => ({ set: setPt, get: () => pt }), [pt]);
   if (!pt) {
-    const hint = keys ? 'Probe: arrow keys on the focused drawing move it (Shift: finer).' : 'Probe: hover over or tap the drawing to read the field at a point.';
+    const hint = keys ? t('em.fld.probeHintKeys') : t('em.fld.probeHintHover');
     return <><Calm text={hint} name="probe" /><p className={css.fieldProbe} data-field-probe="">{hint}</p></>;
   }
   const media = mod ? mod.mediaOf(sec) : null;
@@ -100,10 +103,10 @@ export function FieldProbe({ api, mod, store, sec, s, view, map, unit, digits, k
   const pr = mod && painted && !surfaceOnly ? mod.probeAt(painted, pt.x, pt.z, media) : null;
   const c = pr ? pr.cls : mod ? mod.classAt(sec, pt.x, pt.z) : -999;
   let where = '';
-  if (c <= -1) where = c === -1 ? 'copper, ground' : `copper, line ${-1 - c}`;
+  if (c <= -1) where = c === -1 ? t('em.fld.cuGround') : t('em.fld.cuLine', { n: -1 - c });
   else if (c >= 0) {
     const m = sec.materials[c];
-    const name = m ? (m.kind === 'air' ? 'air' : s.layers[m.layer]?.name ?? m.kind) : '?';
+    const name = m ? (m.kind === 'air' ? t('em.stkDraw.air') : s.layers[m.layer]?.name ?? m.kind) : '?';
     where = `${name}, εr ${m ? Number(m.er.toPrecision(3)) : '?'}`;
   }
   const H = painted?.grid.kind === 'H';
@@ -111,16 +114,17 @@ export function FieldProbe({ api, mod, store, sec, s, view, map, unit, digits, k
   const si = mod ? mod.si : (v: number, u: string) => `${v} ${u}`;
   const pos = `x ${lenText(pt.x, unit, digits)}, y ${lenText(pt.z, unit, digits)}`;
   const text = !pr
-    ? `${pos}${where ? ` (${where})` : ''}${surfaceOnly ? '' : ': outside the computed field'}.`
+    ? `${pos}${where ? ` (${where})` : ''}${surfaceOnly ? '' : t('em.fld.outside')}.`
     : `${pos} (${where}): ${H ? 'Az' : 'φ'} ${si(pr.phi, pu)}, |${H ? 'H' : 'E'}| ${si(pr.f, fu)} (${H ? 'Hx' : 'Ex'} ${si(pr.fx, fu)}, ${H ? 'Hy' : 'Ey'} ${si(pr.fz, fu)}).`;
   const px = view.w / 2 + (pt.x - view.cx) * view.k, py = view.h / 2 + (map.Y(pt.z) - view.cy) * view.k;
   const inside = px >= 0 && px <= view.w && py >= 0 && py <= view.h;
+  const probeLine = t('em.fld.probeAt', { text });
   return (
     <>
-      <Calm text={`Probe at ${text}`} name="probe" />
+      <Calm text={probeLine} name="probe" />
       {inside && <span className={css.probeMark} style={{ left: Math.round(px) + 1, top: Math.round(py) + 1 }} aria-hidden="true" />}
       <p className={css.fieldProbe} data-field-probe={pr ? 'value' : 'none'} data-x={pt.x} data-z={pt.z} data-phi={pr?.phi ?? ''} data-f={pr?.f ?? ''} data-fx={pr?.fx ?? ''} data-fz={pr?.fz ?? ''} data-cls={pr?.cls ?? ''}>
-        Probe at {text}
+        {probeLine}
       </p>
     </>
   );

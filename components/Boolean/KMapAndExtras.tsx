@@ -120,7 +120,7 @@ function SingleOutputKMapAndCanonical({
             >
               <table
                 className={[dStyles.kmapTable, dStyles.selectableTable].join(' ')}
-                aria-label={`Karnaugh map for ${outputName}`}
+                aria-label={t('boolean.kmap.mapAria', { name: outputName })}
               >
                 <thead>
                   <tr>
@@ -191,7 +191,7 @@ function SingleOutputKMapAndCanonical({
                               onClick={() => {
                                 if (!selection.consumeDidDrag()) onSelectRow(minterm);
                               }}
-                              aria-label={`${outputName} minterm ${minterm}, value ${val}`}
+                              aria-label={t('boolean.kmap.cellAria', { name: outputName, minterm, val })}
                             >
                               <span className={val === 1 ? dStyles.valOne : dStyles.valZero}>
                                 {val}
@@ -247,7 +247,7 @@ function SingleOutputKMapAndCanonical({
         </h3>
         <div className={dStyles.canonicalBlock}>
           <div>
-            <span className={styles.fieldLabel}>Canonical SOP (minterms)</span>
+            <span className={styles.fieldLabel}>{t('boolean.extras.canonSop')}</span>
             <div className={styles.previewBar}>
               <div className={styles.previewMath}>
                 <KatexSpan text={`${varToLatex(outputName)} = ${canonical.canonicalSopLatex}`} />
@@ -255,7 +255,7 @@ function SingleOutputKMapAndCanonical({
             </div>
           </div>
           <div>
-            <span className={styles.fieldLabel}>Canonical POS (maxterms)</span>
+            <span className={styles.fieldLabel}>{t('boolean.extras.canonPos')}</span>
             <div className={styles.previewBar}>
               <div className={styles.previewMath}>
                 <KatexSpan text={`${varToLatex(outputName)} = ${canonical.canonicalPosLatex}`} />
@@ -330,7 +330,7 @@ export default function KMapAndExtras({
                 className={[styles.btnGhost, styles.btnSmall].join(' ')}
                 onClick={() => copySnippet(item.id, item.code)}
               >
-                {copiedId === item.id ? t('boolean.result.copied') : 'Copy'}
+                {copiedId === item.id ? t('boolean.result.copied') : t('common.copy')}
               </button>
             </div>
             <code className={dStyles.hdlCode} style={{ whiteSpace: 'pre-wrap' }}>
@@ -359,7 +359,7 @@ export default function KMapAndExtras({
 
         <div className={styles.stepsControls}>
           {isMulti && (
-            <div className={styles.segmented} role="group" aria-label="Multi-output view mode">
+            <div className={styles.segmented} role="group" aria-label={t('boolean.extras.viewModeAria')}>
               <button
                 type="button"
                 aria-pressed={multiViewMode === 'single'}

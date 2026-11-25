@@ -30,9 +30,20 @@ import {
   TextSpanBox,
 } from '../../lib/pdf/redact';
 import { REDACT } from '../../lib/pdf/tools';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
 import redactStyles from '../../styles/PdfRedact.module.css';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
+
+const PII_KEYS: Record<PiiPresetId, [TranslationKey, TranslationKey]> = {
+  emails: ['pdf.red.pii.emails', 'pdf.red.pii.emailsDesc'],
+  phones: ['pdf.red.pii.phones', 'pdf.red.pii.phonesDesc'],
+  urls: ['pdf.red.pii.urls', 'pdf.red.pii.urlsDesc'],
+  cards: ['pdf.red.pii.cards', 'pdf.red.pii.cardsDesc'],
+  dates: ['pdf.red.pii.dates', 'pdf.red.pii.datesDesc'],
+  ipv4: ['pdf.red.pii.ipv4', 'pdf.red.pii.ipv4Desc'],
+};
 
 interface LoadedDoc {
   name: string;
@@ -59,10 +70,10 @@ interface RedactOutput {
 
 const MAX_HISTORY = 60;
 
-const FILL_SWATCHES = [
-  { label: 'Black', hex: '#000000' },
-  { label: 'White', hex: '#ffffff' },
-  { label: 'Charcoal', hex: '#222222' },
+const FILL_SWATCHES: { key: TranslationKey; hex: string }[] = [
+  { key: 'pdf.red.black', hex: '#000000' },
+  { key: 'pdf.red.white', hex: '#ffffff' },
+  { key: 'pdf.red.charcoal', hex: '#222222' },
 ];
 
 function boxesOverlapHeavily(a: RedactBox, b: RedactBox): boolean {
@@ -78,6 +89,7 @@ function boxesOverlapHeavily(a: RedactBox, b: RedactBox): boolean {
 }
 
 export default function RedactPdfPage() {
+  const { t } = useI18n();
   const [doc, setDoc] = React.useState<LoadedDoc | null>(null);
   const [pdfProxy, setPdfProxy] = React.useState<PDFDocumentProxy | null>(null);
   const closeProxyRef = React.useRef<(() => Promise<void>) | null>(null);
@@ -210,7 +222,7 @@ export default function RedactPdfPage() {
         setLocked({
           name,
           bytes,
-          error: password !== undefined ? 'Incorrect password. Try again.' : null,
+          error: password !== undefined ? t('pdf.ff.wrongPw') : null,
           busy: false,
         });
       } else {
@@ -225,10 +237,10 @@ export default function RedactPdfPage() {
   async function loadFile(files: File[]) {
     const pdf = files.find(isPdf);
     if (!pdf) {
-      setNotice('Please select a PDF file.');
+      setNotice(t('pdf.ff.pickPdf'));
       return;
     }
-    setNotice(files.length > 1 ? 'Only the first PDF was opened. Redact PDF works on one file at a time.' : null);
+    setNotice(files.length > 1 ? t('pdf.red.onlyFirst') : null);
     setLocked(null);
     try {
       const bytes = await readBytes(pdf);
@@ -350,7 +362,7 @@ export default function RedactPdfPage() {
   async function runAutoMark(query: { text?: string; caseSensitive?: boolean; regex?: boolean; preset?: PiiPresetId }, label: string) {
     if (!pdfProxy || !doc) return;
     setError(null);
-    setScanStatus(`Scanning ${doc.pageCount} page${doc.pageCount === 1 ? '' : 's'} for ${label}…`);
+    setScanStatus(t(doc.pageCount === 1 ? 'pdf.red.scanOne' : 'pdf.red.scanMany', { n: doc.pageCount, label }));
     setScanning(true);
     try {
       const found: RedactBox[] = [];
@@ -364,9 +376,9 @@ export default function RedactPdfPage() {
 
       if (found.length === 0) {
         if (totalSpans === 0) {
-          setScanStatus('No selectable text layer found (scanned PDF). Draw redaction boxes directly on the page.');
+          setScanStatus(t('pdf.red.noTextLayer'));
         } else {
-          setScanStatus(`No matches found for ${label}.`);
+          setScanStatus(t('pdf.red.noMatches', { label }));
         }
         return;
       }
@@ -392,11 +404,11 @@ export default function RedactPdfPage() {
           }
           return next;
         });
-        setScanStatus(`Marked ${toAdd.length} match${toAdd.length === 1 ? '' : 'es'} for ${label}.`);
+        setScanStatus(t(toAdd.length === 1 ? 'pdf.red.markedOne' : 'pdf.red.markedMany', { n: toAdd.length, label }));
         setPageIndex(toAdd[0].pageIndex);
         setSelectedId(toAdd[0].id);
       } else {
-        setScanStatus(`All ${found.length} match${found.length === 1 ? '' : 'es'} for ${label} are already marked.`);
+        setScanStatus(t(found.length === 1 ? 'pdf.red.alreadyOne' : 'pdf.red.alreadyMany', { n: found.length, label }));
       }
     } catch (e) {
       setError(errorMessage(e));
@@ -428,7 +440,7 @@ export default function RedactPdfPage() {
     setBusy(true);
     setError(null);
     setResult(null);
-    setProgress({ fraction: 0.04, label: 'Preparing redactions…' });
+    setProgress({ fraction: 0.04, label: t('pdf.red.preparing') });
 
     try {
       const res = await applyRedactions(doc.bytes, boxes, {
@@ -441,7 +453,7 @@ export default function RedactPdfPage() {
         onProgress: (fraction, label) => setProgress({ fraction: fraction * 0.9, label }),
       });
 
-      setProgress({ fraction: 0.94, label: 'Verifying redacted pages contain zero text…' });
+      setProgress({ fraction: 0.94, label: t('pdf.red.verifying') });
       let remainingTextItems = 0;
       const verifyHandle = await openPdf(res.bytes);
       try {
@@ -488,7 +500,7 @@ export default function RedactPdfPage() {
     <PdfPage
       title={REDACT.title}
       showHub
-      lead="Permanently burn sensitive text, PII and regions out of your PDF by rasterizing redacted pages to pixels and scrubbing hidden metadata. Everything stays in your browser."
+      lead={t('pdf.red.lead')}
     >
       {locked && (
         <PasswordPrompt
@@ -503,15 +515,15 @@ export default function RedactPdfPage() {
         />
       )}
       {error && !doc && <div className={styles.error} style={{ marginBottom: '1rem' }}>{error}</div>}
-      {loading && !doc && !locked && <Progress fraction={0.45} label="Loading PDF pages…" />}
+      {loading && !doc && !locked && <Progress fraction={0.45} label={t('pdf.p.loadingPdfPages')} />}
 
       <ToolWorkspace
         tool={REDACT}
         accept="application/pdf,.pdf"
         multiple={false}
-        selectLabel="Select a PDF file"
-        dropLabel="or drop a PDF here"
-        addLabel="Replace PDF"
+        selectLabel={t('pdf.p.selectPdfFile')}
+        dropLabel={t('pdf.p.dropPdf')}
+        addLabel={t('pdf.p.replacePdf')}
         hasFiles={!!doc}
         onFiles={loadFile}
         toolbar={
@@ -523,14 +535,14 @@ export default function RedactPdfPage() {
                 disabled={pageIndex <= 0}
                 onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
               >
-                &larr; Prev
+                {t('pdf.p.prev')}
               </button>
               <input
                 type="number"
                 className={styles.pageNavInput}
                 min={1}
                 max={Math.max(1, pageCount)}
-                aria-label="Current page number"
+                aria-label={t('pdf.crop.curPageAria')}
                 value={pageJump}
                 onChange={(e) => jumpToPage(e.target.value)}
                 onBlur={() => setPageJump(String(pageIndex + 1))}
@@ -542,7 +554,7 @@ export default function RedactPdfPage() {
                 disabled={pageIndex >= pageCount - 1}
                 onClick={() => setPageIndex((i) => Math.min(pageCount - 1, i + 1))}
               >
-                Next &rarr;
+                {t('pdf.p.next')}
               </button>
             </div>
 
@@ -551,18 +563,18 @@ export default function RedactPdfPage() {
               className={redactStyles.toggleBtn}
               disabled={history.length === 0}
               onClick={handleUndo}
-              title="Undo (Ctrl+Z)"
+              title={t('pdf.red.undoTitle')}
             >
-              Undo
+              {t('pdf.p.undo')}
             </button>
             <button
               type="button"
               className={redactStyles.toggleBtn}
               disabled={future.length === 0}
               onClick={handleRedo}
-              title="Redo (Ctrl+Y)"
+              title={t('pdf.red.redoTitle')}
             >
-              Redo
+              {t('pdf.p.redo')}
             </button>
             <button
               type="button"
@@ -570,7 +582,7 @@ export default function RedactPdfPage() {
               className={[redactStyles.toggleBtn, previewFinal ? redactStyles.toggleBtnActive : ''].filter(Boolean).join(' ')}
               onClick={() => setPreviewFinal((v) => !v)}
             >
-              {previewFinal ? 'Preview: Final' : 'Preview final'}
+              {t(previewFinal ? 'pdf.red.previewOn' : 'pdf.red.previewOff')}
             </button>
             {selectedBox && pageCount > 1 && (
               <button
@@ -578,24 +590,24 @@ export default function RedactPdfPage() {
                 className={redactStyles.toggleBtn}
                 onClick={applySelectedToAllPages}
               >
-                Apply selected to all pages
+                {t('pdf.red.applyAll')}
               </button>
             )}
             <button type="button" className={styles.buttonSmall} onClick={clearDoc}>
-              Close
+              {t('pdf.ff.close')}
             </button>
           </div>
         }
         sidebar={
           <>
             <div className={redactStyles.sectionBlock}>
-              <h3 className={redactStyles.sectionTitle}>Search &amp; auto-mark</h3>
+              <h3 className={redactStyles.sectionTitle}>{t('pdf.red.searchHeading')}</h3>
               <form className={redactStyles.searchRow} onSubmit={handleSearchSubmit}>
                 <input
                   type="text"
                   className={redactStyles.searchInput}
-                  placeholder={useRegex ? 'Regex pattern…' : 'Find text across all pages…'}
-                  aria-label="Search text to redact"
+                  placeholder={t(useRegex ? 'pdf.red.regexPh' : 'pdf.red.findPh')}
+                  aria-label={t('pdf.red.searchAria')}
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
                 />
@@ -604,28 +616,32 @@ export default function RedactPdfPage() {
                   className={styles.buttonSmall}
                   disabled={scanning || !searchText.trim()}
                 >
-                  Find &amp; mark
+                  {t('pdf.red.findMark')}
                 </button>
               </form>
 
               <div className={redactStyles.searchFlags}>
-                <Checkbox label="Case-sensitive" checked={caseSensitive} onChange={setCaseSensitive} />
-                <Checkbox label="Regex" checked={useRegex} onChange={setUseRegex} />
+                <Checkbox label={t('pdf.red.caseSens')} checked={caseSensitive} onChange={setCaseSensitive} />
+                <Checkbox label={t('pdf.red.regex')} checked={useRegex} onChange={setUseRegex} />
               </div>
 
-              <div className={redactStyles.piiGrid} role="group" aria-label="One-click PII presets">
-                {PII_PRESETS.map((preset) => (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    className={redactStyles.piiBtn}
-                    title={preset.description}
-                    disabled={scanning}
-                    onClick={() => void runAutoMark({ preset: preset.id }, preset.label)}
-                  >
-                    {preset.label}
-                  </button>
-                ))}
+              <div className={redactStyles.piiGrid} role="group" aria-label={t('pdf.red.piiGroupAria')}>
+                {PII_PRESETS.map((preset) => {
+                  const [labelKey, descKey] = PII_KEYS[preset.id];
+                  const label = t(labelKey);
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      className={redactStyles.piiBtn}
+                      title={t(descKey)}
+                      disabled={scanning}
+                      onClick={() => void runAutoMark({ preset: preset.id }, label)}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
 
               {scanStatus && <p className={redactStyles.scanStatus}>{scanStatus}</p>}
@@ -634,7 +650,7 @@ export default function RedactPdfPage() {
             <div className={redactStyles.sectionBlock}>
               <div className={redactStyles.matchHeader}>
                 <h3 className={redactStyles.sectionTitle}>
-                  Marked redactions ({boxes.length})
+                  {t('pdf.red.markedHeading', { n: boxes.length })}
                 </h3>
                 {boxes.length > 0 && (
                   <div className={redactStyles.matchHeaderActions}>
@@ -647,7 +663,7 @@ export default function RedactPdfPage() {
                           setSelectedId(null);
                         }}
                       >
-                        Clear page
+                        {t('pdf.red.clearPage')}
                       </button>
                     )}
                     <button
@@ -658,16 +674,14 @@ export default function RedactPdfPage() {
                         setSelectedId(null);
                       }}
                     >
-                      Clear all
+                      {t('pdf.ff.clearAll')}
                     </button>
                   </div>
                 )}
               </div>
 
               {boxes.length === 0 ? (
-                <p className={styles.note}>
-                  Drag directly on the page to draw redaction boxes, or use Search / PII presets above.
-                </p>
+                <p className={styles.note}>{t('pdf.red.emptyNote')}</p>
               ) : (
                 <div className={redactStyles.matchList}>
                   {boxes.map((box, idx) => (
@@ -688,17 +702,17 @@ export default function RedactPdfPage() {
                           setSelectedId(box.id);
                         }}
                       >
-                        <span className={redactStyles.matchPageTag}>p.{box.pageIndex + 1}</span>
+                        <span className={redactStyles.matchPageTag}>{t('pdf.red.pageTag', { n: box.pageIndex + 1 })}</span>
                         <span className={redactStyles.matchLabel}>
                           {box.matchedText
                             ? box.matchedText
-                            : `Manual box #${idx + 1}`}
+                            : t('pdf.red.manualBox', { n: idx + 1 })}
                         </span>
                       </button>
                       <button
                         type="button"
                         className={redactStyles.matchRemoveBtn}
-                        aria-label={`Remove redaction on page ${box.pageIndex + 1}`}
+                        aria-label={t('pdf.red.removeAria', { n: box.pageIndex + 1 })}
                         onClick={() => handleDeleteBox(box.id)}
                       >
                         &times;
@@ -710,10 +724,10 @@ export default function RedactPdfPage() {
             </div>
 
             <div className={redactStyles.sectionBlock}>
-              <h3 className={redactStyles.sectionTitle}>Redaction options</h3>
+              <h3 className={redactStyles.sectionTitle}>{t('pdf.red.optsHeading')}</h3>
 
-              <div className={redactStyles.colorGroup} role="group" aria-label="Redaction fill colour">
-                <span className={redactStyles.colorGroupLabel}>Fill colour</span>
+              <div className={redactStyles.colorGroup} role="group" aria-label={t('pdf.red.fillAria')}>
+                <span className={redactStyles.colorGroupLabel}>{t('pdf.red.fillLabel')}</span>
                 <div className={redactStyles.swatchRow}>
                   {FILL_SWATCHES.map((sw) => (
                     <button
@@ -728,14 +742,14 @@ export default function RedactPdfPage() {
                       onClick={() => setFillColor(sw.hex)}
                     >
                       <span className={redactStyles.swatchChip} style={{ backgroundColor: sw.hex }} />
-                      {sw.label}
+                      {t(sw.key)}
                     </button>
                   ))}
                   <label className={redactStyles.colorPickerWrap}>
-                    <span>Custom</span>
+                    <span>{t('pdf.red.custom')}</span>
                     <input
                       type="color"
-                      aria-label="Custom redaction fill colour"
+                      aria-label={t('pdf.red.customFillAria')}
                       className={redactStyles.colorPicker}
                       value={fillColor}
                       onChange={(e) => setFillColor(e.target.value)}
@@ -744,34 +758,34 @@ export default function RedactPdfPage() {
                 </div>
               </div>
 
-              <Field label="Overlay text (optional)" help="Centered text burned into each redaction box.">
+              <Field label={t('pdf.red.overlayLabel')} help={t('pdf.red.overlayHelp')}>
                 <input
                   className={fieldStyles.input}
                   value={overlayText}
-                  placeholder="REDACTED"
+                  placeholder={t('pdf.red.overlayPh')}
                   onChange={(e) => setOverlayText(e.target.value)}
                 />
               </Field>
 
-              <Field label="Render DPI" help="Resolution used to permanently flatten redacted pages.">
+              <Field label={t('pdf.p.renderDpi')} help={t('pdf.red.dpiHelp')}>
                 <Select
                   value={dpi}
                   onChange={setDpi}
                   options={[
-                    ['150', '150 DPI (smaller file)'],
-                    ['200', '200 DPI (recommended)'],
-                    ['300', '300 DPI (high detail)'],
+                    ['150', t('pdf.red.dpi150')],
+                    ['200', t('pdf.red.dpi200')],
+                    ['300', t('pdf.red.dpi300')],
                   ]}
                 />
               </Field>
 
               <Checkbox
-                label="Strip metadata & hidden data"
+                label={t('pdf.red.stripMeta')}
                 checked={sanitizeMetadata}
                 onChange={setSanitizeMetadata}
               />
 
-              <Field label="File name">
+              <Field label={t('pdf.ff.fileName')}>
                 <input
                   className={fieldStyles.input}
                   value={fileName}
@@ -781,8 +795,8 @@ export default function RedactPdfPage() {
             </div>
 
             <p className={redactStyles.privacyNote}>
-              <strong>Irreversible redaction:</strong> pages with redaction boxes are flattened to pixels so underlying
-              text and graphics cannot be selected or recovered. Untouched pages are copied losslessly.
+              <strong>{t('pdf.red.privacyBold')}</strong>
+              {t('pdf.red.privacyBody')}
             </p>
 
             {notice && <p className={fieldStyles.warning}>{notice}</p>}
@@ -796,13 +810,13 @@ export default function RedactPdfPage() {
               onClick={handleApplyRedactions}
             >
               {busy
-                ? 'Applying redactions…'
-                : `Apply ${boxes.length} redaction${boxes.length === 1 ? '' : 's'}`}
+                ? t('pdf.red.applying')
+                : t(boxes.length === 1 ? 'pdf.red.applyOne' : 'pdf.red.applyMany', { n: boxes.length })}
             </button>
 
             {result && (
               <div className={styles.result}>
-                <h3>PDF redacted</h3>
+                <h3>{t('pdf.red.doneTitle')}</h3>
                 <div
                   className={[
                     redactStyles.verifyBadge,
@@ -812,21 +826,32 @@ export default function RedactPdfPage() {
                     .join(' ')}
                 >
                   {result.verifiedZeroText
-                    ? `Verified: 0 text items remain on ${result.redactedPages.length} redacted page${result.redactedPages.length === 1 ? '' : 's'}.`
-                    : `Warning: ${result.remainingTextItems} text item(s) still detected on redacted pages.`}
-                  {result.metadataSanitized ? ' Metadata & hidden data scrubbed.' : ''}
+                    ? t(result.redactedPages.length === 1 ? 'pdf.red.verifiedOne' : 'pdf.red.verifiedMany', { n: result.redactedPages.length })
+                    : t('pdf.red.warnRemaining', { n: result.remainingTextItems })}
+                  {result.metadataSanitized ? t('pdf.red.metaScrubbed') : ''}
                 </div>
                 <p>
-                  {result.boxesApplied} redaction{result.boxesApplied === 1 ? '' : 's'} applied across page
-                  {result.redactedPages.length === 1 ? '' : 's'} {result.redactedPages.join(', ')} ·{' '}
-                  {formatBytes(result.bytes.length)}.
+                  {t(
+                    result.boxesApplied === 1
+                      ? result.redactedPages.length === 1
+                        ? 'pdf.red.appliedSummaryOne'
+                        : 'pdf.red.appliedSummaryOneMulti'
+                      : result.redactedPages.length === 1
+                        ? 'pdf.red.appliedSummaryManyOne'
+                        : 'pdf.red.appliedSummaryMany',
+                    {
+                      boxes: result.boxesApplied,
+                      pages: result.redactedPages.join(', '),
+                      size: formatBytes(result.bytes.length),
+                    },
+                  )}
                 </p>
                 <button
                   type="button"
                   className={styles.primary}
                   onClick={() => download(result.bytes, outputName)}
                 >
-                  Download {outputName}
+                  {t('pdf.ff.downloadNamed', { name: outputName })}
                 </button>
                 <ContinueWith currentToolId={REDACT.id} files={[{ name: outputName, bytes: result.bytes }]} />
               </div>
@@ -839,18 +864,19 @@ export default function RedactPdfPage() {
             <div className={styles.fileBanner}>
               <strong>{doc.name}</strong>
               <span className={styles.fileBannerMeta}>
-                {pageCount} page{pageCount === 1 ? '' : 's'} · {formatBytes(doc.bytes.length)}
+                {t(pageCount === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany', { n: pageCount })} · {formatBytes(doc.bytes.length)}
               </span>
               <span className={redactStyles.pageCountBadge}>
-                Page {pageIndex + 1}: {currentPageBoxes.length} box{currentPageBoxes.length === 1 ? '' : 'es'} · Total:{' '}
-                {boxes.length} ({redactedPageCount} page{redactedPageCount === 1 ? '' : 's'})
+                {t('pdf.red.bannerCount', {
+                  page: pageIndex + 1,
+                  pageBoxes: t(currentPageBoxes.length === 1 ? 'pdf.red.boxOne' : 'pdf.red.boxMany', { n: currentPageBoxes.length }),
+                  total: boxes.length,
+                  pages: t(redactedPageCount === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany', { n: redactedPageCount }),
+                })}
               </span>
             </div>
 
-            <p className={styles.canvasTip}>
-              Drag on the page to draw a redaction box. Click a box to move, resize, nudge with arrow keys (Shift for
-              5&times;), or press Delete to remove.
-            </p>
+            <p className={styles.canvasTip}>{t('pdf.red.tip')}</p>
 
             <RedactCanvas
               doc={pdfProxy}

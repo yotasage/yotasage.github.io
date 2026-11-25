@@ -9,7 +9,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 
 import { closedForms } from '../../lib/emsim/closedform';
 import type { CfKey, CfResult } from '../../lib/emsim/closedform';
-import { JLC_PART_LABEL, asJlcpcbCalculator, isJlcpcbCalculator, jlcAllBut, jlcPartsThatChange, jlcpcbStated } from '../../lib/emsim/jlcCalc';
+import { asJlcpcbCalculator, jlcAllBut, jlcPartsThatChange, jlcpcbStated } from '../../lib/emsim/jlcCalc';
 import type { JlcPart } from '../../lib/emsim/jlcCalc';
 import type { SolveResult } from '../../lib/emsim/jobs';
 import type { LineResults, Q } from '../../lib/emsim/lines';
@@ -18,8 +18,10 @@ import type { Setup } from '../../lib/emsim/setup';
 import type { StaticClient } from '../../lib/emsim/staticClient';
 import { UNIT_TEXT, fromMm } from '../../lib/emsim/units';
 import type { LengthUnit } from '../../lib/emsim/units';
+import { useI18n } from '../../lib/ui/i18n';
 import base from '../../styles/EmSim.module.css';
 import css from '../../styles/EmSimTools.module.css';
+import { jlcPartLabel, neglectName, neglectText } from './emText';
 import type { Commit } from './StackupSection';
 import { FLOOR, qText } from './trace';
 import { linesOf } from './tools';
@@ -54,13 +56,8 @@ const KEY_NAME: Partial<Record<CfKey, string>> = { z0: 'Z0', eeff: 'εeff', zdif
 // The theory topic each neglect sentence links to (notes-M2.3b.md "For M2.4").
 const NEGLECT_TOPIC: Record<string, string> = { 'solder mask': 'solder-mask', 'copper thickness': 'copper-thickness', 'finite ground width': 'coplanar-ground' };
 
-const NEGLECT: Record<string, string> = {
-  'solder mask': 'No formula has the solder mask. It adds dielectric over the trace and in the gaps and lowers the impedance (by about 3.5 Ω for a 50 Ω microstrip and 9 Ω for a 100 Ω pair on JLC061611-3313A), so a formula reads high.',
-  'copper thickness': 'Kirschning–Jansen and Cohn’s coupled lines take the copper as infinitely thin. Real copper adds capacitance from its side walls, so they read high: 16 Ω on a 100 Ω pair of 0.11 mm traces on JLC061611-3313A from the thickness alone.',
-  'finite ground width': 'The coplanar formulas take the grounds beside the trace as unbounded; narrower grounds raise the impedance a little.',
-};
-
 export default function CalcTool({ setup, invalid, commit, unit, client, active }: Props) {
+  const { t, locale } = useI18n();
   const n = linesOf(setup);
   const cf = useMemo(() => closedForms(setup), [setup]);
   const variant = useMemo(() => asJlcpcbCalculator(setup), [setup]);
@@ -78,7 +75,7 @@ export default function CalcTool({ setup, invalid, commit, unit, client, active 
       const one = async (s: Setup): Promise<LineResults | null> => {
         const x = await c.run<SolveResult>('calc', { kind: 'solve', setup: s });
         if (!x || !live) return null;
-        if (!x.result.ok) { r.failed = x.result.reason || 'The solve failed.'; show(); return null; }
+        if (!x.result.ok) { r.failed = x.result.reason || t('em.calc.solveFailed'); show(); return null; }
         return x.result;
       };
       r.field = await one(setup); if (!r.field) return; show();
@@ -103,7 +100,7 @@ export default function CalcTool({ setup, invalid, commit, unit, client, active 
   const cur = run && run.setup === setup ? run : null;
   const fq = main(cur?.field ?? null, n);
   const jq = already ? fq : main(cur?.jlc ?? null, n);
-  const qName = n === 2 ? 'Zdiff' : n === 1 ? 'Z0' : 'Z0 of line 1';
+  const qName = n === 2 ? 'Zdiff' : n === 1 ? 'Z0' : t('em.calc.z0Line1');
   const u = UNIT_TEXT[unit];
   const len = (mm: number) => `${Number(fromMm(mm, unit).toPrecision(4))} ${u}`;
   const state = invalid ? 'invalid' : cur?.failed ? 'failed' : cur?.done ? 'done' : 'running';
@@ -125,74 +122,73 @@ export default function CalcTool({ setup, invalid, commit, unit, client, active 
   useEffect(() => () => feedExport({ calc: null }), []);
 
   return (
-    <section className={css.tool} data-tool="calc" aria-label="Calculators" data-state={state}>
+    <section className={css.tool} data-tool="calc" aria-label={t('em.calc.aria')} data-state={state}>
       {invalid && <p className={css.small}>{invalid}</p>}
       {cur?.failed && <p className={css.reason}>{cur.failed}</p>}
       <dl className={css.pairs}>
         <div data-calc-row="field" data-v={fq?.v ?? NaN} data-e={fq?.e ?? NaN}>
-          <dt>{qName}, this tool</dt><dd className={css.num}>{ohm(fq)}</dd>
+          <dt>{t('em.calc.thisTool', { q: qName })}</dt><dd className={css.num}>{ohm(fq)}</dd>
         </div>
         <div data-calc-row="jlc" data-v={jq?.v ?? NaN} data-e={jq?.e ?? NaN}>
-          <dt>{qName}, as JLCPCB’s calculator</dt><dd className={css.num}>{ohm(jq)}</dd>
+          <dt>{t('em.calc.asJlc', { q: qName })}</dt><dd className={css.num}>{ohm(jq)}</dd>
         </div>
         {stated && (
           <div data-calc-stated={stated.case} data-v={stated.target}>
-            <dt>JLCPCB’s calculator says</dt><dd className={css.num}>{stated.target} Ω at {stated.at}</dd>
+            <dt>{t('em.calc.jlcSays')}</dt><dd className={css.num}>{t('em.calc.targetAt', { target: stated.target, at: stated.at })}</dd>
           </div>
         )}
       </dl>
       <Whys ks="calc-field calc-jlc calc-stated calc-use calc-parts" />
-      <p className={css.busy} aria-live="polite">{state === 'running' ? 'Solving…' : ''}</p>
+      <p className={css.busy} aria-live="polite">{state === 'running' ? t('em.calc.solving') : ''}</p>
       <p className={css.small}>
-        JLCPCB’s online calculator uses Polar Si9000 with fixed inputs of its own: εr 4.3 for every prepreg, 1.6 mil outer copper, a top 0.5 mil
-        narrower than the base and solder mask 1.0 mil on the board and 0.6 mil on the copper (εr 3.8). With those inputs this tool gives the same
-        impedance as JLCPCB’s calculator to within about 0.3 %. Why the mask and the narrower top matter:{' '}
-        <a href="#solder-mask" data-calc-link="solder-mask">→&nbsp;solder mask</a>,{' '}
-        <a href="#trapezoid" data-calc-link="trapezoid">→&nbsp;the trapezoid</a>.
+        {t('em.calc.jlcExplain')}{' '}
+        <a href="#solder-mask" data-calc-link="solder-mask">{t('em.calc.linkMask')}</a>,{' '}
+        <a href="#trapezoid" data-calc-link="trapezoid">{t('em.calc.linkTrap')}</a>.
         {fq && jq && !already && Math.abs(together) >= 0.005 && (
-          <> With this stackup’s own values it gives {sgn(together, 2)} Ω ({pct(fq.v, jq.v)}), so its widths for a target come out a little
-            {together > 0 ? ' wider' : ' narrower'} than JLCPCB’s{Math.abs(fq.v - jq.v) < 0.1 * jq.v ? '; both are well inside JLCPCB’s ±10 %' : ''}.</>
+          t(together > 0 ? 'em.calc.ownDiffWider' : 'em.calc.ownDiffNarrower', {
+            diff: sgn(together, 2),
+            pct: pct(fq.v, jq.v),
+            inside: Math.abs(fq.v - jq.v) < 0.1 * jq.v ? t('em.calc.inside10') : '',
+          })
         )}
       </p>
       {stated && jq && (
         <p className={css.small} data-calc-stated-note>
-          For this structure JLCPCB’s calculator asks Si9000 for {stated.target} Ω and stops its width search at {stated.siAt}, where Si9000 gives{' '}
-          {stated.si.toFixed(2)} Ω. This tool with the same inputs gives {ohm(jq)} at this width: the two solvers agree, and the difference to this
-          stackup’s own values comes from the inputs below.
+          {t('em.calc.statedNote', { target: stated.target, siAt: stated.siAt, si: stated.si.toFixed(2), jq: ohm(jq) })}
         </p>
       )}
       {variant.kept.length > 0 && <ul className={css.calcList}>{variant.kept.map((k) => <li key={k} className={css.small}>{k}</li>)}</ul>}
       {already ? (
-        <p className={css.note} data-calc-applied>This stackup already has JLCPCB’s calculator inputs. Undo returns to its own values.</p>
+        <p className={css.note} data-calc-applied>{t('em.calc.already')}</p>
       ) : (
         <div className={css.buttons}>
-          <button type="button" className={base.button} data-calc-use onClick={apply} disabled={!!invalid}>Use JLCPCB’s calculator inputs</button>
+          <button type="button" className={base.button} data-calc-use onClick={apply} disabled={!!invalid}>{t('em.calc.useJlc')}</button>
         </div>
       )}
       {!already && (
         <>
-          <h4 className={css.h4}>From JLCPCB’s inputs to this stackup’s, one at a time</h4>
+          <h4 className={css.h4}>{t('em.calc.oneAtTime')}</h4>
           <table className={css.calcTable} data-calc-parts>
             <tbody>
               {(cur?.parts ?? []).map(({ part, d }) => (
                 <tr key={part} data-calc-part={part} data-d={d}>
-                  <th scope="row">{JLC_PART_LABEL[part]}, as this stackup has it</th>
+                  <th scope="row">{t('em.calc.asStackup', { part: jlcPartLabel(part, locale) })}</th>
                   <td className={css.num}>{sgn(d, 2)} Ω</td>
                 </tr>
               ))}
               {cur?.parts && (
                 <tr data-calc-part="all" data-d={together}>
-                  <th scope="row">All together (this tool against JLCPCB’s inputs)</th>
+                  <th scope="row">{t('em.calc.allTogether')}</th>
                   <td className={css.num}>{sgn(together, 2)} Ω</td>
                 </tr>
               )}
             </tbody>
           </table>
-          {!cur?.parts && <p className={css.small}>Solving each input in turn…</p>}
+          {!cur?.parts && <p className={css.small}>{t('em.calc.solvingEach')}</p>}
         </>
       )}
 
-      <h4 className={css.h4}>Closed-form formulas</h4>
+      <h4 className={css.h4}>{t('em.calc.cfHeading')}</h4>
       <Whys ks={cf.results.length === 0 ? 'calc-none' : 'calc-reduced cf calc-kj calc-neglect'} />
       {cf.results.length === 0 ? (
         <p className={css.small} data-calc-none>{cf.notes[0]}</p>
@@ -200,11 +196,16 @@ export default function CalcTool({ setup, invalid, commit, unit, client, active 
         <>
           {cf.reduced && (
             <p className={css.small} data-calc-reduced>
-              The formulas see a rectangle of the trapezoid’s mean width {len(cf.reduced.w)}, copper {len(cf.reduced.t)}
-              {cf.reduced.s !== null ? `, gap ${len(cf.reduced.s)}` : ''}{cf.reduced.g !== null ? `, gap to ground ${len(cf.reduced.g)}` : ''},
-              {cf.reduced.hFar !== null ? ` planes ${len(cf.reduced.h)} and ${len(cf.reduced.hFar)} away` : ` height ${len(cf.reduced.h)}`} and one εr of{' '}
-              {cf.reduced.er.toFixed(3)} for the layers {cf.reduced.hFar !== null ? 'in parallel' : 'in series'}; the field solution takes the trapezoid and every layer as they are.{' '}
-              <a href="#field-solver" data-calc-link="field-solver">→&nbsp;how the field solver works</a>
+              {t('em.calc.reducedBase', {
+                w: len(cf.reduced.w),
+                t: len(cf.reduced.t),
+                s: cf.reduced.s !== null ? t('em.calc.reducedGap', { v: len(cf.reduced.s) }) : '',
+                g: cf.reduced.g !== null ? t('em.calc.reducedGnd', { v: len(cf.reduced.g) }) : '',
+                h: cf.reduced.hFar !== null ? t('em.calc.reducedPlanes', { h: len(cf.reduced.h), hFar: len(cf.reduced.hFar) }) : t('em.calc.reducedHeight', { h: len(cf.reduced.h) }),
+                er: cf.reduced.er.toFixed(3),
+                comb: cf.reduced.hFar !== null ? t('em.calc.parallel') : t('em.calc.series'),
+              })}{' '}
+              <a href="#field-solver" data-calc-link="field-solver">{t('em.calc.linkSolver')}</a>
             </p>
           )}
           <div className={css.cfList}>
@@ -212,13 +213,17 @@ export default function CalcTool({ setup, invalid, commit, unit, client, active 
           </div>
           {cf.results.some((r) => r.id === 'kj') && (
             <p className={css.note} data-calc-kj>
-              Kirschning–Jansen is a zero-thickness value: it is the impedance of copper with no height, so beside a real pair it reads high by
-              what the copper’s side walls add (16 Ω on a 100 Ω pair of 0.11 mm traces on JLC061611-3313A).{' '}
-              <a href="#copper-thickness" data-calc-link="copper-thickness">→&nbsp;copper thickness</a>
+              {t('em.calc.kjNote')}{' '}
+              <a href="#copper-thickness" data-calc-link="copper-thickness">{t('em.calc.linkCopper')}</a>
             </p>
           )}
           <ul className={css.calcList}>
-            {[...new Set(cf.results.flatMap((r) => r.neglects))].map((k) => <li key={k} className={css.small}>{NEGLECT[k] ?? `Not in the formulas: ${k}.`}{NEGLECT_TOPIC[k] && <>{' '}<a href={`#${NEGLECT_TOPIC[k]}`} data-calc-link={NEGLECT_TOPIC[k]}>→&nbsp;theory</a></>}</li>)}
+            {[...new Set(cf.results.flatMap((r) => r.neglects))].map((k) => (
+              <li key={k} className={css.small}>
+                {neglectText(k, locale)}
+                {NEGLECT_TOPIC[k] && <>{' '}<a href={`#${NEGLECT_TOPIC[k]}`} data-calc-link={NEGLECT_TOPIC[k]}>{t('em.calc.linkTheory')}</a></>}
+              </li>
+            ))}
             {cf.notes.slice(cf.reduced && cf.reduced.etch > 0 ? 2 : 1).map((x) => <li key={x} className={css.small}>{x}</li>)}
           </ul>
         </>
@@ -228,6 +233,7 @@ export default function CalcTool({ setup, invalid, commit, unit, client, active 
 }
 
 function Formula({ r, n, field }: { r: CfResult; n: number; field: LineResults | null }) {
+  const { t, locale } = useI18n();
   const keys: CfKey[] = n === 2 ? ['zdiff', 'zcm', 'zodd', 'zeven'] : ['z0', 'eeff'];
   const fv = (k: CfKey): number | null => {
     if (!field || !field.ok) return null;
@@ -239,7 +245,7 @@ function Formula({ r, n, field }: { r: CfResult; n: number; field: LineResults |
   const mk = n === 2 ? 'zdiff' : 'z0';
   const v = r.values;
   const o = r.validity.outside;
-  const acc = r.validity.accuracy && !/^not stated/.test(r.validity.accuracy) ? r.validity.accuracy : 'not stated';
+  const acc = r.validity.accuracy && !/^not stated/.test(r.validity.accuracy) ? r.validity.accuracy : t('em.calc.notStated');
   return (
     <article className={css.cf} data-cf={r.id} data-inside={r.validity.inside} data-v={v[mk] ?? NaN} data-outside={o.map((x) => x.input).join('|')}>
       <h5 className={css.cfName}>{r.name}</h5>
@@ -249,18 +255,29 @@ function Formula({ r, n, field }: { r: CfResult; n: number; field: LineResults |
           return (
             <div key={k} data-cf-key={k} data-v={v[k]}>
               <dt>{KEY_NAME[k]}</dt>
-              <dd><span className={css.num}>{k === 'eeff' ? v[k]!.toFixed(3) : `${v[k]!.toFixed(2)} Ω`}</span>{f !== null && <span className={css.err}> ({pct(v[k]!, f)} to the field solution)</span>}</dd>
+              <dd><span className={css.num}>{k === 'eeff' ? v[k]!.toFixed(3) : `${v[k]!.toFixed(2)} Ω`}</span>{f !== null && <span className={css.err}>{t('em.calc.toField', { pct: pct(v[k]!, f) })}</span>}</dd>
             </div>
           );
         })}
       </dl>
       <p className={css.small} data-cf-range>
-        {r.validity.inside ? <>Inside its range ({r.validity.range}).</> : (
-          <span className={css.cfOut}>Outside its range ({r.validity.range}): {o.map((x) => `${x.input} ${Number(x.value.toPrecision(3))} is ${x.side} ${Number(x.limit.toPrecision(3))}`).join('; ')}.</span>
+        {r.validity.inside ? <>{t('em.calc.insideRange', { range: r.validity.range })}</> : (
+          <span className={css.cfOut}>
+            {t('em.calc.outsideRange', {
+              range: r.validity.range,
+              items: o.map((x) => t('em.calc.outsideItem', {
+                input: x.input,
+                value: Number(x.value.toPrecision(3)),
+                side: x.side === 'below' ? t('em.calc.sideBelow') : t('em.calc.sideAbove'),
+                limit: Number(x.limit.toPrecision(3)),
+              })).join('; '),
+            })}
+          </span>
         )}
-        {' '}Published accuracy: {acc}.{r.neglects.length > 0 && <> Leaves out: {r.neglects.join(', ')}.</>}
-        {r.id === 'ipc-microstrip' && ' The crudest of the three: on a bare 50 Ω trace on JLC061611-3313A it reads about 9 % low, so close agreement on a masked board is its error and the missing mask cancelling.'}
-        {' '}<a href="#closed-forms" data-calc-link="closed-forms">→&nbsp;ranges and accuracy</a>
+        {t('em.calc.accuracy', { acc })}
+        {r.neglects.length > 0 && t('em.calc.leavesOut', { items: r.neglects.map((x) => neglectName(x, locale)).join(', ') })}
+        {r.id === 'ipc-microstrip' && t('em.calc.ipcNote')}
+        {' '}<a href="#closed-forms" data-calc-link="closed-forms">{t('em.calc.linkClosedForms')}</a>
       </p>
     </article>
   );

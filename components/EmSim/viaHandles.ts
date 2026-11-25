@@ -14,6 +14,7 @@ import type { Stackup, Val } from '../../lib/emsim/stackup';
 import { viaIssues } from '../../lib/emsim/via';
 import type { ReturnVia, ViaStructure } from '../../lib/emsim/via';
 import type { SideGeom, TopGeom } from '../../lib/emsim/viaGeom';
+import { emT } from './emText';
 
 export type ViaHandleKey = string; // pad:<layer> | ap:<layer> | drill | bd | top-pad | top-ap | top-apl | top-br | pitch | ret:<k>
 
@@ -42,19 +43,19 @@ export function sideHandles(st: Stackup, v: ViaStructure, g: SideGeom): ViaHandl
   for (const p of v.pads) {
     const i = layerIndex(st, p.layer);
     if (!p.d || !(p.d.v > 0) || i < iS || i > iE) continue;
-    out.push({ key: `pad:${p.layer}`, axis: 'x', x: c + p.d.v / 2, y: mid.get(p.layer) ?? 0, value: p.d.v, value2: NaN, name: `Pad on ${st.layers[i].name || p.layer}`, from: (x) => one(2 * (x - c)) });
+    out.push({ key: `pad:${p.layer}`, axis: 'x', x: c + p.d.v / 2, y: mid.get(p.layer) ?? 0, value: p.d.v, value2: NaN, name: emT('em.via.h.padOn', { layer: st.layers[i].name || p.layer }), from: (x) => one(2 * (x - c)) });
   }
   for (const a of v.antipads) {
     const i = layerIndex(st, a.layer);
     if (!(a.d?.v > 0) || i < iS || i > iE) continue;
-    out.push({ key: `ap:${a.layer}`, axis: 'x', x: c + a.d.v / 2, y: mid.get(a.layer) ?? 0, value: a.d.v, value2: NaN, name: `Antipad on ${st.layers[i].name || a.layer}`, from: (x) => one(2 * (x - c)) });
+    out.push({ key: `ap:${a.layer}`, axis: 'x', x: c + a.d.v / 2, y: mid.get(a.layer) ?? 0, value: a.d.v, value2: NaN, name: emT('em.via.h.apOn', { layer: st.layers[i].name || a.layer }), from: (x) => one(2 * (x - c)) });
   }
   const b = g.barrels[g.barrels.length - 1];
-  out.push({ key: 'drill', axis: 'x', x: c + v.drill.v / 2, y: 0.5 * (b.y0 + b.y1), value: v.drill.v, value2: NaN, name: 'Drill', from: (x) => one(2 * (x - c)) });
+  out.push({ key: 'drill', axis: 'x', x: c + v.drill.v / 2, y: 0.5 * (b.y0 + b.y1), value: v.drill.v, value2: NaN, name: emT('em.via.h.drill'), from: (x) => one(2 * (x - c)) });
   const bd = v.backdrill;
   if (bd && bd.depth?.v > 0 && bd.d?.v > 0) {
     const top = bd.side === 'top';
-    out.push({ key: 'bd', axis: 'y', x: c + bd.d.v / 2, y: top ? bd.depth.v : g.thick - bd.depth.v, value: bd.depth.v, value2: NaN, name: `Backdrill depth from the ${bd.side}`, from: (_x, y) => one(top ? y : g.thick - y) });
+    out.push({ key: 'bd', axis: 'y', x: c + bd.d.v / 2, y: top ? bd.depth.v : g.thick - bd.depth.v, value: bd.depth.v, value2: NaN, name: emT('em.via.h.bdDepth', { side: emT(top ? 'em.via.top' : 'em.via.bottom') }), from: (_x, y) => one(top ? y : g.thick - y) });
   }
   return out;
 }
@@ -66,24 +67,24 @@ export function topHandles(st: Stackup, v: ViaStructure, g: TopGeom): ViaHandle[
   const name = (id: string) => st.layers[layerIndex(st, id)]?.name || id;
   if (sig.length) {
     const d = Math.max(...sig.map((p) => p.d!.v));
-    out.push({ key: 'top-pad', axis: 'x', x: d / 2, y: 0, value: d, value2: NaN, name: `Pad on ${sig.map((p) => name(p.layer)).join(' and ')}`, from: (x) => one(2 * x) });
+    out.push({ key: 'top-pad', axis: 'x', x: d / 2, y: 0, value: d, value2: NaN, name: emT('em.via.h.padOn', { layer: sig.map((p) => name(p.layer)).join(emT('em.via.h.and')) }), from: (x) => one(2 * x) });
   }
   const iS = layerIndex(st, v.start), iE = layerIndex(st, v.end);
   const aps = v.antipads.filter((a) => { const i = layerIndex(st, a.layer); return i >= iS && i <= iE && a.d?.v > 0; });
   const p = v.pitch ? v.pitch.v : 0;
   if (aps.length) {
     const a = aps[0], r = a.d.v / 2;
-    const all = aps.length > 1 ? 'Antipads (all planes)' : `Antipad on ${name(a.layer)}`;
+    const all = aps.length > 1 ? emT('em.via.h.allAp') : emT('em.via.h.apOn', { layer: name(a.layer) });
     if (a.shape === 'oblong' && p) {
-      out.push({ key: 'top-ap', axis: 'x', x: r, y: -p / 2, value: a.d.v, value2: NaN, name: `${all}, width`, from: (x) => one(2 * x) });
-      out.push({ key: 'top-apl', axis: 'y', x: 0, y: r, value: p + a.d.v, value2: NaN, name: `${all}, length`, from: (_x, y) => one(p + 2 * y) });
+      out.push({ key: 'top-ap', axis: 'x', x: r, y: -p / 2, value: a.d.v, value2: NaN, name: emT('em.via.h.width', { what: all }), from: (x) => one(2 * x) });
+      out.push({ key: 'top-apl', axis: 'y', x: 0, y: r, value: p + a.d.v, value2: NaN, name: emT('em.via.h.length', { what: all }), from: (_x, y) => one(p + 2 * y) });
     } else {
       out.push({ key: 'top-ap', axis: 'x', x: r, y: 0, value: a.d.v, value2: NaN, name: all, from: (x) => one(2 * x) });
-      if (a.shape === 'joined' && p && a.bridge?.v > 0) out.push({ key: 'top-br', axis: 'x', x: a.bridge.v / 2, y: -p / 2, value: a.bridge.v, value2: NaN, name: 'Bridge width', from: (x) => one(2 * x) });
+      if (a.shape === 'joined' && p && a.bridge?.v > 0) out.push({ key: 'top-br', axis: 'x', x: a.bridge.v / 2, y: -p / 2, value: a.bridge.v, value2: NaN, name: emT('em.via.h.bridgeW'), from: (x) => one(2 * x) });
     }
   }
-  if (v.pitch) out.push({ key: 'pitch', axis: 'y', x: 0, y: -p, value: p, value2: NaN, name: 'Pitch', from: (_x, y) => one(-y) });
-  for (const r of g.returns) out.push({ key: `ret:${r.k}`, axis: 'xy', x: r.x, y: r.y, value: r.x, value2: -r.y, name: `Return via ${r.k + 1}`, from: (x, y) => [x, -y] });
+  if (v.pitch) out.push({ key: 'pitch', axis: 'y', x: 0, y: -p, value: p, value2: NaN, name: emT('em.via.h.pitch'), from: (_x, y) => one(-y) });
+  for (const r of g.returns) out.push({ key: `ret:${r.k}`, axis: 'xy', x: r.x, y: r.y, value: r.x, value2: -r.y, name: emT('em.via.h.returnN', { n: r.k + 1 }), from: (x, y) => [x, -y] });
   return out;
 }
 
@@ -99,7 +100,7 @@ function check(s: Stackup, old: ViaStructure, n: ViaStructure, moved: number): {
     for (let j = 0; j < n.returns.length; j++) {
       const o = n.returns[j];
       if (j === moved || !Number.isFinite(o.x?.v) || !Number.isFinite(o.y?.v)) continue;
-      if (Math.hypot(r.x.v - o.x.v, r.y.v - o.y.v) < rr + (o.pad ? o.pad.v : o.drill.v) / 2) return { reason: `Return via ${moved + 1} would overlap return via ${j + 1}.` };
+      if (Math.hypot(r.x.v - o.x.v, r.y.v - o.y.v) < rr + (o.pad ? o.pad.v : o.drill.v) / 2) return { reason: emT('em.via.h.overlap', { a: moved + 1, b: j + 1 }) };
     }
   }
   return { via: n };
@@ -107,56 +108,56 @@ function check(s: Stackup, old: ViaStructure, n: ViaStructure, moved: number): {
 
 /** The via with a handle's value(s), or why it cannot take them. */
 export function applyViaHandle(s: Stackup, v: ViaStructure, key: ViaHandleKey, a: number, b = NaN): { via: ViaStructure } | { reason: string } {
-  if (!Number.isFinite(a)) return { reason: 'The value is not a number.' };
-  const pos = (what: string) => (a > 0 ? null : { reason: `${what} must be larger than zero.` });
+  if (!Number.isFinite(a)) return { reason: emT('em.via.h.notNum') };
+  const pos = (what: string) => (a > 0 ? null : { reason: emT('em.via.h.gtZero', { what }) });
   let n: ViaStructure;
   let moved = -1;
   if (key.startsWith('pad:')) {
     const L = key.slice(4);
-    const no = pos('The pad'); if (no) return no;
+    const no = pos(emT('em.via.h.thePad')); if (no) return no;
     n = { ...v, pads: v.pads.map((p) => (p.layer === L ? { ...p, d: keep(p.d, a) } : p)) };
   } else if (key.startsWith('ap:')) {
     const L = key.slice(3);
-    const no = pos('The antipad'); if (no) return no;
+    const no = pos(emT('em.via.h.theAp')); if (no) return no;
     n = { ...v, antipads: v.antipads.map((x) => (x.layer === L ? { ...x, d: keep(x.d, a) } : x)) };
   } else if (key.startsWith('ret:')) {
     const k = Number(key.slice(4));
-    if (!v.returns[k]) return { reason: 'That return via is no longer there.' };
-    if (!Number.isFinite(b)) return { reason: 'The value is not a number.' };
+    if (!v.returns[k]) return { reason: emT('em.via.h.noRet') };
+    if (!Number.isFinite(b)) return { reason: emT('em.via.h.notNum') };
     n = { ...v, returns: v.returns.map((r, i) => (i === k ? { ...r, x: keep(r.x, a), y: keep(r.y, b) } : r)) };
     moved = k;
   } else {
     switch (key) {
-      case 'drill': { const no = pos('The drill'); if (no) return no; n = { ...v, drill: keep(v.drill, a) }; break; }
+      case 'drill': { const no = pos(emT('em.via.h.theDrill')); if (no) return no; n = { ...v, drill: keep(v.drill, a) }; break; }
       case 'bd': {
-        if (!v.backdrill) return { reason: 'There is no backdrill.' };
-        const no = pos('The backdrill depth'); if (no) return no;
+        if (!v.backdrill) return { reason: emT('em.via.h.noBd') };
+        const no = pos(emT('em.via.h.theBdDepth')); if (no) return no;
         n = { ...v, backdrill: { ...v.backdrill, depth: keep(v.backdrill.depth, a) } };
         break;
       }
       case 'top-pad': {
-        const no = pos('The pad'); if (no) return no;
+        const no = pos(emT('em.via.h.thePad')); if (no) return no;
         n = { ...v, pads: v.pads.map((p) => ((p.layer === v.entry || p.layer === v.exit) && p.d && p.d.v > 0 ? { ...p, d: keep(p.d, a) } : p)) };
         break;
       }
       case 'top-ap': case 'top-apl': {
         const d = key === 'top-apl' ? a - (v.pitch?.v ?? 0) : a;
-        if (!(d > 0)) return { reason: 'The antipad must be larger than zero.' };
+        if (!(d > 0)) return { reason: emT('em.via.h.gtZero', { what: emT('em.via.h.theAp') }) };
         n = { ...v, antipads: v.antipads.map((x) => ({ ...x, d: keep(x.d, d) })) };
         break;
       }
       case 'top-br': {
-        const no = pos('The bridge'); if (no) return no;
+        const no = pos(emT('em.via.h.theBridge')); if (no) return no;
         n = { ...v, antipads: v.antipads.map((x) => (x.shape === 'joined' ? { ...x, bridge: keep(x.bridge, a) } : x)) };
         break;
       }
       case 'pitch': {
-        if (!v.pitch) return { reason: 'A single via has no pitch.' };
-        const no = pos('The pitch'); if (no) return no;
+        if (!v.pitch) return { reason: emT('em.via.h.noPitch') };
+        const no = pos(emT('em.via.h.thePitch')); if (no) return no;
         n = { ...v, pitch: keep(v.pitch, a) };
         break;
       }
-      default: return { reason: 'That handle is no longer there.' };
+      default: return { reason: emT('em.via.h.noHandle') };
     }
   }
   return check(s, v, n, moved);
@@ -170,5 +171,8 @@ export function addReturnAt(s: Stackup, v: ViaStructure, x: number, y: number): 
   const r: ReturnVia = { x: keep(null, x), y: keep(null, y), drill, pad, planes: [...v.planes] };
   const n = { ...v, returns: [...v.returns, r] };
   const res = check(s, v, n, n.returns.length - 1);
-  return 'reason' in res ? { reason: res.reason.replace(`return via ${n.returns.length}`, 'A return via there').replace(`Return via ${n.returns.length}`, 'A return via there') } : res;
+  if (!('reason' in res)) return res;
+  const tag = emT('em.via.h.returnN', { n: n.returns.length });
+  const repl = emT('em.via.h.retThere');
+  return { reason: res.reason.replace(tag, repl).replace(tag.toLowerCase(), repl).replace(`return via ${n.returns.length}`, repl).replace(`Return via ${n.returns.length}`, repl) };
 }

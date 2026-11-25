@@ -20,6 +20,7 @@ import {
   splitItemWithMatches,
 } from '../../lib/pdf/reader';
 import { PdfThumbPool } from '../../lib/pdf/thumbs';
+import { useI18n } from '../../lib/ui/i18n';
 import rStyles from '../../styles/PdfReader.module.css';
 import { ContinueWith } from './ContinueWith';
 import { DropTarget, FilePickerButton } from './ToolPage';
@@ -81,6 +82,7 @@ export function PdfReader({
   numPages,
   onOpenFiles,
 }: PdfReaderProps) {
+  const { t } = useI18n();
   const rootRef = React.useRef<HTMLDivElement>(null);
   const viewportRef = React.useRef<HTMLDivElement>(null);
   const searchInputRef = React.useRef<HTMLInputElement>(null);
@@ -701,17 +703,17 @@ export function PdfReader({
         overClassName={rStyles.readerDropOver}
       >
         {/* Top Toolbar */}
-        <div className={rStyles.toolbar} role="toolbar" aria-label="PDF reader controls">
+        <div className={rStyles.toolbar} role="toolbar" aria-label={t('pdf.rd.controlsAria')}>
           <div className={rStyles.toolGroup}>
             <button
               type="button"
               className={[rStyles.toolBtn, sidebarOpen ? rStyles.toolBtnActive : ''].join(' ')}
               aria-pressed={sidebarOpen}
-              aria-label="Toggle sidebar"
-              title="Sidebar (Thumbnails, Contents, Info)"
+              aria-label={t('pdf.rd.toggleSidebarAria')}
+              title={t('pdf.rd.sidebarTitle')}
               onClick={() => setSidebarOpen((v) => !v)}
             >
-              ☰ <span className={rStyles.hideOnPhone}>Sidebar</span>
+              ☰ <span className={rStyles.hideOnPhone}>{t('pdf.rd.sidebar')}</span>
             </button>
           </div>
 
@@ -721,8 +723,8 @@ export function PdfReader({
             <button
               type="button"
               className={rStyles.toolBtnIcon}
-              aria-label="Previous page"
-              title="Previous page (Left arrow)"
+              aria-label={t('pdf.rd.prevPageAria')}
+              title={t('pdf.rd.prevPageTitle')}
               disabled={currentPage <= 1}
               onClick={() => stepPage(-1)}
             >
@@ -732,7 +734,7 @@ export function PdfReader({
               type="text"
               inputMode="numeric"
               className={rStyles.pageInput}
-              aria-label="Current page"
+              aria-label={t('pdf.rd.currPageAria')}
               value={pageInput}
               onChange={(e) => setPageInput(e.target.value)}
               onBlur={commitPageInput}
@@ -747,8 +749,8 @@ export function PdfReader({
             <button
               type="button"
               className={rStyles.toolBtnIcon}
-              aria-label="Next page"
-              title="Next page (Right arrow)"
+              aria-label={t('pdf.rd.nextPageAria')}
+              title={t('pdf.rd.nextPageTitle')}
               disabled={currentPage >= numPages}
               onClick={() => stepPage(1)}
             >
@@ -762,20 +764,20 @@ export function PdfReader({
             <button
               type="button"
               className={rStyles.toolBtnIcon}
-              aria-label="Zoom out"
-              title="Zoom out (-)"
+              aria-label={t('pdf.canvas.zoomOut')}
+              title={t('pdf.rd.zoomOutTitle')}
               onClick={zoomOut}
             >
               −
             </button>
             <select
               className={rStyles.toolSelect}
-              aria-label="Zoom level"
+              aria-label={t('pdf.rd.zoomLevelAria')}
               value={zoomSelectValue}
               onChange={(e) => handleZoomSelect(e.target.value)}
             >
-              <option value="fit-width">Fit width</option>
-              <option value="fit-page">Fit page</option>
+              <option value="fit-width">{t('pdf.rd.fitWidth')}</option>
+              <option value="fit-page">{t('pdf.rd.fitPage')}</option>
               {zoomSelectValue === 'custom' && (
                 <option value="custom">{Math.round(effectiveScale * 100)}%</option>
               )}
@@ -788,8 +790,8 @@ export function PdfReader({
             <button
               type="button"
               className={rStyles.toolBtnIcon}
-              aria-label="Zoom in"
-              title="Zoom in (+)"
+              aria-label={t('pdf.canvas.zoomIn')}
+              title={t('pdf.rd.zoomInTitle')}
               onClick={zoomIn}
             >
               +
@@ -801,19 +803,19 @@ export function PdfReader({
           <div className={rStyles.toolGroup}>
             <select
               className={rStyles.toolSelect}
-              aria-label="Page layout"
+              aria-label={t('pdf.rd.pageLayoutAria')}
               value={viewMode}
               onChange={(e) => setViewMode(e.target.value as ViewMode)}
             >
-              <option value="continuous">Continuous</option>
-              <option value="single">Single page</option>
-              <option value="two-page">Two-page</option>
+              <option value="continuous">{t('pdf.rd.continuous')}</option>
+              <option value="single">{t('pdf.rd.singlePage')}</option>
+              <option value="two-page">{t('pdf.rd.twoPage')}</option>
             </select>
             <button
               type="button"
               className={rStyles.toolBtn}
-              aria-label="Rotate view 90 degrees clockwise"
-              title="Rotate view 90° (view-only)"
+              aria-label={t('pdf.rd.rotateAria')}
+              title={t('pdf.rd.rotateTitle')}
               onClick={() => setExtraRotation((r) => (((r + 90) % 360) as ExtraRotation))}
             >
               ↻ 90°
@@ -822,11 +824,11 @@ export function PdfReader({
               type="button"
               className={[rStyles.toolBtn, darkPaper ? rStyles.toolBtnActive : ''].join(' ')}
               aria-pressed={darkPaper}
-              aria-label="Toggle dark paper mode"
-              title="Dark-mode paper"
+              aria-label={t('pdf.rd.darkAria')}
+              title={t('pdf.rd.darkTitle')}
               onClick={() => setDarkPaper((v) => !v)}
             >
-              ☾ <span className={rStyles.hideOnPhone}>Dark</span>
+              ☾ <span className={rStyles.hideOnPhone}>{t('pdf.rd.dark')}</span>
             </button>
           </div>
 
@@ -837,39 +839,39 @@ export function PdfReader({
               type="button"
               className={[rStyles.toolBtn, searchOpen ? rStyles.toolBtnActive : ''].join(' ')}
               aria-pressed={searchOpen}
-              aria-label="Find in document"
-              title="Find in document (Ctrl+F)"
+              aria-label={t('pdf.rd.findAria')}
+              title={t('pdf.rd.findTitle')}
               onClick={() => (searchOpen ? closeSearch() : openSearch())}
             >
-              Find
+              {t('pdf.rd.find')}
             </button>
             <button
               type="button"
               className={rStyles.toolBtn}
-              aria-label="Print PDF"
-              title="Print PDF"
+              aria-label={t('pdf.rd.printAria')}
+              title={t('pdf.rd.printAria')}
               onClick={handlePrint}
             >
-              Print
+              {t('pdf.rd.print')}
             </button>
             <button
               type="button"
               className={rStyles.toolBtn}
-              aria-label="Download PDF"
-              title="Download PDF"
+              aria-label={t('pdf.rd.downloadAria')}
+              title={t('pdf.rd.downloadAria')}
               onClick={() => download(bytes, fileName)}
             >
-              Download
+              {t('pdf.rd.download')}
             </button>
             <button
               type="button"
               className={[rStyles.toolBtn, isFullscreen ? rStyles.toolBtnActive : ''].join(' ')}
               aria-pressed={isFullscreen}
-              aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-              title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+              aria-label={isFullscreen ? t('pdf.rd.exitFsAria') : t('pdf.rd.enterFsAria')}
+              title={isFullscreen ? t('pdf.rd.exitFsAria') : t('pdf.rd.fsTitle')}
               onClick={handleToggleFullscreen}
             >
-              {isFullscreen ? 'Exit' : '⛶'}
+              {isFullscreen ? t('pdf.rd.exit') : '⛶'}
             </button>
             <FilePickerButton
               accept=".pdf,application/pdf"
@@ -877,20 +879,20 @@ export function PdfReader({
               onFiles={onOpenFiles}
               className={rStyles.toolBtn}
             >
-              Open PDF
+              {t('pdf.rd.openPdf')}
             </FilePickerButton>
           </div>
         </div>
 
         {/* Search Bar */}
         {searchOpen && (
-          <div className={rStyles.searchBar} role="search" aria-label="Find in document">
+          <div className={rStyles.searchBar} role="search" aria-label={t('pdf.rd.findAria')}>
             <input
               ref={searchInputRef}
               type="search"
               className={rStyles.searchInput}
-              placeholder="Find in document…"
-              aria-label="Search query"
+              placeholder={t('pdf.rd.findPlaceholder')}
+              aria-label={t('pdf.rd.searchQueryAria')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => {
@@ -907,7 +909,7 @@ export function PdfReader({
               type="button"
               className={[rStyles.toolBtn, caseSensitive ? rStyles.toolBtnActive : ''].join(' ')}
               aria-pressed={caseSensitive}
-              title="Match case"
+              title={t('pdf.rd.matchCase')}
               onClick={() => setCaseSensitive((v) => !v)}
             >
               Aa
@@ -918,14 +920,14 @@ export function PdfReader({
                 : matches.length > 0
                   ? `${activeMatchIdx + 1} / ${matches.length}${searching ? '…' : ''}`
                   : searching
-                    ? 'Searching…'
-                    : '0 matches'}
+                    ? t('pdf.rd.searching')
+                    : t('pdf.rd.zeroMatches')}
             </span>
             <button
               type="button"
               className={rStyles.toolBtnIcon}
-              aria-label="Previous match"
-              title="Previous match (Shift+Enter)"
+              aria-label={t('pdf.rd.prevMatchAria')}
+              title={t('pdf.rd.prevMatchTitle')}
               disabled={matches.length === 0}
               onClick={() => navigateMatch(-1)}
             >
@@ -934,8 +936,8 @@ export function PdfReader({
             <button
               type="button"
               className={rStyles.toolBtnIcon}
-              aria-label="Next match"
-              title="Next match (Enter)"
+              aria-label={t('pdf.rd.nextMatchAria')}
+              title={t('pdf.rd.nextMatchTitle')}
               disabled={matches.length === 0}
               onClick={() => navigateMatch(1)}
             >
@@ -944,8 +946,8 @@ export function PdfReader({
             <button
               type="button"
               className={rStyles.toolBtnIcon}
-              aria-label="Close search"
-              title="Close search (Esc)"
+              aria-label={t('pdf.rd.closeSearchAria')}
+              title={t('pdf.rd.closeSearchTitle')}
               onClick={closeSearch}
             >
               ×
@@ -960,10 +962,10 @@ export function PdfReader({
               <button
                 type="button"
                 className={rStyles.sidebarBackdrop}
-                aria-label="Close sidebar"
+                aria-label={t('pdf.rd.closeSidebarAria')}
                 onClick={() => setSidebarOpen(false)}
               />
-              <aside className={rStyles.sidebar} aria-label="Document sidebar">
+              <aside className={rStyles.sidebar} aria-label={t('pdf.rd.sidebarAria')}>
                 <div className={rStyles.sidebarTabs} role="tablist">
                   <button
                     type="button"
@@ -975,7 +977,7 @@ export function PdfReader({
                     ].join(' ')}
                     onClick={() => setSidebarTab('thumbnails')}
                   >
-                    Thumbnails
+                    {t('pdf.rd.tabThumbs')}
                   </button>
                   <button
                     type="button"
@@ -987,7 +989,7 @@ export function PdfReader({
                     ].join(' ')}
                     onClick={() => setSidebarTab('contents')}
                   >
-                    Contents
+                    {t('pdf.rd.tabContents')}
                   </button>
                   <button
                     type="button"
@@ -999,7 +1001,7 @@ export function PdfReader({
                     ].join(' ')}
                     onClick={() => setSidebarTab('info')}
                   >
-                    Info
+                    {t('pdf.rd.tabInfo')}
                   </button>
                 </div>
 
@@ -1020,9 +1022,9 @@ export function PdfReader({
 
                   {sidebarTab === 'contents' && (
                     !outlineLoaded ? (
-                      <div className={rStyles.emptyTab}>Loading table of contents…</div>
+                      <div className={rStyles.emptyTab}>{t('pdf.rd.loadingToc')}</div>
                     ) : outline.length === 0 ? (
-                      <div className={rStyles.emptyTab}>No table of contents</div>
+                      <div className={rStyles.emptyTab}>{t('pdf.rd.noToc')}</div>
                     ) : (
                       <OutlineTree nodes={outline} onJump={handleSidebarJump} />
                     )
@@ -1032,56 +1034,56 @@ export function PdfReader({
                     <div className={rStyles.infoSection}>
                       <dl className={rStyles.infoList}>
                         <div className={rStyles.infoItem}>
-                          <dt>File</dt>
+                          <dt>{t('pdf.rd.infoFile')}</dt>
                           <dd>{fileName}</dd>
                         </div>
                         <div className={rStyles.infoItem}>
-                          <dt>Size</dt>
+                          <dt>{t('pdf.rd.infoSize')}</dt>
                           <dd>{formatBytes(bytes.byteLength)}</dd>
                         </div>
                         <div className={rStyles.infoItem}>
-                          <dt>Pages</dt>
+                          <dt>{t('pdf.rd.infoPages')}</dt>
                           <dd>{numPages}</dd>
                         </div>
                         {docInfo?.pageWidthPt && docInfo?.pageHeightPt && (
                           <div className={rStyles.infoItem}>
-                            <dt>Page size (Page 1)</dt>
+                            <dt>{t('pdf.rd.infoPageSize')}</dt>
                             <dd>{formatPageDimensions(docInfo.pageWidthPt, docInfo.pageHeightPt)}</dd>
                           </div>
                         )}
                         {docInfo?.pdfVersion && (
                           <div className={rStyles.infoItem}>
-                            <dt>PDF version</dt>
+                            <dt>{t('pdf.rd.infoPdfVer')}</dt>
                             <dd>{docInfo.pdfVersion}</dd>
                           </div>
                         )}
                         {docInfo?.title && (
                           <div className={rStyles.infoItem}>
-                            <dt>Title</dt>
+                            <dt>{t('pdf.rd.infoTitle')}</dt>
                             <dd>{docInfo.title}</dd>
                           </div>
                         )}
                         {docInfo?.author && (
                           <div className={rStyles.infoItem}>
-                            <dt>Author</dt>
+                            <dt>{t('pdf.rd.infoAuthor')}</dt>
                             <dd>{docInfo.author}</dd>
                           </div>
                         )}
                         {docInfo?.subject && (
                           <div className={rStyles.infoItem}>
-                            <dt>Subject</dt>
+                            <dt>{t('pdf.rd.infoSubject')}</dt>
                             <dd>{docInfo.subject}</dd>
                           </div>
                         )}
                         {docInfo?.creator && (
                           <div className={rStyles.infoItem}>
-                            <dt>Creator</dt>
+                            <dt>{t('pdf.rd.infoCreator')}</dt>
                             <dd>{docInfo.creator}</dd>
                           </div>
                         )}
                         {docInfo?.producer && (
                           <div className={rStyles.infoItem}>
-                            <dt>Producer</dt>
+                            <dt>{t('pdf.rd.infoProducer')}</dt>
                             <dd>{docInfo.producer}</dd>
                           </div>
                         )}
@@ -1096,7 +1098,7 @@ export function PdfReader({
           )}
 
           {/* Page Viewport */}
-          <div ref={viewportRef} className={rStyles.viewport} tabIndex={0} aria-label="PDF document pages">
+          <div ref={viewportRef} className={rStyles.viewport} tabIndex={0} aria-label={t('pdf.rd.pagesAria')}>
             <div className={effectiveViewMode === 'two-page' ? rStyles.spreadRow : rStyles.pageColumn}>
               {pagesToRenderList.map((pageNum) => {
                 const baseDims = pageDimsMap.get(pageNum) ?? defaultDims;
@@ -1147,6 +1149,7 @@ const SidebarThumb = React.memo(function SidebarThumb({
   active: boolean;
   onSelect: (pageNumber: number) => void;
 }) {
+  const { t } = useI18n();
   const ref = React.useRef<HTMLLIElement>(null);
   const visibleRef = React.useRef(false);
   const [url, setUrl] = React.useState<string | null>(() => pool.getCached(pageIndex));
@@ -1200,9 +1203,9 @@ const SidebarThumb = React.memo(function SidebarThumb({
       >
         <div className={rStyles.thumbBox}>
           {url ? (
-            <img src={url} alt={`Page ${pageIndex + 1} thumbnail`} />
+            <img src={url} alt={t('pdf.rd.thumbAlt', { n: pageIndex + 1 })} />
           ) : (
-            <span className={rStyles.thumbPlaceholder}>Page {pageIndex + 1}</span>
+            <span className={rStyles.thumbPlaceholder}>{t('pdf.ff.pageN', { n: pageIndex + 1 })}</span>
           )}
         </div>
         <span>{pageIndex + 1}</span>
@@ -1237,6 +1240,7 @@ function OutlineBranch({
   node: OutlineNode;
   onJump: (pageNumber: number) => void;
 }) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = React.useState(true);
   const hasChildren = node.children.length > 0;
 
@@ -1247,7 +1251,7 @@ function OutlineBranch({
           <button
             type="button"
             className={rStyles.outlineToggle}
-            aria-label={expanded ? 'Collapse section' : 'Expand section'}
+            aria-label={expanded ? t('pdf.rd.collapseSec') : t('pdf.rd.expandSec')}
             aria-expanded={expanded}
             onClick={() => setExpanded((v) => !v)}
           >
@@ -1322,6 +1326,7 @@ const ReaderPageView = React.memo(function ReaderPageView({
   onCacheText: (pageNumber: number, fullText: string) => void;
   onInternalDest: (dest: unknown) => void | Promise<void>;
 }) {
+  const { t } = useI18n();
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const [rendered, setRendered] = React.useState(false);
   const [textItems, setTextItems] = React.useState<PositionedTextItem[]>([]);
@@ -1443,9 +1448,9 @@ const ReaderPageView = React.memo(function ReaderPageView({
       <canvas
         ref={canvasRef}
         className={[rStyles.pageCanvas, darkPaper ? rStyles.pageCanvasDark : ''].join(' ')}
-        aria-label={`Page ${pageNumber}`}
+        aria-label={t('pdf.ff.pageN', { n: pageNumber })}
       />
-      {!rendered && <div className={rStyles.pagePlaceholder}>Page {pageNumber}</div>}
+      {!rendered && <div className={rStyles.pagePlaceholder}>{t('pdf.ff.pageN', { n: pageNumber })}</div>}
 
       {/* Selectable Text Layer + Search Highlights */}
       {shouldRender && textItems.length > 0 && (

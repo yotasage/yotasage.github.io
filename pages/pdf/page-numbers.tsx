@@ -21,6 +21,8 @@ import { PageNumberFont, PageNumberOptions, PageNumberPosition } from '../../lib
 import { openPdf, renderPage } from '../../lib/pdf/pdfjs';
 import { PAGE_NUMBERS } from '../../lib/pdf/tools';
 import { runAddPageNumbers } from '../../lib/pdf/workerClient';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
@@ -38,23 +40,16 @@ interface LockedFile {
   busy: boolean;
 }
 
-const POSITIONS_TOP: Array<{ value: PageNumberPosition; label: string }> = [
-  { value: 'top-left', label: 'TL' },
-  { value: 'top-center', label: 'TC' },
-  { value: 'top-right', label: 'TR' },
+const POSITIONS_TOP: Array<{ value: PageNumberPosition; labelKey: TranslationKey; ariaKey: TranslationKey }> = [
+  { value: 'top-left', labelKey: 'pdf.p.posShortTL', ariaKey: 'pdf.p.posTopLeft' },
+  { value: 'top-center', labelKey: 'pdf.p.posShortTC', ariaKey: 'pdf.p.posTopCenter' },
+  { value: 'top-right', labelKey: 'pdf.p.posShortTR', ariaKey: 'pdf.p.posTopRight' },
 ];
 
-const POSITIONS_BOTTOM: Array<{ value: PageNumberPosition; label: string }> = [
-  { value: 'bottom-left', label: 'BL' },
-  { value: 'bottom-center', label: 'BC' },
-  { value: 'bottom-right', label: 'BR' },
-];
-
-const FORMAT_PRESETS: Array<{ label: string; value: string }> = [
-  { label: '1', value: '{n}' },
-  { label: '1 / 12', value: '{n} / {total}' },
-  { label: 'Page 1 of 12', value: 'Page {n} of {total}' },
-  { label: '- 1 -', value: '- {n} -' },
+const POSITIONS_BOTTOM: Array<{ value: PageNumberPosition; labelKey: TranslationKey; ariaKey: TranslationKey }> = [
+  { value: 'bottom-left', labelKey: 'pdf.p.posShortBL', ariaKey: 'pdf.p.posBotLeft' },
+  { value: 'bottom-center', labelKey: 'pdf.p.posShortBC', ariaKey: 'pdf.p.posBotCenter' },
+  { value: 'bottom-right', labelKey: 'pdf.p.posShortBR', ariaKey: 'pdf.p.posBotRight' },
 ];
 
 function cssFontFor(font: PageNumberFont): { fontFamily: string; fontWeight: number } {
@@ -92,6 +87,7 @@ function normalizeHex(raw: string): string {
 }
 
 export default function PageNumbersPage() {
+  const { t } = useI18n();
   const [doc, setDoc] = React.useState<LoadedDoc | null>(null);
   const [pdfProxy, setPdfProxy] = React.useState<PDFDocumentProxy | null>(null);
   const closeProxyRef = React.useRef<(() => Promise<void>) | null>(null);
@@ -265,7 +261,7 @@ export default function PageNumbersPage() {
         setLocked({
           name,
           bytes,
-          error: password !== undefined ? 'Incorrect password. Try again.' : null,
+          error: password !== undefined ? t('pdf.ff.wrongPw') : null,
           busy: false,
         });
       } else {
@@ -280,10 +276,10 @@ export default function PageNumbersPage() {
   async function loadFile(files: File[]) {
     const pdf = files.find(isPdf);
     if (!pdf) {
-      setNotice('Please select a PDF file.');
+      setNotice(t('pdf.ff.pickPdf'));
       return;
     }
-    setNotice(files.length > 1 ? 'Only the first PDF was opened. Add page numbers works on one file at a time.' : null);
+    setNotice(files.length > 1 ? t('pdf.pn.onlyFirst') : null);
     setLocked(null);
     try {
       const bytes = await readBytes(pdf);
@@ -423,11 +419,18 @@ export default function PageNumbersPage() {
     return style;
   }, [effectivePosition, safeColor, opacity, fontStyle, fontSize, cssScale, marginX, marginY]);
 
+  const formatPresets: Array<{ label: string; value: string }> = [
+    { label: '1', value: '{n}' },
+    { label: '1 / 12', value: '{n} / {total}' },
+    { label: t('pdf.pn.presetPageOf'), value: t('pdf.pn.presetPageOfVal') },
+    { label: '- 1 -', value: '- {n} -' },
+  ];
+
   return (
     <PdfPage
       title={PAGE_NUMBERS.title}
       showHub
-      lead="Stamp crisp vector page numbers onto PDF pages with live positioning, custom templates, cover skipping and duplex mirroring."
+      lead={t('pdf.pn.lead')}
     >
       {locked && (
         <PasswordPrompt
@@ -442,15 +445,15 @@ export default function PageNumbersPage() {
         />
       )}
       {error && !doc && <div className={styles.error} style={{ marginBottom: '1rem' }}>{error}</div>}
-      {loading && !doc && !locked && <Progress fraction={0.45} label="Loading PDF…" />}
+      {loading && !doc && !locked && <Progress fraction={0.45} label={t('pdf.p.loadingPdf')} />}
 
       <ToolWorkspace
         tool={PAGE_NUMBERS}
         accept="application/pdf,.pdf"
         multiple={false}
-        selectLabel="Select a PDF file"
-        dropLabel="or drop a PDF here"
-        addLabel="Replace PDF"
+        selectLabel={t('pdf.p.selectPdfFile')}
+        dropLabel={t('pdf.p.dropPdf')}
+        addLabel={t('pdf.p.replacePdf')}
         hasFiles={!!doc}
         onFiles={loadFile}
         toolbar={
@@ -462,14 +465,14 @@ export default function PageNumbersPage() {
                 disabled={pageIndex <= 0}
                 onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
               >
-                &larr; Prev
+                {t('pdf.p.prev')}
               </button>
               <input
                 type="number"
                 className={styles.pageNavInput}
                 min={1}
                 max={Math.max(1, pageCount)}
-                aria-label="Preview page number"
+                aria-label={t('pdf.p.previewPageNum')}
                 value={pageJump}
                 onChange={(e) => jumpToPage(e.target.value)}
                 onBlur={() => setPageJump(String(pageIndex + 1))}
@@ -481,53 +484,53 @@ export default function PageNumbersPage() {
                 disabled={pageIndex >= pageCount - 1}
                 onClick={() => setPageIndex((i) => Math.min(pageCount - 1, i + 1))}
               >
-                Next &rarr;
+                {t('pdf.p.next')}
               </button>
             </div>
             <button type="button" className={styles.buttonSmall} onClick={clearDoc}>
-              Close
+              {t('pdf.ff.close')}
             </button>
           </>
         }
         sidebar={
           <>
-            <Field label="Position on page">
+            <Field label={t('pdf.pn.position')}>
               <div className={styles.posPageFrame}>
-                <div className={styles.posGrid6} role="radiogroup" aria-label="Page number position">
+                <div className={styles.posGrid6} role="radiogroup" aria-label={t('pdf.pn.posAria')}>
                   {POSITIONS_TOP.map((p) => (
                     <button
                       key={p.value}
                       type="button"
                       role="radio"
                       aria-checked={position === p.value}
-                      aria-label={p.value.replace('-', ' ')}
+                      aria-label={t(p.ariaKey)}
                       className={[styles.posCell, position === p.value ? styles.posCellActive : ''].join(' ')}
                       onClick={() => setPosition(p.value)}
                     >
-                      {p.label}
+                      {t(p.labelKey)}
                     </button>
                   ))}
-                  <div className={styles.posGridDivider}>Page content</div>
+                  <div className={styles.posGridDivider}>{t('pdf.pn.pageContent')}</div>
                   {POSITIONS_BOTTOM.map((p) => (
                     <button
                       key={p.value}
                       type="button"
                       role="radio"
                       aria-checked={position === p.value}
-                      aria-label={p.value.replace('-', ' ')}
+                      aria-label={t(p.ariaKey)}
                       className={[styles.posCell, position === p.value ? styles.posCellActive : ''].join(' ')}
                       onClick={() => setPosition(p.value)}
                     >
-                      {p.label}
+                      {t(p.labelKey)}
                     </button>
                   ))}
                 </div>
               </div>
             </Field>
 
-            <Field label="Format template" help="Placeholders: {n} sequence, {total} numbered, {page} physical, {pages} total.">
+            <Field label={t('pdf.pn.formatTemplate')} help={t('pdf.pn.formatHelp')}>
               <div className={styles.presetRow} style={{ marginBottom: '0.35rem' }}>
-                {FORMAT_PRESETS.map((p) => (
+                {formatPresets.map((p) => (
                   <button
                     key={p.value}
                     type="button"
@@ -546,38 +549,38 @@ export default function PageNumbersPage() {
               />
             </Field>
 
-            <Field label="Font">
+            <Field label={t('pdf.p.font')}>
               <Select
                 value={font}
                 onChange={setFont}
                 options={[
-                  ['helvetica', 'Helvetica'],
-                  ['helvetica-bold', 'Helvetica Bold'],
-                  ['times', 'Times Roman'],
-                  ['times-bold', 'Times Bold'],
-                  ['courier', 'Courier'],
-                  ['courier-bold', 'Courier Bold'],
+                  ['helvetica', t('pdf.p.fontHelv')],
+                  ['helvetica-bold', t('pdf.p.fontHelvBold')],
+                  ['times', t('pdf.p.fontTimes')],
+                  ['times-bold', t('pdf.p.fontTimesBold')],
+                  ['courier', t('pdf.p.fontCourier')],
+                  ['courier-bold', t('pdf.p.fontCourierBold')],
                 ]}
               />
             </Field>
 
             <div className={styles.optionRow}>
-              <Field label="Font size (pt)">
+              <Field label={t('pdf.p.fontSizePt')}>
                 <NumberInput value={fontSize} min={6} max={72} step={1} onChange={setFontSize} />
               </Field>
-              <Field label="Color">
+              <Field label={t('pdf.p.color')}>
                 <div className={styles.colorRow}>
                   <input
                     type="color"
                     className={styles.colorSwatch}
-                    aria-label="Page number color"
+                    aria-label={t('pdf.pn.colorAria')}
                     value={safeColor}
                     onChange={(e) => setColor(e.target.value)}
                   />
                   <input
                     type="text"
                     className={fieldStyles.input}
-                    aria-label="Page number hex color"
+                    aria-label={t('pdf.pn.hexColorAria')}
                     value={color}
                     onChange={(e) => setColor(e.target.value)}
                   />
@@ -587,7 +590,7 @@ export default function PageNumbersPage() {
 
             <label className={styles.sliderField}>
               <span className={styles.sliderHeader}>
-                <span>Opacity</span>
+                <span>{t('pdf.p.opacity')}</span>
                 <strong>{Math.round(opacity * 100)}%</strong>
               </span>
               <input
@@ -602,38 +605,38 @@ export default function PageNumbersPage() {
             </label>
 
             <div className={styles.optionRow}>
-              <Field label="X margin (pt)">
+              <Field label={t('pdf.pn.marginX')}>
                 <NumberInput value={marginX} min={0} max={240} step={2} onChange={setMarginX} />
               </Field>
-              <Field label="Y margin (pt)">
+              <Field label={t('pdf.pn.marginY')}>
                 <NumberInput value={marginY} min={0} max={240} step={2} onChange={setMarginY} />
               </Field>
             </div>
 
             <div className={styles.optionRow}>
-              <Field label="Start number">
+              <Field label={t('pdf.pn.startNum')}>
                 <NumberInput value={startNumber} min={-999} max={99999} step={1} onChange={setStartNumber} />
               </Field>
-              <Field label="Page range" help="Optional, e.g. 2-10">
+              <Field label={t('pdf.p.pageRange')} help={t('pdf.pn.rangeHelp')}>
                 <input
                   className={fieldStyles.input}
                   value={pageRange}
-                  placeholder="All pages"
+                  placeholder={t('pdf.p.allPages')}
                   onChange={(e) => setPageRange(e.target.value)}
                 />
               </Field>
             </div>
 
-            <Checkbox label="Skip first page (cover)" checked={skipFirstPage} onChange={setSkipFirstPage} />
+            <Checkbox label={t('pdf.pn.skipFirst')} checked={skipFirstPage} onChange={setSkipFirstPage} />
             <Checkbox
-              label="Mirror left/right on even pages (duplex)"
+              label={t('pdf.pn.mirrorEven')}
               checked={mirrorEvenPages}
               onChange={setMirrorEvenPages}
             />
 
             {targetState.error && <p className={fieldStyles.warning}>{targetState.error}</p>}
 
-            <Field label="File name">
+            <Field label={t('pdf.ff.fileName')}>
               <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
             </Field>
 
@@ -647,23 +650,28 @@ export default function PageNumbersPage() {
               onClick={applyPageNumbers}
             >
               {busy
-                ? 'Stamping…'
-                : `Add numbers to ${targetState.indices.length} page${targetState.indices.length === 1 ? '' : 's'}`}
+                ? t('pdf.pn.stamping')
+                : t(targetState.indices.length === 1 ? 'pdf.pn.btnOne' : 'pdf.pn.btnMany', {
+                    n: targetState.indices.length,
+                  })}
             </button>
 
             {result && (
               <div className={styles.result}>
-                <h3>Page numbers added</h3>
+                <h3>{t('pdf.pn.doneTitle')}</h3>
                 <p>
-                  Stamped {targetState.indices.length} of {pageCount} page{pageCount === 1 ? '' : 's'} ·{' '}
-                  {formatBytes(result.length)}.
+                  {t(pageCount === 1 ? 'pdf.pn.doneOne' : 'pdf.pn.doneMany', {
+                    n: targetState.indices.length,
+                    total: pageCount,
+                    size: formatBytes(result.length),
+                  })}
                 </p>
                 <button
                   type="button"
                   className={styles.primary}
                   onClick={() => download(result, outputName)}
                 >
-                  Download {outputName}
+                  {t('pdf.ff.downloadNamed', { name: outputName })}
                 </button>
                 <ContinueWith currentToolId={PAGE_NUMBERS.id} files={[{ name: outputName, bytes: result }]} />
               </div>
@@ -676,16 +684,19 @@ export default function PageNumbersPage() {
             <div className={styles.fileBanner}>
               <strong>{doc.name}</strong>
               <span className={styles.fileBannerMeta}>
-                {pageCount} page{pageCount === 1 ? '' : 's'} · {formatBytes(doc.bytes.length)}
+                {t(pageCount === 1 ? 'pdf.p.pagesAndSizeOne' : 'pdf.p.pagesAndSizeMany', {
+                  n: pageCount,
+                  size: formatBytes(doc.bytes.length),
+                })}
               </span>
               {previewLabel === null ? (
                 <span className={[styles.previewBadge, styles.previewBadgeWarn].join(' ')}>
-                  Page {physicalPage} skipped
+                  {t('pdf.pn.pageSkipped', { n: physicalPage })}
                 </span>
               ) : (
                 <span className={[styles.previewBadge, styles.previewBadgeInfo].join(' ')}>
-                  Label: “{previewLabel}”
-                  {mirrorEvenPages && physicalPage % 2 === 0 && effectivePosition !== position ? ' (mirrored)' : ''}
+                  {t('pdf.pn.labelPreview', { label: previewLabel })}
+                  {mirrorEvenPages && physicalPage % 2 === 0 && effectivePosition !== position ? t('pdf.pn.mirrored') : ''}
                 </span>
               )}
             </div>
@@ -705,7 +716,7 @@ export default function PageNumbersPage() {
                     <span style={overlayPosStyle}>{previewLabel}</span>
                   </div>
                 )}
-                {rendering && <div className={styles.figureLoading}>Rendering page…</div>}
+                {rendering && <div className={styles.figureLoading}>{t('pdf.p.renderingPage')}</div>}
               </div>
             </div>
           </>

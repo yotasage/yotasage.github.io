@@ -11,12 +11,14 @@ import type { Circuit } from '../../lib/smith/network';
 import { SWEEP_LIMIT_DB, limitIssue } from '../../lib/smith/state';
 import type { SweepSetting } from '../../lib/smith/state';
 import type { BandFigures } from '../../lib/smith/sweep';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Smith.module.css';
 import css from '../../styles/SmithSweep.module.css';
 import { figureTexts } from './bandText';
 import type { FigureText } from './bandText';
 import MarkerTable from './MarkerTable';
 import { PlotView } from './plotView';
+import { localizeProblem } from './smithText';
 import { Field } from './Strip';
 import type { TraceLayer } from './traceLayer';
 import { Why } from './Why';
@@ -33,26 +35,28 @@ export interface SweepPlotProps {
 
 /** The band figures (null: still being worked out), in bandText.ts's words; shared with the report. */
 export function Figures({ fig, sweep, f0, digits, report }: { fig: BandFigures | null; sweep: SweepSetting; f0: number; digits: number; report?: boolean }) {
-  if (!fig) return <p className={css.hint} {...{ [report ? 'data-r-figures-none' : 'data-figures-none']: '' }}>Working out the band figures…</p>;
+  const { t, locale } = useI18n();
+  if (!fig) return <p className={css.hint} {...{ [report ? 'data-r-figures-none' : 'data-figures-none']: '' }}>{t('sm.pl.working')}</p>;
   // The report's copy has attributes of its own (data-r-…), so the plot's stay unique on the page.
   const attr = report ? 'data-r-fig' : 'data-fig';
-  const t = figureTexts(fig, f0, sweep.limit ?? SWEEP_LIMIT_DB, digits);
+  const ft = figureTexts(fig, f0, sweep.limit ?? SWEEP_LIMIT_DB, digits, locale);
   const row = (k: string, label: React.ReactNode, [v, at]: FigureText) => (
     <div {...{ [attr]: k }}><dt>{label}</dt><dd>{v}{at && <> <span className={css.at}>{at}</span></>}</dd></div>
   );
   return (
     <dl className={css.figures} {...{ [report ? 'data-r-figures' : 'data-figures']: '' }}>
-      {row('worst', 'Worst return loss', t.worst)}
-      {row('best', 'Best return loss', t.best)}
-      {row('vswr', 'Largest VSWR', t.vswr)}
-      <div {...{ [attr]: 'intervals' }}><dt>{t.limitLabel}</dt>
-        <dd>{fig.intervals.length === 0 ? t.intervals[0] : fig.intervals.map((iv, i) => <span key={i} className={css.interval} data-lo={iv.lo} data-hi={iv.hi}>{t.intervals[i]}</span>)}</dd></div>
-      {row('f0', 'Around f0', t.f0)}
-      {row('q', report ? 'Loaded Q' : <>Loaded Q <Why k="sweep-q" /></>, t.q)}
+      {row('worst', t('sm.pl.worstRL'), ft.worst)}
+      {row('best', t('sm.pl.bestRL'), ft.best)}
+      {row('vswr', t('sm.pl.maxVswr'), ft.vswr)}
+      <div {...{ [attr]: 'intervals' }}><dt>{ft.limitLabel}</dt>
+        <dd>{fig.intervals.length === 0 ? ft.intervals[0] : fig.intervals.map((iv, i) => <span key={i} className={css.interval} data-lo={iv.lo} data-hi={iv.hi}>{ft.intervals[i]}</span>)}</dd></div>
+      {row('f0', t('sm.pl.aroundF0'), ft.f0)}
+      {row('q', report ? t('sm.pl.loadedQ') : <>{t('sm.pl.loadedQ')} <Why k="sweep-q" /></>, ft.q)}
     </dl>
   );
 }
 function SweepPlot({ layer, sweep, circuit, digits, onChange, revision }: SweepPlotProps) {
+  const { t, locale } = useI18n();
   const root = useRef<HTMLElement>(null);
   const box = useRef<HTMLDivElement>(null);
   const view = useRef<PlotView | null>(null);
@@ -87,36 +91,36 @@ function SweepPlot({ layer, sweep, circuit, digits, onChange, revision }: SweepP
   return (
     <section className={css.results} ref={root} aria-labelledby="smith-plot" data-sweep-results="">
       <div className={css.plotHead}>
-        <h2 className={styles.panelTitle} id="smith-plot"><span className={css.head}>Sweep plot <Why k="sweep-plot" /></span></h2>
-        <div className={css.pair} role="group" aria-label="The plot shows">
+        <h2 className={styles.panelTitle} id="smith-plot"><span className={css.head}>{t('sm.pl.title')} <Why k="sweep-plot" /></span></h2>
+        <div className={css.pair} role="group" aria-label={t('sm.pl.showsAria')}>
           {[false, true].map((v) => (
             <button key={String(v)} type="button" className={`${styles.button} ${styles.toggle} ${css.btn}`} aria-pressed={isVswr === v}
               data-plot-kind={v ? 'vswr' : 'rl'} onClick={() => { if (isVswr !== v) onChange({ ...sweep, vswr: v || undefined }); }}>
-              {v ? 'VSWR' : 'Return loss'}
+              {v ? 'VSWR' : t('sm.pl.returnLoss')}
             </button>
           ))}
         </div>
         <Why k="sweep-plot-kind" />
         <div className={css.limit}>
-          <Field name="sweep-limit" label="Limit" hint="return loss" revision={revision} why="sweep-limit" shown={`${formatAmount(limit, '', 6)} dB`}
-            edit={(t) => {
-              const m = /^\s*[-−]?\s*([0-9.,eE+-]+)\s*(dB)?\s*$/i.exec(t);
+          <Field name="sweep-limit" label={t('sm.pl.limit')} hint={t('sm.pl.limitHint')} revision={revision} why="sweep-limit" shown={`${formatAmount(limit, '', 6)} dB`}
+            edit={(raw) => {
+              const m = /^\s*[-−]?\s*([0-9.,eE+-]+)\s*(dB)?\s*$/i.exec(raw);
               const v = m ? Number(m[1].replace(',', '.')) : NaN;
-              if (!t.trim()) return 'empty';
-              if (!(v === v)) return `cannot read “${t.trim()}” as a return loss in dB`;
+              if (!raw.trim()) return t('sm.sw.empty');
+              if (!(v === v)) return t('sm.pl.badLimit', { raw: raw.trim() });
               const why = limitIssue(v);
               if (!why) onChange({ ...sweep, limit: v === SWEEP_LIMIT_DB ? undefined : v });
-              return why;
+              return localizeProblem(why, locale);
             }} />
           <span className={css.at} data-limit-gamma="">|Γ| &lt; {formatAmount(lim, '', 4, true)}, VSWR &lt; {formatAmount(vswr(lim), '', 4, true)}</span>
         </div>
       </div>
       <div ref={box} className={css.plot} tabIndex={0} role="group" data-plot=""
-        aria-label={`Plot of the ${isVswr ? 'VSWR' : 'return loss'} across the band. Left and right arrow keys move the cursor along the trace (Shift: ten points), Home and End go to the band's ends, Enter adds a marker at the cursor.`} />
-      <p className={css.hint}>Hover, tap or use the arrow keys on the plot to point at a frequency on both; tap or click the curve to add a marker, drag one along the band.</p>
+        aria-label={t('sm.pl.plotAria', { kind: t(isVswr ? 'sm.pl.kindVswr' : 'sm.pl.kindRl') })} />
+      <p className={css.hint}>{t('sm.pl.hint')}</p>
       <div className={css.under}>
         <div>
-          <h3 className={css.sub}>Band figures <Why k="sweep-figures" /></h3>
+          <h3 className={css.sub}>{t('sm.pl.bandFigures')} <Why k="sweep-figures" /></h3>
           <Figures fig={fig} sweep={sweep} f0={circuit.f0} digits={digits} />
         </div>
         <MarkerTable circuit={circuit} markers={sweep.markers} digits={digits} />

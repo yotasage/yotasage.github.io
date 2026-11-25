@@ -3,6 +3,7 @@ import React from 'react';
 import { Pt } from '../../lib/pcb/model';
 import { nearestPoint, PointKind, pointIndex } from '../../lib/pcb/points';
 import { BoardView } from '../../lib/pcb/render/view';
+import { TranslationKey, useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PcbViewer.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
@@ -33,11 +34,11 @@ export function mil(v: number): string {
   return `${(v / MIL).toFixed(1).replace('-', '−')} mil`;
 }
 
-const KIND_TEXT: Record<MeasurePoint['kind'], string> = {
-  pad: 'pad centre',
-  hole: 'hole centre',
-  end: 'line end',
-  free: 'free point',
+const KIND_KEYS: Record<MeasurePoint['kind'], TranslationKey> = {
+  pad: 'pcb.meas.pad',
+  hole: 'pcb.meas.hole',
+  end: 'pcb.meas.end',
+  free: 'pcb.meas.free',
 };
 
 // Re-renders when the view moves, so overlays stay on the board.
@@ -91,26 +92,25 @@ export function MeasureCard({ measuring, points, onToggle, onClear }: {
   onToggle: () => void;
   onClear: () => void;
 }) {
+  const { t } = useI18n();
   const [a, b] = points;
-  const rows = a && b ? [
-    ['Distance', Math.hypot(b.p.x - a.p.x, b.p.y - a.p.y)],
-    ['Along X', Math.abs(b.p.x - a.p.x)],
-    ['Along Y', Math.abs(b.p.y - a.p.y)],
-  ] as [string, number][] : [];
+  const rows: [string, number, boolean][] = a && b ? [
+    [t('pcb.meas.distance'), Math.hypot(b.p.x - a.p.x, b.p.y - a.p.y), true],
+    [t('pcb.meas.alongX'), Math.abs(b.p.x - a.p.x), false],
+    [t('pcb.meas.alongY'), Math.abs(b.p.y - a.p.y), false],
+  ] : [];
   return (
     <>
       <p className={fieldStyles.help}>
-        {measuring
-          ? 'Click or tap two points; they snap to pad and hole centres and line ends nearby. A third starts a new measurement. Dragging still moves the board.'
-          : 'Measure the distance between two points on the board, in mm and mil.'}
+        {measuring ? t('pcb.meas.helpOn') : t('pcb.meas.helpOff')}
       </p>
       {rows.length > 0 && (
         <table className={[fieldStyles.infoTable, styles.info].join(' ')}>
           <tbody>
-            {rows.map(([label, v]) => (
+            {rows.map(([label, v, isDist]) => (
               <tr key={label}>
                 <th>{label}</th>
-                <td className={label === 'Distance' ? styles.strong : undefined}>{mm(v)}<br />{mil(v)}</td>
+                <td className={isDist ? styles.strong : undefined}>{mm(v)}<br />{mil(v)}</td>
               </tr>
             ))}
           </tbody>
@@ -118,14 +118,18 @@ export function MeasureCard({ measuring, points, onToggle, onClear }: {
       )}
       {points.length > 0 && (
         <p className={styles.detailNote}>
-          {points.map((m, i) => `${i ? 'To' : 'From'} ${KIND_TEXT[m.kind]} at X ${m.p.x.toFixed(3)}, Y ${m.p.y.toFixed(3)} mm`).join('; ')}.
+          {points.map((m, i) => t(i ? 'pcb.meas.toPt' : 'pcb.meas.fromPt', {
+            kind: t(KIND_KEYS[m.kind]),
+            x: m.p.x.toFixed(3),
+            y: m.p.y.toFixed(3),
+          })).join('; ')}.
         </p>
       )}
       <div className={fieldStyles.buttonRow}>
         <button type="button" className={fieldStyles.buttonSmall} aria-pressed={measuring} onClick={onToggle}>
-          {measuring ? 'Stop measuring' : 'Start measuring'}
+          {measuring ? t('pcb.meas.stop') : t('pcb.meas.start')}
         </button>
-        {points.length > 0 && <button type="button" className={fieldStyles.buttonSmall} onClick={onClear}>Clear</button>}
+        {points.length > 0 && <button type="button" className={fieldStyles.buttonSmall} onClick={onClear}>{t('pcb.meas.clear')}</button>}
       </div>
     </>
   );

@@ -25,7 +25,7 @@ interface SiteTool {
   icon: HomeIconName;
   accentLight: string;
   accentDark: string;
-  tags?: readonly string[];
+  tagsKey?: TranslationKey;
   searchKeywords?: readonly string[];
   subTools?: readonly PdfTool[];
   wide?: boolean;
@@ -46,7 +46,7 @@ const TOOLS: readonly SiteTool[] = [
     icon: 'calculator',
     accentLight: '#0284c7',
     accentDark: '#38bdf8',
-    tags: ['SI & RF units', 'Phasors', 'Variables → Excel', 'diff · int', 'Equation layouts'],
+    tagsKey: 'home.tool.calculator.tags',
     searchKeywords: ['calc', 'math', 'units', 'dbm', 'complex', 'integral', 'derivative', 'formula', 'equation', 'kalkulator'],
   },
   {
@@ -59,7 +59,7 @@ const TOOLS: readonly SiteTool[] = [
     icon: 'integral',
     accentLight: '#4f46e5',
     accentDark: '#818cf8',
-    tags: ['Indefinite & definite', 'u-sub · By parts', 'Partial fractions', 'Step-by-side & theory', 'Identities'],
+    tagsKey: 'home.tool.integral.tags',
     searchKeywords: ['integral', 'antiderivative', 'calculus', 'integration', 'ftc', 'u-sub', 'by parts', 'partial fractions', 'quadrature', 'kalkulus', 'integrasjon'],
   },
   {
@@ -72,7 +72,7 @@ const TOOLS: readonly SiteTool[] = [
     icon: 'derivative',
     accentLight: '#ea580c',
     accentDark: '#fb923c',
-    tags: ['Orders 1–4', 'Chain · Product · Quotient', 'Tangent line', 'Step-by-side & theory', 'Identities'],
+    tagsKey: 'home.tool.derivative.tags',
     searchKeywords: ['derivative', 'differentiate', 'differentiation', 'calculus', 'chain rule', 'product rule', 'quotient rule', 'tangent', 'slope', 'derivasjon', 'derivert', 'kalkulus'],
   },
   {
@@ -85,7 +85,7 @@ const TOOLS: readonly SiteTool[] = [
     icon: 'boolean',
     accentLight: '#0d9488',
     accentDark: '#2dd4bf',
-    tags: ['Truth tables', 'TikZ · IEEE circuits', 'WaveDrom timing', 'DFF · Delays', 'K-Map · QM'],
+    tagsKey: 'home.tool.boolean.tags',
     searchKeywords: ['boolean', 'logic', 'gate', 'truth table', 'kmap', 'karnaugh', 'quine', 'mccluskey', 'wavedrom', 'timing', 'dff', 'nand', 'nor', 'xor', 'de morgan', 'tikz', 'circuit', 'boolsk', 'logikk'],
   },
   {
@@ -98,7 +98,7 @@ const TOOLS: readonly SiteTool[] = [
     icon: 'simsetup',
     accentLight: '#0891b2',
     accentDark: '#3cc4dc',
-    tags: ['Coherent sampling', 'FFT', 'Powers of 2', 'Prime ratios'],
+    tagsKey: 'home.tool.simsetup.tags',
     searchKeywords: ['f0', 'fs', 'ncyc', 'npts', 'sampling', 'nyquist', 'signal', 'dsp'],
   },
   {
@@ -111,7 +111,7 @@ const TOOLS: readonly SiteTool[] = [
     icon: 'resistor',
     accentLight: '#2563eb',
     accentDark: '#5aa2f0',
-    tags: ['E3–E192', 'Colour bands', 'SMD · EIA-96', 'Combinations', 'Temp design'],
+    tagsKey: 'home.tool.resistor.tags',
     searchKeywords: ['ohm', 'divider', 'shunt', 'tolerance', 'rss', 'tikz', 'e24', 'e96', 'motstand'],
   },
   {
@@ -124,7 +124,7 @@ const TOOLS: readonly SiteTool[] = [
     icon: 'smith',
     accentLight: '#db2777',
     accentDark: '#e0679a',
-    tags: ['Z · Y · ZY grids', 'Drag & snap', 'Auto-solver', 'Freq sweep', 'SVG · TikZ · S1P'],
+    tagsKey: 'home.tool.smith.tags',
     searchKeywords: ['vswr', 'impedance', 'admittance', 'stub', 'matching', 'touchstone', 's1p', 'rf'],
   },
   {
@@ -137,7 +137,7 @@ const TOOLS: readonly SiteTool[] = [
     icon: 'pcb',
     accentLight: '#65a30d',
     accentDark: '#9ccc3c',
-    tags: ['Gerber · Excellon', 'KiCad · Altium', 'PADS · EAGLE', 'Realistic view', 'To KiCad'],
+    tagsKey: 'home.tool.pcb.tags',
     searchKeywords: ['rs-274x', 'x2', 'drill', 'pcbdoc', 'fusion 360', 'bom', 'pick and place', 'dxf', 'nets'],
   },
   {
@@ -150,7 +150,7 @@ const TOOLS: readonly SiteTool[] = [
     icon: 'emsim',
     accentLight: '#0d9488',
     accentDark: '#2fb3a0',
-    tags: ['2D / 3D solver', 'Z0 · Zdiff · Zcm', 'JLCPCB · KiCad', 'Vias', 'Field plots'],
+    tagsKey: 'home.tool.emsim.tags',
     searchKeywords: ['microstrip', 'stripline', 'coplanar', 'differential', 'stackup', 'trace', 'fdtd', 'impedance'],
   },
   {
@@ -177,7 +177,7 @@ const TOOLS: readonly SiteTool[] = [
     icon: 'viewer3d',
     accentLight: '#ea580c',
     accentDark: '#f08c3c',
-    tags: ['STEP · IGES', 'STL · 3MF · OBJ', 'glTF · FBX · USDZ', 'Section cut', 'Measure'],
+    tagsKey: 'home.tool.viewer3d.tags',
     searchKeywords: ['cad', 'mesh', 'ply', 'glb', 'model', '3d'],
   },
   {
@@ -190,7 +190,7 @@ const TOOLS: readonly SiteTool[] = [
     icon: 'qrcode',
     accentLight: '#ca8a04',
     accentDark: '#e8b23a',
-    tags: ['Model 1 & 2', 'Micro QR · rMQR', 'Custom mask', 'PNG · SVG · PDF'],
+    tagsKey: 'home.tool.qrcode.tags',
     searchKeywords: ['qr', 'barcode', 'error correction', 'encoding'],
   },
   {
@@ -203,7 +203,7 @@ const TOOLS: readonly SiteTool[] = [
     icon: 'qrreader',
     accentLight: '#0d9488',
     accentDark: '#2ec5a6',
-    tags: ['Camera · PDF · paste', 'Micro QR · rMQR', 'Wi-Fi · eSIM', '2FA · Payments', 'Raw hex'],
+    tagsKey: 'home.tool.qrreader.tags',
     searchKeywords: ['scan', 'scanner', 'totp', 'otp', 'vcard', 'calendar', 'decode'],
   },
   {
@@ -216,7 +216,7 @@ const TOOLS: readonly SiteTool[] = [
     icon: 'base64',
     accentLight: '#16a34a',
     accentDark: '#3dbb78',
-    tags: ['Data URL', 'HTML · CSS · MD', 'PNG · JPEG · WebP', 'Live preview'],
+    tagsKey: 'home.tool.base64.tags',
     searchKeywords: ['encode', 'decode', 'image', 'inline', 'markdown'],
   },
   {
@@ -229,7 +229,7 @@ const TOOLS: readonly SiteTool[] = [
     icon: 'paint',
     accentLight: '#2563eb',
     accentDark: '#60a5fa',
-    tags: ['Layers', 'Crop · Resize · Scale down', 'Rotate', 'B&W styles', 'Paint.NET Ctrl+C/V'],
+    tagsKey: 'home.tool.paint.tags',
     searchKeywords: ['paint', 'paint.net', 'draw', 'brush', 'layers', 'crop', 'resize', 'rotate', 'black white', 'grayscale', 'colorpicker', 'editor', 'image', 'tegne', 'bilde'],
   },
   {
@@ -242,7 +242,7 @@ const TOOLS: readonly SiteTool[] = [
     icon: 'notepad',
     accentLight: '#059669',
     accentDark: '#34d399',
-    tags: ['Monaco Editor', 'Code · CSV · TeX', 'Side-by-side · Grid', 'Diff · Regex', 'Auto-saved'],
+    tagsKey: 'home.tool.notepad.tags',
     searchKeywords: ['scratchpad', 'editor', 'monaco', 'diff', 'compare', 'regex', 'notes', 'csv', 'tex', 'latex', 'code', 'count', 'replace', 'teksteditor', 'notatblokk'],
   },
   {
@@ -256,7 +256,7 @@ const TOOLS: readonly SiteTool[] = [
     accentLight: '#2563eb',
     accentDark: '#60a5fa',
     hardNavigation: true,
-    tags: ['Python 3.14 (Pyodide)', 'NumPy · SciPy · pandas', 'Console + REPL', 'Network off by default'],
+    tagsKey: 'python.cardTags',
     searchKeywords: [
       'python',
       'pyodide',
@@ -285,7 +285,7 @@ const TOOLS: readonly SiteTool[] = [
     icon: 'textcase',
     accentLight: '#7c3aed',
     accentDark: '#a585ff',
-    tags: ['Sentence · Title', 'UPPER · lower', 'camelCase', 'snake_case', 'kebab-case'],
+    tagsKey: 'home.tool.textcase.tags',
     searchKeywords: ['pascal', 'slug', 'word count', 'character count', 'string'],
   },
 ];
@@ -329,8 +329,22 @@ function ClearIcon() {
   );
 }
 
-function matchesSubTool(sub: PdfTool, q: string): boolean {
+function getPdfSubToolTitle(sub: PdfTool, t: (key: TranslationKey) => string): string {
+  const key = `pdf.tool.${sub.id}.title` as TranslationKey;
+  const translated = t(key);
+  return translated === key ? sub.title : translated;
+}
+
+function getPdfSubToolDesc(sub: PdfTool, t: (key: TranslationKey) => string): string {
+  const key = `pdf.tool.${sub.id}.desc` as TranslationKey;
+  const translated = t(key);
+  return translated === key ? sub.description : translated;
+}
+
+function matchesSubTool(sub: PdfTool, q: string, t: (key: TranslationKey) => string): boolean {
   return (
+    getPdfSubToolTitle(sub, t).toLowerCase().includes(q) ||
+    getPdfSubToolDesc(sub, t).toLowerCase().includes(q) ||
     sub.title.toLowerCase().includes(q) ||
     sub.description.toLowerCase().includes(q) ||
     sub.id.toLowerCase().includes(q)
@@ -347,6 +361,10 @@ function ToolCard({ tool, query }: ToolCardProps) {
   const title = t(tool.titleKey);
   const category = t(tool.categoryKey);
   const description = t(tool.descKey);
+  const tags = useMemo(
+    () => (tool.tagsKey ? t(tool.tagsKey).split('|').filter(Boolean) : null),
+    [tool.tagsKey, t],
+  );
 
   const orderedSubTools = useMemo(() => {
     if (!tool.subTools) return null;
@@ -354,14 +372,14 @@ function ToolCard({ tool, query }: ToolCardProps) {
     const matched: PdfTool[] = [];
     const rest: PdfTool[] = [];
     for (const sub of tool.subTools) {
-      if (matchesSubTool(sub, query)) {
+      if (matchesSubTool(sub, query, t)) {
         matched.push(sub);
       } else {
         rest.push(sub);
       }
     }
     return matched.length > 0 ? [...matched, ...rest] : tool.subTools;
-  }, [tool.subTools, query]);
+  }, [tool.subTools, query, t]);
 
   const cardClass = [styles.card, tool.wide ? styles.cardWide : ''].filter(Boolean).join(' ');
 
@@ -410,7 +428,8 @@ function ToolCard({ tool, query }: ToolCardProps) {
           </div>
           <ul className={styles.subTools} aria-label={title}>
             {orderedSubTools.map((sub) => {
-              const isMatch = query.length > 0 && matchesSubTool(sub, query);
+              const isMatch = query.length > 0 && matchesSubTool(sub, query, t);
+              const subTitle = getPdfSubToolTitle(sub, t);
               return (
                 <li key={sub.id}>
                   <Link
@@ -419,7 +438,7 @@ function ToolCard({ tool, query }: ToolCardProps) {
                     style={{ '--sub-accent': sub.color } as React.CSSProperties}
                   >
                     <PdfToolIcon name={sub.icon} color={sub.color} size={14} />
-                    <span>{sub.title}</span>
+                    <span>{subTitle}</span>
                   </Link>
                 </li>
               );
@@ -427,9 +446,9 @@ function ToolCard({ tool, query }: ToolCardProps) {
           </ul>
         </div>
       ) : (
-        tool.tags && (
+        tags && (
           <ul className={styles.tags}>
-            {tool.tags.map((tag) => (
+            {tags.map((tag) => (
               <li key={tag} className={styles.tag}>
                 {tag}
               </li>
@@ -504,14 +523,14 @@ export default function Home() {
         t(tool.titleKey),
         t(tool.categoryKey),
         t(tool.descKey),
-        ...(tool.tags ?? []),
+        ...(tool.tagsKey ? t(tool.tagsKey).split('|') : []),
         ...(tool.searchKeywords ?? []),
       ]
         .join(' ')
         .toLowerCase();
 
       if (haystack.includes(normalizedQuery)) return true;
-      if (tool.subTools?.some((sub) => matchesSubTool(sub, normalizedQuery))) return true;
+      if (tool.subTools?.some((sub) => matchesSubTool(sub, normalizedQuery, t))) return true;
       return false;
     });
   }, [activeCategory, normalizedQuery, t]);

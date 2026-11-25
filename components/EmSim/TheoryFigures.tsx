@@ -12,9 +12,10 @@ import { val } from '../../lib/emsim/stackup';
 import { presetStructure } from '../../lib/emsim/structure';
 import type { LengthUnit } from '../../lib/emsim/units';
 import type { CornersResult } from '../../lib/emsim/vary';
-import { JLC_PART_LABEL } from '../../lib/emsim/jlcCalc';
 import type { JlcPart } from '../../lib/emsim/jlcCalc';
+import { useI18n } from '../../lib/ui/i18n';
 import css from '../../styles/EmSimTheory.module.css';
+import { jlcPartLabel } from './emText';
 import { FIELD_DEFAULT } from './fieldTypes';
 import type { FieldSettings } from './fieldTypes';
 import TraceDrawing from './TraceDrawing';
@@ -66,35 +67,45 @@ const E_LIN: Partial<FieldSettings> = { qty: 'E', drive: 'line', line: 1, scale:
 
 type FigProps = { unit: LengthUnit; digits: number };
 
-export const FieldLinesFigure = ({ unit, digits }: FigProps) => (
-  <figure className={css.figure} data-figure="field-lines">
-    <FieldFigure setup={D} fields={LINES} channel="theory-lines" label="Default microstrip, field lines and equipotentials" unit={unit} digits={digits} />
-    <figcaption>The field of the default microstrip: most of it in the laminate, some in the mask and the air above.</figcaption>
-  </figure>
-);
+export function FieldLinesFigure({ unit, digits }: FigProps) {
+  const { t } = useI18n();
+  return (
+    <figure className={css.figure} data-figure="field-lines">
+      <FieldFigure setup={D} fields={LINES} channel="theory-lines" label={t('em.th1.fig.linesLbl')} unit={unit} digits={digits} />
+      <figcaption>{t('em.th1.fig.linesCap')}</figcaption>
+    </figure>
+  );
+}
 
-export const PairFigure = ({ unit, digits }: FigProps) => (
-  <figure className={css.figure} data-figure="pair-modes">
-    <div className={css.figTwo}>
-      <FieldFigure setup={P} fields={ODD} channel="theory-odd" label="Odd (+1, −1)" unit={unit} digits={digits} />
-      <FieldFigure setup={P} fields={EVEN} channel="theory-even" label="Even (all +1)" unit={unit} digits={digits} />
-    </div>
-    <figcaption>Odd: the field crowds into the gap. Even: the gap is nearly field-free and the traces push their field down to the plane.</figcaption>
-  </figure>
-);
+export function PairFigure({ unit, digits }: FigProps) {
+  const { t } = useI18n();
+  return (
+    <figure className={css.figure} data-figure="pair-modes">
+      <div className={css.figTwo}>
+        <FieldFigure setup={P} fields={ODD} channel="theory-odd" label={t('em.th1.fig.oddLbl')} unit={unit} digits={digits} />
+        <FieldFigure setup={P} fields={EVEN} channel="theory-even" label={t('em.th1.fig.evenLbl')} unit={unit} digits={digits} />
+      </div>
+      <figcaption>{t('em.th1.fig.pairCap')}</figcaption>
+    </figure>
+  );
+}
 
-export const MaskFigure = ({ unit, digits }: FigProps) => (
-  <figure className={css.figure} data-figure="mask">
-    <div className={css.figTwo}>
-      <FieldFigure setup={D} fields={E_LIN} channel="theory-mask" label="|E| with solder mask" unit={unit} digits={digits} />
-      <FieldFigure setup={D_BARE} fields={E_LIN} channel="theory-bare" label="|E| without" unit={unit} digits={digits} />
-    </div>
-    <figcaption>With mask, part of the field above the trace runs in the mask instead of the air. Each picture has its own colour scale, shown under it.</figcaption>
-  </figure>
-);
+export function MaskFigure({ unit, digits }: FigProps) {
+  const { t } = useI18n();
+  return (
+    <figure className={css.figure} data-figure="mask">
+      <div className={css.figTwo}>
+        <FieldFigure setup={D} fields={E_LIN} channel="theory-mask" label={t('em.th1.fig.maskLbl')} unit={unit} digits={digits} />
+        <FieldFigure setup={D_BARE} fields={E_LIN} channel="theory-bare" label={t('em.th1.fig.bareLbl')} unit={unit} digits={digits} />
+      </div>
+      <figcaption>{t('em.th1.fig.maskCap')}</figcaption>
+    </figure>
+  );
+}
 
 /** Four sections of series L·Δz and shunt C·Δz between a trace and its plane. */
 export function LadderFigure() {
+  const { t } = useI18n();
   const W = 520, H = 130, x0 = 30, dx = 115, yT = 34, yB = 104;
   const parts: React.ReactNode[] = [];
   for (let i = 0; i < 4; i++) {
@@ -111,16 +122,16 @@ export function LadderFigure() {
   }
   return (
     <figure className={css.figure} data-figure="ladder">
-      <svg className={css.svg} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="A ladder of series inductors along the trace and capacitors to the plane">
+      <svg className={css.svg} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('em.th1.fig.ladderAria')}>
         <g className={css.svgLine}>
           {parts}
           <path d={`M${x0 - 20} ${yB} H${x0 + 4 * dx + 10}`} />
           <path d={`M${x0 - 20} ${yT} H${x0}`} />
         </g>
-        <text x={x0 - 20} y={yT - 12} className={css.svgText}>trace</text>
-        <text x={x0 - 20} y={yB + 18} className={css.svgText}>plane</text>
+        <text x={x0 - 20} y={yT - 12} className={css.svgText}>{t('em.th1.fig.trace')}</text>
+        <text x={x0 - 20} y={yB + 18} className={css.svgText}>{t('em.th1.fig.plane')}</text>
       </svg>
-      <figcaption>A short piece Δz of line: the inductance of the loop in series, the capacitance to the plane across. Many such pieces make the line.</figcaption>
+      <figcaption>{t('em.th1.fig.ladderCap')}</figcaption>
     </figure>
   );
 }
@@ -152,32 +163,35 @@ function Bars({ rows, label, extra }: { rows: { k: string; label: string; d: num
 const DEFAULT_PARTS: Record<JlcPart, number> = { er: 0.94, copper: 0.51, etch: 0.25, mask: -0.27 };
 
 export function PartsFigure({ calc, shown }: { calc: FedCalc | null; shown: boolean }) {
+  const { t, locale } = useI18n();
   const parts = shown && calc ? calc.parts : DEFAULT_PARTS;
-  const rows: { k: string; label: string; d: number; strong?: boolean }[] = (Object.keys(DEFAULT_PARTS) as JlcPart[]).filter((p) => parts[p] !== undefined).map((p) => ({ k: p, label: JLC_PART_LABEL[p] ?? p, d: parts[p]! }));
-  rows.push({ k: 'sum', label: 'together', d: rows.reduce((a, r) => a + r.d, 0), strong: true });
+  const rows: { k: string; label: string; d: number; strong?: boolean }[] = (Object.keys(DEFAULT_PARTS) as JlcPart[]).filter((p) => parts[p] !== undefined).map((p) => ({ k: p, label: jlcPartLabel(p, locale), d: parts[p]! }));
+  rows.push({ k: 'sum', label: t('em.th1.fig.together'), d: rows.reduce((a, r) => a + r.d, 0), strong: true });
   return (
     <figure className={css.figure} data-figure="parts" data-source={shown && calc ? 'calculators' : 'default'}>
-      <Bars rows={rows} label="Change of the impedance per input, from JLCPCB's calculator inputs to the stackup's own" />
+      <Bars rows={rows} label={t('em.th1.fig.partsAria')} />
       <figcaption>
-        From JLCPCB’s calculator inputs to this stackup’s own, one at a time
-        {shown && calc ? ` (your structure: ${calc.calculator.toFixed(2)} → ${calc.stackup.toFixed(2)} Ω).` : ' (the default microstrip; open Calculators in the Trace section for your structure).'}
+        {t('em.th1.fig.partsCap')}
+        {shown && calc
+          ? t('em.th1.fig.partsLive', { calc: calc.calculator.toFixed(2), stack: calc.stackup.toFixed(2) })
+          : t('em.th1.fig.partsDef')}
       </figcaption>
     </figure>
   );
 }
 
-const DEFAULT_RANK = [
-  { k: 'prepreg-t', label: 'prepreg thickness', d: 2.87 }, { k: 'w', label: 'width', d: -2.42 },
-  { k: 'prepreg-er', label: 'prepreg εr', d: -0.98 }, { k: 'mask', label: 'mask on laminate', d: -0.49 },
-  { k: 'cu', label: 'copper thickness', d: -0.34 },
-];
-
 export function RankingFigure({ corners, setup, sd }: { corners: CornersResult | null; setup: Setup | null; sd: number | null }) {
+  const { t } = useI18n();
   const filled = useMemo(() => (corners && setup ? withPlaceholders(setup).filled : new Set<string>()), [corners, setup]);
   const live = !!(corners && corners.ok && corners.inputs.length);
+  const defaultRank = [
+    { k: 'prepreg-t', label: t('em.th1.fig.rkPrepregT'), d: 2.87 }, { k: 'w', label: t('em.th1.fig.rkW'), d: -2.42 },
+    { k: 'prepreg-er', label: t('em.th1.fig.rkPrepregEr'), d: -0.98 }, { k: 'mask', label: t('em.th1.fig.rkMask'), d: -0.49 },
+    { k: 'cu', label: t('em.th1.fig.rkCu'), d: -0.34 },
+  ];
   const rows = live
     ? corners!.inputs.slice(0, 8).map((x) => ({ k: x.id, label: x.label, d: x.d[corners!.key], tag: filled.has(x.id) ? '*' : undefined }))
-    : DEFAULT_RANK;
+    : defaultRank;
   const c = live ? corners!.corners.find((x) => x.key === corners!.key) : null;
   const nom = live ? corners!.nominal[corners!.key] : 51.5;
   const lo = c ? c.lo : 44.54, hi = c ? c.hi : 59.37;
@@ -188,8 +202,8 @@ export function RankingFigure({ corners, setup, sd }: { corners: CornersResult |
   const X = (z: number) => L + ((z - (a - pad)) / (b - a + 2 * pad)) * span;
   return (
     <figure className={css.figure} data-figure="ranking" data-source={live ? 'tolerance' : 'default'}>
-      <Bars rows={rows} label="How far each input moves the impedance at the ends of its tolerance" />
-      <svg className={css.svg} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Worst case ${lo.toFixed(2)} to ${hi.toFixed(2)} Ω, ±2σ ${(nom - 2 * sigma).toFixed(2)} to ${(nom + 2 * sigma).toFixed(2)} Ω`}>
+      <Bars rows={rows} label={t('em.th1.fig.rankAria')} />
+      <svg className={css.svg} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('em.th1.fig.bandAria', { lo: lo.toFixed(2), hi: hi.toFixed(2), sLo: (nom - 2 * sigma).toFixed(2), sHi: (nom + 2 * sigma).toFixed(2) })}>
         <rect x={X(lo)} y={8} width={X(hi) - X(lo)} height={10} className={css.bandWide} data-corners={`${lo} ${hi}`} />
         <rect x={X(nom - 2 * sigma)} y={22} width={4 * sigma * (span / (b - a + 2 * pad))} height={10} className={css.bandNarrow} />
         <path className={css.svgAxis} d={`M${X(nom)} 4 V36`} />
@@ -198,8 +212,10 @@ export function RankingFigure({ corners, setup, sd }: { corners: CornersResult |
         <text x={X(hi)} y={50} className={css.svgNum} textAnchor="end">{hi.toFixed(2)}</text>
       </svg>
       <figcaption>
-        Each input alone at the ends of its tolerance; below, the worst-case corners (wide band) and ±2σ (narrow band).
-        {live ? ` From the Tolerance tool’s last run${filled.size ? '; * marks a placeholder tolerance' : ''}${sd !== null ? ', σ from its Monte Carlo' : ', σ from the ranking'}.` : ' The default microstrip with the placeholders; open Tolerance in the Trace section for your structure.'}
+        {t('em.th1.fig.rankCap')}
+        {live
+          ? t('em.th1.fig.rankLive', { star: filled.size ? t('em.th1.fig.rankStar') : '', sd: t(sd !== null ? 'em.th1.fig.rankSdMc' : 'em.th1.fig.rankSdRk') })
+          : t('em.th1.fig.rankDef')}
       </figcaption>
     </figure>
   );

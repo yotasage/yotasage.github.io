@@ -22,6 +22,7 @@ import type { BufferGeometry, Material, Object3D, Texture } from 'three';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js' with { 'resolution-mode': 'import' };
 
 import type { Prism, PrismKind, Scene3D } from '../../lib/emsim/scene3d';
+import { emT } from './emText';
 
 export interface Via3DColors { bg: string; copper: string; core: string; prepreg: string; mask: string; ghost: string }
 /** A field map on a plane: the image (row 0 at z1) over x0 … x1 (along the plane) and z0 … z1 (up, or board y). */
@@ -502,7 +503,7 @@ export class Via3D {
     this.renderer.setPixelRatio(pr);
     this.resize();
     this.render();
-    if (!blob) throw new Error('The browser made no PNG.');
+    if (!blob) throw new Error(emT('em.via.3d.noPng'));
     return blob;
   }
 

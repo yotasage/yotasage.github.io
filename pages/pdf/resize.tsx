@@ -33,6 +33,8 @@ import {
 } from '../../lib/pdf/resize';
 import { RESIZE } from '../../lib/pdf/tools';
 import { runGetPageBoxes, runResizePdf } from '../../lib/pdf/workerClient';
+import { translate, useI18n } from '../../lib/ui/i18n';
+import type { Locale } from '../../lib/ui/translations';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
@@ -60,17 +62,18 @@ function fmtMm(pt: number): string {
   return `${Math.round(pt * PT_TO_MM)}`;
 }
 
-function summarizeBoxes(boxes: PageBoxInfo[]): string {
-  if (!boxes.length) return 'Empty';
+function summarizeBoxes(boxes: PageBoxInfo[], locale: Locale): string {
+  if (!boxes.length) return translate(locale, 'pdf.rsz.empty');
   const first = boxes[0];
   const same = boxes.every(
     (b) => Math.abs(b.visualWidth - first.visualWidth) < 1 && Math.abs(b.visualHeight - first.visualHeight) < 1,
   );
   const dims = `${fmtMm(first.visualWidth)} × ${fmtMm(first.visualHeight)} mm`;
-  return same ? dims : `Mixed (p.1: ${dims})`;
+  return same ? dims : translate(locale, 'pdf.rsz.mixed', { dims });
 }
 
 export default function ResizePdfPage() {
+  const { locale, t } = useI18n();
   const [items, setItems] = React.useState<Item[]>([]);
   const [preset, setPreset] = React.useState<ResizePresetKey>('a4');
   const [customWidth, setCustomWidth] = React.useState(210);
@@ -99,7 +102,7 @@ export default function ResizePdfPage() {
 
   async function addFiles(files: File[]) {
     const pdfs = files.filter(isPdf);
-    setNotice(pdfs.length < files.length ? `${files.length - pdfs.length} file(s) were skipped because they are not PDFs.` : null);
+    setNotice(pdfs.length < files.length ? t('pdf.p.skippedNonPdf', { n: files.length - pdfs.length }) : null);
     const added = await Promise.all(
       pdfs.map(async (file): Promise<Item> => ({
         id: uid(),
@@ -164,7 +167,7 @@ export default function ResizePdfPage() {
         .catch(() => undefined);
     } catch (e) {
       if (isPasswordError(e)) {
-        setPwError('Incorrect password. Try again.');
+        setPwError(t('pdf.ff.wrongPw'));
       } else {
         update(activeLocked.id, { locked: false, error: errorMessage(e) });
         setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
@@ -176,7 +179,7 @@ export default function ResizePdfPage() {
 
   function cancelUnlock() {
     if (!activeLocked) return;
-    update(activeLocked.id, { locked: false, error: 'Password required to open this PDF.' });
+    update(activeLocked.id, { locked: false, error: t('pdf.p.pwRequired') });
     setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
     setPwError(null);
   }
@@ -322,38 +325,47 @@ export default function ResizePdfPage() {
     };
   }, [targetDims, margin, fitMode, srcW, srcH]);
 
+  const fitModeLabel =
+    fitMode === 'fit'
+      ? t('pdf.rsz.fitNameFit')
+      : fitMode === 'fill'
+        ? t('pdf.rsz.fitNameFill')
+        : fitMode === 'stretch'
+          ? t('pdf.rsz.fitNameStretch')
+          : t('pdf.rsz.fitNameCenter');
+
   return (
     <PdfPage
       title={RESIZE.title}
       showHub
-      lead="Scale PDF pages to standard or custom paper sizes with vector-preserving embedding, custom margins and fit modes."
+      lead={t('pdf.rsz.lead')}
     >
       <ToolWorkspace
         tool={RESIZE}
         accept="application/pdf,.pdf"
-        selectLabel="Select PDF files"
-        dropLabel="or drop PDFs here"
+        selectLabel={t('pdf.p.selectPdfs')}
+        dropLabel={t('pdf.p.dropPdfs')}
         hasFiles={items.length > 0}
         onFiles={addFiles}
         toolbar={
           <button type="button" className={styles.buttonSmall} onClick={() => setItems([])}>
-            Remove all
+            {t('pdf.p.removeAll')}
           </button>
         }
         sidebar={
           <>
-            <Field label="Target paper size">
+            <Field label={t('pdf.rsz.targetSize')}>
               <Select
                 value={preset}
                 onChange={setPreset}
                 options={[
-                  ['a4', RESIZE_PRESETS.a4.label],
-                  ['a3', RESIZE_PRESETS.a3.label],
-                  ['a5', RESIZE_PRESETS.a5.label],
-                  ['letter', RESIZE_PRESETS.letter.label],
-                  ['legal', RESIZE_PRESETS.legal.label],
-                  ['tabloid', RESIZE_PRESETS.tabloid.label],
-                  ['custom', 'Custom dimensions'],
+                  ['a4', t('pdf.p.paperA4')],
+                  ['a3', t('pdf.p.paperA3')],
+                  ['a5', t('pdf.p.paperA5')],
+                  ['letter', t('pdf.p.paperLetter')],
+                  ['legal', t('pdf.p.paperLegal')],
+                  ['tabloid', t('pdf.p.paperTabloid')],
+                  ['custom', t('pdf.p.customDims')],
                 ]}
               />
             </Field>
@@ -361,62 +373,62 @@ export default function ResizePdfPage() {
             {preset === 'custom' && (
               <>
                 <div className={styles.optionRow}>
-                  <Field label={`Width (${customUnit})`}>
+                  <Field label={t('pdf.p.widthUnit', { u: customUnit })}>
                     <NumberInput value={customWidth} min={1} max={10000} step="any" onChange={setCustomWidth} />
                   </Field>
-                  <Field label={`Height (${customUnit})`}>
+                  <Field label={t('pdf.p.heightUnit', { u: customUnit })}>
                     <NumberInput value={customHeight} min={1} max={10000} step="any" onChange={setCustomHeight} />
                   </Field>
                 </div>
-                <Field label="Unit">
+                <Field label={t('pdf.p.unit')}>
                   <Select
                     value={customUnit}
                     onChange={setCustomUnit}
                     options={[
-                      ['mm', 'Millimetres (mm)'],
-                      ['in', 'Inches (in)'],
-                      ['pt', 'PDF points (pt)'],
+                      ['mm', t('pdf.p.unitMm')],
+                      ['in', t('pdf.p.unitIn')],
+                      ['pt', t('pdf.p.unitPt')],
                     ]}
                   />
                 </Field>
               </>
             )}
 
-            <Field label="Orientation">
+            <Field label={t('pdf.p.orientation')}>
               <Select
                 value={orientation}
                 onChange={setOrientation}
                 options={[
-                  ['auto', 'Auto (match each source page)'],
-                  ['portrait', 'Portrait'],
-                  ['landscape', 'Landscape'],
+                  ['auto', t('pdf.rsz.orientAuto')],
+                  ['portrait', t('pdf.p.portrait')],
+                  ['landscape', t('pdf.p.landscape')],
                 ]}
               />
             </Field>
 
-            <Field label="Scaling / fit mode">
+            <Field label={t('pdf.rsz.fitMode')}>
               <Select
                 value={fitMode}
                 onChange={setFitMode}
                 options={[
-                  ['fit', 'Fit (contain inside page)'],
-                  ['fill', 'Fill (cover & clip overflow)'],
-                  ['stretch', 'Stretch to exact dimensions'],
-                  ['center', 'Center (1:1 actual size)'],
+                  ['fit', t('pdf.rsz.fitContain')],
+                  ['fill', t('pdf.rsz.fitFill')],
+                  ['stretch', t('pdf.rsz.fitStretch')],
+                  ['center', t('pdf.rsz.fitCenter')],
                 ]}
               />
             </Field>
 
-            <Field label="Uniform margin (pt)" help="72 pt = 1 in ≈ 25.4 mm">
+            <Field label={t('pdf.rsz.uniformMargin')} help="72 pt = 1 in ≈ 25.4 mm">
               <NumberInput value={margin} min={0} max={240} step={2} onChange={setMargin} />
             </Field>
 
             {items.length === 1 && (
-              <Field label="Page range (optional)" help="Unselected pages stay unchanged.">
+              <Field label={t('pdf.p.pageRangeOpt')} help={t('pdf.rsz.rangeHelp')}>
                 <input
                   className={fieldStyles.input}
                   value={pageRange}
-                  placeholder="All pages"
+                  placeholder={t('pdf.p.allPages')}
                   onChange={(e) => setPageRange(e.target.value)}
                 />
               </Field>
@@ -432,17 +444,24 @@ export default function ResizePdfPage() {
               disabled={busy || !canResize}
               onClick={runResize}
             >
-              Resize {ready.length > 1 ? `${ready.length} PDFs` : 'PDF'}
+              {ready.length > 1 ? t('pdf.rsz.btnMany', { n: ready.length }) : t('pdf.rsz.btnOne')}
             </button>
 
             {busy && <Progress fraction={progress.fraction} label={progress.label} />}
 
             {done && (
               <div className={styles.result}>
-                <h3>{outputs.length === 1 ? 'Your PDF is resized' : `${outputs.length} PDFs are resized`}</h3>
+                <h3>
+                  {outputs.length === 1 ? t('pdf.rsz.doneOne') : t('pdf.rsz.doneMany', { n: outputs.length })}
+                </h3>
                 <p>
-                  Target: {fmtMm(targetDims.w)} × {fmtMm(targetDims.h)} mm ({Math.round(targetDims.w)} ×{' '}
-                  {Math.round(targetDims.h)} pt), mode: {fitMode}.
+                  {t('pdf.rsz.targetSummary', {
+                    wMm: fmtMm(targetDims.w),
+                    hMm: fmtMm(targetDims.h),
+                    wPt: Math.round(targetDims.w),
+                    hPt: Math.round(targetDims.h),
+                    mode: fitModeLabel,
+                  })}
                 </p>
                 {outputs.length === 1 ? (
                   <button
@@ -450,7 +469,7 @@ export default function ResizePdfPage() {
                     className={styles.primary}
                     onClick={() => download(outputs[0].bytes, outputs[0].name)}
                   >
-                    Download {outputs[0].name}
+                    {t('pdf.ff.downloadNamed', { name: outputs[0].name })}
                   </button>
                 ) : (
                   <button
@@ -458,7 +477,7 @@ export default function ResizePdfPage() {
                     className={styles.primary}
                     onClick={() => download(zipFiles(outputs), 'resized-pdfs.zip', 'application/zip')}
                   >
-                    Download all (ZIP)
+                    {t('pdf.p.downloadAllZip')}
                   </button>
                 )}
                 <ContinueWith currentToolId={RESIZE.id} files={outputs} />
@@ -480,7 +499,7 @@ export default function ResizePdfPage() {
 
         <div className={styles.diagramCard}>
           <div className={styles.diagramHeader}>
-            <h3>Layout preview (Page 1 sample)</h3>
+            <h3>{t('pdf.rsz.layoutPreview')}</h3>
             <span className={styles.fileBannerMeta}>
               {fmtMm(srcW)}×{fmtMm(srcH)} mm &rarr; {fmtMm(targetDims.w)}×{fmtMm(targetDims.h)} mm
             </span>
@@ -492,7 +511,11 @@ export default function ResizePdfPage() {
               height={diagram.svgH}
               className={styles.diagramSvg}
               role="img"
-              aria-label={`Resize preview showing ${fitMode} scaling onto ${fmtMm(targetDims.w)} by ${fmtMm(targetDims.h)} mm sheet`}
+              aria-label={t('pdf.rsz.svgAria', {
+                mode: fitModeLabel,
+                w: fmtMm(targetDims.w),
+                h: fmtMm(targetDims.h),
+              })}
             >
               <defs>
                 <clipPath id="resize-avail-clip">
@@ -581,7 +604,7 @@ export default function ResizePdfPage() {
                 fontSize={11}
               >
                 {Math.round(targetDims.w)} × {Math.round(targetDims.h)} pt
-                {diagram.clipped ? ' (overflow clipped)' : ''}
+                {diagram.clipped ? t('pdf.rsz.overflowClipped') : ''}
               </text>
             </svg>
           </div>
@@ -600,10 +623,10 @@ export default function ResizePdfPage() {
                 name={item.name}
                 meta={`${
                   item.locked
-                    ? 'Password protected'
+                    ? t('pdf.p.pwProtected')
                     : item.pageCount === null
                       ? '…'
-                      : `${item.pageCount} page${item.pageCount === 1 ? '' : 's'}`
+                      : t(item.pageCount === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany', { n: item.pageCount })
                 } · ${formatBytes(r?.bytes ? r.bytes.length : item.bytes.length)}`}
                 error={item.error ?? r?.error}
                 controls={controls}
@@ -614,7 +637,7 @@ export default function ResizePdfPage() {
                       className={styles.buttonSmall}
                       onClick={() => download(output.bytes, output.name)}
                     >
-                      Download
+                      {t('pdf.p.download')}
                     </button>
                   )
                 }
@@ -622,11 +645,13 @@ export default function ResizePdfPage() {
                 {!item.error && !item.locked && (
                   <div className={styles.fileMeta}>
                     {r?.boxes ? (
-                      <span className={styles.saved}>Now: {summarizeBoxes(r.boxes)}</span>
+                      <span className={styles.saved}>
+                        {t('pdf.rsz.nowMeta', { dims: summarizeBoxes(r.boxes, locale) })}
+                      </span>
                     ) : item.boxes ? (
-                      `Source: ${summarizeBoxes(item.boxes)}`
+                      t('pdf.rsz.srcMeta', { dims: summarizeBoxes(item.boxes, locale) })
                     ) : (
-                      'Inspecting…'
+                      t('pdf.p.inspecting')
                     )}
                   </div>
                 )}

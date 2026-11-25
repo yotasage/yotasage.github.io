@@ -25,6 +25,8 @@ import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
 import { parsePageRanges } from '../../lib/pdf/merge';
 import { openPdf, pdfPreview, renderPage } from '../../lib/pdf/pdfjs';
 import { INVERT } from '../../lib/pdf/tools';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
@@ -55,8 +57,8 @@ interface OriginalPixels {
 
 interface ModePresetInfo {
   id: InvertMode;
-  title: string;
-  description: string;
+  titleKey: TranslationKey;
+  descKey: TranslationKey;
   bg: string;
   fg: string;
   accent?: string;
@@ -65,31 +67,31 @@ interface ModePresetInfo {
 const MODE_PRESETS: ModePresetInfo[] = [
   {
     id: 'smart-dark',
-    title: 'Smart dark mode',
-    description: 'Dark charcoal paper (#171717) with hue preservation so links and charts keep their colours.',
+    titleKey: 'pdf.inv.smartTitle',
+    descKey: 'pdf.inv.smartDesc',
     bg: '#171717',
     fg: '#ededed',
     accent: '#4da3ff',
   },
   {
     id: 'warm-dark',
-    title: 'Warm dark',
-    description: 'Low-glare dark sepia paper (#1e1b17) with warm cream text for comfortable night reading.',
+    titleKey: 'pdf.inv.warmTitle',
+    descKey: 'pdf.inv.warmDesc',
     bg: '#1e1b17',
     fg: '#e8dec8',
     accent: '#e59a3a',
   },
   {
     id: 'invert',
-    title: 'Classic invert',
-    description: 'Exact RGB colour inversion (255 − c) producing pure black backgrounds and white text.',
+    titleKey: 'pdf.inv.classicTitle',
+    descKey: 'pdf.inv.classicDesc',
     bg: '#000000',
     fg: '#ffffff',
   },
   {
     id: 'custom',
-    title: 'Custom colours',
-    description: 'Pick any background and ink colour pair, with optional hue preservation for coloured elements.',
+    titleKey: 'pdf.inv.customTitle',
+    descKey: 'pdf.inv.customDesc',
     bg: '#1b2230',
     fg: '#dce7f7',
     accent: '#7c8cf8',
@@ -106,6 +108,7 @@ function normalizeHex(raw: string, fallback: string): string {
 }
 
 export default function InvertPdfPage() {
+  const { t } = useI18n();
   const [items, setItems] = React.useState<Item[]>([]);
   const [mode, setMode] = React.useState<InvertMode>('smart-dark');
   const [backgroundHex, setBackgroundHex] = React.useState('#171717');
@@ -152,7 +155,7 @@ export default function InvertPdfPage() {
 
   async function addFiles(files: File[]) {
     const pdfs = files.filter(isPdf);
-    setNotice(pdfs.length < files.length ? `${files.length - pdfs.length} file(s) were skipped because they are not PDFs.` : null);
+    setNotice(pdfs.length < files.length ? t('pdf.p.skippedNonPdf', { n: files.length - pdfs.length }) : null);
     const added = await Promise.all(
       pdfs.map(async (file): Promise<Item> => ({
         id: uid(),
@@ -208,7 +211,7 @@ export default function InvertPdfPage() {
       setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
     } catch (e) {
       if (isPasswordError(e)) {
-        setPwError('Incorrect password. Try again.');
+        setPwError(t('pdf.ff.wrongPw'));
       } else {
         update(activeLocked.id, { locked: false, error: errorMessage(e) });
         setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
@@ -220,7 +223,7 @@ export default function InvertPdfPage() {
 
   function cancelUnlock() {
     if (!activeLocked) return;
-    update(activeLocked.id, { locked: false, error: 'Password required to open this PDF.' });
+    update(activeLocked.id, { locked: false, error: t('pdf.p.pwRequired') });
     setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
     setPwError(null);
   }
@@ -442,7 +445,7 @@ export default function InvertPdfPage() {
             const fileFrac = p.total > 0 ? p.done / p.total : 0;
             setProgress({
               fraction: (i + fileFrac) / ready.length,
-              label: `${item.name} — page ${p.done}/${p.total}`,
+              label: t('pdf.p.filePageProgress', { name: item.name, done: p.done, total: p.total }),
             });
           },
         );
@@ -463,17 +466,19 @@ export default function InvertPdfPage() {
   }));
   const done = !busy && outputs.length > 0;
 
+  const activePresetTitle = t(activePreset.titleKey);
+
   return (
     <PdfPage
       title={INVERT.title}
       showHub
-      lead="Convert bright PDFs into comfortable dark-mode documents with smart hue preservation, warm sepia, classic invert or custom colours."
+      lead={t('pdf.inv.lead')}
     >
       <ToolWorkspace
         tool={INVERT}
         accept="application/pdf,.pdf"
-        selectLabel="Select PDF files"
-        dropLabel="or drop PDFs here"
+        selectLabel={t('pdf.p.selectPdfs')}
+        dropLabel={t('pdf.p.dropPdfs')}
         hasFiles={items.length > 0}
         onFiles={addFiles}
         toolbar={
@@ -485,14 +490,14 @@ export default function InvertPdfPage() {
               setPreviewItemId(null);
             }}
           >
-            Remove all
+            {t('pdf.p.removeAll')}
           </button>
         }
         sidebar={
           <>
             <div className={fieldStyles.field}>
-              <span>Colour mode</span>
-              <div className={styles.modeCardList} role="radiogroup" aria-label="Dark mode preset">
+              <span>{t('pdf.inv.colorMode')}</span>
+              <div className={styles.modeCardList} role="radiogroup" aria-label={t('pdf.inv.presetAria')}>
                 {MODE_PRESETS.map((preset) => {
                   const selected = mode === preset.id;
                   const swatchBg = preset.id === 'custom' ? safeBg : preset.bg;
@@ -517,8 +522,8 @@ export default function InvertPdfPage() {
                         )}
                       </span>
                       <span className={styles.modeCardBody}>
-                        <strong>{preset.title}</strong>
-                        <small>{preset.description}</small>
+                        <strong>{t(preset.titleKey)}</strong>
+                        <small>{t(preset.descKey)}</small>
                       </span>
                     </button>
                   );
@@ -529,37 +534,37 @@ export default function InvertPdfPage() {
             {mode === 'custom' && (
               <>
                 <div className={styles.optionRow}>
-                  <Field label="Background">
+                  <Field label={t('pdf.inv.bg')}>
                     <div className={styles.colorRow}>
                       <input
                         type="color"
                         className={styles.colorSwatch}
-                        aria-label="Custom background colour"
+                        aria-label={t('pdf.inv.bgAria')}
                         value={safeBg}
                         onChange={(e) => setBackgroundHex(e.target.value)}
                       />
                       <input
                         type="text"
                         className={fieldStyles.input}
-                        aria-label="Custom background hex"
+                        aria-label={t('pdf.inv.bgHexAria')}
                         value={backgroundHex}
                         onChange={(e) => setBackgroundHex(e.target.value)}
                       />
                     </div>
                   </Field>
-                  <Field label="Ink / foreground">
+                  <Field label={t('pdf.inv.fg')}>
                     <div className={styles.colorRow}>
                       <input
                         type="color"
                         className={styles.colorSwatch}
-                        aria-label="Custom foreground colour"
+                        aria-label={t('pdf.inv.fgAria')}
                         value={safeFg}
                         onChange={(e) => setForegroundHex(e.target.value)}
                       />
                       <input
                         type="text"
                         className={fieldStyles.input}
-                        aria-label="Custom foreground hex"
+                        aria-label={t('pdf.inv.fgHexAria')}
                         value={foregroundHex}
                         onChange={(e) => setForegroundHex(e.target.value)}
                       />
@@ -567,7 +572,7 @@ export default function InvertPdfPage() {
                   </Field>
                 </div>
                 <Checkbox
-                  label="Preserve saturated hues (links, charts, highlights)"
+                  label={t('pdf.inv.preserveHue')}
                   checked={preserveHue}
                   onChange={setPreserveHue}
                 />
@@ -575,25 +580,25 @@ export default function InvertPdfPage() {
             )}
 
             <div className={styles.optionRow}>
-              <Field label="Resolution (DPI)">
+              <Field label={t('pdf.p.resDpi')}>
                 <Select
                   value={dpi}
                   onChange={setDpi}
                   options={[
-                    ['100', '100 DPI (small)'],
-                    ['150', '150 DPI (balanced)'],
-                    ['200', '200 DPI (crisp)'],
-                    ['300', '300 DPI (print)'],
+                    ['100', t('pdf.p.dpi100')],
+                    ['150', t('pdf.p.dpi150')],
+                    ['200', t('pdf.p.dpi200')],
+                    ['300', t('pdf.p.dpi300')],
                   ]}
                 />
               </Field>
-              <Field label="Page image format">
+              <Field label={t('pdf.p.pageImgFmt')}>
                 <Select
                   value={format}
                   onChange={setFormat}
                   options={[
-                    ['jpeg', 'JPEG (smaller)'],
-                    ['png', 'PNG (lossless)'],
+                    ['jpeg', t('pdf.p.jpegSmaller')],
+                    ['png', t('pdf.p.pngLossless')],
                   ]}
                 />
               </Field>
@@ -602,7 +607,7 @@ export default function InvertPdfPage() {
             {format === 'jpeg' && (
               <label className={styles.sliderField}>
                 <span className={styles.sliderHeader}>
-                  <span>JPEG quality</span>
+                  <span>{t('pdf.p.jpegQuality')}</span>
                   <strong>{jpegQuality}%</strong>
                 </span>
                 <input
@@ -618,20 +623,17 @@ export default function InvertPdfPage() {
             )}
 
             {items.length === 1 && (
-              <Field label="Page range (optional)" help="e.g. 1-3, 5. Unselected pages stay unchanged.">
+              <Field label={t('pdf.p.pageRangeOpt')} help={t('pdf.p.pageRangeUnchangedHelp')}>
                 <input
                   className={fieldStyles.input}
                   value={pageRange}
-                  placeholder="All pages"
+                  placeholder={t('pdf.p.allPages')}
                   onChange={(e) => setPageRange(e.target.value)}
                 />
               </Field>
             )}
 
-            <p className={styles.infoNote}>
-              Each selected page is rendered at {dpi} DPI so text, graphics and images transform uniformly while
-              preserving page dimensions.
-            </p>
+            <p className={styles.infoNote}>{t('pdf.inv.infoNote', { dpi })}</p>
 
             {rangeState.error && <p className={fieldStyles.warning}>{rangeState.error}</p>}
             {notice && <p className={fieldStyles.warning}>{notice}</p>}
@@ -643,8 +645,10 @@ export default function InvertPdfPage() {
               onClick={runTransform}
             >
               {busy
-                ? 'Transforming…'
-                : `Apply ${activePreset.title.toLowerCase()} to ${ready.length > 1 ? `${ready.length} PDFs` : 'PDF'}`}
+                ? t('pdf.inv.transforming')
+                : ready.length > 1
+                  ? t('pdf.inv.btnMany', { mode: activePresetTitle.toLowerCase(), n: ready.length })
+                  : t('pdf.inv.btnOne', { mode: activePresetTitle.toLowerCase() })}
             </button>
 
             {busy && <Progress fraction={progress.fraction} label={progress.label} />}
@@ -652,13 +656,12 @@ export default function InvertPdfPage() {
             {done && (
               <div className={styles.result}>
                 <h3>
-                  {outputs.length === 1
-                    ? 'Your transformed PDF is ready'
-                    : `${outputs.length} transformed PDFs are ready`}
+                  {outputs.length === 1 ? t('pdf.inv.doneOne') : t('pdf.inv.doneMany', { n: outputs.length })}
                 </h3>
                 <p>
-                  {activePreset.title} · {dpi} DPI ({format.toUpperCase()}
-                  {format === 'jpeg' ? `, ${jpegQuality}% quality` : ''}).
+                  {format === 'jpeg'
+                    ? t('pdf.inv.doneJpeg', { mode: activePresetTitle, dpi, q: jpegQuality })
+                    : t('pdf.inv.donePng', { mode: activePresetTitle, dpi })}
                 </p>
                 {outputs.length === 1 ? (
                   <button
@@ -666,7 +669,7 @@ export default function InvertPdfPage() {
                     className={styles.primary}
                     onClick={() => download(outputs[0].bytes, outputs[0].name)}
                   >
-                    Download {outputs[0].name}
+                    {t('pdf.ff.downloadNamed', { name: outputs[0].name })}
                   </button>
                 ) : (
                   <button
@@ -674,7 +677,7 @@ export default function InvertPdfPage() {
                     className={styles.primary}
                     onClick={() => download(zipFiles(outputs), 'dark-mode-pdfs.zip', 'application/zip')}
                   >
-                    Download all (ZIP)
+                    {t('pdf.p.downloadAllZip')}
                   </button>
                 )}
                 <ContinueWith currentToolId={INVERT.id} files={outputs} />
@@ -698,11 +701,11 @@ export default function InvertPdfPage() {
           <div className={styles.compareCard}>
             <div className={styles.compareBar}>
               <div className={styles.compareTitleRow}>
-                <h3>Live preview</h3>
+                <h3>{t('pdf.p.livePreview')}</h3>
                 {ready.length > 1 ? (
                   <select
                     className={styles.canvasSourceSelect}
-                    aria-label="Preview file"
+                    aria-label={t('pdf.p.previewFile')}
                     value={previewItem.id}
                     onChange={(e) => setPreviewItemId(e.target.value)}
                   >
@@ -717,7 +720,7 @@ export default function InvertPdfPage() {
                 )}
                 {previewPageSkippedByRange && (
                   <span className={[styles.previewBadge, styles.previewBadgeWarn].join(' ')}>
-                    Page {pageIndex + 1} unchanged by range
+                    {t('pdf.p.pageUnchangedRange', { n: pageIndex + 1 })}
                   </span>
                 )}
               </div>
@@ -730,7 +733,7 @@ export default function InvertPdfPage() {
                     disabled={pageIndex <= 0}
                     onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
                   >
-                    &larr; Prev
+                    {t('pdf.p.prev')}
                   </button>
                   <span className={styles.canvasPageInfo}>
                     {pageIndex + 1} / {Math.max(1, previewPageCount)}
@@ -741,18 +744,18 @@ export default function InvertPdfPage() {
                     disabled={pageIndex >= previewPageCount - 1}
                     onClick={() => setPageIndex((i) => Math.min(previewPageCount - 1, i + 1))}
                   >
-                    Next &rarr;
+                    {t('pdf.p.next')}
                   </button>
                 </div>
 
-                <div className={styles.compareToggle} role="group" aria-label="Compare result and original">
+                <div className={styles.compareToggle} role="group" aria-label={t('pdf.inv.compareAria')}>
                   <button
                     type="button"
                     className={[styles.compareToggleBtn, !showOriginal ? styles.compareToggleBtnActive : ''].join(' ')}
                     aria-pressed={!showOriginal}
                     onClick={() => setShowOriginal(false)}
                   >
-                    Result
+                    {t('pdf.inv.result')}
                   </button>
                   <button
                     type="button"
@@ -760,7 +763,7 @@ export default function InvertPdfPage() {
                     aria-pressed={showOriginal}
                     onClick={() => setShowOriginal(true)}
                   >
-                    Original
+                    {t('pdf.inv.original')}
                   </button>
                 </div>
               </div>
@@ -779,7 +782,7 @@ export default function InvertPdfPage() {
                   className={styles.previewCanvas}
                   style={cssDisplayW && cssDisplayH ? { width: `${cssDisplayW}px`, height: `${cssDisplayH}px` } : undefined}
                 />
-                {rendering && <div className={styles.figureLoading}>Rendering page…</div>}
+                {rendering && <div className={styles.figureLoading}>{t('pdf.p.renderingPage')}</div>}
               </div>
             </div>
           </div>
@@ -798,10 +801,10 @@ export default function InvertPdfPage() {
                 name={item.name}
                 meta={`${
                   item.locked
-                    ? 'Password protected'
+                    ? t('pdf.p.pwProtected')
                     : item.pageCount === null
                       ? '…'
-                      : `${item.pageCount} page${item.pageCount === 1 ? '' : 's'}`
+                      : t(item.pageCount === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany', { n: item.pageCount })
                 } · ${formatBytes(r?.bytes ? r.bytes.length : item.bytes.length)}`}
                 error={item.error ?? r?.error}
                 controls={controls}
@@ -812,7 +815,7 @@ export default function InvertPdfPage() {
                       className={styles.buttonSmall}
                       onClick={() => download(output.bytes, output.name)}
                     >
-                      Download
+                      {t('pdf.p.download')}
                     </button>
                   )
                 }
@@ -820,7 +823,7 @@ export default function InvertPdfPage() {
                 {r?.bytes && (
                   <div className={styles.fileMeta}>
                     <span className={styles.saved}>
-                      {activePreset.title} ({dpi} DPI)
+                      {activePresetTitle} ({dpi} DPI)
                     </span>
                   </div>
                 )}

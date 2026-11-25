@@ -124,7 +124,7 @@ function WaveDromCanvas({
         <div>
           <h3 className={dStyles.subPaneTitle}>{title}</h3>
           <span className={styles.metaInline}>
-            <span>Critical path: {sim.criticalPathNs} ns</span>
+            <span>{t('boolean.circuit.criticalPath', { delay: sim.criticalPathNs })}</span>
             <span className={styles.metaDot} aria-hidden="true">
               ·
             </span>
@@ -193,7 +193,7 @@ function WaveDromCanvas({
           className={dStyles.waveSvg}
           viewBox={`0 0 ${totalW} ${totalH}`}
           role="img"
-          aria-label={`${title} timing diagram`}
+          aria-label={t('boolean.timing.diagramAria', { title })}
           onMouseMove={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
             const svgX = ((e.clientX - rect.left) / rect.width) * totalW;
@@ -514,14 +514,19 @@ export default function TimingPanel({
         <div className={styles.stepsTitleGroup}>
           <h2 className={styles.cardTitle}>{t('boolean.timing.title')}</h2>
           <span className={styles.metaInline}>
-            Original {origSim.criticalPathNs} ns → {targetLabel} {targetSim.criticalPathNs} ns
+            {t('boolean.timing.compareSummary', {
+              origLabel: t('boolean.timing.target.orig'),
+              origDelay: origSim.criticalPathNs,
+              targetLabel,
+              targetDelay: targetSim.criticalPathNs,
+            })}
           </span>
         </div>
 
         <div className={styles.stepsControls}>
           {visible && (
             <>
-              <div className={styles.segmented} role="group" aria-label="Timing circuit selection">
+              <div className={styles.segmented} role="group" aria-label={t('boolean.timing.circuitAria')}>
                 {(['both', 'orig', 'simp'] as const).map((mode) => (
                   <button
                     key={mode}
@@ -619,7 +624,7 @@ export default function TimingPanel({
                       min={0}
                       max={500}
                       step={1}
-                      aria-label={`${gt} delay in ns`}
+                      aria-label={t('boolean.timing.gateDelayAria', { gate: gt })}
                       className={dStyles.delayNumInput}
                       value={typeDelays[gt]}
                       onChange={(e) => {
@@ -635,10 +640,11 @@ export default function TimingPanel({
             {!isQuick && (
               <div className={dStyles.delayBox}>
                 <h3 className={dStyles.delayBoxTitle}>
-                  {t('boolean.timing.instanceDelays')} ({activeWhich === 'orig' ? 'Original' : targetLabel})
+                  {t('boolean.timing.instanceDelays')} (
+                  {activeWhich === 'orig' ? t('boolean.timing.target.orig') : targetLabel})
                 </h3>
                 {activeGatesForOverride.length === 0 ? (
-                  <p className={dStyles.hintText}>No combinational gates in this expression (direct wire / constant).</p>
+                  <p className={dStyles.hintText}>{t('boolean.timing.noGates')}</p>
                 ) : (
                   <div className={dStyles.delayInputsRow}>
                     {activeGatesForOverride.map((gate) => {
@@ -655,7 +661,7 @@ export default function TimingPanel({
                             min={0}
                             max={500}
                             step={1}
-                            aria-label={`${gate.id} instance delay in ns`}
+                            aria-label={t('boolean.timing.instanceDelayAria', { id: gate.id })}
                             className={dStyles.delayNumInput}
                             value={val}
                             onChange={(e) => {

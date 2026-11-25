@@ -6,23 +6,31 @@ import React from 'react';
 import { formatSize } from '../../lib/qrread/bytes';
 import type { Field } from '../../lib/qrread/types';
 import type { Detection } from '../../lib/qrread/zxing';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
 import styles from '../../styles/QrRead.module.css';
 import { formatName, isQrFamily } from './bits';
 import { Fields } from './ContentView';
 
-const EC: Record<string, string> = { L: 'L, restores about 7 %', M: 'M, restores about 15 %', Q: 'Q, restores about 25 %', H: 'H, restores about 30 %' };
+const EC_KEYS: Record<string, TranslationKey> = {
+  L: 'qrread.sym.ecL',
+  M: 'qrread.sym.ecM',
+  Q: 'qrread.sym.ecQ',
+  H: 'qrread.sym.ecH',
+};
 
-const SYMBOLOGY_IDS: Record<string, string> = {
-  ']Q0': 'Model 1',
-  ']Q1': 'plain data',
-  ']Q2': 'with ECI character sets',
-  ']Q3': 'GS1 data (FNC1 in first position)',
-  ']Q4': 'GS1 data with ECI',
-  ']Q5': 'industry data (FNC1 in second position)',
-  ']Q6': 'industry data with ECI',
+const SYMBOLOGY_ID_KEYS: Record<string, TranslationKey> = {
+  ']Q0': 'qrread.sym.idQ0',
+  ']Q1': 'qrread.sym.idQ1',
+  ']Q2': 'qrread.sym.idQ2',
+  ']Q3': 'qrread.sym.idQ3',
+  ']Q4': 'qrread.sym.idQ4',
+  ']Q5': 'qrread.sym.idQ5',
+  ']Q6': 'qrread.sym.idQ6',
 };
 
 function ModuleCanvas({ symbol, quiet }: { symbol: NonNullable<Detection['symbol']>; quiet: number }) {
+  const { t } = useI18n();
   const ref = React.useRef<HTMLCanvasElement>(null);
   React.useEffect(() => {
     const c = ref.current;
@@ -50,23 +58,27 @@ function ModuleCanvas({ symbol, quiet }: { symbol: NonNullable<Detection['symbol
       className={styles.moduleCanvas}
       style={{ width: (symbol.width + 2 * quiet) * scale, height: (symbol.height + 2 * quiet) * scale }}
       role="img"
-      aria-label={`The symbol's ${symbol.width} by ${symbol.height} modules as read`}
+      aria-label={t('qrread.sym.canvasAria', { w: symbol.width, h: symbol.height })}
     />
   );
 }
 
 export default function SymbolView({ d }: { d: Detection }) {
-  const fields: Field[] = [{ label: 'Kind', value: formatName(d.format) }];
-  if (d.symbol) fields.push({ label: 'Size', value: `${d.symbol.width} × ${d.symbol.height} modules` });
-  if (d.version) fields.push({ label: 'Version', value: d.version });
-  if (d.ecLevel) fields.push({ label: 'Error correction', value: EC[d.ecLevel] ?? d.ecLevel });
-  if (d.mask !== null) fields.push({ label: 'Mask pattern', value: String(d.mask) });
-  fields.push({ label: 'Data', value: formatSize(d.bytes.length) });
-  fields.push({ label: 'Character set', value: d.hasECI ? 'Declared in the code (ECI)' : 'Not declared: the reader judged it from the bytes' });
-  if (d.symbologyId) fields.push({ label: 'Symbology identifier', value: d.symbologyId, mono: true, note: isQrFamily(d.format) ? SYMBOLOGY_IDS[d.symbologyId] : undefined });
-  if (d.sequence) fields.push({ label: 'Structured append', value: `Symbol ${d.sequence.index + 1} of ${d.sequence.size}`, note: `parity ${d.sequence.id}` });
-  const look = [d.inverted ? 'light on dark (inverted)' : '', d.mirrored ? 'mirrored' : '', d.rotation ? `turned ${d.rotation}°` : ''].filter(Boolean);
-  if (look.length) fields.push({ label: 'Seen', value: look.join(', ') });
+  const { t } = useI18n();
+  const fields: Field[] = [{ label: t('qrread.sym.kind'), value: formatName(d.format) }];
+  if (d.symbol) fields.push({ label: t('qrread.sym.size'), value: t('qrread.sym.sizeVal', { w: d.symbol.width, h: d.symbol.height }) });
+  if (d.version) fields.push({ label: t('qrread.sym.version'), value: d.version });
+  if (d.ecLevel) fields.push({ label: t('qrread.sym.ec'), value: EC_KEYS[d.ecLevel] ? t(EC_KEYS[d.ecLevel]) : d.ecLevel });
+  if (d.mask !== null) fields.push({ label: t('qrread.sym.mask'), value: String(d.mask) });
+  fields.push({ label: t('qrread.sym.data'), value: formatSize(d.bytes.length) });
+  fields.push({ label: t('qrread.sym.charset'), value: d.hasECI ? t('qrread.sym.charsetEci') : t('qrread.sym.charsetGuessed') });
+  if (d.symbologyId) {
+    const idKey = isQrFamily(d.format) ? SYMBOLOGY_ID_KEYS[d.symbologyId] : undefined;
+    fields.push({ label: t('qrread.sym.symId'), value: d.symbologyId, mono: true, note: idKey ? t(idKey) : undefined });
+  }
+  if (d.sequence) fields.push({ label: t('qrread.sym.seq'), value: t('qrread.sym.seqVal', { i: d.sequence.index + 1, size: d.sequence.size }), note: t('qrread.joined.parity', { id: d.sequence.id }) });
+  const look = [d.inverted ? t('qrread.sym.inverted') : '', d.mirrored ? t('qrread.sym.mirrored') : '', d.rotation ? t('qrread.sym.turned', { deg: d.rotation }) : ''].filter(Boolean);
+  if (look.length) fields.push({ label: t('qrread.sym.seen'), value: look.join(', ') });
   return (
     <div className={styles.symbolView}>
       {d.symbol && <ModuleCanvas symbol={d.symbol} quiet={/Micro|RMQR/i.test(d.format) ? 2 : 4} />}

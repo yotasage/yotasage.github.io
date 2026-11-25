@@ -9,6 +9,12 @@ import React, { useMemo } from 'react';
 import { stackThickness, stackZ } from '../../lib/emsim/stackup';
 import type { Layer, MaskLayer, Stackup } from '../../lib/emsim/stackup';
 import type { LengthUnit } from '../../lib/emsim/units';
+import { useI18n } from '../../lib/ui/i18n';
+import {
+  localizeEmLayerName,
+  localizeEmMaterial,
+  localizeEmStackupName,
+} from '../../lib/ui/localizeEmStackup';
 import css from '../../styles/EmSimStackup.module.css';
 import { lenText, numText } from './format';
 
@@ -94,6 +100,7 @@ function scaleLength(k: number): number {
 }
 
 export default function StackupDrawing({ s, unit, digits, widen, active }: { s: Stackup; unit: LengthUnit; digits: number; widen: boolean; active: number }) {
+  const { t, locale } = useI18n();
   const g = useMemo(() => geometry(s, widen), [s, widen]);
   const L = s.layers;
   const z = useMemo(() => stackZ(s), [s]);
@@ -133,7 +140,14 @@ export default function StackupDrawing({ s, unit, digits, widen, active }: { s: 
     shapes.push(<rect key="act" x={0} y={r(g.top[active])} width={3} height={r(Math.max(g.h[active], 2))} fill="var(--accent)" />);
   }
 
-  const nameOf = (l: Layer) => (l.kind === 'dielectric' ? (l.material && l.material !== l.name ? `${l.material}` : l.role) : l.name);
+  const nameOf = (l: Layer) =>
+    l.kind === 'dielectric'
+      ? l.material && l.material !== l.name
+        ? localizeEmMaterial(l.material, locale)
+        : l.role === 'core'
+          ? t('em.stkDraw.core')
+          : t('em.stkDraw.prepreg')
+      : localizeEmLayerName(l.name, locale);
   const detailOf = (l: Layer) => {
     if (l.kind === 'dielectric') return `${lenText(l.t.v, unit, digits)} · εr ${numText(l.er.v, digits)}`;
     if (l.kind === 'mask') return lenText(l.onLaminate.v, unit, digits);
@@ -144,12 +158,12 @@ export default function StackupDrawing({ s, unit, digits, widen, active }: { s: 
     <figure className={css.figure} data-drawing data-widen={widen} data-px-per-mm={g.k}>
       <div className={css.drawing} style={{ height: g.H }}>
         <div className={css.bands}>
-          <svg viewBox={`0 0 100 ${r(g.H)}`} preserveAspectRatio="none" height={g.H} role="img" aria-label={`Cross-section of ${s.name || 'the stackup'}, ${widen ? 'thin layers widened' : 'to scale'}`}>
+          <svg viewBox={`0 0 100 ${r(g.H)}`} preserveAspectRatio="none" height={g.H} role="img" aria-label={t('em.stkDraw.aria', { name: s.name ? localizeEmStackupName(s.name, locale) : t('em.stkDraw.theStackup'), scale: widen ? t('em.stkDraw.widened') : t('em.stkDraw.toScale') })}>
             <rect x={0} y={0} width={100} height={r(g.H)} fill="var(--air)" />
             {shapes}
           </svg>
-          <span className={css.airLabel} style={{ top: 6 }}>air</span>
-          <span className={css.airLabel} style={{ bottom: 6 }}>air</span>
+          <span className={css.airLabel} style={{ top: 6 }}>{t('em.stkDraw.air')}</span>
+          <span className={css.airLabel} style={{ bottom: 6 }}>{t('em.stkDraw.air')}</span>
         </div>
         <div className={css.leaders} aria-hidden="true">
           <svg viewBox={`0 0 18 ${r(g.H)}`} preserveAspectRatio="none" height={g.H}>
@@ -167,19 +181,19 @@ export default function StackupDrawing({ s, unit, digits, widen, active }: { s: 
         </div>
       </div>
       <div className={css.caption}>
-        <span className={css.key} style={{ background: 'var(--copper)' }} />copper
-        <span className={css.key} style={{ background: 'var(--core)' }} />core
-        <span className={css.key} style={{ background: 'var(--prepreg)' }} />prepreg
-        <span className={css.key} style={{ background: 'var(--mask)' }} />mask
-        <span className={css.key} style={{ background: 'var(--air)' }} />air
+        <span className={css.key} style={{ background: 'var(--copper)' }} />{t('em.stkDraw.copper')}
+        <span className={css.key} style={{ background: 'var(--core)' }} />{t('em.stkDraw.core')}
+        <span className={css.key} style={{ background: 'var(--prepreg)' }} />{t('em.stkDraw.prepreg')}
+        <span className={css.key} style={{ background: 'var(--mask)' }} />{t('em.stkDraw.mask')}
+        <span className={css.key} style={{ background: 'var(--air)' }} />{t('em.stkDraw.air')}
       </div>
       {g.k > 0 ? (
         <div className={css.caption}>
           <span className={css.scale}><span className={css.scaleBar} style={{ width: Math.round(bar * g.k) }} />{lenText(bar, unit, 3)}</span>
-          {' '}· to scale top to bottom; across, a sketch.
+          {t('em.stkDraw.scaleNote')}
         </div>
       ) : (
-        <div className={css.caption}>Thin layers widened to at least {MIN} px: not to scale.</div>
+        <div className={css.caption}>{t('em.stkDraw.widenedNote', { min: MIN })}</div>
       )}
     </figure>
   );

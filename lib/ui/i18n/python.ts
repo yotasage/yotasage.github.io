@@ -11,6 +11,8 @@ export const en = {
   'python.cardDesc':
     'Run Python 3.14 locally in your browser (Pyodide with NumPy, SciPy, pandas, SymPy, matplotlib, Pillow) with Monaco Editor, interactive Console + REPL, Soft/Force Stop, and network access blocked by default.',
 
+  'python.cardTags': 'Python 3.14 (Pyodide)|NumPy · SciPy · pandas|Console + REPL|Network off by default',
+
   // Toolbar & actions
   'python.run': 'Run',
   'python.runTitle': 'Run {file} (Ctrl+Enter / Cmd+Enter)',
@@ -283,6 +285,8 @@ export const nb: Record<keyof typeof en, string> = {
   'python.cardCategory': 'Kode og beregning',
   'python.cardDesc':
     'Kjør Python 3.14 lokalt i nettleseren (Pyodide med NumPy, SciPy, pandas, SymPy, matplotlib, Pillow) med Monaco Editor, interaktiv konsoll + REPL, myk/tvungen stopp og nettverk blokkert som standard.',
+
+  'python.cardTags': 'Python 3.14 (Pyodide)|NumPy · SciPy · pandas|Konsoll + REPL|Nettverk av som standard',
 
   // Toolbar & actions
   'python.run': 'Kjør',

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { BooleanStep, StepLayoutMode } from '../../lib/boolean/types';
 import { useI18n } from '../../lib/ui/i18n';
+import { localizeBooleanStep } from '../../lib/ui/localizeBooleanStep';
 import { useExperienceMode } from '../../lib/ui/mode';
 import styles from '../../styles/Boolean.module.css';
 import KatexSpan from '../KatexSpan';
@@ -28,7 +29,7 @@ export default function BooleanStepViewer({
   onInspectStep,
   onInspectLaw,
 }: BooleanStepViewerProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { mode, setMode } = useExperienceMode();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -80,11 +81,14 @@ export default function BooleanStepViewer({
   const isQuick = mode === 'quick';
 
   const visibleEntries = useMemo(() => {
-    const mapped = steps.map((step, originalIndex) => ({ step, originalIndex }));
+    const mapped = steps.map((step, originalIndex) => ({
+      step: locale === 'en' ? step : localizeBooleanStep(step, locale),
+      originalIndex,
+    }));
     if (!isQuick) return mapped;
     const filtered = mapped.filter((e) => !e.step.minor);
     return filtered.length > 0 ? filtered : mapped;
-  }, [steps, isQuick]);
+  }, [steps, isQuick, locale]);
 
   const resolvedLayout: 'split' | 'interleaved' | 'same-side' = isQuick
     ? 'same-side'
@@ -221,7 +225,10 @@ export default function BooleanStepViewer({
                         <span className={styles.metaInline}>
                           {step.workLabel && <span className={styles.workTag}>{step.workLabel}</span>}
                           <span>
-                            {step.gateCount} gates · {step.literalCount} literals
+                            {t('boolean.steps.metaCounts', {
+                              gates: step.gateCount,
+                              literals: step.literalCount,
+                            })}
                           </span>
                         </span>
                         {renderInspectButton(originalIndex, idx + 1, isFinal)}

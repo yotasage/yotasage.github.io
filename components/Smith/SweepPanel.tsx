@@ -9,8 +9,10 @@ import { MAX_MARKERS, SWEEP_MAX_POINTS, bandIssue } from '../../lib/smith/state'
 import type { SweepSetting } from '../../lib/smith/state';
 import { defaultBand } from '../../lib/smith/sweep';
 import type { Band } from '../../lib/smith/sweep';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Smith.module.css';
 import css from '../../styles/SmithSweep.module.css';
+import { localizeProblem } from './smithText';
 import { Field } from './Strip';
 import { Why } from './Why';
 
@@ -42,6 +44,7 @@ export function newMarker(s: SweepSetting, f0: number): number {
 }
 
 function SweepPanel({ sweep, f0, onChange, revision }: SweepPanelProps) {
+  const { t, locale } = useI18n();
   // The band before the sweep was turned off comes back with it.
   const last = useRef<Band | null>(null);
   if (sweep) last.current = sweep.band;
@@ -50,49 +53,49 @@ function SweepPanel({ sweep, f0, onChange, revision }: SweepPanelProps) {
 
   const freqField = (name: 'start' | 'stop', label: string) => (
     <Field name={`sweep-${name}`} label={label} revision={revision} why="sweep-band" shown={formatAmount(band![name], 'Hz', DIGITS)}
-      edit={(t) => {
-        const v = readAmount(t, 'Hz');
-        if (v === null) return t.trim() ? `cannot read “${t.trim()}” as hertz` : 'empty';
+      edit={(raw) => {
+        const v = readAmount(raw, 'Hz');
+        if (v === null) return raw.trim() ? t('sm.sw.badHz', { raw: raw.trim() }) : t('sm.sw.empty');
         const next = { ...band!, [name]: v };
         const why = bandIssue(next);
         if (!why) onChange(withBand(sweep!, next));
-        return why;
+        return localizeProblem(why, locale);
       }} />
   );
 
   return (
     <section className={styles.panel} aria-labelledby="smith-sweep" data-sweep="">
       <h2 className={styles.panelTitle} id="smith-sweep">
-        <span className={css.head}>Sweep <Why k="sweep" /></span>
-        <span className={styles.panelNote}>Γ(f) at the input</span>
+        <span className={css.head}>{t('sm.sw.title')} <Why k="sweep" /></span>
+        <span className={styles.panelNote}>{t('sm.sw.note')}</span>
       </h2>
       <div className={css.row}>
         <label className={css.check}>
           <input type="checkbox" data-sweep-on="" checked={on}
             onChange={(e) => onChange(e.target.checked ? { band: last.current ?? defaultBand(f0), markers: [] } : null)} />
-          Show the trace on the chart
+          {t('sm.sw.showTrace')}
         </label>
         <Why k="sweep-trace" />
       </div>
       {sweep && band && (
         <>
           <div className={styles.params}>
-            {freqField('start', 'Start')}
-            {freqField('stop', 'Stop')}
-            <Field name="sweep-points" label="Points" revision={revision} why="sweep-points" shown={String(band.points)}
-              edit={(t) => {
-                const v = Number(t.trim().replace(/[ ,_]/g, ''));
+            {freqField('start', t('sm.sw.start'))}
+            {freqField('stop', t('sm.sw.stop'))}
+            <Field name="sweep-points" label={t('sm.sw.points')} revision={revision} why="sweep-points" shown={String(band.points)}
+              edit={(raw) => {
+                const v = Number(raw.trim().replace(/[ ,_]/g, ''));
                 const next = { ...band, points: v };
-                const why = t.trim() === '' ? 'empty' : Number.isFinite(v) ? bandIssue(next) : `cannot read “${t.trim()}” as a whole number`;
+                const why = raw.trim() === '' ? t('sm.sw.empty') : Number.isFinite(v) ? localizeProblem(bandIssue(next), locale) : t('sm.sw.badInt', { raw: raw.trim() });
                 if (!why) onChange(withBand(sweep, next));
                 return why;
               }} />
             <div className={styles.field}>
-              <span className={css.label} id="smith-sweep-spacing">Spacing <Why k="sweep-log" /></span>
+              <span className={css.label} id="smith-sweep-spacing">{t('sm.sw.spacing')} <Why k="sweep-log" /></span>
               <div className={css.pair} role="group" aria-labelledby="smith-sweep-spacing">
                 {[false, true].map((log) => (
                   <button key={String(log)} type="button" className={`${styles.button} ${styles.toggle} ${css.btn}`} aria-pressed={band.log === log}
-                    data-sweep-log={log ? 'log' : 'lin'} title={log ? 'Even steps in log f' : 'Even steps in f'}
+                    data-sweep-log={log ? 'log' : 'lin'} title={t(log ? 'sm.sw.logTitle' : 'sm.sw.linTitle')}
                     onClick={() => {
                       if (band.log === log) return;
                       const next = { ...band, log };
@@ -100,7 +103,7 @@ function SweepPanel({ sweep, f0, onChange, revision }: SweepPanelProps) {
                       if (log && next.start === 0) next.start = next.stop / 1000;
                       if (!bandIssue(next)) onChange(withBand(sweep, next));
                     }}>
-                    {log ? 'Log' : 'Linear'}
+                    {t(log ? 'sm.sw.log' : 'sm.sw.linear')}
                   </button>
                 ))}
               </div>
@@ -109,27 +112,27 @@ function SweepPanel({ sweep, f0, onChange, revision }: SweepPanelProps) {
           <div className={css.row}>
             <button type="button" className={`${styles.button} ${css.btn}`} data-sweep-f0=""
               onClick={() => onChange(withBand(sweep, defaultBand(f0, 0.5, band.points)))}>
-              ±50 % around f0
+              {t('sm.sw.aroundF0')}
             </button>
             <button type="button" className={`${styles.button} ${css.btn}`} data-sweep-add="" disabled={sweep.markers.length >= MAX_MARKERS}
               onClick={() => onChange({ ...sweep, markers: [...sweep.markers, newMarker(sweep, f0)] })}>
-              Add marker
+              {t('sm.sw.addMarker')}
             </button>
             <Why k="sweep-marker" />
           </div>
           <p className={css.hint}>
             {sweep.markers.length < MAX_MARKERS
-              ? 'Tap or click the trace to add a marker; drag one along the trace, or focus it and use the arrow keys.'
-              : `${MAX_MARKERS} markers at most: remove one to add another.`}
+              ? t('sm.sw.markerHint')
+              : t('sm.sw.markerMax', { max: MAX_MARKERS })}
           </p>
           {sweep.markers.length > 0 && (
-            <ol className={css.markers} data-sweep-markers="" aria-label="Markers">
+            <ol className={css.markers} data-sweep-markers="" aria-label={t('sm.sw.markersAria')}>
               {sweep.markers.map((f, i) => (
                 <li key={i} className={css.marker} data-sweep-chip={i}>
                   <span className={css.markerName}>M{i + 1}</span>
                   <span className={css.markerF} data-raw={String(f)}>{hz(f)}</span>
                   <button type="button" className={`${styles.button} ${css.remove}`} data-sweep-remove={i}
-                    aria-label={`Remove marker ${i + 1} at ${hz(f)}`}
+                    aria-label={t('sm.sw.removeMarkerAria', { n: i + 1, f: hz(f) })}
                     onClick={() => onChange({ ...sweep, markers: sweep.markers.filter((_, j) => j !== i) })}>
                     ×
                   </button>
@@ -137,7 +140,7 @@ function SweepPanel({ sweep, f0, onChange, revision }: SweepPanelProps) {
               ))}
             </ol>
           )}
-          <p className={css.hint}>Up to {SWEEP_MAX_POINTS.toLocaleString('en-US')} points; the trace adds points where it bends.</p>
+          <p className={css.hint}>{t('sm.sw.pointsHint', { max: SWEEP_MAX_POINTS.toLocaleString(locale === 'nb' ? 'nb-NO' : 'en-US') })}</p>
         </>
       )}
     </section>

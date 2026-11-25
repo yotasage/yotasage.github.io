@@ -9,7 +9,7 @@ import type {
   SimplifyMethod,
   TargetForm,
 } from '../../lib/boolean/types';
-import { useI18n } from '../../lib/ui/i18n';
+import { type TranslationKey, useI18n } from '../../lib/ui/i18n';
 import { useExperienceMode } from '../../lib/ui/mode';
 import styles from '../../styles/Boolean.module.css';
 import KatexSpan from '../KatexSpan';
@@ -99,11 +99,11 @@ export default function BooleanInput({
       } catch (err) {
         return {
           ok: false as const,
-          error: err instanceof Error ? err.message : 'Invalid Boolean syntax',
+          error: err instanceof Error ? err.message : t('boolean.input.invalidSyntax'),
         };
       }
     });
-  }, [equations, notation, explicitAnd]);
+  }, [equations, notation, explicitAnd, t]);
 
   const handleRowChange = (index: number, nextVal: string) => {
     const updated = equations.map((eq, i) => (i === index ? nextVal : eq));
@@ -413,17 +413,22 @@ export default function BooleanInput({
       {!isQuick && (
         <div className={styles.examplesRow}>
           <span className={styles.examplesLabel}>{t('boolean.input.examples')}:</span>
-          {BOOLEAN_EXAMPLES.map((ex) => (
-            <button
-              key={ex.id}
-              type="button"
-              className={styles.exampleBtn}
-              onClick={() => handleSelectExample(ex)}
-            >
-              <span>{ex.label}</span>
-              <span className={styles.exampleTag}>{ex.tag}</span>
-            </button>
-          ))}
+          {BOOLEAN_EXAMPLES.map((ex) => {
+            const tagKey = `boolean.quickEx.${ex.id}` as TranslationKey;
+            const trTag = t(tagKey);
+            const tagLabel = trTag === tagKey ? ex.tag : trTag;
+            return (
+              <button
+                key={ex.id}
+                type="button"
+                className={styles.exampleBtn}
+                onClick={() => handleSelectExample(ex)}
+              >
+                <span>{ex.label}</span>
+                <span className={styles.exampleTag}>{tagLabel}</span>
+              </button>
+            );
+          })}
         </div>
       )}
     </form>

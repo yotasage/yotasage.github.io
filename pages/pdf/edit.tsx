@@ -27,6 +27,8 @@ import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
 import { openPdf } from '../../lib/pdf/pdfjs';
 import { EDIT } from '../../lib/pdf/tools';
 import { runApplyEdits } from '../../lib/pdf/workerClient';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
@@ -65,42 +67,42 @@ const MAX_HISTORY = 80;
 
 const ZOOM_PRESETS = [0.75, 1, 1.25, 1.5] as const;
 
-const TOOL_BUTTONS: Array<{ id: EditorTool; label: string; short: string }> = [
-  { id: 'select', label: 'Select', short: 'Select' },
-  { id: 'text', label: 'Text', short: 'Text' },
-  { id: 'highlight', label: 'Highlight', short: 'Highlight' },
-  { id: 'ink', label: 'Draw', short: 'Draw' },
-  { id: 'rect', label: 'Rect', short: 'Rect' },
-  { id: 'ellipse', label: 'Ellipse', short: 'Ellipse' },
-  { id: 'line', label: 'Line', short: 'Line' },
-  { id: 'arrow', label: 'Arrow', short: 'Arrow' },
-  { id: 'image', label: 'Image', short: 'Image' },
+const TOOL_BUTTONS: Array<{ id: EditorTool; key: TranslationKey }> = [
+  { id: 'select', key: 'pdf.ed.t.select' },
+  { id: 'text', key: 'pdf.ed.t.text' },
+  { id: 'highlight', key: 'pdf.ed.t.highlight' },
+  { id: 'ink', key: 'pdf.ed.t.ink' },
+  { id: 'rect', key: 'pdf.ed.t.rect' },
+  { id: 'ellipse', key: 'pdf.ed.t.ellipse' },
+  { id: 'line', key: 'pdf.ed.t.line' },
+  { id: 'arrow', key: 'pdf.ed.t.arrow' },
+  { id: 'image', key: 'pdf.ed.t.image' },
 ];
 
-const GENERAL_SWATCHES = [
-  { hex: '#111827', name: 'Black' },
-  { hex: '#dc2626', name: 'Red' },
-  { hex: '#2563eb', name: 'Blue' },
-  { hex: '#16a34a', name: 'Green' },
-  { hex: '#f59e0b', name: 'Amber' },
-  { hex: '#9333ea', name: 'Purple' },
-  { hex: '#ffffff', name: 'White' },
+const GENERAL_SWATCHES: Array<{ hex: string; key: TranslationKey }> = [
+  { hex: '#111827', key: 'pdf.ed.c.black' },
+  { hex: '#dc2626', key: 'pdf.ed.c.red' },
+  { hex: '#2563eb', key: 'pdf.ed.c.blue' },
+  { hex: '#16a34a', key: 'pdf.ed.c.green' },
+  { hex: '#f59e0b', key: 'pdf.ed.c.amber' },
+  { hex: '#9333ea', key: 'pdf.ed.c.purple' },
+  { hex: '#ffffff', key: 'pdf.ed.c.white' },
 ];
 
-const HIGHLIGHT_SWATCHES = [
-  { hex: '#fde047', name: 'Yellow' },
-  { hex: '#86efac', name: 'Green' },
-  { hex: '#f9a8d4', name: 'Pink' },
-  { hex: '#93c5fd', name: 'Blue' },
-  { hex: '#fdba74', name: 'Orange' },
+const HIGHLIGHT_SWATCHES: Array<{ hex: string; key: TranslationKey }> = [
+  { hex: '#fde047', key: 'pdf.ed.c.yellow' },
+  { hex: '#86efac', key: 'pdf.ed.c.green' },
+  { hex: '#f9a8d4', key: 'pdf.ed.c.pink' },
+  { hex: '#93c5fd', key: 'pdf.ed.c.blue' },
+  { hex: '#fdba74', key: 'pdf.ed.c.orange' },
 ];
 
-const FONT_OPTIONS: [PdfEditFont, string][] = [
-  ['helvetica', 'Helvetica'],
-  ['helvetica-bold', 'Helvetica Bold'],
-  ['times', 'Times Roman'],
-  ['times-bold', 'Times Bold'],
-  ['courier', 'Courier'],
+const FONT_KEYS: [PdfEditFont, TranslationKey][] = [
+  ['helvetica', 'pdf.p.fontHelv'],
+  ['helvetica-bold', 'pdf.p.fontHelvBold'],
+  ['times', 'pdf.p.fontTimes'],
+  ['times-bold', 'pdf.p.fontTimesBold'],
+  ['courier', 'pdf.p.fontCourier'],
 ];
 
 const DEFAULT_STYLES: EditorStyleDefaults = {
@@ -205,42 +207,46 @@ async function importImageFile(file: File): Promise<UploadedImageAsset> {
   }
 }
 
-function itemSummaryLabel(item: PdfEditItem): { badge: string; title: string } {
+function itemSummaryLabel(
+  item: PdfEditItem,
+  t: (k: TranslationKey, v?: Record<string, string | number>) => string,
+): { badge: string; title: string } {
   switch (item.kind) {
     case 'text': {
       const clean = item.text.trim().replace(/\s+/g, ' ');
       return {
-        badge: item.backgroundColor === '#ffffff' && !clean ? 'Whiteout' : 'Text',
-        title: clean ? clean.slice(0, 28) : item.backgroundColor ? 'Background box' : '(Empty text)',
+        badge: t(item.backgroundColor === '#ffffff' && !clean ? 'pdf.ed.whiteout' : 'pdf.ed.t.text'),
+        title: clean ? clean.slice(0, 28) : t(item.backgroundColor ? 'pdf.ed.bgBox' : 'pdf.ed.emptyText'),
       };
     }
     case 'highlight':
-      return { badge: 'Highlight', title: item.color.toUpperCase() };
+      return { badge: t('pdf.ed.t.highlight'), title: item.color.toUpperCase() };
     case 'rect':
       return {
-        badge: item.fillColor === '#ffffff' && item.strokeWidth === 0 ? 'Whiteout' : 'Rect',
+        badge: t(item.fillColor === '#ffffff' && item.strokeWidth === 0 ? 'pdf.ed.whiteout' : 'pdf.ed.t.rect'),
         title: `${Math.round(item.width * 100)}% × ${Math.round(item.height * 100)}%`,
       };
     case 'ellipse':
       return {
-        badge: 'Ellipse',
+        badge: t('pdf.ed.t.ellipse'),
         title: `${Math.round(item.width * 100)}% × ${Math.round(item.height * 100)}%`,
       };
     case 'line':
-      return { badge: 'Line', title: `${item.strokeWidth.toFixed(1)} pt` };
+      return { badge: t('pdf.ed.t.line'), title: `${item.strokeWidth.toFixed(1)} pt` };
     case 'arrow':
-      return { badge: 'Arrow', title: `${item.strokeWidth.toFixed(1)} pt` };
+      return { badge: t('pdf.ed.t.arrow'), title: `${item.strokeWidth.toFixed(1)} pt` };
     case 'ink':
-      return { badge: 'Draw', title: `${item.points.length} pts` };
+      return { badge: t('pdf.ed.t.ink'), title: t('pdf.ed.pts', { n: item.points.length }) };
     case 'image':
       return {
-        badge: 'Image',
+        badge: t('pdf.ed.t.image'),
         title: `${Math.round(item.width * 100)}% × ${Math.round(item.height * 100)}%`,
       };
   }
 }
 
 export default function EditPdfPage() {
+  const { t } = useI18n();
   const [doc, setDoc] = React.useState<LoadedDoc | null>(null);
   const [pdfProxy, setPdfProxy] = React.useState<PDFDocumentProxy | null>(null);
   const closeProxyRef = React.useRef<(() => Promise<void>) | null>(null);
@@ -386,24 +392,24 @@ export default function EditPdfPage() {
           setLocked({
             name,
             bytes,
-            error: password ? 'Wrong password — please try again.' : null,
+            error: password ? t('pdf.ff.wrongPw') : null,
             busy: false,
           });
         } else {
-          setError(`Could not open ${name}: ${errorMessage(e)}`);
+          setError(t('pdf.ed.errOpen', { name, msg: errorMessage(e) }));
         }
       } finally {
         setLoading(false);
       }
     },
-    [closeCurrentProxy],
+    [closeCurrentProxy, t],
   );
 
   const onFiles = React.useCallback(
     async (files: File[]) => {
       const pdfFile = files.find(isPdf);
       if (!pdfFile) {
-        setError('Please select a PDF file.');
+        setError(t('pdf.ff.pickPdf'));
         return;
       }
       setError(null);
@@ -411,10 +417,10 @@ export default function EditPdfPage() {
         const bytes = await readBytes(pdfFile);
         await loadWithBytes(pdfFile.name, bytes);
       } catch (e) {
-        setError(`Could not read ${pdfFile.name}: ${errorMessage(e)}`);
+        setError(t('pdf.ed.errRead', { name: pdfFile.name, msg: errorMessage(e) }));
       }
     },
-    [loadWithBytes],
+    [loadWithBytes, t],
   );
 
   // Consume any incoming handoff file from another PDF tool.
@@ -442,7 +448,7 @@ export default function EditPdfPage() {
       setActiveAssetId(asset.id);
       setActiveTool('image');
     } catch (e) {
-      setError(`Could not load image: ${errorMessage(e)}`);
+      setError(t('pdf.ed.errImg', { msg: errorMessage(e) }));
     }
   };
 
@@ -695,10 +701,14 @@ export default function EditPdfPage() {
       download(res.bytes, outName);
       setResult(res);
       setNotice(
-        `Saved ${res.appliedCount} edit${res.appliedCount === 1 ? '' : 's'} across ${res.pagesModified} page${res.pagesModified === 1 ? '' : 's'} (${formatBytes(res.bytes.byteLength)}).`,
+        t('pdf.ed.savedNotice', {
+          edits: t(res.appliedCount === 1 ? 'pdf.ed.editOne' : 'pdf.ed.editMany', { n: res.appliedCount }),
+          pages: t(res.pagesModified === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany', { n: res.pagesModified }),
+          size: formatBytes(res.bytes.byteLength),
+        }),
       );
     } catch (e) {
-      setError(`Could not save edited PDF: ${errorMessage(e)}`);
+      setError(t('pdf.ed.errSave', { msg: errorMessage(e) }));
     } finally {
       setBusy(false);
     }
@@ -826,12 +836,10 @@ export default function EditPdfPage() {
   const swatches = inspectorKind === 'highlight' ? HIGHLIGHT_SWATCHES : GENERAL_SWATCHES;
   const outputName = doc ? safeFileName(fileName, `${baseName(doc.name)}-edited.pdf`) : 'edited.pdf';
 
+  const fontOptions = React.useMemo<[PdfEditFont, string][]>(() => FONT_KEYS.map(([v, k]) => [v, t(k)]), [t]);
+
   return (
-    <PdfPage
-      title={EDIT.title}
-      lead="Add text boxes, Multiply-blended highlights, shapes, arrows, freehand drawings, whiteout blocks, and images directly onto PDF pages — losslessly in your browser."
-      showHub
-    >
+    <PdfPage title={EDIT.title} lead={t('pdf.ed.lead')} showHub>
       <input
         ref={imageInputRef}
         type="file"
@@ -848,99 +856,83 @@ export default function EditPdfPage() {
         tool={EDIT}
         accept="application/pdf,.pdf"
         multiple={false}
-        selectLabel="Select a PDF"
-        dropLabel="or drop a PDF here"
-        addLabel="Open another PDF"
+        selectLabel={t('pdf.p.selectPdf')}
+        dropLabel={t('pdf.p.dropPdf')}
+        addLabel={t('pdf.ed.openAnother')}
         hasFiles={hasDoc}
         onFiles={(files) => void onFiles(files)}
         toolbar={
           doc ? (
             <span className={styles.hint}>
-              {doc.name} ({doc.pageCount} {doc.pageCount === 1 ? 'page' : 'pages'})
+              {doc.name} ({t(doc.pageCount === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany', { n: doc.pageCount })})
             </span>
           ) : null
         }
         sidebar={
           <>
-            {/* Contextual Style Inspector */}
             {doc && (
               <div className={styles.inspectorBox}>
                 <div className={styles.inspectorHeader}>
                   <span>
                     {selectedItem
-                      ? `Selected: ${itemSummaryLabel(selectedItem).badge}`
+                      ? t('pdf.ed.selected', { badge: itemSummaryLabel(selectedItem, t).badge })
                       : activeTool === 'select'
-                        ? 'Tool & style'
-                        : `New ${TOOL_BUTTONS.find((b) => b.id === activeTool)?.label ?? activeTool}`}
+                        ? t('pdf.ed.toolStyle')
+                        : t('pdf.ed.newTool', { tool: t(TOOL_BUTTONS.find((b) => b.id === activeTool)?.key ?? 'pdf.ed.t.select') })}
                   </span>
                   {selectedItem && (
                     <div className={styles.boxListActions}>
-                      <button
-                        type="button"
-                        className={styles.miniBtn}
-                        onClick={() => handleDuplicate(selectedItem.id)}
-                      >
-                        Duplicate
+                      <button type="button" className={styles.miniBtn} onClick={() => handleDuplicate(selectedItem.id)}>
+                        {t('pdf.p.duplicate')}
                       </button>
                       <button
                         type="button"
                         className={[styles.miniBtn, styles.miniBtnDanger].join(' ')}
                         onClick={() => handleDelete(selectedItem.id)}
                       >
-                        Delete
+                        {t('pdf.p.delete')}
                       </button>
                     </div>
                   )}
                 </div>
 
                 {inspectorKind === 'select' && !selectedItem && (
-                  <p className={styles.hint}>
-                    Pick a tool above to draw or place content, or click any item on the page to move, resize, or restyle it.
-                  </p>
+                  <p className={styles.hint}>{t('pdf.ed.pickHint')}</p>
                 )}
 
-                {/* Text-specific controls */}
                 {inspectorKind === 'text' && (
                   <>
                     {selectedItem?.kind === 'text' && (
-                      <Field label="Text">
+                      <Field label={t('pdf.ed.t.text')}>
                         <textarea
                           className={styles.editSidebarTextarea}
                           rows={3}
                           value={selectedItem.text}
-                          placeholder="Type text…"
-                          onChange={(e) =>
-                            handleCommitChange(selectedItem.id, { text: e.target.value })
-                          }
+                          placeholder={t('pdf.ed.typePh')}
+                          onChange={(e) => handleCommitChange(selectedItem.id, { text: e.target.value })}
                         />
                       </Field>
                     )}
                     <div className={styles.signInspectorGrid}>
-                      <Field label="Font">
+                      <Field label={t('pdf.p.font')}>
                         <Select<PdfEditFont>
                           value={selectedItem?.kind === 'text' ? selectedItem.font : defaults.font}
-                          options={FONT_OPTIONS}
+                          options={fontOptions}
                           onChange={(font) => {
-                            if (selectedItem?.kind === 'text') {
-                              handleCommitChange(selectedItem.id, { font });
-                            } else {
-                              setDefaults((d) => ({ ...d, font }));
-                            }
+                            if (selectedItem?.kind === 'text') handleCommitChange(selectedItem.id, { font });
+                            else setDefaults((d) => ({ ...d, font }));
                           }}
                         />
                       </Field>
-                      <Field label="Size (pt)">
+                      <Field label={t('pdf.sg.sizePt')}>
                         <NumberInput
                           value={selectedItem?.kind === 'text' ? selectedItem.fontSize : defaults.fontSize}
                           min={6}
                           max={120}
                           step={1}
                           onChange={(fontSize) => {
-                            if (selectedItem?.kind === 'text') {
-                              handleCommitChange(selectedItem.id, { fontSize });
-                            } else {
-                              setDefaults((d) => ({ ...d, fontSize }));
-                            }
+                            if (selectedItem?.kind === 'text') handleCommitChange(selectedItem.id, { fontSize });
+                            else setDefaults((d) => ({ ...d, fontSize }));
                           }}
                         />
                       </Field>
@@ -948,46 +940,35 @@ export default function EditPdfPage() {
                   </>
                 )}
 
-                {/* Color swatches + picker (all except image & empty select) */}
                 {inspectorKind !== 'select' && inspectorKind !== 'image' && (
                   <div className={styles.editControlBlock}>
                     <span className={styles.editControlLabel}>
-                      {inspectorKind === 'text'
-                        ? 'Text colour'
-                        : inspectorKind === 'highlight'
-                          ? 'Highlight colour'
-                          : 'Stroke colour'}
+                      {t(inspectorKind === 'text' ? 'pdf.ed.textCol' : inspectorKind === 'highlight' ? 'pdf.ed.hiCol' : 'pdf.ed.strCol')}
                     </span>
                     <div className={styles.editSwatchRow}>
                       {swatches.map((s) => (
                         <button
                           key={s.hex}
                           type="button"
-                          title={s.name}
-                          aria-label={s.name}
-                          className={[
-                            styles.editSwatch,
-                            currentColor.toLowerCase() === s.hex.toLowerCase()
-                              ? styles.editSwatchActive
-                              : '',
-                          ].join(' ')}
+                          title={t(s.key)}
+                          aria-label={t(s.key)}
+                          className={[styles.editSwatch, currentColor.toLowerCase() === s.hex.toLowerCase() ? styles.editSwatchActive : ''].join(' ')}
                           style={{ backgroundColor: s.hex }}
                           onClick={() => applyColorChange(s.hex)}
                         />
                       ))}
-                      <label className={styles.editColorPicker} title="Custom colour">
+                      <label className={styles.editColorPicker} title={t('pdf.ed.custCol')}>
                         <input
                           type="color"
                           value={currentColor}
                           onChange={(e) => applyColorChange(e.target.value)}
-                          aria-label="Custom colour"
+                          aria-label={t('pdf.ed.custCol')}
                         />
                       </label>
                     </div>
                   </div>
                 )}
 
-                {/* Optional fill / background toggle + Whiteout preset for Text, Rect, Ellipse */}
                 {(inspectorKind === 'text' || inspectorKind === 'rect' || inspectorKind === 'ellipse') && (
                   <div className={styles.editControlBlock}>
                     <div className={styles.editFillHeader}>
@@ -995,19 +976,13 @@ export default function EditPdfPage() {
                         <input
                           type="checkbox"
                           checked={Boolean(activeFillValue)}
-                          onChange={(e) =>
-                            applyFillChange(e.target.checked ? '#ffffff' : null)
-                          }
+                          onChange={(e) => applyFillChange(e.target.checked ? '#ffffff' : null)}
                         />
-                        <span>{inspectorKind === 'text' ? 'Background fill' : 'Fill shape'}</span>
+                        <span>{t(inspectorKind === 'text' ? 'pdf.ed.bgFill' : 'pdf.ed.fillShape')}</span>
                       </label>
                       {(inspectorKind === 'text' || inspectorKind === 'rect') && (
-                        <button
-                          type="button"
-                          className={styles.miniBtn}
-                          onClick={applyWhiteoutPreset}
-                        >
-                          Whiteout (#fff)
+                        <button type="button" className={styles.miniBtn} onClick={applyWhiteoutPreset}>
+                          {t('pdf.ed.whiteoutBtn')}
                         </button>
                       )}
                     </div>
@@ -1017,21 +992,18 @@ export default function EditPdfPage() {
                           <button
                             key={hex}
                             type="button"
-                            aria-label={`Fill ${hex}`}
-                            className={[
-                              styles.editSwatch,
-                              activeFillValue.toLowerCase() === hex ? styles.editSwatchActive : '',
-                            ].join(' ')}
+                            aria-label={t('pdf.ed.fillHex', { hex })}
+                            className={[styles.editSwatch, activeFillValue.toLowerCase() === hex ? styles.editSwatchActive : ''].join(' ')}
                             style={{ backgroundColor: hex }}
                             onClick={() => applyFillChange(hex)}
                           />
                         ))}
-                        <label className={styles.editColorPicker} title="Custom fill colour">
+                        <label className={styles.editColorPicker} title={t('pdf.ed.custFill')}>
                           <input
                             type="color"
                             value={activeFillValue}
                             onChange={(e) => applyFillChange(e.target.value)}
-                            aria-label="Custom fill colour"
+                            aria-label={t('pdf.ed.custFill')}
                           />
                         </label>
                       </div>
@@ -1039,7 +1011,6 @@ export default function EditPdfPage() {
                   </div>
                 )}
 
-                {/* Stroke width slider */}
                 {(inspectorKind === 'rect' ||
                   inspectorKind === 'ellipse' ||
                   inspectorKind === 'line' ||
@@ -1047,7 +1018,7 @@ export default function EditPdfPage() {
                   inspectorKind === 'ink') && (
                   <label className={styles.editRangeRow}>
                     <span>
-                      Stroke width <strong>{currentStrokeWidth.toFixed(1)} pt</strong>
+                      {t('pdf.ed.strWidth')} <strong>{currentStrokeWidth.toFixed(1)} pt</strong>
                     </span>
                     <input
                       type="range"
@@ -1060,15 +1031,10 @@ export default function EditPdfPage() {
                   </label>
                 )}
 
-                {/* Image uploader + session image library */}
                 {inspectorKind === 'image' && (
                   <div className={styles.editControlBlock}>
-                    <button
-                      type="button"
-                      className={styles.buttonSmall}
-                      onClick={() => imageInputRef.current?.click()}
-                    >
-                      + Upload image (PNG, JPG, WebP, SVG)
+                    <button type="button" className={styles.buttonSmall} onClick={() => imageInputRef.current?.click()}>
+                      {t('pdf.ed.uploadImg')}
                     </button>
                     {imageAssets.length > 0 && (
                       <div className={styles.editImageGrid}>
@@ -1076,10 +1042,7 @@ export default function EditPdfPage() {
                           <button
                             key={asset.id}
                             type="button"
-                            className={[
-                              styles.editImageThumb,
-                              activeAssetId === asset.id ? styles.editImageThumbActive : '',
-                            ].join(' ')}
+                            className={[styles.editImageThumb, activeAssetId === asset.id ? styles.editImageThumbActive : ''].join(' ')}
                             title={asset.name}
                             onClick={() => {
                               setActiveAssetId(asset.id);
@@ -1094,11 +1057,10 @@ export default function EditPdfPage() {
                   </div>
                 )}
 
-                {/* Opacity slider */}
                 {inspectorKind !== 'select' && (
                   <label className={styles.editRangeRow}>
                     <span>
-                      Opacity <strong>{Math.round(currentOpacity * 100)}%</strong>
+                      {t('pdf.p.opacity')} <strong>{Math.round(currentOpacity * 100)}%</strong>
                     </span>
                     <input
                       type="range"
@@ -1113,29 +1075,22 @@ export default function EditPdfPage() {
               </div>
             )}
 
-            {/* Current page items list */}
             {doc && (
               <div className={styles.signLibSection}>
                 <div className={styles.signLibHeader}>
                   <span className={styles.signSectionTitle}>
-                    Items on page {pageIndex + 1} ({currentPageItems.length})
+                    {t('pdf.ed.pageItems', { page: pageIndex + 1, n: currentPageItems.length })}
                   </span>
                 </div>
                 {currentPageItems.length === 0 ? (
-                  <span className={styles.hint}>No edits on this page yet.</span>
+                  <span className={styles.hint}>{t('pdf.ed.noEdits')}</span>
                 ) : (
                   <div className={styles.boxList}>
                     {currentPageItems.map((item) => {
-                      const info = itemSummaryLabel(item);
+                      const info = itemSummaryLabel(item, t);
                       const isSel = item.id === selectedId;
                       return (
-                        <div
-                          key={item.id}
-                          className={[
-                            styles.boxListItem,
-                            isSel ? styles.boxListItemSelected : '',
-                          ].join(' ')}
-                        >
+                        <div key={item.id} className={[styles.boxListItem, isSel ? styles.boxListItemSelected : ''].join(' ')}>
                           <button
                             type="button"
                             className={styles.boxListMain}
@@ -1148,18 +1103,13 @@ export default function EditPdfPage() {
                             <span className={styles.boxListMeta}>{info.title}</span>
                           </button>
                           <div className={styles.boxListActions}>
-                            <button
-                              type="button"
-                              className={styles.miniBtn}
-                              title="Duplicate"
-                              onClick={() => handleDuplicate(item.id)}
-                            >
+                            <button type="button" className={styles.miniBtn} title={t('pdf.p.duplicate')} onClick={() => handleDuplicate(item.id)}>
                               +
                             </button>
                             <button
                               type="button"
                               className={[styles.miniBtn, styles.miniBtnDanger].join(' ')}
-                              title="Delete"
+                              title={t('pdf.p.delete')}
                               onClick={() => handleDelete(item.id)}
                             >
                               ×
@@ -1173,16 +1123,10 @@ export default function EditPdfPage() {
               </div>
             )}
 
-            {/* Save & Download */}
             {doc && (
               <>
-                <Field label="Output file name">
-                  <input
-                    className={fieldStyles.input}
-                    type="text"
-                    value={fileName}
-                    onChange={(e) => setFileName(e.target.value)}
-                  />
+                <Field label={t('pdf.ed.outName')}>
+                  <input className={fieldStyles.input} type="text" value={fileName} onChange={(e) => setFileName(e.target.value)} />
                 </Field>
 
                 <button
@@ -1192,26 +1136,25 @@ export default function EditPdfPage() {
                   onClick={() => void handleSave()}
                 >
                   {busy
-                    ? 'Saving PDF…'
-                    : `Save & download (${history.present.length} ${history.present.length === 1 ? 'edit' : 'edits'})`}
+                    ? t('pdf.ed.saving')
+                    : t('pdf.ed.saveBtn', {
+                        edits: t(history.present.length === 1 ? 'pdf.ed.editOne' : 'pdf.ed.editMany', { n: history.present.length }),
+                      })}
                 </button>
               </>
             )}
 
-            {busy && <Progress fraction={0.65} label="Applying edits losslessly…" />}
+            {busy && <Progress fraction={0.65} label={t('pdf.ed.applying')} />}
             {error && <div className={styles.error}>{error}</div>}
             {notice && <div className={styles.notice}>{notice}</div>}
 
             {result && doc && (
-              <ContinueWith
-                currentToolId={EDIT.id}
-                files={[{ name: outputName, bytes: result.bytes }]}
-              />
+              <ContinueWith currentToolId={EDIT.id} files={[{ name: outputName, bytes: result.bytes }]} />
             )}
           </>
         }
       >
-        {loading && <Progress fraction={0.4} label="Opening PDF…" />}
+        {loading && <Progress fraction={0.4} label={t('pdf.p.opening')} />}
 
         {locked && (
           <PasswordPrompt
@@ -1225,17 +1168,13 @@ export default function EditPdfPage() {
 
         {doc && (
           <>
-            {/* Compact responsive drawing tool bar */}
-            <div className={styles.editToolbar} role="toolbar" aria-label="PDF editing tools">
+            <div className={styles.editToolbar} role="toolbar" aria-label={t('pdf.ed.toolsAria')}>
               <div className={styles.editToolGroup}>
                 {TOOL_BUTTONS.map((btn) => (
                   <button
                     key={btn.id}
                     type="button"
-                    className={[
-                      styles.editToolBtn,
-                      activeTool === btn.id ? styles.editToolBtnActive : '',
-                    ].join(' ')}
+                    className={[styles.editToolBtn, activeTool === btn.id ? styles.editToolBtnActive : ''].join(' ')}
                     aria-pressed={activeTool === btn.id}
                     onClick={() => {
                       if (btn.id === 'image' && imageAssets.length === 0) {
@@ -1247,33 +1186,20 @@ export default function EditPdfPage() {
                       if (btn.id !== 'select') setSelectedId(null);
                     }}
                   >
-                    {btn.label}
+                    {t(btn.key)}
                   </button>
                 ))}
               </div>
               <div className={styles.editToolGroup}>
-                <button
-                  type="button"
-                  className={styles.buttonSmall}
-                  disabled={!canUndo}
-                  title="Undo (Ctrl+Z)"
-                  onClick={undo}
-                >
-                  Undo
+                <button type="button" className={styles.buttonSmall} disabled={!canUndo} title={t('pdf.red.undoTitle')} onClick={undo}>
+                  {t('pdf.p.undo')}
                 </button>
-                <button
-                  type="button"
-                  className={styles.buttonSmall}
-                  disabled={!canRedo}
-                  title="Redo (Ctrl+Shift+Z)"
-                  onClick={redo}
-                >
-                  Redo
+                <button type="button" className={styles.buttonSmall} disabled={!canRedo} title={t('pdf.ed.redoTitle')} onClick={redo}>
+                  {t('pdf.p.redo')}
                 </button>
               </div>
             </div>
 
-            {/* Page navigation, Zoom presets, Clear controls */}
             <div className={styles.canvasToolbar}>
               <div className={styles.canvasNav}>
                 <button
@@ -1285,10 +1211,10 @@ export default function EditPdfPage() {
                     setPageIndex((i) => Math.max(0, i - 1));
                   }}
                 >
-                  Prev
+                  {t('pdf.ed.prev')}
                 </button>
                 <select
-                  aria-label="Select page"
+                  aria-label={t('pdf.sg.selectPage')}
                   className={styles.canvasSourceSelect}
                   value={pageIndex}
                   onChange={(e) => {
@@ -1300,7 +1226,7 @@ export default function EditPdfPage() {
                     const count = countsByPage.get(i) ?? 0;
                     return (
                       <option key={i} value={i}>
-                        Page {i + 1} / {doc.pageCount}
+                        {t('pdf.sg.pageOf', { n: i + 1, total: doc.pageCount })}
                         {count > 0 ? ` (${count})` : ''}
                       </option>
                     );
@@ -1315,19 +1241,16 @@ export default function EditPdfPage() {
                     setPageIndex((i) => Math.min(doc.pageCount - 1, i + 1));
                   }}
                 >
-                  Next
+                  {t('pdf.ed.next')}
                 </button>
               </div>
 
-              <div className={styles.editZoomGroup} role="group" aria-label="Zoom">
+              <div className={styles.editZoomGroup} role="group" aria-label={t('pdf.ed.zoom')}>
                 {ZOOM_PRESETS.map((z) => (
                   <button
                     key={z}
                     type="button"
-                    className={[
-                      styles.miniBtn,
-                      zoom === z ? styles.editZoomActive : '',
-                    ].join(' ')}
+                    className={[styles.miniBtn, zoom === z ? styles.editZoomActive : ''].join(' ')}
                     onClick={() => setZoom(z)}
                   >
                     {Math.round(z * 100)}%
@@ -1345,7 +1268,7 @@ export default function EditPdfPage() {
                     setSelectedId(null);
                   }}
                 >
-                  Clear page
+                  {t('pdf.red.clearPage')}
                 </button>
                 <button
                   type="button"
@@ -1356,7 +1279,7 @@ export default function EditPdfPage() {
                     setSelectedId(null);
                   }}
                 >
-                  Clear all
+                  {t('pdf.ff.clearAll')}
                 </button>
               </div>
             </div>

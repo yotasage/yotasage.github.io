@@ -5,6 +5,8 @@
 
 import React from 'react';
 
+import { useI18n } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
 import css from '../../styles/SmithTheory.module.css';
 
 export type P = readonly [number, number];
@@ -96,16 +98,17 @@ export function Figure({ caption, children, wide = false, stack = false }: { cap
 // Topic 2: the unit disc, the three points to know and the load with its mirror −Γ.
 
 export function GammaFigure({ gr, gi }: { gr: number; gi: number }) {
+  const { t } = useI18n();
   const load = ok(gr, gi);
   return (
-    <Figure caption={<>The match at the centre, the open at +1, the short at −1, your load L and, hollow, the point −Γ whose z is the load’s y.</>}>
-      <Disc label="Unit disc with the match, the open, the short, the load and its mirror point">
+    <Figure caption={<>{t('sm.fig.gamma.cap')}</>}>
+      <Disc label={t('sm.fig.gamma.aria')}>
         <Dot p={[0, 0]} />
-        <Label p={[0, -0.13]}>match</Label>
+        <Label p={[0, -0.13]}>{t('sm.fig.gamma.match')}</Label>
         <Dot p={[1, 0]} />
-        <Label p={[0.98, 0.13]} anchor="end">open</Label>
+        <Label p={[0.98, 0.13]} anchor="end">{t('sm.fig.gamma.open')}</Label>
         <Dot p={[-1, 0]} />
-        <Label p={[-0.98, 0.13]} anchor="start">short</Label>
+        <Label p={[-0.98, 0.13]} anchor="start">{t('sm.fig.gamma.short')}</Label>
         {load && (
           <>
             <line x1={f(gr)} y1={f(-gi)} x2={f(-gr)} y2={f(gi)} className={`${css.figAccent} ${css.figDot}`} />
@@ -124,13 +127,14 @@ export function GammaFigure({ gr, gi }: { gr: number; gi: number }) {
 // Topic 3: the four circles through the load.
 
 export function CirclesFigure({ r, x, g, b, gr, gi }: { r: number; x: number; g: number; b: number; gr: number; gi: number }) {
+  const { t } = useI18n();
   // Where the x and b circles meet the rim a second time (z = jx and y = jb on the rim).
   const xr: P = [(x * x - 1) / (x * x + 1), (2 * x) / (x * x + 1)];
   const br: P = [(1 - b * b) / (1 + b * b), (-2 * b) / (1 + b * b)];
   const out = (p: P, k = 1.12): P => [p[0] * k, p[1] * k];
   return (
-    <Figure caption={<>The r and x circles (ink) and the g and b circles (teal) that pass through your load L. Each z circle touches +1, each y circle −1.</>}>
-      <Disc label="The r, x, g and b circles through the load" clip box={1.3}
+    <Figure caption={<>{t('sm.fig.circles.cap')}</>}>
+      <Disc label={t('sm.fig.circles.aria')} clip box={1.3}
         outside={(
           <>
             {ok(x) && x !== 0 && <Label p={out(xr)}>x</Label>}
@@ -161,10 +165,11 @@ const gammaOfHalf = (x: number): P => { const d = 2.25 + x * x; return [(x * x -
 const PLANE_MARKS = [-1, 0, 1].map((x) => ({ x, g: gammaOfHalf(x), text: x === 0 ? 'x = 0' : x > 0 ? 'x = 1' : 'x = −1' }));
 
 export function PlaneFigure() {
+  const { t } = useI18n();
   // The z plane in the same 2.5 × 2.5 box as the disc beside it, so both draw at one size: r from −0.4, x ±1.25.
   return (
-    <Figure wide caption={<>Left: in the z plane a series reactance moves z = 0.5 + j0.5 (L) along the straight line r = 0.5. Right: on the chart that line is the r = 0.5 circle, the same points marked; both ends of the line (x → ±∞) meet at the open, and growing x turns the point clockwise.</>}>
-      <svg viewBox="-0.4 -1.25 2.5 2.5" className={css.disc} role="img" aria-label="The z plane with the line r = 0.5, the load and three marked points">
+    <Figure wide caption={<>{t('sm.fig.plane.cap')}</>}>
+      <svg viewBox="-0.4 -1.25 2.5 2.5" className={css.disc} role="img" aria-label={t('sm.fig.plane.ariaL')}>
         <rect x="-0.4" y="-1.25" width="2.5" height="2.5" className={css.figBack} />
         <line x1="0" y1="1.2" x2="0" y2="-1.2" className={css.figAxis} />
         <line x1="-0.3" y1="0" x2="2.05" y2="0" className={css.figAxis} />
@@ -193,7 +198,7 @@ export function PlaneFigure() {
         <Label p={[0.38, 0.5]} anchor="end" cls={css.figBold}>L</Label>
         <Label p={[0.62, -0.5]} anchor="start">r = 0.5</Label>
       </svg>
-      <Disc label="The chart with the r = 0.5 circle, the load and the same marked points">
+      <Disc label={t('sm.fig.plane.ariaR')}>
         <Ring c={R_HALF} R={2 / 3} cls={`${css.figPart1} ${css.figStroke}`} />
         <CircleArrow c={R_HALF} p={START_G} s={0.5} ccw={false} cls={css.figPart1} />
         {PLANE_MARKS.map(({ x, g, text }) => (
@@ -212,9 +217,10 @@ export function PlaneFigure() {
 }
 
 export function WalksFigure() {
+  const { t } = useI18n();
   return (
-    <Figure caption={<>From the start load: <span className={css.key1}>series L</span>, <span className={css.key2}>series C</span> along its r circle, <span className={css.key3}>shunt C</span>, <span className={css.key4}>shunt L</span> along its g circle, and, dashed, <span className={css.key5}>a line</span> round the centre.</>}>
-      <Disc label="Which way each part moves the start load">
+    <Figure caption={<>{t('sm.fig.walks.cap.a')}<span className={css.key1}>{t('sm.fig.walks.sl')}</span>, <span className={css.key2}>{t('sm.fig.walks.sc')}</span>{t('sm.fig.walks.cap.b')}<span className={css.key3}>{t('sm.fig.walks.shc')}</span>, <span className={css.key4}>{t('sm.fig.walks.shl')}</span>{t('sm.fig.walks.cap.c')}<span className={css.key5}>{t('sm.fig.walks.line')}</span>{t('sm.fig.walks.cap.d')}</>}>
+      <Disc label={t('sm.fig.walks.aria')}>
         <Ring c={R_HALF} R={2 / 3} cls={css.figZ} />
         <Ring c={G_ONE} R={0.5} cls={css.figY} />
         <CircleArrow c={R_HALF} p={START_G} s={0.42} ccw={false} cls={css.figPart1} />
@@ -232,17 +238,18 @@ export function WalksFigure() {
 // Topic 5: a λ/8 line of Z0 on the load, and the wavelength scale towards the generator.
 
 export function LineFigure({ gr, gi, gr2, gi2 }: { gr: number; gi: number; gr2: number; gi2: number }) {
+  const { t } = useI18n();
   const mag = Math.hypot(gr, gi);
   const ticks: [number, string][] = [[Math.PI, '0'], [Math.PI / 2, '0.125'], [0, '0.25'], [-Math.PI / 2, '0.375']];
   return (
-    <Figure caption={<>A λ/8 line of Z<sub>0</sub> turns your load L a quarter turn clockwise on its circle of constant |Γ|. The rim counts wavelengths towards the generator from the short.</>}>
-      <Disc label="A λ/8 line turning the load a quarter turn" box={1.38}
-        outside={ticks.map(([a, t]) => {
+    <Figure caption={<>{t('sm.fig.line.cap.a')}Z<sub>0</sub>{t('sm.fig.line.cap.b')}</>}>
+      <Disc label={t('sm.fig.line.aria')} box={1.38}
+        outside={ticks.map(([a, tk]) => {
           const p = on([0, 0], 1, a), q = on([0, 0], 1.07, a), l = on([0, 0], a === Math.PI || a === 0 ? 1.12 : 1.18, a);
           return (
-            <g key={t}>
+            <g key={tk}>
               <line x1={f(p[0])} y1={f(-p[1])} x2={f(q[0])} y2={f(-q[1])} className={css.figTick} />
-              <Label p={a === Math.PI ? [l[0] + 0.02, 0.11] : a === 0 ? [l[0] - 0.02, 0.11] : l} anchor={a === Math.PI ? 'start' : a === 0 ? 'end' : 'middle'}>{t}</Label>
+              <Label p={a === Math.PI ? [l[0] + 0.02, 0.11] : a === 0 ? [l[0] - 0.02, 0.11] : l} anchor={a === Math.PI ? 'start' : a === 0 ? 'end' : 'middle'}>{tk}</Label>
             </g>
           );
         })}>
@@ -264,9 +271,11 @@ export function LineFigure({ gr, gi, gr2, gi2 }: { gr: number; gi: number; gr2: 
 // Topic 6: circles of constant VSWR.
 
 export function VswrFigure({ rows }: { rows: { vswr: number; mag: number; label: string }[] }) {
+  const { t } = useI18n();
+  const list = rows.map((r) => r.label).join(', ').replace(/, ([^,]*)$/, `${t('sm.fig.vswr.and')}$1`);
   return (
-    <Figure caption={<>Circles of VSWR {rows.map((r) => r.label).join(', ').replace(/, ([^,]*)$/, ' and $1')} about the centre; each crosses the real axis on the right at r = VSWR (dots).</>}>
-      <Disc label="Circles of constant VSWR">
+    <Figure caption={<>{t('sm.fig.vswr.cap', { list })}</>}>
+      <Disc label={t('sm.fig.vswr.aria')}>
         {rows.map((r) => (
           <g key={r.label}>
             <Ring c={[0, 0]} R={r.mag} cls={css.figConst} />
@@ -283,10 +292,11 @@ export function VswrFigure({ rows }: { rows: { vswr: number; mag: number; label:
 // Topic 7: the start circuit's two-part match and the one-part route.
 
 export function MatchFigure() {
+  const { t } = useI18n();
   const node1: P = [-0.2, -0.4]; // Γ of 0.5 − j0.5
   return (
-    <Figure caption={<>The r = 1 and g = 1 circles meet at the centre. The start load L goes down its r circle by <span className={css.key1}>the series C</span> onto g = 1, then <span className={css.key2}>the shunt L</span> takes it to the centre; dashed, a <span className={css.key3}>shunt C</span> alone.</>}>
-      <Disc label="The start circuit's match on the r = 1 and g = 1 circles">
+    <Figure caption={<>{t('sm.fig.match.cap.a')}<span className={css.key1}>{t('sm.fig.match.sc')}</span>{t('sm.fig.match.cap.b')}<span className={css.key2}>{t('sm.fig.match.shl')}</span>{t('sm.fig.match.cap.c')}<span className={css.key3}>{t('sm.fig.match.shc')}</span>{t('sm.fig.match.cap.d')}</>}>
+      <Disc label={t('sm.fig.match.aria')}>
         <Ring c={[0.5, 0]} R={0.5} cls={css.figZStrong} />
         <Ring c={G_ONE} R={0.5} cls={css.figYStrong} />
         <ArcTo c={R_HALF} p={START_G} q={node1} ccw cls={css.figPart1} />
@@ -306,17 +316,18 @@ export function MatchFigure() {
 // ------------------------------------------------------------------------------------------------------------------
 // Topic 8: two solutions, one or none: g = 1 (part 2's colour) against r = 0.5, 1 and 2 (part 1's).
 
-const TWO_ONE_NONE: { r: number; label: string; marks: P[] }[] = [
+const TWO_ONE_NONE: { r: number; label: 'two' | 'one' | 'none'; marks: P[] }[] = [
   { r: 0.5, label: 'two', marks: [[-0.2, 0.4], [-0.2, -0.4]] },
   { r: 1, label: 'one', marks: [[0, 0]] },
   { r: 2, label: 'none', marks: [] },
 ];
 
 export function TwoOneNoneFigure() {
+  const { t } = useI18n();
   return (
-    <Figure wide caption={<>The circle <span className={css.key2}>g = 1</span> that part 2 must start on, against <span className={css.key1}>part 1’s r circle</span>; left to right r = 0.5 crosses it twice, r = 1 touches it at the centre, r = 2 misses it.</>}>
+    <Figure wide caption={<>{t('sm.fig.ton.cap.a')}<span className={css.key2}>g = 1</span>{t('sm.fig.ton.cap.b')}<span className={css.key1}>{t('sm.fig.ton.p1')}</span>{t('sm.fig.ton.cap.c')}</>}>
       {TWO_ONE_NONE.map(({ r, label, marks }) => (
-        <Disc key={label} label={`The g = 1 circle and the r = ${r} circle: ${label}`}>
+        <Disc key={label} label={t('sm.fig.ton.aria', { r, label: t(`sm.fig.ton.${label}` as TranslationKey) })}>
           <g className={css.figPart2}><Ring c={G_ONE} R={0.5} cls={css.figStroke} /></g>
           <g className={css.figPart1}><Ring c={[r / (1 + r), 0]} R={1 / (1 + r)} cls={css.figStroke} /></g>
           {marks.map((p, i) => <Dot key={i} p={p} cls={css.figLoad} r={0.05} />)}
@@ -330,16 +341,17 @@ export function TwoOneNoneFigure() {
 // Topic 9: the nearest value: r = 0.5 touches the circle |Γ| = 1/3 about the target (the centre) at Γ = −1/3.
 
 export function MismatchFigure() {
+  const { t } = useI18n();
   return (
-    <Figure caption={<><span className={css.key1}>Part 1’s r = 0.5 circle</span> never reaches the target at the centre (on r = 1, faint). The dashed circle |Γ| = 1/3 about it touches the part’s circle at the nearest point.</>}>
-      <Disc label="The r = 0.5 circle, the target at the centre and the circle of the nearest mismatch">
+    <Figure caption={<><span className={css.key1}>{t('sm.fig.mis.cap.a')}</span>{t('sm.fig.mis.cap.b')}</>}>
+      <Disc label={t('sm.fig.mis.aria')}>
         <Ring c={[0.5, 0]} R={0.5} cls={css.figZ} />
         <g className={css.figPart1}><Ring c={R_HALF} R={2 / 3} cls={css.figStroke} /></g>
         <g className={css.figAccent}><Ring c={[0, 0]} R={1 / 3} cls={css.figDash} /></g>
         <Dot p={[0, 0]} cls={css.figAccent} r={0.04} />
-        <Label p={[0.06, 0.1]} anchor="start" cls={css.figAccentText}>target</Label>
+        <Label p={[0.06, 0.1]} anchor="start" cls={css.figAccentText}>{t('sm.fig.mis.target')}</Label>
         <Dot p={[-1 / 3, 0]} cls={css.figLoad} r={0.045} />
-        <Label p={[-0.36, 0.13]} cls={css.figBold}>nearest</Label>
+        <Label p={[-0.36, 0.13]} cls={css.figBold}>{t('sm.fig.mis.nearest')}</Label>
         <Label p={[0.62, 0.56]}>r = 1</Label>
       </Disc>
     </Figure>
@@ -352,11 +364,13 @@ export function MismatchFigure() {
 const ZOOM = 4;
 
 export function StandardFigure({ points }: { points: { gr: number; gi: number; label: string }[] }) {
+  const { t } = useI18n();
   const id = React.useId().replace(/:/g, '');
   const at = (gr: number, gi: number): P => [gr * ZOOM, gi * ZOOM];
+  const list = points.map((q, i) => `${i + 1}: ${q.label}`).join('; ');
   return (
-    <Figure caption={<>Near the centre, 4× magnified (the rim is |Γ| = 0.25): the exact match at the centre, the dashed close-enough circle |Γ| = 0.2, and where the E24 pairs put the input: {points.map((q, i) => `${i + 1}: ${q.label}`).join('; ')}.</>}>
-      <svg viewBox="-1.25 -1.25 2.5 2.5" className={css.disc} role="img" aria-label="The input points of the E24 pairs near the centre">
+    <Figure caption={<>{t('sm.fig.std.cap', { list })}</>}>
+      <svg viewBox="-1.25 -1.25 2.5 2.5" className={css.disc} role="img" aria-label={t('sm.fig.std.aria')}>
         <defs><clipPath id={`zoom${id}`}><circle cx="0" cy="0" r="1" /></clipPath></defs>
         <circle cx="0" cy="0" r="1" className={css.figBack} />
         <g clipPath={`url(#zoom${id})`}>

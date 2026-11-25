@@ -23,6 +23,7 @@ import { ocrPdf, OcrResult } from '../../lib/pdf/ocr';
 import { OCR_LANGUAGES } from '../../lib/pdf/ocrRuntime';
 import { pdfPreview } from '../../lib/pdf/pdfjs';
 import { OCR } from '../../lib/pdf/tools';
+import { useI18n } from '../../lib/ui/i18n';
 import ocrStyles from '../../styles/PdfOcr.module.css';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
@@ -75,6 +76,7 @@ function formatApproxMb(bytes: number): string {
 }
 
 export default function OcrPdfPage() {
+  const { t } = useI18n();
   const [items, setItems] = React.useState<OcrItem[]>([]);
   const [selectedLangs, setSelectedLangs] = React.useState<string[]>(['eng']);
   const [customLangs, setCustomLangs] = React.useState<CustomLangEntry[]>([]);
@@ -115,7 +117,7 @@ export default function OcrPdfPage() {
     const pdfs = files.filter(isPdf);
     setNotice(
       pdfs.length < files.length
-        ? `${files.length - pdfs.length} file(s) were skipped because they are not PDFs.`
+        ? t('pdf.p.skippedNonPdf', { n: files.length - pdfs.length })
         : null,
     );
     const added = await Promise.all(
@@ -177,7 +179,7 @@ export default function OcrPdfPage() {
       setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
     } catch (e) {
       if (isPasswordError(e)) {
-        setPwError('Incorrect password. Try again.');
+        setPwError(t('pdf.ff.wrongPw'));
       } else {
         update(activeLocked.id, { locked: false, error: errorMessage(e) });
         setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
@@ -189,7 +191,7 @@ export default function OcrPdfPage() {
 
   function cancelUnlock() {
     if (!activeLocked) return;
-    update(activeLocked.id, { locked: false, error: 'Password required to open this PDF.' });
+    update(activeLocked.id, { locked: false, error: t('pdf.p.pwRequired') });
     setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
     setPwError(null);
   }
@@ -287,7 +289,7 @@ export default function OcrPdfPage() {
         const item = ready[i];
         setProgress({
           fraction: i / ready.length,
-          label: `Starting ${item.name}…`,
+          label: t('pdf.p.ocr.starting', { name: item.name }),
         });
         await nextFrame();
 
@@ -303,7 +305,7 @@ export default function OcrPdfPage() {
             onProgress: (info) => {
               const wordSuffix =
                 typeof info.wordsSoFar === 'number' && info.wordsSoFar > 0
-                  ? ` · ${info.wordsSoFar} words`
+                  ? t('pdf.p.ocr.wordsSuffix', { n: info.wordsSoFar })
                   : '';
               const prefix = ready.length > 1 ? `${item.name}: ` : '';
               setProgress({
@@ -326,9 +328,9 @@ export default function OcrPdfPage() {
       abortRef.current = null;
       setBusy(false);
       if (cancelled) {
-        setNotice('OCR cancelled.');
+        setNotice(t('pdf.p.ocr.cancelled'));
       } else {
-        setProgress({ fraction: 1, label: 'Done' });
+        setProgress({ fraction: 1, label: t('pdf.p.done') });
       }
     }
   }
@@ -376,7 +378,7 @@ export default function OcrPdfPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      setNotice('Could not copy to clipboard automatically.');
+      setNotice(t('pdf.p.ocr.copyFail'));
     }
   }
 
@@ -385,17 +387,23 @@ export default function OcrPdfPage() {
     download(encoded, fileName, 'text/plain;charset=utf-8');
   }
 
+  const dpiOptions: [string, string][] = React.useMemo(() => [
+    ['150', t('pdf.p.ocr.dpi150')],
+    ['200', t('pdf.p.ocr.dpi200')],
+    ['300', t('pdf.p.ocr.dpi300')],
+  ], [t]);
+
   return (
     <PdfPage
       title={OCR.title}
       showHub
-      lead="Turn scanned PDFs into searchable, selectable documents with self-hosted Tesseract OCR. Everything runs locally in your browser."
+      lead={t('pdf.p.ocr.lead')}
     >
       <ToolWorkspace
         tool={OCR}
         accept="application/pdf,.pdf"
-        selectLabel="Select PDF files"
-        dropLabel="or drop scanned PDFs here"
+        selectLabel={t('pdf.p.selectPdfs')}
+        dropLabel={t('pdf.p.ocr.dropLabel')}
         hasFiles={items.length > 0}
         onFiles={addFiles}
         toolbar={
@@ -410,16 +418,16 @@ export default function OcrPdfPage() {
               setNotice(null);
             }}
           >
-            Remove all
+            {t('pdf.p.removeAll')}
           </button>
         }
         sidebar={
           <>
-            <div className={ocrStyles.langSection} role="group" aria-label="OCR languages">
+            <div className={ocrStyles.langSection} role="group" aria-label={t('pdf.p.ocr.langsAria')}>
               <div className={ocrStyles.langHeader}>
-                <span className={ocrStyles.langTitle}>Recognition languages</span>
+                <span className={ocrStyles.langTitle}>{t('pdf.p.ocr.langsTitle')}</span>
                 <span className={ocrStyles.langMeta}>
-                  {activeLanguages.length} selected · ~{formatApproxMb(totalModelBytes)}
+                  {t('pdf.p.ocr.langsMeta', { n: activeLanguages.length, size: formatApproxMb(totalModelBytes) })}
                 </span>
               </div>
 
@@ -463,7 +471,7 @@ export default function OcrPdfPage() {
                   disabled={busy}
                   onClick={() => customFileInputRef.current?.click()}
                 >
-                  Load custom .traineddata
+                  {t('pdf.p.ocr.loadCustom')}
                 </button>
               </div>
 
@@ -478,7 +486,7 @@ export default function OcrPdfPage() {
                         type="button"
                         className={ocrStyles.customChipRemove}
                         disabled={busy}
-                        aria-label={`Remove custom language ${entry.code}`}
+                        aria-label={t('pdf.p.ocr.removeLangAria', { code: entry.code })}
                         onClick={() => removeCustomLang(entry.code)}
                       >
                         &times;
@@ -489,28 +497,28 @@ export default function OcrPdfPage() {
               )}
 
               {activeLanguages.length === 0 && (
-                <p className={fieldStyles.warning}>Select at least one language to run OCR.</p>
+                <p className={fieldStyles.warning}>{t('pdf.p.ocr.needLang')}</p>
               )}
             </div>
 
             <div className={styles.options}>
-              <Field label="Pages" help="Leave blank for all pages (e.g. 1-5, 8).">
+              <Field label={t('pdf.p.ocr.pagesLabel')} help={t('pdf.p.ocr.pagesHelp')}>
                 <input
                   type="text"
                   className={fieldStyles.input}
                   value={pageRange}
                   disabled={busy}
-                  placeholder="All pages"
+                  placeholder={t('pdf.p.ocr.pagesPh')}
                   onChange={(e) => setPageRange(e.target.value)}
                 />
               </Field>
 
-              <Field label="Render DPI">
-                <Select value={dpi} onChange={setDpi} options={DPI_OPTIONS} disabled={busy} />
+              <Field label={t('pdf.p.renderDpi')}>
+                <Select value={dpi} onChange={setDpi} options={dpiOptions} disabled={busy} />
               </Field>
 
               <Checkbox
-                label="Skip pages that already have selectable text"
+                label={t('pdf.p.ocr.skipExisting')}
                 checked={skipPagesWithText}
                 disabled={busy}
                 onChange={setSkipPagesWithText}
@@ -519,9 +527,7 @@ export default function OcrPdfPage() {
             </div>
 
             <p className={styles.note}>
-              Self-hosted Tesseract.js OCR runs offline in a Web Worker. Recognized words are embedded as an
-              invisible text layer (<code>3 Tr</code>) directly over your original page artwork without rasterizing
-              or uploading your PDF.
+              {t('pdf.p.ocr.noteBefore')}<code>3 Tr</code>{t('pdf.p.ocr.noteAfter')}
             </p>
             {notice && <p className={fieldStyles.warning}>{notice}</p>}
 
@@ -533,14 +539,14 @@ export default function OcrPdfPage() {
                 onClick={runOcrAll}
               >
                 {busy
-                  ? 'Running OCR…'
+                  ? t('pdf.p.ocr.running')
                   : ready.length > 1
-                    ? `Run OCR on ${ready.length} PDFs`
-                    : 'Run OCR'}
+                    ? t('pdf.p.ocr.runMany', { n: ready.length })
+                    : t('pdf.p.ocr.runOne')}
               </button>
               {busy && (
                 <button type="button" className={ocrStyles.cancelButton} onClick={cancelOcr}>
-                  Cancel
+                  {t('pdf.p.cancel')}
                 </button>
               )}
             </div>
@@ -550,20 +556,20 @@ export default function OcrPdfPage() {
             {done && (
               <div className={styles.result}>
                 <h3>
-                  {outputs.length === 1 ? 'Searchable PDF ready' : `${outputs.length} searchable PDFs ready`}
+                  {outputs.length === 1 ? t('pdf.p.ocr.readyOne') : t('pdf.p.ocr.readyMany', { n: outputs.length })}
                 </h3>
 
                 <div className={ocrStyles.statsRow}>
                   <span className={ocrStyles.statPill}>
-                    {totalPagesOcred} page{totalPagesOcred === 1 ? '' : 's'} OCR&apos;d
+                    {t(totalPagesOcred === 1 ? 'pdf.p.ocr.pagesOcredOne' : 'pdf.p.ocr.pagesOcredMany', { n: totalPagesOcred })}
                   </span>
                   {totalPagesSkipped > 0 && (
                     <span className={ocrStyles.statPill}>
-                      {totalPagesSkipped} skipped (existing text)
+                      {t('pdf.p.ocr.skippedExisting', { n: totalPagesSkipped })}
                     </span>
                   )}
-                  <span className={ocrStyles.statPill}>{totalWords} words</span>
-                  {totalWords > 0 && <span className={ocrStyles.statPill}>{weightedConf}% confidence</span>}
+                  <span className={ocrStyles.statPill}>{t('pdf.p.ocr.wordsCount', { n: totalWords })}</span>
+                  {totalWords > 0 && <span className={ocrStyles.statPill}>{t('pdf.p.ocr.confPct', { pct: weightedConf })}</span>}
                 </div>
 
                 {outputs.length === 1 ? (
@@ -572,7 +578,7 @@ export default function OcrPdfPage() {
                     className={styles.primary}
                     onClick={() => download(outputs[0].bytes, outputs[0].name)}
                   >
-                    Download {outputs[0].name}
+                    {t('pdf.ff.downloadNamed', { name: outputs[0].name })}
                   </button>
                 ) : (
                   <button
@@ -580,7 +586,7 @@ export default function OcrPdfPage() {
                     className={styles.primary}
                     onClick={() => download(zipFiles(outputs), 'ocr-pdfs.zip', 'application/zip')}
                   >
-                    Download all PDFs (ZIP)
+                    {t('pdf.p.ocr.downloadAllPdfs')}
                   </button>
                 )}
 
@@ -596,7 +602,7 @@ export default function OcrPdfPage() {
                       )
                     }
                   >
-                    Download .txt
+                    {t('pdf.p.ocr.downloadTxt')}
                   </button>
                   <button
                     type="button"
@@ -604,25 +610,25 @@ export default function OcrPdfPage() {
                     disabled={!combinedText}
                     onClick={copyExtractedText}
                   >
-                    {copied ? 'Copied!' : 'Copy text'}
+                    {copied ? t('pdf.p.ocr.copied') : t('pdf.p.ocr.copyText')}
                   </button>
                   <button
                     type="button"
                     className={styles.buttonSmall}
                     onClick={() => setShowTextPreview((v) => !v)}
                   >
-                    {showTextPreview ? 'Hide text' : 'Show text'}
+                    {showTextPreview ? t('pdf.p.ocr.hideText') : t('pdf.p.ocr.showText')}
                   </button>
                 </div>
 
                 {showTextPreview && (
                   <div className={ocrStyles.textPreviewWrap}>
                     <div className={ocrStyles.textPreviewHeader}>
-                      <span>Extracted text</span>
-                      <span>{combinedText.length} chars</span>
+                      <span>{t('pdf.p.ocr.extractedText')}</span>
+                      <span>{t('pdf.p.ocr.charsCount', { n: combinedText.length })}</span>
                     </div>
                     <pre className={ocrStyles.textPreviewPre}>
-                      {combinedText || '(No text recognized on the selected pages.)'}
+                      {combinedText || t('pdf.p.ocr.noText')}
                     </pre>
                   </div>
                 )}
@@ -656,10 +662,10 @@ export default function OcrPdfPage() {
 
             const metaParts = [
               item.locked
-                ? 'Password protected'
+                ? t('pdf.p.pwProtected')
                 : item.pageCount === null
                   ? '…'
-                  : `${item.pageCount} page${item.pageCount === 1 ? '' : 's'}`,
+                  : t(item.pageCount === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany', { n: item.pageCount }),
               formatBytes(item.bytes.length),
             ];
 
@@ -697,18 +703,18 @@ export default function OcrPdfPage() {
                     {res ? (
                       <>
                         <span className={styles.statusDone}>
-                          {res.pagesOcred} OCR&apos;d
-                          {res.pagesSkipped > 0 ? ` · ${res.pagesSkipped} skipped` : ''}
+                          {t('pdf.p.ocr.cardOcred', { n: res.pagesOcred })}
+                          {res.pagesSkipped > 0 ? t('pdf.p.ocr.cardSkipped', { n: res.pagesSkipped }) : ''}
                         </span>
-                        <span className={styles.statusKept}>{res.totalWords} words</span>
+                        <span className={styles.statusKept}>{t('pdf.p.ocr.wordsCount', { n: res.totalWords })}</span>
                         {res.totalWords > 0 && (
-                          <span className={styles.statusDone}>{res.avgConfidence}% conf</span>
+                          <span className={styles.statusDone}>{t('pdf.p.ocr.cardConf', { pct: res.avgConfidence })}</span>
                         )}
                       </>
                     ) : item.locked ? (
-                      <span className={styles.statusLeft}>Password required</span>
+                      <span className={styles.statusLeft}>{t('pdf.p.pwReqShort')}</span>
                     ) : (
-                      <span className={styles.statusPending}>Ready for OCR</span>
+                      <span className={styles.statusPending}>{t('pdf.p.ocr.readyBadge')}</span>
                     )}
                   </div>
                 )}

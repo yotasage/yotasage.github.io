@@ -3,6 +3,7 @@
 
 import React from 'react';
 
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/QrRead.module.css';
 
 export const STATUS_LEAD = 'New.';
@@ -20,13 +21,14 @@ export const STATUS_LIMITS =
   'found and outlined but not decoded. Reading is done by ZXing-C++, built into this page as WebAssembly.';
 
 export function Status() {
+  const { t } = useI18n();
   return (
-    <aside className={styles.status} aria-label="Status of this tool">
-      <p><strong>{STATUS_LEAD}</strong> {STATUS_NOW}</p>
-      <p>{STATUS_CHECKED}</p>
+    <aside className={styles.status} aria-label={t('qrread.status.aria')}>
+      <p><strong>{t('qrread.status.lead')}</strong> {t('qrread.status.now')}</p>
+      <p>{t('qrread.status.checked')}</p>
       <details>
-        <summary>More</summary>
-        <p>{STATUS_LIMITS}</p>
+        <summary>{t('qrread.status.more')}</summary>
+        <p>{t('qrread.status.limits')}</p>
       </details>
     </aside>
   );

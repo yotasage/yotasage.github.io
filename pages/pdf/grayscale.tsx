@@ -25,6 +25,7 @@ import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
 import { parsePageRanges } from '../../lib/pdf/merge';
 import { openPdf, pdfPreview, renderPage } from '../../lib/pdf/pdfjs';
 import { GRAYSCALE } from '../../lib/pdf/tools';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
@@ -57,6 +58,7 @@ interface OriginalPixels {
 }
 
 export default function GrayscalePdfPage() {
+  const { t } = useI18n();
   const [items, setItems] = React.useState<Item[]>([]);
   const [mode, setMode] = React.useState<GrayscaleMode>('lossless');
   const [dpi, setDpi] = React.useState<DpiChoice>('150');
@@ -97,7 +99,7 @@ export default function GrayscalePdfPage() {
 
   async function addFiles(files: File[]) {
     const pdfs = files.filter(isPdf);
-    setNotice(pdfs.length < files.length ? `${files.length - pdfs.length} file(s) were skipped because they are not PDFs.` : null);
+    setNotice(pdfs.length < files.length ? t('pdf.p.skippedNonPdf', { n: files.length - pdfs.length }) : null);
     const added = await Promise.all(
       pdfs.map(async (file): Promise<Item> => ({
         id: uid(),
@@ -153,7 +155,7 @@ export default function GrayscalePdfPage() {
       setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
     } catch (e) {
       if (isPasswordError(e)) {
-        setPwError('Incorrect password. Try again.');
+        setPwError(t('pdf.ff.wrongPw'));
       } else {
         update(activeLocked.id, { locked: false, error: errorMessage(e) });
         setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
@@ -165,7 +167,7 @@ export default function GrayscalePdfPage() {
 
   function cancelUnlock() {
     if (!activeLocked) return;
-    update(activeLocked.id, { locked: false, error: 'Password required to open this PDF.' });
+    update(activeLocked.id, { locked: false, error: t('pdf.p.pwRequired') });
     setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
     setPwError(null);
   }
@@ -390,7 +392,7 @@ export default function GrayscalePdfPage() {
               const fileFrac = p.total > 0 ? p.done / p.total : 0;
               setProgress({
                 fraction: (i + fileFrac) / ready.length,
-                label: `${item.name} — page ${p.done}/${p.total}`,
+                label: t('pdf.p.filePageProgress', { name: item.name, done: p.done, total: p.total }),
               });
             },
           );
@@ -435,13 +437,13 @@ export default function GrayscalePdfPage() {
     <PdfPage
       title={GRAYSCALE.title}
       showHub
-      lead="Convert PDFs to black & white losslessly while keeping text selectable and vectors sharp, or rasterize complex pages to grayscale."
+      lead={t('pdf.gs.lead')}
     >
       <ToolWorkspace
         tool={GRAYSCALE}
         accept="application/pdf,.pdf"
-        selectLabel="Select PDF files"
-        dropLabel="or drop PDFs here"
+        selectLabel={t('pdf.p.selectPdfs')}
+        dropLabel={t('pdf.p.dropPdfs')}
         hasFiles={items.length > 0}
         onFiles={addFiles}
         toolbar={
@@ -453,14 +455,14 @@ export default function GrayscalePdfPage() {
               setPreviewItemId(null);
             }}
           >
-            Remove all
+            {t('pdf.p.removeAll')}
           </button>
         }
         sidebar={
           <>
             <div className={fieldStyles.field}>
-              <span>Conversion mode</span>
-              <div className={styles.levels} role="radiogroup" aria-label="Grayscale conversion mode">
+              <span>{t('pdf.gs.convMode')}</span>
+              <div className={styles.levels} role="radiogroup" aria-label={t('pdf.gs.convModeAria')}>
                 <label className={[styles.level, mode === 'lossless' ? styles.levelSelected : ''].join(' ')}>
                   <input
                     type="radio"
@@ -469,11 +471,8 @@ export default function GrayscalePdfPage() {
                     onChange={() => setMode('lossless')}
                   />
                   <div>
-                    <strong>Lossless (keep text &amp; vectors)</strong>
-                    <small>
-                      Rewrites vector colour operators and converts embedded images (including JPEGs) to grayscale. Text
-                      stays selectable and lines remain crisp.
-                    </small>
+                    <strong>{t('pdf.gs.losslessTitle')}</strong>
+                    <small>{t('pdf.gs.losslessDesc')}</small>
                   </div>
                 </label>
                 <label className={[styles.level, mode === 'raster' ? styles.levelSelected : ''].join(' ')}>
@@ -484,46 +483,39 @@ export default function GrayscalePdfPage() {
                     onChange={() => setMode('raster')}
                   />
                   <div>
-                    <strong>Rasterize pages</strong>
-                    <small>
-                      Renders pages to grayscale images at your chosen DPI. Best for complex ICC profiles, shadings or
-                      transparency; text is no longer selectable.
-                    </small>
+                    <strong>{t('pdf.gs.rasterTitle')}</strong>
+                    <small>{t('pdf.gs.rasterDesc')}</small>
                   </div>
                 </label>
               </div>
             </div>
 
             {mode === 'lossless' && (
-              <p className={styles.infoNote}>
-                Text remains searchable and selectable, vector art stays resolution-independent, and embedded photos are
-                converted using BT.709 luminance. If a document uses complex shadings or ICC profiles that retain
-                colour, switch to Rasterize pages.
-              </p>
+              <p className={styles.infoNote}>{t('pdf.gs.losslessNote')}</p>
             )}
 
             {mode === 'raster' && (
               <>
                 <div className={styles.optionRow}>
-                  <Field label="Resolution (DPI)">
+                  <Field label={t('pdf.p.resDpi')}>
                     <Select
                       value={dpi}
                       onChange={setDpi}
                       options={[
-                        ['100', '100 DPI (small)'],
-                        ['150', '150 DPI (balanced)'],
-                        ['200', '200 DPI (crisp)'],
-                        ['300', '300 DPI (print)'],
+                        ['100', t('pdf.p.dpi100')],
+                        ['150', t('pdf.p.dpi150')],
+                        ['200', t('pdf.p.dpi200')],
+                        ['300', t('pdf.p.dpi300')],
                       ]}
                     />
                   </Field>
-                  <Field label="Page image format">
+                  <Field label={t('pdf.p.pageImgFmt')}>
                     <Select
                       value={format}
                       onChange={setFormat}
                       options={[
-                        ['jpeg', 'JPEG (smaller)'],
-                        ['png', 'PNG (lossless)'],
+                        ['jpeg', t('pdf.p.jpegSmaller')],
+                        ['png', t('pdf.p.pngLossless')],
                       ]}
                     />
                   </Field>
@@ -532,7 +524,7 @@ export default function GrayscalePdfPage() {
                 {format === 'jpeg' && (
                   <label className={styles.sliderField}>
                     <span className={styles.sliderHeader}>
-                      <span>JPEG quality</span>
+                      <span>{t('pdf.p.jpegQuality')}</span>
                       <strong>{jpegQuality}%</strong>
                     </span>
                     <input
@@ -548,11 +540,11 @@ export default function GrayscalePdfPage() {
                 )}
 
                 {items.length === 1 && (
-                  <Field label="Page range (optional)" help="e.g. 1-3, 5. Unselected pages stay unchanged.">
+                  <Field label={t('pdf.p.pageRangeOpt')} help={t('pdf.p.pageRangeUnchangedHelp')}>
                     <input
                       className={fieldStyles.input}
                       value={pageRange}
-                      placeholder="All pages"
+                      placeholder={t('pdf.p.allPages')}
                       onChange={(e) => setPageRange(e.target.value)}
                     />
                   </Field>
@@ -570,8 +562,10 @@ export default function GrayscalePdfPage() {
               onClick={runConvert}
             >
               {busy
-                ? 'Converting…'
-                : `Convert ${ready.length > 1 ? `${ready.length} PDFs` : 'PDF'} to grayscale`}
+                ? t('pdf.gs.converting')
+                : ready.length > 1
+                  ? t('pdf.gs.btnMany', { n: ready.length })
+                  : t('pdf.gs.btnOne')}
             </button>
 
             {busy && <Progress fraction={progress.fraction} label={progress.label} />}
@@ -579,36 +573,41 @@ export default function GrayscalePdfPage() {
             {done && (
               <div className={styles.result}>
                 <h3>
-                  {outputs.length === 1
-                    ? 'Your grayscale PDF is ready'
-                    : `${outputs.length} grayscale PDFs are ready`}
+                  {outputs.length === 1 ? t('pdf.gs.doneOne') : t('pdf.gs.doneMany', { n: outputs.length })}
                 </h3>
                 {totalStats ? (
                   <>
-                    <p>
-                      Lossless conversion complete — text and vector paths preserved.
-                    </p>
+                    <p>{t('pdf.gs.losslessDone')}</p>
                     <div className={styles.statList}>
                       <span className={styles.statChip}>
-                        {totalStats.convertedImages} image{totalStats.convertedImages === 1 ? '' : 's'} converted
+                        {t(totalStats.convertedImages === 1 ? 'pdf.gs.statImgOne' : 'pdf.gs.statImgMany', {
+                          n: totalStats.convertedImages,
+                        })}
                       </span>
                       <span className={styles.statChip}>
-                        {totalStats.rewrittenStreams} stream{totalStats.rewrittenStreams === 1 ? '' : 's'} rewritten
+                        {t(totalStats.rewrittenStreams === 1 ? 'pdf.gs.statStrOne' : 'pdf.gs.statStrMany', {
+                          n: totalStats.rewrittenStreams,
+                        })}
                       </span>
                       <span className={styles.statChip}>
-                        {totalStats.convertedOperators} colour operator{totalStats.convertedOperators === 1 ? '' : 's'}
+                        {t(totalStats.convertedOperators === 1 ? 'pdf.gs.statOpOne' : 'pdf.gs.statOpMany', {
+                          n: totalStats.convertedOperators,
+                        })}
                       </span>
                       {totalStats.skippedJpegImages > 0 && (
                         <span className={[styles.statChip, styles.statChipWarn].join(' ')}>
-                          {totalStats.skippedJpegImages} JPEG{totalStats.skippedJpegImages === 1 ? '' : 's'} skipped
+                          {t(totalStats.skippedJpegImages === 1 ? 'pdf.gs.statSkipOne' : 'pdf.gs.statSkipMany', {
+                            n: totalStats.skippedJpegImages,
+                          })}
                         </span>
                       )}
                     </div>
                   </>
                 ) : (
                   <p>
-                    Rasterized at {dpi} DPI ({format.toUpperCase()}
-                    {format === 'jpeg' ? `, ${jpegQuality}% quality` : ''}).
+                    {format === 'jpeg'
+                      ? t('pdf.gs.rasterDoneJpeg', { dpi, q: jpegQuality })
+                      : t('pdf.gs.rasterDonePng', { dpi })}
                   </p>
                 )}
                 {outputs.length === 1 ? (
@@ -617,7 +616,7 @@ export default function GrayscalePdfPage() {
                     className={styles.primary}
                     onClick={() => download(outputs[0].bytes, outputs[0].name)}
                   >
-                    Download {outputs[0].name}
+                    {t('pdf.ff.downloadNamed', { name: outputs[0].name })}
                   </button>
                 ) : (
                   <button
@@ -625,7 +624,7 @@ export default function GrayscalePdfPage() {
                     className={styles.primary}
                     onClick={() => download(zipFiles(outputs), 'grayscale-pdfs.zip', 'application/zip')}
                   >
-                    Download all (ZIP)
+                    {t('pdf.p.downloadAllZip')}
                   </button>
                 )}
                 <ContinueWith currentToolId={GRAYSCALE.id} files={outputs} />
@@ -649,11 +648,11 @@ export default function GrayscalePdfPage() {
           <div className={styles.compareCard}>
             <div className={styles.compareBar}>
               <div className={styles.compareTitleRow}>
-                <h3>Live preview</h3>
+                <h3>{t('pdf.p.livePreview')}</h3>
                 {ready.length > 1 ? (
                   <select
                     className={styles.canvasSourceSelect}
-                    aria-label="Preview file"
+                    aria-label={t('pdf.p.previewFile')}
                     value={previewItem.id}
                     onChange={(e) => setPreviewItemId(e.target.value)}
                   >
@@ -668,7 +667,7 @@ export default function GrayscalePdfPage() {
                 )}
                 {previewPageSkippedByRange && (
                   <span className={[styles.previewBadge, styles.previewBadgeWarn].join(' ')}>
-                    Page {pageIndex + 1} unchanged by range
+                    {t('pdf.p.pageUnchangedRange', { n: pageIndex + 1 })}
                   </span>
                 )}
               </div>
@@ -681,7 +680,7 @@ export default function GrayscalePdfPage() {
                     disabled={pageIndex <= 0}
                     onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
                   >
-                    &larr; Prev
+                    {t('pdf.p.prev')}
                   </button>
                   <span className={styles.canvasPageInfo}>
                     {pageIndex + 1} / {Math.max(1, previewPageCount)}
@@ -692,18 +691,18 @@ export default function GrayscalePdfPage() {
                     disabled={pageIndex >= previewPageCount - 1}
                     onClick={() => setPageIndex((i) => Math.min(previewPageCount - 1, i + 1))}
                   >
-                    Next &rarr;
+                    {t('pdf.p.next')}
                   </button>
                 </div>
 
-                <div className={styles.compareToggle} role="group" aria-label="Compare grayscale and original">
+                <div className={styles.compareToggle} role="group" aria-label={t('pdf.gs.compareAria')}>
                   <button
                     type="button"
                     className={[styles.compareToggleBtn, !showOriginal ? styles.compareToggleBtnActive : ''].join(' ')}
                     aria-pressed={!showOriginal}
                     onClick={() => setShowOriginal(false)}
                   >
-                    After
+                    {t('pdf.gs.after')}
                   </button>
                   <button
                     type="button"
@@ -711,7 +710,7 @@ export default function GrayscalePdfPage() {
                     aria-pressed={showOriginal}
                     onClick={() => setShowOriginal(true)}
                   >
-                    Before
+                    {t('pdf.gs.before')}
                   </button>
                 </div>
               </div>
@@ -727,7 +726,7 @@ export default function GrayscalePdfPage() {
                   className={styles.previewCanvas}
                   style={cssDisplayW && cssDisplayH ? { width: `${cssDisplayW}px`, height: `${cssDisplayH}px` } : undefined}
                 />
-                {rendering && <div className={styles.figureLoading}>Rendering page…</div>}
+                {rendering && <div className={styles.figureLoading}>{t('pdf.p.renderingPage')}</div>}
               </div>
             </div>
           </div>
@@ -746,10 +745,10 @@ export default function GrayscalePdfPage() {
                 name={item.name}
                 meta={`${
                   item.locked
-                    ? 'Password protected'
+                    ? t('pdf.p.pwProtected')
                     : item.pageCount === null
                       ? '…'
-                      : `${item.pageCount} page${item.pageCount === 1 ? '' : 's'}`
+                      : t(item.pageCount === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany', { n: item.pageCount })
                 } · ${formatBytes(r?.bytes ? r.bytes.length : item.bytes.length)}`}
                 error={item.error ?? r?.error}
                 controls={controls}
@@ -760,7 +759,7 @@ export default function GrayscalePdfPage() {
                       className={styles.buttonSmall}
                       onClick={() => download(output.bytes, output.name)}
                     >
-                      Download
+                      {t('pdf.p.download')}
                     </button>
                   )
                 }
@@ -768,14 +767,19 @@ export default function GrayscalePdfPage() {
                 {r?.stats && (
                   <div className={styles.fileMeta}>
                     <span className={styles.saved}>
-                      {r.stats.convertedImages} img · {r.stats.convertedOperators} ops
-                      {r.stats.skippedJpegImages > 0 ? ` · ${r.stats.skippedJpegImages} skipped` : ''}
+                      {t('pdf.gs.cardStats', {
+                        imgs: r.stats.convertedImages,
+                        ops: r.stats.convertedOperators,
+                      })}
+                      {r.stats.skippedJpegImages > 0
+                        ? t('pdf.gs.cardSkipped', { n: r.stats.skippedJpegImages })
+                        : ''}
                     </span>
                   </div>
                 )}
                 {r?.rasterized && (
                   <div className={styles.fileMeta}>
-                    <span className={styles.saved}>Rasterized grayscale ({dpi} DPI)</span>
+                    <span className={styles.saved}>{t('pdf.gs.cardRaster', { dpi })}</span>
                   </div>
                 )}
               </FileCard>

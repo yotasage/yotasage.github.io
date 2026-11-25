@@ -110,39 +110,44 @@ export default function QrReader() {
         try {
           let firstUsed = false;
           await scanPdf(new Uint8Array(await file.arrayBuffer()), options, (page, pages, r) => {
-            const name = pages > 1 ? `${file.name}, page ${page} of ${pages}` : file.name;
+            const name = pages > 1 ? t('qrread.src.pdfPage', { name: file.name, page, pages }) : file.name;
             if (!firstUsed) { firstUsed = true; update(first, { name, ...done(r) }); } else add({ name, kind: 'pdf', ...done(r) } as Omit<Source, 'id'>);
           });
         } catch (e) {
-          update(first, { status: 'error', error: `The PDF could not be opened${e instanceof Error && e.message ? `: ${e.message}` : '.'}` });
+          update(first, {
+            status: 'error',
+            error: e instanceof Error && e.message
+              ? t('qrread.src.pdfErrMsg', { msg: e.message })
+              : t('qrread.src.pdfErr'),
+          });
         }
         continue;
       }
-      const id = add({ name: file.name || 'Pasted image', kind, status: 'reading', readings: [] });
+      const id = add({ name: file.name || t('qrread.src.pastedImage'), kind, status: 'reading', readings: [] });
       try {
         update(id, done(await scanImageFile(file, options)));
       } catch (e) {
-        update(id, { status: 'error', error: e instanceof Error ? e.message : 'The image could not be read.' });
+        update(id, { status: 'error', error: e instanceof Error ? e.message : t('qrread.src.imgErr') });
       }
     }
-  }, [add, update]);
+  }, [add, update, t]);
 
   const readText = React.useCallback((value: string) => {
     if (!value) return;
     setWorkspace('workbench');
-    add({ name: 'Text', kind: 'text', status: 'done', readings: [{ text: value, bytes: new TextEncoder().encode(value), detection: null }] });
-  }, [add]);
+    add({ name: t('qrread.src.text'), kind: 'text', status: 'done', readings: [{ text: value, bytes: new TextEncoder().encode(value), detection: null }] });
+  }, [add, t]);
 
   const runExample = React.useCallback(async () => {
-    await readFiles([new File([await exampleImage()], 'Example codes', { type: 'image/png' })], 'example');
-  }, [readFiles]);
+    await readFiles([new File([await exampleImage()], t('qrread.src.exampleCodes'), { type: 'image/png' })], 'example');
+  }, [readFiles, t]);
 
   const onCamera = React.useCallback((hit: CameraHit) => {
     const time = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const id = add({ name: `Camera, ${time}`, kind: 'camera', status: 'done', previewUrl: hit.previewUrl, width: hit.width, height: hit.height, readings: hit.detections.map(reading) });
+    const id = add({ name: t('qrread.src.cameraAt', { time }), kind: 'camera', status: 'done', previewUrl: hit.previewUrl, width: hit.width, height: hit.height, readings: hit.detections.map(reading) });
     // Bring the new result into view (on a phone it is under the camera).
     requestAnimationFrame(() => document.getElementById(`source-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
-  }, [add]);
+  }, [add, t]);
 
   // Pasting anywhere on the page: an image is read, text goes to the text field (unless typed into a field).
   React.useEffect(() => {
@@ -179,12 +184,12 @@ export default function QrReader() {
       const files: File[] = [];
       for (const item of items) {
         const type = item.types.find((mt) => mt.startsWith('image/'));
-        if (type) files.push(new File([await item.getType(type)], 'Pasted image', { type }));
+        if (type) files.push(new File([await item.getType(type)], t('qrread.src.pastedImage'), { type }));
       }
       if (files.length) readFiles(files, 'image');
-      else setPasteNote('There is no picture on the clipboard. Copy an image or take a screenshot first.');
+      else setPasteNote(t('qrread.src.noClipboardImg'));
     } catch {
-      setPasteNote('This browser does not let the page read the clipboard from a button: press Ctrl+V (or ⌘V) instead.');
+      setPasteNote(t('qrread.src.noClipboardBtn'));
     }
   }
 
@@ -301,12 +306,12 @@ export default function QrReader() {
                 hidden={activeInputTab !== 'file'}
               >
                 <section className={styles.card} aria-labelledby="open-title">
-                  <h2 id="open-title">Images and PDFs</h2>
+                  <h2 id="open-title">{t('qrread.open.title')}</h2>
                   <div className={[styles.drop, dragging ? styles.dropActive : ''].filter(Boolean).join(' ')}>
-                    <p>Drop images or PDFs here, paste a picture with Ctrl+V, or choose a file below.</p>
+                    <p>{t('qrread.open.dropHint')}</p>
                     <div className={styles.controlRow}>
-                      <button type="button" className={styles.primaryButton} onClick={() => fileInput.current?.click()}>Choose files</button>
-                      <button type="button" className={styles.button} onClick={pasteButton}>Paste image</button>
+                      <button type="button" className={styles.primaryButton} onClick={() => fileInput.current?.click()}>{t('qrread.open.chooseFiles')}</button>
+                      <button type="button" className={styles.button} onClick={pasteButton}>{t('qrread.open.pasteImage')}</button>
                       <button type="button" className={styles.button} onClick={runExample}>{t('qrread.results.tryExample')}</button>
                     </div>
                     <input
@@ -321,7 +326,7 @@ export default function QrReader() {
                   </div>
                   <label className={styles.checkbox}>
                     <input type="checkbox" checked={formats === 'all'} onChange={(e) => setFormats(e.target.checked ? 'all' : 'qr')} />
-                    <span>Other barcodes too (Data Matrix, Aztec, PDF417, EAN, Code 128 and more)</span>
+                    <span>{t('qrread.open.otherBarcodes')}</span>
                   </label>
                 </section>
               </div>
@@ -346,8 +351,8 @@ export default function QrReader() {
                 hidden={activeInputTab !== 'text'}
               >
                 <section className={styles.card} aria-labelledby="text-title">
-                  <h2 id="text-title">Text</h2>
-                  <p className={styles.muted}>Paste raw payload text from another reader to inspect it with the same structured parsers.</p>
+                  <h2 id="text-title">{t('qrread.text.title')}</h2>
+                  <p className={styles.muted}>{t('qrread.text.hint')}</p>
                   <form onSubmit={(e) => { e.preventDefault(); readText(text); }}>
                     <textarea
                       className={styles.textarea}
@@ -355,10 +360,10 @@ export default function QrReader() {
                       onChange={(e) => setText(e.target.value)}
                       placeholder="WIFI:T:WPA;S:My network;P:password;;"
                       spellCheck={false}
-                      aria-label="Content of a code"
+                      aria-label={t('qrread.text.aria')}
                     />
                     <div className={styles.controlRow}>
-                      <button type="submit" className={styles.primaryButton} disabled={!text}>Read text</button>
+                      <button type="submit" className={styles.primaryButton} disabled={!text}>{t('qrread.text.readBtn')}</button>
                       {text && (
                         <button type="button" className={styles.button} onClick={() => setText('')}>
                           {t('common.clear')}
@@ -410,18 +415,20 @@ export default function QrReader() {
               </TeachingCallout>
 
               {joined.map((g) => (
-                <section key={`${g.id}/${g.size}`} className={styles.source} aria-label="Joined message">
+                <section key={`${g.id}/${g.size}`} className={styles.source} aria-label={t('qrread.joined.aria')}>
                   <header className={styles.sourceHead}>
-                    <h3>Message split over {g.size} codes</h3>
-                    <span className={styles.muted}>parity {g.id}</span>
+                    <h3>{t('qrread.joined.title', { size: g.size })}</h3>
+                    <span className={styles.muted}>{t('qrread.joined.parity', { id: g.id })}</span>
                   </header>
                   {g.complete ? (
-                    <ResultCard reading={{ text: g.text, bytes: g.bytes, detection: null }} label="Joined" what={`Joined from ${g.size} codes`} id={`joined-${g.id}`} />
+                    <ResultCard reading={{ text: g.text, bytes: g.bytes, detection: null }} label={t('qrread.joined.label')} what={t('qrread.joined.what', { size: g.size })} id={`joined-${g.id}`} />
                   ) : (
                     <p>
-                      Read {g.parts.filter(Boolean).length} of {g.size}: still missing{' '}
-                      {g.parts.map((p, i) => (p ? null : i + 1)).filter(Boolean).join(', ')}. Read the others (in any order,
-                      from any picture) to join the message.
+                      {t('qrread.joined.partial', {
+                        have: g.parts.filter(Boolean).length,
+                        size: g.size,
+                        missing: g.parts.map((p, i) => (p ? null : i + 1)).filter(Boolean).join(', '),
+                      })}
                     </p>
                   )}
                 </section>
@@ -446,41 +453,41 @@ export default function QrReader() {
 
             <div className={styles.guideGrid}>
               <section className={styles.card}>
-                <h2>Supported symbologies</h2>
+                <h2>{t('qrread.guide.symTitle')}</h2>
                 <ul className={styles.guideList}>
-                  <li><strong>QR Code Model 2</strong> — all versions (1–40), including Structured Append multi-symbol messages.</li>
-                  <li><strong>Micro QR Code</strong> — compact M1–M4 symbols with a single finder pattern.</li>
-                  <li><strong>rMQR Code</strong> — all 32 rectangular Micro QR sizes (ISO/IEC 23941).</li>
-                  <li><strong>QR Code Model 1</strong> — legacy versions 1–6 (versions 7+ are not supported by ZXing-C++).</li>
-                  <li><strong>Optional 1D &amp; 2D barcodes</strong> — enable &ldquo;Other barcodes too&rdquo; to decode Data Matrix, Aztec, PDF417, MaxiCode, EAN-13/8, UPC-A/E, Code 128, Code 39, ITF, and Codabar.</li>
+                  <li><strong>{t('qrread.guide.symQr2Strong')}</strong>{t('qrread.guide.symQr2')}</li>
+                  <li><strong>{t('qrread.guide.symMicroStrong')}</strong>{t('qrread.guide.symMicro')}</li>
+                  <li><strong>{t('qrread.guide.symRmqrStrong')}</strong>{t('qrread.guide.symRmqr')}</li>
+                  <li><strong>{t('qrread.guide.symQr1Strong')}</strong>{t('qrread.guide.symQr1')}</li>
+                  <li><strong>{t('qrread.guide.symOtherStrong')}</strong>{t('qrread.guide.symOther')}</li>
                 </ul>
               </section>
 
               <section className={styles.card}>
-                <h2>100% client-side WebAssembly</h2>
+                <h2>{t('qrread.guide.wasmTitle')}</h2>
                 <ul className={styles.guideList}>
-                  <li><strong>Zero uploads</strong> — images, screenshots, PDF pages, and camera video never leave your browser.</li>
-                  <li><strong>Self-hosted ZXing-C++ WASM</strong> — decoded inside a dedicated Web Worker from local <code className={styles.mono}>/qr/</code> assets with zero CDN requests.</li>
-                  <li><strong>Local PDF rasterization</strong> — multi-page PDFs are rendered locally via self-hosted <code className={styles.mono}>pdf.js</code> before scanning each page.</li>
-                  <li><strong>Safe inspection first</strong> — links, Wi-Fi credentials, payment details, and raw bytes are displayed clearly so you can verify them before taking action.</li>
+                  <li><strong>{t('qrread.guide.wasmZeroStrong')}</strong>{t('qrread.guide.wasmZero')}</li>
+                  <li><strong>{t('qrread.guide.wasmZxingStrong')}</strong>{t('qrread.guide.wasmZxingPre')}<code className={styles.mono}>/qr/</code>{t('qrread.guide.wasmZxingPost')}</li>
+                  <li><strong>{t('qrread.guide.wasmPdfStrong')}</strong>{t('qrread.guide.wasmPdfPre')}<code className={styles.mono}>pdf.js</code>{t('qrread.guide.wasmPdfPost')}</li>
+                  <li><strong>{t('qrread.guide.wasmSafeStrong')}</strong>{t('qrread.guide.wasmSafe')}</li>
                 </ul>
               </section>
             </div>
 
             <section className={styles.card}>
-              <h2>Structured content parsers</h2>
+              <h2>{t('qrread.guide.parsersTitle')}</h2>
               <div className={styles.guideGrid}>
                 <ul className={styles.guideList}>
-                  <li><strong>Wi-Fi</strong> (<code className={styles.mono}>WIFI:</code>) — SSID, security mode, hidden flag, masked password with reveal &amp; copy.</li>
-                  <li><strong>eSIM</strong> (<code className={styles.mono}>LPA:1$…</code>) — SM-DP+ address, matching ID, confirmation code flag, and OID.</li>
-                  <li><strong>Contacts &amp; Calendar</strong> — vCard (2.1 / 3.0 / 4.0), MeCard, and iCalendar (<code className={styles.mono}>VEVENT</code>) with downloadable <code className={styles.mono}>.vcf</code> / <code className={styles.mono}>.ics</code> files.</li>
-                  <li><strong>Links, Email, SMS &amp; Geo</strong> — HTTP/HTTPS URLs with safety checks, <code className={styles.mono}>mailto:</code>, <code className={styles.mono}>MATMSG:</code>, <code className={styles.mono}>SMSTO:</code>, and <code className={styles.mono}>geo:</code> coordinates.</li>
+                  <li><strong>{t('qrread.guide.pWifiStrong')}</strong> (<code className={styles.mono}>WIFI:</code>){t('qrread.guide.pWifi')}</li>
+                  <li><strong>{t('qrread.guide.pEsimStrong')}</strong> (<code className={styles.mono}>LPA:1$…</code>){t('qrread.guide.pEsim')}</li>
+                  <li><strong>{t('qrread.guide.pContactsStrong')}</strong>{t('qrread.guide.pContactsPre')}<code className={styles.mono}>VEVENT</code>{t('qrread.guide.pContactsMid')}<code className={styles.mono}>.vcf</code> / <code className={styles.mono}>.ics</code>{t('qrread.guide.pContactsPost')}</li>
+                  <li><strong>{t('qrread.guide.pLinksStrong')}</strong>{t('qrread.guide.pLinksPre')}<code className={styles.mono}>mailto:</code>, <code className={styles.mono}>MATMSG:</code>, <code className={styles.mono}>SMSTO:</code>{t('qrread.guide.pLinksAnd')}<code className={styles.mono}>geo:</code>{t('qrread.guide.pLinksPost')}</li>
                 </ul>
                 <ul className={styles.guideList}>
-                  <li><strong>Payments</strong> — European EPC SEPA credit transfer QR, Swiss QR bill (<code className={styles.mono}>SPC</code>) with IBAN/reference checks, and cryptocurrency URIs.</li>
-                  <li><strong>2FA / OTP</strong> — <code className={styles.mono}>otpauth://</code> and Google Authenticator migration exports (<code className={styles.mono}>otpauth-migration://</code>) with live TOTP codes computed via Web Crypto.</li>
-                  <li><strong>Industry &amp; Travel</strong> — GS1 Digital Link / element strings, Matter smart-home onboarding (<code className={styles.mono}>MT:</code>), and IATA BCBP boarding passes.</li>
-                  <li><strong>Encrypted text</strong> — AES-GCM payloads generated on this site&rsquo;s QR Code Generator can be decrypted right inside the result card.</li>
+                  <li><strong>{t('qrread.guide.pPayStrong')}</strong>{t('qrread.guide.pPayPre')}<code className={styles.mono}>SPC</code>{t('qrread.guide.pPayPost')}</li>
+                  <li><strong>{t('qrread.guide.pOtpStrong')}</strong>{t('qrread.guide.pOtpPre')}<code className={styles.mono}>otpauth://</code>{t('qrread.guide.pOtpMid')}<code className={styles.mono}>otpauth-migration://</code>{t('qrread.guide.pOtpPost')}</li>
+                  <li><strong>{t('qrread.guide.pIndStrong')}</strong>{t('qrread.guide.pIndPre')}<code className={styles.mono}>MT:</code>{t('qrread.guide.pIndPost')}</li>
+                  <li><strong>{t('qrread.guide.pEncStrong')}</strong>{t('qrread.guide.pEnc')}</li>
                 </ul>
               </div>
             </section>
@@ -488,7 +495,7 @@ export default function QrReader() {
         </div>
       </main>
 
-      {dragging && <div className={styles.dropOverlay} aria-hidden>Drop images or PDFs to scan</div>}
+      {dragging && <div className={styles.dropOverlay} aria-hidden>{t('qrread.open.dropOverlay')}</div>}
     </div>
   );
 }

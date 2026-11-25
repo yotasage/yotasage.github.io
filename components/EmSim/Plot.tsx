@@ -12,6 +12,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { PLOT_U, bandPath, extent, frac, linePath, niceAxis, readAt, stepCursor, tickText, ticks, valueAt } from '../../lib/emsim/plot';
 import type { Axis, Scale } from '../../lib/emsim/plot';
+import { useI18n } from '../../lib/ui/i18n';
 import css from '../../styles/EmSimTools.module.css';
 import Calm from './Calm';
 
@@ -40,6 +41,7 @@ interface Props {
 const H = 168, ML = 50, MR = 12, MT = 8, MB = 22;
 
 function Plot({ name, title, xs, series, xDomain, xLabel, marker, cursor, onCursor, readout, xScale, lines, fadeFrom, stale }: Props) {
+  const { t } = useI18n();
   const box = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(0);
   useEffect(() => {
@@ -84,7 +86,7 @@ function Plot({ name, title, xs, series, xDomain, xLabel, marker, cursor, onCurs
   };
   const text = readout(cursor);
   const values = series.map((s) => readAt(xs, s.ys, cursor));
-  const t = `translate(${ML} ${MT}) scale(${pw / PLOT_U} ${ph / PLOT_U})`;
+  const tf = `translate(${ML} ${MT}) scale(${pw / PLOT_U} ${ph / PLOT_U})`;
   return (
     <figure className={css.plot} data-plot={name} data-stale={stale ? 'true' : undefined}>
       <figcaption className={css.plotTitle}>
@@ -100,7 +102,7 @@ function Plot({ name, title, xs, series, xDomain, xLabel, marker, cursor, onCurs
         className={css.plotBox}
         tabIndex={0}
         role="slider"
-        aria-label={`Cursor on the plot of ${title}`}
+        aria-label={t('em.plot.cursorAria', { title })}
         aria-valuemin={xs[0]}
         aria-valuemax={xs[xs.length - 1]}
         aria-valuenow={Number.isFinite(cursor) ? cursor : undefined}
@@ -131,7 +133,7 @@ function Plot({ name, title, xs, series, xDomain, xLabel, marker, cursor, onCurs
                   <text x={ML + pw - 4} y={py(l.y) - 3} className={css.refText}>{l.name}</text>
                 </g>
               ))}
-              <g transform={t}>
+              <g transform={tf}>
                 {paths.map((p, i) => p.band && <path key={`b${i}`} d={p.band} className={css.band} style={{ fill: SERIES_COLOURS[i % SERIES_COLOURS.length] }} data-band={i} />)}
                 {paths.map((p, i) => <path key={`l${i}`} d={p.line} className={css.line} style={{ stroke: SERIES_COLOURS[i % SERIES_COLOURS.length] }} data-series={i} />)}
               </g>

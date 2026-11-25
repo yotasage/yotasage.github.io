@@ -13,6 +13,7 @@ import type { TraceKind } from '../../lib/emsim/structure';
 import type { LengthUnit } from '../../lib/emsim/units';
 import type { LineResults } from '../../lib/emsim/lines';
 import type { CornersResult, McResult } from '../../lib/emsim/vary';
+import { useI18n } from '../../lib/ui/i18n';
 import bibCss from '../../styles/Bibliography.module.css';
 import css from '../../styles/EmSimTheory.module.css';
 import type { FedCalc } from './theoryFeed';
@@ -54,6 +55,7 @@ const lhsOf = (t: { t: string; xs?: { t: string; v?: unknown }[] }): string | nu
  * (or a default) says what gives them.
  */
 export function Eq({ id, live, cite, need, via = false, waves = false, children }: { id: string; live: Live; cite: Cite; need?: string; via?: boolean; waves?: boolean; children?: React.ReactNode }) {
+  const { t: tr } = useI18n();
   const eq = EM_EQUATION_BY_ID.get(id);
   if (!eq) throw new Error(`Unknown equation "${id}" in the EM theory.`);
   const fits = eq.applies === 'any' || (eq.applies === 'line' ? live.n === 1 : live.n === 2);
@@ -86,11 +88,11 @@ export function Eq({ id, live, cite, need, via = false, waves = false, children 
   let note = '';
   if (!bound && eq.live) {
     // M4.3b: the via topics' equations take their numbers from the Via section's result.
-    const sec = via ? 'the Via section' : waves ? 'the Waves section' : 'the Trace section';
-    if (waves) note = live.n ? need ?? 'Not filled in for this structure.' : 'With numbers once the Waves section has its estimate.';
-    else if (!fits && eq.applies === 'pair') note = `With numbers when ${sec} shows a pair.`;
-    else if (!fits && eq.applies === 'line') note = `With numbers when ${sec} shows a single ${via ? 'via' : 'trace'}.`;
-    else note = live.n ? need ?? `Not filled in for this ${via ? 'via' : 'structure'}.` : `With numbers once ${sec} has solved.`;
+    const sec = tr(via ? 'em.th2.kit.secVia' : waves ? 'em.th2.kit.secWaves' : 'em.th2.kit.secTrace');
+    if (waves) note = live.n ? need ?? tr('em.th2.kit.notFilledStruct') : tr('em.th2.kit.wavesWait');
+    else if (!fits && eq.applies === 'pair') note = tr('em.th2.kit.pairWait', { sec });
+    else if (!fits && eq.applies === 'line') note = tr('em.th2.kit.lineWait', { sec, thing: tr(via ? 'em.th2.kit.via' : 'em.th2.kit.trace') });
+    else note = live.n ? need ?? tr(via ? 'em.th2.kit.notFilledVia' : 'em.th2.kit.notFilledStruct') : tr('em.th2.kit.solvedWait', { sec });
   }
   return (
     <div className={css.eq} data-eq={id} data-live={bound ? 'true' : 'false'} data-scope={via ? 'via' : waves ? 'waves' : undefined}>

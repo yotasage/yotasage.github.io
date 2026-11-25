@@ -73,15 +73,20 @@ export default function Viewer3DPage() {
             <article className={styles.guideCard}>
               <h3>{t('viewer3d.guide.formatsTitle')}</h3>
               <dl className={styles.formatList}>
-                {FORMAT_GROUPS.map((g) => (
-                  <div key={g.title} className={styles.formatItem}>
-                    <dt>{g.title}</dt>
-                    <dd>
-                      {g.formats}
-                      {g.note && <small>{g.note}</small>}
-                    </dd>
-                  </div>
-                ))}
+                {FORMAT_GROUPS.map((g, idx) => {
+                  const titleKeys = ['viewer3d.fmt.cadTitle', 'viewer3d.fmt.meshTitle', 'viewer3d.fmt.sceneTitle', 'viewer3d.fmt.pointTitle'] as const;
+                  const titleText = titleKeys[idx] ? t(titleKeys[idx]) : g.title;
+                  const noteText = idx === 0 && g.note ? t('viewer3d.fmt.cadNote') : g.note;
+                  return (
+                    <div key={g.title} className={styles.formatItem}>
+                      <dt>{titleText}</dt>
+                      <dd>
+                        {g.formats}
+                        {noteText && <small>{noteText}</small>}
+                      </dd>
+                    </div>
+                  );
+                })}
               </dl>
             </article>
 
@@ -89,23 +94,52 @@ export default function Viewer3DPage() {
               <article className={styles.guideCard}>
                 <h3>{t('viewer3d.guide.controlsTitle')}</h3>
                 <ul className={styles.guideList}>
-                  <li><strong>Orbit:</strong> Drag with left mouse button (or one finger on touch screens).</li>
-                  <li><strong>Pan:</strong> Right-drag or Shift-drag (or two-finger drag on touch).</li>
-                  <li><strong>Zoom:</strong> Scroll wheel or pinch gesture.</li>
-                  <li><strong>Pivot focus:</strong> Double-click / double-tap any point on the model to orbit around it.</li>
-                  <li><strong>Standard views:</strong> Use <code>Fit</code>, <code>Isometric</code>, <code>Front</code>, <code>Top</code>, <code>Right</code>, or click an axis on the orientation gizmo.</li>
-                  <li><strong>Projection:</strong> Toggle <code>Orthographic</code> to remove perspective foreshortening when checking alignment.</li>
+                  <li><strong>{t('viewer3d.guide.orbitStrong')}</strong>{t('viewer3d.guide.orbitBody')}</li>
+                  <li><strong>{t('viewer3d.guide.panStrong')}</strong>{t('viewer3d.guide.panBody')}</li>
+                  <li><strong>{t('viewer3d.guide.zoomStrong')}</strong>{t('viewer3d.guide.zoomBody')}</li>
+                  <li><strong>{t('viewer3d.guide.pivotStrong')}</strong>{t('viewer3d.guide.pivotBody')}</li>
+                  <li>
+                    <strong>{t('viewer3d.guide.viewsStrong')}</strong>
+                    {t('viewer3d.guide.viewsPre')}
+                    <code>{t('viewer3d.ws.fit')}</code>, <code>{t('viewer3d.ws.viewIso')}</code>, <code>{t('viewer3d.ws.viewFront')}</code>, <code>{t('viewer3d.ws.viewTop')}</code>, <code>{t('viewer3d.ws.viewRight')}</code>
+                    {t('viewer3d.guide.viewsPost')}
+                  </li>
+                  <li>
+                    <strong>{t('viewer3d.guide.projStrong')}</strong>
+                    {t('viewer3d.guide.projPre')}
+                    <code>{t('viewer3d.ws.ortho')}</code>
+                    {t('viewer3d.guide.projPost')}
+                  </li>
                 </ul>
               </article>
 
               <article className={styles.guideCard}>
                 <h3>{t('viewer3d.guide.toolsTitle')}</h3>
                 <ul className={styles.guideList}>
-                  <li><strong>Section cuts:</strong> Slice along X, Y, or Z and drag the slider to inspect internal walls; cut interiors highlight in orange.</li>
-                  <li><strong>Point-to-point measure:</strong> Enable <code>Measure</code> and click two points on the surface to read total distance and ΔX / ΔY / ΔZ.</li>
-                  <li><strong>Multi-file comparison:</strong> Use <code>Add files</code> to open multiple models together and spread them apart in <code>Positions</code>.</li>
-                  <li><strong>Part tree &amp; statistics:</strong> Inspect bounding box, triangle count, surface area, and closed-mesh volume, and toggle individual parts.</li>
-                  <li><strong>Export:</strong> Save models as <code>STL</code>, <code>OBJ</code>, <code>PLY</code>, or <code>GLB</code>, or capture a PNG screenshot (optionally transparent).</li>
+                  <li><strong>{t('viewer3d.guide.secStrong')}</strong>{t('viewer3d.guide.secBody')}</li>
+                  <li>
+                    <strong>{t('viewer3d.guide.measStrong')}</strong>
+                    {t('viewer3d.guide.measPre')}
+                    <code>{t('viewer3d.ws.measure')}</code>
+                    {t('viewer3d.guide.measPost')}
+                  </li>
+                  <li>
+                    <strong>{t('viewer3d.guide.multiStrong')}</strong>
+                    {t('viewer3d.guide.multiPre')}
+                    <code>{t('viewer3d.ws.addFiles')}</code>
+                    {t('viewer3d.guide.multiMid')}
+                    <code>{t('viewer3d.card.positions')}</code>
+                    {t('viewer3d.guide.multiPost')}
+                  </li>
+                  <li><strong>{t('viewer3d.guide.treeStrong')}</strong>{t('viewer3d.guide.treeBody')}</li>
+                  <li>
+                    <strong>{t('viewer3d.guide.expStrong')}</strong>
+                    {t('viewer3d.guide.expPre')}
+                    <code>STL</code>, <code>OBJ</code>, <code>PLY</code>
+                    {t('viewer3d.guide.expOr')}
+                    <code>GLB</code>
+                    {t('viewer3d.guide.expPost')}
+                  </li>
                 </ul>
               </article>
             </div>
