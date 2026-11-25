@@ -773,8 +773,8 @@ export async function runUnitChecks() {
     assert.equal(sizeBombRes.errorCode, 'ZIP_BOMB_SIZE');
   });
 
-  // 8. examples/: all 12 built-in examples valid & complete, with EN/NB strings
-  await check('examples/: 12 built-in examples have valid folders, entries, tags & EN/NB strings', () => {
+  // 8. examples/: all 13 built-in examples valid & complete, with EN/NB strings
+  await check('examples/: 13 built-in examples have valid folders, entries, tags & EN/NB strings', () => {
     const requiredIds = [
       'hello',
       'input_colors',
@@ -788,6 +788,7 @@ export async function runUnitChecks() {
       'html_preview',
       'asyncio_gather',
       'network_probe',
+      'install_package',
     ];
     assert.deepEqual(
       PYTHON_EXAMPLES.map((ex) => ex.id),

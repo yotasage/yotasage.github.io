@@ -1,5 +1,6 @@
 // Trusted security modals rendered strictly outside program-output containers (security.md §4 & §7).
-// Covers W1 (first visit), W4 (on-load blocking network confirmation), W7 (fail-closed CSP), and W8 (external link).
+// Covers W1 (first visit), W4 (on-load blocking network confirmation), W6 (install from PyPI), W7 (fail-closed
+// CSP), and W8 (external link).
 
 import React, { useEffect, useId, useRef, useState } from 'react';
 
@@ -286,6 +287,69 @@ export function W8ExternalLinkDialog({
           data-testid="python-w8-open"
         >
           {t('python.w8Open')}
+        </button>
+      </div>
+    </ModalFrame>
+  );
+}
+
+export interface W6DialogItem {
+  readonly name: string;
+  /** '' when no exact version is known (a requirement with a range). */
+  readonly version: string;
+  readonly host: string;
+}
+
+/** W6: shown before any page-started install from PyPI (Package index mode only, D21/D24). */
+export function W6InstallDialog({
+  items,
+  onConfirm,
+  onCancel,
+}: {
+  items: readonly W6DialogItem[] | null;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const { t } = useI18n();
+  const titleId = useId();
+  const list = items ?? [];
+  const hosts = [...new Set(list.map((i) => i.host))].join(', ');
+  const versionOf = (v: string) => v || t('python.w6AnyVersion');
+
+  return (
+    <ModalFrame open={items !== null} titleId={titleId} dismissible onDismiss={onCancel} testId="python-w6-dialog">
+      <div className={styles.header}>
+        <h2 id={titleId} className={styles.title}>
+          {t('python.w6Title')}
+        </h2>
+      </div>
+      <div className={styles.body}>
+        {list.length === 1 ? (
+          <p className={styles.codeBox} data-testid="python-w6-question">
+            {t('python.w6One', { name: list[0].name, version: versionOf(list[0].version), host: list[0].host })}
+          </p>
+        ) : (
+          <>
+            <p className={styles.paragraph} data-testid="python-w6-question">
+              {t('python.w6Many', { host: hosts })}
+            </p>
+            <ul className={`${styles.codeBox} ${styles.codeList}`} data-testid="python-w6-list">
+              {list.map((i) => (
+                <li key={`${i.name}@${i.version}`}>
+                  {i.name} ({versionOf(i.version)})
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        <p className={styles.calloutWarn}>{t('python.w6Body')}</p>
+      </div>
+      <div className={styles.actions}>
+        <button type="button" className={styles.secondaryBtn} onClick={onCancel} data-testid="python-w6-cancel">
+          {t('python.cancel')}
+        </button>
+        <button type="button" className={styles.primaryBtn} onClick={onConfirm} data-testid="python-w6-install">
+          {t('python.w6Install')}
         </button>
       </div>
     </ModalFrame>

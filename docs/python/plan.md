@@ -5,7 +5,7 @@
 | Page | `/python/main` (`pages/python/main.tsx`) |
 | Branch | `python` (one commit per step; agents never push) |
 | Written | 2026-11-23, from `README.md`, `CLAUDE.md` and `docs/agent-workflow.md`; the network policy and security part were added the same day. The other docs and the code were **not** read; step S0 reads what it needs |
-| Status | v1 complete! Q1–Q8 resolved; S0–S3, S5, S6, P1–P4, E1a/E1b, P5r, P5a and P5b complete (2026-11-25). Phase 2 (packages) under way: P6 (Packages panel) next |
+| Status | v1 complete! Q1–Q8 resolved; S0–S3, S5, S6, P1–P4, E1a/E1b, P5r, P5a, P5b and P6 complete (2026-11-25). Phase 2 (packages) done: S4 (display transport spike) next |
 
 This plan replaces an earlier draft that was written without access to the repo. Where the two differ, this one is right.
 
@@ -105,7 +105,7 @@ Ask before the named step; do not guess.
 | P5r | Packages research | Done (notes-P5.md) |
 | P5a | Packages: install engine | Done (`notes-P5a.md`) |
 | P5b | Packages: manifest, wheels, restore | Done (`notes-P5b.md`) |
-| P6 | Packages: page | Not started |
+| P6 | Packages: page | Done (Packages tab, W6, `ui-packages-checks.mjs`) |
 | S4 | Display transport spike | Not started |
 | P7, P8 | Display: engine, page | Not started |
 | P9 to P11 | Widget surface, tkinter subset, turtle (after go/no-go gate post-P8) | Not started |

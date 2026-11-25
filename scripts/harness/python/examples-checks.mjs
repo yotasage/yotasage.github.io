@@ -167,9 +167,16 @@ export async function runExamplesChecks(browserName, browser, { primaryOrigin, r
   try {
     const ids = await page.evaluate(() => window.__pythonHarness.examples.map((e) => e.id));
 
-    await record(browserName, name('12 examples exposed on /python/harness'), async () => {
-      if (ids.length !== 12) return `expected 12 examples, got ${ids.length}: ${ids.join(', ')}`;
+    await record(browserName, name('13 examples exposed on /python/harness'), async () => {
+      if (ids.length !== 13) return `expected 13 examples, got ${ids.length}: ${ids.join(', ')}`;
       return true;
+    });
+
+    await record(browserName, name('install_package in Off prints the steps to add rich (no crash, no install)'), async () => {
+      const r = await runExample(page, 'install_package');
+      return expectOk(r, 'install_package')
+        || expectMarkers(r.stdout, ['rich is not installed yet. To add it:', 'Open the Packages tab', 'press Run again'])
+        || (r.stdout.includes('Planets') ? 'printed the table without rich installed' : true);
     });
 
     await record(browserName, name('hello prints greeting & squares'), async () => {

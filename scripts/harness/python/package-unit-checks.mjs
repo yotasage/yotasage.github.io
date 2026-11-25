@@ -1,4 +1,4 @@
-// Part A (P5b): pure-Node checks for lib/python/{packages,requirements}.ts: requirements parse table,
+// Part A (P5b, P6): pure-Node checks for lib/python/{packages,requirements,pypiResolve}.ts: requirements parse table,
 // PEP 440 specifiers, lock round trip, strict manifest validation and caps, wheel tag rules and
 // planRestore's skip rules per network mode.
 import assert from 'node:assert/strict';
@@ -29,6 +29,7 @@ import {
   planRequirements,
   satisfies,
 } from '../../../lib/python/requirements.ts';
+import { parseSimpleJson, pickVersion, resolvePypi } from '../../../lib/python/pypiResolve.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const LOCK = JSON.parse(readFileSync(resolve(here, '../../../public/pyodide/pyodide-lock.json'), 'utf8'));
@@ -293,5 +294,44 @@ export async function runPackageUnitChecks(check) {
     const confirmed = sum(planRestore(es, 'off', RUNTIME, { saved, bundled, confirmStale: new Set(['old', 'oldnative']) }));
     assert.ok(confirmed.items.includes('old:saved'));
     assert.equal(confirmed.skipped.oldnative, 'incompatible');
+  });
+
+  await check('pypiResolve.ts: picks the newest final version with a browser wheel; never asks PyPI outside Package index mode', async () => {
+    const f = (filename, yanked = false) => ({ filename, yanked });
+    const files = parseSimpleJson({
+      files: [
+        { filename: 'demo-2.0.0-cp311-cp311-manylinux_2_17_x86_64.whl' },
+        { filename: 'demo-1.5.0-py3-none-any.whl', yanked: 'broken' },
+        { filename: 'demo-1.4.0-py3-none-any.whl' },
+        { filename: 'demo-1.6.0rc1-py3-none-any.whl' },
+        { filename: 'demo-1.0.tar.gz' },
+        { filename: 42 },
+      ],
+    });
+    assert.equal(files.length, 4);
+    const pick = (spec) => pickVersion('demo', files, spec, RUNTIME);
+    assert.deepEqual(pick(''), { ok: true, name: 'demo', version: '1.4.0', requirement: 'demo==1.4.0', host: 'pypi.org', fileName: 'demo-1.4.0-py3-none-any.whl' });
+    assert.equal(pick('>=1.6.0rc1').version, '1.6.0rc1');
+    assert.deepEqual(pick('==2.0.0'), { ok: false, problem: 'no-browser-wheel', name: 'demo' });
+    assert.equal(pick('==9').problem, 'version-not-found');
+    assert.equal(pick('==9').info, '2.0.0, 1.6.0rc1, 1.4.0');
+    assert.equal(pickVersion('demo', [f('other-1.0-py3-none-any.whl')], '', RUNTIME).problem, 'not-found');
+    let asked = 0;
+    const fetchFn = async (url, init) => {
+      asked += 1;
+      assert.equal(url, 'https://pypi.org/simple/demo-pkg/');
+      assert.equal(init.credentials, 'omit');
+      return new Response(JSON.stringify({ files: [{ filename: 'demo_pkg-3.1-py3-none-any.whl' }] }), { status: 200 });
+    };
+    const req = { name: 'Demo_Pkg', extras: ['cli'], specifier: '' };
+    assert.equal((await resolvePypi(req, 'off', RUNTIME, fetchFn)).problem, 'network-off');
+    assert.equal((await resolvePypi(req, 'all', RUNTIME, fetchFn)).problem, 'needs-package-index');
+    assert.equal(asked, 0);
+    const ok = await resolvePypi(req, 'pkg', RUNTIME, fetchFn);
+    assert.equal(ok.requirement, 'demo-pkg[cli]==3.1');
+    const nf = await resolvePypi(req, 'pkg', RUNTIME, async () => new Response('nf', { status: 404 }));
+    assert.equal(nf.problem, 'not-found');
+    const down = await resolvePypi(req, 'pkg', RUNTIME, async () => { throw new TypeError('blocked'); });
+    assert.equal(down.problem, 'offline');
   });
 }

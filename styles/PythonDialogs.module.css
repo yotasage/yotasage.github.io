@@ -331,3 +331,13 @@
   flex-direction: column;
   gap: 8px;
 }
+
+/* W6 list of packages (more than one) */
+.codeList {
+  padding-left: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 40vh;
+  overflow: auto;
+}

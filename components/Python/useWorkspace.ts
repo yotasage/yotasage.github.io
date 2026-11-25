@@ -95,6 +95,8 @@ export function useWorkspace({ swSettled, canBootStorage, editorRef }: UseWorksp
   const [runCreatedPaths, setRunCreatedPaths] = useState<ReadonlySet<string>>(() => new Set());
   const [w5NoticeVisible, setW5NoticeVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // `storage.blocked`: another tab holds an older database version open (the v2 upgrade waits).
+  const [storageBlocked, setStorageBlocked] = useState(false);
   const [fileVersion, setFileVersion] = useState(0);
 
   const tabsRef = useRef<readonly EditorTabItem[]>(tabs);
@@ -278,12 +280,14 @@ export function useWorkspace({ swSettled, canBootStorage, editorRef }: UseWorksp
       capExceeded: (msg) => setErrorMessage(t('python.filesCapExceeded', { detail: msg })),
       quotaExceeded: (msg) => setErrorMessage(t('python.filesQuotaExceeded', { detail: msg })),
       error: (msg) => setErrorMessage(msg),
+      blocked: () => setStorageBlocked(true),
     });
 
     void (async () => {
       try {
         await client.open();
         if (cancelled) return;
+        setStorageBlocked(false);
 
         let list = await client.list();
         if (cancelled) return;
@@ -904,6 +908,7 @@ export function useWorkspace({ swSettled, canBootStorage, editorRef }: UseWorksp
     runCreatedPaths,
     w5NoticeVisible,
     errorMessage,
+    storageBlocked,
     fileVersion,
     attemptLock,
     dismissError: () => setErrorMessage(null),

@@ -2,7 +2,7 @@
 // Files picker). Loading an example only copies its files into the workspace; it never runs them.
 
 /** Category of an example, in the order the Examples tab lists them. */
-export const PYTHON_EXAMPLE_TAGS = ['basics', 'science', 'plots', 'files', 'async', 'network'] as const;
+export const PYTHON_EXAMPLE_TAGS = ['basics', 'science', 'plots', 'files', 'async', 'network', 'packages'] as const;
 
 export type PythonExampleTag = (typeof PYTHON_EXAMPLE_TAGS)[number];
 

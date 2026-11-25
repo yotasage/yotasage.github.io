@@ -188,13 +188,13 @@ export const en = {
   'python.w2Summary': 'Runs Python locally in your browser (Pyodide). Network access is off by default.',
   'python.w2WorksLabel': 'Works now (v1 complete):',
   'python.w2Works':
-    'CPython 3.14.2 via self-hosted Pyodide (NumPy, SciPy, pandas, SymPy, matplotlib, Pillow); persistent IndexedDB workspace with file tree, multi-tab Monaco Editor with autosave, drag-drop upload, safe ZIP import/export, Web Locks, and an Examples tab with 12 built-in programs; xterm.js Console & REPL; Soft/Force Stop and blocking input(); live Plots gallery (plt.show(), PIL.Image.show(), vector SVG/PDF export); hardened Image, SVG, PDF, CSV/TSV, JSON, and sandboxed HTML viewers; and network access blocked by default.',
+    'CPython 3.14.2 via self-hosted Pyodide (NumPy, SciPy, pandas, SymPy, matplotlib, Pillow); persistent IndexedDB workspace with file tree, multi-tab Monaco Editor with autosave, drag-drop upload, safe ZIP import/export, Web Locks, and an Examples tab with 13 built-in programs; a Packages tab (the bundled packages, PyPI installs in Package index mode after a confirmation, wheel uploads, kept packages restored at every start from saved copies even with the network off, requirements.txt and lock file import and export); xterm.js Console & REPL; Soft/Force Stop and blocking input(); live Plots gallery (plt.show(), PIL.Image.show(), vector SVG/PDF export); hardened Image, SVG, PDF, CSV/TSV, JSON, and sandboxed HTML viewers; and network access blocked by default.',
   'python.w2VerifiedLabel': 'Verified:',
   'python.w2Verified':
-    'Cross-browser engine, persistence, plots/viewers, security, and UI harnesses passing in Edge, Firefox, and WebKit (CSP enforcement, off-mode exfiltration battery, forged-message filtering, SVG/HTML viewer XSS checks, 100-plot Blob URL leak & 16-figure eviction cap checks, stop latency, reload/Force Stop persistence, and Web Locks).',
+    'Cross-browser engine, persistence, plots/viewers, packages, security, and UI harnesses passing in Edge, Firefox, and WebKit (package installs against canned PyPI replies, keep and restore, CSP enforcement, off-mode exfiltration battery, forged-message filtering, SVG/HTML viewer XSS checks, 100-plot Blob URL leak & 16-figure eviction cap checks, stop latency, reload/Force Stop persistence, and Web Locks).',
   'python.w2NotYetLabel': 'Planned next:',
   'python.w2NotYet':
-    'Package manager UI and wheel uploads (Phases 5–6) and virtual display/GUI support (Phase 7+). Note: pyodide.code.run_js is disabled by the worker CSP.',
+    'Virtual display/GUI support (Phase 7+). Note: pyodide.code.run_js is disabled by the worker CSP.',
   'python.w2MobileLabel': 'Phones & touch:',
   'python.w2MobileNote':
     'Monaco Editor has limited touch support on phones (no native drag selection handles, unreliable double-tap word selection, and virtual keyboards lack Ctrl+Enter / Ctrl+C). Use the on-screen Run, Stop, Clear, and Copy buttons.',
@@ -225,10 +225,7 @@ export const en = {
   'python.w5Notice':
     'Files you add (.py, .whl, .zip, .html) can run code when you press Run. Only add files you trust.',
 
-  // W6 — Package install confirmation (used before installing from PyPI)
-  'python.w6Body':
-    'Install package {name} ({version}) from {host}? A package runs code when it is imported. Only install packages you trust.',
-  'python.w6Install': 'Install',
+  // W6 (package install confirmation) is in python-packages.ts.
 
   // W7 — Fail-closed dialog when CSP cannot be confirmed in Off mode
   'python.w7Title': 'Network block not confirmed',
@@ -465,13 +462,13 @@ export const nb: Record<keyof typeof en, string> = {
   'python.w2Summary': 'Kjører Python lokalt i nettleseren din (Pyodide). Nettverkstilgang er avslått som standard.',
   'python.w2WorksLabel': 'Fungerer nå (v1 ferdig):',
   'python.w2Works':
-    'CPython 3.14.2 via egenhostet Pyodide (NumPy, SciPy, pandas, SymPy, matplotlib, Pillow); varig IndexedDB-arbeidsområde med filutforsker, flerfane-Monaco Editor med autolagring, dra-og-slipp, trygg ZIP-import/eksport, Web Locks og en Eksempler-fane med 12 innebygde programmer; xterm.js-konsoll og REPL; myk/tvungen stopp og blokkerende input(); plottgalleri (plt.show(), PIL.Image.show(), SVG/PDF-vektoreksport); sikre bilde-, SVG-, PDF-, CSV/TSV-, JSON- og sandkasse-HTML-visere; og nettverk blokkert som standard.',
+    'CPython 3.14.2 via egenhostet Pyodide (NumPy, SciPy, pandas, SymPy, matplotlib, Pillow); varig IndexedDB-arbeidsområde med filutforsker, flerfane-Monaco Editor med autolagring, dra-og-slipp, trygg ZIP-import/eksport, Web Locks og en Eksempler-fane med 13 innebygde programmer; en Pakker-fane (de innebygde pakkene, installering fra PyPI i pakkeindeks-modus etter en bekreftelse, opplasting av wheels, beholdte pakker gjenopprettet ved hver start fra lagrede kopier også uten nettverk, import og eksport av requirements.txt og låsefiler); xterm.js-konsoll og REPL; myk/tvungen stopp og blokkerende input(); plottgalleri (plt.show(), PIL.Image.show(), SVG/PDF-vektoreksport); sikre bilde-, SVG-, PDF-, CSV/TSV-, JSON- og sandkasse-HTML-visere; og nettverk blokkert som standard.',
   'python.w2VerifiedLabel': 'Verifisert:',
   'python.w2Verified':
-    'Motor-, lagrings-, plott/viser-, sikkerhets- og UI-tester på tvers av Edge, Firefox og WebKit (CSP-håndheving, utgående blokkering i Av-modus, filtrering av forfalskede meldinger, XSS-sjekk av SVG/HTML-visere, 100-plotts Blob URL- og 16-figurers minnegrense, stopp-latens, filoverlevelse og Web Locks).',
+    'Motor-, lagrings-, plott/viser-, pakke-, sikkerhets- og UI-tester på tvers av Edge, Firefox og WebKit (pakkeinstallering mot forhåndslagde PyPI-svar, beholde og gjenopprette, CSP-håndheving, utgående blokkering i Av-modus, filtrering av forfalskede meldinger, XSS-sjekk av SVG/HTML-visere, 100-plotts Blob URL- og 16-figurers minnegrense, stopp-latens, filoverlevelse og Web Locks).',
   'python.w2NotYetLabel': 'Planlagt videre:',
   'python.w2NotYet':
-    'Pakkebehandler-UI og wheel-opplasting (fase 5–6) og virtuell skjerm/GUI (fase 7+). Merk: pyodide.code.run_js er deaktivert av arbeiderens CSP.',
+    'Virtuell skjerm/GUI (fase 7+). Merk: pyodide.code.run_js er deaktivert av arbeiderens CSP.',
   'python.w2MobileLabel': 'Mobil og berøring:',
   'python.w2MobileNote':
     'Monaco Editor har begrenset berøringsstøtte på mobil (ingen vanlige markeringshåndtak, upålitelig dobbelttrykk for ordvalg, og skjermtastatur mangler Ctrl+Enter / Ctrl+C). Bruk knappene på skjermen for Kjør, Stopp, Tøm og Kopier.',
@@ -502,10 +499,7 @@ export const nb: Record<keyof typeof en, string> = {
   'python.w5Notice':
     'Filer du legger til (.py, .whl, .zip, .html) kan kjøre kode når du trykker Kjør. Legg bare til filer du stoler på.',
 
-  // W6 — Package install confirmation
-  'python.w6Body':
-    'Installere pakken {name} ({version}) fra {host}? En pakke kjører kode når den importeres. Installer bare pakker du stoler på.',
-  'python.w6Install': 'Installer',
+  // W6 (package install confirmation) is in python-packages.ts.
 
   // W7 — Fail-closed dialog
   'python.w7Title': 'Nettverksblokkering ikke bekreftet',

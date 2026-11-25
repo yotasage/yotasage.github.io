@@ -2,8 +2,8 @@
 // Coordinates SW registration, Web Locks single-tab ownership, Option 3B Storage Worker,
 // W1/W4/W5/W7/W8/W9 security gates, PythonWorkerClient lifecycle, File Tree, multi-tab
 // Monaco Editor with autosave, xterm.js Console + REPL, multi-file traceback jumps,
-// responsive desktop/phone layout, and the Workbench | Examples header tabs (the workbench stays
-// mounted while Examples shows, so the editor, terminal and a running program are kept).
+// responsive desktop/phone layout, and the Workbench | Examples | Packages header tabs (the workbench
+// stays mounted while another tab shows, so the editor, terminal and a running program are kept).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -42,6 +42,8 @@ import { extractWorkspaceJumps, TracebackJump } from './fileHelpers';
 import FileTree from './FileTree';
 import NetworkBanner from './NetworkBanner';
 import NetworkDialog from './NetworkDialog';
+import PackagesPanel, { MissingPackagesNotice } from './PackagesPanel';
+import { NetworkModeButton, tierTexts, W2StatusNote } from './PlaygroundNotes';
 import PlotsGallery from './PlotsGallery';
 import PythonEditor, { EditorErrorMarker, PythonEditorHandle } from './PythonEditor';
 import PythonTerminal, { PythonTerminalHandle } from './PythonTerminal';
@@ -52,6 +54,7 @@ import {
   W7FailClosedDialog,
   W8ExternalLinkDialog,
 } from './SecurityDialogs';
+import { usePackages } from './usePackages';
 import { usePlots } from './usePlots';
 import { useWorkspace } from './useWorkspace';
 
@@ -80,6 +83,7 @@ export default function PythonPlayground() {
   const [allowUnconfirmed, setAllowUnconfirmed] = useState(false);
   const [pendingExternalUrl, setPendingExternalUrl] = useState<string | null>(null);
   const [networkDialogOpen, setNetworkDialogOpen] = useState(false);
+  const [networkDialogPkg, setNetworkDialogPkg] = useState(false);
 
   // Runtime state
   const [clientState, setClientState] = useState<PythonClientState>('idle');
@@ -171,6 +175,17 @@ export default function PythonPlayground() {
   const canBootWorker =
     canBootStorage && workspace.lockStatus === 'acquired' && workspace.storageReady;
 
+  // Packages tab (P6): PackageRestorer is attached before the worker's first start.
+  const packages = usePackages({
+    mode: policy.mode,
+    running: clientState === 'running' || clientState === 'stopping',
+    locked: workspace.lockStatus === 'blocked',
+    visible: view === 'packages',
+  });
+  const { reportRun } = packages;
+  const attachPackagesRef = useRef(packages.attach);
+  attachPackagesRef.current = packages.attach;
+
   // 3. Instantiate and boot PythonWorkerClient strictly AFTER W1, W4, Web Lock & Storage boot!
   useEffect(() => {
     if (!canBootWorker) return;
@@ -180,6 +195,7 @@ export default function PythonPlayground() {
       storageClient: workspace.storageRef.current,
     });
     clientRef.current = client;
+    const detachPackages = attachPackagesRef.current(client, workspace.storageRef.current);
 
     const unsub = client.subscribe({
       state: (next, detail) => {
@@ -247,6 +263,7 @@ export default function PythonPlayground() {
 
     return () => {
       unsub();
+      detachPackages();
       client.dispose();
       clientRef.current = null;
     };
@@ -287,6 +304,7 @@ export default function PythonPlayground() {
 
   const handleCloseNetworkDialog = useCallback(() => {
     setNetworkDialogOpen(false);
+    setNetworkDialogPkg(false);
   }, []);
 
   const handleConfirmExternalLink = useCallback((url: string) => {
@@ -312,6 +330,7 @@ export default function PythonPlayground() {
     setTracebackJumps([]);
     setLastRunSummary('');
     setCrashReason(null);
+    reportRun(null);
     setOutputTab('console');
     if (isNarrow) {
       setMobilePane('output');
@@ -323,6 +342,7 @@ export default function PythonPlayground() {
         allowUnconfirmed,
       });
       setAwaitingStdin(false);
+      reportRun(res);
 
       if (res.forceStopped) {
         setLastRunSummary(t('python.runFinishedForceStopped'));
@@ -356,7 +376,7 @@ export default function PythonPlayground() {
       const msg = err instanceof Error ? err.message : String(err);
       consoleRef.current?.writeStderr(`${msg}\n`);
     }
-  }, [allowUnconfirmed, isNarrow, runTarget, t, workspace]);
+  }, [allowUnconfirmed, isNarrow, reportRun, runTarget, t, workspace]);
 
   const handleStop = useCallback(() => {
     void clientRef.current?.stop();
@@ -493,15 +513,6 @@ export default function PythonPlayground() {
     (clientState === 'ready' || (clientState === 'blocked' && allowUnconfirmed)) &&
     !isBlockedGate;
 
-  const networkBtnLabel =
-    policy.mode === 'off'
-      ? t('python.networkOffShort')
-      : policy.mode === 'pkg'
-        ? t('python.networkPkgShort')
-        : policy.mode === 'hosts'
-          ? t('python.networkHostsShort', { count: policy.hosts.length })
-          : t('python.networkAllShort');
-
   const statusLabel = (() => {
     if (isLockedByOtherTab) return t('python.filesReadOnlyLocked');
     if (policy.mode !== 'off' && !w4LoadApproved) return t('python.statusWaitingApproval');
@@ -523,19 +534,7 @@ export default function PythonPlayground() {
     }
   })();
 
-  const tierBadge =
-    activeTier === 1
-      ? t('python.tier1Badge')
-      : activeTier === 2
-        ? t('python.tier2Badge')
-        : t('python.tier3Badge');
-
-  const tierDesc =
-    activeTier === 1
-      ? t('python.tier1Desc')
-      : activeTier === 2
-        ? t('python.tier2Desc')
-        : t('python.tier3Desc');
+  const { badge: tierBadge, desc: tierDesc } = tierTexts(t, activeTier);
 
   const outputTabs = useMemo<readonly PillTabItem<OutputTab>[]>(
     () => [
@@ -571,8 +570,13 @@ export default function PythonPlayground() {
     () => [
       { id: 'workbench', label: t('python.workspaceWorkbench') },
       { id: 'examples', label: t('python.workspaceExamples') },
+      {
+        id: 'packages',
+        label: t('python.workspacePackages'),
+        badge: packages.restoreProblems > 0 && view !== 'packages' ? '!' : undefined,
+      },
     ],
-    [t],
+    [t, packages.restoreProblems, view],
   );
 
   const showFilesPane = isNarrow ? mobilePane === 'files' : showFilesSidebar;
@@ -589,64 +593,13 @@ export default function PythonPlayground() {
         onWorkspaceChange={handleViewChange}
         workspaceIdPrefix={PLAYGROUND_VIEW_ID_PREFIX}
         allowWideView
-        actions={
-          <button
-            type="button"
-            className={[
-              styles.headerNetBtn,
-              policy.mode === 'all'
-                ? styles.headerNetBtnDanger
-                : policy.mode !== 'off'
-                  ? styles.headerNetBtnWarn
-                  : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-            onClick={() => setNetworkDialogOpen(true)}
-            data-testid="python-network-btn"
-          >
-            <span
-              className={[
-                styles.netDot,
-                policy.mode === 'off'
-                  ? styles.netDotOff
-                  : policy.mode === 'all'
-                    ? styles.netDotDanger
-                    : styles.netDotWarn,
-              ].join(' ')}
-              aria-hidden="true"
-            />
-            <span>{networkBtnLabel}</span>
-          </button>
-        }
+        actions={<NetworkModeButton policy={policy} onClick={() => setNetworkDialogOpen(true)} />}
       />
 
       <NetworkBanner policy={policy} onReloadOff={handleReloadOff} />
 
       <main className={styles.main}>
-        {/* W2 honest status note (collapsible so workspace stays front-and-center) */}
-        <details className={styles.statusNote} data-testid="python-w2-note">
-          <summary className={styles.statusNoteSummary}>
-            <span className={styles.statusNoteLead}>{t('python.w2Summary')}</span>
-            <span className={styles.statusNoteBadge}>{tierBadge}</span>
-          </summary>
-          <div className={styles.statusNoteBody}>
-            <p>
-              <strong>{t('python.w2WorksLabel')}</strong> {t('python.w2Works')}
-            </p>
-            <p>
-              <strong>{t('python.w2VerifiedLabel')}</strong> {t('python.w2Verified')}
-            </p>
-            <p>
-              <strong>{t('python.w2NotYetLabel')}</strong> {t('python.w2NotYet')}
-            </p>
-            <p>
-              <strong>{t('python.w2MobileLabel')}</strong> {t('python.w2MobileNote')}
-            </p>
-            <p className={styles.statusNoteTier}>{tierDesc}</p>
-            <p className={styles.statusNotePromise}>{t('python.w2Promise')}</p>
-          </div>
-        </details>
+        <W2StatusNote tier={activeTier} />
 
         {/* Trusted second-tab Web Locks notice (outside program output) */}
         {isLockedByOtherTab && (
@@ -793,6 +746,17 @@ export default function PythonPlayground() {
               </span>
             </div>
           </div>
+
+          {/* Missing-package notice (trusted, outside program output; never installs by itself) */}
+          <MissingPackagesNotice
+            names={packages.missing}
+            onOpen={(name) => {
+              packages.setDraft(packages.installNameFor(name));
+              packages.reportRun(null);
+              handleViewChange('packages');
+            }}
+            onDismiss={() => packages.reportRun(null)}
+          />
 
           {/* Crash notice bar (outside program output) */}
           {crashReason && clientState === 'crashed' && (
@@ -1018,6 +982,17 @@ export default function PythonPlayground() {
           }
           onLoad={handleLoadExampleFromGallery}
         />
+
+        <PackagesPanel
+          hidden={view !== 'packages'}
+          pkg={packages}
+          mode={policy.mode}
+          storageBlocked={workspace.storageBlocked}
+          onSwitchToPackageIndex={() => {
+            setNetworkDialogPkg(true);
+            setNetworkDialogOpen(true);
+          }}
+        />
       </main>
 
       {/* Trusted security dialogs — always rendered outside program-output containers */}
@@ -1050,6 +1025,8 @@ export default function PythonPlayground() {
       <NetworkDialog
         open={networkDialogOpen}
         currentPolicy={policy}
+        initialMode={networkDialogPkg ? 'pkg' : undefined}
+        returnHash={networkDialogPkg ? '#packages' : ''}
         onClose={handleCloseNetworkDialog}
         onBeforeClear={async () => {
           plots.clearAllPlots();

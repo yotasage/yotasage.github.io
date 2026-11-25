@@ -20,6 +20,7 @@ import { chromium, firefox, webkit } from 'playwright-core';
 import { startHarnessServers } from './servers.mjs';
 import { runFilesUiSuite } from './ui-files-checks.mjs';
 import { runExamplesUiSuite } from './ui-examples-checks.mjs';
+import { runPackagesUiSuite } from './ui-packages-checks.mjs';
 import { runPlotsUiSuite } from './ui-plots-checks.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -189,6 +190,19 @@ async function waitTerminalContains(page, xtermTestId, needle, timeoutMs = 15000
 }
 
 async function runBrowserSuite(browserName, browser, baseUrl) {
+  const packagesSuite = () =>
+    runPackagesUiSuite(browserName, browser, baseUrl, {
+      record,
+      waitIsolatedMain,
+      waitMonacoAndPyodideReady,
+      attachErrorTracker,
+      setMockPypi: servers ? servers.setMockPypi : null,
+    });
+  // PYTHON_UI_ONLY=packages runs only the P6 Packages tab suite (while working on it).
+  if (process.env.PYTHON_UI_ONLY === 'packages') {
+    await packagesSuite();
+    return;
+  }
   // =========================================================================
   // Suite 1: Home entry, clean hard-navigation exit, /licenses, W1, W2,
   //          Monaco + Run + input() + Traceback + Stop + REPL, Themes, i18n
@@ -1014,6 +1028,9 @@ async function runBrowserSuite(browserName, browser, baseUrl) {
     waitMonacoAndPyodideReady,
     attachErrorTracker,
   });
+
+  // Suite 8: P6 Packages tab (install, W6, keep/restore, wheels, requirements, missing-import notice)
+  await packagesSuite();
 }
 
 let servers = null;

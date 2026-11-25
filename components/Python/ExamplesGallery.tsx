@@ -7,7 +7,7 @@ import { getPythonExampleTagKey, PYTHON_EXAMPLES } from '../../lib/python/exampl
 import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PythonExamples.module.css';
 
-export type PlaygroundView = 'workbench' | 'examples';
+export type PlaygroundView = 'workbench' | 'examples' | 'packages';
 
 /** Prefix of the header tab ids (`python-ws-tab-<view>`) and their panels (`python-ws-panel-<view>`). */
 export const PLAYGROUND_VIEW_ID_PREFIX = 'python-ws';
@@ -22,13 +22,14 @@ export function playgroundPanelId(view: PlaygroundView): string {
 
 /**
  * Which header tab is shown. Plain React state: a tab change never touches the URL (the network
- * mode lives in its query), and a `#examples` link opens the Examples tab.
+ * mode lives in its query), and a `#examples` or `#packages` link opens that tab.
  */
 export function usePlaygroundView(): [PlaygroundView, (view: PlaygroundView) => void] {
   const [view, setView] = useState<PlaygroundView>('workbench');
   useEffect(() => {
     const sync = () => {
       if (window.location.hash === '#examples') setView('examples');
+      else if (window.location.hash === '#packages') setView('packages');
       else if (window.location.hash === '#workbench') setView('workbench');
     };
     sync();

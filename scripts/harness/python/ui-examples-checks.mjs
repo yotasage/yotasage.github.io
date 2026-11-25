@@ -33,7 +33,7 @@ function readExampleIds() {
   if (!list) throw new Error('PYTHON_EXAMPLES not found in lib/python/examples/index.ts');
   const constNames = list[1].split(',').map((s) => s.trim()).filter(Boolean);
   const idByConst = new Map();
-  for (const file of ['basics.ts', 'science.ts', 'files.ts', 'network.ts']) {
+  for (const file of ['basics.ts', 'science.ts', 'files.ts', 'network.ts', 'packages.ts']) {
     const src = readFileSync(join(dir, file), 'utf8');
     for (const m of src.matchAll(/export const (\w+): PythonExample = \{\s*id: '([^']+)'/g)) {
       idByConst.set(m[1], m[2]);
@@ -142,9 +142,11 @@ export async function runExamplesUiSuite(
 
       await record(browserName, 'E1b Examples: header tabs ARIA (tablist/tab/tabpanel) & EN/NB labels', async () => {
         const s0 = await headerTabsState(page);
-        if (s0.length !== 2) return `expected 2 header tabs, got ${JSON.stringify(s0)}`;
+        if (s0.length !== 3) return `expected 3 header tabs, got ${JSON.stringify(s0)}`;
         const [wb, ex] = s0;
-        if (wb.label !== 'Workbench' || ex.label !== 'Examples') return `EN labels: ${wb.label} | ${ex.label}`;
+        if (wb.label !== 'Workbench' || ex.label !== 'Examples' || !s0[2].label.startsWith('Packages')) {
+          return `EN labels: ${s0.map((x) => x.label).join(' | ')}`;
+        }
         if (wb.selected !== 'true' || ex.selected !== 'false') return `initial aria-selected: ${JSON.stringify(s0)}`;
         for (const tab of s0) {
           if (!tab.id || tab.panelRole !== 'tabpanel' || tab.panelLabelledBy !== tab.id) {

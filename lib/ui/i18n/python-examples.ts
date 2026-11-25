@@ -22,6 +22,7 @@ export const en = {
   'python.exampleTag.files': 'Files',
   'python.exampleTag.async': 'Async',
   'python.exampleTag.network': 'Network',
+  'python.exampleTag.packages': 'Packages',
 
   // Examples
   'python.example.hello.title': 'Hello, Python',
@@ -48,6 +49,8 @@ export const en = {
   'python.example.asyncio_gather.desc': 'Runs three coroutines at the same time and collects their results.',
   'python.example.network_probe.title': 'Network access probe',
   'python.example.network_probe.desc': 'Tests which sites a program can reach under the current Network setting.',
+  'python.example.install_package.title': 'Install a package',
+  'python.example.install_package.desc': 'Uses rich from PyPI once you add it in the Packages tab, and says how until then.',
 } as const;
 
 export const nb: Record<keyof typeof en, string> = {
@@ -72,6 +75,7 @@ export const nb: Record<keyof typeof en, string> = {
   'python.exampleTag.files': 'Filer',
   'python.exampleTag.async': 'Asynkront',
   'python.exampleTag.network': 'Nettverk',
+  'python.exampleTag.packages': 'Pakker',
 
   // Examples
   'python.example.hello.title': 'Hei, Python',
@@ -98,4 +102,6 @@ export const nb: Record<keyof typeof en, string> = {
   'python.example.asyncio_gather.desc': 'Kjører tre korutiner samtidig og samler resultatene.',
   'python.example.network_probe.title': 'Nettverkstest',
   'python.example.network_probe.desc': 'Tester hvilke nettsteder et program når med gjeldende nettverksinnstilling.',
+  'python.example.install_package.title': 'Installer en pakke',
+  'python.example.install_package.desc': 'Bruker rich fra PyPI når du har lagt den til i Pakker-fanen, og forklarer hvordan inntil da.',
 };

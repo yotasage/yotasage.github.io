@@ -4,6 +4,7 @@
 import { asyncioExample, helloExample, inputColorsExample, modulesExample, softStopExample } from './basics';
 import { csvJsonExample, htmlExample, pdfExample, pillowExample } from './files';
 import { networkProbeExample } from './network';
+import { installPackageExample } from './packages';
 import { matplotlibExample, scienceExample } from './science';
 import type { PythonExample } from './types';
 
@@ -24,6 +25,7 @@ export const PYTHON_EXAMPLES: readonly PythonExample[] = [
   htmlExample,
   asyncioExample,
   networkProbeExample,
+  installPackageExample,
 ];
 
 export function getPythonExample(id: string): PythonExample | undefined {

@@ -17,6 +17,10 @@ export interface NetworkDialogProps {
   currentPolicy: NetworkPolicy;
   onClose: () => void;
   onBeforeClear?: () => void | Promise<void>;
+  /** Mode selected when the dialog opens (the Packages tab opens it on Package index), else the current one. */
+  initialMode?: NetworkMode;
+  /** Appended to the reload URL (e.g. `#packages`), so the same tab shows after the W4 reload. */
+  returnHash?: string;
 }
 
 interface ParsedHostsState {
@@ -29,6 +33,8 @@ export default function NetworkDialog({
   currentPolicy,
   onClose,
   onBeforeClear,
+  initialMode,
+  returnHash = '',
 }: NetworkDialogProps) {
   const { t } = useI18n();
   const titleId = useId();
@@ -59,7 +65,7 @@ export default function NetworkDialog({
 
   useEffect(() => {
     if (!open) return;
-    setSelectedMode(currentPolicy.mode);
+    setSelectedMode(initialMode ?? currentPolicy.mode);
     setHostsText(currentPolicy.hosts.join('\n'));
     setAllConfirmed(false);
     setClearConfirmOpen(false);
@@ -71,7 +77,7 @@ export default function NetworkDialog({
     return () => {
       prev?.focus?.();
     };
-  }, [open, currentPolicy]);
+  }, [open, currentPolicy, initialMode]);
 
   const parsedHosts = useMemo<ParsedHostsState>(() => {
     const tokens = hostsText
@@ -132,7 +138,7 @@ export default function NetworkDialog({
         ? { mode: 'hosts', hosts: parsedHosts.hosts }
         : { mode: selectedMode, hosts: [] };
     const url = buildNetworkPolicyUrl('/python/main', nextPolicy);
-    window.location.assign(url);
+    window.location.assign(`${url}${returnHash}`);
   };
 
   const handleClearAll = async () => {
