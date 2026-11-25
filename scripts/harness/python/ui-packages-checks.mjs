@@ -349,6 +349,68 @@ export async function runPackagesUiSuite(
         return true;
       });
 
+      await record(browserName, name('U1 bundled section: not-loaded list, filter, Load moves sympy, a run importing scipy moves scipy, 0 external requests'), async () => {
+        routed.length = 0;
+        await openPackages(page);
+        const bundledIds = () =>
+          page.evaluate(() =>
+            Array.from(document.querySelectorAll('[data-testid^="python-pkg-bundled-row-"]')).map((r) =>
+              r.getAttribute('data-testid').replace('python-pkg-bundled-row-', ''),
+            ),
+          );
+        await page.getByTestId('python-pkg-bundled-row-sympy').waitFor({ state: 'visible', timeout: 15000 });
+        const listed = await bundledIds();
+        if (listed.includes('six')) return 'six is loaded but listed as not loaded';
+        const loaded = await page.evaluate(() =>
+          Array.from(document.querySelectorAll('[data-testid^="python-pkg-row-"]')).map((r) => r.getAttribute('data-testid').replace('python-pkg-row-', '')),
+        );
+        if (listed.length + loaded.filter((n) => BUNDLED.includes(n)).length !== BUNDLED.length) {
+          return `bundled ${listed.join(',')} + loaded ${loaded.join(',')} != ${BUNDLED.length}`;
+        }
+        const order = await page.evaluate(() =>
+          Array.from(document.querySelectorAll('[data-testid^="python-pkg-bundled-row-"]')).map((r) => r.getAttribute('data-dependency')),
+        );
+        if (order.join(',') !== [...order].sort().join(',')) return `top-level rows not first: ${order.join(',')}`;
+        const heading = (await page.getByTestId('python-pkg-bundled').locator('h3').textContent()) || '';
+        if (!heading.includes(`Bundled, not loaded yet (${listed.length})`)) return `heading: ${heading}`;
+        const hint = (await page.getByTestId('python-pkg-bundled').textContent()) || '';
+        if (!hint.includes('loads them by itself when it imports them')) return 'auto-load hint missing';
+        await page.getByTestId('python-pkg-bundled-filter').fill('PIL');
+        await page.waitForTimeout(60);
+        const filteredIds = (await bundledIds()).join(',');
+        await page.getByTestId('python-pkg-bundled-filter').fill('');
+        if (filteredIds !== 'pillow') return `filter PIL: ${filteredIds}`;
+
+        await page.getByTestId('python-pkg-bundled-load-sympy').click();
+        const sympy = await waitRow(page, 'sympy', (r) => r && r.installed === 'true', 60000);
+        if (sympy.source !== 'bundled') return `sympy row ${JSON.stringify(sympy)}`;
+        await waitPanelIdle(page, 30000);
+        const after = await bundledIds();
+        if (after.includes('sympy') || after.includes('mpmath')) return `still listed after Load: ${after.join(',')}`;
+        if (await page.getByTestId('python-w6-dialog').isVisible().catch(() => false)) return 'W6 shown for a bundled package';
+
+        await page.locator('header [role="tablist"]').getByRole('tab', { name: 'Workbench' }).click();
+        await page.getByTestId('python-editor-wrap').waitFor({ state: 'visible', timeout: 5000 });
+        await setCode(page, ['import time', 'import scipy', 'print("scipy-ok", scipy.__version__)', 'time.sleep(2)', ''].join('\n'));
+        await page.getByTestId('python-run-btn').click();
+        await page.getByTestId('python-stop-btn').waitFor({ state: 'visible', timeout: 10000 });
+        await openPackages(page);
+        const during = await page.evaluate(() => {
+          const b = document.querySelector('[data-testid^="python-pkg-bundled-load-"]');
+          return { disabled: b?.disabled, why: document.querySelector('[data-testid="python-pkg-bundled-why"]')?.textContent || '' };
+        });
+        if (!during.disabled || !during.why) return `Load during a run: ${JSON.stringify(during)}`;
+        await waitRunIdle(page, 60000);
+        const scipy = await waitRow(page, 'scipy', (r) => r && r.installed === 'true', 30000);
+        if (scipy.source !== 'bundled') return `scipy row ${JSON.stringify(scipy)}`;
+        await page.waitForFunction(() => !document.querySelector('[data-testid="python-pkg-bundled-row-scipy"]'), { timeout: 10000 });
+        // xterm renders its rows only while the Workbench shows.
+        await page.locator('header [role="tablist"]').getByRole('tab', { name: 'Workbench' }).click();
+        await waitConsole(page, 'scipy-ok', 8000);
+        await openPackages(page);
+        return routed.length ? `external requests: ${routed.join(', ')}` : true;
+      }, '', 150000);
+
       await record(browserName, name('Light & Dark screenshots of the Packages tab (1000 px)'), async () => {
         mkdirSync(shotsDir, { recursive: true });
         await page.setViewportSize({ width: 1000, height: 900 });

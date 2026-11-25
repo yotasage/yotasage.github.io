@@ -154,29 +154,6 @@
   cursor: not-allowed;
 }
 
-/* Examples picker row */
-.examplesBar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
-  border-bottom: var(--ds-border-w) solid var(--ds-border);
-  background: var(--ds-surface);
-  flex-shrink: 0;
-}
-
-.examplesSelect {
-  flex: 1 1 auto;
-  min-width: 0;
-  padding: 5px 8px;
-  border-radius: 6px;
-  border: var(--ds-border-w) solid var(--ds-border-strong);
-  background: var(--ds-surface-solid);
-  color: var(--ds-ink);
-  font: inherit;
-  font-size: 12px;
-}
-
 /* Inline create/rename/move/delete form inside Files panel */
 .inlineForm {
   display: flex;
@@ -261,6 +238,28 @@
   font-size: 12px;
   color: var(--ds-ink-3);
   text-align: center;
+}
+
+.treeEmptyText {
+  margin: 0 0 6px;
+}
+
+.treeEmptyLink {
+  padding: 2px 4px;
+  border: none;
+  background: none;
+  color: var(--ds-accent);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.treeEmptyLink:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: var(--ds-focus-ring);
 }
 
 .treeRow {

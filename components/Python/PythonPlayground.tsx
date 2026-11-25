@@ -792,7 +792,7 @@ export default function PythonPlayground() {
                 onUploadFiles={workspace.uploadFiles}
                 onImportZip={workspace.importZip}
                 onExportZip={workspace.exportZip}
-                onLoadExample={workspace.loadExample}
+                onOpenExamples={() => handleViewChange('examples')}
               />
             )}
 

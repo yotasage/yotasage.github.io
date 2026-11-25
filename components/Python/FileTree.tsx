@@ -1,11 +1,11 @@
 // Persistent Workspace File Tree panel for /python/main (P3b).
 // Supports create file/folder, rename, move, delete, upload, recursive drag-drop (files & folders),
-// single-file download, safe ZIP import/export, built-in examples picker, W5 notice, and storage readout.
+// single-file download, safe ZIP import/export, W5 notice, and storage readout. Examples are loaded from the
+// Examples tab (the empty tree points there).
 // All dynamic strings render strictly as React text nodes (never innerHTML per security.md §4).
 
 import React, { useMemo, useRef, useState } from 'react';
 
-import { PYTHON_EXAMPLES } from '../../lib/python/examples';
 import {
   baseName,
   fileExtension,
@@ -44,7 +44,8 @@ export interface FileTreeProps {
   onUploadFiles: (files: readonly { path: string; file: File }[], dirs?: readonly string[]) => Promise<void>;
   onImportZip: (file: File) => Promise<void>;
   onExportZip: () => Promise<void>;
-  onLoadExample: (exampleId: string) => Promise<unknown>;
+  /** Shows the Examples header tab. */
+  onOpenExamples: () => void;
 }
 
 interface TreeNode {
@@ -130,7 +131,7 @@ export default function FileTree({
   onUploadFiles,
   onImportZip,
   onExportZip,
-  onLoadExample,
+  onOpenExamples,
 }: FileTreeProps) {
   const { t } = useI18n();
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
@@ -143,7 +144,6 @@ export default function FileTree({
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [dragOver, setDragOver] = useState(false);
-  const [selectedExample, setSelectedExample] = useState('');
 
   const tree = useMemo(() => buildTree(entries), [entries]);
 
@@ -275,18 +275,6 @@ export default function FileTree({
     setBusy(true);
     try {
       await onUploadFiles(extracted.files, extracted.dirs);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleExampleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const id = e.target.value;
-    setSelectedExample('');
-    if (!id || disabled || busy) return;
-    setBusy(true);
-    try {
-      await onLoadExample(id);
     } finally {
       setBusy(false);
     }
@@ -494,27 +482,6 @@ export default function FileTree({
         />
       </div>
 
-      {/* Examples picker */}
-      <div className={fileStyles.examplesBar}>
-        <select
-          className={fileStyles.examplesSelect}
-          aria-label={t('python.examplesAria')}
-          value={selectedExample}
-          disabled={disabled || busy}
-          data-testid="python-examples-select"
-          onChange={(e) => {
-            void handleExampleChange(e);
-          }}
-        >
-          <option value="">{t('python.examplesPlaceholder')}</option>
-          {PYTHON_EXAMPLES.map((ex) => (
-            <option key={ex.id} value={ex.id} title={t(ex.descriptionKey)}>
-              {t(ex.titleKey)}
-            </option>
-          ))}
-        </select>
-      </div>
-
       {/* W5 dismissible upload notice (rendered outside program output) */}
       {w5NoticeVisible && (
         <div
@@ -633,7 +600,12 @@ export default function FileTree({
       {/* File tree list */}
       <div className={fileStyles.treeScroll} data-testid="python-file-tree">
         {tree.length === 0 ? (
-          <div className={fileStyles.treeEmpty}>{t('python.filesEmpty')}</div>
+          <div className={fileStyles.treeEmpty} data-testid="python-tree-empty">
+            <p className={fileStyles.treeEmptyText}>{t('python.filesEmpty')}</p>
+            <button type="button" className={fileStyles.treeEmptyLink} onClick={onOpenExamples} data-testid="python-tree-open-examples">
+              {t('python.filesOpenExamples')}
+            </button>
+          </div>
         ) : (
           renderNodes(tree, 0)
         )}

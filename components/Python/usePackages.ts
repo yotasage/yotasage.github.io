@@ -48,6 +48,16 @@ export interface PackageRow {
   readonly info?: PackageInfo;
 }
 
+/** A package of our bundled index (pyodide-lock.json) that is not loaded in this worker session. */
+export interface BundledRow {
+  readonly name: string;
+  readonly version: string;
+  /** Import names when none is the package name (`PIL` for pillow), else empty. */
+  readonly imports: readonly string[];
+  /** Bundled packages that depend on it; empty for a top-level package (listed first). */
+  readonly neededBy: readonly string[];
+}
+
 /** An i18n key with its values (translated when rendered). */
 export interface Msg {
   readonly key: string;
@@ -553,6 +563,38 @@ export function usePackages({ mode, running, locked, visible }: UsePackagesOptio
     [exportEntries],
   );
 
+  // Bundled packages that are not loaded yet: top-level ones (nothing bundled depends on them) first.
+  const bundledRows = useMemo((): BundledRow[] => {
+    if (!bundled) return [];
+    const loaded = new Set(installed.map((p) => canonicalName(p.name)));
+    const neededBy = new Map<string, string[]>();
+    for (const b of bundled.values()) {
+      for (const d of b.depends) {
+        const n = canonicalName(d);
+        const list = neededBy.get(n);
+        if (list) list.push(b.name);
+        else neededBy.set(n, [b.name]);
+      }
+    }
+    const out: BundledRow[] = [];
+    for (const b of bundled.values()) {
+      if (loaded.has(b.name)) continue;
+      const imports = b.imports.some((i) => canonicalName(i) === b.name) ? [] : b.imports;
+      out.push({ name: b.name, version: b.version, imports, neededBy: (neededBy.get(b.name) ?? []).sort() });
+    }
+    return out.sort((a, b) => Number(a.neededBy.length > 0) - Number(b.neededBy.length > 0) || a.name.localeCompare(b.name));
+  }, [bundled, installed]);
+
+  /** Loads one bundled package now, between runs (same origin, so no W6 in any network mode). */
+  const loadBundled = useCallback(
+    async (name: string) => {
+      if (disabledReason || !bundled?.has(name)) return;
+      setNotice(null);
+      await doInstall([{ kind: 'bundled', name }], [name]);
+    },
+    [bundled, disabledReason, doInstall],
+  );
+
   const rows = useMemo((): PackageRow[] => {
     const byName = new Map<string, PackageRow>();
     const entries = new Map(manifest.map((e) => [e.name, e]));
@@ -615,6 +657,8 @@ export function usePackages({ mode, running, locked, visible }: UsePackagesOptio
     mode,
     rows,
     bundled,
+    bundledRows,
+    loadBundled,
     busy: busy ?? (workerInstalling ? msg('python.pkgBusyInstall') : null),
     notice,
     dismissNotice: () => setNotice(null),

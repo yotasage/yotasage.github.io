@@ -14,6 +14,14 @@ export const en = {
   'python.examplesTabNotReady': 'The workspace is still loading.',
   'python.examplesTabFailed': 'The example could not be loaded. The Files panel says why.',
   'python.examplesTabGridAria': 'Built-in examples',
+  'python.examplesSearchLabel': 'Search examples',
+  'python.examplesSearchPlaceholder': 'Title, description, tag or file name',
+  'python.examplesTagGroupAria': 'Show examples by category',
+  'python.examplesTagAll': 'All',
+  'python.examplesCountAll': 'All {total} examples are shown.',
+  'python.examplesCountFiltered': '{count} of {total} examples match.',
+  'python.examplesNoMatch': 'No examples match.',
+  'python.examplesClear': 'Clear search',
 
   // Tag labels (PYTHON_EXAMPLE_TAGS)
   'python.exampleTag.basics': 'Basics',
@@ -77,6 +85,14 @@ export const nb: Record<keyof typeof en, string> = {
   'python.examplesTabNotReady': 'Arbeidsområdet lastes fortsatt inn.',
   'python.examplesTabFailed': 'Eksemplet kunne ikke lastes inn. Filpanelet forteller hvorfor.',
   'python.examplesTabGridAria': 'Innebygde eksempler',
+  'python.examplesSearchLabel': 'Søk i eksempler',
+  'python.examplesSearchPlaceholder': 'Tittel, beskrivelse, kategori eller filnavn',
+  'python.examplesTagGroupAria': 'Vis eksempler etter kategori',
+  'python.examplesTagAll': 'Alle',
+  'python.examplesCountAll': 'Alle {total} eksemplene vises.',
+  'python.examplesCountFiltered': '{count} av {total} eksempler passer.',
+  'python.examplesNoMatch': 'Ingen eksempler passer.',
+  'python.examplesClear': 'Tøm søket',
 
   // Tag labels (PYTHON_EXAMPLE_TAGS)
   'python.exampleTag.basics': 'Grunnleggende',

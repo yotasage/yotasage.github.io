@@ -103,6 +103,19 @@ async function headerTabsState(page) {
   });
 }
 
+/** Ids of the example cards rendered (the gallery renders only the cards that match the filters). */
+async function shownIds(page) {
+  return page.evaluate(() =>
+    Array.from(document.querySelectorAll('[data-testid^="python-example-card-"]'))
+      .filter((c) => c.getClientRects().length > 0)
+      .map((c) => c.getAttribute('data-testid').replace('python-example-card-', '')),
+  );
+}
+
+async function countText(page) {
+  return ((await page.getByTestId('python-examples-count').textContent()) || '').trim();
+}
+
 async function noOverflow(page) {
   return page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
 }
@@ -205,6 +218,63 @@ export async function runExamplesUiSuite(
         const modules = cards.find((c) => c.id === 'modules');
         if (!modules.files.includes('modules/main.py, modules/helpers.py')) return 'modules card file list';
         return { ok: true, note: `${cards.length} cards` };
+      });
+
+      await record(browserName, 'U1 Examples: search by title, file name, accents, tag chip + text, empty state, NB', async () => {
+        const total = exampleIds.length;
+        const search = page.getByTestId('python-examples-search');
+        const info = await page.evaluate(() => {
+          const input = document.querySelector('[data-testid="python-examples-search"]');
+          const label = input && document.querySelector(`label[for="${input.id}"]`);
+          const count = document.querySelector('[data-testid="python-examples-count"]');
+          return { type: input?.type, label: label?.textContent?.trim(), live: count?.getAttribute('aria-live') };
+        });
+        if (info.type !== 'search' || info.label !== 'Search examples' || info.live !== 'polite') return `search box ${JSON.stringify(info)}`;
+        if ((await countText(page)) !== `All ${total} examples are shown.`) return `count: ${await countText(page)}`;
+        const expect = async (query, want, what) => {
+          await search.fill(query);
+          await page.waitForTimeout(60);
+          const got = (await shownIds(page)).join(',');
+          return got === want.join(',') ? null : `${what} "${query}": ${got} != ${want.join(',')}`;
+        };
+        let err = await expect('bouncing', ['bouncing_ball'], 'title word');
+        if (err) return err;
+        if ((await countText(page)) !== `1 of ${total} examples match.`) return `count: ${await countText(page)}`;
+        err = (await expect('helpers.py', ['modules'], 'file name')) || (await expect('BOUNCÍNG', ['bouncing_ball'], 'case/accent'));
+        if (err) return err;
+        err = await expect('', exampleIds, 'empty query');
+        if (err) return err;
+        await page.getByTestId('python-examples-chip-display').click();
+        if ((await page.getByTestId('python-examples-chip-display').getAttribute('aria-pressed')) !== 'true') return 'display chip not pressed';
+        err = await expect('numpy', ['numpy_fractal', 'fps_loop'], 'Display chip + text');
+        if (err) return err;
+        err = await expect('zzqx', [], 'no match');
+        if (err) return err;
+        if (!(await page.getByTestId('python-examples-empty').isVisible())) return 'empty state not shown';
+        if ((await countText(page)) !== `0 of ${total} examples match.`) return `count: ${await countText(page)}`;
+        await page.getByTestId('python-examples-clear').click();
+        if ((await search.inputValue()) !== '') return 'Clear left the query';
+        if ((await page.getByTestId('python-examples-chip-all').getAttribute('aria-pressed')) !== 'true') return 'Clear left a tag chip on';
+        if ((await shownIds(page)).length !== total) return 'Clear did not show every card';
+
+        const langBtn = page.locator('header button', { hasText: 'EN' }).filter({ hasText: 'NB' }).first();
+        await langBtn.click();
+        await page.waitForTimeout(150);
+        try {
+          err = (await expect('sprettende', ['bouncing_ball'], 'NB title'))
+            || (await expect('forhandsvisning', ['html_preview'], 'NB accent-free'))
+            || (await expect('skjerm', ['bouncing_ball', 'paint', 'numpy_fractal', 'fps_loop'], 'NB tag label'));
+          if (err) return err;
+          if ((await countText(page)) !== `4 av ${total} eksempler passer.`) return `NB count: ${await countText(page)}`;
+          const nbLabel = (await page.getByTestId('python-examples-chip-all').textContent())?.trim();
+          if (nbLabel !== 'Alle') return `NB All chip: ${nbLabel}`;
+        } finally {
+          await search.fill('');
+          await langBtn.click();
+          await page.waitForTimeout(150);
+        }
+        if (!(await page.evaluate(() => window.location.search === '' && window.location.hash === ''))) return `URL changed: ${page.url()}`;
+        return true;
       });
 
       await record(browserName, 'E1b Examples: Load modules opens main.py without running, then Run works', async () => {
@@ -374,6 +444,24 @@ export async function runExamplesUiSuite(
         const errs = errTracker.getErrors();
         return errs.length === 0 ? true : `errors: ${errs.join(' | ')}`;
       }, '', 70000);
+
+      await record(browserName, 'U1 Examples: phone 375x812 search and chips, 0 overflow', async () => {
+        await headerTab(page, 'Examples').click();
+        await page.getByTestId('python-examples-gallery').waitFor({ state: 'visible', timeout: 5000 });
+        await page.getByTestId('python-examples-search').fill('plot');
+        await page.waitForTimeout(80);
+        const ids = await shownIds(page);
+        if (!ids.includes('matplotlib_plot') || ids.length >= exampleIds.length) return `phone search: ${ids.join(',')}`;
+        await page.getByTestId('python-examples-chip-packages').click();
+        await page.getByTestId('python-examples-search').fill('');
+        await page.waitForTimeout(80);
+        const pk = (await shownIds(page)).join(',');
+        const overflow = await noOverflow(page);
+        await page.getByTestId('python-examples-chip-all').click();
+        if (pk !== 'install_package') return `phone chip: ${pk}`;
+        if (!overflow) return `overflow: ${await page.evaluate(() => `${document.documentElement.scrollWidth} > ${window.innerWidth}`)}`;
+        return true;
+      });
     } finally {
       errTracker.detach();
       await ctx.close();

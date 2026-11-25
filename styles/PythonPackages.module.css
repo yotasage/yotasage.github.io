@@ -632,6 +632,25 @@
   padding: 5px 12px;
 }
 
+/* Bundled, not loaded yet (BundledPackages.tsx) */
+.filterRow {
+  display: flex;
+  min-width: 0;
+}
+
+.filterRow .input {
+  flex: 1 1 auto;
+  max-width: 320px;
+}
+
+.bundledTable .versionCell {
+  width: 1%;
+}
+
+.bundledTable .actionsCell {
+  width: 1%;
+}
+
 /* Phones: rows become stacked cards */
 @media (max-width: 699px) {
   .card,
@@ -686,6 +705,21 @@
   .actionsCell {
     grid-area: actions;
     align-self: center;
+  }
+
+  .bundledTable tr {
+    grid-template-areas:
+      'name version'
+      'name actions';
+  }
+
+  .bundledTable .versionCell,
+  .bundledTable .actionsCell {
+    width: auto;
+  }
+
+  .filterRow .input {
+    max-width: none;
   }
 
   .switchText {

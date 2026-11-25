@@ -7,6 +7,7 @@ import { useCallback, useId, useRef, useState } from 'react';
 import type { NetworkMode } from '../../lib/python/network';
 import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PythonPackages.module.css';
+import BundledPackages from './BundledPackages';
 import { playgroundPanelId, playgroundTabId } from './ExamplesGallery';
 import { W6InstallDialog } from './SecurityDialogs';
 import type { Msg, PackageRow, PackagesController, PanelNotice } from './usePackages';
@@ -235,88 +236,97 @@ export default function PackagesPanel({ hidden, pkg, mode, storageBlocked, onSwi
       )}
 
       <div className={styles.layout}>
-        <section className={styles.card} aria-labelledby={`${ids}-list`}>
-          <h3 id={`${ids}-list`} className={styles.cardTitle}>
-            {t('python.pkgListTitle')}
-          </h3>
-          {pkg.confirmRemove && (
-            <div className={styles.confirm} role="alert" data-testid="python-pkg-remove-confirm">
-              <p>{t('python.pkgRemoveConfirm', { name: pkg.confirmRemove })}</p>
-              <div className={styles.actionsRow}>
-                <button type="button" className={styles.secondaryBtn} onClick={() => pkg.setConfirmRemove(null)} data-testid="python-pkg-remove-cancel">
-                  {t('python.cancel')}
-                </button>
-                <button
-                  type="button"
-                  className={styles.dangerBtn}
-                  disabled={blocked}
-                  onClick={() => void pkg.removeRow(pkg.confirmRemove as string)}
-                  data-testid="python-pkg-remove-yes"
-                >
-                  {t('python.pkgRemoveYes')}
-                </button>
+        <div className={styles.side}>
+          <section className={styles.card} aria-labelledby={`${ids}-list`}>
+            <h3 id={`${ids}-list`} className={styles.cardTitle}>
+              {t('python.pkgListTitle')}
+            </h3>
+            {pkg.confirmRemove && (
+              <div className={styles.confirm} role="alert" data-testid="python-pkg-remove-confirm">
+                <p>{t('python.pkgRemoveConfirm', { name: pkg.confirmRemove })}</p>
+                <div className={styles.actionsRow}>
+                  <button type="button" className={styles.secondaryBtn} onClick={() => pkg.setConfirmRemove(null)} data-testid="python-pkg-remove-cancel">
+                    {t('python.cancel')}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.dangerBtn}
+                    disabled={blocked}
+                    onClick={() => void pkg.removeRow(pkg.confirmRemove as string)}
+                    data-testid="python-pkg-remove-yes"
+                  >
+                    {t('python.pkgRemoveYes')}
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
-          {pkg.rows.length === 0 ? (
-            <p className={styles.note} data-testid="python-pkg-empty">
-              {t('python.pkgListEmpty')}
-            </p>
-          ) : (
-            <table className={styles.table} aria-label={t('python.pkgListAria')} data-testid="python-pkg-table">
-              <thead>
-                <tr>
-                  <th scope="col">{t('python.pkgColName')}</th>
-                  <th scope="col">{t('python.pkgColVersion')}</th>
-                  <th scope="col">{t('python.pkgColSource')}</th>
-                  <th scope="col">{t('python.pkgColKeep')}</th>
-                  <th scope="col">
-                    <span className={styles.srOnly}>{t('python.pkgColActions')}</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {pkg.rows.map((row) => (
-                  <tr key={row.name} data-testid={`python-pkg-row-${row.name}`} data-source={row.source} data-installed={row.installed}>
-                    <td className={styles.nameCell}>
-                      <code>{row.name}</code>
-                    </td>
-                    <td className={styles.versionCell}>{row.version}</td>
-                    <td className={styles.sourceCell}>
-                      <span className={styles.chip} data-source={row.source} data-testid={`python-pkg-source-${row.name}`}>
-                        {t(`python.pkgSrc.${row.source}`)}
-                      </span>
-                      {!row.installed && <span className={styles.dim}>{t('python.pkgNotLoaded')}</span>}
-                      {row.skip && (
-                        <span className={styles.skipReason} data-testid={`python-pkg-skip-${row.name}`}>
-                          {t(`python.pkgSkip.${row.skip}`)}
-                        </span>
-                      )}
-                    </td>
-                    <td className={styles.keepCell}>
-                      <label className={styles.switch} title={keepWhy(row)}>
-                        <input
-                          type="checkbox"
-                          role="switch"
-                          checked={row.kept}
-                          disabled={blocked || row.source === 'code' || row.keptAsDependency || (!row.kept && !row.installed)}
-                          onChange={(e) => void pkg.setKeep(row, e.target.checked)}
-                          aria-label={t('python.pkgKeepAria', { name: row.name })}
-                          data-testid={`python-pkg-keep-${row.name}`}
-                        />
-                        <span className={styles.switchTrack} aria-hidden="true" />
-                        <span className={styles.switchText}>{t('python.pkgColKeep')}</span>
-                      </label>
-                      {row.source === 'code' && <span className={styles.dim}>{t('python.pkgKeepCodeWhy')}</span>}
-                    </td>
-                    <td className={styles.actionsCell}>{renderActions(row)}</td>
+            )}
+            {pkg.rows.length === 0 ? (
+              <p className={styles.note} data-testid="python-pkg-empty">
+                {t('python.pkgListEmpty')}
+              </p>
+            ) : (
+              <table className={styles.table} aria-label={t('python.pkgListAria')} data-testid="python-pkg-table">
+                <thead>
+                  <tr>
+                    <th scope="col">{t('python.pkgColName')}</th>
+                    <th scope="col">{t('python.pkgColVersion')}</th>
+                    <th scope="col">{t('python.pkgColSource')}</th>
+                    <th scope="col">{t('python.pkgColKeep')}</th>
+                    <th scope="col">
+                      <span className={styles.srOnly}>{t('python.pkgColActions')}</span>
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-          <p className={styles.note}>{t('python.pkgKeepHint')}</p>
-        </section>
+                </thead>
+                <tbody>
+                  {pkg.rows.map((row) => (
+                    <tr key={row.name} data-testid={`python-pkg-row-${row.name}`} data-source={row.source} data-installed={row.installed}>
+                      <td className={styles.nameCell}>
+                        <code>{row.name}</code>
+                      </td>
+                      <td className={styles.versionCell}>{row.version}</td>
+                      <td className={styles.sourceCell}>
+                        <span className={styles.chip} data-source={row.source} data-testid={`python-pkg-source-${row.name}`}>
+                          {t(`python.pkgSrc.${row.source}`)}
+                        </span>
+                        {!row.installed && <span className={styles.dim}>{t('python.pkgNotLoaded')}</span>}
+                        {row.skip && (
+                          <span className={styles.skipReason} data-testid={`python-pkg-skip-${row.name}`}>
+                            {t(`python.pkgSkip.${row.skip}`)}
+                          </span>
+                        )}
+                      </td>
+                      <td className={styles.keepCell}>
+                        <label className={styles.switch} title={keepWhy(row)}>
+                          <input
+                            type="checkbox"
+                            role="switch"
+                            checked={row.kept}
+                            disabled={blocked || row.source === 'code' || row.keptAsDependency || (!row.kept && !row.installed)}
+                            onChange={(e) => void pkg.setKeep(row, e.target.checked)}
+                            aria-label={t('python.pkgKeepAria', { name: row.name })}
+                            data-testid={`python-pkg-keep-${row.name}`}
+                          />
+                          <span className={styles.switchTrack} aria-hidden="true" />
+                          <span className={styles.switchText}>{t('python.pkgColKeep')}</span>
+                        </label>
+                        {row.source === 'code' && <span className={styles.dim}>{t('python.pkgKeepCodeWhy')}</span>}
+                      </td>
+                      <td className={styles.actionsCell}>{renderActions(row)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            <p className={styles.note}>{t('python.pkgKeepHint')}</p>
+          </section>
+          <BundledPackages
+            total={pkg.bundled ? pkg.bundled.size : null}
+            rows={pkg.bundledRows}
+            disabledText={disabledText}
+            busy={pkg.busy !== null}
+            onLoad={(n) => void pkg.loadBundled(n)}
+          />
+        </div>
 
         <div className={styles.side}>
           <section className={styles.card} aria-labelledby={`${ids}-install`}>

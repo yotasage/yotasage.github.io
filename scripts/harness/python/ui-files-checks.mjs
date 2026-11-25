@@ -183,10 +183,23 @@ export async function runFilesUiSuite(
       return true;
     });
 
-    // P3-3: Load multi-file modules example from Examples picker -> Run succeeds
-    await record(browserName, 'P3 Files: load multi-file "modules" example & Run', async () => {
+    // U1: the Files panel has no example picker any more; examples load from the Examples tab.
+    await record(browserName, 'U1 Files: no example picker in the Files panel', async () => {
+      const panel = page.getByTestId('python-files-panel');
+      if (!(await panel.isVisible())) return 'Files panel not visible';
+      if (await page.getByTestId('python-examples-select').count()) return 'python-examples-select still rendered';
+      if (await panel.locator('select').count()) return `select elements in the Files panel: ${await panel.locator('select').count()}`;
+      return true;
+    });
+
+    // P3-3: Load multi-file modules example from the Examples tab -> Run succeeds
+    await record(browserName, 'P3 Files: load multi-file "modules" example (Examples tab) & Run', async () => {
       await page.getByTestId('python-console-clear').click();
-      await page.getByTestId('python-examples-select').selectOption('modules');
+      const tabs = page.locator('header [role="tablist"]');
+      await tabs.getByRole('tab', { name: 'Examples' }).click();
+      await page.getByTestId('python-examples-gallery').waitFor({ state: 'visible', timeout: 5000 });
+      await page.getByTestId('python-example-load-modules').click();
+      await page.getByTestId('python-editor-wrap').waitFor({ state: 'visible', timeout: 8000 });
       await page.getByTestId('python-tree-item-modules/helpers.py').waitFor({ state: 'visible', timeout: 5000 });
       await page.getByTestId('python-tab-modules/main.py').waitFor({ state: 'visible', timeout: 5000 });
 

@@ -1,9 +1,11 @@
 // Examples tab of the Python Playground: a card per built-in example (lib/python/examples/).
 // "Load in workbench" only copies the example's files into its own folder and opens the entry
-// file; running it is always a separate click on Run (click-to-run).
-import { useCallback, useEffect, useMemo, useState } from 'react';
+// file; running it is always a separate click on Run (click-to-run). A search box and tag chips
+// filter the cards (U1); that state is plain React state, never the URL (which carries ?net=).
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 
-import { getPythonExampleTagKey, PYTHON_EXAMPLES } from '../../lib/python/examples';
+import { getPythonExampleTagKey, PYTHON_EXAMPLE_TAGS, PYTHON_EXAMPLES } from '../../lib/python/examples';
+import type { PythonExampleTag } from '../../lib/python/examples';
 import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PythonExamples.module.css';
 
@@ -59,6 +61,20 @@ export function useHeaderHeightVar(): void {
   }, []);
 }
 
+const FOLD: Record<string, string> = { ø: 'o', æ: 'ae', œ: 'oe', ß: 'ss', đ: 'd', ł: 'l', ı: 'i' };
+
+/** Lower case without accents (å → a, é → e, ø → o), for case- and accent-insensitive search. */
+export function foldSearchText(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Mn}/gu, '')
+    .replace(/[øæœßđłı]/g, (c) => FOLD[c] ?? c);
+}
+
+/** Tags that at least one example has, in PYTHON_EXAMPLE_TAGS order. */
+const USED_TAGS: readonly PythonExampleTag[] = PYTHON_EXAMPLE_TAGS.filter((tag) => PYTHON_EXAMPLES.some((ex) => ex.tag === tag));
+
 export interface ExamplesGalleryProps {
   hidden: boolean;
   /** Why loading is not possible right now (another tab holds the workspace, still loading), or null. */
@@ -72,18 +88,41 @@ export default function ExamplesGallery({ hidden, disabledReason, onLoad }: Exam
   const [busyId, setBusyId] = useState<string | null>(null);
   const [failedId, setFailedId] = useState<string | null>(null);
 
+  const ids = useId();
+  const [query, setQuery] = useState('');
+  const [tagFilter, setTagFilter] = useState<PythonExampleTag | null>(null);
+
   const cards = useMemo(
     () =>
-      PYTHON_EXAMPLES.map((ex) => ({
-        id: ex.id,
-        tag: ex.tag,
-        title: t(ex.titleKey),
-        description: t(ex.descriptionKey),
-        tagLabel: t(getPythonExampleTagKey(ex.tag)),
-        files: Object.keys(ex.files).join(', '),
-      })),
+      PYTHON_EXAMPLES.map((ex) => {
+        const title = t(ex.titleKey);
+        const description = t(ex.descriptionKey);
+        const tagLabel = t(getPythonExampleTagKey(ex.tag));
+        const files = Object.keys(ex.files).join(', ');
+        return {
+          id: ex.id,
+          tag: ex.tag,
+          title,
+          description,
+          tagLabel,
+          files,
+          haystack: foldSearchText([title, description, tagLabel, files].join('\n')),
+        };
+      }),
     [t],
   );
+
+  // Every word of the query must appear somewhere in the card's text, in any order.
+  const words = useMemo(() => foldSearchText(query).split(/\s+/).filter(Boolean), [query]);
+  const shown = useMemo(
+    () => cards.filter((c) => (tagFilter === null || c.tag === tagFilter) && words.every((w) => c.haystack.includes(w))),
+    [cards, tagFilter, words],
+  );
+  const filtered = words.length > 0 || tagFilter !== null;
+  const clearFilters = useCallback(() => {
+    setQuery('');
+    setTagFilter(null);
+  }, []);
 
   const handleLoad = useCallback(
     async (id: string) => {
@@ -124,8 +163,66 @@ export default function ExamplesGallery({ hidden, disabledReason, onLoad }: Exam
         )}
       </div>
 
-      <ul className={styles.grid} aria-label={t('python.examplesTabGridAria')}>
-        {cards.map((card) => (
+      <div className={styles.filters} data-testid="python-examples-filters">
+        <div className={styles.searchRow}>
+          <label htmlFor={`${ids}-search`} className={styles.searchLabel}>
+            {t('python.examplesSearchLabel')}
+          </label>
+          <input
+            id={`${ids}-search`}
+            type="search"
+            className={styles.search}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t('python.examplesSearchPlaceholder')}
+            autoComplete="off"
+            spellCheck={false}
+            maxLength={100}
+            data-testid="python-examples-search"
+          />
+        </div>
+        <div className={styles.chips} role="group" aria-label={t('python.examplesTagGroupAria')}>
+          <button
+            type="button"
+            className={styles.chip}
+            aria-pressed={tagFilter === null}
+            onClick={() => setTagFilter(null)}
+            data-testid="python-examples-chip-all"
+          >
+            {t('python.examplesTagAll')}
+          </button>
+          {USED_TAGS.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              className={styles.chip}
+              data-tag={tag}
+              aria-pressed={tagFilter === tag}
+              onClick={() => setTagFilter((cur) => (cur === tag ? null : tag))}
+              data-testid={`python-examples-chip-${tag}`}
+            >
+              {t(getPythonExampleTagKey(tag))}
+            </button>
+          ))}
+        </div>
+        <p className={styles.count} role="status" aria-live="polite" data-testid="python-examples-count">
+          {filtered
+            ? t('python.examplesCountFiltered', { count: shown.length, total: cards.length })
+            : t('python.examplesCountAll', { total: cards.length })}
+        </p>
+      </div>
+
+      {shown.length === 0 && (
+        <div className={styles.empty} data-testid="python-examples-empty">
+          <p className={styles.emptyText}>{t('python.examplesNoMatch')}</p>
+          <button type="button" className={styles.clearBtn} onClick={clearFilters} data-testid="python-examples-clear">
+            {t('python.examplesClear')}
+          </button>
+        </div>
+      )}
+
+      <ul className={styles.grid} aria-label={t('python.examplesTabGridAria')} hidden={shown.length === 0}>
+        {shown.map((card) => (
           <li key={card.id} className={styles.card} data-testid={`python-example-card-${card.id}`}>
             <span className={styles.tag} data-tag={card.tag} data-testid={`python-example-tag-${card.id}`}>
               {card.tagLabel}

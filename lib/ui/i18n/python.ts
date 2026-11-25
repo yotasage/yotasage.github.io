@@ -135,7 +135,8 @@ export const en = {
 
   // Files panel, CRUD, drag-drop, ZIP, storage & Web Locks
   'python.filesTitle': 'Workspace files',
-  'python.filesEmpty': 'No files yet. Create a file, drop files here, or pick an example.',
+  'python.filesEmpty': 'No files yet. Create a file, drop files here, or load an example from the Examples tab.',
+  'python.filesOpenExamples': 'Open the Examples tab',
   'python.filesNewFile': '+ File',
   'python.filesNewFolder': '+ Folder',
   'python.filesUpload': 'Upload',
@@ -171,10 +172,6 @@ export const en = {
   'python.lockBannerDesc':
     'To prevent conflicting writes, autosave and file changes are paused in this tab while another tab owns the workspace. Close the other tab and click Check again to take over.',
   'python.lockBannerRetry': 'Check again',
-
-  // Built-in examples
-  'python.examplesPlaceholder': 'Load an example…',
-  'python.examplesAria': 'Load a built-in Python example',
 
   // W1 — First-visit blocking dialog
   'python.w1Title': 'Before you start',
@@ -409,7 +406,8 @@ export const nb: Record<keyof typeof en, string> = {
 
   // Files panel, CRUD, drag-drop, ZIP, storage & Web Locks
   'python.filesTitle': 'Arbeidsområdefiler',
-  'python.filesEmpty': 'Ingen filer ennå. Opprett en fil, slipp filer her, eller velg et eksempel.',
+  'python.filesEmpty': 'Ingen filer ennå. Opprett en fil, slipp filer her, eller last inn et eksempel fra Eksempler-fanen.',
+  'python.filesOpenExamples': 'Åpne Eksempler-fanen',
   'python.filesNewFile': '+ Fil',
   'python.filesNewFolder': '+ Mappe',
   'python.filesUpload': 'Last opp',
@@ -445,10 +443,6 @@ export const nb: Record<keyof typeof en, string> = {
   'python.lockBannerDesc':
     'For å unngå konflikter er autolagring og filendringer satt på pause i denne fanen mens en annen fane eier arbeidsområdet. Lukk den andre fanen og klikk Sjekk igjen for å ta over.',
   'python.lockBannerRetry': 'Sjekk igjen',
-
-  // Built-in examples
-  'python.examplesPlaceholder': 'Last inn et eksempel…',
-  'python.examplesAria': 'Last inn et innebygd Python-eksempel',
 
   // W1 — First-visit blocking dialog
   'python.w1Title': 'Før du begynner',
