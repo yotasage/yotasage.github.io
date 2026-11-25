@@ -106,6 +106,7 @@ const PythonTerminal = React.forwardRef<PythonTerminalHandle, PythonTerminalProp
     const [copied, setCopied] = useState(false);
     const [stdinInput, setStdinInput] = useState('');
     const [replInput, setReplInput] = useState('');
+    const [replContinuation, setReplContinuation] = useState(false);
 
     const writeRaw = useCallback((chunk: string) => {
       plainLogRef.current.push(stripAnsiForCopy(chunk));
@@ -122,6 +123,7 @@ const PythonTerminal = React.forwardRef<PythonTerminalHandle, PythonTerminalProp
     const printReplPrompt = useCallback(
       (continuation = false) => {
         replContinuationRef.current = continuation;
+        setReplContinuation(continuation);
         const prompt = continuation ? '... ' : '>>> ';
         writeRaw(`\x1b[36m${prompt}\x1b[0m`);
       },
@@ -649,7 +651,7 @@ const PythonTerminal = React.forwardRef<PythonTerminalHandle, PythonTerminalProp
             data-testid="python-repl-bar"
           >
             <span className={styles.replPromptLabel} aria-hidden="true">
-              {replContinuationRef.current ? '...' : '>>>'}
+              {replContinuation ? '...' : '>>>'}
             </span>
             <input
               type="text"

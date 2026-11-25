@@ -16,6 +16,7 @@ const ALLOWED_PREFIXES = [
   '/pyodide/',
   '/monaco/',
   '/fonts/',
+  '/flags/',
   '/_next/',
   '/favicon.ico',
   '/og/',

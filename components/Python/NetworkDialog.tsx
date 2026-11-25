@@ -16,6 +16,7 @@ export interface NetworkDialogProps {
   open: boolean;
   currentPolicy: NetworkPolicy;
   onClose: () => void;
+  onBeforeClear?: () => void;
 }
 
 interface ParsedHostsState {
@@ -27,6 +28,7 @@ export default function NetworkDialog({
   open,
   currentPolicy,
   onClose,
+  onBeforeClear,
 }: NetworkDialogProps) {
   const { t } = useI18n();
   const titleId = useId();
@@ -126,6 +128,7 @@ export default function NetworkDialog({
 
   const handleClearAll = async () => {
     setClearing(true);
+    onBeforeClear?.();
     await clearAllPythonData();
   };
 

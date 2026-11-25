@@ -128,6 +128,8 @@ export async function registerPythonServiceWorker(
     return { status: 'unsupported', reason: 'Service workers are not supported in this browser' };
   }
 
+  const hadControllerAtStart = Boolean(navigator.serviceWorker.controller);
+
   let reg: ServiceWorkerRegistration | undefined;
   try {
     reg = await navigator.serviceWorker.register(PYTHON_SW_PATH, {
@@ -141,6 +143,10 @@ export async function registerPythonServiceWorker(
   if (!reg) {
     return { status: 'blocked', reason: 'serviceWorker.register() returned undefined' };
   }
+
+  // A freshly installed SW (e.g. first visit or right after Clear all data unregistered the SW)
+  // must always be allowed one reload even if Chromium restores a pre-COOP sessionStorage snapshot.
+  const freshlyInstalled = !hadControllerAtStart && Boolean(reg.installing || reg.waiting);
 
   if (checkForUpdate) {
     try {
@@ -188,7 +194,7 @@ export async function registerPythonServiceWorker(
     return { status: 'not-isolated', reason: 'Reload skipped by caller' };
   }
 
-  if (!readReloadGuard()) {
+  if (freshlyInstalled || !readReloadGuard()) {
     writeReloadGuard(true);
     window.location.reload();
     return { status: 'reloading' };

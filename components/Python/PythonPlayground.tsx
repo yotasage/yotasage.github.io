@@ -656,14 +656,20 @@ export default function PythonPlayground() {
               <span className={styles.fileChip}>{t('python.editorFile')}</span>
               <span className={styles.shortcutHint}>Ctrl+Enter</span>
             </div>
-            <PythonEditor
-              ref={editorRef}
-              initialCode={DEFAULT_PYTHON_CODE}
-              theme={resolvedTheme}
-              onRun={() => {
-                void handleRun();
-              }}
-            />
+            {swSettled ? (
+              <PythonEditor
+                ref={editorRef}
+                initialCode={DEFAULT_PYTHON_CODE}
+                theme={resolvedTheme}
+                onRun={() => {
+                  void handleRun();
+                }}
+              />
+            ) : (
+              <div className={styles.editorWrap} data-testid="python-editor-wrap">
+                <div className={styles.panePlaceholder}>{t('python.loadingEditor')}</div>
+              </div>
+            )}
           </section>
 
           {/* Right: Program output container (strictly framed & labelled per security.md §4) */}
@@ -707,33 +713,41 @@ export default function PythonPlayground() {
               </div>
             )}
 
-            <PythonTerminal
-              ref={consoleRef}
-              mode="console"
-              visible={showOutputPane && outputTab === 'console'}
-              theme={resolvedTheme}
-              awaitingStdin={awaitingStdin}
-              onStop={handleStop}
-              onSendStdin={handleSendStdin}
-              onSendStdinEof={handleSendStdinEof}
-              onExternalLink={(url) => setPendingExternalUrl(url)}
-            />
+            {swSettled ? (
+              <>
+                <PythonTerminal
+                  ref={consoleRef}
+                  mode="console"
+                  visible={showOutputPane && outputTab === 'console'}
+                  theme={resolvedTheme}
+                  awaitingStdin={awaitingStdin}
+                  onStop={handleStop}
+                  onSendStdin={handleSendStdin}
+                  onSendStdinEof={handleSendStdinEof}
+                  onExternalLink={(url) => setPendingExternalUrl(url)}
+                />
 
-            <PythonTerminal
-              ref={replRef}
-              mode="repl"
-              visible={showOutputPane && outputTab === 'repl'}
-              theme={resolvedTheme}
-              replDisabled={isRunning || !readyInfo || isBlockedGate}
-              replBanner={
-                readyInfo
-                  ? t('python.replReadyBanner', { version: readyInfo.pythonVersion })
-                  : undefined
-              }
-              onReplPush={handleReplPush}
-              onReplComplete={handleReplComplete}
-              onExternalLink={(url) => setPendingExternalUrl(url)}
-            />
+                <PythonTerminal
+                  ref={replRef}
+                  mode="repl"
+                  visible={showOutputPane && outputTab === 'repl'}
+                  theme={resolvedTheme}
+                  replDisabled={isRunning || !readyInfo || isBlockedGate}
+                  replBanner={
+                    readyInfo
+                      ? t('python.replReadyBanner', { version: readyInfo.pythonVersion })
+                      : undefined
+                  }
+                  onReplPush={handleReplPush}
+                  onReplComplete={handleReplComplete}
+                  onExternalLink={(url) => setPendingExternalUrl(url)}
+                />
+              </>
+            ) : (
+              <div className={styles.terminalHostWrap}>
+                <div className={styles.panePlaceholder}>{t('python.loadingTerminal')}</div>
+              </div>
+            )}
           </section>
         </div>
       </main>
@@ -769,6 +783,10 @@ export default function PythonPlayground() {
         open={networkDialogOpen}
         currentPolicy={policy}
         onClose={() => setNetworkDialogOpen(false)}
+        onBeforeClear={() => {
+          clientRef.current?.dispose();
+          clientRef.current = null;
+        }}
       />
     </div>
   );

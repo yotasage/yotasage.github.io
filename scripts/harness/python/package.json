@@ -4,7 +4,8 @@
   "description": "Engine, corpus, and 3-browser security checks for the browser Python playground. Not part of the site.",
   "type": "module",
   "scripts": {
-    "check": "tsx check.mjs"
+    "check": "tsx check.mjs",
+    "ui": "node ui.mjs"
   },
   "devDependencies": {
     "playwright-core": "1.65.1",
