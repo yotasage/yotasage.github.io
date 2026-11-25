@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 
 import { getPageMeta, getProjectMeta } from '../lib/citation';
 import { useI18n } from '../lib/ui/i18n';
+import { useShareModal } from '../lib/ui/shareModal';
 import styles from '../styles/SiteFooter.module.css';
 import CiteModal from './UI/CiteModal';
 
@@ -11,8 +12,10 @@ import CiteModal from './UI/CiteModal';
 export default function SiteFooter({ fixed = false }: { fixed?: boolean }) {
   const { pathname } = useRouter();
   const { t } = useI18n();
+  const { open: shareOpen, openShareModal } = useShareModal();
   const [citeOpen, setCiteOpen] = useState(false);
   const citeBtnRef = useRef<HTMLButtonElement | null>(null);
+  const shareBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const page = getPageMeta(pathname);
   const project = getProjectMeta();
@@ -24,6 +27,37 @@ export default function SiteFooter({ fixed = false }: { fixed?: boolean }) {
       <footer className={fixed ? `${styles.footer} ${styles.fixed}` : styles.footer}>
         <div className={styles.inner}>
           <div className={styles.linksGroup}>
+            <button
+              type="button"
+              ref={shareBtnRef}
+              className={styles.shareBtn}
+              onClick={() => openShareModal(shareBtnRef.current)}
+              aria-label={t('footer.shareAria')}
+              aria-haspopup="dialog"
+              aria-expanded={shareOpen}
+            >
+              <svg
+                className={styles.citeIcon}
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+                <path d="M14 14h3v3h-3z" />
+                <path d="M20 14v3h-1" />
+                <path d="M14 20h3" />
+                <path d="M20 20h1" />
+              </svg>
+              <span>{t('footer.share')}</span>
+            </button>
             <button
               type="button"
               ref={citeBtnRef}

@@ -137,6 +137,16 @@ export default function QrCodeGenerator() {
   const [payload, setPayload] = React.useState<Payload | null>(null);
   const [payloadError, setPayloadError] = React.useState<string | null>(null);
 
+  React.useEffect(() => {
+    const prefill = new URLSearchParams(window.location.search).get('url')?.trim();
+    if (!prefill) return;
+    setTypeId('url');
+    setValuesByType((prev) => ({
+      ...prev,
+      url: { ...prev.url, url: prefill },
+    }));
+  }, []);
+
   // Symbol
   const [symbology, setSymbology] = React.useState<Symbology>('qr2');
   const [version, setVersion] = React.useState<'auto' | number>('auto');

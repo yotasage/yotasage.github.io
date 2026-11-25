@@ -88,8 +88,34 @@
   color: var(--ds-accent-ink, #ffffff);
 }
 
-.citeBtn:active {
+.citeBtn:active,
+.shareBtn:active {
   transform: scale(0.98);
+}
+
+.shareBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  padding: 0.24rem 0.62rem;
+  border-radius: var(--ds-radius-pill, 999px);
+  border: var(--ds-border-w, 1px) solid var(--ds-border-strong, rgba(255, 255, 255, 0.2));
+  background: var(--ds-well, rgba(255, 255, 255, 0.06));
+  color: var(--ds-ink-2, #c8c8c8);
+  font-family: inherit;
+  font-size: 0.79rem;
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
+}
+
+.shareBtn:hover {
+  background: var(--ds-well-hover, rgba(255, 255, 255, 0.12));
+  border-color: var(--ds-accent-border, rgba(37, 99, 235, 0.36));
+  color: var(--ds-ink, #ffffff);
 }
 
 .citeIcon {
@@ -137,14 +163,17 @@
   color: #000000;
 }
 
-:global(html[data-ds-theme="hc"]) .hashBtn {
+:global(html[data-ds-theme="hc"]) .hashBtn,
+:global(html[data-ds-theme="hc"]) .shareBtn {
   background: #000000;
   border-color: #ffffff;
   color: #ffffff;
 }
 
 :global(html[data-ds-theme="hc"]) .hashBtn:hover,
-:global(html[data-ds-theme="hc"]) .hashBtn:focus-visible {
+:global(html[data-ds-theme="hc"]) .hashBtn:focus-visible,
+:global(html[data-ds-theme="hc"]) .shareBtn:hover,
+:global(html[data-ds-theme="hc"]) .shareBtn:focus-visible {
   border-color: #ffe600;
   color: #ffe600;
 }
@@ -698,6 +727,7 @@ dialog.dialog::backdrop {
 
 @media (prefers-reduced-motion: reduce) {
   .citeBtn,
+  .shareBtn,
   .hashBtn,
   .closeBtn,
   .miniCopyBtn,
@@ -708,6 +738,7 @@ dialog.dialog::backdrop {
   }
 
   .citeBtn:active,
+  .shareBtn:active,
   .primaryBtn:active,
   .secondaryBtn:active {
     transform: none;

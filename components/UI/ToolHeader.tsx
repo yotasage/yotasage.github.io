@@ -5,6 +5,7 @@ import { useI18n } from '../../lib/ui/i18n';
 import { useWideView } from '../../lib/ui/layout';
 import { useMathSettings } from '../../lib/ui/mathSettings';
 import { ExperienceMode, useExperienceMode } from '../../lib/ui/mode';
+import { useShareModal } from '../../lib/ui/shareModal';
 import { ResolvedTheme, useTheme } from '../../lib/ui/theme';
 import styles from '../../styles/DesignSystem.module.css';
 import HomeIcon from '../icons/home';
@@ -126,6 +127,30 @@ function GearIcon() {
   );
 }
 
+function QrShareIcon() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <path d="M14 14h3v3h-3z" />
+      <path d="M20 14v3h-1" />
+      <path d="M14 20h3" />
+      <path d="M20 20h1" />
+    </svg>
+  );
+}
+
 const EXPERIENCE_MODES: readonly ExperienceMode[] = ['quick', 'standard', 'teaching'];
 
 export default function ToolHeader<T extends string = string>({
@@ -147,8 +172,10 @@ export default function ToolHeader<T extends string = string>({
   const { locale, toggleLocale, t } = useI18n();
   const { wide, mounted: wideMounted, toggleWide } = useWideView();
   const { isDefault: mathIsDefault, mounted: mathMounted } = useMathSettings();
+  const { open: shareOpen, openShareModal } = useShareModal();
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const settingsBtnRef = React.useRef<HTMLButtonElement | null>(null);
+  const shareBtnRef = React.useRef<HTMLButtonElement | null>(null);
 
   const workspaceItems: readonly PillTabItem<T>[] | undefined = workspaces;
   const activeTheme: ResolvedTheme = themeMounted ? theme : 'light';
@@ -320,6 +347,20 @@ export default function ToolHeader<T extends string = string>({
               <img src="/flags/no.svg" alt="" width={16} height={12} className={styles.langFlag} aria-hidden="true" />
               <span>NB</span>
             </span>
+          </button>
+
+          <button
+            ref={shareBtnRef}
+            type="button"
+            className={styles.settingsBtn}
+            onClick={() => openShareModal(shareBtnRef.current)}
+            aria-label={t('header.shareAria')}
+            title={t('header.share')}
+            aria-haspopup="dialog"
+            aria-expanded={shareOpen}
+            data-share-trigger=""
+          >
+            <QrShareIcon />
           </button>
 
           <button
