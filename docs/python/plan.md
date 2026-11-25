@@ -5,7 +5,7 @@
 | Page | `/python/main` (`pages/python/main.tsx`) |
 | Branch | `python` (one commit per step; agents never push) |
 | Written | 2026-11-23, from `README.md`, `CLAUDE.md` and `docs/agent-workflow.md`; the network policy and security part were added the same day. The other docs and the code were **not** read; step S0 reads what it needs |
-| Status | In progress. Q1–Q8 resolved; S0–S3, S6, P1, and P2 complete (2026-11-25). Next: S5 (Persistence spike), then P3 (Files) |
+| Status | In progress. Q1–Q8 resolved; S0–S3, S5, S6, P1, and P2 complete. Running P3 (P3a files engine & persistence, then P3b UI) -> P4 to finish v1 |
 
 This plan replaces an earlier draft that was written without access to the repo. Where the two differ, this one is right.
 
@@ -87,8 +87,8 @@ Ask before the named step; do not guess.
 | S3 | Blocking input, Stop, asyncio spike | Done (`notes-S3.md`) |
 | P1 | Engine: worker, run/stop, stdio, REPL, network policy | Done (`notes-P1.md`) |
 | P2 | Page: layout, Monaco, terminal, card, i18n, network settings, warnings | Done (`notes-P2.md`) |
-| S5 | Persistence spike | Not started |
-| P3 | Files | Not started |
+| S5 | Persistence spike | Done (`notes-S5.md`) |
+| P3 | Files | In progress (P3a) |
 | P4 | Plots and viewers. **v1 ends here: the owner tries it** | Not started |
 | P5, P6 | Packages: engine, page | Not started |
 | S4 | Display transport spike | Not started |
