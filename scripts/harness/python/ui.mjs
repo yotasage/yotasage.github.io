@@ -19,6 +19,7 @@ import { chromium, firefox, webkit } from 'playwright-core';
 
 import { startHarnessServers } from './servers.mjs';
 import { runFilesUiSuite } from './ui-files-checks.mjs';
+import { runDisplayUiSuite } from './ui-display-checks.mjs';
 import { runExamplesUiSuite } from './ui-examples-checks.mjs';
 import { runPackagesUiSuite } from './ui-packages-checks.mjs';
 import { runPlotsUiSuite } from './ui-plots-checks.mjs';
@@ -198,9 +199,20 @@ async function runBrowserSuite(browserName, browser, baseUrl) {
       attachErrorTracker,
       setMockPypi: servers ? servers.setMockPypi : null,
     });
-  // PYTHON_UI_ONLY=packages runs only the P6 Packages tab suite (while working on it).
+  const displaySuite = () =>
+    runDisplayUiSuite(browserName, browser, baseUrl, {
+      record,
+      waitIsolatedMain,
+      waitMonacoAndPyodideReady,
+      attachErrorTracker,
+    });
+  // PYTHON_UI_ONLY=packages or =display runs only that suite (while working on it).
   if (process.env.PYTHON_UI_ONLY === 'packages') {
     await packagesSuite();
+    return;
+  }
+  if (process.env.PYTHON_UI_ONLY === 'display') {
+    await displaySuite();
     return;
   }
   // =========================================================================
@@ -1031,6 +1043,9 @@ async function runBrowserSuite(browserName, browser, baseUrl) {
 
   // Suite 8: P6 Packages tab (install, W6, keep/restore, wheels, requirements, missing-import notice)
   await packagesSuite();
+
+  // Suite 9: P8 Display panel (examples, frames, input, touch, hidden, screenshot, fullscreen, Close, Stop)
+  await displaySuite();
 }
 
 let servers = null;

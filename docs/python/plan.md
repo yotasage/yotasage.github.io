@@ -5,7 +5,7 @@
 | Page | `/python/main` (`pages/python/main.tsx`) |
 | Branch | `python` (one commit per step; agents never push) |
 | Written | 2026-11-23, from `README.md`, `CLAUDE.md` and `docs/agent-workflow.md`; the network policy and security part were added the same day. The other docs and the code were **not** read; step S0 reads what it needs |
-| Status | v1 complete! Q1–Q8 resolved; S0–S3, S5, S6, P1–P4, E1a/E1b, P5r, P5a, P5b and P6 complete (2026-11-25). Phase 2 (packages) done: S4 (display transport spike) next |
+| Status | v1 complete! Q1–Q8 resolved; S0–S6, P1–P8, E1a/E1b, P5r, P5a, P5b complete (2026-11-25). Phase 2 (packages) and Phase 3 (display) done: waiting for the owner's post-P8 go/no-go before P9–P11 |
 
 This plan replaces an earlier draft that was written without access to the repo. Where the two differ, this one is right.
 
@@ -109,7 +109,7 @@ Ask before the named step; do not guess.
 | S4 | Display transport spike | Done (`notes-S4.md`) |
 | P7a | Display engine core | Done (`notes-P7a.md`) |
 | P7b | Display draw commands and examples | Done (`notes-P7b.md`) |
-| P8 | Display page | Not started |
+| P8 | Display page | Done (Display tab, `ui-display-checks.mjs`, `notes-P8.md`) |
 | P9 to P11 | Widget surface, tkinter subset, turtle (after go/no-go gate post-P8) | Not started |
 | P12 | Polish, visitor docs, CLAUDE.md and README | Not started |
 

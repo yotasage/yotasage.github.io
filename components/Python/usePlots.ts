@@ -9,13 +9,19 @@ import type { PlotEvent } from '../../lib/python/workerClient';
 
 export const MAX_GALLERY_PLOTS = 120;
 
+/** Where a gallery item came from: a worker plot, or a Display screenshot taken by the page. */
+export type GallerySource = PlotSource | 'display';
+
+/** A plot event from the worker, or a Display screenshot (source 'display', no vector export). */
+export type GalleryPlotInput = Omit<PlotEvent, 'source'> & { readonly source: GallerySource };
+
 export interface PlotGalleryItem {
   readonly plotId: string;
   readonly index: number;
   readonly title: string;
   readonly width: number;
   readonly height: number;
-  readonly source: PlotSource;
+  readonly source: GallerySource;
   readonly canExportVector: boolean;
   readonly createdAt: number;
   readonly blobUrl: string;
@@ -39,7 +45,7 @@ export function usePlots(isPlotsVisibleRef: React.RefObject<boolean>) {
   }, []);
 
   const addPlot = useCallback(
-    (event: PlotEvent) => {
+    (event: GalleryPlotInput) => {
       const copy = new Uint8Array(event.pngBytes.byteLength);
       copy.set(event.pngBytes);
       const blob = new Blob([copy], { type: 'image/png' });

@@ -1,7 +1,7 @@
 // Main Python Playground workspace controller (/python/main).
 // Coordinates SW registration, Web Locks single-tab ownership, Option 3B Storage Worker,
 // W1/W4/W5/W7/W8/W9 security gates, PythonWorkerClient lifecycle, File Tree, multi-tab
-// Monaco Editor with autosave, xterm.js Console + REPL, multi-file traceback jumps,
+// Monaco Editor with autosave, xterm.js Console + REPL, Plots and Display tabs, multi-file traceback jumps,
 // responsive desktop/phone layout, and the Workbench | Examples | Packages header tabs (the workbench
 // stays mounted while another tab shows, so the editor, terminal and a running program are kept).
 
@@ -28,7 +28,6 @@ import { useI18n } from '../../lib/ui/i18n';
 import { useDesignSystemPage, useTheme } from '../../lib/ui/theme';
 import styles from '../../styles/Python.module.css';
 import fileStyles from '../../styles/PythonFiles.module.css';
-import PillTabs, { PillTabItem } from '../UI/PillTabs';
 import ToolHeader, { WorkspaceTab } from '../UI/ToolHeader';
 import ExamplesGallery, {
   PLAYGROUND_VIEW_ID_PREFIX,
@@ -38,10 +37,12 @@ import ExamplesGallery, {
   useHeaderHeightVar,
   usePlaygroundView,
 } from './ExamplesGallery';
+import DisplayPanel from './DisplayPanel';
 import { extractWorkspaceJumps, TracebackJump } from './fileHelpers';
 import FileTree from './FileTree';
 import NetworkBanner from './NetworkBanner';
 import NetworkDialog from './NetworkDialog';
+import { OutputTabBar, PhonePaneTabs, useOutputPanes } from './OutputTabs';
 import PackagesPanel, { MissingPackagesNotice } from './PackagesPanel';
 import { NetworkModeButton, tierTexts, W2StatusNote } from './PlaygroundNotes';
 import PlotsGallery from './PlotsGallery';
@@ -58,9 +59,6 @@ import { usePackages } from './usePackages';
 import { usePlots } from './usePlots';
 import { useWorkspace } from './useWorkspace';
 
-type OutputTab = 'console' | 'repl' | 'plots';
-type MobilePane = 'editor' | 'output' | 'files' | 'plots';
-
 export default function PythonPlayground() {
   useDesignSystemPage('#2563eb', '#60a5fa');
   const { theme, mounted: themeMounted } = useTheme();
@@ -71,8 +69,9 @@ export default function PythonPlayground() {
   const consoleRef = useRef<PythonTerminalHandle | null>(null);
   const replRef = useRef<PythonTerminalHandle | null>(null);
   const clientRef = useRef<PythonWorkerClient | null>(null);
-  const outputTabRef = useRef<OutputTab>('console');
-  const isPlotsVisibleRef = useRef(false);
+  const [client, setClient] = useState<PythonWorkerClient | null>(null);
+  const displayShownRef = useRef(false);
+  const [workspaceH, setWorkspaceH] = useState<number | null>(null);
 
   // Hydration-safe client state
   const [hydrated, setHydrated] = useState(false);
@@ -97,20 +96,17 @@ export default function PythonPlayground() {
   const [tracebackJumps, setTracebackJumps] = useState<readonly TracebackJump[]>([]);
 
   // Panes & responsive state
-  const [outputTab, setOutputTab] = useState<OutputTab>('console');
-  const [mobilePane, setMobilePane] = useState<MobilePane>('editor');
   const [showFilesSidebar, setShowFilesSidebar] = useState(true);
   const [isNarrow, setIsNarrow] = useState(false);
   const [swSettled, setSwSettled] = useState(false);
   const [view, setView] = usePlaygroundView();
   useHeaderHeightVar();
 
-  outputTabRef.current = outputTab;
-  const isPlotsVisible = isNarrow ? mobilePane === 'plots' : outputTab === 'plots';
-  isPlotsVisibleRef.current = isPlotsVisible;
+  const panes = useOutputPanes(isNarrow);
+  const { outputTab, setOutputTab, setMobilePane, outputTabRef, isPlotsVisible, showOutputPane, showDisplay } = panes;
 
   // Plots gallery state & guaranteed Blob URL lifecycle
-  const plots = usePlots(isPlotsVisibleRef);
+  const plots = usePlots(panes.isPlotsVisibleRef);
   const addPlotRef = useRef(plots.addPlot);
   addPlotRef.current = plots.addPlot;
 
@@ -195,6 +191,7 @@ export default function PythonPlayground() {
       storageClient: workspace.storageRef.current,
     });
     clientRef.current = client;
+    setClient(client);
     const detachPackages = attachPackagesRef.current(client, workspace.storageRef.current);
 
     const unsub = client.subscribe({
@@ -266,6 +263,7 @@ export default function PythonPlayground() {
       detachPackages();
       client.dispose();
       clientRef.current = null;
+      setClient(null);
     };
   }, [canBootWorker, policy.mode, workspace.storageRef]);
 
@@ -331,6 +329,7 @@ export default function PythonPlayground() {
     setLastRunSummary('');
     setCrashReason(null);
     reportRun(null);
+    displayShownRef.current = false;
     setOutputTab('console');
     if (isNarrow) {
       setMobilePane('output');
@@ -424,6 +423,7 @@ export default function PythonPlayground() {
         setW7Open(true);
         throw new Error('Execution blocked until network block is confirmed.');
       }
+      displayShownRef.current = false;
       return client.replPush(line, { allowUnconfirmed });
     },
     [allowUnconfirmed],
@@ -470,6 +470,13 @@ export default function PythonPlayground() {
     },
     [isNarrow, workspace],
   );
+
+  // A program opened a display: show the Display tab once per run, never again while it runs.
+  const handleDisplayOpen = useCallback(() => {
+    if (displayShownRef.current) return;
+    displayShownRef.current = true;
+    showDisplay();
+  }, [showDisplay]);
 
   // Header tabs: re-measure Monaco and xterm when the workbench is shown again.
   const handleViewChange = useCallback(
@@ -536,36 +543,6 @@ export default function PythonPlayground() {
 
   const { badge: tierBadge, desc: tierDesc } = tierTexts(t, activeTier);
 
-  const outputTabs = useMemo<readonly PillTabItem<OutputTab>[]>(
-    () => [
-      { id: 'console', label: t('python.tabConsole') },
-      { id: 'repl', label: t('python.tabRepl'), disabled: isRunning },
-      {
-        id: 'plots',
-        label: t('python.tabPlots'),
-        badge: plots.unreadCount > 0 ? plots.unreadCount : undefined,
-      },
-    ],
-    [t, isRunning, plots.unreadCount],
-  );
-
-  const mobileTabs = useMemo<readonly PillTabItem<MobilePane>[]>(
-    () => [
-      { id: 'editor', label: t('python.tabEditor') },
-      {
-        id: 'output',
-        label: outputTab === 'repl' ? t('python.tabRepl') : t('python.tabConsole'),
-      },
-      { id: 'files', label: t('python.tabFiles') },
-      {
-        id: 'plots',
-        label: t('python.tabPlots'),
-        badge: plots.unreadCount > 0 ? plots.unreadCount : undefined,
-      },
-    ],
-    [t, outputTab, plots.unreadCount],
-  );
-
   const workspaceTabs = useMemo<readonly WorkspaceTab<PlaygroundView>[]>(
     () => [
       { id: 'workbench', label: t('python.workspaceWorkbench') },
@@ -579,9 +556,8 @@ export default function PythonPlayground() {
     [t, packages.restoreProblems, view],
   );
 
-  const showFilesPane = isNarrow ? mobilePane === 'files' : showFilesSidebar;
-  const showEditorPane = !isNarrow || mobilePane === 'editor';
-  const showOutputPane = !isNarrow || mobilePane === 'output' || mobilePane === 'plots';
+  const showFilesPane = isNarrow ? panes.mobilePane === 'files' : showFilesSidebar;
+  const showEditorPane = !isNarrow || panes.mobilePane === 'editor';
 
   return (
     <div className={styles.page} data-ds="v2">
@@ -768,32 +744,16 @@ export default function PythonPlayground() {
             </div>
           )}
 
-          {/* Phone pane switcher: Editor | Console | Files | Plots */}
+          {/* Phone pane switcher: Editor | Console | Files | Plots | Display */}
           {isNarrow && (
-            <div className={styles.mobileTabsRow}>
-              <PillTabs
-                items={mobileTabs}
-                value={mobilePane}
-                onChange={(next) => {
-                  setMobilePane(next);
-                  if (next === 'plots') {
-                    setOutputTab('plots');
-                    plots.clearUnread();
-                  } else if (next === 'output' && outputTab === 'plots') {
-                    setOutputTab('console');
-                  }
-                  requestAnimationFrame(() => {
-                    if (next === 'editor') editorRef.current?.layout();
-                    else if (next === 'output') {
-                      consoleRef.current?.fit();
-                      replRef.current?.fit();
-                    }
-                  });
-                }}
-                ariaLabel={t('python.paneNavAria')}
-                size="sm"
-              />
-            </div>
+            <PhonePaneTabs
+              panes={panes}
+              plotsUnread={plots.unreadCount}
+              onPlotsSeen={plots.clearUnread}
+              editorRef={editorRef}
+              consoleRef={consoleRef}
+              replRef={replRef}
+            />
           )}
 
           {/* Main 3-column (desktop with Files) or 2-column / 1-column workspace */}
@@ -804,6 +764,8 @@ export default function PythonPlayground() {
             ]
               .filter(Boolean)
               .join(' ')}
+            style={workspaceH && !isNarrow ? { height: workspaceH, maxHeight: 'none' } : undefined}
+            data-python-workspace=""
           >
             {/* Files Sidebar / Phone Files Tab */}
             {showFilesPane && (
@@ -878,21 +840,12 @@ export default function PythonPlayground() {
                   <span className={styles.programOutputLabel} data-testid="python-program-output-label">
                     {t('python.programOutput')}
                   </span>
-                  <PillTabs
-                    items={outputTabs}
-                    value={outputTab}
-                    onChange={(next) => {
-                      setOutputTab(next);
-                      if (next === 'plots') {
-                        plots.clearUnread();
-                        if (isNarrow) setMobilePane('plots');
-                      } else if (isNarrow) {
-                        setMobilePane('output');
-                      }
-                    }}
-                    ariaLabel={t('python.outputNavAria')}
-                    size="sm"
-                    variant="subtle"
+                  <OutputTabBar
+                    panes={panes}
+                    isNarrow={isNarrow}
+                    isRunning={isRunning}
+                    plotsUnread={plots.unreadCount}
+                    onPlotsSeen={plots.clearUnread}
                   />
                 </div>
               </div>
@@ -967,6 +920,15 @@ export default function PythonPlayground() {
                   <div className={styles.panePlaceholder}>{t('python.loadingTerminal')}</div>
                 </div>
               )}
+
+              <DisplayPanel
+                source={client}
+                visible={view === 'workbench' && showOutputPane && panes.isDisplayTab}
+                compact={isNarrow}
+                onOpen={handleDisplayOpen}
+                onScreenshot={plots.addPlot}
+                onResizeWorkspace={setWorkspaceH}
+              />
             </section>
           </div>
         </div>

@@ -8,6 +8,7 @@ import { en as notepadEn, nb as notepadNb } from './i18n/notepad';
 import { en as paintEn, nb as paintNb } from './i18n/paint';
 import { en as pdfEn, nb as pdfNb } from './i18n/pdf';
 import { en as pythonEn, nb as pythonNb } from './i18n/python';
+import { en as pythonDisplayEn, nb as pythonDisplayNb } from './i18n/python-display';
 import { en as pythonExamplesEn, nb as pythonExamplesNb } from './i18n/python-examples';
 import { en as pythonPackagesEn, nb as pythonPackagesNb } from './i18n/python-packages';
 import { en as simsetupEn, nb as simsetupNb } from './i18n/simsetup';
@@ -32,6 +33,7 @@ export const en = {
   ...pdfEn,
   ...pythonEn,
   ...pythonExamplesEn,
+  ...pythonDisplayEn,
   ...pythonPackagesEn,
   ...viewersEn,
 } as const;
@@ -52,6 +54,7 @@ export const nb: Record<TranslationKey, string> = {
   ...pdfNb,
   ...pythonNb,
   ...pythonExamplesNb,
+  ...pythonDisplayNb,
   ...pythonPackagesNb,
   ...viewersNb,
 };

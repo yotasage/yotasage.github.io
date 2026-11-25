@@ -11,6 +11,9 @@ import plotStyles from '../../styles/PythonPlots.module.css';
 import { triggerBlobDownload } from './fileHelpers';
 import type { PlotGalleryItem } from './usePlots';
 
+const SOURCE_LABEL = { matplotlib: 'matplotlib', pillow: 'PIL', display: 'vdisplay' } as const;
+const SOURCE_SHORT = { matplotlib: 'mpl', pillow: 'PIL', display: 'disp' } as const;
+
 export interface PlotsGalleryProps {
   visible: boolean;
   plots: readonly PlotGalleryItem[];
@@ -298,7 +301,7 @@ export default function PlotsGallery({
                 {selectedPlot.title || `Figure ${selectedPlot.index}`}
               </span>
               <span className={plotStyles.plotSourceBadge}>
-                {selectedPlot.source === 'pillow' ? 'PIL' : 'matplotlib'}
+                {SOURCE_LABEL[selectedPlot.source]}
               </span>
               <span className={plotStyles.viewerMeta}>
                 {selectedPlot.width}&times;{selectedPlot.height} px
@@ -412,7 +415,7 @@ export default function PlotsGallery({
                   </div>
                   <div className={plotStyles.thumbMetaRow}>
                     <span>#{item.index}</span>
-                    <span>{item.source === 'pillow' ? 'PIL' : 'mpl'}</span>
+                    <span>{SOURCE_SHORT[item.source]}</span>
                   </div>
                   <div className={plotStyles.thumbTitle} title={item.title}>
                     {item.title || `Figure ${item.index}`}

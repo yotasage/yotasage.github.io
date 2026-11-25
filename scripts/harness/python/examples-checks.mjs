@@ -167,8 +167,10 @@ export async function runExamplesChecks(browserName, browser, { primaryOrigin, r
   try {
     const ids = await page.evaluate(() => window.__pythonHarness.examples.map((e) => e.id));
 
-    await record(browserName, name('13 examples exposed on /python/harness'), async () => {
-      if (ids.length !== 13) return `expected 13 examples, got ${ids.length}: ${ids.join(', ')}`;
+    await record(browserName, name('17 examples exposed on /python/harness (4 display examples, run by the display part)'), async () => {
+      if (ids.length !== 17) return `expected 17 examples, got ${ids.length}: ${ids.join(', ')}`;
+      const display = ['bouncing_ball', 'paint', 'numpy_fractal', 'fps_loop'];
+      if (ids.slice(7, 11).join(',') !== display.join(',')) return `display examples not after the plots examples: ${ids.join(', ')}`;
       return true;
     });
 
@@ -201,6 +203,19 @@ export async function runExamplesChecks(browserName, browser, { primaryOrigin, r
       if (ticks < 2 || ticks > 6) return `expected 2..6 ticks in 1.5 s, got ${ticks}`;
       return expectOk(r, 'soft_stop') || expectMarkers(r.stdout, [`Stopped after ${ticks} ticks.`]) || true;
     });
+
+    // The display examples run until Stop or Close: a short run that Stop ends is enough here
+    // (display-draw-checks.mjs checks their pictures and stops; ui-display-checks.mjs the page).
+    await record(browserName, name('fps_loop and paint run in Off mode until Stop at 1.2 s'), async () => {
+      for (const id of ['fps_loop', 'paint']) {
+        const r = await runExample(page, id, { stopAfterMs: 1200 });
+        if (r.missing) return `example "${id}" not found`;
+        if (r.res.forceStopped) return `${id} needed Force Stop: ${JSON.stringify(r.res)}`;
+        if (!r.res.interrupted) return `${id} was not interrupted by Stop: ${JSON.stringify(r.res).slice(0, 300)}`;
+        if (/\b\w*Error\b/.test(r.stderr)) return `${id} stderr: ${r.stderr.slice(-300)}`;
+      }
+      return true;
+    }, '', 60000);
 
     await record(browserName, name('modules imports helpers.py from its own folder'), async () => {
       const r = await runExample(page, 'modules');

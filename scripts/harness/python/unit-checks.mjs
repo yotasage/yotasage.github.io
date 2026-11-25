@@ -774,8 +774,8 @@ export async function runUnitChecks() {
     assert.equal(sizeBombRes.errorCode, 'ZIP_BOMB_SIZE');
   });
 
-  // 8. examples/: all 13 built-in examples valid & complete, with EN/NB strings
-  await check('examples/: 13 built-in examples have valid folders, entries, tags & EN/NB strings', () => {
+  // 8. examples/: all 17 built-in examples valid & complete, with EN/NB strings
+  await check('examples/: 17 built-in examples have valid folders, entries, tags & EN/NB strings', () => {
     const requiredIds = [
       'hello',
       'input_colors',
@@ -784,6 +784,10 @@ export async function runUnitChecks() {
       'science',
       'matplotlib_plot',
       'pillow_image',
+      'bouncing_ball',
+      'paint',
+      'numpy_fractal',
+      'fps_loop',
       'pdf_report',
       'csv_json',
       'html_preview',
@@ -799,17 +803,17 @@ export async function runUnitChecks() {
       const key = getPythonExampleTagKey(tag);
       assert.ok(examplesEn[key] && examplesNb[key], `Missing tag label ${key}`);
     }
-    // P7b: the display examples follow the same rules but are not listed until P8's Display panel.
+    // P8: the display examples are listed after the plots examples, tag display.
     assert.deepEqual(
       DISPLAY_EXAMPLES.map((ex) => ex.id),
       ['bouncing_ball', 'paint', 'numpy_fractal', 'fps_loop'],
     );
     for (const ex of DISPLAY_EXAMPLES) {
       assert.equal(ex.tag, 'display');
-      assert.equal(getPythonExample(ex.id), undefined, `"${ex.id}" is listed before the Display panel exists`);
+      assert.equal(getPythonExample(ex.id), ex, `"${ex.id}" is not listed in PYTHON_EXAMPLES`);
     }
-    const byId = new Map([...PYTHON_EXAMPLES, ...DISPLAY_EXAMPLES].map((ex) => [ex.id, ex]));
-    for (const id of [...requiredIds, ...DISPLAY_EXAMPLES.map((ex) => ex.id)]) {
+    const byId = new Map(PYTHON_EXAMPLES.map((ex) => [ex.id, ex]));
+    for (const id of requiredIds) {
       const ex = byId.get(id);
       assert.ok(ex, `Missing example "${id}"`);
       assert.ok(PYTHON_EXAMPLE_TAGS.includes(ex.tag), `Unknown tag "${ex.tag}" for ${id}`);

@@ -41,7 +41,7 @@ export const en = {
   'python.tabFiles': 'Files',
   'python.tabPlots': 'Plots',
   'python.paneNavAria': 'Switch between editor and output panes',
-  'python.outputNavAria': 'Switch between console, REPL, and plots',
+  'python.outputNavAria': 'Switch between console, REPL, plots and display',
   'python.editorTabsAria': 'Open workspace files',
   'python.editorFile': 'main.py',
   'python.editorNoFile': 'Select or create a file in the Files panel to start editing.',
@@ -188,13 +188,13 @@ export const en = {
   'python.w2Summary': 'Runs Python locally in your browser (Pyodide). Network access is off by default.',
   'python.w2WorksLabel': 'Works now (v1 complete):',
   'python.w2Works':
-    'CPython 3.14.2 via self-hosted Pyodide (NumPy, SciPy, pandas, SymPy, matplotlib, Pillow); persistent IndexedDB workspace with file tree, multi-tab Monaco Editor with autosave, drag-drop upload, safe ZIP import/export, Web Locks, and an Examples tab with 13 built-in programs; a Packages tab (the bundled packages, PyPI installs in Package index mode after a confirmation, wheel uploads, kept packages restored at every start from saved copies even with the network off, requirements.txt and lock file import and export); xterm.js Console & REPL; Soft/Force Stop and blocking input(); live Plots gallery (plt.show(), PIL.Image.show(), vector SVG/PDF export); hardened Image, SVG, PDF, CSV/TSV, JSON, and sandboxed HTML viewers; and network access blocked by default.',
+    'CPython 3.14.2 via self-hosted Pyodide (NumPy, SciPy, pandas, SymPy, matplotlib, Pillow); persistent IndexedDB workspace with file tree, multi-tab Monaco Editor with autosave, drag-drop upload, safe ZIP import/export, Web Locks, and an Examples tab with 17 built-in programs; a Packages tab (the bundled packages, PyPI installs in Package index mode after a confirmation, wheel uploads, kept packages restored at every start from saved copies even with the network off, requirements.txt and lock file import and export); xterm.js Console & REPL; Soft/Force Stop and blocking input(); live Plots gallery (plt.show(), PIL.Image.show(), vector SVG/PDF export); a Display tab where programs draw with vdisplay (NumPy pixels and draw commands at up to 60 fps) and read the mouse, keys and touch, with Fit/100%, fullscreen, Close and screenshots to Plots; hardened Image, SVG, PDF, CSV/TSV, JSON, and sandboxed HTML viewers; and network access blocked by default.',
   'python.w2VerifiedLabel': 'Verified:',
   'python.w2Verified':
-    'Cross-browser engine, persistence, plots/viewers, packages, security, and UI harnesses passing in Edge, Firefox, and WebKit (package installs against canned PyPI replies, keep and restore, CSP enforcement, off-mode exfiltration battery, forged-message filtering, SVG/HTML viewer XSS checks, 100-plot Blob URL leak & 16-figure eviction cap checks, stop latency, reload/Force Stop persistence, and Web Locks).',
+    'Cross-browser engine, persistence, plots/viewers, packages, security, and UI harnesses passing in Edge, Firefox, and WebKit (package installs against canned PyPI replies, keep and restore, CSP enforcement, off-mode exfiltration battery, forged-message filtering, SVG/HTML viewer XSS checks, 100-plot Blob URL leak & 16-figure eviction cap checks, stop latency, reload/Force Stop persistence, Web Locks, and the Display: frames, mouse and key input, Close and Stop). How the Display slows down in a hidden tab and drawing by touch are checked with simulated events in the harness, not yet by hand on a phone.',
   'python.w2NotYetLabel': 'Planned next:',
   'python.w2NotYet':
-    'Virtual display/GUI support (Phase 7+). Note: pyodide.code.run_js is disabled by the worker CSP.',
+    'Widgets, tkinter and turtle on top of the Display. Note: pyodide.code.run_js is disabled by the worker CSP.',
   'python.w2MobileLabel': 'Phones & touch:',
   'python.w2MobileNote':
     'Monaco Editor has limited touch support on phones (no native drag selection handles, unreliable double-tap word selection, and virtual keyboards lack Ctrl+Enter / Ctrl+C). Use the on-screen Run, Stop, Clear, and Copy buttons.',
@@ -315,7 +315,7 @@ export const nb: Record<keyof typeof en, string> = {
   'python.tabFiles': 'Filer',
   'python.tabPlots': 'Plott',
   'python.paneNavAria': 'Bytt mellom editor og utdata',
-  'python.outputNavAria': 'Bytt mellom konsoll, REPL og plott',
+  'python.outputNavAria': 'Bytt mellom konsoll, REPL, plott og skjerm',
   'python.editorTabsAria': 'Åpne arbeidsområdefiler',
   'python.editorFile': 'main.py',
   'python.editorNoFile': 'Velg eller opprett en fil i Fil-panelet for å begynne å redigere.',
@@ -462,13 +462,13 @@ export const nb: Record<keyof typeof en, string> = {
   'python.w2Summary': 'Kjører Python lokalt i nettleseren din (Pyodide). Nettverkstilgang er avslått som standard.',
   'python.w2WorksLabel': 'Fungerer nå (v1 ferdig):',
   'python.w2Works':
-    'CPython 3.14.2 via egenhostet Pyodide (NumPy, SciPy, pandas, SymPy, matplotlib, Pillow); varig IndexedDB-arbeidsområde med filutforsker, flerfane-Monaco Editor med autolagring, dra-og-slipp, trygg ZIP-import/eksport, Web Locks og en Eksempler-fane med 13 innebygde programmer; en Pakker-fane (de innebygde pakkene, installering fra PyPI i pakkeindeks-modus etter en bekreftelse, opplasting av wheels, beholdte pakker gjenopprettet ved hver start fra lagrede kopier også uten nettverk, import og eksport av requirements.txt og låsefiler); xterm.js-konsoll og REPL; myk/tvungen stopp og blokkerende input(); plottgalleri (plt.show(), PIL.Image.show(), SVG/PDF-vektoreksport); sikre bilde-, SVG-, PDF-, CSV/TSV-, JSON- og sandkasse-HTML-visere; og nettverk blokkert som standard.',
+    'CPython 3.14.2 via egenhostet Pyodide (NumPy, SciPy, pandas, SymPy, matplotlib, Pillow); varig IndexedDB-arbeidsområde med filutforsker, flerfane-Monaco Editor med autolagring, dra-og-slipp, trygg ZIP-import/eksport, Web Locks og en Eksempler-fane med 17 innebygde programmer; en Pakker-fane (de innebygde pakkene, installering fra PyPI i pakkeindeks-modus etter en bekreftelse, opplasting av wheels, beholdte pakker gjenopprettet ved hver start fra lagrede kopier også uten nettverk, import og eksport av requirements.txt og låsefiler); xterm.js-konsoll og REPL; myk/tvungen stopp og blokkerende input(); plottgalleri (plt.show(), PIL.Image.show(), SVG/PDF-vektoreksport); en Skjerm-fane der programmer tegner med vdisplay (NumPy-piksler og tegnekommandoer i opptil 60 bilder i sekundet) og leser mus, taster og berøring, med Tilpass/100 %, fullskjerm, Lukk og skjermbilder til Plott; sikre bilde-, SVG-, PDF-, CSV/TSV-, JSON- og sandkasse-HTML-visere; og nettverk blokkert som standard.',
   'python.w2VerifiedLabel': 'Verifisert:',
   'python.w2Verified':
-    'Motor-, lagrings-, plott/viser-, pakke-, sikkerhets- og UI-tester på tvers av Edge, Firefox og WebKit (pakkeinstallering mot forhåndslagde PyPI-svar, beholde og gjenopprette, CSP-håndheving, utgående blokkering i Av-modus, filtrering av forfalskede meldinger, XSS-sjekk av SVG/HTML-visere, 100-plotts Blob URL- og 16-figurers minnegrense, stopp-latens, filoverlevelse og Web Locks).',
+    'Motor-, lagrings-, plott/viser-, pakke-, sikkerhets- og UI-tester på tvers av Edge, Firefox og WebKit (pakkeinstallering mot forhåndslagde PyPI-svar, beholde og gjenopprette, CSP-håndheving, utgående blokkering i Av-modus, filtrering av forfalskede meldinger, XSS-sjekk av SVG/HTML-visere, 100-plotts Blob URL- og 16-figurers minnegrense, stopp-latens, filoverlevelse, Web Locks og Skjerm: bilder, mus og taster, Lukk og Stopp). At Skjerm tar pause i en skjult fane og tegning med berøring er sjekket med simulerte hendelser i testene, ikke for hånd på en mobil ennå.',
   'python.w2NotYetLabel': 'Planlagt videre:',
   'python.w2NotYet':
-    'Virtuell skjerm/GUI (fase 7+). Merk: pyodide.code.run_js er deaktivert av arbeiderens CSP.',
+    'Widgets, tkinter og turtle oppå Skjerm. Merk: pyodide.code.run_js er deaktivert av arbeiderens CSP.',
   'python.w2MobileLabel': 'Mobil og berøring:',
   'python.w2MobileNote':
     'Monaco Editor har begrenset berøringsstøtte på mobil (ingen vanlige markeringshåndtak, upålitelig dobbelttrykk for ordvalg, og skjermtastatur mangler Ctrl+Enter / Ctrl+C). Bruk knappene på skjermen for Kjør, Stopp, Tøm og Kopier.',

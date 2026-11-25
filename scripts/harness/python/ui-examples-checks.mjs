@@ -33,7 +33,7 @@ function readExampleIds() {
   if (!list) throw new Error('PYTHON_EXAMPLES not found in lib/python/examples/index.ts');
   const constNames = list[1].split(',').map((s) => s.trim()).filter(Boolean);
   const idByConst = new Map();
-  for (const file of ['basics.ts', 'science.ts', 'files.ts', 'network.ts', 'packages.ts']) {
+  for (const file of ['basics.ts', 'science.ts', 'display.ts', 'files.ts', 'network.ts', 'packages.ts']) {
     const src = readFileSync(join(dir, file), 'utf8');
     for (const m of src.matchAll(/export const (\w+): PythonExample = \{\s*id: '([^']+)'/g)) {
       idByConst.set(m[1], m[2]);
