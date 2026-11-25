@@ -18,8 +18,14 @@ React 19, TypeScript 7, deployed to GitHub Pages at https://yotasage.github.io/.
   the 3D viewer's readers and decoders (Open CASCADE, Draco, Basis Universal) into `public/3d/` and the QR code reader's
   zxing-wasm reader into `public/qr/` on install.
 - **Files the user gives a tool never leave the device.** No uploads, no analytics, no third-party requests.
-- **Check the licence of a new dependency.** MIT/BSD/Apache-2.0/ISC are fine; GPL/LGPL/AGPL needs the owner's decision.
-  The owner approved `occt-import-js` (LGPL-2.1, Open CASCADE) for the 3D viewer, on the condition that it is served
+- **Check the licence of a new dependency.** MIT/BSD/Apache-2.0/ISC are fine, and so are (approved 2026-11-25)
+  PSF-2.0, HPND/MIT-CMU, the matplotlib licence, CC0/public domain, SIL OFL-1.1 fonts (the full OFL text shown on
+  `/licenses`, also when a package leaves it out), and MPL-2.0 for files served unmodified with a link to their source
+  (stop and ask before modifying an MPL file, or if it carries the "Incompatible With Secondary Licenses" notice).
+  Licences that only forbid changing or selling the files (e.g. BaKoMa CM fonts, Adobe AFM with its notice file kept
+  alongside) are fine when the files are served unmodified and free. Every vendored file, including libraries and
+  fonts bundled inside a package, is listed on `/licenses`. GPL-only/LGPL-only/AGPL, unknown or missing licences
+  need the owner's decision. The owner approved `occt-import-js` (LGPL-2.1, Open CASCADE) for the 3D viewer, on the condition that it is served
   unmodified as separate files from `public/3d/occt/` and listed on `/licenses` with a link to its source.
 
 ## Build and deploy
