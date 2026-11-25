@@ -761,12 +761,14 @@ export function useWorkspace({ swSettled, canBootStorage, editorRef }: UseWorksp
     }
   }, [flushDirtyTabs, formatStorageError, t]);
 
+  // Copies an example's files into its own folder and opens its entry file; never runs it.
+  // Resolves true when the files were written and the entry file is open.
   const loadExample = useCallback(
-    async (exampleId: string) => {
+    async (exampleId: string): Promise<boolean> => {
       const client = storageRef.current;
-      if (!client || client.isClosed || lockStatus !== 'acquired') return;
+      if (!client || client.isClosed || lockStatus !== 'acquired') return false;
       const ex = getPythonExample(exampleId);
-      if (!ex) return;
+      if (!ex) return false;
 
       setErrorMessage(null);
       await flushDirtyTabs();
@@ -797,9 +799,10 @@ export function useWorkspace({ swSettled, canBootStorage, editorRef }: UseWorksp
             await openFile(path);
           }
         }
-        await openFile(ex.entry, { focus: true });
+        return await openFile(ex.entry, { focus: true });
       } catch (err) {
         setErrorMessage(formatStorageError(err));
+        return false;
       }
     },
     [editorRef, flushDirtyTabs, formatStorageError, lockStatus, openFile, refreshListing],

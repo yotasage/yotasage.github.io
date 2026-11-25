@@ -2,7 +2,8 @@
 // Coordinates SW registration, Web Locks single-tab ownership, Option 3B Storage Worker,
 // W1/W4/W5/W7/W8/W9 security gates, PythonWorkerClient lifecycle, File Tree, multi-tab
 // Monaco Editor with autosave, xterm.js Console + REPL, multi-file traceback jumps,
-// and responsive desktop/phone layout.
+// responsive desktop/phone layout, and the Workbench | Examples header tabs (the workbench stays
+// mounted while Examples shows, so the editor, terminal and a running program are kept).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -28,7 +29,15 @@ import { useDesignSystemPage, useTheme } from '../../lib/ui/theme';
 import styles from '../../styles/Python.module.css';
 import fileStyles from '../../styles/PythonFiles.module.css';
 import PillTabs, { PillTabItem } from '../UI/PillTabs';
-import ToolHeader from '../UI/ToolHeader';
+import ToolHeader, { WorkspaceTab } from '../UI/ToolHeader';
+import ExamplesGallery, {
+  PLAYGROUND_VIEW_ID_PREFIX,
+  PlaygroundView,
+  playgroundPanelId,
+  playgroundTabId,
+  useHeaderHeightVar,
+  usePlaygroundView,
+} from './ExamplesGallery';
 import { extractWorkspaceJumps, TracebackJump } from './fileHelpers';
 import FileTree from './FileTree';
 import NetworkBanner from './NetworkBanner';
@@ -89,6 +98,8 @@ export default function PythonPlayground() {
   const [showFilesSidebar, setShowFilesSidebar] = useState(true);
   const [isNarrow, setIsNarrow] = useState(false);
   const [swSettled, setSwSettled] = useState(false);
+  const [view, setView] = usePlaygroundView();
+  useHeaderHeightVar();
 
   outputTabRef.current = outputTab;
   const isPlotsVisible = isNarrow ? mobilePane === 'plots' : outputTab === 'plots';
@@ -440,6 +451,33 @@ export default function PythonPlayground() {
     [isNarrow, workspace],
   );
 
+  // Header tabs: re-measure Monaco and xterm when the workbench is shown again.
+  const handleViewChange = useCallback(
+    (next: PlaygroundView) => {
+      setView(next);
+      if (next !== 'workbench') return;
+      requestAnimationFrame(() => {
+        editorRef.current?.layout();
+        consoleRef.current?.fit();
+        replRef.current?.fit();
+      });
+    },
+    [setView],
+  );
+
+  // Examples tab: copy the example (never run it), then show its entry file in the workbench.
+  const handleLoadExampleFromGallery = useCallback(
+    async (exampleId: string): Promise<boolean> => {
+      const ok = await workspace.loadExample(exampleId);
+      if (!ok) return false;
+      if (isNarrow) setMobilePane('editor');
+      handleViewChange('workbench');
+      if (!isNarrow) requestAnimationFrame(() => editorRef.current?.focus());
+      return true;
+    },
+    [handleViewChange, isNarrow, workspace],
+  );
+
   const isLockedByOtherTab = workspace.lockStatus === 'blocked';
   const activeTier = readyInfo?.tier ?? detectedTier;
   const isRunning = clientState === 'running' || clientState === 'stopping';
@@ -529,6 +567,14 @@ export default function PythonPlayground() {
     [t, outputTab, plots.unreadCount],
   );
 
+  const workspaceTabs = useMemo<readonly WorkspaceTab<PlaygroundView>[]>(
+    () => [
+      { id: 'workbench', label: t('python.workspaceWorkbench') },
+      { id: 'examples', label: t('python.workspaceExamples') },
+    ],
+    [t],
+  );
+
   const showFilesPane = isNarrow ? mobilePane === 'files' : showFilesSidebar;
   const showEditorPane = !isNarrow || mobilePane === 'editor';
   const showOutputPane = !isNarrow || mobilePane === 'output' || mobilePane === 'plots';
@@ -538,6 +584,10 @@ export default function PythonPlayground() {
       <ToolHeader
         title={t('python.title')}
         hardHomeLink
+        workspaces={workspaceTabs}
+        activeWorkspace={view}
+        onWorkspaceChange={handleViewChange}
+        workspaceIdPrefix={PLAYGROUND_VIEW_ID_PREFIX}
         allowWideView
         actions={
           <button
@@ -622,331 +672,352 @@ export default function PythonPlayground() {
           </div>
         )}
 
-        {/* Action toolbar */}
-        <div className={styles.toolbar} role="toolbar" aria-label={t('python.title')}>
-          <div className={styles.toolbarLeft}>
-            {!isNarrow && (
-              <button
-                type="button"
-                className={styles.secondaryBtn}
-                aria-pressed={showFilesSidebar}
-                onClick={() => {
-                  setShowFilesSidebar((prev) => !prev);
-                  requestAnimationFrame(() => {
-                    editorRef.current?.layout();
-                    consoleRef.current?.fit();
-                    replRef.current?.fit();
-                  });
-                }}
-                data-testid="python-toggle-files-btn"
-              >
-                {showFilesSidebar ? t('python.toggleFilesHide') : t('python.toggleFilesShow')}
-              </button>
-            )}
-
-            <button
-              type="button"
-              className={styles.runBtn}
-              disabled={!canRun}
-              onClick={() => {
-                void handleRun();
-              }}
-              title={t('python.runTitle', { file: runTarget })}
-              data-testid="python-run-btn"
-            >
-              &#9654; {t('python.run')}{' '}
-              <span className={fileStyles.runTargetHint}>{baseName(runTarget)}</span>
-            </button>
-
-            {isRunning && (
-              <>
+        {/* Workbench tab: kept mounted (hidden) while Examples shows */}
+        <div
+          role="tabpanel"
+          id={playgroundPanelId('workbench')}
+          aria-labelledby={playgroundTabId('workbench')}
+          hidden={view !== 'workbench'}
+          className={styles.workbenchPanel}
+        >
+          {/* Action toolbar */}
+          <div className={styles.toolbar} role="toolbar" aria-label={t('python.title')}>
+            <div className={styles.toolbarLeft}>
+              {!isNarrow && (
                 <button
                   type="button"
-                  className={styles.stopBtn}
-                  onClick={handleStop}
-                  title={t('python.stopTitle')}
-                  data-testid="python-stop-btn"
+                  className={styles.secondaryBtn}
+                  aria-pressed={showFilesSidebar}
+                  onClick={() => {
+                    setShowFilesSidebar((prev) => !prev);
+                    requestAnimationFrame(() => {
+                      editorRef.current?.layout();
+                      consoleRef.current?.fit();
+                      replRef.current?.fit();
+                    });
+                  }}
+                  data-testid="python-toggle-files-btn"
                 >
-                  &#9632; {activeTier === 1 && clientState === 'running' ? t('python.stop') : t('python.forceStop')}
+                  {showFilesSidebar ? t('python.toggleFilesHide') : t('python.toggleFilesShow')}
                 </button>
-                {activeTier === 1 && clientState === 'running' && (
-                  <button
-                    type="button"
-                    className={styles.forceStopBtn}
-                    onClick={handleForceStop}
-                    title={t('python.forceStopTitle')}
-                    data-testid="python-force-stop-btn"
-                  >
-                    {t('python.forceStop')}
-                  </button>
-                )}
-              </>
-            )}
+              )}
 
-            {(clientState === 'crashed' || clientState === 'ready') && !isLockedByOtherTab && (
               <button
                 type="button"
-                className={clientState === 'crashed' ? styles.restartBtnHighlight : styles.secondaryBtn}
-                onClick={handleRestart}
-                title={t('python.restartTitle')}
-                data-testid="python-restart-btn"
-              >
-                {t('python.restart')}
-              </button>
-            )}
-
-            {isBlockedGate && (
-              <button
-                type="button"
-                className={styles.dangerOutlineBtn}
-                onClick={() => setW7Open(true)}
-                data-testid="python-open-w7-btn"
-              >
-                {t('python.w7Title')}
-              </button>
-            )}
-          </div>
-
-          <div className={styles.toolbarRight}>
-            {lastRunSummary && (
-              <span className={styles.runSummary} data-testid="python-run-summary">
-                {lastRunSummary}
-              </span>
-            )}
-            <span
-              className={[
-                styles.statusPill,
-                clientState === 'running' || clientState === 'stopping'
-                  ? styles.statusPillRunning
-                  : clientState === 'crashed' || isBlockedGate || isLockedByOtherTab
-                    ? styles.statusPillBad
-                    : clientState === 'ready'
-                      ? styles.statusPillGood
-                      : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              data-testid="python-status-pill"
-            >
-              {statusLabel}
-            </span>
-            <span className={styles.tierPill} title={tierDesc} data-testid="python-tier-pill">
-              {tierBadge}
-            </span>
-          </div>
-        </div>
-
-        {/* Crash notice bar (outside program output) */}
-        {crashReason && clientState === 'crashed' && (
-          <div className={styles.crashBar} role="alert" data-testid="python-crash-banner">
-            <span>{t('python.crashBanner', { reason: crashReason })}</span>
-            <button type="button" className={styles.primaryBtnSm} onClick={handleRestart}>
-              {t('python.restart')}
-            </button>
-          </div>
-        )}
-
-        {/* Phone pane switcher: Editor | Console | Files | Plots */}
-        {isNarrow && (
-          <div className={styles.mobileTabsRow}>
-            <PillTabs
-              items={mobileTabs}
-              value={mobilePane}
-              onChange={(next) => {
-                setMobilePane(next);
-                if (next === 'plots') {
-                  setOutputTab('plots');
-                  plots.clearUnread();
-                } else if (next === 'output' && outputTab === 'plots') {
-                  setOutputTab('console');
-                }
-                requestAnimationFrame(() => {
-                  if (next === 'editor') editorRef.current?.layout();
-                  else if (next === 'output') {
-                    consoleRef.current?.fit();
-                    replRef.current?.fit();
-                  }
-                });
-              }}
-              ariaLabel={t('python.paneNavAria')}
-              size="sm"
-            />
-          </div>
-        )}
-
-        {/* Main 3-column (desktop with Files) or 2-column / 1-column workspace */}
-        <div
-          className={[
-            styles.workspace,
-            !isNarrow && showFilesSidebar ? fileStyles.workspaceWithFiles : '',
-          ]
-            .filter(Boolean)
-            .join(' ')}
-        >
-          {/* Files Sidebar / Phone Files Tab */}
-          {showFilesPane && (
-            <FileTree
-              entries={workspace.entries}
-              activePath={workspace.activePath}
-              runCreatedPaths={workspace.runCreatedPaths}
-              stats={workspace.stats}
-              storageEstimate={workspace.storageEstimate}
-              disabled={isLockedByOtherTab || !workspace.storageReady}
-              errorMessage={workspace.errorMessage}
-              w5NoticeVisible={workspace.w5NoticeVisible}
-              onDismissError={workspace.dismissError}
-              onDismissW5={workspace.dismissW5}
-              onOpenFile={handleOpenFileFromTree}
-              onCreateFile={workspace.createFile}
-              onCreateFolder={workspace.createFolder}
-              onRename={workspace.renamePath}
-              onMove={workspace.movePath}
-              onDelete={workspace.deletePath}
-              onDownload={(path) => {
-                void workspace.downloadFile(path);
-              }}
-              onUploadFiles={workspace.uploadFiles}
-              onImportZip={workspace.importZip}
-              onExportZip={workspace.exportZip}
-              onLoadExample={workspace.loadExample}
-            />
-          )}
-
-          {/* Middle: Multi-tab Monaco Editor */}
-          <section
-            className={styles.paneCard}
-            style={{ display: showEditorPane ? 'flex' : 'none' }}
-            aria-label={t('python.tabEditor')}
-          >
-            {swSettled ? (
-              <PythonEditor
-                ref={editorRef}
-                tabs={workspace.tabs}
-                activePath={workspace.activePath}
-                theme={resolvedTheme}
-                readOnly={isLockedByOtherTab}
-                fileVersion={workspace.fileVersion}
-                readFileBytes={workspace.readFileBytes}
-                onSelectTab={workspace.selectTab}
-                onCloseTab={workspace.closeTab}
-                onRun={() => {
+                className={styles.runBtn}
+                disabled={!canRun}
+                onClick={() => {
                   void handleRun();
                 }}
-                onContentChange={workspace.handleEditorContentChange}
-                onDownloadFile={(path) => {
-                  void workspace.downloadFile(path);
-                }}
-              />
-            ) : (
-              <div className={styles.editorWrap} data-testid="python-editor-wrap">
-                <div className={styles.panePlaceholder}>{t('python.loadingEditor')}</div>
-              </div>
-            )}
-          </section>
+                title={t('python.runTitle', { file: runTarget })}
+                data-testid="python-run-btn"
+              >
+                &#9654; {t('python.run')}{' '}
+                <span className={fileStyles.runTargetHint}>{baseName(runTarget)}</span>
+              </button>
 
-          {/* Right: Program output container (strictly framed & labelled per security.md §4) */}
-          <section
-            className={[styles.paneCard, styles.programOutputFrame].join(' ')}
-            style={{ display: showOutputPane ? 'flex' : 'none' }}
-            aria-label={t('python.programOutput')}
-            data-testid="python-program-output-frame"
-          >
-            <div className={styles.paneHeader}>
-              <div className={styles.paneHeaderLeft}>
-                <span className={styles.programOutputLabel} data-testid="python-program-output-label">
-                  {t('python.programOutput')}
-                </span>
-                <PillTabs
-                  items={outputTabs}
-                  value={outputTab}
-                  onChange={(next) => {
-                    setOutputTab(next);
-                    if (next === 'plots') {
-                      plots.clearUnread();
-                      if (isNarrow) setMobilePane('plots');
-                    } else if (isNarrow) {
-                      setMobilePane('output');
-                    }
-                  }}
-                  ariaLabel={t('python.outputNavAria')}
-                  size="sm"
-                  variant="subtle"
-                />
-              </div>
+              {isRunning && (
+                <>
+                  <button
+                    type="button"
+                    className={styles.stopBtn}
+                    onClick={handleStop}
+                    title={t('python.stopTitle')}
+                    data-testid="python-stop-btn"
+                  >
+                    &#9632; {activeTier === 1 && clientState === 'running' ? t('python.stop') : t('python.forceStop')}
+                  </button>
+                  {activeTier === 1 && clientState === 'running' && (
+                    <button
+                      type="button"
+                      className={styles.forceStopBtn}
+                      onClick={handleForceStop}
+                      title={t('python.forceStopTitle')}
+                      data-testid="python-force-stop-btn"
+                    >
+                      {t('python.forceStop')}
+                    </button>
+                  )}
+                </>
+              )}
+
+              {(clientState === 'crashed' || clientState === 'ready') && !isLockedByOtherTab && (
+                <button
+                  type="button"
+                  className={clientState === 'crashed' ? styles.restartBtnHighlight : styles.secondaryBtn}
+                  onClick={handleRestart}
+                  title={t('python.restartTitle')}
+                  data-testid="python-restart-btn"
+                >
+                  {t('python.restart')}
+                </button>
+              )}
+
+              {isBlockedGate && (
+                <button
+                  type="button"
+                  className={styles.dangerOutlineBtn}
+                  onClick={() => setW7Open(true)}
+                  data-testid="python-open-w7-btn"
+                >
+                  {t('python.w7Title')}
+                </button>
+              )}
             </div>
 
-            {/* Trusted traceback jump strip (pure React text nodes, zero HTML) */}
-            {tracebackJumps.length > 0 && (
-              <div className={styles.tracebackStrip} data-testid="python-traceback-strip">
-                <span className={styles.tracebackLabel}>{t('python.tracebackLabel')}</span>
-                {tracebackJumps.map((j) => (
-                  <button
-                    key={`${j.path}:${j.line}`}
-                    type="button"
-                    className={styles.tracebackChip}
-                    onClick={() => {
-                      void handleJumpToTraceback(j);
-                    }}
-                    data-testid={
-                      j.path === 'main.py'
-                        ? `python-tb-line-${j.line}`
-                        : `python-tb-${j.path}-${j.line}`
-                    }
-                  >
-                    {t('python.tracebackLine', { file: j.path, line: j.line })}
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className={styles.toolbarRight}>
+              {lastRunSummary && (
+                <span className={styles.runSummary} data-testid="python-run-summary">
+                  {lastRunSummary}
+                </span>
+              )}
+              <span
+                className={[
+                  styles.statusPill,
+                  clientState === 'running' || clientState === 'stopping'
+                    ? styles.statusPillRunning
+                    : clientState === 'crashed' || isBlockedGate || isLockedByOtherTab
+                      ? styles.statusPillBad
+                      : clientState === 'ready'
+                        ? styles.statusPillGood
+                        : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                data-testid="python-status-pill"
+              >
+                {statusLabel}
+              </span>
+              <span className={styles.tierPill} title={tierDesc} data-testid="python-tier-pill">
+                {tierBadge}
+              </span>
+            </div>
+          </div>
 
-            {swSettled ? (
-              <>
-                <PythonTerminal
-                  ref={consoleRef}
-                  mode="console"
-                  visible={showOutputPane && !isPlotsVisible && outputTab === 'console'}
-                  theme={resolvedTheme}
-                  awaitingStdin={awaitingStdin}
-                  onStop={handleStop}
-                  onSendStdin={handleSendStdin}
-                  onSendStdinEof={handleSendStdinEof}
-                  onExternalLink={(url) => setPendingExternalUrl(url)}
-                />
+          {/* Crash notice bar (outside program output) */}
+          {crashReason && clientState === 'crashed' && (
+            <div className={styles.crashBar} role="alert" data-testid="python-crash-banner">
+              <span>{t('python.crashBanner', { reason: crashReason })}</span>
+              <button type="button" className={styles.primaryBtnSm} onClick={handleRestart}>
+                {t('python.restart')}
+              </button>
+            </div>
+          )}
 
-                <PythonTerminal
-                  ref={replRef}
-                  mode="repl"
-                  visible={showOutputPane && !isPlotsVisible && outputTab === 'repl'}
-                  theme={resolvedTheme}
-                  replDisabled={isRunning || !readyInfo || isBlockedGate || isLockedByOtherTab}
-                  replBanner={
-                    readyInfo
-                      ? t('python.replReadyBanner', { version: readyInfo.pythonVersion })
-                      : undefined
+          {/* Phone pane switcher: Editor | Console | Files | Plots */}
+          {isNarrow && (
+            <div className={styles.mobileTabsRow}>
+              <PillTabs
+                items={mobileTabs}
+                value={mobilePane}
+                onChange={(next) => {
+                  setMobilePane(next);
+                  if (next === 'plots') {
+                    setOutputTab('plots');
+                    plots.clearUnread();
+                  } else if (next === 'output' && outputTab === 'plots') {
+                    setOutputTab('console');
                   }
-                  onReplPush={handleReplPush}
-                  onReplComplete={handleReplComplete}
-                  onExternalLink={(url) => setPendingExternalUrl(url)}
-                />
+                  requestAnimationFrame(() => {
+                    if (next === 'editor') editorRef.current?.layout();
+                    else if (next === 'output') {
+                      consoleRef.current?.fit();
+                      replRef.current?.fit();
+                    }
+                  });
+                }}
+                ariaLabel={t('python.paneNavAria')}
+                size="sm"
+              />
+            </div>
+          )}
 
-                <PlotsGallery
-                  visible={showOutputPane && isPlotsVisible}
-                  plots={plots.plots}
-                  selectedPlotId={plots.selectedPlotId}
-                  exportDisabled={isRunning || !readyInfo || isLockedByOtherTab}
-                  onSelectPlot={plots.selectPlot}
-                  onDeletePlot={plots.deletePlot}
-                  onClearAll={plots.clearAllPlots}
-                  onExportPlot={handleExportPlot}
-                />
-              </>
-            ) : (
-              <div className={styles.terminalHostWrap}>
-                <div className={styles.panePlaceholder}>{t('python.loadingTerminal')}</div>
-              </div>
+          {/* Main 3-column (desktop with Files) or 2-column / 1-column workspace */}
+          <div
+            className={[
+              styles.workspace,
+              !isNarrow && showFilesSidebar ? fileStyles.workspaceWithFiles : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          >
+            {/* Files Sidebar / Phone Files Tab */}
+            {showFilesPane && (
+              <FileTree
+                entries={workspace.entries}
+                activePath={workspace.activePath}
+                runCreatedPaths={workspace.runCreatedPaths}
+                stats={workspace.stats}
+                storageEstimate={workspace.storageEstimate}
+                disabled={isLockedByOtherTab || !workspace.storageReady}
+                errorMessage={workspace.errorMessage}
+                w5NoticeVisible={workspace.w5NoticeVisible}
+                onDismissError={workspace.dismissError}
+                onDismissW5={workspace.dismissW5}
+                onOpenFile={handleOpenFileFromTree}
+                onCreateFile={workspace.createFile}
+                onCreateFolder={workspace.createFolder}
+                onRename={workspace.renamePath}
+                onMove={workspace.movePath}
+                onDelete={workspace.deletePath}
+                onDownload={(path) => {
+                  void workspace.downloadFile(path);
+                }}
+                onUploadFiles={workspace.uploadFiles}
+                onImportZip={workspace.importZip}
+                onExportZip={workspace.exportZip}
+                onLoadExample={workspace.loadExample}
+              />
             )}
-          </section>
+
+            {/* Middle: Multi-tab Monaco Editor */}
+            <section
+              className={styles.paneCard}
+              style={{ display: showEditorPane ? 'flex' : 'none' }}
+              aria-label={t('python.tabEditor')}
+            >
+              {swSettled ? (
+                <PythonEditor
+                  ref={editorRef}
+                  tabs={workspace.tabs}
+                  activePath={workspace.activePath}
+                  theme={resolvedTheme}
+                  readOnly={isLockedByOtherTab}
+                  fileVersion={workspace.fileVersion}
+                  readFileBytes={workspace.readFileBytes}
+                  onSelectTab={workspace.selectTab}
+                  onCloseTab={workspace.closeTab}
+                  onRun={() => {
+                    void handleRun();
+                  }}
+                  onContentChange={workspace.handleEditorContentChange}
+                  onDownloadFile={(path) => {
+                    void workspace.downloadFile(path);
+                  }}
+                />
+              ) : (
+                <div className={styles.editorWrap} data-testid="python-editor-wrap">
+                  <div className={styles.panePlaceholder}>{t('python.loadingEditor')}</div>
+                </div>
+              )}
+            </section>
+
+            {/* Right: Program output container (strictly framed & labelled per security.md §4) */}
+            <section
+              className={[styles.paneCard, styles.programOutputFrame].join(' ')}
+              style={{ display: showOutputPane ? 'flex' : 'none' }}
+              aria-label={t('python.programOutput')}
+              data-testid="python-program-output-frame"
+            >
+              <div className={styles.paneHeader}>
+                <div className={styles.paneHeaderLeft}>
+                  <span className={styles.programOutputLabel} data-testid="python-program-output-label">
+                    {t('python.programOutput')}
+                  </span>
+                  <PillTabs
+                    items={outputTabs}
+                    value={outputTab}
+                    onChange={(next) => {
+                      setOutputTab(next);
+                      if (next === 'plots') {
+                        plots.clearUnread();
+                        if (isNarrow) setMobilePane('plots');
+                      } else if (isNarrow) {
+                        setMobilePane('output');
+                      }
+                    }}
+                    ariaLabel={t('python.outputNavAria')}
+                    size="sm"
+                    variant="subtle"
+                  />
+                </div>
+              </div>
+
+              {/* Trusted traceback jump strip (pure React text nodes, zero HTML) */}
+              {tracebackJumps.length > 0 && (
+                <div className={styles.tracebackStrip} data-testid="python-traceback-strip">
+                  <span className={styles.tracebackLabel}>{t('python.tracebackLabel')}</span>
+                  {tracebackJumps.map((j) => (
+                    <button
+                      key={`${j.path}:${j.line}`}
+                      type="button"
+                      className={styles.tracebackChip}
+                      onClick={() => {
+                        void handleJumpToTraceback(j);
+                      }}
+                      data-testid={
+                        j.path === 'main.py'
+                          ? `python-tb-line-${j.line}`
+                          : `python-tb-${j.path}-${j.line}`
+                      }
+                    >
+                      {t('python.tracebackLine', { file: j.path, line: j.line })}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {swSettled ? (
+                <>
+                  <PythonTerminal
+                    ref={consoleRef}
+                    mode="console"
+                    visible={showOutputPane && !isPlotsVisible && outputTab === 'console'}
+                    theme={resolvedTheme}
+                    awaitingStdin={awaitingStdin}
+                    onStop={handleStop}
+                    onSendStdin={handleSendStdin}
+                    onSendStdinEof={handleSendStdinEof}
+                    onExternalLink={(url) => setPendingExternalUrl(url)}
+                  />
+
+                  <PythonTerminal
+                    ref={replRef}
+                    mode="repl"
+                    visible={showOutputPane && !isPlotsVisible && outputTab === 'repl'}
+                    theme={resolvedTheme}
+                    replDisabled={isRunning || !readyInfo || isBlockedGate || isLockedByOtherTab}
+                    replBanner={
+                      readyInfo
+                        ? t('python.replReadyBanner', { version: readyInfo.pythonVersion })
+                        : undefined
+                    }
+                    onReplPush={handleReplPush}
+                    onReplComplete={handleReplComplete}
+                    onExternalLink={(url) => setPendingExternalUrl(url)}
+                  />
+
+                  <PlotsGallery
+                    visible={showOutputPane && isPlotsVisible}
+                    plots={plots.plots}
+                    selectedPlotId={plots.selectedPlotId}
+                    exportDisabled={isRunning || !readyInfo || isLockedByOtherTab}
+                    onSelectPlot={plots.selectPlot}
+                    onDeletePlot={plots.deletePlot}
+                    onClearAll={plots.clearAllPlots}
+                    onExportPlot={handleExportPlot}
+                  />
+                </>
+              ) : (
+                <div className={styles.terminalHostWrap}>
+                  <div className={styles.panePlaceholder}>{t('python.loadingTerminal')}</div>
+                </div>
+              )}
+            </section>
+          </div>
         </div>
+
+        <ExamplesGallery
+          hidden={view !== 'examples'}
+          disabledReason={
+            isLockedByOtherTab
+              ? t('python.examplesTabLocked')
+              : !workspace.storageReady
+                ? t('python.examplesTabNotReady')
+                : null
+          }
+          onLoad={handleLoadExampleFromGallery}
+        />
       </main>
 
       {/* Trusted security dialogs — always rendered outside program-output containers */}

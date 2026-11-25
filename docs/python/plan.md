@@ -91,7 +91,7 @@ Ask before the named step; do not guess.
 | P3 | Files | Done (`notes-P3.md`) |
 | P4 | Plots and viewers. **v1 ends here: the owner tries it** | Done (`notes-P4.md`) |
 | E1a | Examples: programs + engine checks | Done |
-| E1b | Examples tab | Not started |
+| E1b | Examples tab | Done |
 | P5, P6 | Packages: engine, page | Not started |
 | S4 | Display transport spike | Not started |
 | P7, P8 | Display: engine, page | Not started |

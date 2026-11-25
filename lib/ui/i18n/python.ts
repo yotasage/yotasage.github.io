@@ -188,7 +188,7 @@ export const en = {
   'python.w2Summary': 'Runs Python locally in your browser (Pyodide). Network access is off by default.',
   'python.w2WorksLabel': 'Works now (v1 complete):',
   'python.w2Works':
-    'CPython 3.14.2 via self-hosted Pyodide (NumPy, SciPy, pandas, SymPy, matplotlib, Pillow); persistent IndexedDB workspace with file tree, multi-tab Monaco Editor with autosave, drag-drop upload, safe ZIP import/export, Web Locks, and examples; xterm.js Console & REPL; Soft/Force Stop and blocking input(); live Plots gallery (plt.show(), PIL.Image.show(), vector SVG/PDF export); hardened Image, SVG, PDF, CSV/TSV, JSON, and sandboxed HTML viewers; and network access blocked by default.',
+    'CPython 3.14.2 via self-hosted Pyodide (NumPy, SciPy, pandas, SymPy, matplotlib, Pillow); persistent IndexedDB workspace with file tree, multi-tab Monaco Editor with autosave, drag-drop upload, safe ZIP import/export, Web Locks, and an Examples tab with 12 built-in programs; xterm.js Console & REPL; Soft/Force Stop and blocking input(); live Plots gallery (plt.show(), PIL.Image.show(), vector SVG/PDF export); hardened Image, SVG, PDF, CSV/TSV, JSON, and sandboxed HTML viewers; and network access blocked by default.',
   'python.w2VerifiedLabel': 'Verified:',
   'python.w2Verified':
     'Cross-browser engine, persistence, plots/viewers, security, and UI harnesses passing in Edge, Firefox, and WebKit (CSP enforcement, off-mode exfiltration battery, forged-message filtering, SVG/HTML viewer XSS checks, 100-plot Blob URL leak & 16-figure eviction cap checks, stop latency, reload/Force Stop persistence, and Web Locks).',
@@ -465,7 +465,7 @@ export const nb: Record<keyof typeof en, string> = {
   'python.w2Summary': 'Kjører Python lokalt i nettleseren din (Pyodide). Nettverkstilgang er avslått som standard.',
   'python.w2WorksLabel': 'Fungerer nå (v1 ferdig):',
   'python.w2Works':
-    'CPython 3.14.2 via egenhostet Pyodide (NumPy, SciPy, pandas, SymPy, matplotlib, Pillow); varig IndexedDB-arbeidsområde med filutforsker, flerfane-Monaco Editor med autolagring, dra-og-slipp, trygg ZIP-import/eksport, Web Locks og eksempler; xterm.js-konsoll og REPL; myk/tvungen stopp og blokkerende input(); plottgalleri (plt.show(), PIL.Image.show(), SVG/PDF-vektoreksport); sikre bilde-, SVG-, PDF-, CSV/TSV-, JSON- og sandkasse-HTML-visere; og nettverk blokkert som standard.',
+    'CPython 3.14.2 via egenhostet Pyodide (NumPy, SciPy, pandas, SymPy, matplotlib, Pillow); varig IndexedDB-arbeidsområde med filutforsker, flerfane-Monaco Editor med autolagring, dra-og-slipp, trygg ZIP-import/eksport, Web Locks og en Eksempler-fane med 12 innebygde programmer; xterm.js-konsoll og REPL; myk/tvungen stopp og blokkerende input(); plottgalleri (plt.show(), PIL.Image.show(), SVG/PDF-vektoreksport); sikre bilde-, SVG-, PDF-, CSV/TSV-, JSON- og sandkasse-HTML-visere; og nettverk blokkert som standard.',
   'python.w2VerifiedLabel': 'Verifisert:',
   'python.w2Verified':
     'Motor-, lagrings-, plott/viser-, sikkerhets- og UI-tester på tvers av Edge, Firefox og WebKit (CSP-håndheving, utgående blokkering i Av-modus, filtrering av forfalskede meldinger, XSS-sjekk av SVG/HTML-visere, 100-plotts Blob URL- og 16-figurers minnegrense, stopp-latens, filoverlevelse og Web Locks).',

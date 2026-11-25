@@ -44,7 +44,7 @@ export interface FileTreeProps {
   onUploadFiles: (files: readonly { path: string; file: File }[], dirs?: readonly string[]) => Promise<void>;
   onImportZip: (file: File) => Promise<void>;
   onExportZip: () => Promise<void>;
-  onLoadExample: (exampleId: string) => Promise<void>;
+  onLoadExample: (exampleId: string) => Promise<unknown>;
 }
 
 interface TreeNode {

@@ -19,6 +19,7 @@ import { chromium, firefox, webkit } from 'playwright-core';
 
 import { startHarnessServers } from './servers.mjs';
 import { runFilesUiSuite } from './ui-files-checks.mjs';
+import { runExamplesUiSuite } from './ui-examples-checks.mjs';
 import { runPlotsUiSuite } from './ui-plots-checks.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -1003,6 +1004,14 @@ async function runBrowserSuite(browserName, browser, baseUrl) {
     waitIsolatedMain,
     waitMonacoAndPyodideReady,
     waitTerminalContains,
+    attachErrorTracker,
+  });
+
+  // Suite 7: E1b Examples tab (header tabs, cards, Load without running, phone, screenshots)
+  await runExamplesUiSuite(browserName, browser, baseUrl, {
+    record,
+    waitIsolatedMain,
+    waitMonacoAndPyodideReady,
     attachErrorTracker,
   });
 }

@@ -27,6 +27,19 @@
   max-width: none;
 }
 
+/* Workbench header tab: stays mounted while the Examples tab shows */
+.workbenchPanel {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.workbenchPanel[hidden] {
+  display: none;
+}
+
 /* Header network pill */
 .headerNetBtn {
   display: inline-flex;
@@ -665,7 +678,7 @@
 
   .toolbar {
     position: sticky;
-    top: 56px;
+    top: var(--python-header-h, 56px);
     z-index: 15;
     padding: 8px 10px;
   }

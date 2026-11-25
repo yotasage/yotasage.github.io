@@ -1,0 +1,200 @@
+/* Python Playground — Examples tab (components/Python/ExamplesGallery.tsx), Design System v2 tokens */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.panel[hidden] {
+  display: none;
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 820px;
+}
+
+.title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ds-ink);
+}
+
+.lead {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ds-ink-2);
+}
+
+.note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ds-ink-3);
+}
+
+.disabledReason {
+  margin: 2px 0 0;
+  padding: 7px 11px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-warn);
+  background: var(--ds-warn-soft);
+  color: var(--ds-ink);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1040px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px 16px;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-surface-solid);
+  box-shadow: var(--ds-shadow-card);
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: var(--ds-radius-pill);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  background: var(--ds-accent-soft);
+  color: var(--ds-accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tag[data-tag='science'],
+.tag[data-tag='plots'] {
+  border-color: var(--ds-good);
+  background: var(--ds-good-soft);
+  color: var(--ds-ink);
+}
+
+.tag[data-tag='files'],
+.tag[data-tag='async'] {
+  border-color: var(--ds-border-strong);
+  background: var(--ds-well);
+  color: var(--ds-ink);
+}
+
+.tag[data-tag='network'] {
+  border-color: var(--ds-warn);
+  background: var(--ds-warn-soft);
+  color: var(--ds-ink);
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.3;
+  color: var(--ds-ink);
+}
+
+.cardDesc {
+  margin: 0;
+  flex: 1 1 auto;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ds-ink-2);
+}
+
+.files {
+  margin: 0;
+  max-width: 100%;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ds-ink-3);
+  overflow-wrap: anywhere;
+}
+
+.filesLabel {
+  font-weight: 600;
+}
+
+.filesList {
+  font-family: var(--ds-font-mono);
+}
+
+.failed {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ds-bad);
+}
+
+.loadBtn {
+  margin-top: 2px;
+  padding: 7px 14px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid transparent;
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.loadBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ds-accent) 86%, var(--ds-ink));
+}
+
+.loadBtn:focus-visible {
+  outline: none;
+  box-shadow: var(--ds-focus-ring);
+}
+
+.loadBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (max-width: 899px) {
+  .card {
+    padding: 12px 14px;
+  }
+
+  .loadBtn {
+    align-self: stretch;
+    padding: 9px 14px;
+  }
+}

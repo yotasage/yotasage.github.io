@@ -1,6 +1,20 @@
 // EN/NB strings of the Python Playground's built-in examples (lib/python/examples/): card titles,
 // one-sentence descriptions and category tag labels. Split from python.ts to keep both under 40 kB.
 export const en = {
+  // Examples tab (components/Python/ExamplesGallery.tsx)
+  'python.workspaceWorkbench': 'Workbench',
+  'python.workspaceExamples': 'Examples',
+  'python.examplesTabTitle': 'Built-in examples',
+  'python.examplesTabIntro': 'Short programs that show what the playground can do. Load one into the workbench, read it, then press Run when you are ready.',
+  'python.examplesTabOverwrite': 'Each example goes into its own folder (for example modules/). Loading it again puts back its original files in that folder; your other files stay as they are.',
+  'python.examplesTabFiles': 'Files:',
+  'python.examplesTabLoad': 'Load in workbench',
+  'python.examplesTabLoading': 'Loading…',
+  'python.examplesTabLocked': 'Another tab has this workspace open, so examples cannot be loaded here.',
+  'python.examplesTabNotReady': 'The workspace is still loading.',
+  'python.examplesTabFailed': 'The example could not be loaded. The Files panel says why.',
+  'python.examplesTabGridAria': 'Built-in examples',
+
   // Tag labels (PYTHON_EXAMPLE_TAGS)
   'python.exampleTag.basics': 'Basics',
   'python.exampleTag.science': 'Science',
@@ -37,6 +51,20 @@ export const en = {
 } as const;
 
 export const nb: Record<keyof typeof en, string> = {
+  // Examples tab (components/Python/ExamplesGallery.tsx)
+  'python.workspaceWorkbench': 'Arbeidsbenk',
+  'python.workspaceExamples': 'Eksempler',
+  'python.examplesTabTitle': 'Innebygde eksempler',
+  'python.examplesTabIntro': 'Korte programmer som viser hva lekeplassen kan gjøre. Last ett inn på arbeidsbenken, les det, og trykk Kjør når du er klar.',
+  'python.examplesTabOverwrite': 'Hvert eksempel legges i sin egen mappe (for eksempel modules/). Laster du det inn igjen, får mappen tilbake de opprinnelige filene; de andre filene dine blir som de er.',
+  'python.examplesTabFiles': 'Filer:',
+  'python.examplesTabLoad': 'Last inn på arbeidsbenken',
+  'python.examplesTabLoading': 'Laster inn…',
+  'python.examplesTabLocked': 'En annen fane har dette arbeidsområdet åpent, så eksempler kan ikke lastes inn her.',
+  'python.examplesTabNotReady': 'Arbeidsområdet lastes fortsatt inn.',
+  'python.examplesTabFailed': 'Eksemplet kunne ikke lastes inn. Filpanelet forteller hvorfor.',
+  'python.examplesTabGridAria': 'Innebygde eksempler',
+
   // Tag labels (PYTHON_EXAMPLE_TAGS)
   'python.exampleTag.basics': 'Grunnleggende',
   'python.exampleTag.science': 'Vitenskap',

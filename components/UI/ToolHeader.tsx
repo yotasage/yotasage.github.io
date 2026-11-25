@@ -25,6 +25,8 @@ export interface ToolHeaderProps<T extends string = string> {
   workspaces?: readonly WorkspaceTab<T>[];
   activeWorkspace?: T;
   onWorkspaceChange?: (id: T) => void;
+  /** When set, workspace tabs get ids `<prefix>-tab-<id>` and `aria-controls` `<prefix>-panel-<id>`. */
+  workspaceIdPrefix?: string;
   actions?: React.ReactNode;
   showExperienceMode?: boolean;
   allowWideView?: boolean;
@@ -134,6 +136,7 @@ export default function ToolHeader<T extends string = string>({
   workspaces,
   activeWorkspace,
   onWorkspaceChange,
+  workspaceIdPrefix,
   actions,
   showExperienceMode = false,
   allowWideView = false,
@@ -207,6 +210,7 @@ export default function ToolHeader<T extends string = string>({
               value={activeWorkspace}
               onChange={onWorkspaceChange}
               ariaLabel={t('header.workspaceNav')}
+              idPrefix={workspaceIdPrefix}
             />
           </div>
         )}
