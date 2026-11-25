@@ -2,13 +2,16 @@
 // Coordinates SW registration, Web Locks single-tab ownership, Option 3B Storage Worker,
 // W1/W4/W5/W7/W8/W9 security gates, PythonWorkerClient lifecycle, File Tree, multi-tab
 // Monaco Editor with autosave, xterm.js Console + REPL, Plots and Display tabs, multi-file traceback jumps,
-// responsive desktop/phone layout, and the Workbench | Examples | Packages header tabs (the workbench
-// stays mounted while another tab shows, so the editor, terminal and a running program are kept).
+// the desktop dock and phone panes (layout/: each panel is rendered once into a host they place), and
+// the Workbench | Examples | Packages header tabs (the workbench stays mounted
+// while another tab shows, so the editor, terminal and a running program are kept).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import { OFF_NETWORK_POLICY, parseNetworkPolicyFromSearch } from '../../lib/python/network';
 import type { NetworkPolicy } from '../../lib/python/network';
+import type { PanelId } from '../../lib/python/layout/model';
 import { baseName } from '../../lib/python/paths';
 import type {
   CapabilityTier,
@@ -28,6 +31,7 @@ import { useI18n } from '../../lib/ui/i18n';
 import { useDesignSystemPage, useTheme } from '../../lib/ui/theme';
 import styles from '../../styles/Python.module.css';
 import fileStyles from '../../styles/PythonFiles.module.css';
+import layoutStyles from '../../styles/PythonLayout.module.css';
 import ToolHeader, { WorkspaceTab } from '../UI/ToolHeader';
 import ExamplesGallery, {
   PLAYGROUND_VIEW_ID_PREFIX,
@@ -40,11 +44,16 @@ import ExamplesGallery, {
 import DisplayPanel from './DisplayPanel';
 import { extractWorkspaceJumps, TracebackJump } from './fileHelpers';
 import FileTree from './FileTree';
+import DockLayout from './layout/DockLayout';
+import LayoutMenu from './layout/LayoutMenu';
+import PhoneWorkspace from './layout/PhoneWorkspace';
+import { useDockLayout } from './layout/useDockLayout';
+import { usePanelHosts } from './layout/usePanelHosts';
 import NetworkBanner from './NetworkBanner';
 import NetworkDialog from './NetworkDialog';
-import { OutputTabBar, PhonePaneTabs, useOutputPanes } from './OutputTabs';
+import { PhonePaneTabs, useOutputPanes } from './OutputTabs';
 import PackagesPanel, { MissingPackagesNotice } from './PackagesPanel';
-import { NetworkModeButton, tierTexts, W2StatusNote } from './PlaygroundNotes';
+import { NetworkModeButton, tierTexts, TracebackStrip, W2StatusNote } from './PlaygroundNotes';
 import PlotsGallery from './PlotsGallery';
 import PythonEditor, { EditorErrorMarker, PythonEditorHandle } from './PythonEditor';
 import PythonTerminal, { PythonTerminalHandle } from './PythonTerminal';
@@ -96,14 +105,18 @@ export default function PythonPlayground() {
   const [tracebackJumps, setTracebackJumps] = useState<readonly TracebackJump[]>([]);
 
   // Panes & responsive state
-  const [showFilesSidebar, setShowFilesSidebar] = useState(true);
   const [isNarrow, setIsNarrow] = useState(false);
   const [swSettled, setSwSettled] = useState(false);
   const [view, setView] = usePlaygroundView();
   useHeaderHeightVar();
 
-  const panes = useOutputPanes(isNarrow);
-  const { outputTab, setOutputTab, setMobilePane, outputTabRef, isPlotsVisible, showOutputPane, showDisplay } = panes;
+  // Desktop dock (stored layout, presets) and the six panel hosts shared by the dock and the phone panes
+  const dock = useDockLayout(!isNarrow);
+  const { registry: hostRegistry, hosts: panelHosts } = usePanelHosts(layoutStyles.host);
+  const panes = useOutputPanes(isNarrow, dock);
+  const { setOutputTab, setMobilePane, replActiveRef, isPlotsVisible, showConsole, showDisplay, isShown } = panes;
+  const showConsoleRef = useRef(showConsole);
+  showConsoleRef.current = showConsole;
 
   // Plots gallery state & guaranteed Blob URL lifecycle
   const plots = usePlots(panes.isPlotsVisibleRef);
@@ -212,14 +225,14 @@ export default function PythonPlayground() {
         }
       },
       stdout: (text) => {
-        if (outputTabRef.current === 'repl' && client.state !== 'running' && client.state !== 'stopping') {
+        if (replActiveRef.current && client.state !== 'running' && client.state !== 'stopping') {
           replRef.current?.writeStdout(text);
         } else {
           consoleRef.current?.writeStdout(text);
         }
       },
       stderr: (text) => {
-        if (outputTabRef.current === 'repl' && client.state !== 'running' && client.state !== 'stopping') {
+        if (replActiveRef.current && client.state !== 'running' && client.state !== 'stopping') {
           replRef.current?.writeStderr(text);
         } else {
           consoleRef.current?.writeStderr(text);
@@ -227,8 +240,7 @@ export default function PythonPlayground() {
       },
       stdinRequest: () => {
         setAwaitingStdin(true);
-        setOutputTab('console');
-        setMobilePane('output');
+        showConsoleRef.current();
       },
       linkRequest: (url) => {
         setPendingExternalUrl(url);
@@ -330,10 +342,7 @@ export default function PythonPlayground() {
     setCrashReason(null);
     reportRun(null);
     displayShownRef.current = false;
-    setOutputTab('console');
-    if (isNarrow) {
-      setMobilePane('output');
-    }
+    showConsole();
 
     try {
       const res = await client.run(undefined, {
@@ -375,7 +384,7 @@ export default function PythonPlayground() {
       const msg = err instanceof Error ? err.message : String(err);
       consoleRef.current?.writeStderr(`${msg}\n`);
     }
-  }, [allowUnconfirmed, isNarrow, reportRun, runTarget, t, workspace]);
+  }, [allowUnconfirmed, reportRun, runTarget, showConsole, t, workspace]);
 
   const handleStop = useCallback(() => {
     void clientRef.current?.stop();
@@ -556,8 +565,24 @@ export default function PythonPlayground() {
     [t, packages.restoreProblems, view],
   );
 
-  const showFilesPane = isNarrow ? panes.mobilePane === 'files' : showFilesSidebar;
-  const showEditorPane = !isNarrow || panes.mobilePane === 'editor';
+  // A dock tab was chosen: the phone keeps the same output tab when the window narrows.
+  const handleSelectDockTab = useCallback(
+    (groupId: string, panel: PanelId) => {
+      dock.selectTab(groupId, panel);
+      if (panel === 'console' || panel === 'repl' || panel === 'plots' || panel === 'display') setOutputTab(panel);
+      if (panel === 'plots') plots.clearUnread();
+    },
+    [dock, setOutputTab, plots],
+  );
+
+  const tracebackStrip = (
+    <TracebackStrip
+      jumps={tracebackJumps}
+      onJump={(j) => {
+        void handleJumpToTraceback(j);
+      }}
+    />
+  );
 
   return (
     <div className={styles.page} data-ds="v2">
@@ -616,19 +641,15 @@ export default function PythonPlayground() {
                 <button
                   type="button"
                   className={styles.secondaryBtn}
-                  aria-pressed={showFilesSidebar}
-                  onClick={() => {
-                    setShowFilesSidebar((prev) => !prev);
-                    requestAnimationFrame(() => {
-                      editorRef.current?.layout();
-                      consoleRef.current?.fit();
-                      replRef.current?.fit();
-                    });
-                  }}
+                  aria-pressed={!dock.filesHidden}
+                  onClick={() => dock.setFilesHidden(!dock.filesHidden)}
                   data-testid="python-toggle-files-btn"
                 >
-                  {showFilesSidebar ? t('python.toggleFilesHide') : t('python.toggleFilesShow')}
+                  {dock.filesHidden ? t('python.toggleFilesShow') : t('python.toggleFilesHide')}
                 </button>
+              )}
+              {!isNarrow && (
+                <LayoutMenu mode={dock.mode} hasCustom={dock.hasCustom} onChoose={dock.choose} onReset={dock.reset} />
               )}
 
               <button
@@ -756,134 +777,95 @@ export default function PythonPlayground() {
             />
           )}
 
-          {/* Main 3-column (desktop with Files) or 2-column / 1-column workspace */}
-          <div
-            className={[
-              styles.workspace,
-              !isNarrow && showFilesSidebar ? fileStyles.workspaceWithFiles : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-            style={workspaceH && !isNarrow ? { height: workspaceH, maxHeight: 'none' } : undefined}
-            data-python-workspace=""
-          >
-            {/* Files Sidebar / Phone Files Tab */}
-            {showFilesPane && (
-              <FileTree
-                entries={workspace.entries}
-                activePath={workspace.activePath}
-                runCreatedPaths={workspace.runCreatedPaths}
-                stats={workspace.stats}
-                storageEstimate={workspace.storageEstimate}
-                disabled={isLockedByOtherTab || !workspace.storageReady}
-                running={isRunning}
-                locked={isLockedByOtherTab}
-                errorMessage={workspace.errorMessage}
-                w5NoticeVisible={workspace.w5NoticeVisible}
-                onDismissError={workspace.dismissError}
-                onDismissW5={workspace.dismissW5}
-                onOpenFile={handleOpenFileFromTree}
-                onCreateFile={workspace.createFile}
-                onCreateFolder={workspace.createFolder}
-                onRename={workspace.renamePath}
-                onMove={workspace.movePath}
-                onDelete={workspace.deletePath}
-                onDeleteMany={workspace.deletePaths}
-                onResetWorkspace={() => workspace.resetWorkspace({ focus: !isNarrow })}
-                onDownload={(path) => {
-                  void workspace.downloadFile(path);
-                }}
-                onUploadFiles={workspace.uploadFiles}
-                onImportZip={workspace.importZip}
-                onExportZip={workspace.exportZip}
-                onOpenExamples={() => handleViewChange('examples')}
-              />
-            )}
+          {isNarrow ? (
+            <PhoneWorkspace
+              registry={hostRegistry}
+              panes={panes}
+              isRunning={isRunning}
+              plotsUnread={plots.unreadCount}
+              onPlotsSeen={plots.clearUnread}
+              consoleExtras={tracebackStrip}
+            />
+          ) : (
+            <DockLayout
+              dock={dock}
+              registry={hostRegistry}
+              isRunning={isRunning}
+              plotsUnread={plots.unreadCount}
+              onSelectTab={handleSelectDockTab}
+              consoleExtras={tracebackStrip}
+              height={workspaceH}
+            />
+          )}
 
-            {/* Middle: Multi-tab Monaco Editor */}
-            <section
-              className={styles.paneCard}
-              style={{ display: showEditorPane ? 'flex' : 'none' }}
-              aria-label={t('python.tabEditor')}
-            >
-              {swSettled ? (
-                <PythonEditor
-                  ref={editorRef}
-                  tabs={workspace.tabs}
+          {/* Each panel is rendered once into its host; the dock or the phone panes place the hosts. */}
+          {panelHosts && (
+            <>
+              {createPortal(
+                <FileTree
+                  entries={workspace.entries}
                   activePath={workspace.activePath}
-                  theme={resolvedTheme}
-                  readOnly={isLockedByOtherTab}
-                  fileVersion={workspace.fileVersion}
-                  readFileBytes={workspace.readFileBytes}
-                  onSelectTab={workspace.selectTab}
-                  onCloseTab={workspace.closeTab}
-                  onRun={() => {
-                    void handleRun();
-                  }}
-                  onContentChange={workspace.handleEditorContentChange}
-                  onDownloadFile={(path) => {
+                  runCreatedPaths={workspace.runCreatedPaths}
+                  stats={workspace.stats}
+                  storageEstimate={workspace.storageEstimate}
+                  disabled={isLockedByOtherTab || !workspace.storageReady}
+                  running={isRunning}
+                  locked={isLockedByOtherTab}
+                  errorMessage={workspace.errorMessage}
+                  w5NoticeVisible={workspace.w5NoticeVisible}
+                  onDismissError={workspace.dismissError}
+                  onDismissW5={workspace.dismissW5}
+                  onOpenFile={handleOpenFileFromTree}
+                  onCreateFile={workspace.createFile}
+                  onCreateFolder={workspace.createFolder}
+                  onRename={workspace.renamePath}
+                  onMove={workspace.movePath}
+                  onDelete={workspace.deletePath}
+                  onDeleteMany={workspace.deletePaths}
+                  onResetWorkspace={() => workspace.resetWorkspace({ focus: !isNarrow })}
+                  onDownload={(path) => {
                     void workspace.downloadFile(path);
                   }}
-                />
-              ) : (
-                <div className={styles.editorWrap} data-testid="python-editor-wrap">
-                  <div className={styles.panePlaceholder}>{t('python.loadingEditor')}</div>
-                </div>
+                  onUploadFiles={workspace.uploadFiles}
+                  onImportZip={workspace.importZip}
+                  onExportZip={workspace.exportZip}
+                  onOpenExamples={() => handleViewChange('examples')}
+                />,
+                panelHosts.files,
               )}
-            </section>
-
-            {/* Right: Program output container (strictly framed & labelled per security.md §4) */}
-            <section
-              className={[styles.paneCard, styles.programOutputFrame].join(' ')}
-              style={{ display: showOutputPane ? 'flex' : 'none' }}
-              aria-label={t('python.programOutput')}
-              data-testid="python-program-output-frame"
-            >
-              <div className={styles.paneHeader}>
-                <div className={styles.paneHeaderLeft}>
-                  <span className={styles.programOutputLabel} data-testid="python-program-output-label">
-                    {t('python.programOutput')}
-                  </span>
-                  <OutputTabBar
-                    panes={panes}
-                    isNarrow={isNarrow}
-                    isRunning={isRunning}
-                    plotsUnread={plots.unreadCount}
-                    onPlotsSeen={plots.clearUnread}
+              {createPortal(
+                swSettled ? (
+                  <PythonEditor
+                    ref={editorRef}
+                    tabs={workspace.tabs}
+                    activePath={workspace.activePath}
+                    theme={resolvedTheme}
+                    readOnly={isLockedByOtherTab}
+                    fileVersion={workspace.fileVersion}
+                    readFileBytes={workspace.readFileBytes}
+                    onSelectTab={workspace.selectTab}
+                    onCloseTab={workspace.closeTab}
+                    onRun={() => {
+                      void handleRun();
+                    }}
+                    onContentChange={workspace.handleEditorContentChange}
+                    onDownloadFile={(path) => {
+                      void workspace.downloadFile(path);
+                    }}
                   />
-                </div>
-              </div>
-
-              {/* Trusted traceback jump strip (pure React text nodes, zero HTML) */}
-              {tracebackJumps.length > 0 && (
-                <div className={styles.tracebackStrip} data-testid="python-traceback-strip">
-                  <span className={styles.tracebackLabel}>{t('python.tracebackLabel')}</span>
-                  {tracebackJumps.map((j) => (
-                    <button
-                      key={`${j.path}:${j.line}`}
-                      type="button"
-                      className={styles.tracebackChip}
-                      onClick={() => {
-                        void handleJumpToTraceback(j);
-                      }}
-                      data-testid={
-                        j.path === 'main.py'
-                          ? `python-tb-line-${j.line}`
-                          : `python-tb-${j.path}-${j.line}`
-                      }
-                    >
-                      {t('python.tracebackLine', { file: j.path, line: j.line })}
-                    </button>
-                  ))}
-                </div>
+                ) : (
+                  <div className={styles.editorWrap} data-testid="python-editor-wrap">
+                    <div className={styles.panePlaceholder}>{t('python.loadingEditor')}</div>
+                  </div>
+                ),
+                panelHosts.editor,
               )}
-
-              {swSettled ? (
-                <>
+              {createPortal(
+                swSettled ? (
                   <PythonTerminal
                     ref={consoleRef}
                     mode="console"
-                    visible={showOutputPane && !isPlotsVisible && outputTab === 'console'}
+                    visible={isShown('console')}
                     theme={resolvedTheme}
                     awaitingStdin={awaitingStdin}
                     onStop={handleStop}
@@ -891,11 +873,19 @@ export default function PythonPlayground() {
                     onSendStdinEof={handleSendStdinEof}
                     onExternalLink={(url) => setPendingExternalUrl(url)}
                   />
-
+                ) : (
+                  <div className={styles.terminalHostWrap}>
+                    <div className={styles.panePlaceholder}>{t('python.loadingTerminal')}</div>
+                  </div>
+                ),
+                panelHosts.console,
+              )}
+              {swSettled &&
+                createPortal(
                   <PythonTerminal
                     ref={replRef}
                     mode="repl"
-                    visible={showOutputPane && !isPlotsVisible && outputTab === 'repl'}
+                    visible={isShown('repl')}
                     theme={resolvedTheme}
                     replDisabled={isRunning || !readyInfo || isBlockedGate || isLockedByOtherTab}
                     replBanner={
@@ -906,10 +896,13 @@ export default function PythonPlayground() {
                     onReplPush={handleReplPush}
                     onReplComplete={handleReplComplete}
                     onExternalLink={(url) => setPendingExternalUrl(url)}
-                  />
-
+                  />,
+                  panelHosts.repl,
+                )}
+              {swSettled &&
+                createPortal(
                   <PlotsGallery
-                    visible={showOutputPane && isPlotsVisible}
+                    visible={isShown('plots')}
                     plots={plots.plots}
                     selectedPlotId={plots.selectedPlotId}
                     exportDisabled={isRunning || !readyInfo || isLockedByOtherTab}
@@ -917,24 +910,22 @@ export default function PythonPlayground() {
                     onDeletePlot={plots.deletePlot}
                     onClearAll={plots.clearAllPlots}
                     onExportPlot={handleExportPlot}
-                  />
-                </>
-              ) : (
-                <div className={styles.terminalHostWrap}>
-                  <div className={styles.panePlaceholder}>{t('python.loadingTerminal')}</div>
-                </div>
+                  />,
+                  panelHosts.plots,
+                )}
+              {createPortal(
+                <DisplayPanel
+                  source={client}
+                  visible={view === 'workbench' && isShown('display')}
+                  compact={isNarrow}
+                  onOpen={handleDisplayOpen}
+                  onScreenshot={plots.addPlot}
+                  onResizeWorkspace={setWorkspaceH}
+                />,
+                panelHosts.display,
               )}
-
-              <DisplayPanel
-                source={client}
-                visible={view === 'workbench' && showOutputPane && panes.isDisplayTab}
-                compact={isNarrow}
-                onOpen={handleDisplayOpen}
-                onScreenshot={plots.addPlot}
-                onResizeWorkspace={setWorkspaceH}
-              />
-            </section>
-          </div>
+            </>
+          )}
         </div>
 
         <ExamplesGallery

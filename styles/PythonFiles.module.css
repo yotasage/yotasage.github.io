@@ -78,11 +78,6 @@
   flex-shrink: 0;
 }
 
-/* 3-column workspace override when desktop Files sidebar is open */
-.workspaceWithFiles {
-  grid-template-columns: 260px minmax(0, 1.05fr) minmax(0, 0.95fr);
-}
-
 /* Files sidebar panel */
 .filesPane {
   position: relative;
@@ -690,10 +685,6 @@
 }
 
 @media (max-width: 899px) {
-  .workspaceWithFiles {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .filesPane {
     min-height: 440px;
   }

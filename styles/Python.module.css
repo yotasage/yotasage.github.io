@@ -669,6 +669,13 @@
   color: var(--ds-bad);
 }
 
+/* Inside the desktop dock (components/Python/layout/) the groups set the sizes: no fixed minimums */
+.dockFill .editorHost,
+.dockFill .terminalHostWrap,
+.dockFill .terminalHost {
+  min-height: 0;
+}
+
 /* Responsive phone & narrow tablet layout */
 @media (max-width: 899px) {
   .main {

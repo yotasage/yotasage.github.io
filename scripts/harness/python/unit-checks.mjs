@@ -54,6 +54,7 @@ import {
   checkInstallRequest,
 } from '../../../lib/python/packageProtocol.ts';
 import { detectCapabilityTier } from '../../../lib/python/tiers.ts';
+import { runLayoutUnitChecks } from './layout-unit-checks.mjs';
 import { runPackageUnitChecks } from './package-unit-checks.mjs';
 import { exportWorkspaceZip, importZipBytes } from '../../../lib/python/zip.ts';
 
@@ -879,6 +880,7 @@ export async function runUnitChecks() {
   });
 
   await runPackageUnitChecks(check);
+  await runLayoutUnitChecks(check);
 
   return { passed, failed, failures };
 }

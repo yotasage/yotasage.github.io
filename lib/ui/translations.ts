@@ -11,6 +11,7 @@ import { en as pythonEn, nb as pythonNb } from './i18n/python';
 import { en as pythonDisplayEn, nb as pythonDisplayNb } from './i18n/python-display';
 import { en as pythonExamplesEn, nb as pythonExamplesNb } from './i18n/python-examples';
 import { en as pythonFilesEn, nb as pythonFilesNb } from './i18n/python-files';
+import { en as pythonLayoutEn, nb as pythonLayoutNb } from './i18n/python-layout';
 import { en as pythonPackagesEn, nb as pythonPackagesNb } from './i18n/python-packages';
 import { en as simsetupEn, nb as simsetupNb } from './i18n/simsetup';
 import { en as utilitiesEn, nb as utilitiesNb } from './i18n/utilities';
@@ -36,6 +37,7 @@ export const en = {
   ...pythonExamplesEn,
   ...pythonDisplayEn,
   ...pythonFilesEn,
+  ...pythonLayoutEn,
   ...pythonPackagesEn,
   ...viewersEn,
 } as const;
@@ -58,6 +60,7 @@ export const nb: Record<TranslationKey, string> = {
   ...pythonExamplesNb,
   ...pythonDisplayNb,
   ...pythonFilesNb,
+  ...pythonLayoutNb,
   ...pythonPackagesNb,
   ...viewersNb,
 };

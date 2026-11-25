@@ -1,9 +1,10 @@
 // Small trusted parts of the Python Playground page, split from PythonPlayground.tsx to keep it under
-// 40 kB: the W2 honest status note and the header's network-mode button.
+// 40 kB: the W2 honest status note, the header's network-mode button and the traceback jump strip.
 import type { NetworkPolicy } from '../../lib/python/network';
 import type { CapabilityTier } from '../../lib/python/protocol';
 import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Python.module.css';
+import type { TracebackJump } from './fileHelpers';
 
 export function tierTexts(t: ReturnType<typeof useI18n>['t'], tier: CapabilityTier): { badge: string; desc: string } {
   return tier === 1
@@ -75,5 +76,27 @@ export function NetworkModeButton({ policy, onClick }: { policy: NetworkPolicy; 
       />
       <span>{label}</span>
     </button>
+  );
+}
+
+/** Trusted traceback jump strip (pure React text nodes, zero HTML): page UI above the Console's group body. */
+export function TracebackStrip({ jumps, onJump }: { jumps: readonly TracebackJump[]; onJump: (j: TracebackJump) => void }) {
+  const { t } = useI18n();
+  if (jumps.length === 0) return null;
+  return (
+    <div className={styles.tracebackStrip} data-testid="python-traceback-strip">
+      <span className={styles.tracebackLabel}>{t('python.tracebackLabel')}</span>
+      {jumps.map((j) => (
+        <button
+          key={`${j.path}:${j.line}`}
+          type="button"
+          className={styles.tracebackChip}
+          onClick={() => onJump(j)}
+          data-testid={j.path === 'main.py' ? `python-tb-line-${j.line}` : `python-tb-${j.path}-${j.line}`}
+        >
+          {t('python.tracebackLine', { file: j.path, line: j.line })}
+        </button>
+      ))}
+    </div>
   );
 }

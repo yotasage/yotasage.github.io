@@ -1,9 +1,10 @@
-// Output tabs of the playground (Console | REPL | Plots | Display) and the phone pane switcher
-// (Editor | Console | Files | Plots | Display), with the pane state both share. Split from
+// The phone's output tabs (Console | REPL | Plots | Display) and pane switcher (Editor | Console |
+// Files | Plots | Display), with the pane state they share with the desktop dock (components/Python/layout/). Split from
 // PythonPlayground.tsx to keep it under 40 kB.
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 
+import type { PanelId } from '../../lib/python/layout/model';
 import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Python.module.css';
 import PillTabs, { PillTabItem } from '../UI/PillTabs';
@@ -13,42 +14,75 @@ import type { PythonTerminalHandle } from './PythonTerminal';
 export type OutputTab = 'console' | 'repl' | 'plots' | 'display';
 export type MobilePane = 'editor' | 'output' | 'files' | 'plots' | 'display';
 
-/** Pane state: which output tab shows on desktop and which pane on a phone. */
-export function useOutputPanes(isNarrow: boolean) {
+/** What the desktop dock tells the pane state (components/Python/layout/useDockLayout.ts). */
+export interface DockPanes {
+  readonly isShown: (p: PanelId) => boolean;
+  readonly activate: (p: PanelId) => void;
+}
+
+/**
+ * Pane state: the phone's pane and output tab, and on desktop the dock's shown panels. `outputTab` is the
+ * last chosen output tab on either (the phone uses it; the dock keeps its own active tab per group).
+ */
+export function useOutputPanes(isNarrow: boolean, dock: DockPanes) {
   const [outputTab, setOutputTab] = useState<OutputTab>('console');
   const [mobilePane, setMobilePane] = useState<MobilePane>('editor');
-  const outputTabRef = useRef<OutputTab>('console');
-  outputTabRef.current = outputTab;
-  const isPlotsVisible = isNarrow ? mobilePane === 'plots' : outputTab === 'plots';
+  const isPlotsVisible = isNarrow ? mobilePane === 'plots' : dock.isShown('plots');
   const isPlotsVisibleRef = useRef(false);
   isPlotsVisibleRef.current = isPlotsVisible;
-  const isDisplayTab = isNarrow ? mobilePane === 'display' : outputTab === 'display';
+  /** Output typed in the REPL goes to the REPL while it is the chosen tab. */
+  const replActiveRef = useRef(false);
+  replActiveRef.current = isNarrow ? outputTab === 'repl' : dock.isShown('repl');
   const showOutputPane = !isNarrow || mobilePane === 'output' || mobilePane === 'plots' || mobilePane === 'display';
+  const { activate } = dock;
 
   /** Shows the console (a run starts, the program asks for input). */
   const showConsole = useCallback(() => {
     setOutputTab('console');
     if (isNarrow) setMobilePane('output');
-  }, [isNarrow]);
+    else activate('console');
+  }, [isNarrow, activate]);
 
   /** Shows the Display tab (a program opened a display). */
   const showDisplay = useCallback(() => {
     setOutputTab('display');
     if (isNarrow) setMobilePane('display');
-  }, [isNarrow]);
+    else activate('display');
+  }, [isNarrow, activate]);
+
+  /** Whether a panel is on screen (phone: the chosen pane; desktop: the active tab of its group). */
+  const isShown = useCallback(
+    (p: PanelId): boolean => {
+      if (!isNarrow) return dock.isShown(p);
+      switch (p) {
+        case 'files':
+        case 'editor':
+          return mobilePane === p;
+        case 'plots':
+        case 'display':
+          return mobilePane === p;
+        case 'console':
+        case 'repl':
+          return mobilePane === 'output' && (outputTab === 'repl' ? 'repl' : 'console') === p;
+        default:
+          return false;
+      }
+    },
+    [isNarrow, dock, mobilePane, outputTab],
+  );
 
   return {
     outputTab,
     setOutputTab,
     mobilePane,
     setMobilePane,
-    outputTabRef,
+    replActiveRef,
     isPlotsVisible,
     isPlotsVisibleRef,
-    isDisplayTab,
     showOutputPane,
     showConsole,
     showDisplay,
+    isShown,
   };
 }
 
@@ -61,7 +95,7 @@ interface TabBarProps {
   readonly onPlotsSeen: () => void;
 }
 
-/** Console | REPL | Plots | Display, inside the program output frame's header. */
+/** Console | REPL | Plots | Display, in the header of the phone's program output frame. */
 export function OutputTabBar({ panes, isNarrow, plotsUnread, onPlotsSeen, isRunning }: TabBarProps & { readonly isRunning: boolean }) {
   const { t } = useI18n();
   const { outputTab, setOutputTab, setMobilePane } = panes;
