@@ -20,7 +20,7 @@ interface ModalFrameProps {
   children: React.ReactNode;
 }
 
-function ModalFrame({
+export function ModalFrame({
   open,
   titleId,
   danger = false,

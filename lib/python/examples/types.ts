@@ -1,5 +1,5 @@
-// Shape of a built-in Python Playground example (shown as a card in the Examples tab and in the
-// Files picker). Loading an example only copies its files into the workspace; it never runs them.
+// Shape of a built-in Python Playground example (shown as a card in the Examples tab, the only place
+// examples are loaded from). Loading an example only copies its files into the workspace; it never runs them.
 
 /** Category of an example, in the order the Examples tab lists them. */
 export const PYTHON_EXAMPLE_TAGS = ['basics', 'science', 'plots', 'display', 'files', 'async', 'network', 'packages'] as const;

@@ -310,6 +310,64 @@ export async function runFsChecks(browserName, browser, { primaryOrigin, record 
       return true;
     });
 
+    // U2: deleteMany removes files and folders in one transaction, reports bad paths per item, keeps
+    // the ledger (stats) right, and the Python worker's MEMFS follows; clearWorkspace + reseed too.
+    await record(browserName, 'U2 FS: deleteMany (files + folder, nested, bad path, missing) mirrors to Python', async () => {
+      const res = await page2.evaluate(async () => {
+        const st = window.__pythonHarness.createStorageClient();
+        await st.open();
+        await st.clearWorkspace();
+        await st.write('a.txt', 'aaaa');
+        await st.write('b.txt', 'bb');
+        await st.write('keep.txt', 'k');
+        await st.write('d/x.txt', 'xxx');
+        await st.write('d/sub/y.txt', 'y');
+
+        const client = window.__pythonHarness.createClient({ storageClient: st });
+        await client.start();
+        const before = await st.stats();
+        const del = await st.deleteMany(['a.txt', 'b.txt', 'd', 'd/x.txt', 'nope.txt', '../evil', 'a.txt']);
+        const after = await st.stats();
+        const list = (await st.list()).map((e) => e.path).sort();
+
+        let out = '';
+        const unsub = client.subscribe({ stdout: (t) => { out += t; } });
+        const run = await client.run(
+          'import os\nprint("LS=" + "|".join(sorted(os.listdir("."))))\n',
+        );
+        unsub();
+
+        // Reset: clear everything, then seed main.py as the page does.
+        await st.clearWorkspace();
+        await st.write('main.py', 'print("seed")\n');
+        let out2 = '';
+        const unsub2 = client.subscribe({ stdout: (t) => { out2 += t; } });
+        const run2 = await client.run('import os\nprint("LS2=" + "|".join(sorted(os.listdir("."))))\n');
+        unsub2();
+        const stats2 = await st.stats();
+        client.dispose();
+        await st.close();
+        return { before, del, after, list, run, out, run2, out2, stats2 };
+      });
+
+      const { del } = res;
+      if (JSON.stringify([...del.deleted].sort()) !== JSON.stringify(['a.txt', 'b.txt', 'd'])) return `deleted: ${JSON.stringify(del.deleted)}`;
+      if (JSON.stringify(del.missing) !== JSON.stringify(['nope.txt'])) return `missing: ${JSON.stringify(del.missing)}`;
+      if (del.failed.length !== 1 || del.failed[0].path !== '../evil' || del.failed[0].code !== 'INVALID_PATH') {
+        return `failed: ${JSON.stringify(del.failed)}`;
+      }
+      // a, b, d, d/x.txt, d/sub, d/sub/y.txt
+      if (del.deletedCount !== 6) return `deletedCount ${del.deletedCount}`;
+      if (JSON.stringify(res.list) !== JSON.stringify(['keep.txt'])) return `left: ${JSON.stringify(res.list)}`;
+      if (res.after.entryCount !== 1 || res.after.totalBytes !== 1) return `stats after: ${JSON.stringify(res.after)}`;
+      if (res.after.rev !== res.before.rev + 1) return `rev ${res.before.rev} -> ${res.after.rev} (one transaction expected)`;
+      // client.run(source) writes the source to main.py first.
+      if (!res.run.ok || !/^LS=keep\.txt\|main\.py$/m.test(res.out)) return `Python sees: ${res.out} ${JSON.stringify(res.run)}`;
+      if (!res.run2.ok || !res.out2.includes('LS2=main.py\n')) return `after reset Python sees: ${res.out2}`;
+      if (res.stats2.entryCount !== 1) return `after reset entries ${res.stats2.entryCount}`;
+      return true;
+    });
+
     // 5. Second-tab Web Locks (python:workspace:default)
     await record(browserName, 'P3 FS 5: Second-tab Web Locks denies while open, grants after close', async () => {
       const tab1 = await ctx.newPage();

@@ -53,6 +53,17 @@ export interface WriteResult {
   readonly stats: WorkspaceStats;
 }
 
+export interface DeleteManyResult {
+  /** Outermost listed paths that existed and are now gone (with everything inside them). */
+  readonly deleted: readonly string[];
+  /** Listed paths that did not exist. */
+  readonly missing: readonly string[];
+  readonly failed: readonly { readonly path: string; readonly code: StorageErrorCode; readonly message: string }[];
+  /** Entries removed, counting those inside deleted folders. */
+  readonly deletedCount: number;
+  readonly stats: WorkspaceStats;
+}
+
 export interface BulkWriteInput {
   readonly path: string;
   readonly bytes?: Uint8Array | ArrayBuffer | string | File | Blob | null;
@@ -363,6 +374,14 @@ export class PythonStorageClient {
     readonly stats: WorkspaceStats;
   }> {
     return this.call('delete', { path });
+  }
+
+  /**
+   * U2: deletes several files and folders in one transaction. A path inside another listed folder
+   * counts once; `failed` lists invalid paths (the rest still go), `missing` paths that did not exist.
+   */
+  deleteMany(paths: readonly string[]): Promise<DeleteManyResult> {
+    return this.call('deleteMany', { paths: [...paths] });
   }
 
   bulkWrite(

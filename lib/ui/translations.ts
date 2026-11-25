@@ -10,6 +10,7 @@ import { en as pdfEn, nb as pdfNb } from './i18n/pdf';
 import { en as pythonEn, nb as pythonNb } from './i18n/python';
 import { en as pythonDisplayEn, nb as pythonDisplayNb } from './i18n/python-display';
 import { en as pythonExamplesEn, nb as pythonExamplesNb } from './i18n/python-examples';
+import { en as pythonFilesEn, nb as pythonFilesNb } from './i18n/python-files';
 import { en as pythonPackagesEn, nb as pythonPackagesNb } from './i18n/python-packages';
 import { en as simsetupEn, nb as simsetupNb } from './i18n/simsetup';
 import { en as utilitiesEn, nb as utilitiesNb } from './i18n/utilities';
@@ -34,6 +35,7 @@ export const en = {
   ...pythonEn,
   ...pythonExamplesEn,
   ...pythonDisplayEn,
+  ...pythonFilesEn,
   ...pythonPackagesEn,
   ...viewersEn,
 } as const;
@@ -55,6 +57,7 @@ export const nb: Record<TranslationKey, string> = {
   ...pythonNb,
   ...pythonExamplesNb,
   ...pythonDisplayNb,
+  ...pythonFilesNb,
   ...pythonPackagesNb,
   ...viewersNb,
 };

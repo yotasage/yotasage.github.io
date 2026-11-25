@@ -129,6 +129,15 @@ export function ancestorDirs(path: string): string[] {
   return dirs;
 }
 
+/** True when `path` is one of `roots` or inside one of them (U2 selections). */
+export function isAtOrUnder(path: string, roots: ReadonlySet<string>): boolean {
+  if (roots.has(path)) return true;
+  for (let i = path.indexOf('/'); i > 0; i = path.indexOf('/', i + 1)) {
+    if (roots.has(path.slice(0, i))) return true;
+  }
+  return false;
+}
+
 /** Returns the lowercased extension including the leading dot (e.g. '.py'), or ''. */
 export function fileExtension(path: string): string {
   const name = baseName(path);

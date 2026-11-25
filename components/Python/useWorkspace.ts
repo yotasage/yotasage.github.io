@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { getPythonExample } from '../../lib/python/examples';
-import { isDangerousUploadExt, normalizeWorkspacePath } from '../../lib/python/paths';
+import { isAtOrUnder, isDangerousUploadExt, normalizeWorkspacePath } from '../../lib/python/paths';
 import type { FsChangeInfo } from '../../lib/python/protocol';
 import {
   PythonStorageClient,
@@ -41,6 +41,11 @@ const OPEN_TABS_STORAGE_KEY = 'python:open-tabs-v1';
 const AUTOSAVE_DEBOUNCE_MS = 400;
 
 export type WorkspaceLockStatus = 'checking' | 'acquired' | 'blocked';
+
+export interface DeleteSelectionResult {
+  readonly deleted: readonly string[];
+  readonly failed: readonly { readonly path: string; readonly message: string }[];
+}
 
 interface SavedTabsState {
   readonly tabs: readonly string[];
@@ -571,35 +576,46 @@ export function useWorkspace({ swSettled, canBootStorage, editorRef }: UseWorksp
     [editorRef, flushDirtyTabs, formatStorageError, lockStatus, persistTabsState, refreshListing],
   );
 
+  // Closes the editor tabs of the given paths and everything inside them (no save: they are gone).
+  const dropTabsUnder = useCallback(
+    (roots: readonly string[]) => {
+      if (roots.length === 0) return;
+      const rootSet = new Set(roots);
+      const isGone = (p: string): boolean => isAtOrUnder(p, rootSet);
+      const remaining: EditorTabItem[] = [];
+      for (const tab of tabsRef.current) {
+        if (isGone(tab.path)) {
+          const timer = pendingSaveTimersRef.current.get(tab.path);
+          if (timer) {
+            clearTimeout(timer);
+            pendingSaveTimersRef.current.delete(tab.path);
+          }
+          dirtyPathsRef.current.delete(tab.path);
+          editorRef.current?.disposeModel(tab.path);
+        } else {
+          remaining.push(tab);
+        }
+      }
+      if (remaining.length === tabsRef.current.length) return;
+      let nextActive = activePathRef.current;
+      if (nextActive && isGone(nextActive)) {
+        nextActive = remaining[remaining.length - 1]?.path ?? null;
+      }
+      tabsRef.current = remaining;
+      setTabs(remaining);
+      setActivePath(nextActive);
+      persistTabsState(remaining, nextActive);
+    },
+    [editorRef, persistTabsState],
+  );
+
   const deletePath = useCallback(
     async (path: string): Promise<boolean> => {
       const client = storageRef.current;
       if (!client || client.isClosed || lockStatus !== 'acquired') return false;
       try {
         await client.delete(path);
-        const prefix = `${path}/`;
-        const remaining: EditorTabItem[] = [];
-        for (const tab of tabsRef.current) {
-          if (tab.path === path || tab.path.startsWith(prefix)) {
-            const timer = pendingSaveTimersRef.current.get(tab.path);
-            if (timer) {
-              clearTimeout(timer);
-              pendingSaveTimersRef.current.delete(tab.path);
-            }
-            dirtyPathsRef.current.delete(tab.path);
-            editorRef.current?.disposeModel(tab.path);
-          } else {
-            remaining.push(tab);
-          }
-        }
-        let nextActive = activePathRef.current;
-        if (nextActive && (nextActive === path || nextActive.startsWith(prefix))) {
-          nextActive = remaining[remaining.length - 1]?.path ?? null;
-        }
-        tabsRef.current = remaining;
-        setTabs(remaining);
-        setActivePath(nextActive);
-        persistTabsState(remaining, nextActive);
+        dropTabsUnder([path]);
         await refreshListing();
         return true;
       } catch (err) {
@@ -607,10 +623,65 @@ export function useWorkspace({ swSettled, canBootStorage, editorRef }: UseWorksp
         return false;
       }
     },
-    [editorRef, formatStorageError, lockStatus, persistTabsState, refreshListing],
+    [dropTabsUnder, formatStorageError, lockStatus, refreshListing],
   );
 
-      const downloadFile = useCallback(
+  // U2: deletes a selection in one storage transaction; resolves with what went and what failed.
+  const deletePaths = useCallback(
+    async (paths: readonly string[]): Promise<DeleteSelectionResult> => {
+      const client = storageRef.current;
+      if (!client || client.isClosed || lockStatus !== 'acquired') {
+        return { deleted: [], failed: paths.map((path) => ({ path, message: t('python.filesUnavailable') })) };
+      }
+      try {
+        const res = await client.deleteMany(paths);
+        // Paths that were already gone count as deleted: the visitor wanted them gone.
+        const gone = [...res.deleted, ...res.missing];
+        dropTabsUnder(gone);
+        setFileVersion((v) => v + 1);
+        await refreshListing();
+        return { deleted: gone, failed: res.failed.map((f) => ({ path: f.path, message: f.message })) };
+      } catch (err) {
+        const message = formatStorageError(err);
+        await refreshListing().catch(() => undefined);
+        return { deleted: [], failed: paths.map((path) => ({ path, message })) };
+      }
+    },
+    [dropTabsUnder, formatStorageError, lockStatus, refreshListing, t],
+  );
+
+  // U2: deletes every file and folder, closes every tab and seeds main.py as on a first visit.
+  // Packages (their own store and localStorage manifest) and settings are not touched.
+  const resetWorkspace = useCallback(async (options: { focus?: boolean } = {}): Promise<boolean> => {
+    const client = storageRef.current;
+    if (!client || client.isClosed || lockStatus !== 'acquired') return false;
+    for (const timer of pendingSaveTimersRef.current.values()) {
+      clearTimeout(timer);
+    }
+    pendingSaveTimersRef.current.clear();
+    dirtyPathsRef.current.clear();
+    setErrorMessage(null);
+    try {
+      await client.clearWorkspace();
+      for (const tab of tabsRef.current) {
+        editorRef.current?.disposeModel(tab.path);
+      }
+      tabsRef.current = [];
+      setTabs([]);
+      setActivePath(null);
+      setRunCreatedPaths(new Set());
+      await client.write('main.py', DEFAULT_PYTHON_CODE);
+      setFileVersion((v) => v + 1);
+      await refreshListing();
+      return await openFile('main.py', { focus: options.focus !== false });
+    } catch (err) {
+      setErrorMessage(formatStorageError(err));
+      await refreshListing().catch(() => undefined);
+      return false;
+    }
+  }, [editorRef, formatStorageError, lockStatus, openFile, refreshListing]);
+
+  const downloadFile = useCallback(
     async (path: string) => {
       const client = storageRef.current;
       if (!client || client.isClosed) return;
@@ -740,13 +811,15 @@ export function useWorkspace({ swSettled, canBootStorage, editorRef }: UseWorksp
     [editorRef, formatStorageError, lockStatus, openFile, refreshListing, t],
   );
 
-  const exportZip = useCallback(async () => {
+  // Downloads the workspace as a ZIP; with `only`, just those files and folders (U2 selection).
+  const exportZip = useCallback(async (only?: readonly string[]) => {
     const client = storageRef.current;
     if (!client || client.isClosed) return;
     await flushDirtyTabs();
     try {
       const list = await client.list();
-      const files = list.filter((e) => !e.isDir);
+      const roots = only ? new Set(only) : null;
+      const files = list.filter((e) => !e.isDir && (!roots || isAtOrUnder(e.path, roots)));
       if (files.length === 0) {
         setErrorMessage(t('python.filesZipEmpty'));
         return;
@@ -759,7 +832,7 @@ export function useWorkspace({ swSettled, canBootStorage, editorRef }: UseWorksp
         }
       }
       const zipped = exportWorkspaceZip(exportEntries);
-      triggerBlobDownload(zipped, 'python-workspace.zip', 'application/zip');
+      triggerBlobDownload(zipped, roots ? 'python-selection.zip' : 'python-workspace.zip', 'application/zip');
     } catch (err) {
       setErrorMessage(formatStorageError(err));
     }
@@ -924,6 +997,8 @@ export function useWorkspace({ swSettled, canBootStorage, editorRef }: UseWorksp
     renamePath: (from: string, to: string) => renameOrMove(from, to, false),
     movePath: (from: string, to: string) => renameOrMove(from, to, true),
     deletePath,
+    deletePaths,
+    resetWorkspace,
     downloadFile,
     uploadFiles,
     importZip,

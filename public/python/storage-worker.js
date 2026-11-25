@@ -560,6 +560,88 @@ async function doDelete(ws, rawPath, opts = {}) {
   return { path, deletedCount: toDelete.length, stats: makeStats(ws, ledger) };
 }
 
+// U2: deletes several paths (files and folders, a folder with everything in it) in one transaction.
+// A path inside another listed folder counts once; invalid paths are reported per item and the rest
+// still go; paths that do not exist are reported as missing. The Python worker gets one
+// `mirror.delete` per removed path, all with the new rev.
+async function doDeleteMany(ws, rawPaths, opts = {}) {
+  if (!Array.isArray(rawPaths)) {
+    throw makeError('UNKNOWN', 'deleteMany needs a list of paths');
+  }
+  if (rawPaths.length > MAX_WORKSPACE_ENTRIES) {
+    throw makeError('CAP_EXCEEDED', `At most ${MAX_WORKSPACE_ENTRIES} paths can be deleted at once`);
+  }
+  const { database, ledger } = await ensureWorkspaceLoaded(ws);
+
+  const failed = [];
+  const wanted = new Set();
+  for (const raw of rawPaths) {
+    try {
+      wanted.add(normalizePath(raw, true));
+    } catch (err) {
+      failed.push({
+        path: typeof raw === 'string' ? raw.slice(0, MAX_PATH_LENGTH) : String(raw).slice(0, 64),
+        code: err && err.code ? err.code : 'INVALID_PATH',
+        message: err && err.message ? err.message : 'Invalid path',
+      });
+    }
+  }
+  // Keep only the outermost listed paths.
+  const roots = [];
+  for (const p of wanted) {
+    if (!ancestorDirs(p).some((a) => wanted.has(a))) roots.push(p);
+  }
+  const rootSet = new Set(roots);
+  const found = new Set();
+  const toDelete = [];
+  let bytesFreed = 0;
+  for (const [key, meta] of ledger.entries) {
+    let root = rootSet.has(key) ? key : null;
+    if (root === null) {
+      for (const a of ancestorDirs(key)) {
+        if (rootSet.has(a)) {
+          root = a;
+          break;
+        }
+      }
+    }
+    if (root === null) continue;
+    found.add(root);
+    toDelete.push(key);
+    bytesFreed += meta.size;
+  }
+  const deleted = roots.filter((p) => found.has(p));
+  const missing = roots.filter((p) => !found.has(p));
+  if (toDelete.length === 0) {
+    return { deleted, missing, failed, deletedCount: 0, stats: makeStats(ws, ledger) };
+  }
+
+  const newTotalBytes = Math.max(0, ledger.totalBytes - bytesFreed);
+  const newEntryCount = ledger.entryCount - toDelete.length;
+  const tx = database.transaction([STORE_FILES, STORE_WORKSPACES], 'readwrite');
+  const fileStore = tx.objectStore(STORE_FILES);
+  const wsStore = tx.objectStore(STORE_WORKSPACES);
+  for (const key of toDelete) {
+    fileStore.delete([ws, key]);
+  }
+  updateWsRecord(wsStore, ws, newTotalBytes, newEntryCount);
+  await txDone(tx);
+
+  for (const key of toDelete) {
+    ledger.entries.delete(key);
+  }
+  ledger.totalBytes = newTotalBytes;
+  ledger.entryCount = newEntryCount;
+  ledger.rev += 1;
+
+  if (opts.mirror !== false) {
+    for (const path of deleted) {
+      mirrorToPython(ws, { type: 'mirror.delete', rev: ledger.rev, path });
+    }
+  }
+  return { deleted, missing, failed, deletedCount: toDelete.length, stats: makeStats(ws, ledger) };
+}
+
 async function doRename(ws, rawFrom, rawTo, opts = {}) {
   const from = normalizePath(rawFrom, true);
   const to = normalizePath(rawTo, true);
@@ -1098,6 +1180,9 @@ self.onmessage = (event) => {
       }
       case 'delete': {
         return doDelete(ws, msg.path, { mirror: msg.mirrorToPython !== false });
+      }
+      case 'deleteMany': {
+        return doDeleteMany(ws, msg.paths, { mirror: msg.mirrorToPython !== false });
       }
       case 'bulkWrite': {
         return doBulkWrite(ws, msg.entries, {

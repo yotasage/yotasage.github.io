@@ -23,6 +23,7 @@ import { runDisplayUiSuite } from './ui-display-checks.mjs';
 import { runExamplesUiSuite } from './ui-examples-checks.mjs';
 import { runPackagesUiSuite } from './ui-packages-checks.mjs';
 import { runPlotsUiSuite } from './ui-plots-checks.mjs';
+import { runSelectionUiSuite } from './ui-selection-checks.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '../../..');
@@ -206,13 +207,25 @@ async function runBrowserSuite(browserName, browser, baseUrl) {
       waitMonacoAndPyodideReady,
       attachErrorTracker,
     });
-  // PYTHON_UI_ONLY=packages or =display runs only that suite (while working on it).
+  const selectionSuite = () =>
+    runSelectionUiSuite(browserName, browser, baseUrl, {
+      record,
+      waitIsolatedMain,
+      waitMonacoAndPyodideReady,
+      waitTerminalContains,
+      attachErrorTracker,
+    });
+  // PYTHON_UI_ONLY=packages, =display or =selection runs only that suite (while working on it).
   if (process.env.PYTHON_UI_ONLY === 'packages') {
     await packagesSuite();
     return;
   }
   if (process.env.PYTHON_UI_ONLY === 'display') {
     await displaySuite();
+    return;
+  }
+  if (process.env.PYTHON_UI_ONLY === 'selection') {
+    await selectionSuite();
     return;
   }
   // =========================================================================
@@ -1019,6 +1032,9 @@ async function runBrowserSuite(browserName, browser, baseUrl) {
     waitTerminalContains,
     attachErrorTracker,
   });
+
+  // Suite 5b: U2 multi-selection, delete selection, Reset workspace, phone Select mode
+  await selectionSuite();
 
   // =========================================================================
   // Suite 6: P4b Plots Gallery & Hardened File Viewers

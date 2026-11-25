@@ -776,6 +776,8 @@ export default function PythonPlayground() {
                 stats={workspace.stats}
                 storageEstimate={workspace.storageEstimate}
                 disabled={isLockedByOtherTab || !workspace.storageReady}
+                running={isRunning}
+                locked={isLockedByOtherTab}
                 errorMessage={workspace.errorMessage}
                 w5NoticeVisible={workspace.w5NoticeVisible}
                 onDismissError={workspace.dismissError}
@@ -786,6 +788,8 @@ export default function PythonPlayground() {
                 onRename={workspace.renamePath}
                 onMove={workspace.movePath}
                 onDelete={workspace.deletePath}
+                onDeleteMany={workspace.deletePaths}
+                onResetWorkspace={() => workspace.resetWorkspace({ focus: !isNarrow })}
                 onDownload={(path) => {
                   void workspace.downloadFile(path);
                 }}
