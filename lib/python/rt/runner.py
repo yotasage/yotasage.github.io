@@ -37,7 +37,10 @@ def ensure_workspace() -> str:
 
 
 def _resolve_workspace_path(rel_path: str) -> str:
-    clean = str(rel_path or "main.py").replace("\\", "/").lstrip("/")
+    raw = str(rel_path or "main.py").replace("\\", "/")
+    if raw.startswith(WORKSPACE_ROOT + "/"):
+        raw = raw[len(WORKSPACE_ROOT) + 1 :]
+    clean = raw.lstrip("/")
     norm = posixpath.normpath(clean)
     if norm in ("", ".") or norm.startswith("..") or "/../" in f"/{norm}/":
         raise ValueError(f"Invalid workspace path: {rel_path!r}")
@@ -69,6 +72,13 @@ def purge_user_modules() -> None:
         origin = getattr(spec, "origin", None) if spec is not None else None
         if isinstance(origin, str) and origin.startswith(prefix):
             to_remove.append(name)
+            continue
+        locs = getattr(spec, "submodule_search_locations", None) if spec is not None else None
+        if locs:
+            for loc in locs:
+                if isinstance(loc, str) and (loc == WORKSPACE_ROOT or loc.startswith(prefix)):
+                    to_remove.append(name)
+                    break
     for name in to_remove:
         sys.modules.pop(name, None)
     importlib.invalidate_caches()
@@ -135,19 +145,22 @@ def format_exception_info(exc: BaseException) -> dict:
     }
 
 
-def run_script(code: str, filename: str = "main.py", files: dict | None = None) -> dict:
-    """Write script to /workspace, purge stale user modules, run via runpy, and save __main__."""
+def run_script(code: str | None = None, filename: str = "main.py", files: dict | None = None) -> dict:
+    """Write script (if provided) to /workspace, purge stale user modules, run via runpy, and save __main__."""
     from .repl import set_namespace
 
     ensure_workspace()
     sync_workspace_files(files)
 
     script_path = _resolve_workspace_path(filename)
-    parent = posixpath.dirname(script_path)
-    if parent:
-        os.makedirs(parent, exist_ok=True)
-    with open(script_path, "w", encoding="utf-8", newline="") as fh:
-        fh.write(code)
+    if code is not None:
+        parent = posixpath.dirname(script_path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        with open(script_path, "w", encoding="utf-8", newline="") as fh:
+            fh.write(code)
+    elif not os.path.isfile(script_path):
+        raise FileNotFoundError(f"Workspace file not found: {script_path}")
 
     purge_user_modules()
 
@@ -173,9 +186,20 @@ def run_script(code: str, filename: str = "main.py", files: dict | None = None) 
         sys.stderr.flush()
         return {"ok": exit_code == 0, "exitCode": exit_code, "interrupted": False}
     except KeyboardInterrupt as exc:
-        info = format_exception_info(exc)
-        sys.stderr.write(info["formatted"])
-        sys.stderr.flush()
+        try:
+            info = format_exception_info(exc)
+        except KeyboardInterrupt:
+            info = {
+                "type": "KeyboardInterrupt",
+                "message": str(exc),
+                "formatted": "KeyboardInterrupt\n",
+                "frames": [],
+            }
+        try:
+            sys.stderr.write(info["formatted"])
+            sys.stderr.flush()
+        except KeyboardInterrupt:
+            pass
         return {"ok": False, "exitCode": 130, "interrupted": True, "error": info}
     except BaseException as exc:
         info = format_exception_info(exc)

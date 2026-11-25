@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 
 import PageHead from '../../components/PageHead';
+import { clearAllPythonData } from '../../components/Python/clearData';
+import { PYTHON_EXAMPLES } from '../../lib/python/examples';
 import {
   buildNetworkPolicyUrl,
   buildPageCsp,
@@ -9,8 +11,10 @@ import {
   validateSelectedHost,
 } from '../../lib/python/network';
 import type { NetworkPolicy } from '../../lib/python/network';
-import { getPythonWorkerUrl } from '../../lib/python/origin';
+import { getPythonStorageWorkerUrl, getPythonWorkerUrl } from '../../lib/python/origin';
+import { MAX_FILE_BYTES, normalizeWorkspacePath } from '../../lib/python/paths';
 import { validateWorkerMessage } from '../../lib/python/protocol';
+import { PythonStorageClient } from '../../lib/python/storageClient';
 import {
   detectBrowserCapabilities,
   detectCapabilityTier,
@@ -19,11 +23,15 @@ import {
 import type { BrowserCapabilityInfo, SwRegistrationResult } from '../../lib/python/tiers';
 import { PythonWorkerClient } from '../../lib/python/workerClient';
 import type { PythonWorkerClientOptions } from '../../lib/python/workerClient';
+import { acquireWorkspaceLock } from '../../lib/python/workspaceLock';
+import { exportWorkspaceZip, importZipBytes } from '../../lib/python/zip';
 
 export interface PythonHarnessApi {
   readonly policy: NetworkPolicy;
   readonly capabilities: BrowserCapabilityInfo;
   readonly swResult: SwRegistrationResult | null;
+  readonly MAX_FILE_BYTES: number;
+  readonly examples: typeof PYTHON_EXAMPLES;
   readonly parseNetworkPolicyFromSearch: typeof parseNetworkPolicyFromSearch;
   readonly buildNetworkPolicyUrl: typeof buildNetworkPolicyUrl;
   readonly validateSelectedHost: typeof validateSelectedHost;
@@ -33,8 +41,15 @@ export interface PythonHarnessApi {
   readonly detectCapabilityTier: typeof detectCapabilityTier;
   readonly registerPythonServiceWorker: typeof registerPythonServiceWorker;
   readonly validateWorkerMessage: typeof validateWorkerMessage;
+  readonly normalizeWorkspacePath: typeof normalizeWorkspacePath;
+  readonly importZipBytes: typeof importZipBytes;
+  readonly exportWorkspaceZip: typeof exportWorkspaceZip;
+  readonly acquireWorkspaceLock: typeof acquireWorkspaceLock;
+  readonly clearAllPythonData: typeof clearAllPythonData;
   readonly createClient: (options?: PythonWorkerClientOptions) => PythonWorkerClient;
+  readonly createStorageClient: (workspaceId?: string) => PythonStorageClient;
   readonly spawnRawWorker: () => Worker;
+  readonly spawnRawStorageWorker: () => Worker;
 }
 
 declare global {
@@ -62,6 +77,8 @@ export default function PythonHarnessPage() {
         policy,
         capabilities,
         swResult,
+        MAX_FILE_BYTES,
+        examples: PYTHON_EXAMPLES,
         parseNetworkPolicyFromSearch,
         buildNetworkPolicyUrl,
         validateSelectedHost,
@@ -71,12 +88,19 @@ export default function PythonHarnessPage() {
         detectCapabilityTier,
         registerPythonServiceWorker,
         validateWorkerMessage,
+        normalizeWorkspacePath,
+        importZipBytes,
+        exportWorkspaceZip,
+        acquireWorkspaceLock,
+        clearAllPythonData,
         createClient: (options) =>
           new PythonWorkerClient({
             networkMode: policy.mode,
             ...options,
           }),
+        createStorageClient: (workspaceId) => new PythonStorageClient(workspaceId),
         spawnRawWorker: () => new Worker(getPythonWorkerUrl(), { type: 'module' }),
+        spawnRawStorageWorker: () => new Worker(getPythonStorageWorkerUrl(), { type: 'module' }),
       };
     };
 

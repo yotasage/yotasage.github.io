@@ -183,7 +183,10 @@ async function handleSameOriginFetch(event, req, url) {
     headers.set('Permissions-Policy', PERMISSIONS_POLICY);
     headers.set('Referrer-Policy', 'no-referrer');
   } else if (isWorker) {
-    const policy = await resolveWorkerPolicy(event);
+    const policy =
+      url.pathname === '/python/storage-worker.js'
+        ? { mode: 'off', hosts: [] }
+        : await resolveWorkerPolicy(event);
     headers.set('Cross-Origin-Opener-Policy', 'same-origin');
     headers.set('Cross-Origin-Embedder-Policy', 'require-corp');
     headers.set('Content-Security-Policy', buildWorkerCsp(policy));

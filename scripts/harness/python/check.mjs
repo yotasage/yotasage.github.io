@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium, firefox, webkit } from 'playwright-core';
 
 import { runCorpusChecks } from './corpus-checks.mjs';
+import { runFsChecks } from './fs-checks.mjs';
 import { runSecurityChecks } from './security-checks.mjs';
 import { startHarnessServers } from './servers.mjs';
 import { runUnitChecks } from './unit-checks.mjs';
@@ -82,7 +83,7 @@ async function launchBrowser(name) {
 }
 
 console.log('=== Part A: Pure-Node Unit Checks ===');
-const unit = runUnitChecks();
+const unit = await runUnitChecks();
 totalPassed += unit.passed;
 totalFailed += unit.failed;
 allFailures.push(...unit.failures);
@@ -125,6 +126,11 @@ try {
         secondaryOrigin: servers.secondaryOrigin,
         getHits: servers.getHits,
         resetHits: servers.resetHits,
+        record,
+      });
+
+      await runFsChecks(b, browser, {
+        primaryOrigin: servers.primaryOrigin,
         record,
       });
     } catch (err) {

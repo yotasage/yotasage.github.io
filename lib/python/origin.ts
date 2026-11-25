@@ -4,6 +4,7 @@
 export const PYTHON_SCOPE_PATH = '/python/';
 export const PYTHON_SW_PATH = '/python/coi-sw.js';
 export const PYTHON_WORKER_PATH = '/python/python-worker.js';
+export const PYTHON_STORAGE_WORKER_PATH = '/python/storage-worker.js';
 export const PYTHON_RT_BASE_PATH = '/python/rt/';
 export const PYODIDE_INDEX_PATH = '/pyodide/';
 export const PYODIDE_LOCK_PATH = '/pyodide/pyodide-lock.json';
@@ -24,6 +25,11 @@ export function getPythonServiceWorkerUrl(): string {
 export function getPythonWorkerUrl(): string {
   const origin = getPythonRuntimeOrigin();
   return origin ? `${origin}${PYTHON_WORKER_PATH}` : PYTHON_WORKER_PATH;
+}
+
+export function getPythonStorageWorkerUrl(): string {
+  const origin = getPythonRuntimeOrigin();
+  return origin ? `${origin}${PYTHON_STORAGE_WORKER_PATH}` : PYTHON_STORAGE_WORKER_PATH;
 }
 
 export function getPyodideIndexUrl(): string {

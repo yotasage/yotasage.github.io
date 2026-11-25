@@ -2,6 +2,7 @@
 // Security rule (security.md §4): every worker message is untrusted input and carries data only.
 
 import type { NetworkMode } from './network';
+import { MAX_WORKSPACE_ENTRIES, normalizeWorkspacePath } from './paths';
 
 export type CapabilityTier = 1 | 2 | 3;
 
@@ -64,6 +65,13 @@ export interface WorkerInitPayload {
   readonly pyodideIndexUrl: string;
   readonly pyodideLockUrl: string;
   readonly runtimeBaseUrl: string;
+  readonly storagePort?: MessagePort | null;
+}
+
+export interface FsChangeInfo {
+  readonly created: readonly string[];
+  readonly modified: readonly string[];
+  readonly deleted: readonly string[];
 }
 
 export type MainToWorkerMessage =
@@ -71,10 +79,11 @@ export type MainToWorkerMessage =
   | {
       readonly type: 'run';
       readonly id: number;
-      readonly code: string;
+      readonly code?: string | null;
       readonly filename?: string;
       readonly files?: Readonly<Record<string, string>>;
       readonly autoLoadPackages?: boolean;
+      readonly syncRev?: number;
     }
   | { readonly type: 'stop'; readonly id: number }
   | { readonly type: 'repl.push'; readonly id: number; readonly line: string }
@@ -85,6 +94,36 @@ export type MainToWorkerMessage =
       readonly text: string | null;
       readonly eof?: boolean;
       readonly interrupted?: boolean;
+    }
+  | {
+      readonly type: 'fs.write';
+      readonly id: number;
+      readonly path: string;
+      readonly bytes: Uint8Array;
+      readonly rev?: number;
+    }
+  | {
+      readonly type: 'fs.mkdir';
+      readonly id: number;
+      readonly path: string;
+      readonly rev?: number;
+    }
+  | {
+      readonly type: 'fs.rename';
+      readonly id: number;
+      readonly from: string;
+      readonly to: string;
+      readonly rev?: number;
+    }
+  | {
+      readonly type: 'fs.delete';
+      readonly id: number;
+      readonly path: string;
+      readonly rev?: number;
+    }
+  | {
+      readonly type: 'fs.sync';
+      readonly id: number;
     };
 
 export type WorkerToMainMessage =
@@ -152,6 +191,12 @@ export type WorkerToMainMessage =
   | {
       readonly type: 'link.request';
       readonly url: string;
+    }
+  | {
+      readonly type: 'fs.changed';
+      readonly created: readonly string[];
+      readonly modified: readonly string[];
+      readonly deleted: readonly string[];
     }
   | {
       readonly type: 'error';
@@ -419,6 +464,30 @@ export function validateWorkerMessage(raw: unknown): ValidationResult {
         return { ok: false, reason: 'link.request only accepts http: or https: URLs' };
       }
       return { ok: true, message: { type: 'link.request', url: parsed.href } };
+    }
+
+    case 'fs.changed': {
+      const validateList = (arr: unknown): string[] | null => {
+        if (!Array.isArray(arr) || arr.length > MAX_WORKSPACE_ENTRIES) return null;
+        const out: string[] = [];
+        for (const item of arr) {
+          if (typeof item !== 'string') return null;
+          const norm = normalizeWorkspacePath(item);
+          if (!norm.ok) return null;
+          out.push(norm.path);
+        }
+        return out;
+      };
+      const created = validateList(raw.created);
+      const modified = validateList(raw.modified);
+      const deleted = validateList(raw.deleted);
+      if (!created || !modified || !deleted) {
+        return { ok: false, reason: 'Invalid or unsafe path list in fs.changed' };
+      }
+      return {
+        ok: true,
+        message: { type: 'fs.changed', created, modified, deleted },
+      };
     }
 
     case 'error': {

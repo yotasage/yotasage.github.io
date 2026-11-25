@@ -1,15 +1,35 @@
 // Clear all Python Playground persisted data (IndexedDB, localStorage/sessionStorage keys,
 // Cache Storage entries, and /python/ Service Worker registrations) and hard-reload /python/main.
 
+import { closeAllActiveStorageClients } from '../../lib/python/storageClient';
+
+const IDB_DELETE_TIMEOUT_MS = 3000;
+
+export interface ClearPythonDataOptions {
+  /** Optional hook executed before closing storage workers and deleting IndexedDB. */
+  readonly beforeDelete?: () => void | Promise<void>;
+  /** Hard-reload to /python/main after cleanup (defaults to true). */
+  readonly reload?: boolean;
+}
+
 function deleteIdbDatabase(name: string): Promise<void> {
   return new Promise((resolve) => {
+    let settled = false;
+    const done = () => {
+      if (!settled) {
+        settled = true;
+        clearTimeout(timer);
+        resolve();
+      }
+    };
+    const timer = setTimeout(done, IDB_DELETE_TIMEOUT_MS);
     try {
       const req = indexedDB.deleteDatabase(name);
-      req.onsuccess = () => resolve();
-      req.onerror = () => resolve();
-      req.onblocked = () => resolve();
+      req.onsuccess = done;
+      req.onerror = done;
+      req.onblocked = done;
     } catch {
-      resolve();
+      done();
     }
   });
 }
@@ -32,10 +52,32 @@ function clearPrefixedStorage(storage: Storage | undefined): void {
   }
 }
 
-export async function clearAllPythonData(): Promise<void> {
+function broadcastCloseStorageDb(): void {
+  if (typeof BroadcastChannel === 'undefined') return;
+  try {
+    const ch = new BroadcastChannel('python:control');
+    ch.postMessage({ type: 'clear-close-db' });
+    ch.close();
+  } catch {
+    // Ignore BroadcastChannel errors in restricted contexts.
+  }
+}
+
+export async function clearAllPythonData(options: ClearPythonDataOptions = {}): Promise<void> {
   if (typeof window === 'undefined') return;
 
-  // 1. Delete all python* IndexedDB databases (with explicit fallback when databases() is unsupported).
+  // 0. Run caller cleanup & close all active Storage Workers so WebKit never blocks deleteDatabase.
+  if (options.beforeDelete) {
+    try {
+      await options.beforeDelete();
+    } catch {
+      // Continue clearing even if caller hook threw.
+    }
+  }
+  broadcastCloseStorageDb();
+  await closeAllActiveStorageClients();
+
+  // 1. Delete python-playground and any python* IndexedDB databases.
   const dbNames = new Set<string>(['python-playground']);
   if (typeof indexedDB !== 'undefined') {
     const idbWithList = indexedDB as IDBFactory & {
@@ -95,6 +137,8 @@ export async function clearAllPythonData(): Promise<void> {
     }
   }
 
-  // 5. Hard-reload to plain /python/main (Off mode).
-  window.location.replace('/python/main');
+  // 5. Hard-reload to plain /python/main (Off mode) unless caller disabled reload.
+  if (options.reload !== false) {
+    window.location.replace('/python/main');
+  }
 }

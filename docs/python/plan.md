@@ -88,7 +88,7 @@ Ask before the named step; do not guess.
 | P1 | Engine: worker, run/stop, stdio, REPL, network policy | Done (`notes-P1.md`) |
 | P2 | Page: layout, Monaco, terminal, card, i18n, network settings, warnings | Done (`notes-P2.md`) |
 | S5 | Persistence spike | Done (`notes-S5.md`) |
-| P3 | Files | In progress (P3a) |
+| P3 | Files | In progress (P3b) |
 | P4 | Plots and viewers. **v1 ends here: the owner tries it** | Not started |
 | P5, P6 | Packages: engine, page | Not started |
 | S4 | Display transport spike | Not started |

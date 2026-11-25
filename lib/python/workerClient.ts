@@ -25,11 +25,13 @@ import {
 } from './protocol';
 import type {
   CapabilityTier,
+  FsChangeInfo,
   MainToWorkerMessage,
   PythonErrorInfo,
   SecurityStatusInfo,
   WorkerToMainMessage,
 } from './protocol';
+import type { PythonStorageClient } from './storageClient';
 
 export type PythonClientState =
   | 'idle'
@@ -79,6 +81,7 @@ export interface PythonWorkerClientOptions {
   readonly networkMode?: NetworkMode;
   readonly softStopTimeoutMs?: number;
   readonly sigintRetryIntervalMs?: number;
+  readonly storageClient?: PythonStorageClient | null;
 }
 
 export interface PythonClientListeners {
@@ -89,6 +92,7 @@ export interface PythonClientListeners {
   stderr?: (text: string) => void;
   stdinRequest?: (seq: number, mode: 'sab' | 'jspi') => void;
   linkRequest?: (url: string) => void;
+  fsChanged?: (change: FsChangeInfo) => void;
   crash?: (reason: string) => void;
   droppedMessage?: (reason: string) => void;
 }
@@ -107,6 +111,7 @@ export class PythonWorkerClient {
   private readonly softStopTimeoutMs: number;
   private readonly sigintRetryIntervalMs: number;
   private readonly encoder = new TextEncoder();
+  private storageClient: PythonStorageClient | null;
 
   private worker: Worker | null = null;
   private controlSab: SharedArrayBuffer | null = null;
@@ -151,6 +156,11 @@ export class PythonWorkerClient {
     this.networkMode = options.networkMode ?? 'off';
     this.softStopTimeoutMs = options.softStopTimeoutMs ?? DEFAULT_SOFT_STOP_TIMEOUT_MS;
     this.sigintRetryIntervalMs = options.sigintRetryIntervalMs ?? DEFAULT_SIGINT_RETRY_MS;
+    this.storageClient = options.storageClient ?? null;
+  }
+
+  attachStorage(client: PythonStorageClient | null): void {
+    this.storageClient = client;
   }
 
   get state(): PythonClientState {
@@ -210,11 +220,11 @@ export class PythonWorkerClient {
     }
   }
 
-  private post(msg: MainToWorkerMessage): void {
+  private post(msg: MainToWorkerMessage, transfer: Transferable[] = []): void {
     if (!this.worker) {
       throw new Error('Python worker is not running');
     }
-    this.worker.postMessage(msg);
+    this.worker.postMessage(msg, transfer);
   }
 
   /** Spawns /python/python-worker.js, runs the fail-closed CSP self-test, and boots Pyodide. */
@@ -250,6 +260,15 @@ export class PythonWorkerClient {
     }
 
     this.setState('booting', 'Starting Python worker…');
+    let storagePort: MessagePort | null = null;
+    if (this.storageClient && !this.storageClient.isClosed) {
+      try {
+        storagePort = await this.storageClient.createPythonPort();
+      } catch {
+        storagePort = null;
+      }
+    }
+
     const worker = new Worker(getPythonWorkerUrl(), { type: 'module' });
     this.worker = worker;
 
@@ -269,20 +288,25 @@ export class PythonWorkerClient {
     };
 
     const id = this.nextId++;
+    const transfer: Transferable[] = storagePort ? [storagePort] : [];
     this.initPromise = new Promise<ReadyInfo>((resolve, reject) => {
       this.pendingInit = { id, resolve, reject };
-      this.post({
-        type: 'init',
-        id,
-        payload: {
-          controlSab: this.controlSab,
-          stdinSab: this.stdinSab,
-          networkMode: this.networkMode,
-          pyodideIndexUrl: getPyodideIndexUrl(),
-          pyodideLockUrl: getPyodideLockFileUrl(),
-          runtimeBaseUrl: getPythonRuntimeBaseUrl(),
+      this.post(
+        {
+          type: 'init',
+          id,
+          payload: {
+            controlSab: this.controlSab,
+            stdinSab: this.stdinSab,
+            networkMode: this.networkMode,
+            pyodideIndexUrl: getPyodideIndexUrl(),
+            pyodideLockUrl: getPyodideLockFileUrl(),
+            runtimeBaseUrl: getPythonRuntimeBaseUrl(),
+            ...(storagePort ? { storagePort } : {}),
+          },
         },
-      });
+        transfer,
+      );
     });
 
     return this.initPromise;
@@ -298,7 +322,7 @@ export class PythonWorkerClient {
   }
 
   /** Runs a Python script in the worker, enforcing the W7 fail-closed gate by default. */
-  async run(code: string, options: RunOptions = {}): Promise<RunResult> {
+  async run(code?: string | null, options: RunOptions = {}): Promise<RunResult> {
     if (!this._readyInfo) {
       await this.start();
     }
@@ -319,19 +343,59 @@ export class PythonWorkerClient {
     this.pendingTransfer = null;
     this.setState('running');
 
+    const syncRev =
+      this.storageClient && !this.storageClient.isClosed ? this.storageClient.latestRev : undefined;
+
     return new Promise<RunResult>((resolve, reject) => {
       this.pendingRun = { id, resolve, reject };
       this.post({
         type: 'run',
         id,
-        code,
+        ...(code !== undefined ? { code } : {}),
         ...(options.filename !== undefined ? { filename: options.filename } : {}),
         ...(options.files !== undefined ? { files: options.files } : {}),
         ...(options.autoLoadPackages !== undefined
           ? { autoLoadPackages: options.autoLoadPackages }
           : {}),
+        ...(syncRev !== undefined ? { syncRev } : {}),
       });
     });
+  }
+
+  /** Live-syncs a file write into the running Pyodide worker's MEMFS without rebooting. */
+  syncFileWrite(path: string, bytes: Uint8Array, rev?: number): void {
+    if (!this.worker || !this._readyInfo) return;
+    const copy = bytes.slice();
+    this.post(
+      { type: 'fs.write', id: this.nextId++, path, bytes: copy, ...(rev !== undefined ? { rev } : {}) },
+      [copy.buffer],
+    );
+  }
+
+  syncMkdir(path: string, rev?: number): void {
+    if (!this.worker || !this._readyInfo) return;
+    this.post({ type: 'fs.mkdir', id: this.nextId++, path, ...(rev !== undefined ? { rev } : {}) });
+  }
+
+  syncRename(from: string, to: string, rev?: number): void {
+    if (!this.worker || !this._readyInfo) return;
+    this.post({
+      type: 'fs.rename',
+      id: this.nextId++,
+      from,
+      to,
+      ...(rev !== undefined ? { rev } : {}),
+    });
+  }
+
+  syncDelete(path: string, rev?: number): void {
+    if (!this.worker || !this._readyInfo) return;
+    this.post({ type: 'fs.delete', id: this.nextId++, path, ...(rev !== undefined ? { rev } : {}) });
+  }
+
+  syncWorkspace(): void {
+    if (!this.worker || !this._readyInfo) return;
+    this.post({ type: 'fs.sync', id: this.nextId++ });
   }
 
   /** Sends one line of stdin to a blocked Tier 1 (SAB) or Tier 2 (JSPI) input() call. */
@@ -693,6 +757,14 @@ export class PythonWorkerClient {
       case 'link.request':
         // Passive data only: UI decides whether to show W8 confirmation. Never auto-navigate!
         this.emit('linkRequest', msg.url);
+        break;
+
+      case 'fs.changed':
+        this.emit('fsChanged', {
+          created: msg.created,
+          modified: msg.modified,
+          deleted: msg.deleted,
+        });
         break;
 
       case 'error': {

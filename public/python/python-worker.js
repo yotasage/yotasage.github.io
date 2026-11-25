@@ -2,6 +2,7 @@
 // In-scope ES module Web Worker for Pyodide (/python/python-worker.js).
 // Lives under /python/ so /python/coi-sw.js intercepts the worker script fetch and applies
 // COOP/COEP + strict worker CSP (without 'unsafe-eval').
+// Syncs /workspace MEMFS with Option 3B Dedicated Storage Worker over a direct MessageChannel.
 
 // Defense in depth (S1 §7): remove WebRTC constructors before Pyodide or user code runs.
 for (const key of ['RTCPeerConnection', 'webkitRTCPeerConnection', 'RTCDataChannel']) {
@@ -29,6 +30,9 @@ const STDIN_CHUNK_FINAL = 3;
 const STDIN_EOF = 4;
 const STDIN_INTERRUPTED = 5;
 
+const WORKSPACE_ROOT = '/workspace';
+const MAX_DELTA_FILE_BYTES = 50 * 1024 * 1024;
+const MAX_IMPORT_SCAN_BYTES = 256 * 1024;
 const RT_FILES = ['__init__.py', 'stdio.py', 'shims.py', 'runner.py', 'repl.py'];
 
 let pyodide = null;
@@ -43,8 +47,19 @@ let pendingOffset = 0;
 let jspiStdinResolver = null;
 let jspiStdinSeq = 0;
 
+// Option 3B Storage Worker MessageChannel + MEMFS write-through state
+let storagePort = null;
+let workspaceRootNode = null;
+let suppressWriteThrough = false;
+let isRunActive = false;
+let appliedStorageRev = 0;
+let portReqId = 1;
+const pendingPortRpcs = new Map();
+const revWaiters = [];
+
 const stdoutDecoder = new TextDecoder('utf-8', { fatal: false });
 const stderrDecoder = new TextDecoder('utf-8', { fatal: false });
+const textEncoder = new TextEncoder();
 
 function postStdout(text) {
   if (text) self.postMessage({ type: 'stdout', text });
@@ -70,6 +85,596 @@ function resetRunBuffers() {
     Atomics.store(ctrlView, CTRL_STDIN_LEN, 0);
   }
 }
+
+// --- Workspace MEMFS write-through & Storage Worker sync ---
+
+function normalizeRelPath(raw) {
+  let s = String(raw || '').replace(/\\/g, '/');
+  if (s.startsWith(`${WORKSPACE_ROOT}/`)) s = s.slice(WORKSPACE_ROOT.length + 1);
+  s = s.replace(/^\/+/, '');
+  while (s.startsWith('./')) s = s.slice(2);
+  s = s.replace(/\/+$/, '');
+  if (!s) return null;
+  const parts = s.split('/');
+  for (const p of parts) {
+    if (!p || p === '.' || p === '..') return null;
+  }
+  return parts.join('/');
+}
+
+function getNodeRelPath(node) {
+  if (!workspaceRootNode || !node) return null;
+  const parts = [];
+  let cur = node;
+  while (cur && cur !== workspaceRootNode && cur.parent && cur.parent !== cur) {
+    if (cur.name) parts.push(cur.name);
+    cur = cur.parent;
+  }
+  if (cur !== workspaceRootNode) return null;
+  parts.reverse();
+  return parts.join('/');
+}
+
+function getChildRelPath(parent, name) {
+  const base = getNodeRelPath(parent);
+  if (base === null) return null;
+  return base ? `${base}/${name}` : String(name);
+}
+
+function readNodeBytesCopy(node) {
+  const size = Number(node.usedBytes) || 0;
+  if (size <= 0 || !node.contents) return new Uint8Array(0);
+  if (node.contents instanceof Uint8Array) {
+    return node.contents.slice(0, size);
+  }
+  const out = new Uint8Array(size);
+  for (let i = 0; i < size; i += 1) {
+    out[i] = node.contents[i] & 0xff;
+  }
+  return out;
+}
+
+function emitNodePut(node, forceCreatedByRun) {
+  if (!storagePort || !node) return;
+  const rel = getNodeRelPath(node);
+  if (!rel) return;
+  const size = Number(node.usedBytes) || 0;
+  if (size > MAX_DELTA_FILE_BYTES) {
+    return;
+  }
+  const copy = readNodeBytesCopy(node);
+  node.__lastEmittedSeq = node.__writeSeq || 0;
+  try {
+    storagePort.postMessage(
+      {
+        type: 'put',
+        path: rel,
+        bytes: copy,
+        mtime: Date.now(),
+        createdByRun: forceCreatedByRun !== undefined ? Boolean(forceCreatedByRun) : isRunActive,
+      },
+      [copy.buffer],
+    );
+  } catch {
+    // ignore port error
+  }
+}
+
+function emitMkdir(rel) {
+  if (!storagePort || !rel) return;
+  try {
+    storagePort.postMessage({
+      type: 'mkdir',
+      path: rel,
+      mtime: Date.now(),
+      createdByRun: isRunActive,
+    });
+  } catch {
+    // ignore
+  }
+}
+
+function emitDelete(rel) {
+  if (!storagePort || !rel) return;
+  try {
+    storagePort.postMessage({ type: 'delete', path: rel });
+  } catch {
+    // ignore
+  }
+}
+
+function emitRename(fromRel, toRel) {
+  if (!storagePort || !fromRel || !toRel) return;
+  try {
+    storagePort.postMessage({ type: 'rename', from: fromRel, to: toRel });
+  } catch {
+    // ignore
+  }
+}
+
+function mountWorkspaceMemfs() {
+  const FS = pyodide.FS;
+  try {
+    FS.mkdir(WORKSPACE_ROOT);
+  } catch {
+    // already exists
+  }
+
+  const workspaceFs = {
+    mount(mount) {
+      const mnt = FS.filesystems.MEMFS.mount(mount);
+      workspaceRootNode = mnt;
+      const origNodeOps = mnt.node_ops;
+      const wrappedNodeOps = { ...origNodeOps };
+
+      const attachNodeHooks = (node, mode) => {
+        node.node_ops = wrappedNodeOps;
+        if (FS.isFile(mode)) {
+          const origStreamOps = node.stream_ops;
+          node.stream_ops = { ...origStreamOps };
+          node.stream_ops.write = (stream, buffer, offset, length, position, canOwn) => {
+            stream.node.__dirty = true;
+            stream.node.__writeSeq = (stream.node.__writeSeq || 0) + 1;
+            return origStreamOps.write(stream, buffer, offset, length, position, canOwn);
+          };
+          node.stream_ops.close = (stream) => {
+            const n = stream.node;
+            const res = origStreamOps.close ? origStreamOps.close(stream) : 0;
+            if (n.__dirty) {
+              n.__dirty = false;
+              if (!suppressWriteThrough) {
+                emitNodePut(n);
+              }
+            }
+            return res;
+          };
+        }
+      };
+
+      wrappedNodeOps.mknod = (parent, name, mode, dev) => {
+        const node = origNodeOps.mknod(parent, name, mode, dev);
+        attachNodeHooks(node, mode);
+        if (FS.isFile(mode)) {
+          node.__dirty = true;
+          node.__writeSeq = 1;
+        } else if (FS.isDir(mode) && !suppressWriteThrough) {
+          emitMkdir(getChildRelPath(parent, name));
+        }
+        return node;
+      };
+
+      wrappedNodeOps.setattr = (node, attr) => {
+        origNodeOps.setattr(node, attr);
+        if (attr && attr.size !== undefined && FS.isFile(node.mode)) {
+          node.__dirty = true;
+          node.__writeSeq = (node.__writeSeq || 0) + 1;
+        }
+      };
+
+      wrappedNodeOps.unlink = (parent, name) => {
+        const rel = getChildRelPath(parent, name);
+        origNodeOps.unlink(parent, name);
+        if (!suppressWriteThrough && rel) {
+          emitDelete(rel);
+        }
+      };
+
+      wrappedNodeOps.rmdir = (parent, name) => {
+        const rel = getChildRelPath(parent, name);
+        origNodeOps.rmdir(parent, name);
+        if (!suppressWriteThrough && rel) {
+          emitDelete(rel);
+        }
+      };
+
+      wrappedNodeOps.rename = (oldNode, newDir, newName) => {
+        const fromRel = getNodeRelPath(oldNode);
+        const toRel = getChildRelPath(newDir, newName);
+        origNodeOps.rename(oldNode, newDir, newName);
+        if (!suppressWriteThrough && fromRel && toRel) {
+          emitRename(fromRel, toRel);
+        }
+      };
+
+      mnt.node_ops = wrappedNodeOps;
+      return mnt;
+    },
+  };
+
+  FS.mount(workspaceFs, {}, WORKSPACE_ROOT);
+}
+
+function ensureParentDirsMemfs(relPath) {
+  const FS = pyodide.FS;
+  const parts = relPath.split('/');
+  let cur = WORKSPACE_ROOT;
+  for (let i = 0; i < parts.length - 1; i += 1) {
+    cur += `/${parts[i]}`;
+    try {
+      FS.mkdir(cur);
+    } catch {
+      // exists
+    }
+  }
+}
+
+function rmTreeMemfs(fullPath) {
+  const FS = pyodide.FS;
+  let stat;
+  try {
+    stat = FS.stat(fullPath);
+  } catch {
+    return;
+  }
+  if (FS.isDir(stat.mode)) {
+    const names = FS.readdir(fullPath);
+    for (const name of names) {
+      if (name === '.' || name === '..') continue;
+      rmTreeMemfs(`${fullPath}/${name}`);
+    }
+    if (fullPath !== WORKSPACE_ROOT) {
+      try {
+        FS.rmdir(fullPath);
+      } catch {
+        // ignore
+      }
+    }
+  } else {
+    try {
+      FS.unlink(fullPath);
+    } catch {
+      // ignore
+    }
+  }
+}
+
+function clearWorkspaceMemfs() {
+  const FS = pyodide.FS;
+  let names = [];
+  try {
+    names = FS.readdir(WORKSPACE_ROOT);
+  } catch {
+    return;
+  }
+  for (const name of names) {
+    if (name === '.' || name === '..') continue;
+    rmTreeMemfs(`${WORKSPACE_ROOT}/${name}`);
+  }
+}
+
+function applyMemfsWrite(rawPath, bytes, suppress) {
+  const rel = normalizeRelPath(rawPath);
+  if (!rel || !pyodide) return;
+  const prev = suppressWriteThrough;
+  suppressWriteThrough = suppress;
+  try {
+    ensureParentDirsMemfs(rel);
+    const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || 0);
+    pyodide.FS.writeFile(`${WORKSPACE_ROOT}/${rel}`, data);
+  } catch {
+    // ignore malformed mirror
+  } finally {
+    suppressWriteThrough = prev;
+  }
+}
+
+function applyMemfsMkdir(rawPath, suppress) {
+  const rel = normalizeRelPath(rawPath);
+  if (!rel || !pyodide) return;
+  const prev = suppressWriteThrough;
+  suppressWriteThrough = suppress;
+  try {
+    ensureParentDirsMemfs(rel);
+    try {
+      pyodide.FS.mkdir(`${WORKSPACE_ROOT}/${rel}`);
+    } catch {
+      // exists
+    }
+  } finally {
+    suppressWriteThrough = prev;
+  }
+}
+
+function applyMemfsDelete(rawPath, suppress) {
+  const rel = normalizeRelPath(rawPath);
+  if (!rel || !pyodide) return;
+  const prev = suppressWriteThrough;
+  suppressWriteThrough = suppress;
+  try {
+    rmTreeMemfs(`${WORKSPACE_ROOT}/${rel}`);
+  } finally {
+    suppressWriteThrough = prev;
+  }
+}
+
+function applyMemfsRename(rawFrom, rawTo, suppress) {
+  const from = normalizeRelPath(rawFrom);
+  const to = normalizeRelPath(rawTo);
+  if (!from || !to || !pyodide) return;
+  const prev = suppressWriteThrough;
+  suppressWriteThrough = suppress;
+  try {
+    ensureParentDirsMemfs(to);
+    try {
+      rmTreeMemfs(`${WORKSPACE_ROOT}/${to}`);
+    } catch {
+      // ignore
+    }
+    pyodide.FS.rename(`${WORKSPACE_ROOT}/${from}`, `${WORKSPACE_ROOT}/${to}`);
+  } catch {
+    // ignore if missing
+  } finally {
+    suppressWriteThrough = prev;
+  }
+}
+
+function applyMemfsEntries(entries, replaceWorkspace) {
+  if (!pyodide) return;
+  const prev = suppressWriteThrough;
+  suppressWriteThrough = true;
+  try {
+    if (replaceWorkspace) {
+      clearWorkspaceMemfs();
+    }
+    const dirs = [];
+    const files = [];
+    for (const item of entries || []) {
+      const rel = normalizeRelPath(item.path);
+      if (!rel) continue;
+      if (item.isDir) dirs.push(rel);
+      else files.push({ rel, bytes: item.bytes });
+    }
+    dirs.sort((a, b) => a.split('/').length - b.split('/').length);
+    for (const d of dirs) {
+      ensureParentDirsMemfs(d);
+      try {
+        pyodide.FS.mkdir(`${WORKSPACE_ROOT}/${d}`);
+      } catch {
+        // exists
+      }
+    }
+    for (const f of files) {
+      ensureParentDirsMemfs(f.rel);
+      const data = f.bytes instanceof Uint8Array ? f.bytes : new Uint8Array(f.bytes || 0);
+      pyodide.FS.writeFile(`${WORKSPACE_ROOT}/${f.rel}`, data);
+    }
+  } finally {
+    suppressWriteThrough = prev;
+  }
+}
+
+function markStorageRev(rev) {
+  if (typeof rev === 'number' && rev > appliedStorageRev) {
+    appliedStorageRev = rev;
+  }
+  for (let i = revWaiters.length - 1; i >= 0; i -= 1) {
+    if (appliedStorageRev >= revWaiters[i].targetRev) {
+      const w = revWaiters.splice(i, 1)[0];
+      clearTimeout(w.timer);
+      w.resolve(true);
+    }
+  }
+}
+
+function attachStoragePort(port) {
+  storagePort = port;
+  port.onmessage = (event) => {
+    const msg = event.data;
+    if (!msg || typeof msg !== 'object' || typeof msg.type !== 'string') return;
+
+    if (msg.type === 'hydrate.result' || msg.type === 'flush.ack') {
+      const rpc = pendingPortRpcs.get(msg.id);
+      if (rpc) {
+        pendingPortRpcs.delete(msg.id);
+        clearTimeout(rpc.timer);
+        rpc.resolve(msg);
+      }
+      return;
+    }
+
+    if (!pyodide) return;
+    switch (msg.type) {
+      case 'mirror.write':
+        applyMemfsWrite(msg.path, msg.bytes, true);
+        markStorageRev(msg.rev);
+        break;
+      case 'mirror.mkdir':
+        applyMemfsMkdir(msg.path, true);
+        markStorageRev(msg.rev);
+        break;
+      case 'mirror.delete':
+        applyMemfsDelete(msg.path, true);
+        markStorageRev(msg.rev);
+        break;
+      case 'mirror.rename':
+        applyMemfsRename(msg.from, msg.to, true);
+        markStorageRev(msg.rev);
+        break;
+      case 'mirror.clear': {
+        const prev = suppressWriteThrough;
+        suppressWriteThrough = true;
+        try {
+          clearWorkspaceMemfs();
+        } finally {
+          suppressWriteThrough = prev;
+        }
+        markStorageRev(msg.rev);
+        break;
+      }
+      case 'mirror.bulkWrite':
+        applyMemfsEntries(msg.entries, Boolean(msg.replaceWorkspace));
+        markStorageRev(msg.rev);
+        break;
+      default:
+        break;
+    }
+  };
+}
+
+function portRpc(payload, timeoutMs = 15000) {
+  if (!storagePort) return Promise.resolve(null);
+  const id = portReqId++;
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      pendingPortRpcs.delete(id);
+      resolve(null);
+    }, timeoutMs);
+    pendingPortRpcs.set(id, { resolve, timer });
+    try {
+      storagePort.postMessage({ ...payload, id });
+    } catch {
+      clearTimeout(timer);
+      pendingPortRpcs.delete(id);
+      resolve(null);
+    }
+  });
+}
+
+async function hydrateWorkspaceFromStorage() {
+  if (!storagePort || !pyodide) return;
+  const res = await portRpc({ type: 'hydrate' }, 20000);
+  if (!res || !res.ok) return;
+  applyMemfsEntries(res.entries, true);
+  if (typeof res.rev === 'number') {
+    markStorageRev(res.rev);
+  }
+}
+
+async function waitForStorageRev(targetRev) {
+  if (!storagePort || typeof targetRev !== 'number' || targetRev <= appliedStorageRev) {
+    return;
+  }
+  const ok = await new Promise((resolve) => {
+    const waiter = {
+      targetRev,
+      resolve,
+      timer: setTimeout(() => {
+        const idx = revWaiters.indexOf(waiter);
+        if (idx >= 0) revWaiters.splice(idx, 1);
+        resolve(false);
+      }, 1500),
+    };
+    revWaiters.push(waiter);
+  });
+  if (!ok) {
+    await hydrateWorkspaceFromStorage();
+  }
+}
+
+async function flushStoragePort() {
+  if (!storagePort) return;
+  await portRpc({ type: 'flush' }, 10000);
+}
+
+function snapshotWorkspace() {
+  const map = new Map();
+  if (!pyodide) return map;
+  const FS = pyodide.FS;
+
+  const walk = (fullDir, relPrefix) => {
+    let names;
+    try {
+      names = FS.readdir(fullDir);
+    } catch {
+      return;
+    }
+    for (const name of names) {
+      if (name === '.' || name === '..') continue;
+      const full = `${fullDir}/${name}`;
+      const rel = relPrefix ? `${relPrefix}/${name}` : name;
+      let lookup;
+      try {
+        lookup = FS.lookupPath(full, { follow: false });
+      } catch {
+        continue;
+      }
+      const node = lookup.node;
+      if (FS.isDir(node.mode)) {
+        map.set(rel, { isDir: true, size: 0, mtime: node.timestamp || 0, writeSeq: 0, node });
+        walk(full, rel);
+      } else if (FS.isFile(node.mode)) {
+        map.set(rel, {
+          isDir: false,
+          size: Number(node.usedBytes) || 0,
+          mtime: node.timestamp || 0,
+          writeSeq: node.__writeSeq || 0,
+          node,
+        });
+      }
+    }
+  };
+  walk(WORKSPACE_ROOT, '');
+  return map;
+}
+
+function reconcileAndDiff(preSnap, postSnap) {
+  const created = [];
+  const modified = [];
+  const deleted = [];
+
+  for (const [rel, post] of postSnap) {
+    const pre = preSnap.get(rel);
+    if (!pre) {
+      if (!post.isDir) {
+        created.push(rel);
+        if (storagePort && post.node.__lastEmittedSeq !== post.writeSeq) {
+          emitNodePut(post.node, true);
+          post.node.__dirty = false;
+        }
+      }
+    } else if (!post.isDir) {
+      const changed =
+        pre.isDir !== post.isDir ||
+        pre.size !== post.size ||
+        pre.writeSeq !== post.writeSeq ||
+        post.node.__dirty;
+      if (changed) {
+        modified.push(rel);
+        if (storagePort && (post.node.__dirty || post.node.__lastEmittedSeq !== post.writeSeq)) {
+          emitNodePut(post.node, true);
+          post.node.__dirty = false;
+        }
+      }
+    }
+  }
+
+  for (const [rel, pre] of preSnap) {
+    if (!postSnap.has(rel) && !pre.isDir) {
+      deleted.push(rel);
+    }
+  }
+
+  created.sort();
+  modified.sort();
+  deleted.sort();
+  return { created, modified, deleted };
+}
+
+function collectPythonSourcesForImportScan(entryCode) {
+  const parts = [];
+  let total = 0;
+  if (typeof entryCode === 'string' && entryCode.trim()) {
+    parts.push(entryCode);
+    total += entryCode.length;
+  }
+  if (!pyodide) return parts.join('\n');
+  const FS = pyodide.FS;
+  const snap = snapshotWorkspace();
+  for (const [rel, info] of snap) {
+    if (info.isDir || !rel.endsWith('.py')) continue;
+    if (info.size <= 0 || total + info.size > MAX_IMPORT_SCAN_BYTES) continue;
+    try {
+      const src = FS.readFile(`${WORKSPACE_ROOT}/${rel}`, { encoding: 'utf8' });
+      parts.push(src);
+      total += src.length;
+    } catch {
+      // ignore
+    }
+  }
+  return parts.join('\n');
+}
+
+// --- Security probe, SAB/JSPI stdio, and Pyodide runtime ---
 
 async function verifyCspFailClosed(mode) {
   if (mode === 'all') {
@@ -303,6 +908,10 @@ async function handleInit(msg) {
     stdinView = null;
   }
 
+  if (payload.storagePort && typeof payload.storagePort.postMessage === 'function') {
+    attachStoragePort(payload.storagePort);
+  }
+
   const securityStatus = await verifyCspFailClosed(networkMode);
   self.postMessage({ type: 'security.status', status: securityStatus });
 
@@ -316,6 +925,12 @@ async function handleInit(msg) {
 
   const { loadPyodide } = await import(pyodideMjsUrl);
   pyodide = await loadPyodide({ indexURL, lockFileURL });
+
+  // Mount Option 3B MEMFS write-through workspace and hydrate persisted files before ready.
+  mountWorkspaceMemfs();
+  if (storagePort) {
+    await hydrateWorkspaceFromStorage();
+  }
 
   const canRunSync = Boolean(
     await pyodide.runPythonAsync('import pyodide.ffi; pyodide.ffi.can_run_sync()'),
@@ -397,51 +1012,88 @@ async function handleRun(msg) {
     return;
   }
 
-  const filename = msg.filename || 'main.py';
-  const code = String(msg.code ?? '');
+  const rawFilename = msg.filename || 'main.py';
+  const relFilename = normalizeRelPath(rawFilename) || 'main.py';
+  const hasExplicitCode = typeof msg.code === 'string';
+  const code = hasExplicitCode ? msg.code : null;
   const files = msg.files && typeof msg.files === 'object' ? msg.files : null;
   const autoLoadPackages = msg.autoLoadPackages !== false;
 
   resetRunBuffers();
   const t0 = performance.now();
-  self.postMessage({ type: 'status', phase: 'running', message: `Running ${filename}…` });
-  self.postMessage({ type: 'run.start', id: msg.id, filename });
+  self.postMessage({ type: 'status', phase: 'running', message: `Running ${relFilename}…` });
+  self.postMessage({ type: 'run.start', id: msg.id, filename: relFilename });
+
+  let preSnap = null;
 
   try {
-    if (autoLoadPackages && code.trim()) {
-      self.postMessage({
-        type: 'status',
-        phase: 'loading-packages',
-        message: 'Checking imports…',
-      });
-      try {
-        await pyodide.loadPackagesFromImports(code);
-      } catch {
-        // Let CPython raise its own normal ModuleNotFoundError if an unbundled package is imported.
+    // Ensure any pending UI edits from the Storage Worker have reached MEMFS before running.
+    if (typeof msg.syncRev === 'number') {
+      await waitForStorageRev(msg.syncRev);
+    }
+
+    // Sync explicit files / inline code before snapshotting so fs.changed reports only script writes.
+    isRunActive = false;
+    if (files) {
+      for (const [rel, content] of Object.entries(files)) {
+        applyMemfsWrite(rel, textEncoder.encode(String(content)), false);
       }
-      self.postMessage({ type: 'status', phase: 'running', message: `Running ${filename}…` });
+    }
+    if (hasExplicitCode) {
+      applyMemfsWrite(relFilename, textEncoder.encode(code), false);
+    }
+
+    if (autoLoadPackages) {
+      const scanSource = collectPythonSourcesForImportScan(code);
+      if (scanSource.trim()) {
+        self.postMessage({
+          type: 'status',
+          phase: 'loading-packages',
+          message: 'Checking imports…',
+        });
+        try {
+          await pyodide.loadPackagesFromImports(scanSource);
+        } catch {
+          // Let CPython raise its own normal ModuleNotFoundError if an unbundled package is imported.
+        }
+        self.postMessage({ type: 'status', phase: 'running', message: `Running ${relFilename}…` });
+      }
     }
 
     // Re-clear any stale interrupt right before entering user code.
     if (ctrlView) Atomics.store(ctrlView, CTRL_INTERRUPT, 0);
 
-    pyodide.globals.set('_yotasage_run_code', code);
-    pyodide.globals.set('_yotasage_run_filename', filename);
-    pyodide.globals.set('_yotasage_run_files', files ? pyodide.toPy(files) : null);
+    preSnap = snapshotWorkspace();
+    isRunActive = true;
+
+    pyodide.globals.set('_yotasage_run_filename', relFilename);
 
     let rawResult;
-    const expr =
-      'import yotasage_rt; yotasage_rt.run_script(_yotasage_run_code, _yotasage_run_filename, _yotasage_run_files)';
+    const expr = 'import yotasage_rt; yotasage_rt.run_script(None, _yotasage_run_filename, None)';
     if (activeTier === 1) {
       rawResult = pyodide.runPython(expr);
     } else {
       rawResult = await pyodide.runPythonAsync(expr);
     }
+    isRunActive = false;
+
     const result = pyResultToPlain(rawResult) || {
       ok: true,
       exitCode: 0,
       interrupted: false,
     };
+
+    const postSnap = snapshotWorkspace();
+    const diff = reconcileAndDiff(preSnap, postSnap);
+    await flushStoragePort();
+    if (diff.created.length > 0 || diff.modified.length > 0 || diff.deleted.length > 0) {
+      self.postMessage({
+        type: 'fs.changed',
+        created: diff.created,
+        modified: diff.modified,
+        deleted: diff.deleted,
+      });
+    }
 
     flushStreamDecoders();
     self.postMessage({
@@ -454,6 +1106,24 @@ async function handleRun(msg) {
       ...(result.error ? { error: result.error } : {}),
     });
   } catch (err) {
+    isRunActive = false;
+    if (preSnap) {
+      try {
+        const postSnap = snapshotWorkspace();
+        const diff = reconcileAndDiff(preSnap, postSnap);
+        await flushStoragePort();
+        if (diff.created.length > 0 || diff.modified.length > 0 || diff.deleted.length > 0) {
+          self.postMessage({
+            type: 'fs.changed',
+            created: diff.created,
+            modified: diff.modified,
+            deleted: diff.deleted,
+          });
+        }
+      } catch {
+        // ignore reconciliation error during error path
+      }
+    }
     flushStreamDecoders();
     const message = err instanceof Error ? err.message : String(err);
     self.postMessage({
@@ -471,10 +1141,9 @@ async function handleRun(msg) {
       },
     });
   } finally {
+    isRunActive = false;
     try {
-      pyodide.globals.delete('_yotasage_run_code');
       pyodide.globals.delete('_yotasage_run_filename');
-      pyodide.globals.delete('_yotasage_run_files');
     } catch {
       // ignore cleanup error
     }
@@ -496,6 +1165,7 @@ async function handleReplPush(msg) {
       'import yotasage_rt; await yotasage_rt.repl_push(_yotasage_repl_line)',
     );
     const res = pyResultToPlain(raw) || { status: 'complete' };
+    await flushStoragePort();
     flushStreamDecoders();
     self.postMessage({
       type: 'repl.result',
@@ -593,6 +1263,25 @@ self.addEventListener('message', (event) => {
       break;
     case 'stdin.reply':
       handleStdinReply(msg);
+      break;
+    case 'fs.write':
+      applyMemfsWrite(msg.path, msg.bytes, true);
+      markStorageRev(msg.rev);
+      break;
+    case 'fs.mkdir':
+      applyMemfsMkdir(msg.path, true);
+      markStorageRev(msg.rev);
+      break;
+    case 'fs.rename':
+      applyMemfsRename(msg.from, msg.to, true);
+      markStorageRev(msg.rev);
+      break;
+    case 'fs.delete':
+      applyMemfsDelete(msg.path, true);
+      markStorageRev(msg.rev);
+      break;
+    case 'fs.sync':
+      void hydrateWorkspaceFromStorage();
       break;
     default:
       break;
