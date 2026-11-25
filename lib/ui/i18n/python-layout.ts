@@ -1,5 +1,5 @@
 // EN/NB strings of the Python Playground's desktop dock layout added in L2a (components/Python/layout/):
-// the Layout menu with its presets, the group tab strips and the splitters. Split from python.ts to keep
+// the Layout menu with its presets, the group tab strips and the splitters; L2b: Move to…, drag and drop. Split from python.ts to keep
 // both under 40 kB.
 export const en = {
   'python.layoutButton': 'Layout',
@@ -16,6 +16,18 @@ export const en = {
   'python.layoutGroupTabsAria': 'Switch between {names}',
   'python.layoutResize': 'Resize {a} and {b}',
   'python.layoutAnd': '{a} and {b}',
+  'python.layoutMoveTo': 'Move {panel} to',
+  'python.layoutMoveBtnTitle': 'Move {panel} to another place (or drag its tab)',
+  'python.layoutHandle': 'Move {panel}',
+  'python.layoutHandleTitle': 'Drag to move {panel}, or press to choose where',
+  'python.layoutTarget.with': 'With {names}',
+  'python.layoutTarget.bottom': 'Below {names}',
+  'python.layoutTarget.right': 'Right of {names}',
+  'python.layoutTarget.top': 'Above {names}',
+  'python.layoutTarget.left': 'Left of {names}',
+  'python.layoutTarget.pageBottom': 'Full width at the bottom',
+  'python.layoutTarget.pageRight': 'Full height at the right',
+  'python.layoutMoved': '{panel} moved: {where}. The layout is now Custom.',
 };
 
 export const nb: Record<keyof typeof en, string> = {
@@ -33,4 +45,16 @@ export const nb: Record<keyof typeof en, string> = {
   'python.layoutGroupTabsAria': 'Bytt mellom {names}',
   'python.layoutResize': 'Endre størrelsen på {a} og {b}',
   'python.layoutAnd': '{a} og {b}',
+  'python.layoutMoveTo': 'Flytt {panel} til',
+  'python.layoutMoveBtnTitle': 'Flytt {panel} til et annet sted (eller dra fanen)',
+  'python.layoutHandle': 'Flytt {panel}',
+  'python.layoutHandleTitle': 'Dra for å flytte {panel}, eller trykk for å velge hvor',
+  'python.layoutTarget.with': 'Sammen med {names}',
+  'python.layoutTarget.bottom': 'Under {names}',
+  'python.layoutTarget.right': 'Til høyre for {names}',
+  'python.layoutTarget.top': 'Over {names}',
+  'python.layoutTarget.left': 'Til venstre for {names}',
+  'python.layoutTarget.pageBottom': 'Full bredde nederst',
+  'python.layoutTarget.pageRight': 'Full høyde til høyre',
+  'python.layoutMoved': '{panel} er flyttet: {where}. Oppsettet er nå egendefinert.',
 };

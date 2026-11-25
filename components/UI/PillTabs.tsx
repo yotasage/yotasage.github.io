@@ -19,7 +19,13 @@ export interface PillTabsProps<T extends string = string> {
   variant?: 'segmented' | 'subtle';
   className?: string;
   idPrefix?: string;
+  /** Extra attributes and handlers for each tab button (drag and drop, context menu). Its onKeyDown runs first; calling preventDefault there skips the arrow-key handling. */
+  tabProps?: (id: T, index: number) => PillTabExtraProps;
 }
+
+export type PillTabExtraProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onClick' | 'type' | 'role' | 'disabled'> & {
+  [data: `data-${string}`]: string | undefined;
+};
 
 export default function PillTabs<T extends string = string>({
   items,
@@ -30,6 +36,7 @@ export default function PillTabs<T extends string = string>({
   variant = 'segmented',
   className,
   idPrefix,
+  tabProps,
 }: PillTabsProps<T>) {
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
@@ -84,9 +91,11 @@ export default function PillTabs<T extends string = string>({
         ]
           .filter(Boolean)
           .join(' ');
+        const extra = tabProps?.(item.id, index);
 
         return (
           <button
+            {...extra}
             key={item.id}
             ref={(el) => {
               buttonRefs.current[index] = el;
@@ -98,11 +107,14 @@ export default function PillTabs<T extends string = string>({
             aria-controls={idPrefix ? `${idPrefix}-panel-${item.id}` : undefined}
             tabIndex={active ? 0 : -1}
             disabled={item.disabled}
-            className={tabClass}
+            className={extra?.className ? `${tabClass} ${extra.className}` : tabClass}
             onClick={() => {
               if (!item.disabled && item.id !== value) onChange(item.id);
             }}
-            onKeyDown={(e) => handleKeyDown(e, index)}
+            onKeyDown={(e) => {
+              extra?.onKeyDown?.(e);
+              if (!e.defaultPrevented) handleKeyDown(e, index);
+            }}
           >
             {item.icon && <span className={styles.pillTabIcon} aria-hidden="true">{item.icon}</span>}
             <span>{item.label}</span>

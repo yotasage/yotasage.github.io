@@ -115,7 +115,7 @@ Ask before the named step; do not guess.
 | U3 | Package pills on example cards, searchable | Done (`packages` on each example, unit-check against the imports, `ui-examples-checks.mjs`) |
 | L1 | Dockable layout research | Done (notes-L1.md) |
 | L2a | Layout model, panel hosts, presets | Done (`lib/python/layout/`, `components/Python/layout/`, `ui-layout-checks.mjs`, `notes-L2a.md`) |
-| L2b | Drag and drop, Move to, Custom mode | Not started |
+| L2b | Drag and drop, Move to, Custom mode | Done (`useTabDrag.ts`, `DragOverlay.tsx`, `MoveToMenu.tsx`, `moveIfChanged`, `ui-layout-drag-checks.mjs`) |
 | P9 to P11 | Widget surface, tkinter subset, turtle (after go/no-go gate post-P8) | Not started |
 | P12 | Polish, visitor docs, CLAUDE.md and README | Not started |
 

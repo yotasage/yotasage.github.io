@@ -5,7 +5,7 @@
 // Imported by ui.mjs (PYTHON_UI_ONLY=layout runs it alone).
 
 const PRESETS = ['classic', 'consoleBelow', 'wideOutput', 'sideBySide', 'editorFocus', 'displayFocus'];
-const KEY = 'python:layout-v1';
+export const KEY = 'python:layout-v1';
 const MIN = {
   editor: [320, 200],
   files: [180, 160],
@@ -14,9 +14,9 @@ const MIN = {
   plots: [260, 160],
   display: [240, 160],
 };
-const CANVAS = '[data-testid="python-display-canvas"]';
+export const CANVAS = '[data-testid="python-display-canvas"]';
 
-async function acknowledgeW1(page, waitIsolatedMain) {
+export async function acknowledgeW1(page, waitIsolatedMain) {
   await waitIsolatedMain(page, 20000);
   const w1 = page.getByTestId('python-w1-dialog');
   await w1.waitFor({ state: 'visible', timeout: 8000 });
@@ -24,7 +24,7 @@ async function acknowledgeW1(page, waitIsolatedMain) {
   await w1.waitFor({ state: 'hidden', timeout: 5000 });
 }
 
-async function choosePreset(page, id) {
+export async function choosePreset(page, id) {
   await page.getByTestId('python-layout-btn').click();
   await page.getByTestId(`python-layout-${id}`).click();
   await page.waitForFunction((m) => document.querySelector('[data-testid="python-dock"]')?.dataset.layoutMode === m, id, {
@@ -34,7 +34,7 @@ async function choosePreset(page, id) {
 }
 
 /** Geometry of the dock: groups, panel hosts, overflow. */
-async function measure(page) {
+export async function measure(page) {
   return page.evaluate((MIN) => {
     const dock = document.querySelector('[data-testid="python-dock"]');
     const rect = (el) => {
@@ -74,14 +74,14 @@ async function measure(page) {
   }, MIN);
 }
 
-async function consoleRows(page) {
+export async function consoleRows(page) {
   return page.evaluate(() => {
     const rows = document.querySelector('[data-testid="python-console-xterm"] .xterm-rows');
     return rows ? Array.from(rows.children).map((r) => r.textContent || '') : [];
   });
 }
 
-async function pixelHash(page) {
+export async function pixelHash(page) {
   return page.evaluate((sel) => {
     const c = document.querySelector(sel);
     if (!c || !c.width) return null;
@@ -92,7 +92,7 @@ async function pixelHash(page) {
   }, CANVAS);
 }
 
-async function waitRunIdle(page, timeoutMs = 15000) {
+export async function waitRunIdle(page, timeoutMs = 15000) {
   await page.waitForFunction(
     () => {
       const btn = document.querySelector('[data-testid="python-run-btn"]');
@@ -442,7 +442,17 @@ export async function runLayoutUiSuite(
         if (state.dock || state.menu || state.overflow || state.hosts !== 6) return JSON.stringify(state);
         for (const [tab, panel] of [['Files', 'files'], ['Console', 'console'], ['Editor', 'editor']]) {
           await panes.getByRole('tab', { name: tab, exact: true }).click();
-          await page.waitForTimeout(150);
+          // Wait for the pane switch (a fixed pause was flaky in WebKit).
+          await page
+            .waitForFunction(
+              (want) => {
+                const on = Array.from(document.querySelectorAll('[data-panel]')).filter((h) => h.style.display !== 'none' && h.getBoundingClientRect().height > 0);
+                return on.length === 1 && on[0].dataset.panel === want;
+              },
+              panel,
+              { timeout: 3000 },
+            )
+            .catch(() => {});
           const shown = await page.evaluate(
             () => Array.from(document.querySelectorAll('[data-panel]')).filter((h) => h.style.display !== 'none' && h.getBoundingClientRect().height > 0).map((h) => h.dataset.panel),
           );

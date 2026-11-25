@@ -11,12 +11,14 @@ import {
   insertTab,
   MIN_FRACTION,
   minSize,
+  moveIfChanged,
   movePanel,
   moveTargets,
   normalize,
   PANEL_IDS,
   removePanel,
   resizeBoundary,
+  sameArrangement,
   setSizes,
   setSizesById,
   splitDepth,
@@ -234,6 +236,35 @@ export async function runLayoutUnitChecks(check) {
     assert.deepEqual([...findPanel(re, 'display').panels], ['display', 'console', 'repl', 'plots']);
     const re2 = movePanel(PRESETS.classic.tree, 'console', { kind: 'tab', groupId: 'output', index: 4 });
     assert.deepEqual([...findPanel(re2, 'console').panels], ['repl', 'plots', 'display', 'console']);
+  });
+
+  await check('layout: moveIfChanged (L2b drops and Move to…) refuses no-ops and keeps every real move', () => {
+    const c = PRESETS.classic.tree;
+    // Own place: own one-panel group, same tab index in own group, the output group's centre for its last tab.
+    assert.equal(moveIfChanged(c, 'editor', { kind: 'edge', groupId: 'editor', edge: 'left' }), null);
+    assert.equal(moveIfChanged(c, 'console', { kind: 'tab', groupId: 'output', index: 0 }), null);
+    assert.equal(moveIfChanged(c, 'console', { kind: 'tab', groupId: 'output', index: 1 }), null);
+    assert.equal(moveIfChanged(c, 'display', { kind: 'tab', groupId: 'output', index: 4 }), null);
+    // Forbidden: Editor into a tab strip, anything into the Editor's group.
+    assert.equal(moveIfChanged(c, 'editor', { kind: 'tab', groupId: 'output', index: 0 }), null);
+    assert.equal(moveIfChanged(c, 'console', { kind: 'tab', groupId: 'editor', index: 0 }), null);
+    // A real reorder and a real move are kept.
+    assert.ok(moveIfChanged(c, 'console', { kind: 'tab', groupId: 'output', index: 4 }));
+    const below = moveIfChanged(c, 'console', { kind: 'edge', groupId: 'editor', edge: 'bottom' });
+    assert.ok(below);
+    assert.equal(checkTree(below), null);
+    const split = allGroups(below).find((g) => g.panels.includes('console'));
+    assert.deepEqual([...split.panels], ['console']);
+    // sameArrangement ignores the stored active tabs only.
+    assert.ok(sameArrangement(c, JSON.parse(JSON.stringify(c))));
+    const other = JSON.parse(JSON.stringify(c).replace('"active":"console"', '"active":"plots"'));
+    assert.ok(sameArrangement(c, other));
+    assert.ok(!sameArrangement(c, below));
+    // Every target moveTargets offers on every preset changes the tree (so a menu item is never a no-op).
+    for (const id of PRESET_IDS) {
+      const t = PRESETS[id].tree;
+      for (const p of PANEL_IDS) for (const tg of moveTargets(t, p)) assert.ok(moveIfChanged(t, p, tg), `${id} ${p} ${JSON.stringify(tg)}`);
+    }
   });
 
   await check('layout: fitToWidth merges at 900–1100 px, never below the minimums, and unmergeSizes maps back', () => {

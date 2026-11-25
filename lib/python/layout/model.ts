@@ -426,6 +426,18 @@ export function movePanel(tree: LayoutNode, panel: PanelId, target: DropTarget):
   return out && checkTree(out) === null ? out : null;
 }
 
+/** True when two trees arrange the panels the same way (shape, ids, panel order, sizes); the stored active tabs are ignored. */
+export function sameArrangement(a: LayoutNode, b: LayoutNode): boolean {
+  const key = (t: LayoutNode) => JSON.stringify(t, (k, v: unknown) => (k === 'active' ? undefined : v));
+  return a === b || key(a) === key(b);
+}
+
+/** movePanel for drag and drop and Move to…: the new tree, or null when the move is not allowed or changes nothing (a drop onto its own place). */
+export function moveIfChanged(tree: LayoutNode, panel: PanelId, target: DropTarget): LayoutNode | null {
+  const next = movePanel(tree, panel, target);
+  return next && !sameArrangement(next, tree) ? next : null;
+}
+
 /** The targets a "Move to…" menu offers for a panel (each one valid): other groups' tab strips, their bottom and right edges, and the two page edges. */
 export function moveTargets(tree: LayoutNode, panel: PanelId): DropTarget[] {
   const own = findPanel(tree, panel);

@@ -4,8 +4,16 @@
 // out, groups merged in 900–1100 px windows by fitToWidth). Phones do not use the dock (enabled=false).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { findPanel, findSplit, fitToWidth, setSizesById, unmergeSizes, withoutPanels } from '../../../lib/python/layout/model';
-import type { FitMerge, GroupNode, LayoutNode, PanelId } from '../../../lib/python/layout/model';
+import {
+  findPanel,
+  findSplit,
+  fitToWidth,
+  moveIfChanged,
+  setSizesById,
+  unmergeSizes,
+  withoutPanels,
+} from '../../../lib/python/layout/model';
+import type { DropTarget, FitMerge, GroupNode, LayoutNode, PanelId } from '../../../lib/python/layout/model';
 import {
   DEFAULT_LAYOUT,
   isTallLayout,
@@ -42,6 +50,8 @@ export function useDockLayout(enabled: boolean) {
   }, []);
 
   const tree = useMemo(() => treeForLayout(layout), [layout]);
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
   const visibleTree = useMemo<LayoutNode>(
     () => (layout.filesHidden ? withoutPanels(tree, ['files']) ?? tree : tree),
     [tree, layout.filesHidden],
@@ -93,6 +103,22 @@ export function useDockLayout(enabled: boolean) {
     setLayout((prev) => (mode === 'custom' && !prev.custom ? prev : { ...prev, mode }));
   }, []);
 
+  /**
+   * Moves a panel (drag and drop, Move to…) in the stored tree; the layout becomes Custom and is saved, and
+   * the panel is the active tab of its new group. A move that changes nothing returns false and keeps the mode.
+   */
+  const moveTo = useCallback((panel: PanelId, target: DropTarget): boolean => {
+    const cur = layoutRef.current;
+    const next = moveIfChanged(treeForLayout(cur), panel, target);
+    if (!next) return false;
+    const updated: StoredLayout = { ...cur, mode: 'custom', custom: next };
+    layoutRef.current = updated;
+    setLayout(updated);
+    const g = findPanel(next, panel);
+    if (g) setActives((prev) => ({ ...prev, [g.id]: panel }));
+    return true;
+  }, []);
+
   const reset = useCallback(() => {
     setLayout(DEFAULT_LAYOUT);
     setActives({});
@@ -139,12 +165,15 @@ export function useDockLayout(enabled: boolean) {
     hasCustom: layout.custom !== null,
     tall: isTallLayout(layout),
     filesHidden: layout.filesHidden,
+    tree,
+    visibleTree,
     shownTree,
     activeOf,
     isShown,
     activate,
     selectTab,
     choose,
+    moveTo,
     reset,
     setFilesHidden,
     resizeSplit,

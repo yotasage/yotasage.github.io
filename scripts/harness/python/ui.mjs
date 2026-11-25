@@ -20,6 +20,7 @@ import { chromium, firefox, webkit } from 'playwright-core';
 import { startHarnessServers } from './servers.mjs';
 import { runFilesUiSuite } from './ui-files-checks.mjs';
 import { runLayoutUiSuite } from './ui-layout-checks.mjs';
+import { runLayoutDragUiSuite } from './ui-layout-drag-checks.mjs';
 import { runDisplayUiSuite } from './ui-display-checks.mjs';
 import { runExamplesUiSuite } from './ui-examples-checks.mjs';
 import { runPackagesUiSuite } from './ui-packages-checks.mjs';
@@ -223,13 +224,11 @@ async function runBrowserSuite(browserName, browser, baseUrl) {
       waitMonacoAndPyodideReady,
       attachErrorTracker,
     });
-  const layoutSuite = () =>
-    runLayoutUiSuite(browserName, browser, baseUrl, {
-      record,
-      waitIsolatedMain,
-      waitMonacoAndPyodideReady,
-      attachErrorTracker,
-    });
+  const layoutSuite = async () => {
+    const helpers = { record, waitIsolatedMain, waitMonacoAndPyodideReady, attachErrorTracker };
+    await runLayoutUiSuite(browserName, browser, baseUrl, helpers);
+    await runLayoutDragUiSuite(browserName, browser, baseUrl, helpers);
+  };
   // PYTHON_UI_ONLY=packages, =display, =selection, =examples or =layout runs only that suite (while working on it).
   if (process.env.PYTHON_UI_ONLY === 'layout') {
     await layoutSuite();
