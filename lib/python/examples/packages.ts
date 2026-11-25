@@ -6,6 +6,7 @@ import { pySource } from './types';
 export const installPackageExample: PythonExample = {
   id: 'install_package',
   tag: 'packages',
+  packages: ['rich'],
   titleKey: 'python.example.install_package.title',
   descriptionKey: 'python.example.install_package.desc',
   entry: 'install_package/main.py',

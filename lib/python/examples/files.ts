@@ -6,6 +6,7 @@ import { pySource } from './types';
 export const pillowExample: PythonExample = {
   id: 'pillow_image',
   tag: 'files',
+  packages: ['pillow'],
   titleKey: 'python.example.pillow_image.title',
   descriptionKey: 'python.example.pillow_image.desc',
   entry: 'pillow_image/main.py',
@@ -37,6 +38,7 @@ print(f"Saved out/image.png ({img.width} x {img.height} pixels)")
 export const pdfExample: PythonExample = {
   id: 'pdf_report',
   tag: 'files',
+  packages: ['matplotlib', 'numpy'],
   titleKey: 'python.example.pdf_report.title',
   descriptionKey: 'python.example.pdf_report.desc',
   entry: 'pdf_report/main.py',
@@ -72,6 +74,7 @@ print("Saved out/report.pdf")
 export const csvJsonExample: PythonExample = {
   id: 'csv_json',
   tag: 'files',
+  packages: [],
   titleKey: 'python.example.csv_json.title',
   descriptionKey: 'python.example.csv_json.desc',
   entry: 'csv_json/main.py',
@@ -107,6 +110,7 @@ print(f"Wrote {len(rows)} rows to out/weather.csv and out/weather.json")
 export const htmlExample: PythonExample = {
   id: 'html_preview',
   tag: 'files',
+  packages: [],
   titleKey: 'python.example.html_preview.title',
   descriptionKey: 'python.example.html_preview.desc',
   entry: 'html_preview/main.py',

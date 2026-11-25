@@ -102,11 +102,12 @@ export default function ExamplesGallery({ hidden, disabledReason, onLoad }: Exam
         return {
           id: ex.id,
           tag: ex.tag,
+          packages: ex.packages,
           title,
           description,
           tagLabel,
           files,
-          haystack: foldSearchText([title, description, tagLabel, files].join('\n')),
+          haystack: foldSearchText([title, description, tagLabel, files, ex.packages.join(' ')].join('\n')),
         };
       }),
     [t],
@@ -241,6 +242,23 @@ export default function ExamplesGallery({ hidden, disabledReason, onLoad }: Exam
               <span className={styles.filesLabel}>{t('python.examplesTabFiles')}</span>{' '}
               <span className={styles.filesList}>{card.files}</span>
             </p>
+            {card.packages.length > 0 && (
+              <ul className={styles.packages} aria-label={t('python.examplesPackagesAria')} data-testid={`python-example-packages-${card.id}`}>
+                {card.packages.map((name) => (
+                  <li key={name} className={styles.packageItem}>
+                    <button
+                      type="button"
+                      className={styles.pkgPill}
+                      title={t('python.examplesPackageSearch', { name })}
+                      onClick={() => setQuery(name)}
+                      data-testid={`python-example-package-${card.id}-${name}`}
+                    >
+                      {name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
             {failedId === card.id && (
               <p className={styles.failed} role="alert">
                 {t('python.examplesTabFailed')}

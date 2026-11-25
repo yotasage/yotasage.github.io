@@ -7,6 +7,7 @@ import { pySource } from './types';
 export const bouncingBallExample: PythonExample = {
   id: 'bouncing_ball',
   tag: 'display',
+  packages: [],
   titleKey: 'python.example.bouncing_ball.title',
   descriptionKey: 'python.example.bouncing_ball.desc',
   entry: 'bouncing_ball/main.py',
@@ -52,6 +53,7 @@ while not d.closed:
 export const paintExample: PythonExample = {
   id: 'paint',
   tag: 'display',
+  packages: [],
   titleKey: 'python.example.paint.title',
   descriptionKey: 'python.example.paint.desc',
   entry: 'paint/main.py',
@@ -107,6 +109,7 @@ while not d.closed:
 export const fractalExample: PythonExample = {
   id: 'numpy_fractal',
   tag: 'display',
+  packages: ['numpy'],
   titleKey: 'python.example.numpy_fractal.title',
   descriptionKey: 'python.example.numpy_fractal.desc',
   entry: 'numpy_fractal/main.py',
@@ -154,6 +157,7 @@ print(f"Done in {time.perf_counter() - start:.2f} s. The picture stays in the Di
 export const fpsLoopExample: PythonExample = {
   id: 'fps_loop',
   tag: 'display',
+  packages: ['numpy'],
   titleKey: 'python.example.fps_loop.title',
   descriptionKey: 'python.example.fps_loop.desc',
   entry: 'fps_loop/main.py',

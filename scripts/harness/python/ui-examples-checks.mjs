@@ -277,6 +277,58 @@ export async function runExamplesUiSuite(
         return true;
       });
 
+      await record(browserName, 'U3 Examples: package pills on cards, searchable by package name, pill click searches', async () => {
+        const pills = (id) =>
+          page.evaluate((cardId) => {
+            const ul = document.querySelector(`[data-testid="python-example-packages-${cardId}"]`);
+            const card = document.querySelector(`[data-testid="python-example-card-${cardId}"]`);
+            return {
+              hasList: Boolean(ul),
+              aria: ul?.getAttribute('aria-label') ?? null,
+              names: ul ? Array.from(ul.querySelectorAll('li')).map((li) => li.textContent?.trim()) : [],
+              mono: ul ? /mono|consolas|courier|menlo/i.test(getComputedStyle(ul.querySelector('button')).fontFamily) : false,
+              below: ul && card ? ul.getBoundingClientRect().top > card.querySelector('h3').getBoundingClientRect().bottom : false,
+            };
+          }, id);
+        const mpl = await pills('matplotlib_plot');
+        if (!mpl.hasList || mpl.aria !== 'Packages used' || mpl.names.join(',') !== 'matplotlib,numpy' || !mpl.mono || !mpl.below) {
+          return `matplotlib card pills ${JSON.stringify(mpl)}`;
+        }
+        for (const id of ['hello', 'bouncing_ball', 'network_probe']) {
+          if ((await pills(id)).hasList) return `${id} shows pills`;
+        }
+        const search = page.getByTestId('python-examples-search');
+        const expectIds = async (query, want) => {
+          await search.fill(query);
+          await page.waitForTimeout(60);
+          const got = (await shownIds(page)).join(',');
+          return got === want.join(',') ? null : `"${query}": ${got} != ${want.join(',')}`;
+        };
+        const err = (await expectIds('sympy', ['science']))
+          || (await expectIds('NumPy', ['science', 'matplotlib_plot', 'numpy_fractal', 'fps_loop', 'pdf_report']))
+          || (await expectIds('pillow', ['pillow_image']))
+          || (await expectIds('rich', ['install_package']));
+        if (err) return err;
+        await search.fill('');
+        await page.getByTestId('python-example-package-pdf_report-matplotlib').click();
+        await page.waitForTimeout(60);
+        if ((await search.inputValue()) !== 'matplotlib') return `pill click set "${await search.inputValue()}"`;
+        const ids = (await shownIds(page)).join(',');
+        if (ids !== 'matplotlib_plot,pdf_report') return `pill click shows ${ids}`;
+        await search.fill('');
+        const langBtn = page.locator('header button', { hasText: 'EN' }).filter({ hasText: 'NB' }).first();
+        await langBtn.click();
+        await page.waitForTimeout(150);
+        try {
+          const nb = await pills('matplotlib_plot');
+          if (nb.aria !== 'Pakker som brukes') return `NB list label: ${nb.aria}`;
+        } finally {
+          await langBtn.click();
+          await page.waitForTimeout(150);
+        }
+        return { ok: true };
+      });
+
       await record(browserName, 'E1b Examples: Load modules opens main.py without running, then Run works', async () => {
         const before = await terminalText(page);
         await page.getByTestId('python-example-load-modules').click();
@@ -457,6 +509,14 @@ export async function runExamplesUiSuite(
         await page.waitForTimeout(80);
         const pk = (await shownIds(page)).join(',');
         const overflow = await noOverflow(page);
+        await page.getByTestId('python-examples-chip-all').click();
+        await page.getByTestId('python-examples-search').fill('numpy');
+        await page.waitForTimeout(80);
+        const pillIds = await shownIds(page);
+        const pillOverflow = await noOverflow(page);
+        await page.getByTestId('python-examples-search').fill('');
+        if (!pillIds.includes('science') || pillIds.includes('hello')) return `phone package search: ${pillIds.join(',')}`;
+        if (!pillOverflow) return 'overflow with pills';
         await page.getByTestId('python-examples-chip-all').click();
         if (pk !== 'install_package') return `phone chip: ${pk}`;
         if (!overflow) return `overflow: ${await page.evaluate(() => `${document.documentElement.scrollWidth} > ${window.innerWidth}`)}`;

@@ -841,6 +841,43 @@ export async function runUnitChecks() {
     assert.ok(modEx && modEx.files['modules/main.py'] && modEx.files['modules/helpers.py']);
   });
 
+  // U3: the pills of an example card are the packages its files import (stays honest when a file changes)
+  await check('examples/: each example\'s packages list equals the third-party imports of its .py files', () => {
+    const STDLIB = new Set(['asyncio', 'csv', 'html', 'json', 'math', 'os', 'sys', 'time']);
+    const OWN = new Set(['vdisplay', 'yotasage_rt', 'js', 'pyodide', 'micropip']); // runtime modules, not packages
+    const IMPORT_TO_PACKAGE = {
+      PIL: 'pillow',
+      mpl_toolkits: 'matplotlib',
+      dateutil: 'python-dateutil',
+      yaml: 'pyyaml',
+      bs4: 'beautifulsoup4',
+      sklearn: 'scikit-learn',
+      cv2: 'opencv-python',
+    };
+    for (const ex of PYTHON_EXAMPLES) {
+      const pyFiles = Object.entries(ex.files).filter(([path]) => path.endsWith('.py'));
+      const localModules = new Set(pyFiles.map(([path]) => path.split('/').pop().replace(/\.py$/, '')));
+      const found = new Set();
+      for (const [, src] of pyFiles) {
+        for (const line of src.split('\n')) {
+          const m = /^\s*(?:import\s+([A-Za-z_][\w.]*(?:\s*,\s*[A-Za-z_][\w.]*)*)|from\s+([A-Za-z_][\w.]*)\s+import\s)/.exec(line);
+          if (!m) continue;
+          const tops = m[1] ? m[1].split(',').map((s) => s.trim().split(/\s+as\s+/)[0].split('.')[0]) : [m[2].split('.')[0]];
+          for (const top of tops) {
+            if (STDLIB.has(top) || OWN.has(top) || localModules.has(top)) continue;
+            found.add(IMPORT_TO_PACKAGE[top] ?? top.toLowerCase());
+          }
+        }
+      }
+      assert.deepEqual([...ex.packages], [...found].sort(), `packages of "${ex.id}" do not match its imports`);
+      assert.deepEqual([...ex.packages], [...ex.packages].sort(), `packages of "${ex.id}" are not alphabetical`);
+    }
+    // Spot checks so the scanner itself cannot silently find nothing.
+    assert.deepEqual([...getPythonExample('science').packages], ['numpy', 'scipy', 'sympy']);
+    assert.deepEqual([...getPythonExample('hello').packages], []);
+    assert.deepEqual([...getPythonExample('bouncing_ball').packages], []);
+  });
+
   await runPackageUnitChecks(check);
 
   return { passed, failed, failures };

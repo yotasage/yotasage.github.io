@@ -215,7 +215,18 @@ async function runBrowserSuite(browserName, browser, baseUrl) {
       waitTerminalContains,
       attachErrorTracker,
     });
-  // PYTHON_UI_ONLY=packages, =display or =selection runs only that suite (while working on it).
+  const examplesSuite = () =>
+    runExamplesUiSuite(browserName, browser, baseUrl, {
+      record,
+      waitIsolatedMain,
+      waitMonacoAndPyodideReady,
+      attachErrorTracker,
+    });
+  // PYTHON_UI_ONLY=packages, =display, =selection or =examples runs only that suite (while working on it).
+  if (process.env.PYTHON_UI_ONLY === 'examples') {
+    await examplesSuite();
+    return;
+  }
   if (process.env.PYTHON_UI_ONLY === 'packages') {
     await packagesSuite();
     return;
@@ -1050,12 +1061,7 @@ async function runBrowserSuite(browserName, browser, baseUrl) {
   });
 
   // Suite 7: E1b Examples tab (header tabs, cards, Load without running, phone, screenshots)
-  await runExamplesUiSuite(browserName, browser, baseUrl, {
-    record,
-    waitIsolatedMain,
-    waitMonacoAndPyodideReady,
-    attachErrorTracker,
-  });
+  await examplesSuite();
 
   // Suite 8: P6 Packages tab (install, W6, keep/restore, wheels, requirements, missing-import notice)
   await packagesSuite();

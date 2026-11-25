@@ -11,6 +11,7 @@ export const NETWORK_PROBE_HOSTS = ['pypi.org', 'api.github.com', 'jsonplacehold
 export const networkProbeExample: PythonExample = {
   id: 'network_probe',
   tag: 'network',
+  packages: [],
   titleKey: 'python.example.network_probe.title',
   descriptionKey: 'python.example.network_probe.desc',
   entry: 'network_probe/main.py',

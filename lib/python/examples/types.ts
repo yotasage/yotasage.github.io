@@ -10,6 +10,12 @@ export interface PythonExample {
   /** Stable id; also the workspace folder its files are written to. */
   readonly id: string;
   readonly tag: PythonExampleTag;
+  /**
+   * PyPI/Pyodide package names the example imports beyond the standard library, in alphabetical order
+   * (`[]` when it only needs the standard library). Our own modules (`vdisplay`) are not packages.
+   * The unit checks compare this list with the examples' imports.
+   */
+  readonly packages: readonly string[];
   /** i18n key of the card title (`lib/ui/i18n/python-examples.ts`). */
   readonly titleKey: string;
   /** i18n key of a one-sentence description. */

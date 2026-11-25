@@ -5,6 +5,7 @@ import { pySource } from './types';
 export const helloExample: PythonExample = {
   id: 'hello',
   tag: 'basics',
+  packages: [],
   titleKey: 'python.example.hello.title',
   descriptionKey: 'python.example.hello.desc',
   entry: 'hello/main.py',
@@ -25,6 +26,7 @@ for n in range(1, 6):
 export const inputColorsExample: PythonExample = {
   id: 'input_colors',
   tag: 'basics',
+  packages: [],
   titleKey: 'python.example.input_colors.title',
   descriptionKey: 'python.example.input_colors.desc',
   entry: 'input_colors/main.py',
@@ -57,6 +59,7 @@ print(" ".join(f"\x1b[{code}mcolour {code}{RESET}" for code in range(31, 37)))
 export const softStopExample: PythonExample = {
   id: 'soft_stop',
   tag: 'basics',
+  packages: [],
   titleKey: 'python.example.soft_stop.title',
   descriptionKey: 'python.example.soft_stop.desc',
   entry: 'soft_stop/main.py',
@@ -83,6 +86,7 @@ except KeyboardInterrupt:
 export const modulesExample: PythonExample = {
   id: 'modules',
   tag: 'basics',
+  packages: [],
   titleKey: 'python.example.modules.title',
   descriptionKey: 'python.example.modules.desc',
   entry: 'modules/main.py',
@@ -115,6 +119,7 @@ def summary(label, values):
 export const asyncioExample: PythonExample = {
   id: 'asyncio_gather',
   tag: 'async',
+  packages: [],
   titleKey: 'python.example.asyncio_gather.title',
   descriptionKey: 'python.example.asyncio_gather.desc',
   entry: 'asyncio_gather/main.py',

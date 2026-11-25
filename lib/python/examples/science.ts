@@ -5,6 +5,7 @@ import { pySource } from './types';
 export const scienceExample: PythonExample = {
   id: 'science',
   tag: 'science',
+  packages: ['numpy', 'scipy', 'sympy'],
   titleKey: 'python.example.science.title',
   descriptionKey: 'python.example.science.desc',
   entry: 'science/main.py',
@@ -40,6 +41,7 @@ print(f"SymPy  roots: {sp.solve(df, t)}")
 export const matplotlibExample: PythonExample = {
   id: 'matplotlib_plot',
   tag: 'plots',
+  packages: ['matplotlib', 'numpy'],
   titleKey: 'python.example.matplotlib_plot.title',
   descriptionKey: 'python.example.matplotlib_plot.desc',
   entry: 'matplotlib_plot/main.py',

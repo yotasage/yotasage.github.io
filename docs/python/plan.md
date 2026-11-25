@@ -112,6 +112,7 @@ Ask before the named step; do not guess.
 | P8 | Display page | Done (Display tab, `ui-display-checks.mjs`, `notes-P8.md`) |
 | U1 | Bundled packages section, Examples search, picker removed | Done |
 | U2 | File multi-select delete, Reset workspace | Done (`useTreeSelection.ts`, `WorkspaceDialogs.tsx`, storage `deleteMany`, `ui-selection-checks.mjs`) |
+| U3 | Package pills on example cards, searchable | Done (`packages` on each example, unit-check against the imports, `ui-examples-checks.mjs`) |
 | L1, L2 | Dockable layout and view presets | Not started |
 | P9 to P11 | Widget surface, tkinter subset, turtle (after go/no-go gate post-P8) | Not started |
 | P12 | Polish, visitor docs, CLAUDE.md and README | Not started |
