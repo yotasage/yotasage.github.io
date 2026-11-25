@@ -36,24 +36,24 @@ export default function Decoder() {
     try {
       return { decoded: decodeInput(input), error: null };
     } catch (e) {
-      return { decoded: null, error: e instanceof DecodeError ? e.message : `Could not decode: ${errorMessage(e)}` };
+      return { decoded: null, error: e instanceof DecodeError ? e.message : t('base64.dec.cantDecode', { msg: errorMessage(e) }) };
     }
-  }, [input]);
+  }, [input, t]);
   const decoded = result.decoded?.bytes.length ? result.decoded : null;
-  const error = result.error ?? (result.decoded && !decoded ? 'The data is empty.' : null);
+  const error = result.error ?? (result.decoded && !decoded ? t('base64.dec.emptyData') : null);
 
   const detected = React.useMemo(() => (decoded ? detectFormat(decoded.bytes) : null), [decoded]);
   const declared = decoded?.declaredType ? formatForMime(decoded.declaredType) : null;
-  const format = detected ?? declared ?? UNKNOWN;
+  const format = detected ?? declared ?? { ...UNKNOWN, name: t('base64.dec.unknown') };
 
   const warnings: string[] = [];
   if (decoded) {
     if (detected && declared && normalizeMime(decoded.declaredType) !== detected.mime) {
-      warnings.push(`The data URL says ${decoded.declaredType}, but the data is a ${detected.name} file. The preview and the download use ${detected.name}.`);
+      warnings.push(t('base64.dec.warnMismatch', { declared: decoded.declaredType, detected: detected.name }));
     }
-    if (!detected && declared) warnings.push(`The data was not recognised; it is taken as ${declared.mime} because the data URL says so.`);
-    if (!detected && !declared) warnings.push('The data is not an image format this page knows. It can still be downloaded as a .bin file.');
-    if (detected && !detected.image) warnings.push(`This is a ${detected.name} file, not an image. It can still be downloaded.`);
+    if (!detected && declared) warnings.push(t('base64.dec.warnUnrecognized', { mime: declared.mime }));
+    if (!detected && !declared) warnings.push(t('base64.dec.warnNotImageFmt'));
+    if (detected && !detected.image) warnings.push(t('base64.dec.warnNotImage', { name: detected.name }));
   }
 
   React.useEffect(() => {
@@ -79,7 +79,7 @@ export default function Decoder() {
     const file = files[0];
     setNotice(null);
     if (isImage(file)) {
-      setNotice(`${file.name} is an image. To turn it into Base64, use Image to Base64.`);
+      setNotice(t('base64.dec.noticeIsImage', { name: file.name }));
       return;
     }
     setText(await file.text());
@@ -89,7 +89,7 @@ export default function Decoder() {
     try {
       setText(await navigator.clipboard.readText());
     } catch (e) {
-      setActionError(`Could not read the clipboard: ${errorMessage(e)}`);
+      setActionError(t('base64.dec.errClipboard', { msg: errorMessage(e) }));
     }
   }
 
@@ -100,14 +100,14 @@ export default function Decoder() {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch (e) {
-      setActionError(`Could not copy the image: ${errorMessage(e)}`);
+      setActionError(t('base64.dec.errCopy', { msg: errorMessage(e) }));
     }
   }
 
   return (
     <DropTarget onFiles={openFile} className={[styles.card, styles.panel].join(' ')} overClassName={styles.dropOver}>
       <h2>{t('base64.decoder.title')}</h2>
-      <Field label="Base64 or data URL" help="Standard or URL-safe Base64, with or without padding and line breaks, or a data URL. A data URL inside HTML, CSS, Markdown or JSON is found too.">
+      <Field label={t('base64.dec.inputLabel')} help={t('base64.dec.inputHelp')}>
         <textarea
           className={styles.textarea}
           value={text}
@@ -127,7 +127,7 @@ export default function Decoder() {
         </button>
       </div>
       {notice && <p className={styles.warning}>{notice}</p>}
-      {text !== input && <p className={styles.help}>Decoding…</p>}
+      {text !== input && <p className={styles.help}>{t('base64.dec.decoding')}</p>}
       {error && text === input && <div className={styles.error}>{error}</div>}
 
       {decoded && (
@@ -139,34 +139,34 @@ export default function Decoder() {
                 <img
                   key={url}
                   src={url}
-                  alt="Decoded image"
+                  alt={t('base64.dec.altDecoded')}
                   className={styles.image}
                   onLoad={(e) => setPreview({ url, width: e.currentTarget.naturalWidth, height: e.currentTarget.naturalHeight })}
                   onError={() => setPreview({ url, failed: true })}
                 />
               )}
               {shown && 'failed' in shown && (
-                <span className={styles.noPreview}>The data is not a valid {format.name} image, or this browser cannot show {format.name} images.</span>
+                <span className={styles.noPreview}>{t('base64.dec.invalidPreview', { name: format.name })}</span>
               )}
             </div>
           )}
           {warnings.map((w) => <p key={w} className={styles.warning}>{w}</p>)}
           <table className={styles.info}>
             <tbody>
-              <tr><th>Type</th><td>{format.name} ({format.mime})</td></tr>
-              {shown && 'width' in shown && <tr><th>Size</th><td>{shown.width} × {shown.height} px</td></tr>}
-              <tr><th>File size</th><td>{formatBytes(decoded.bytes.length)} ({count(decoded.bytes.length)} bytes)</td></tr>
-              {decoded.declaredType && <tr><th>Data URL type</th><td>{decoded.declaredType}</td></tr>}
+              <tr><th>{t('base64.enc.thType')}</th><td>{format.name} ({format.mime})</td></tr>
+              {shown && 'width' in shown && <tr><th>{t('base64.enc.thSize')}</th><td>{shown.width} × {shown.height} px</td></tr>}
+              <tr><th>{t('base64.enc.thFileSize')}</th><td>{formatBytes(decoded.bytes.length)} ({count(decoded.bytes.length)} {t('base64.enc.bytesUnit')})</td></tr>
+              {decoded.declaredType && <tr><th>{t('base64.dec.thDataUrlType')}</th><td>{decoded.declaredType}</td></tr>}
             </tbody>
           </table>
           {decoded.notes.map((n) => <p key={n} className={styles.help}>{n}</p>)}
 
           <div className={styles.saveRow}>
-            <Field label="File name">
+            <Field label={t('base64.dec.fileNameLabel')}>
               <input className={styles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
             </Field>
             <button type="button" className={styles.primaryButton} onClick={() => download(decoded.bytes, downloadName, format.mime)}>
-              Download {downloadName}
+              {t('base64.dec.downloadFile', { name: downloadName })}
             </button>
             {clipboard.image && format.image && shown && 'width' in shown && (
               <button type="button" className={styles.button} onClick={copy}>

@@ -14,6 +14,7 @@ import stk from '../../styles/EmSimStackup.module.css';
 import css from '../../styles/EmSimTrace.module.css';
 import { addGround, addSignal, removeFeature } from './trace';
 import type { CopperChoice, GenSel } from './trace';
+import { useI18n } from '../../lib/ui/i18n';
 import ValField from './ValField';
 import { Whys } from './Why';
 
@@ -29,6 +30,7 @@ interface Props {
 }
 
 export default function GeneralEditor({ s, st, unit, digits, coppers, sel, onSelect, setTrace }: Props) {
+  const { t } = useI18n();
   const [msg, setMsg] = useState('');
   const [pick, setPick] = useState('');
   const selLayer = sel ? (sel.startsWith('sig') ? st.signals[Number(sel.slice(4))] : st.grounds[Number(sel.slice(4))])?.layer : undefined;
@@ -75,37 +77,38 @@ export default function GeneralEditor({ s, st, unit, digits, coppers, sel, onSel
     </li>
   );
 
+  const removeWhat = sel
+    ? (sel.startsWith('sig') ? t('em.gen.removeTrace', { n: Number(sel.slice(4)) + 1 }) : t('em.gen.removeGround', { n: Number(sel.slice(4)) + 1 }))
+    : t('em.gen.removeSelected');
+
   return (
     <div className={css.gen} data-gen-editor>
       <div className={css.genTools}>
-        {layerSelect(layer, setPick, { 'data-gen-layer': '' }, 'On layer')}
-        <button type="button" className={base.button} data-gen-add="signal" aria-disabled={st.signals.length >= MAX_SIGNALS} onClick={() => done(addSignal(s, st, layer), (t) => `sig.${t.signals.length - 1}`)}>Add trace</button>
-        <button type="button" className={base.button} data-gen-add="ground" onClick={() => done(addGround(s, st, layer), (t) => `gnd.${t.grounds.length - 1}`)}>Add ground</button>
-        <button type="button" className={base.button} data-gen-remove disabled={!sel} onClick={() => sel && done(removeFeature(st, sel), () => null)}>Remove {sel ? (sel.startsWith('sig') ? `trace ${Number(sel.slice(4)) + 1}` : `ground ${Number(sel.slice(4)) + 1}`) : 'selected'}</button>
+        {layerSelect(layer, setPick, { 'data-gen-layer': '' }, t('em.gen.onLayer'))}
+        <button type="button" className={base.button} data-gen-add="signal" aria-disabled={st.signals.length >= MAX_SIGNALS} onClick={() => done(addSignal(s, st, layer), (tr) => `sig.${tr.signals.length - 1}`)}>{t('em.gen.addTrace')}</button>
+        <button type="button" className={base.button} data-gen-add="ground" onClick={() => done(addGround(s, st, layer), (tr) => `gnd.${tr.grounds.length - 1}`)}>{t('em.gen.addGround')}</button>
+        <button type="button" className={base.button} data-gen-remove disabled={!sel} onClick={() => sel && done(removeFeature(st, sel), () => null)}>{t('em.gen.remove', { what: removeWhat })}</button>
       </div>
       <Whys ks="gen-layer gen-add gen-remove" />
       {msg && <p className={css.refused} role="alert" data-gen-refused>{msg}</p>}
       <ol className={css.genList}>
-        {st.signals.map((g, i) => row(`sig.${i}`, `Trace ${i + 1}`, (
+        {st.signals.map((g, i) => row(`sig.${i}`, t('em.gen.traceN', { n: i + 1 }), (
           <div className={stk.fields}>
-            {layerSelect(g.layer, (v) => setSig(i, (x) => ({ ...x, layer: v }), ''), { 'data-gen-row-layer': `sig.${i}` }, 'Layer')}
-            <ValField name={`gen.sig.${i}.u`} label="Position (centre)" x={g.u} unit={unit} digits={digits} zero negative onChange={(x: Val | null, part) => { if (x) setSig(i, (y) => ({ ...y, u: x }), `gen.sig.${i}.u.${part}`); }} />
-            <ValField name={`gen.sig.${i}.w`} label="Width" x={g.w} unit={unit} digits={digits} onChange={(x: Val | null, part) => { if (x) setSig(i, (y) => ({ ...y, w: x }), `gen.sig.${i}.w.${part}`); }} />
+            {layerSelect(g.layer, (v) => setSig(i, (x) => ({ ...x, layer: v }), ''), { 'data-gen-row-layer': `sig.${i}` }, t('em.gen.layer'))}
+            <ValField name={`gen.sig.${i}.u`} label={t('em.gen.pos')} x={g.u} unit={unit} digits={digits} zero negative onChange={(x: Val | null, part) => { if (x) setSig(i, (y) => ({ ...y, u: x }), `gen.sig.${i}.u.${part}`); }} />
+            <ValField name={`gen.sig.${i}.w`} label={t('em.tr.width')} x={g.w} unit={unit} digits={digits} onChange={(x: Val | null, part) => { if (x) setSig(i, (y) => ({ ...y, w: x }), `gen.sig.${i}.w.${part}`); }} />
           </div>
         )))}
-        {st.grounds.map((g, i) => row(`gnd.${i}`, `Ground ${i + 1}`, (
+        {st.grounds.map((g, i) => row(`gnd.${i}`, t('em.gen.groundN', { n: i + 1 }), (
           <div className={stk.fields}>
-            {layerSelect(g.layer, (v) => setGnd(i, (x) => ({ ...x, layer: v }), ''), { 'data-gen-row-layer': `gnd.${i}` }, 'Layer')}
-            <ValField name={`gen.gnd.${i}.a`} label="Left edge" x={g.a} unit={unit} digits={digits} zero negative nullable placeholder="to the edge" onChange={(x, part) => setGnd(i, (y) => ({ ...y, a: x }), `gen.gnd.${i}.a.${part}`)} />
-            <ValField name={`gen.gnd.${i}.b`} label="Right edge" x={g.b} unit={unit} digits={digits} zero negative nullable placeholder="to the edge" onChange={(x, part) => setGnd(i, (y) => ({ ...y, b: x }), `gen.gnd.${i}.b.${part}`)} />
+            {layerSelect(g.layer, (v) => setGnd(i, (x) => ({ ...x, layer: v }), ''), { 'data-gen-row-layer': `gnd.${i}` }, t('em.gen.layer'))}
+            <ValField name={`gen.gnd.${i}.a`} label={t('em.gen.leftEdge')} x={g.a} unit={unit} digits={digits} zero negative nullable placeholder={t('em.tr.toEdge')} onChange={(x, part) => setGnd(i, (y) => ({ ...y, a: x }), `gen.gnd.${i}.a.${part}`)} />
+            <ValField name={`gen.gnd.${i}.b`} label={t('em.gen.rightEdge')} x={g.b} unit={unit} digits={digits} zero negative nullable placeholder={t('em.tr.toEdge')} onChange={(x, part) => setGnd(i, (y) => ({ ...y, b: x }), `gen.gnd.${i}.b.${part}`)} />
           </div>
         )))}
       </ol>
       <Whys ks="gen-position width gen-edges" />
-      <p className={css.small}>
-        Positions are the base centres across, 0 in the middle; widths and edges at the base. Grounds are connected to the
-        planes; an empty edge runs to the edge of the board. Select a row or tap a conductor in the drawing to highlight it.
-      </p>
+      <p className={css.small}>{t('em.gen.note')}</p>
     </div>
   );
 }

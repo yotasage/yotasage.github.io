@@ -75,16 +75,42 @@ export default function LayoutsView({
     [customLayouts],
   );
 
+  const localizeLayoutName = (layout: SmartCalcLayoutV1): string => {
+    if (!layout.builtIn) return layout.name;
+    const key = `calc.preset.${layout.id}.name`;
+    const val = t(key);
+    return val === key ? layout.name : val;
+  };
+
+  const localizeLayoutDesc = (layout: SmartCalcLayoutV1): string => {
+    if (!layout.builtIn) return layout.description;
+    const key = `calc.preset.${layout.id}.desc`;
+    const val = t(key);
+    return val === key ? layout.description : val;
+  };
+
+  const localizeVarLabel = (layout: SmartCalcLayoutV1, symbol: string, fallback: string): string => {
+    if (!layout.builtIn) return fallback;
+    let varKey = `calc.varLabel.${symbol}`;
+    if (layout.id === 'box-volume' && symbol === 'V') varKey = 'calc.varLabel.V_vol';
+    else if (layout.id === 'voltage-divider' && symbol === 'R_1') varKey = 'calc.varLabel.R_1_top';
+    else if (layout.id === 'voltage-divider' && symbol === 'R_2') varKey = 'calc.varLabel.R_2_bot';
+    const val = t(varKey);
+    return val === varKey ? fallback : val;
+  };
+
   const filteredLayouts = useMemo(() => {
     const q = search.trim().toLowerCase();
     return allLayouts.filter((layout) => {
       if (category === 'custom' && layout.builtIn) return false;
       if (category !== 'all' && category !== 'custom' && layout.category !== category) return false;
       if (!q) return true;
-      const haystack = `${layout.name} ${layout.description} ${layout.equation} ${layout.variables.map((v) => `${v.symbol} ${v.label}`).join(' ')}`.toLowerCase();
+      const locName = localizeLayoutName(layout);
+      const locDesc = localizeLayoutDesc(layout);
+      const haystack = `${layout.name} ${locName} ${layout.description} ${locDesc} ${layout.equation} ${layout.variables.map((v) => `${v.symbol} ${v.label} ${localizeVarLabel(layout, v.symbol, v.label)}`).join(' ')}`.toLowerCase();
       return haystack.includes(q);
     });
-  }, [allLayouts, category, search]);
+  }, [allLayouts, category, search, t]);
 
   const activeLayout = useMemo(
     () =>
@@ -264,7 +290,7 @@ export default function LayoutsView({
                   }}
                 >
                   <div className={styles.presetCardTop}>
-                    <span className={styles.presetName}>{layout.name}</span>
+                    <span className={styles.presetName}>{localizeLayoutName(layout)}</span>
                     {!layout.builtIn && (
                       <span className={calcStyles.badge}>{t('calc.layouts.customBadge')}</span>
                     )}
@@ -273,7 +299,7 @@ export default function LayoutsView({
                     <SafeKatex text={getLayoutEquationLatex(layout)} />
                   </div>
                   {layout.description && (
-                    <span className={styles.presetDesc}>{layout.description}</span>
+                    <span className={styles.presetDesc}>{localizeLayoutDesc(layout)}</span>
                   )}
                 </button>
               );
@@ -281,12 +307,12 @@ export default function LayoutsView({
           )}
         </div>
 
-        <section className={styles.solverPanel} aria-label={activeLayout.name}>
+        <section className={styles.solverPanel} aria-label={localizeLayoutName(activeLayout)}>
           <div className={styles.solverHead}>
             <div>
-              <h2 className={styles.solverTitle}>{activeLayout.name}</h2>
+              <h2 className={styles.solverTitle}>{localizeLayoutName(activeLayout)}</h2>
               {activeLayout.description && (
-                <p className={styles.solverDesc}>{activeLayout.description}</p>
+                <p className={styles.solverDesc}>{localizeLayoutDesc(activeLayout)}</p>
               )}
             </div>
 
@@ -384,7 +410,7 @@ export default function LayoutsView({
               return (
                 <label key={v.symbol} className={styles.fieldGroup}>
                   <span className={styles.fieldLabel}>
-                    <span>{v.label}</span>
+                    <span>{localizeVarLabel(activeLayout, v.symbol, v.label)}</span>
                     {v.defaultUnit && (
                       <span className={styles.fieldUnitHint}>{v.defaultUnit}</span>
                     )}

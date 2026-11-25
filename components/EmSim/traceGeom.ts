@@ -17,6 +17,7 @@ import type { Structure } from '../../lib/emsim/structure';
 import { fromMm, toMm } from '../../lib/emsim/units';
 import type { LengthUnit } from '../../lib/emsim/units';
 import type { Rect } from './panZoom';
+import { emT } from './emText';
 
 export const MAXH = 340; // px: the drawing's height at most (more board is shown across instead)
 export const MINH = 170; // px: and at least, while the copper still fits across
@@ -165,14 +166,14 @@ export function traceHandles(s: Stackup, st: Structure): HandleDef[] {
       if (Li < 0) return;
       sig.push(Li);
       const u = g.u.v, w = g.w.v, top = fillSide(s, Li) === 'up' ? z[Li] : z[Li + 1];
-      out.push({ key: `sig.${i}.w`, axis: 'x', u: u + w / 2, z: base(Li), value: w, name: `Trace ${i + 1} width`, min: 0, from: (p) => 2 * (p - u) });
-      out.push({ key: `sig.${i}.u`, axis: 'x', u, z: top, value: u, name: `Trace ${i + 1} position`, min: -Infinity, from: (p) => p });
+      out.push({ key: `sig.${i}.w`, axis: 'x', u: u + w / 2, z: base(Li), value: w, name: emT('em.td.hTraceW', { n: i + 1 }), min: 0, from: (p) => 2 * (p - u) });
+      out.push({ key: `sig.${i}.u`, axis: 'x', u, z: top, value: u, name: emT('em.td.hTraceU', { n: i + 1 }), min: -Infinity, from: (p) => p });
     });
     st.grounds.forEach((g, i) => {
       const Li = layerIndex(s, g.layer);
       if (Li < 0) return;
-      if (g.a) out.push({ key: `gnd.${i}.a`, axis: 'x', u: g.a.v, z: base(Li), value: g.a.v, name: `Ground ${i + 1} left edge`, min: -Infinity, from: (p) => p });
-      if (g.b) out.push({ key: `gnd.${i}.b`, axis: 'x', u: g.b.v, z: base(Li), value: g.b.v, name: `Ground ${i + 1} right edge`, min: -Infinity, from: (p) => p });
+      if (g.a) out.push({ key: `gnd.${i}.a`, axis: 'x', u: g.a.v, z: base(Li), value: g.a.v, name: emT('em.td.hGndA', { n: i + 1 }), min: -Infinity, from: (p) => p });
+      if (g.b) out.push({ key: `gnd.${i}.b`, axis: 'x', u: g.b.v, z: base(Li), value: g.b.v, name: emT('em.td.hGndB', { n: i + 1 }), min: -Infinity, from: (p) => p });
     });
     if (sig.length) heights(s, st, sig, z, out);
     return out;
@@ -183,18 +184,18 @@ export function traceHandles(s: Stackup, st: Structure): HandleDef[] {
   const w = st.w.v, sv = st.s.v;
   const pair = info.signals === 2 && st.kind !== 'broadside';
   if (st.kind === 'broadside') {
-    out.push({ key: 'w', axis: 'x', u: w / 2, z: zb, value: w, name: 'Width', min: 0, from: (u) => 2 * u });
+    out.push({ key: 'w', axis: 'x', u: w / 2, z: zb, value: w, name: emT('em.tr.width'), min: 0, from: (u) => 2 * u });
     const L2 = layerIndex(s, st.layer2);
-    if (L2 >= 0) out.push({ key: 's', axis: 'x', u: sv, z: base(L2), value: sv, name: 'Offset across', min: -Infinity, from: (u) => u });
+    if (L2 >= 0) out.push({ key: 's', axis: 'x', u: sv, z: base(L2), value: sv, name: emT('em.tr.offset'), min: -Infinity, from: (u) => u });
   } else if (pair) {
-    out.push({ key: 'w', axis: 'x', u: sv / 2 + w, z: zb, value: w, name: 'Width (each)', min: 0, from: (u) => u - sv / 2 });
-    out.push({ key: 's', axis: 'x', u: sv / 2, z: zb, value: sv, name: 'Gap', min: 0, from: (u) => 2 * u });
-  } else out.push({ key: 'w', axis: 'x', u: w / 2, z: zb, value: w, name: 'Width', min: 0, from: (u) => 2 * u });
+    out.push({ key: 'w', axis: 'x', u: sv / 2 + w, z: zb, value: w, name: emT('em.tr.widthEach'), min: 0, from: (u) => u - sv / 2 });
+    out.push({ key: 's', axis: 'x', u: sv / 2, z: zb, value: sv, name: emT('em.tr.gap'), min: 0, from: (u) => 2 * u });
+  } else out.push({ key: 'w', axis: 'x', u: w / 2, z: zb, value: w, name: emT('em.tr.width'), min: 0, from: (u) => 2 * u });
   if (info.coplanar) {
     const edge = pair ? w + sv / 2 : w / 2;
     const g = st.g.v, in0 = edge + g;
-    out.push({ key: 'g', axis: 'x', u: in0, z: zb, value: g, name: 'Gap to ground', min: 0, from: (u) => u - edge });
-    if (st.gw) out.push({ key: 'gw', axis: 'x', u: in0 + st.gw.v, z: zb, value: st.gw.v, name: 'Ground width', min: 0, from: (u) => u - in0 });
+    out.push({ key: 'g', axis: 'x', u: in0, z: zb, value: g, name: emT('em.tr.gapToGnd'), min: 0, from: (u) => u - edge });
+    if (st.gw) out.push({ key: 'gw', axis: 'x', u: in0 + st.gw.v, z: zb, value: st.gw.v, name: emT('em.tr.gndWidth'), min: 0, from: (u) => u - in0 });
   }
   heights(s, st, st.kind === 'broadside' ? [L, layerIndex(s, st.layer2)].filter((i) => i >= 0) : [L], z, out);
   return out;
@@ -208,7 +209,7 @@ function heights(s: Stackup, st: Structure, sig: number[], z: Float64Array | num
     const l = s.layers[j];
     if (l.kind !== 'dielectric') continue;
     const t0 = l.t.v, face = z[j];
-    out.push({ key: `t:${l.id}`, axis: 'z', u: null, z: face, value: t0, name: `Thickness of ${l.name}`, min: 0, from: (zp) => t0 + zp - face });
+    out.push({ key: `t:${l.id}`, axis: 'z', u: null, z: face, value: t0, name: emT('em.td.hThick', { name: l.name }), min: 0, from: (zp) => t0 + zp - face });
   }
 }
 
@@ -216,11 +217,11 @@ const keep = (old: Val | null, v: number): Val => ({ v, tol: old ? old.tol : nul
 
 // The setup with one handle's value, or why it cannot take it (the reason the typed fields give).
 export function applyHandle(x: Setup, key: HandleKey, v: number): { setup: Setup } | { reason: string } {
-  if (!Number.isFinite(v)) return { reason: 'The value is not a number.' };
+  if (!Number.isFinite(v)) return { reason: emT('em.td.errNan') };
   if (key.startsWith('t:')) {
     const i = layerIndex(x.stackup, key.slice(2));
-    if (i < 0 || x.stackup.layers[i].kind !== 'dielectric') return { reason: 'That layer is no longer in the stackup.' };
-    if (!(v > 0)) return { reason: `${x.stackup.layers[i].name} must be thicker than zero.` };
+    if (i < 0 || x.stackup.layers[i].kind !== 'dielectric') return { reason: emT('em.td.errNoLayer') };
+    if (!(v > 0)) return { reason: emT('em.td.errThickZero', { name: x.stackup.layers[i].name }) };
     const s = cloneStackup(x.stackup);
     const l = s.layers[i] as DielectricLayer;
     l.t = keep(l.t, v);
@@ -233,12 +234,12 @@ export function applyHandle(x: Setup, key: HandleKey, v: number): { setup: Setup
     const t: Structure = { ...x.trace, signals: x.trace.signals.slice(), grounds: x.trace.grounds.slice() };
     if (gm[1] === 'sig') {
       const g = t.signals[i];
-      if (!g || (f !== 'w' && f !== 'u')) return { reason: 'That trace is no longer in the structure.' };
-      if (f === 'w' && !(v > 0)) return { reason: `Trace ${i + 1}'s width must be above zero.` };
+      if (!g || (f !== 'w' && f !== 'u')) return { reason: emT('em.td.errNoTrace') };
+      if (f === 'w' && !(v > 0)) return { reason: emT('em.td.errWidthZero', { n: i + 1 }) };
       t.signals[i] = { ...g, [f]: keep(g[f], v) };
     } else {
       const g = t.grounds[i];
-      if (!g || (f !== 'a' && f !== 'b') || !g[f]) return { reason: 'That ground edge is no longer in the structure.' };
+      if (!g || (f !== 'a' && f !== 'b') || !g[f]) return { reason: emT('em.td.errNoGndEdge') };
       t.grounds[i] = { ...g, [f]: keep(g[f], v) };
     }
     const bad = structureIssues(x.stackup, t).find((q) => q.level === 'error');

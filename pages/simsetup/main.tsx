@@ -50,25 +50,25 @@ const PRESETS: readonly Preset[] = [
     id: 'audio',
     solveFor: 'f0',
     text: { f0: '', fs: '48k', ncyc: '83', npts: '4096', tstart: '0' },
-    summary: { f0: '972.66 Hz', fs: '48 kHz', ncyc: '83 (prime)', npts: '4096 (2¹²)' },
+    summary: { f0: '972.66 Hz', fs: '48 kHz', ncyc: '83', npts: '4096 (2¹²)' },
   },
   {
     id: 'rf',
     solveFor: 'f0',
     text: { f0: '', fs: '100M', ncyc: '1753', npts: '16384', tstart: '0' },
-    summary: { f0: '10.70 MHz', fs: '100 MHz', ncyc: '1753 (prime)', npts: '16384 (2¹⁴)' },
+    summary: { f0: '10.70 MHz', fs: '100 MHz', ncyc: '1753', npts: '16384 (2¹⁴)' },
   },
   {
     id: 'sensor',
     solveFor: 'f0',
     text: { f0: '', fs: '1k', ncyc: '53', npts: '1024', tstart: '0' },
-    summary: { f0: '51.76 Hz', fs: '1 kHz', ncyc: '53 (prime)', npts: '1024 (2¹⁰)' },
+    summary: { f0: '51.76 Hz', fs: '1 kHz', ncyc: '53', npts: '1024 (2¹⁰)' },
   },
   {
     id: 'spice',
     solveFor: 'f0',
     text: { f0: '', fs: '10meg', ncyc: '101', npts: '2048', tstart: '10u' },
-    summary: { f0: '493.16 kHz', fs: '10meg', ncyc: '101 (prime)', npts: '2048 (2¹¹)', tstart: '10 µs' },
+    summary: { f0: '493.16 kHz', fs: '10meg', ncyc: '101', npts: '2048 (2¹¹)', tstart: '10 µs' },
   },
 ];
 
@@ -604,7 +604,7 @@ export default function SimSetup({ references }: { references: BibEntry[] }) {
                       </div>
                       <div>
                         <dt>N<sub>cyc</sub></dt>
-                        <dd>{preset.summary.ncyc}</dd>
+                        <dd>{t('simsetup.presets.primeTag', { n: preset.summary.ncyc })}</dd>
                       </div>
                       <div>
                         <dt>N<sub>pts</sub></dt>
@@ -632,100 +632,51 @@ export default function SimSetup({ references }: { references: BibEntry[] }) {
 
               <div className={styles.guideGrid}>
                 <article className={styles.guideCard}>
-                  <h3>Calculator</h3>
+                  <h3>{t('simsetup.guide.calcTitle')}</h3>
+                  <p>{t('simsetup.guide.calcBody')}</p>
+                </article>
+
+                <article className={styles.guideCard}>
+                  <h3>{t('simsetup.guide.compareTitle')}</h3>
+                  <p>{t('simsetup.guide.compareBody')}</p>
+                </article>
+
+                <article className={styles.guideCard}>
+                  <h3>{t('simsetup.guide.typingTitle')}</h3>
+                  <p>{t('simsetup.guide.typingBody')}</p>
+                </article>
+
+                <article className={styles.guideCard}>
+                  <h3>{t('simsetup.guide.spiceTitle')}</h3>
+                  <p>{t('simsetup.guide.spiceBody', { max: MAX_PRECISION })}</p>
+                </article>
+
+                <article className={styles.guideCard}>
+                  <h3>{t('simsetup.guide.timeTitle')}</h3>
+                  <p>{t('simsetup.guide.timeBody')}</p>
+                </article>
+
+                <article className={styles.guideCard}>
+                  <h3>{t('simsetup.guide.checksTitle')}</h3>
                   <p>
-                    Each box works with the four parameters in the equation under{' '}
-                    <a href="#parameters-title">Parameters</a>. Choose the one to calculate under{' '}
-                    <b>Calculate</b> and type the other three. The calculated value is highlighted. When you
-                    choose another parameter to calculate, the value that was calculated moves into its input
-                    field with all its digits, so the results stay the same until you change something.
+                    {t('simsetup.guide.checksBodyPre')}{' '}
+                    <CheckText tone="good">{t('simsetup.guide.checksGreen')}</CheckText>{' '}
+                    {t('simsetup.guide.checksGreenDesc')}{' '}
+                    <CheckText tone="ok">{t('simsetup.guide.checksYellow')}</CheckText>{' '}
+                    {t('simsetup.guide.checksYellowDesc')}{' '}
+                    <CheckText tone="bad">{t('simsetup.guide.checksRed')}</CheckText>{' '}
+                    {t('simsetup.guide.checksRedDesc')}
                   </p>
                 </article>
 
                 <article className={styles.guideCard}>
-                  <h3>Comparing</h3>
-                  <p>
-                    The boxes are independent of each other. <b>Duplicate</b> copies a box, so you can change
-                    one value and compare the two. <b>Add box</b> adds a box with the starting values, and{' '}
-                    <b>Remove</b> deletes a box.
-                  </p>
+                  <h3>{t('simsetup.guide.primesTitle')}</h3>
+                  <p>{t('simsetup.guide.primesBody', { max: MAX_PRIME_DIGITS })}</p>
                 </article>
 
                 <article className={styles.guideCard}>
-                  <h3>Typing numbers</h3>
-                  <p>
-                    Type plain numbers (<code>16384</code>, <code>0.001</code>), exponents (<code>1e3</code>,{' '}
-                    <code>2.5E-6</code>) or SI prefixes (<code>1k</code>, <code>2.5M</code>, <code>10m</code>,{' '}
-                    <code>100u</code> or <code>100µ</code>). A space before the prefix is fine, and the unit may
-                    follow it (<code>1 kHz</code>, <code>10 ms</code>). Prefixes are case sensitive:{' '}
-                    <code>m</code> is milli and <code>M</code> is mega. <code>meg</code> also means mega, as in
-                    SPICE. Digit groups are fine too (<code>1 000 000</code> or <code>1_000_000</code>), here and
-                    in the prime and power of 2 boxes.
-                  </p>
-                </article>
-
-                <article className={styles.guideCard}>
-                  <h3>Results &amp; SPICE formatting</h3>
-                  <p>
-                    <b>Precision</b> is the number of significant digits shown for calculated values, from 1 to{' '}
-                    {MAX_PRECISION}. It only changes how the results are shown, not how they are calculated.{' '}
-                    <b>Format</b> shows the results as plain numbers or with SI prefixes. SPICE reads{' '}
-                    <code>M</code> as milli, so copy plain numbers, or use <code>meg</code>, when you set up a
-                    SPICE simulation. <b>Grouping</b> splits the whole-number part into groups of three digits:
-                    none (<code>2340571.4286</code>, which works everywhere), spaces (<code>2 340 571.4286</code>)
-                    or underscores (<code>2_340_571.4286</code>, which Python reads as a number). It is also used
-                    for the numbers that the prime and power of 2 buttons write.
-                  </p>
-                </article>
-
-                <article className={styles.guideCard}>
-                  <h3>
-                    t<sub>start</sub> and t<sub>stop</sub>
-                  </h3>
-                  <p>
-                    Type the time at which sampling starts in t<sub>start</sub>. t<sub>stop</sub> is t
-                    <sub>start</sub> plus N<sub>cyc</sub> periods of f<sub>0</sub>.
-                  </p>
-                </article>
-
-                <article className={styles.guideCard}>
-                  <h3>Checks</h3>
-                  <p>
-                    Next to N<sub>cyc</sub> and N<sub>pts</sub> (below them on phones), each box shows how they
-                    match <a href="#rule-1">RULE 1</a> and <a href="#rule-2">RULE 2</a> under Coherent sampling:
-                    whether N<sub>cyc</sub> is an integer, a prime or an odd number, and has no common factor
-                    with N<sub>pts</sub>, and whether N<sub>pts</sub> is a power of 2.{' '}
-                    <CheckText tone="good">Green</CheckText> follows the rule,{' '}
-                    <CheckText tone="ok">yellow</CheckText> is acceptable (odd, but not prime) and{' '}
-                    <CheckText tone="bad">red</CheckText> breaks it. A calculated value such as{' '}
-                    <code>7.000000000000001</code> counts as an integer, since the difference comes from rounding
-                    in the computer.
-                  </p>
-                </article>
-
-                <article className={styles.guideCard}>
-                  <h3>Prime numbers</h3>
-                  <p>
-                    Shows whether the number is prime. <b>Prev</b> and <b>Next</b> go to the closest prime below
-                    or above the number. <b>÷2</b>, <b>÷10</b> and <b>÷1000</b> go to the first prime after the
-                    number divided by 2, 10 or 1000, and <b>×2</b>, <b>×10</b> and <b>×1000</b> to the first
-                    prime after the number multiplied by 2, 10 or 1000. The number itself does not have to be
-                    prime. Numbers can have up to {MAX_PRIME_DIGITS} digits. Below 3.3·10<sup>24</sup> the answer
-                    is exact. Above that, the test (Miller–Rabin) lets a few rare numbers through that are not
-                    prime, so the answer is &ldquo;Probably prime&rdquo;.
-                  </p>
-                </article>
-
-                <article className={styles.guideCard}>
-                  <h3>Powers of 2</h3>
-                  <p>
-                    Shows whether the number is an exact power of 2, and its exponent: 2<sup>n</sup> = for an
-                    exact power of 2, and 2<sup>x</sup> ≈ otherwise. <b>&lt;&lt;1</b> and <b>&lt;&lt;4</b> shift
-                    the number left by 1 or 4 bits (multiply by 2 or 16), and <b>&gt;&gt;1</b> and{' '}
-                    <b>&gt;&gt;4</b> shift it right (divide by 2 or 16, rounded down). <b>Prev</b> and{' '}
-                    <b>Next</b> go to the closest power of 2 below or above the number. You can also type
-                    hexadecimal (<code>0x4000</code>) or binary (<code>0b100</code>) numbers.
-                  </p>
+                  <h3>{t('simsetup.guide.powersTitle')}</h3>
+                  <p>{t('simsetup.guide.powersBody')}</p>
                 </article>
               </div>
             </section>

@@ -7,6 +7,8 @@ import {
   Network, PartSpec, SERIES, SeriesId, SuggestOptions, Suggestions, TECHNOLOGIES, TechnologyId, chipSize, circuitDef, circuitProblem, formatAmount,
   formatError, formatPct, formatRkm, formatTolerance, listFromLink, listToLink, networkFormula, readAmount, readValue, technology,
 } from '../../lib/resistor';
+import { translate } from '../../lib/ui/i18n';
+import type { Locale, TranslationKey } from '../../lib/ui/translations';
 
 export interface Design {
   circuit: CircuitId;
@@ -88,33 +90,51 @@ export interface Field {
   placeholder: string;
 }
 
-const LABELS: Record<string, [string, string, string]> = {
-  volts: ['Supply', 'across the resistor and the drop', 'e.g. 5'],
-  drop: ['Drop in series', 'optional: an LED, a diode, a transistor', 'e.g. 2.1'],
-  amps: ['Current', 'through the resistor', 'e.g. 10m'],
-  vin: ['Input', 'across the divider', 'e.g. 12'],
-  load: ['Load', 'optional: a resistance across R2', 'e.g. 100k'],
-  vref: ['Reference', 'what the regulator holds across R2', 'e.g. 0.8'],
-  ifb: ['Pin current', 'optional: positive when it flows through R1', 'e.g. 50n'],
-};
-
-const TARGETS: Record<CircuitId, string> = {
-  'single-current': 'the current wanted', 'single-voltage': 'the voltage wanted across the resistor', divider: 'the output voltage wanted',
-  feedback: 'the output voltage wanted', noninverting: 'the gain wanted, above 1', inverting: 'the gain wanted, negative',
-  shunt: 'the sense voltage at that current',
+const PLACEHOLDER_VALS: Record<string, string> = {
+  volts: '5', drop: '2.1', amps: '10m', vin: '12', load: '100k', vref: '0.8', ifb: '50n',
 };
 
 // The fields of a circuit: its inputs, then the target.
-export function designFields(id: CircuitId): { inputs: Field[]; target: Field } {
+export function designFields(id: CircuitId, locale: Locale = 'en'): { inputs: Field[]; target: Field } {
   const def = circuitDef(id);
   const gain = id === 'noninverting' || id === 'inverting';
   const inputs = def.inputs.map((input) => {
-    const [label, hint, placeholder] = LABELS[input.id];
-    if (input.id === 'vin' && gain) return { id: input.id, label: 'Signal', unit: 'V', optional: true, hint: 'optional: for the current and power in the parts', placeholder: 'e.g. 100m' };
-    if (input.id === 'amps' && id === 'shunt') return { id: input.id, label, unit: 'A', optional: false, hint: 'the current to measure', placeholder: 'e.g. 5' };
-    return { id: input.id, label, unit: input.unit, optional: input.optional, hint, placeholder: input.optional ? placeholder : '' };
+    if (input.id === 'vin' && gain) {
+      return {
+        id: input.id,
+        label: translate(locale, 'res.d.fld.signal'),
+        unit: 'V',
+        optional: true,
+        hint: translate(locale, 'res.d.fld.signalHint'),
+        placeholder: translate(locale, 'res.d.eg', { v: '100m' }),
+      };
+    }
+    if (input.id === 'amps' && id === 'shunt') {
+      return {
+        id: input.id,
+        label: translate(locale, 'res.d.fld.amps'),
+        unit: 'A',
+        optional: false,
+        hint: translate(locale, 'res.d.fld.ampsShuntHint'),
+        placeholder: translate(locale, 'res.d.eg', { v: '5' }),
+      };
+    }
+    const label = translate(locale, `res.d.fld.${input.id}` as TranslationKey);
+    const hint = translate(locale, `res.d.fld.${input.id}Hint` as TranslationKey);
+    const placeholder = input.optional && PLACEHOLDER_VALS[input.id] ? translate(locale, 'res.d.eg', { v: PLACEHOLDER_VALS[input.id] }) : '';
+    return { id: input.id, label, unit: input.unit, optional: input.optional, hint, placeholder };
   });
-  return { inputs, target: { id: 'target', label: 'Target', unit: def.output.unit, optional: false, hint: TARGETS[id], placeholder: '' } };
+  return {
+    inputs,
+    target: {
+      id: 'target',
+      label: translate(locale, 'res.d.fld.target'),
+      unit: def.output.unit,
+      optional: false,
+      hint: translate(locale, `res.d.tgt.${id}` as TranslationKey),
+      placeholder: '',
+    },
+  };
 }
 
 export function fieldText(design: Design, id: string, circuit: CircuitId = design.circuit): string {
@@ -144,8 +164,8 @@ export interface ParsedDesign {
   problem: string | null;
 }
 
-export function parseDesign(design: Design): ParsedDesign {
-  const { inputs } = designFields(design.circuit);
+export function parseDesign(design: Design, locale: Locale = 'en'): ParsedDesign {
+  const { inputs } = designFields(design.circuit, locale);
   const errors: Record<string, string> = {};
   const values: Record<string, number> = {};
   for (const field of inputs) {
@@ -178,7 +198,14 @@ export function parseDesign(design: Design): ParsedDesign {
   if (design.currentMax.trim()) current.max = number('currentMax', design.currentMax, 1e-12, 1e3);
   if (current.min >= current.max) errors.currentMax = 'below the smallest';
   const circuit: Circuit = { id: design.circuit, inputs: values };
-  const problem = Object.keys(errors).length ? 'Fill in the marked fields: the suggestions appear as soon as every number can be read.' : circuitProblem(circuit, target);
+  let problem: string | null = null;
+  if (Object.keys(errors).length) {
+    problem = translate(locale, 'res.d.fillMarked');
+  } else if (circuitProblem(circuit, target)) {
+    problem = !Number.isFinite(target) || target === 0
+      ? translate(locale, 'res.d.prob.zero')
+      : translate(locale, `res.d.prob.${circuit.id}` as TranslationKey);
+  }
   return { circuit, target: target ?? NaN, spec, allowedPct, trackingPpm, current, errors, problem };
 }
 
@@ -212,30 +239,39 @@ export function technologyFor(spec: PartSpec, current: TechnologyId): Technology
 export const temperatureText = (t: number) => `${t < 0 ? MINUS : ''}${Math.abs(t)} °C`;
 
 // "from −40 to 125 °C", "at 25 °C"
-export function temperaturesText(temps: number[]): string {
+export function temperaturesText(temps: number[], locale: Locale = 'en'): string {
   const low = Math.min(...temps);
   const high = Math.max(...temps);
-  return low === high ? `at ${temperatureText(low)}` : `from ${low < 0 ? MINUS : ''}${Math.abs(low)} to ${temperatureText(high)}`;
+  return low === high
+    ? translate(locale, 'res.d.tempsAt', { t: temperatureText(low) })
+    : translate(locale, 'res.d.tempsFromTo', { low: `${low < 0 ? MINUS : ''}${Math.abs(low)}`, high: temperatureText(high) });
 }
 
 export const specText = (spec: PartSpec) => `${formatTolerance(spec.tolerancePct)}, ${formatPct(spec.tcrPpm).replace(' %', '')} ppm/K`;
 // A signed error; one within 1e-9 % (the rounding of the arithmetic) is none, as in the engine's ranking.
 export const errorText = (pct: number) => formatError(Math.abs(pct) < 1e-9 ? 0 : pct);
-export const spanText = (minPct: number, maxPct: number) => `${errorText(minPct)} to ${errorText(maxPct)}`;
+export const spanText = (minPct: number, maxPct: number, locale: Locale = 'en') => `${errorText(minPct)} ${translate(locale, 'res.to')} ${errorText(maxPct)}`;
 export const outputText = (id: CircuitId, value: number, digits = 4) => formatAmount(value, circuitDef(id).output.unit, digits);
 export const legFormula = (leg: Network) => networkFormula(leg);
 
 // "499 Ω", "12 kΩ over 4.7 kΩ" (a divider: R1 over R2), "R1 = 31.6 kΩ, R2 = 10 kΩ"
-export function legsText(id: CircuitId, legs: Network[]): string {
+export function legsText(id: CircuitId, legs: Network[], locale: Locale = 'en'): string {
   if (legs.length === 1) return networkFormula(legs[0]);
   const [a, b] = legs.map((leg) => (leg.kind === 'r' ? networkFormula(leg) : `(${networkFormula(leg)})`));
-  return id === 'divider' ? `${a} over ${b}` : `R1 = ${a}, R2 = ${b}`;
+  return id === 'divider' ? translate(locale, 'res.d.over', { a, b }) : `R1 = ${a}, R2 = ${b}`;
 }
 
 // A candidate as text, for the clipboard.
-export function candidateText(id: CircuitId, c: Candidate, allowedPct: number, temps: number[]): string {
-  const where = c.passes ? `within ±${formatPct(allowedPct)}` : `outside ±${formatPct(allowedPct)}`;
-  return `${legsText(id, c.legs)}: ${outputText(id, c.output)} (${errorText(c.errorPct)}), worst case ${spanText(c.minPct, c.maxPct)} ${temperaturesText(temps)}, ${where}`;
+export function candidateText(id: CircuitId, c: Candidate, allowedPct: number, temps: number[], locale: Locale = 'en'): string {
+  const where = c.passes ? translate(locale, 'res.d.within', { pct: formatPct(allowedPct) }) : translate(locale, 'res.d.outside', { pct: formatPct(allowedPct) });
+  return translate(locale, 'res.d.candText', {
+    legs: legsText(id, c.legs, locale),
+    out: outputText(id, c.output),
+    err: errorText(c.errorPct),
+    span: spanText(c.minPct, c.maxPct, locale),
+    temps: temperaturesText(temps, locale),
+    where,
+  });
 }
 
 export interface Answer {
@@ -252,30 +288,37 @@ export function unbroken(text: string): string {
   return text.replace(/(\d) (?=(?:%|°C|ppm\/K|[pnµmkMG]?[ΩVAW])(?![A-Za-z]))/g, '$1\u00A0').replace(/(±[\d.]+) (?=%)/g, '$1\u00A0');
 }
 
-export function answerText(id: CircuitId, result: Suggestions, options: SuggestOptions, source: string): Answer {
+export function answerText(id: CircuitId, result: Suggestions, options: SuggestOptions, source: string, locale: Locale = 'en'): Answer {
   const allowed = `±${formatPct(options.allowedPct)}`;
-  const over = temperaturesText(options.temperatures);
+  const over = temperaturesText(options.temperatures, locale);
   const first = result.candidates[0];
-  if (!first) return { kind: 'none', text: result.note ?? 'No values within the limits come near the target.' };
+  if (!first) return { kind: 'none', text: result.note ?? translate(locale, 'res.d.ansNone') };
   if (first.passes) {
     return {
       kind: 'pass',
-      text: `${legsText(id, first.legs)} stays within ${allowed} ${over}: ${outputText(id, first.output)} nominal (${errorText(first.errorPct)}), worst case ${spanText(first.minPct, first.maxPct)}.`,
+      text: translate(locale, 'res.d.ansPass', {
+        legs: legsText(id, first.legs, locale),
+        allowed,
+        over,
+        out: outputText(id, first.output),
+        err: errorText(first.errorPct),
+        span: spanText(first.minPct, first.maxPct, locale),
+      }),
     };
   }
-  const start = `Nothing from ${source} at ${specText(options.spec)} stays within ${allowed} ${over}`;
+  const start = translate(locale, 'res.d.ansStart', { source, spec: specText(options.spec), allowed, over });
   const needed = result.needed;
   if (!needed) return { kind: 'fail', text: `${start}.` };
-  const closest = `the closest, ${legsText(id, needed.candidate.legs)}`;
-  if (needed.why === 'tighter') return { kind: 'fail', text: `${start}: ${closest}, needs about ${specText(needed.spec)}.`, apply: needed.spec };
+  const closest = translate(locale, 'res.d.ansClosest', { legs: legsText(id, needed.candidate.legs, locale) });
+  if (needed.why === 'tighter') return { kind: 'fail', text: translate(locale, 'res.d.ansTighter', { start, closest, spec: specText(needed.spec) }), apply: needed.spec };
   if (needed.why === 'nominal') {
     const more = isTwoLegs(id)
-      ? (options.legParts === 2 ? 'Use a finer series or wider limits.' : 'Allow two values in each resistance, or use a finer series.')
-      : 'Allow more resistors, or use a finer series.';
-    return { kind: 'fail', text: `${start}: ${closest}, is ${errorText(needed.candidate.errorPct)} off before any tolerance, so no parts help. ${more}` };
+      ? (options.legParts === 2 ? translate(locale, 'res.d.ansMorePair') : translate(locale, 'res.d.ansMoreLeg'))
+      : translate(locale, 'res.d.ansMoreSingle');
+    return { kind: 'fail', text: translate(locale, 'res.d.ansNominal', { start, closest, err: errorText(needed.candidate.errorPct), more }) };
   }
-  if (needed.why === 'fixed') return { kind: 'fail', text: `${start}: the tracking spread alone takes ${closest}, outside.` };
-  return { kind: 'fail', text: `${start}: ${closest}, would need parts tighter than ±0.005 % and 1 ppm/K.` };
+  if (needed.why === 'fixed') return { kind: 'fail', text: translate(locale, 'res.d.ansFixed', { start, closest }) };
+  return { kind: 'fail', text: translate(locale, 'res.d.ansExtreme', { start, closest }) };
 }
 
 // --- The link ------------------------------------------------------------------------------------------------

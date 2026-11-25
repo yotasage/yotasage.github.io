@@ -6,7 +6,6 @@ import React from 'react';
 
 import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/EmSim.module.css';
-import { STATUS_ASSUMES, STATUS_CHECKED, STATUS_COMING, STATUS_LEAD, STATUS_NOW } from './statusText';
 
 export function Status() {
   const { t } = useI18n();
@@ -29,7 +28,7 @@ export function Status() {
       >
         <span className={styles.statusHeaderMain}>
           <span className={styles.statusBadge}>{t('emsim.status.badge')}</span>
-          <strong className={styles.statusLead}>{STATUS_LEAD}</strong>
+          <strong className={styles.statusLead}>{t('em.status.lead')}</strong>
         </span>
         <span className={styles.statusToggleAction}>
           <span>{open ? t('emsim.status.hide') : t('emsim.status.show')}</span>
@@ -54,12 +53,12 @@ export function Status() {
 
       {open && (
         <div id={bodyId} className={styles.statusBody}>
-          <p className={styles.statusLine}>{STATUS_NOW}</p>
-          <p className={styles.statusLine}>{STATUS_CHECKED}</p>
+          <p className={styles.statusLine}>{t('em.status.now')}</p>
+          <p className={styles.statusLine}>{t('em.status.checked')}</p>
           <details className={styles.statusMore}>
             <summary>{t('emsim.status.more')}</summary>
-            <p className={styles.statusLine}>{STATUS_ASSUMES}</p>
-            <p className={styles.statusLine}>{STATUS_COMING}</p>
+            <p className={styles.statusLine}>{t('em.status.assumes')}</p>
+            <p className={styles.statusLine}>{t('em.status.coming')}</p>
           </details>
         </div>
       )}

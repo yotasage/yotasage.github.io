@@ -70,7 +70,7 @@ export default function DiffControlBar({
         </select>
       </label>
 
-      <div className={styles.segmentedGroup} role="group" aria-label="Diff view style">
+      <div className={styles.segmentedGroup} role="group" aria-label={t('notepad.diff.styleAria')}>
         <button
           type="button"
           aria-pressed={diffStyle === 'side-by-side'}

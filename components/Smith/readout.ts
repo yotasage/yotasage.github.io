@@ -7,6 +7,8 @@ import { FLOOR_TEXT, ROUNDING_FLOOR, belowFloor, formatAmount, formatResidual, f
 import {
   admittanceFromGamma, gammaAngle, gammaMag, impedanceFromGamma, returnLoss, toDegrees, vswr, yFromGamma, zFromGamma,
 } from '../../lib/smith/convert';
+import { translate } from '../../lib/ui/i18n';
+import { getSmithLocale } from './smithText';
 
 /** The fields of the readout, in the order of the panel; `data-field` of each value element. */
 export const READOUT_FIELDS = ['z', 'Z', 'y', 'Y', 'gamma', 'gammaRect', 'vswr', 'rl', 'note'] as const;
@@ -72,8 +74,8 @@ export function readoutTexts(gr: number, gi: number, z0: number, out: string[], 
   out[5] = belowFloor(mag) ? GAMMA_BOUND : complexText(gr, gi, '', digits);
   out[6] = num(vswr(mag), '', digits);
   out[7] = formatReturnLoss(returnLoss(mag), digits);
-  out[8] = mag > 1 ? '|Γ| > 1: outside the chart, r < 0 (an active load); VSWR is not defined there.'
-    : mag === 1 ? '|Γ| = 1: on the rim, r = 0 (lossless).' : '';
+  out[8] = mag > 1 ? translate(getSmithLocale(), 'sm.read.outside')
+    : mag === 1 ? translate(getSmithLocale(), 'sm.read.rim') : '';
 }
 
 const texts: string[] = [];

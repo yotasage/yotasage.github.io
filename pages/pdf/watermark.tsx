@@ -29,6 +29,8 @@ import {
   WatermarkPosition,
 } from '../../lib/pdf/watermark';
 import { runAddWatermark } from '../../lib/pdf/workerClient';
+import { translate, useI18n } from '../../lib/ui/i18n';
+import type { Locale, TranslationKey } from '../../lib/ui/translations';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
@@ -55,16 +57,16 @@ interface UploadedWatermarkImage {
   previewUrl: string;
 }
 
-const POSITIONS_9: Array<{ value: WatermarkPosition; label: string }> = [
-  { value: 'top-left', label: 'TL' },
-  { value: 'top-center', label: 'TC' },
-  { value: 'top-right', label: 'TR' },
-  { value: 'middle-left', label: 'ML' },
-  { value: 'center', label: 'C' },
-  { value: 'middle-right', label: 'MR' },
-  { value: 'bottom-left', label: 'BL' },
-  { value: 'bottom-center', label: 'BC' },
-  { value: 'bottom-right', label: 'BR' },
+const POSITIONS_9: Array<{ value: WatermarkPosition; labelKey: TranslationKey; ariaKey: TranslationKey }> = [
+  { value: 'top-left', labelKey: 'pdf.p.posShortTL', ariaKey: 'pdf.p.posTopLeft' },
+  { value: 'top-center', labelKey: 'pdf.p.posShortTC', ariaKey: 'pdf.p.posTopCenter' },
+  { value: 'top-right', labelKey: 'pdf.p.posShortTR', ariaKey: 'pdf.p.posTopRight' },
+  { value: 'middle-left', labelKey: 'pdf.p.posShortML', ariaKey: 'pdf.p.posMidLeft' },
+  { value: 'center', labelKey: 'pdf.p.posShortC', ariaKey: 'pdf.p.posCenter' },
+  { value: 'middle-right', labelKey: 'pdf.p.posShortMR', ariaKey: 'pdf.p.posMidRight' },
+  { value: 'bottom-left', labelKey: 'pdf.p.posShortBL', ariaKey: 'pdf.p.posBotLeft' },
+  { value: 'bottom-center', labelKey: 'pdf.p.posShortBC', ariaKey: 'pdf.p.posBotCenter' },
+  { value: 'bottom-right', labelKey: 'pdf.p.posShortBR', ariaKey: 'pdf.p.posBotRight' },
 ];
 
 function cssFontFor(font: WatermarkFont): { fontFamily: string; fontWeight: number } {
@@ -141,13 +143,13 @@ function computePreviewCenters(
   return centers.length ? centers : [[visW / 2, visH / 2]];
 }
 
-async function decodeImageFile(file: File): Promise<UploadedWatermarkImage> {
+async function decodeImageFile(file: File, locale: Locale): Promise<UploadedWatermarkImage> {
   const previewUrl = URL.createObjectURL(file);
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const el = new Image();
       el.onload = () => resolve(el);
-      el.onerror = () => reject(new Error('Could not decode this image file.'));
+      el.onerror = () => reject(new Error(translate(locale, 'pdf.wm.decodeErr')));
       el.src = previewUrl;
     });
     const width = Math.max(1, img.naturalWidth || img.width);
@@ -173,7 +175,7 @@ async function decodeImageFile(file: File): Promise<UploadedWatermarkImage> {
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Canvas 2D context is unavailable.');
+    if (!ctx) throw new Error(translate(locale, 'pdf.wm.canvasErr'));
     ctx.drawImage(img, 0, 0, width, height);
     const bytes = await canvasToBytes(canvas, 'image/png');
     canvas.width = 0;
@@ -193,6 +195,7 @@ async function decodeImageFile(file: File): Promise<UploadedWatermarkImage> {
 }
 
 export default function WatermarkPdfPage() {
+  const { locale, t } = useI18n();
   const [doc, setDoc] = React.useState<LoadedDoc | null>(null);
   const [pdfProxy, setPdfProxy] = React.useState<PDFDocumentProxy | null>(null);
   const closeProxyRef = React.useRef<(() => Promise<void>) | null>(null);
@@ -210,7 +213,7 @@ export default function WatermarkPdfPage() {
   const [pageJump, setPageJump] = React.useState('1');
 
   const [kind, setKind] = React.useState<'text' | 'image'>('text');
-  const [text, setText] = React.useState('CONFIDENTIAL');
+  const [text, setText] = React.useState(() => translate(locale, 'pdf.wm.defaultText'));
   const [font, setFont] = React.useState<WatermarkFont>('helvetica-bold');
   const [fontSize, setFontSize] = React.useState(48);
   const [color, setColor] = React.useState('#888888');
@@ -387,7 +390,7 @@ export default function WatermarkPdfPage() {
         setLocked({
           name,
           bytes,
-          error: password !== undefined ? 'Incorrect password. Try again.' : null,
+          error: password !== undefined ? t('pdf.ff.wrongPw') : null,
           busy: false,
         });
       } else {
@@ -402,10 +405,10 @@ export default function WatermarkPdfPage() {
   async function loadFile(files: File[]) {
     const pdf = files.find(isPdf);
     if (!pdf) {
-      setNotice('Please select a PDF file.');
+      setNotice(t('pdf.ff.pickPdf'));
       return;
     }
-    setNotice(files.length > 1 ? 'Only the first PDF was opened. Add watermark works on one file at a time.' : null);
+    setNotice(files.length > 1 ? t('pdf.wm.onlyFirst') : null);
     setLocked(null);
     try {
       const bytes = await readBytes(pdf);
@@ -418,12 +421,12 @@ export default function WatermarkPdfPage() {
   async function handleWatermarkImageFiles(files: File[]) {
     const imgFile = files.find(isImage);
     if (!imgFile) {
-      setImageError('Please choose an image file (PNG, JPG, WebP, etc.).');
+      setImageError(t('pdf.wm.pickImgErr'));
       return;
     }
     setImageError(null);
     try {
-      const decoded = await decodeImageFile(imgFile);
+      const decoded = await decodeImageFile(imgFile, locale);
       setWmImage(decoded);
     } catch (e) {
       setImageError(errorMessage(e));
@@ -580,7 +583,7 @@ export default function WatermarkPdfPage() {
     <PdfPage
       title={WATERMARK.title}
       showHub
-      lead="Place single or tiled text and image watermarks over or under PDF content with instant visual preview."
+      lead={t('pdf.wm.lead')}
     >
       {locked && (
         <PasswordPrompt
@@ -595,15 +598,15 @@ export default function WatermarkPdfPage() {
         />
       )}
       {error && !doc && <div className={styles.error} style={{ marginBottom: '1rem' }}>{error}</div>}
-      {loading && !doc && !locked && <Progress fraction={0.45} label="Loading PDF…" />}
+      {loading && !doc && !locked && <Progress fraction={0.45} label={t('pdf.p.loadingPdf')} />}
 
       <ToolWorkspace
         tool={WATERMARK}
         accept="application/pdf,.pdf"
         multiple={false}
-        selectLabel="Select a PDF file"
-        dropLabel="or drop a PDF here"
-        addLabel="Replace PDF"
+        selectLabel={t('pdf.p.selectPdfFile')}
+        dropLabel={t('pdf.p.dropPdf')}
+        addLabel={t('pdf.p.replacePdf')}
         hasFiles={!!doc}
         onFiles={loadFile}
         toolbar={
@@ -615,14 +618,14 @@ export default function WatermarkPdfPage() {
                 disabled={pageIndex <= 0}
                 onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
               >
-                &larr; Prev
+                {t('pdf.p.prev')}
               </button>
               <input
                 type="number"
                 className={styles.pageNavInput}
                 min={1}
                 max={Math.max(1, pageCount)}
-                aria-label="Preview page number"
+                aria-label={t('pdf.p.previewPageNum')}
                 value={pageJump}
                 onChange={(e) => jumpToPage(e.target.value)}
                 onBlur={() => setPageJump(String(pageIndex + 1))}
@@ -634,11 +637,11 @@ export default function WatermarkPdfPage() {
                 disabled={pageIndex >= pageCount - 1}
                 onClick={() => setPageIndex((i) => Math.min(pageCount - 1, i + 1))}
               >
-                Next &rarr;
+                {t('pdf.p.next')}
               </button>
             </div>
             <button type="button" className={styles.buttonSmall} onClick={clearDoc}>
-              Close
+              {t('pdf.ff.close')}
             </button>
           </>
         }
@@ -650,60 +653,60 @@ export default function WatermarkPdfPage() {
                 className={[styles.tab, kind === 'text' ? styles.tabActive : ''].join(' ')}
                 onClick={() => setKind('text')}
               >
-                Text
+                {t('pdf.wm.tabText')}
               </button>
               <button
                 type="button"
                 className={[styles.tab, kind === 'image' ? styles.tabActive : ''].join(' ')}
                 onClick={() => setKind('image')}
               >
-                Image
+                {t('pdf.wm.tabImage')}
               </button>
             </div>
 
             {kind === 'text' ? (
               <>
-                <Field label="Watermark text">
+                <Field label={t('pdf.wm.textLabel')}>
                   <textarea
                     className={fieldStyles.input}
                     rows={2}
                     value={text}
-                    placeholder="CONFIDENTIAL"
+                    placeholder={t('pdf.wm.defaultText')}
                     onChange={(e) => setText(e.target.value)}
                     style={{ resize: 'vertical' }}
                   />
                 </Field>
-                <Field label="Font">
+                <Field label={t('pdf.p.font')}>
                   <Select
                     value={font}
                     onChange={setFont}
                     options={[
-                      ['helvetica', 'Helvetica'],
-                      ['helvetica-bold', 'Helvetica Bold'],
-                      ['times', 'Times Roman'],
-                      ['times-bold', 'Times Bold'],
-                      ['courier', 'Courier'],
-                      ['courier-bold', 'Courier Bold'],
+                      ['helvetica', t('pdf.p.fontHelv')],
+                      ['helvetica-bold', t('pdf.p.fontHelvBold')],
+                      ['times', t('pdf.p.fontTimes')],
+                      ['times-bold', t('pdf.p.fontTimesBold')],
+                      ['courier', t('pdf.p.fontCourier')],
+                      ['courier-bold', t('pdf.p.fontCourierBold')],
                     ]}
                   />
                 </Field>
                 <div className={styles.optionRow}>
-                  <Field label="Font size (pt)">
+                  <Field label={t('pdf.p.fontSizePt')}>
                     <NumberInput value={fontSize} min={6} max={240} step={2} onChange={setFontSize} />
                   </Field>
-                  <Field label="Color">
+                  <Field label={t('pdf.p.color')}>
                     <div className={styles.colorRow}>
                       <input
                         type="color"
                         className={styles.colorSwatch}
-                        aria-label="Watermark color"
+                        aria-label={t('pdf.wm.colorAria')}
                         value={safeColor}
                         onChange={(e) => setColor(e.target.value)}
                       />
                       <input
                         type="text"
                         className={fieldStyles.input}
-                        aria-label="Watermark hex color"
+                        aria-label={t('pdf.wm.hexColorAria')}
                         value={color}
                         onChange={(e) => setColor(e.target.value)}
                       />
@@ -713,7 +716,7 @@ export default function WatermarkPdfPage() {
               </>
             ) : (
               <>
-                <Field label="Watermark image" help="PNG, JPG, WebP, GIF or SVG (non-PNG/JPG auto-converted to PNG).">
+                <Field label={t('pdf.wm.imageLabel')} help={t('pdf.wm.imageHelp')}>
                   <div className={styles.imageUploadRow}>
                     <FilePickerButton
                       accept="image/png,image/jpeg,image/webp,image/*"
@@ -721,13 +724,13 @@ export default function WatermarkPdfPage() {
                       onFiles={handleWatermarkImageFiles}
                       className={styles.buttonSmall}
                     >
-                      {wmImage ? 'Change image' : 'Choose image'}
+                      {wmImage ? t('pdf.wm.changeImg') : t('pdf.wm.chooseImg')}
                     </FilePickerButton>
                     {wmImage && (
                       <>
                         <img
                           src={wmImage.previewUrl}
-                          alt="Watermark preview"
+                          alt={t('pdf.wm.previewAlt')}
                           className={[styles.imageUploadThumb, styles.thumbCheckered].join(' ')}
                         />
                         <span className={styles.fileBannerMeta}>
@@ -740,7 +743,7 @@ export default function WatermarkPdfPage() {
                 {imageError && <p className={fieldStyles.warning}>{imageError}</p>}
                 <label className={styles.sliderField}>
                   <span className={styles.sliderHeader}>
-                    <span>Width scale (% of page width)</span>
+                    <span>{t('pdf.wm.widthScale')}</span>
                     <strong>{Math.round(imageScale * 100)}%</strong>
                   </span>
                   <input
@@ -757,23 +760,23 @@ export default function WatermarkPdfPage() {
             )}
 
             <div className={styles.optionRow}>
-              <Field label="Placement">
+              <Field label={t('pdf.wm.placement')}>
                 <Select
                   value={layout}
                   onChange={setLayout}
                   options={[
-                    ['single', 'Single anchor'],
-                    ['tiled', 'Tiled across page'],
+                    ['single', t('pdf.wm.singleAnchor')],
+                    ['tiled', t('pdf.wm.tiledAcross')],
                   ]}
                 />
               </Field>
-              <Field label="Layer">
+              <Field label={t('pdf.wm.layer')}>
                 <Select
                   value={layer}
                   onChange={setLayer}
                   options={[
-                    ['over', 'Over content'],
-                    ['under', 'Under content'],
+                    ['over', t('pdf.wm.overContent')],
+                    ['under', t('pdf.wm.underContent')],
                   ]}
                 />
               </Field>
@@ -781,26 +784,26 @@ export default function WatermarkPdfPage() {
 
             {layout === 'single' ? (
               <>
-                <Field label="Anchor position">
+                <Field label={t('pdf.wm.anchorPos')}>
                   <div className={styles.posPageFrame}>
-                    <div className={styles.posGrid9} role="radiogroup" aria-label="Watermark anchor position">
+                    <div className={styles.posGrid9} role="radiogroup" aria-label={t('pdf.wm.anchorPosAria')}>
                       {POSITIONS_9.map((p) => (
                         <button
                           key={p.value}
                           type="button"
                           role="radio"
                           aria-checked={position === p.value}
-                          aria-label={p.value.replace('-', ' ')}
+                          aria-label={t(p.ariaKey)}
                           className={[styles.posCell, position === p.value ? styles.posCellActive : ''].join(' ')}
                           onClick={() => setPosition(p.value)}
                         >
-                          {p.label}
+                          {t(p.labelKey)}
                         </button>
                       ))}
                     </div>
                   </div>
                 </Field>
-                <Field label="Edge margin (pt)">
+                <Field label={t('pdf.wm.edgeMargin')}>
                   <NumberInput value={margin} min={0} max={240} step={4} onChange={setMargin} />
                 </Field>
               </>
@@ -808,7 +811,7 @@ export default function WatermarkPdfPage() {
               <>
                 <label className={styles.sliderField}>
                   <span className={styles.sliderHeader}>
-                    <span>Horizontal tile gap</span>
+                    <span>{t('pdf.wm.tileGapX')}</span>
                     <strong>{tileGapX} pt</strong>
                   </span>
                   <input
@@ -823,7 +826,7 @@ export default function WatermarkPdfPage() {
                 </label>
                 <label className={styles.sliderField}>
                   <span className={styles.sliderHeader}>
-                    <span>Vertical tile gap</span>
+                    <span>{t('pdf.wm.tileGapY')}</span>
                     <strong>{tileGapY} pt</strong>
                   </span>
                   <input
@@ -841,7 +844,7 @@ export default function WatermarkPdfPage() {
 
             <label className={styles.sliderField}>
               <span className={styles.sliderHeader}>
-                <span>Rotation</span>
+                <span>{t('pdf.wm.rotation')}</span>
                 <strong>{rotation}°</strong>
               </span>
               <input
@@ -869,7 +872,7 @@ export default function WatermarkPdfPage() {
 
             <label className={styles.sliderField}>
               <span className={styles.sliderHeader}>
-                <span>Opacity</span>
+                <span>{t('pdf.p.opacity')}</span>
                 <strong>{Math.round(opacity * 100)}%</strong>
               </span>
               <input
@@ -883,17 +886,17 @@ export default function WatermarkPdfPage() {
               />
             </label>
 
-            <Field label="Page range" help="Optional 1-based range (e.g. 1-3, 5). Blank = all pages.">
+            <Field label={t('pdf.p.pageRange')} help={t('pdf.wm.rangeHelp')}>
               <input
                 className={fieldStyles.input}
                 value={pageRange}
-                placeholder="All pages"
+                placeholder={t('pdf.p.allPages')}
                 onChange={(e) => setPageRange(e.target.value)}
               />
             </Field>
             {targetState.error && <p className={fieldStyles.warning}>{targetState.error}</p>}
 
-            <Field label="File name">
+            <Field label={t('pdf.ff.fileName')}>
               <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
             </Field>
 
@@ -907,23 +910,35 @@ export default function WatermarkPdfPage() {
               onClick={applyWatermark}
             >
               {busy
-                ? 'Applying watermark…'
-                : `Watermark ${targetState.set.size} page${targetState.set.size === 1 ? '' : 's'}`}
+                ? t('pdf.wm.applying')
+                : t(targetState.set.size === 1 ? 'pdf.wm.btnOne' : 'pdf.wm.btnMany', { n: targetState.set.size })}
             </button>
 
             {result && (
               <div className={styles.result}>
-                <h3>Watermark added</h3>
+                <h3>{t('pdf.wm.doneTitle')}</h3>
                 <p>
-                  Applied to {targetState.set.size} of {pageCount} page{pageCount === 1 ? '' : 's'} ({layer} content) ·{' '}
-                  {formatBytes(result.length)}.
+                  {t(
+                    layer === 'over'
+                      ? pageCount === 1
+                        ? 'pdf.wm.doneOverOne'
+                        : 'pdf.wm.doneOverMany'
+                      : pageCount === 1
+                        ? 'pdf.wm.doneUnderOne'
+                        : 'pdf.wm.doneUnderMany',
+                    {
+                      n: targetState.set.size,
+                      total: pageCount,
+                      size: formatBytes(result.length),
+                    },
+                  )}
                 </p>
                 <button
                   type="button"
                   className={styles.primary}
                   onClick={() => download(result, outputName)}
                 >
-                  Download {outputName}
+                  {t('pdf.ff.downloadNamed', { name: outputName })}
                 </button>
                 <ContinueWith currentToolId={WATERMARK.id} files={[{ name: outputName, bytes: result }]} />
               </div>
@@ -936,11 +951,14 @@ export default function WatermarkPdfPage() {
             <div className={styles.fileBanner}>
               <strong>{doc.name}</strong>
               <span className={styles.fileBannerMeta}>
-                {pageCount} page{pageCount === 1 ? '' : 's'} · {formatBytes(doc.bytes.length)}
+                {t(pageCount === 1 ? 'pdf.p.pagesAndSizeOne' : 'pdf.p.pagesAndSizeMany', {
+                  n: pageCount,
+                  size: formatBytes(doc.bytes.length),
+                })}
               </span>
               {!isCurrentPageTargeted ? (
                 <span className={[styles.previewBadge, styles.previewBadgeWarn].join(' ')}>
-                  Page {pageIndex + 1} outside range
+                  {t('pdf.wm.outsideRange', { n: pageIndex + 1 })}
                 </span>
               ) : (
                 <span
@@ -949,8 +967,8 @@ export default function WatermarkPdfPage() {
                     layer === 'under' ? styles.previewBadgeWarn : styles.previewBadgeInfo,
                   ].join(' ')}
                 >
-                  {layer === 'under' ? 'Under page content' : 'Over page content'} ·{' '}
-                  {layout === 'tiled' ? `Tiled (${centers.length})` : 'Single'}
+                  {layer === 'under' ? t('pdf.wm.badgeUnder') : t('pdf.wm.badgeOver')} ·{' '}
+                  {layout === 'tiled' ? t('pdf.wm.badgeTiled', { n: centers.length }) : t('pdf.wm.badgeSingle')}
                 </span>
               )}
             </div>
@@ -1013,7 +1031,7 @@ export default function WatermarkPdfPage() {
                     })}
                   </svg>
                 )}
-                {rendering && <div className={styles.figureLoading}>Rendering page…</div>}
+                {rendering && <div className={styles.figureLoading}>{t('pdf.p.renderingPage')}</div>}
               </div>
             </div>
           </>

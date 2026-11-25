@@ -33,10 +33,10 @@ export default function EmSimPage({ references }: { references: BibEntry[] }) {
     <>
       <PageHead
         title={t('emsim.pageTitle')}
-        description="In-browser 2D transmission-line field solver, 3D via transitions, and WebGPU FDTD using JLCPCB presets or KiCad stackups, with live equations and exports."
+        description={t('em.meta.desc')}
         path="/em-sim/main"
         ogImage="/og/em-sim.png"
-        ogAlt="2D transmission-line electromagnetic field cross-section and impedance readout in the EM simulation tool"
+        ogAlt={t('em.meta.ogAlt')}
       />
       <EmSimTool references={references} />
     </>

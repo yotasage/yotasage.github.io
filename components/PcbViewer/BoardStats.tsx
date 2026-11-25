@@ -1,6 +1,7 @@
 import React from 'react';
 
 import type { PcbStats } from '../../lib/pcb/stats';
+import { useI18n } from '../../lib/ui/i18n';
 import fieldStyles from '../../styles/Fields.module.css';
 import styles from '../../styles/PcbViewer.module.css';
 import { formatLength, Units } from './Workspace';
@@ -36,17 +37,18 @@ function fmtRoutedLength(lengthMm: number | null, units: Units): string {
 }
 
 export default function BoardStats({ stats, units }: { stats: PcbStats; units: Units }) {
+  const { t } = useI18n();
   const { vias, drills, tracks, components, pads } = stats;
   const nonThroughVias = vias.byType.blind + vias.byType.buried + vias.byType.micro;
 
   const drillParts: string[] = [];
   if (drills.plated > 0) drillParts.push(`${drills.plated.toLocaleString('en-US')} PTH`);
   if (drills.nonPlated > 0) drillParts.push(`${drills.nonPlated.toLocaleString('en-US')} NPTH`);
-  if (drills.slots > 0) drillParts.push(`${drills.slots.toLocaleString('en-US')} slot${drills.slots === 1 ? '' : 's'}`);
+  if (drills.slots > 0) drillParts.push(drills.slots === 1 ? t('pcb.stats.slotOne') : t('pcb.stats.slotMany', { n: drills.slots.toLocaleString('en-US') }));
 
   const compParts: string[] = [];
   if (components) {
-    compParts.push(`${components.top} top / ${components.bottom} bottom`);
+    compParts.push(t('pcb.stats.topBottom', { top: components.top, bottom: components.bottom }));
     if (components.smd > 0 || components.tht > 0) {
       compParts.push(`${components.smd} SMD / ${components.tht} THT`);
     }
@@ -65,52 +67,52 @@ export default function BoardStats({ stats, units }: { stats: PcbStats; units: U
         <tbody>
           {stats.areaMm2 !== null && (
             <tr>
-              <th>Board area</th>
+              <th>{t('pcb.stats.area')}</th>
               <td>{fmtArea(stats.areaMm2, units)}</td>
             </tr>
           )}
           <tr>
-            <th>Vias</th>
+            <th>{t('pcb.stats.vias')}</th>
             <td>
               {vias.count > 0 ? (
                 <>
                   {vias.count.toLocaleString('en-US')}
-                  {vias.uniqueSizes > 0 && ` (${vias.uniqueSizes} size${vias.uniqueSizes === 1 ? '' : 's'})`}
+                  {vias.uniqueSizes > 0 && (vias.uniqueSizes === 1 ? t('pcb.stats.sizeOne') : t('pcb.stats.sizeMany', { n: vias.uniqueSizes }))}
                   {nonThroughVias > 0 &&
                     ` · ${[
-                      vias.byType.blind && `${vias.byType.blind} blind`,
-                      vias.byType.buried && `${vias.byType.buried} buried`,
-                      vias.byType.micro && `${vias.byType.micro} micro`,
+                      vias.byType.blind && t('pcb.stats.blind', { n: vias.byType.blind }),
+                      vias.byType.buried && t('pcb.stats.buried', { n: vias.byType.buried }),
+                      vias.byType.micro && t('pcb.stats.micro', { n: vias.byType.micro }),
                     ]
                       .filter(Boolean)
                       .join(', ')}`}
                 </>
               ) : (
-                'None detected'
+                t('pcb.stats.noneDetected')
               )}
             </td>
           </tr>
           {vias.count > 0 && (
             <>
               <tr>
-                <th>Smallest via (outer)</th>
+                <th>{t('pcb.stats.minOuter')}</th>
                 <td>{fmtSmall(vias.minOuterMm, units)}</td>
               </tr>
               <tr>
-                <th>Largest via (outer)</th>
+                <th>{t('pcb.stats.maxOuter')}</th>
                 <td>{fmtSmall(vias.maxOuterMm, units)}</td>
               </tr>
               <tr>
-                <th>Smallest via drill</th>
+                <th>{t('pcb.stats.minDrill')}</th>
                 <td>{fmtSmall(vias.minDrillMm, units)}</td>
               </tr>
               <tr>
-                <th>Largest via drill</th>
+                <th>{t('pcb.stats.maxDrill')}</th>
                 <td>{fmtSmall(vias.maxDrillMm, units)}</td>
               </tr>
               {vias.minAnnularRingMm !== null && (
                 <tr>
-                  <th>Min annular ring</th>
+                  <th>{t('pcb.stats.annular')}</th>
                   <td>{fmtSmall(vias.minAnnularRingMm, units)}</td>
                 </tr>
               )}
@@ -120,17 +122,17 @@ export default function BoardStats({ stats, units }: { stats: PcbStats; units: U
           {drills.total > 0 && (
             <>
               <tr>
-                <th>Drill holes</th>
+                <th>{t('pcb.stats.drillHoles')}</th>
                 <td>
                   {drills.total.toLocaleString('en-US')}
                   {drillParts.length > 0 && ` (${drillParts.join(', ')})`}
                 </td>
               </tr>
               <tr>
-                <th>Drill Ø range</th>
+                <th>{t('pcb.stats.drillRange')}</th>
                 <td>
                   {fmtRange(drills.minDiameterMm, drills.maxDiameterMm, units)}
-                  {drills.uniqueDiameters > 0 && ` · ${drills.uniqueDiameters} tool${drills.uniqueDiameters === 1 ? '' : 's'}`}
+                  {drills.uniqueDiameters > 0 && (drills.uniqueDiameters === 1 ? t('pcb.stats.toolOne') : t('pcb.stats.toolMany', { n: drills.uniqueDiameters }))}
                 </td>
               </tr>
             </>
@@ -139,13 +141,13 @@ export default function BoardStats({ stats, units }: { stats: PcbStats; units: U
           {tracks.segmentCount > 0 && (
             <>
               <tr>
-                <th>Track width</th>
+                <th>{t('pcb.stats.trackWidth')}</th>
                 <td>{fmtRange(tracks.minWidthMm, tracks.maxWidthMm, units)}</td>
               </tr>
               <tr>
-                <th>Routed tracks</th>
+                <th>{t('pcb.stats.routed')}</th>
                 <td>
-                  {fmtRoutedLength(tracks.totalLengthMm, units)} ({tracks.segmentCount.toLocaleString('en-US')} segs)
+                  {t('pcb.stats.segs', { len: fmtRoutedLength(tracks.totalLengthMm, units), n: tracks.segmentCount.toLocaleString('en-US') })}
                 </td>
               </tr>
             </>
@@ -153,14 +155,14 @@ export default function BoardStats({ stats, units }: { stats: PcbStats; units: U
 
           {stats.zonesCount !== null && stats.zonesCount > 0 && (
             <tr>
-              <th>Copper zones</th>
+              <th>{t('pcb.stats.zones')}</th>
               <td>{stats.zonesCount.toLocaleString('en-US')}</td>
             </tr>
           )}
 
           {components && (
             <tr>
-              <th>Components</th>
+              <th>{t('pcb.info.components')}</th>
               <td>
                 {components.total.toLocaleString('en-US')} ({compParts.join(' · ')})
               </td>
@@ -169,7 +171,7 @@ export default function BoardStats({ stats, units }: { stats: PcbStats; units: U
 
           {pads && (
             <tr>
-              <th>Pads</th>
+              <th>{t('pcb.stats.pads')}</th>
               <td>
                 {pads.total.toLocaleString('en-US')}
                 {padParts.length > 0 && ` (${padParts.join(', ')})`}
@@ -180,9 +182,7 @@ export default function BoardStats({ stats, units }: { stats: PcbStats; units: U
       </table>
 
       {vias.count > 0 && vias.source === 'gerber-inferred' && (
-        <p className={fieldStyles.help}>
-          Via sizes were inferred by matching small plated drill holes to overlapping copper pads (the Gerber files did not include X2 via attributes).
-        </p>
+        <p className={fieldStyles.help}>{t('pcb.stats.inferredNote')}</p>
       )}
     </div>
   );

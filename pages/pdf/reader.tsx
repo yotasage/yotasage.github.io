@@ -10,6 +10,7 @@ import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
 import { openPdf } from '../../lib/pdf/pdfjs';
 import { PdfThumbPool } from '../../lib/pdf/thumbs';
 import { READER } from '../../lib/pdf/tools';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PdfTools.module.css';
 
 interface LoadedReaderDoc {
@@ -30,6 +31,7 @@ interface LockedFile {
 }
 
 export default function PdfReaderPage() {
+  const { t } = useI18n();
   const [loaded, setLoaded] = React.useState<LoadedReaderDoc | null>(null);
   const [locked, setLocked] = React.useState<LockedFile | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -94,7 +96,7 @@ export default function PdfReaderPage() {
           setLocked({
             name,
             bytes,
-            error: password !== undefined ? 'Incorrect password. Try again.' : null,
+            error: password !== undefined ? t('pdf.ff.wrongPw') : null,
             busy: false,
           });
         } else {
@@ -107,17 +109,17 @@ export default function PdfReaderPage() {
         }
       }
     },
-    [disposeDoc],
+    [disposeDoc, t],
   );
 
   const loadFiles = React.useCallback(
     async (files: File[]) => {
       const pdf = files.find(isPdf);
       if (!pdf) {
-        setNotice('Please select a PDF file.');
+        setNotice(t('pdf.ff.pickPdf'));
         return;
       }
-      setNotice(files.length > 1 ? 'Only the first PDF was opened. Read PDF views one document at a time.' : null);
+      setNotice(files.length > 1 ? t('pdf.p.reader.onlyFirst') : null);
       setLocked(null);
       try {
         const bytes = await readBytes(pdf);
@@ -126,7 +128,7 @@ export default function PdfReaderPage() {
         setError(errorMessage(e));
       }
     },
-    [openBytes],
+    [openBytes, t],
   );
 
   React.useEffect(() => {
@@ -139,7 +141,7 @@ export default function PdfReaderPage() {
   return (
     <PdfPage
       title={READER.title}
-      lead={!loaded ? READER.description : undefined}
+      lead={!loaded ? t('pdf.tool.reader.desc') : undefined}
       showHub
     >
       {notice && (
@@ -181,18 +183,18 @@ export default function PdfReaderPage() {
       ) : (
         <DropTarget onFiles={loadFiles} className={styles.hero}>
           <ToolIcon name={READER.icon} color={READER.color} size={72} />
-          <h2>{READER.title}</h2>
-          <p>{READER.description}</p>
+          <h2>{t('pdf.tool.reader.title')}</h2>
+          <p>{t('pdf.tool.reader.desc')}</p>
           <FilePickerButton
             accept=".pdf,application/pdf"
             multiple={false}
             onFiles={loadFiles}
             className={styles.heroButton}
           >
-            {loading ? 'Opening PDF…' : 'Select PDF file'}
+            {loading ? t('pdf.p.opening') : t('pdf.p.selectPdfFile')}
           </FilePickerButton>
-          <span className={styles.hint}>or drop a PDF anywhere here</span>
-          <span className={styles.hint}>Your files stay in this browser and are never uploaded.</span>
+          <span className={styles.hint}>{t('pdf.p.dropAnywhere')}</span>
+          <span className={styles.hint}>{t('pdf.p.privacyHint')}</span>
         </DropTarget>
       )}
     </PdfPage>

@@ -22,6 +22,7 @@ import { pdfPreview } from '../../lib/pdf/pdfjs';
 import { ProtectAlgorithm, ProtectOptions, ProtectPermissions, SecurityInfo } from '../../lib/pdf/security';
 import { PROTECT, READER, UNLOCK } from '../../lib/pdf/tools';
 import { runInspectSecurity, runProtectPdf } from '../../lib/pdf/workerClient';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
@@ -45,6 +46,7 @@ interface ItemResult {
 type PrintingMode = 'highResolution' | 'lowResolution' | 'none';
 
 export default function ProtectPdfPage() {
+  const { t } = useI18n();
   const [items, setItems] = React.useState<Item[]>([]);
   const [userPassword, setUserPassword] = React.useState('');
   const [showUserPwd, setShowUserPwd] = React.useState(false);
@@ -89,7 +91,7 @@ export default function ProtectPdfPage() {
 
   async function addFiles(files: File[]) {
     const pdfs = files.filter(isPdf);
-    setNotice(pdfs.length < files.length ? `${files.length - pdfs.length} file(s) were skipped because they are not PDFs.` : null);
+    setNotice(pdfs.length < files.length ? t('pdf.p.skippedNonPdf', { n: files.length - pdfs.length }) : null);
     const added = await Promise.all(
       pdfs.map(async (file): Promise<Item> => ({
         id: uid(),
@@ -142,7 +144,7 @@ export default function ProtectPdfPage() {
     try {
       const info = await runInspectSecurity(activeLocked.bytes, password);
       if (!info.passwordAccepted) {
-        setPwError('Incorrect password. Try again.');
+        setPwError(t('pdf.ff.wrongPw'));
         return;
       }
       update(activeLocked.id, { security: info, password, locked: false, error: null });
@@ -160,7 +162,7 @@ export default function ProtectPdfPage() {
 
   function cancelUnlock() {
     if (!activeLocked) return;
-    update(activeLocked.id, { locked: false, error: 'Current password required before re-encrypting this PDF.' });
+    update(activeLocked.id, { locked: false, error: t('pdf.prt.curPwNeeded') });
     setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
     setPwError(null);
   }
@@ -225,25 +227,25 @@ export default function ProtectPdfPage() {
     <PdfPage
       title={PROTECT.title}
       showHub
-      lead="Encrypt one or more PDFs locally in your browser with AES-256 or AES-128 passwords and fine-grained permission controls."
+      lead={t('pdf.prt.lead')}
     >
       <ToolWorkspace
         tool={PROTECT}
         accept="application/pdf,.pdf"
-        selectLabel="Select PDF files"
-        dropLabel="or drop PDFs here"
+        selectLabel={t('pdf.p.selectPdfs')}
+        dropLabel={t('pdf.p.dropPdfs')}
         hasFiles={items.length > 0}
         onFiles={addFiles}
         toolbar={
           <button type="button" className={styles.buttonSmall} onClick={() => setItems([])}>
-            Remove all
+            {t('pdf.p.removeAll')}
           </button>
         }
         sidebar={
           <>
             <Field
-              label="User password (to open PDF)"
-              help="Required when opening the file. Leave empty if you only want an owner password or permission restrictions."
+              label={t('pdf.prt.userPwLabel')}
+              help={t('pdf.prt.userPwHelp')}
             >
               <div className={styles.passwordInputRow}>
                 <input
@@ -251,23 +253,23 @@ export default function ProtectPdfPage() {
                   className={fieldStyles.input}
                   value={userPassword}
                   autoComplete="new-password"
-                  placeholder="Enter open password"
+                  placeholder={t('pdf.prt.userPwPh')}
                   onChange={(e) => setUserPassword(e.target.value)}
                 />
                 <button
                   type="button"
                   className={styles.passwordToggle}
-                  aria-label={showUserPwd ? 'Hide user password' : 'Show user password'}
+                  aria-label={t(showUserPwd ? 'pdf.prt.hideUserPw' : 'pdf.prt.showUserPw')}
                   onClick={() => setShowUserPwd((v) => !v)}
                 >
-                  {showUserPwd ? 'Hide' : 'Show'}
+                  {t(showUserPwd ? 'pdf.prt.hide' : 'pdf.prt.show')}
                 </button>
               </div>
             </Field>
 
             <Field
-              label="Owner password (optional)"
-              help="Grants full access to change permissions later. If left blank while permissions are restricted, a strong random owner password is generated automatically."
+              label={t('pdf.prt.ownerPwLabel')}
+              help={t('pdf.prt.ownerPwHelp')}
             >
               <div className={styles.passwordInputRow}>
                 <input
@@ -275,65 +277,63 @@ export default function ProtectPdfPage() {
                   className={fieldStyles.input}
                   value={ownerPassword}
                   autoComplete="new-password"
-                  placeholder="Optional owner password"
+                  placeholder={t('pdf.prt.ownerPwPh')}
                   onChange={(e) => setOwnerPassword(e.target.value)}
                 />
                 <button
                   type="button"
                   className={styles.passwordToggle}
-                  aria-label={showOwnerPwd ? 'Hide owner password' : 'Show owner password'}
+                  aria-label={t(showOwnerPwd ? 'pdf.prt.hideOwnerPw' : 'pdf.prt.showOwnerPw')}
                   onClick={() => setShowOwnerPwd((v) => !v)}
                 >
-                  {showOwnerPwd ? 'Hide' : 'Show'}
+                  {t(showOwnerPwd ? 'pdf.prt.hide' : 'pdf.prt.show')}
                 </button>
               </div>
             </Field>
 
-            <Field label="Encryption algorithm">
+            <Field label={t('pdf.prt.algoLabel')}>
               <Select<ProtectAlgorithm>
                 value={algorithm}
                 onChange={setAlgorithm}
                 options={[
-                  ['aes256', 'AES-256 (recommended)'],
-                  ['aes128', 'AES-128 (legacy compatibility)'],
+                  ['aes256', t('pdf.prt.aes256')],
+                  ['aes128', t('pdf.prt.aes128')],
                 ]}
               />
             </Field>
 
-            <h3>Permissions</h3>
-            <Field label="Printing">
+            <h3>{t('pdf.prt.permsHeading')}</h3>
+            <Field label={t('pdf.prt.printing')}>
               <Select<PrintingMode>
                 value={printing}
                 onChange={setPrinting}
                 options={[
-                  ['highResolution', 'High resolution (allowed)'],
-                  ['lowResolution', 'Low resolution only'],
-                  ['none', 'Disallowed'],
+                  ['highResolution', t('pdf.prt.printHigh')],
+                  ['lowResolution', t('pdf.prt.printLow')],
+                  ['none', t('pdf.prt.printNone')],
                 ]}
               />
             </Field>
 
             <div className={styles.checkList}>
-              <Checkbox label="Allow modifying document" checked={modifying} onChange={setModifying} />
-              <Checkbox label="Allow copying text & images" checked={copying} onChange={setCopying} />
-              <Checkbox label="Allow annotating & commenting" checked={annotating} onChange={setAnnotating} />
-              <Checkbox label="Allow filling form fields" checked={fillingForms} onChange={setFillingForms} />
+              <Checkbox label={t('pdf.prt.allowMod')} checked={modifying} onChange={setModifying} />
+              <Checkbox label={t('pdf.prt.allowCopy')} checked={copying} onChange={setCopying} />
+              <Checkbox label={t('pdf.prt.allowAnnot')} checked={annotating} onChange={setAnnotating} />
+              <Checkbox label={t('pdf.prt.allowForm')} checked={fillingForms} onChange={setFillingForms} />
               <Checkbox
-                label="Allow screen-reader accessibility"
+                label={t('pdf.prt.allowA11y')}
                 checked={contentAccessibility}
                 onChange={setContentAccessibility}
               />
               <Checkbox
-                label="Allow document assembly (pages)"
+                label={t('pdf.prt.allowAsm')}
                 checked={documentAssembly}
                 onChange={setDocumentAssembly}
               />
             </div>
 
             {!canProtect && (
-              <p className={styles.note}>
-                Enter a user password, an owner password, or restrict at least one permission to protect your PDF.
-              </p>
+              <p className={styles.note}>{t('pdf.prt.needOne')}</p>
             )}
             {notice && <p className={fieldStyles.warning}>{notice}</p>}
 
@@ -343,17 +343,17 @@ export default function ProtectPdfPage() {
               disabled={busy || ready.length === 0 || !canProtect}
               onClick={runProtect}
             >
-              Protect {ready.length > 1 ? `${ready.length} PDFs` : 'PDF'}
+              {ready.length > 1 ? t('pdf.prt.btnMany', { n: ready.length }) : t('pdf.prt.btnOne')}
             </button>
 
             {busy && <Progress fraction={progress.fraction} label={progress.label} />}
 
             {done && (
               <div className={styles.result}>
-                <h3>{outputs.length === 1 ? 'Your PDF is protected' : `${outputs.length} PDFs are protected`}</h3>
+                <h3>{outputs.length === 1 ? t('pdf.prt.doneOne') : t('pdf.prt.doneMany', { n: outputs.length })}</h3>
                 <p>
-                  Encrypted with {algorithm === 'aes256' ? 'AES-256' : 'AES-128'}.
-                  {!userPassword && hasRestriction ? ' Opens without a password with permission restrictions enforced.' : ''}
+                  {t('pdf.prt.doneDesc', { alg: algorithm === 'aes256' ? 'AES-256' : 'AES-128' })}
+                  {!userPassword && hasRestriction ? t('pdf.prt.doneNoUserPw') : ''}
                 </p>
                 {outputs.length === 1 ? (
                   <button
@@ -361,7 +361,7 @@ export default function ProtectPdfPage() {
                     className={styles.primary}
                     onClick={() => download(outputs[0].bytes, outputs[0].name)}
                   >
-                    Download {outputs[0].name}
+                    {t('pdf.ff.downloadNamed', { name: outputs[0].name })}
                   </button>
                 ) : (
                   <button
@@ -369,7 +369,7 @@ export default function ProtectPdfPage() {
                     className={styles.primary}
                     onClick={() => download(zipFiles(outputs), 'protected-pdfs.zip', 'application/zip')}
                   >
-                    Download all (ZIP)
+                    {t('pdf.p.downloadAllZip')}
                   </button>
                 )}
                 <ContinueWith currentToolId={PROTECT.id} files={outputs} targets={[UNLOCK, READER]} />
@@ -401,10 +401,10 @@ export default function ProtectPdfPage() {
                 name={item.name}
                 meta={`${
                   item.locked
-                    ? 'Locked (password needed)'
+                    ? t('pdf.prt.lockedMeta')
                     : item.pageCount === null
                       ? '…'
-                      : `${item.pageCount} page${item.pageCount === 1 ? '' : 's'}`
+                      : t(item.pageCount === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany', { n: item.pageCount })
                 } · ${formatBytes(item.bytes.length)}`}
                 error={item.error ?? r?.error}
                 controls={controls}
@@ -415,7 +415,7 @@ export default function ProtectPdfPage() {
                       className={styles.buttonSmall}
                       onClick={() => download(output.bytes, output.name)}
                     >
-                      Download
+                      {t('pdf.p.download')}
                     </button>
                   )
                 }
@@ -424,14 +424,14 @@ export default function ProtectPdfPage() {
                   <div className={styles.fileMeta}>
                     {r && !r.error ? (
                       <span className={styles.saved}>
-                        Protected ({algorithm === 'aes256' ? 'AES-256' : 'AES-128'}) · {formatBytes(r.bytes.length)}
+                        {t('pdf.prt.cardDone', { alg: algorithm === 'aes256' ? 'AES-256' : 'AES-128', size: formatBytes(r.bytes.length) })}
                       </span>
                     ) : item.security === null ? (
-                      'Inspecting…'
+                      t('pdf.p.inspecting')
                     ) : item.security.isEncrypted ? (
-                      `Currently encrypted (${item.security.algorithm ?? 'Standard'})`
+                      t('pdf.prt.curEnc', { alg: item.security.algorithm ?? t('pdf.prt.stdAlg') })
                     ) : (
-                      'Unencrypted'
+                      t('pdf.prt.unenc')
                     )}
                   </div>
                 )}

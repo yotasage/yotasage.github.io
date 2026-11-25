@@ -169,7 +169,7 @@ export function GridMenuControl({
                     className={[styles.gridMatrixCell, active ? styles.gridMatrixCellActive : '']
                       .filter(Boolean)
                       .join(' ')}
-                    aria-label={`${rowNum} by ${colNum} grid`}
+                    aria-label={t('notepad.grid.cellAria', { rows: rowNum, cols: colNum })}
                     onMouseEnter={() => setHoverDims([rowNum, colNum])}
                     onClick={() => {
                       onSelectGrid(rowNum, colNum);
@@ -425,7 +425,7 @@ export function LanguageMenuControl({
                       ref={submenuRef}
                       className={styles.cascadingSubmenu}
                       role="menu"
-                      aria-label={`${group.letter} languages`}
+                      aria-label={t('notepad.language.groupAria', { letter: group.letter })}
                     >
                       {group.languages.map((lang) => (
                         <button

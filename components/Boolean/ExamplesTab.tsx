@@ -9,7 +9,7 @@ import type {
   SimplifyMethod,
   TargetForm,
 } from '../../lib/boolean/types';
-import { useI18n } from '../../lib/ui/i18n';
+import { type TranslationKey, useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Boolean.module.css';
 import dStyles from '../../styles/BooleanDiagrams.module.css';
 import PillTabs, { type PillTabItem } from '../UI/PillTabs';
@@ -85,82 +85,98 @@ export default function ExamplesTab({ onLoadExample }: ExamplesTabProps) {
       </div>
 
       <div className={dStyles.examplesGrid}>
-        {filtered.map((ex) => (
-          <article key={ex.id} className={dStyles.exampleCard} data-testid={`example-card-${ex.id}`}>
-            <div className={styles.identityHead}>
-              <h3 className={styles.identityTitle}>{ex.title}</h3>
-              <span className={styles.identityMeta}>{t(`boolean.examples.cat.${ex.category}`)}</span>
-            </div>
+        {filtered.map((ex) => {
+          const tx = (key: string, fallback: string) => {
+            const k = key as TranslationKey;
+            const res = t(k);
+            return res === k ? fallback : res;
+          };
+          const title = tx(`boolean.curated.${ex.id}.title`, ex.title);
+          const summary = tx(`boolean.curated.${ex.id}.summary`, ex.summary);
+          const notice = tx(`boolean.curated.${ex.id}.notice`, ex.whatToNotice);
+          const effortLabel = ex.defaultEffort
+            ? t(`boolean.opt.effort.${ex.defaultEffort}` as TranslationKey)
+            : '';
 
-            <div className={dStyles.exampleEqBlock}>
-              {ex.equations.map((eq, i) => (
-                <code key={i}>{eq}</code>
-              ))}
-            </div>
+          return (
+            <article key={ex.id} className={dStyles.exampleCard} data-testid={`example-card-${ex.id}`}>
+              <div className={styles.identityHead}>
+                <h3 className={styles.identityTitle}>{title}</h3>
+                <span className={styles.identityMeta}>{t(`boolean.examples.cat.${ex.category}`)}</span>
+              </div>
 
-            <p className={styles.identitySummary}>{ex.summary}</p>
-
-            <div className={styles.theoryBox}>
-              <span className={styles.theoryPrefix}>{t('boolean.examples.notice')}:</span>
-              <span>{ex.whatToNotice}</span>
-            </div>
-
-            {ex.comparisonNotes && ex.comparisonNotes.length > 0 && (
-              <ul className={dStyles.comparisonList}>
-                {ex.comparisonNotes.map((note, idx) => (
-                  <li key={idx} className={dStyles.comparisonItem}>
-                    <span>
-                      <span className={dStyles.comparisonLabel}>{note.label}:</span>
-                      {note.outcome}
-                    </span>
-                    <button
-                      type="button"
-                      className={[styles.btn, styles.btnSmall].join(' ')}
-                      onClick={() =>
-                        onLoadExample({
-                          equations: ex.equations,
-                          method: note.method ?? ex.defaultMethod,
-                          effort: note.effort ?? ex.defaultEffort,
-                          targetForm: note.targetForm ?? ex.defaultTargetForm,
-                          gateInputMode: note.gateInputMode ?? ex.defaultGateInputMode,
-                          openTab: ex.openTab,
-                        })
-                      }
-                    >
-                      {t('boolean.examples.tryVariant')}
-                    </button>
-                  </li>
+              <div className={dStyles.exampleEqBlock}>
+                {ex.equations.map((eq, i) => (
+                  <code key={i}>{eq}</code>
                 ))}
-              </ul>
-            )}
+              </div>
 
-            <div className={styles.identityFooter}>
-              <span className={styles.metaInline}>
-                {ex.equations.length > 1
-                  ? `${ex.equations.length} equations`
-                  : '1 equation'}
-                {ex.defaultMethod ? ` · ${ex.defaultMethod.toUpperCase()}` : ''}
-                {ex.defaultEffort ? ` · ${ex.defaultEffort} effort` : ''}
-              </span>
-              <button
-                type="button"
-                className={[styles.btnPrimary, styles.btnSmall].join(' ')}
-                onClick={() =>
-                  onLoadExample({
-                    equations: ex.equations,
-                    method: ex.defaultMethod,
-                    effort: ex.defaultEffort,
-                    targetForm: ex.defaultTargetForm,
-                    gateInputMode: ex.defaultGateInputMode,
-                    openTab: ex.openTab,
-                  })
-                }
-              >
-                {t('boolean.examples.load')}
-              </button>
-            </div>
-          </article>
-        ))}
+              <p className={styles.identitySummary}>{summary}</p>
+
+              <div className={styles.theoryBox}>
+                <span className={styles.theoryPrefix}>{t('boolean.examples.notice')}:</span>
+                <span>{notice}</span>
+              </div>
+
+              {ex.comparisonNotes && ex.comparisonNotes.length > 0 && (
+                <ul className={dStyles.comparisonList}>
+                  {ex.comparisonNotes.map((note, idx) => (
+                    <li key={idx} className={dStyles.comparisonItem}>
+                      <span>
+                        <span className={dStyles.comparisonLabel}>
+                          {tx(`boolean.curated.${ex.id}.n${idx}.label`, note.label)}:
+                        </span>
+                        {tx(`boolean.curated.${ex.id}.n${idx}.outcome`, note.outcome)}
+                      </span>
+                      <button
+                        type="button"
+                        className={[styles.btn, styles.btnSmall].join(' ')}
+                        onClick={() =>
+                          onLoadExample({
+                            equations: ex.equations,
+                            method: note.method ?? ex.defaultMethod,
+                            effort: note.effort ?? ex.defaultEffort,
+                            targetForm: note.targetForm ?? ex.defaultTargetForm,
+                            gateInputMode: note.gateInputMode ?? ex.defaultGateInputMode,
+                            openTab: ex.openTab,
+                          })
+                        }
+                      >
+                        {t('boolean.examples.tryVariant')}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <div className={styles.identityFooter}>
+                <span className={styles.metaInline}>
+                  {ex.equations.length > 1
+                    ? t('boolean.examples.eqMany', { count: ex.equations.length })
+                    : t('boolean.examples.eqOne')}
+                  {ex.defaultMethod ? ` · ${t(`boolean.opt.method.${ex.defaultMethod}` as TranslationKey)}` : ''}
+                  {ex.defaultEffort ? ` · ${t('boolean.examples.effortBadge', { effort: effortLabel })}` : ''}
+                </span>
+                <button
+                  type="button"
+                  className={[styles.btnPrimary, styles.btnSmall].join(' ')}
+                  onClick={() =>
+                    onLoadExample({
+                      equations: ex.equations,
+                      method: ex.defaultMethod,
+                      effort: ex.defaultEffort,
+                      targetForm: ex.defaultTargetForm,
+                      gateInputMode: ex.defaultGateInputMode,
+                      openTab: ex.openTab,
+                    })
+                  }
+                >
+                  {t('boolean.examples.load')}
+                </button>
+              </div>
+            </article>
+          );
+        })}
       </div>
     </div>
   );

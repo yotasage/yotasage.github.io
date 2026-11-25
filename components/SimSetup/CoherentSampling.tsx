@@ -16,65 +16,59 @@ interface Rule {
 // The notes all come from this source.
 const NOTES_SOURCE = 'AD';
 
-const RULES: Rule[] = [
-  {
-    statement: <>N<sub>cyc</sub> is recommended to be a prime number or at least an odd number.</>,
-    explanation: (
-      <>
-        N<sub>cyc</sub> should be an integer (No window effect). By making N<sub>cyc</sub> odd, we eliminate many common
-        factors with N<sub>pts</sub>. Common factors between N<sub>cyc</sub> and N<sub>pts</sub> lead to different
-        harmonics of f<sub>0</sub> having the same frequency bin in the FFT after aliasing.
-      </>
-    ),
-    checks: (
-      <>
-        <CheckText tone="good">Prime</CheckText>
-        <CheckText tone="ok">Odd, not prime</CheckText>
-        <CheckText tone="bad">Even</CheckText>
-        <CheckText tone="bad">Not an integer</CheckText>
-        <CheckText tone="good">No common factor with N<sub>pts</sub></CheckText>
-        <CheckText tone="bad">Common factor with N<sub>pts</sub></CheckText>
-      </>
-    ),
-    source: 'AN9675',
-  },
-  {
-    statement: <>N<sub>pts</sub> should be a power of 2.</>,
-    explanation: <>An FFT requires the number of samples to be a power of 2 because of its inherent periodicity.</>,
-    checks: (
-      <>
-        <CheckText tone="good">Power of 2</CheckText>
-        <CheckText tone="bad">Not a power of 2</CheckText>
-        <CheckText tone="bad">Not an integer</CheckText>
-      </>
-    ),
-    source: 'AN9675',
-  },
-  {
-    statement: <>f<sub>0</sub> and F<sub>S</sub> should be relatively prime.</>,
-    checks: null,
-    source: 'US5708432',
-  },
-];
-
-const NOTES: React.ReactNode[] = [
-  <>
-    Unless window sampling (“windowing”) is used to compensate for waveform discontinuance
-    <sup><a href="#note-3" aria-label="See note 3">3</a></sup>, spectral leakage is inevitable. Window sampling is when a
-    sampled waveform is multiplied by the mathematical expression describing the window.
-  </>,
-  <>
-    ADCs are usually characterized for and tested with sinusoidal input signals. Non-coherent sampling for sinusoidal
-    input signals means that the first and the last sample of the input sinusoid are discontinuous with one another.
-  </>,
-  <>
-    Waveform discontinuance describes an input signal, for which an integer number of its cycles do not fit into a
-    predefined window.
-  </>,
-];
-
 export default function CoherentSampling({ bib }: { bib: Bibliography }) {
   const { t } = useI18n();
+
+  const rules: Rule[] = [
+    {
+      statement: <>N<sub>cyc</sub> {t('simsetup.coherent.r1Stmt')}</>,
+      explanation: (
+        <>
+          N<sub>cyc</sub> {t('simsetup.coherent.r1Exp1')} N<sub>cyc</sub> {t('simsetup.coherent.r1Exp2')} N<sub>pts</sub>
+          {t('simsetup.coherent.r1Exp3')} N<sub>cyc</sub> {t('simsetup.coherent.r1Exp4')} N<sub>pts</sub>{' '}
+          {t('simsetup.coherent.r1Exp5')} f<sub>0</sub> {t('simsetup.coherent.r1Exp6')}
+        </>
+      ),
+      checks: (
+        <>
+          <CheckText tone="good">{t('simsetup.check.prime')}</CheckText>
+          <CheckText tone="ok">{t('simsetup.check.odd')}</CheckText>
+          <CheckText tone="bad">{t('simsetup.check.even')}</CheckText>
+          <CheckText tone="bad">{t('simsetup.check.notInteger')}</CheckText>
+          <CheckText tone="good">{t('simsetup.coherent.noCommonFactor')} N<sub>pts</sub></CheckText>
+          <CheckText tone="bad">{t('simsetup.coherent.commonFactor')} N<sub>pts</sub></CheckText>
+        </>
+      ),
+      source: 'AN9675',
+    },
+    {
+      statement: <>N<sub>pts</sub> {t('simsetup.coherent.r2Stmt')}</>,
+      explanation: <>{t('simsetup.coherent.r2Exp')}</>,
+      checks: (
+        <>
+          <CheckText tone="good">{t('simsetup.check.powerOfTwo')}</CheckText>
+          <CheckText tone="bad">{t('simsetup.check.notPowerOfTwo')}</CheckText>
+          <CheckText tone="bad">{t('simsetup.check.notInteger')}</CheckText>
+        </>
+      ),
+      source: 'AN9675',
+    },
+    {
+      statement: <>f<sub>0</sub> {t('simsetup.coherent.r3And')} F<sub>S</sub> {t('simsetup.coherent.r3Stmt')}</>,
+      checks: null,
+      source: 'US5708432',
+    },
+  ];
+
+  const notes: React.ReactNode[] = [
+    <>
+      {t('simsetup.coherent.note1Pre')}
+      <sup><a href="#note-3" aria-label={t('simsetup.theory.seeNote', { n: 3 })}>3</a></sup>
+      {t('simsetup.coherent.note1Post')}
+    </>,
+    <>{t('simsetup.coherent.note2')}</>,
+    <>{t('simsetup.coherent.note3')}</>,
+  ];
 
   return (
     <>
@@ -83,7 +77,7 @@ export default function CoherentSampling({ bib }: { bib: Bibliography }) {
       </h2>
 
       <ol className={styles.rules}>
-        {RULES.map((rule, i) => (
+        {rules.map((rule, i) => (
           <li key={i} id={`rule-${i + 1}`} className={styles.rule}>
             <div className={styles.ruleNumber} aria-hidden="true">
               <small>{t('simsetup.theory.rule')}</small>
@@ -122,7 +116,7 @@ export default function CoherentSampling({ bib }: { bib: Bibliography }) {
         </span>
       </div>
       <ol className={styles.notes}>
-        {NOTES.map((note, i) => (
+        {notes.map((note, i) => (
           <li key={i} id={`note-${i + 1}`} className={styles.note}>
             <span className={styles.noteLabel} aria-hidden="true">
               {t('simsetup.theory.note')} {i + 1}

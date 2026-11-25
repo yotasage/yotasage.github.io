@@ -10,41 +10,41 @@ export interface GuideViewProps {
 
 interface ExampleItem {
   expr: string;
-  note: string;
+  noteKey: string;
 }
 
 const UNIT_EXAMPLES: readonly ExampleItem[] = [
-  { expr: '10 kOhm * 100 pF', note: 'SI dimensional analysis → 1 µs' },
-  { expr: '1 / (2 * pi * 10 kOhm * 100 pF)', note: 'RC cutoff frequency → 159.155 kHz' },
-  { expr: 'c / 2.4 GHz in mm', note: 'RF wavelength conversion' },
-  { expr: '100 km/h in m/s', note: 'Compound velocity unit' },
-  { expr: '25 degC in degF', note: 'Affine temperature conversion' },
-  { expr: '4.7k || 4.7k', note: 'Parallel operator with bare prefix' },
+  { expr: '10 kOhm * 100 pF', noteKey: 'calc.guide.ex.siDim' },
+  { expr: '1 / (2 * pi * 10 kOhm * 100 pF)', noteKey: 'calc.guide.ex.rcCutoff' },
+  { expr: 'c / 2.4 GHz in mm', noteKey: 'calc.guide.ex.rfWave' },
+  { expr: '100 km/h in m/s', noteKey: 'calc.guide.ex.velUnit' },
+  { expr: '25 degC in degF', noteKey: 'calc.guide.ex.tempConv' },
+  { expr: '4.7k || 4.7k', noteKey: 'calc.guide.ex.parallelOp' },
 ];
 
 const PHASOR_EXAMPLES: readonly ExampleItem[] = [
-  { expr: '50 + j*30 Ohm', note: 'Complex impedance with polar & Y hints' },
-  { expr: '10 angle 30 deg', note: 'Phasor magnitude ∠ angle' },
-  { expr: '(50 + j*30 Ohm) || (100 - j*40 Ohm)', note: 'Complex parallel impedance' },
-  { expr: '30 dBm in W', note: 'RF power level to linear Watts' },
-  { expr: '50 mW in dBm', note: 'Linear power to dBm' },
-  { expr: 'db20(10)', note: 'Voltage/field ratio in dB' },
+  { expr: '50 + j*30 Ohm', noteKey: 'calc.guide.ex.complexZ' },
+  { expr: '10 angle 30 deg', noteKey: 'calc.guide.ex.phasorMag' },
+  { expr: '(50 + j*30 Ohm) || (100 - j*40 Ohm)', noteKey: 'calc.guide.ex.complexPar' },
+  { expr: '30 dBm in W', noteKey: 'calc.guide.ex.dbmToW' },
+  { expr: '50 mW in dBm', noteKey: 'calc.guide.ex.wToDbm' },
+  { expr: 'db20(10)', noteKey: 'calc.guide.ex.db20' },
 ];
 
 const CALCULUS_EXAMPLES: readonly ExampleItem[] = [
-  { expr: 'diff(x^3 + 2*sin(x), x)', note: 'Symbolic derivative' },
-  { expr: 'd/dx(exp(-2*x) * cos(3*x))', note: 'Product + chain rule' },
-  { expr: 'diff(x^4, x, 2)', note: 'Higher-order derivative' },
-  { expr: 'int(3*x^2 + 1/x, x)', note: 'Symbolic indefinite integral (+ C)' },
-  { expr: 'int(sin(x), x, 0, pi)', note: 'Exact FTC definite integral → 2' },
-  { expr: 'int(exp(-x^2), x, 0, 1)', note: 'Adaptive Gauss-Kronrod quadrature' },
+  { expr: 'diff(x^3 + 2*sin(x), x)', noteKey: 'calc.guide.ex.symDiff' },
+  { expr: 'd/dx(exp(-2*x) * cos(3*x))', noteKey: 'calc.guide.ex.prodChain' },
+  { expr: 'diff(x^4, x, 2)', noteKey: 'calc.guide.ex.highDiff' },
+  { expr: 'int(3*x^2 + 1/x, x)', noteKey: 'calc.guide.ex.symInt' },
+  { expr: 'int(sin(x), x, 0, pi)', noteKey: 'calc.guide.ex.defInt' },
+  { expr: 'int(exp(-x^2), x, 0, 1)', noteKey: 'calc.guide.ex.quadInt' },
 ];
 
 const SHORTCUT_EXAMPLES: readonly ExampleItem[] = [
-  { expr: 'R = 10 kOhm', note: 'Store variable into editable Variables table' },
-  { expr: 'C = 100 pF', note: 'Assign second variable for live expressions' },
-  { expr: '1 / (2 * pi * R * C)', note: 'Evaluates using stored R and C' },
-  { expr: 'ans * 2', note: 'Reference last committed history answer' },
+  { expr: 'R = 10 kOhm', noteKey: 'calc.guide.ex.storeVar' },
+  { expr: 'C = 100 pF', noteKey: 'calc.guide.ex.assignVar' },
+  { expr: '1 / (2 * pi * R * C)', noteKey: 'calc.guide.ex.evalStored' },
+  { expr: 'ans * 2', noteKey: 'calc.guide.ex.ansRef' },
 ];
 
 export default function GuideView({ onTryExample }: GuideViewProps) {
@@ -56,7 +56,7 @@ export default function GuideView({ onTryExample }: GuideViewProps) {
         <div key={item.expr} className={styles.tryRow}>
           <div>
             <div className={styles.tryCode}>{item.expr}</div>
-            <div className={styles.tryNote}>{item.note}</div>
+            <div className={styles.tryNote}>{t(item.noteKey)}</div>
           </div>
           <button
             type="button"
@@ -105,39 +105,43 @@ export default function GuideView({ onTryExample }: GuideViewProps) {
           <table className={styles.constTable}>
             <thead>
               <tr>
-                <th>Symbol</th>
-                <th>Identifier</th>
-                <th>Value</th>
-                <th>Description</th>
+                <th>{t('calc.guide.thSymbol')}</th>
+                <th>{t('calc.guide.thIdentifier')}</th>
+                <th>{t('calc.guide.thValue')}</th>
+                <th>{t('calc.guide.thDescription')}</th>
                 <th />
               </tr>
             </thead>
             <tbody>
-              {CONSTANTS.map((c) => (
-                <tr key={c.name}>
-                  <td>
-                    <SafeKatex text={c.latex} />
-                  </td>
-                  <td>
-                    <code>{c.name}</code>
-                  </td>
-                  <td>
-                    <code>
-                      {c.value.toPrecision(7)} {c.unitDisplay}
-                    </code>
-                  </td>
-                  <td>{c.description}</td>
-                  <td>
-                    <button
-                      type="button"
-                      className={`${calcStyles.btnGhost} ${calcStyles.btnSmall}`}
-                      onClick={() => onTryExample(c.name)}
-                    >
-                      {t('calc.guide.tryIt')}
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {CONSTANTS.map((c) => {
+                const descKey = `calc.const.${c.name}`;
+                const desc = t(descKey);
+                return (
+                  <tr key={c.name}>
+                    <td>
+                      <SafeKatex text={c.latex} />
+                    </td>
+                    <td>
+                      <code>{c.name}</code>
+                    </td>
+                    <td>
+                      <code>
+                        {c.value.toPrecision(7)} {c.unitDisplay}
+                      </code>
+                    </td>
+                    <td>{desc === descKey ? c.description : desc}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className={`${calcStyles.btnGhost} ${calcStyles.btnSmall}`}
+                        onClick={() => onTryExample(c.name)}
+                      >
+                        {t('calc.guide.tryIt')}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

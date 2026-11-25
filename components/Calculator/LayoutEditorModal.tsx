@@ -86,9 +86,12 @@ export default function LayoutEditorModal({
       setCategory('custom');
       setDescription('');
       setEquation('y = 2 * pi * x');
-      setVars(DEFAULT_VARS);
+      setVars([
+        { symbol: 'y', label: t('calc.modal.defaultOut'), defaultUnit: '', example: '10' },
+        { symbol: 'x', label: t('calc.modal.defaultIn'), defaultUnit: '', example: '2' },
+      ]);
     }
-  }, [open, initialTab, editingLayout]);
+  }, [open, initialTab, editingLayout, t]);
 
   useEffect(() => {
     if (!open) return;
@@ -100,14 +103,14 @@ export default function LayoutEditorModal({
   }, [open, onClose]);
 
   const equationStatus = useMemo<{ ok: boolean; message?: string }>(() => {
-    if (!equation.trim()) return { ok: false, message: 'Enter an equation in the form lhs = rhs.' };
+    if (!equation.trim()) return { ok: false, message: t('calc.modal.errEmptyEq') };
     try {
       parseEquation(equation);
       return { ok: true };
     } catch (err) {
       return { ok: false, message: err instanceof Error ? err.message : String(err) };
     }
-  }, [equation]);
+  }, [equation, t]);
 
   const importValidation = useMemo(() => {
     if (!importText.trim()) return null;
@@ -160,7 +163,7 @@ export default function LayoutEditorModal({
       return;
     }
     if (check.layouts.length === 0) {
-      setSaveError('Layout validation returned no layouts.');
+      setSaveError(t('calc.modal.errNoLayouts'));
       return;
     }
 
@@ -233,7 +236,7 @@ export default function LayoutEditorModal({
                   className={styles.fieldInput}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="RC Cutoff Frequency"
+                  placeholder={t('calc.modal.namePlaceholder')}
                   required
                 />
               </label>
@@ -261,7 +264,7 @@ export default function LayoutEditorModal({
                 className={styles.fieldInput}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Short engineering note…"
+                placeholder={t('calc.modal.descPlaceholder')}
               />
             </label>
 
@@ -392,7 +395,7 @@ export default function LayoutEditorModal({
 
             {importValidation && !importValidation.ok && 'errors' in importValidation && (
               <div className={`${styles.validationBox} ${styles.validationErr}`}>
-                <strong>Validation errors:</strong>
+                <strong>{t('calc.modal.validationErrors')}</strong>
                 <ul>
                   {importValidation.errors.map((err, idx) => (
                     <li key={idx}>{err}</li>

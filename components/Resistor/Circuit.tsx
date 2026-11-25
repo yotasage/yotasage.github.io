@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { Network, networkLayout, ohmsParts } from '../../lib/resistor';
+import { useI18n } from '../../lib/ui/i18n';
 import css from '../../styles/ResistorCombos.module.css';
 
 // Pixels for one unit of the layout: a resistor with its leads is UNIT long, a row is ROW high.
@@ -14,6 +15,7 @@ const DROP = 4;
 
 // A small circuit drawing of a network: resistors as IEC rectangles with their values, in the colours of the text.
 export default function Circuit({ network, names }: { network: Network; names?: boolean }) {
+  const { t } = useI18n();
   const layout = networkLayout(network);
   const width = layout.width * UNIT + 2 * PAD;
   const height = layout.height * ROW;
@@ -23,7 +25,7 @@ export default function Circuit({ network, names }: { network: Network; names?: 
   const label = layout.resistors.map((r) => ohmsParts(r.ohms).join(' ')).join(', ');
 
   return (
-    <svg className={css.circuit} width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`Circuit: ${label}`}>
+    <svg className={css.circuit} width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={t('res.circ.aria', { label })}>
       <g fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinecap="square">
         <path d={`M1.5 ${mid}H${PAD}M${width - PAD} ${mid}H${width - 1.5}`} />
         {layout.wires.map(([x1, y1, x2, y2], i) => <path key={i} d={`M${px(x1)} ${py(y1)}L${px(x2)} ${py(y2)}`} />)}

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { BOOLEAN_THEORY_TOPICS } from '../../lib/boolean/gateReference';
 import { BOOLEAN_LAWS } from '../../lib/boolean/laws';
 import type { BooleanLaw } from '../../lib/boolean/types';
-import { useI18n } from '../../lib/ui/i18n';
+import { type TranslationKey, useI18n } from '../../lib/ui/i18n';
 import { useExperienceMode } from '../../lib/ui/mode';
 import styles from '../../styles/Boolean.module.css';
 import dStyles from '../../styles/BooleanDiagrams.module.css';
@@ -78,21 +78,39 @@ export default function BooleanLawsTab({
 
   const normalizedQuery = query.trim().toLowerCase();
 
+  const tx = (key: string, fallback: string) => {
+    const k = key as TranslationKey;
+    const res = t(k);
+    return res === k ? fallback : res;
+  };
+
   const filtered = useMemo(() => {
     return BOOLEAN_LAWS.filter((item) => {
       if (category !== 'all' && item.category !== category) return false;
       if (!normalizedQuery) return true;
-      const hay = [item.name, item.summary, item.theory, item.exampleExpr, ...item.keywords]
+      const locName = tx(`boolean.law.${item.id}.name`, item.name);
+      const locSummary = tx(`boolean.law.${item.id}.summary`, item.summary);
+      const locTheory = tx(`boolean.law.${item.id}.theory`, item.theory);
+      const hay = [
+        locName,
+        locSummary,
+        locTheory,
+        item.name,
+        item.summary,
+        item.theory,
+        item.exampleExpr,
+        ...item.keywords,
+      ]
         .join(' ')
         .toLowerCase();
       return hay.includes(normalizedQuery);
     });
-  }, [category, normalizedQuery]);
+  }, [category, normalizedQuery, t]);
 
   return (
     <div className={styles.workspacePanel}>
       <div className={styles.workspaceBar}>
-        <div className={styles.analysisTabList} role="tablist" aria-label="Theory sections">
+        <div className={styles.analysisTabList} role="tablist" aria-label={t('boolean.laws.sectionsAria')}>
           <button
             type="button"
             role="tab"
@@ -148,16 +166,20 @@ export default function BooleanLawsTab({
             <div className={dStyles.theoryTopicsGrid}>
               {BOOLEAN_THEORY_TOPICS.map((topic) => (
                 <article key={topic.id} className={dStyles.theoryTopicCard}>
-                  <h3 className={styles.identityTitle}>{topic.title}</h3>
+                  <h3 className={styles.identityTitle}>
+                    {tx(`boolean.theory.${topic.id}.title`, topic.title)}
+                  </h3>
                   {topic.formulaLatex && (
                     <div className={styles.identityFormula}>
                       <KatexSpan text={topic.formulaLatex} />
                     </div>
                   )}
-                  <p className={styles.identitySummary}>{topic.summary}</p>
+                  <p className={styles.identitySummary}>
+                    {tx(`boolean.theory.${topic.id}.summary`, topic.summary)}
+                  </p>
                   <ul className={dStyles.theoryBulletList}>
                     {topic.details.map((pt, idx) => (
-                      <li key={idx}>{pt}</li>
+                      <li key={idx}>{tx(`boolean.theory.${topic.id}.d${idx}`, pt)}</li>
                     ))}
                   </ul>
                 </article>
@@ -226,7 +248,9 @@ export default function BooleanLawsTab({
                       .join(' ')}
                   >
                     <div className={styles.identityHead}>
-                      <h3 className={styles.identityTitle}>{item.name}</h3>
+                      <h3 className={styles.identityTitle}>
+                        {tx(`boolean.law.${item.id}.name`, item.name)}
+                      </h3>
                       <span className={styles.identityMeta}>
                         {t(`boolean.laws.cat.${item.category}`)}
                       </span>
@@ -234,11 +258,13 @@ export default function BooleanLawsTab({
                     <div className={styles.identityFormula}>
                       <KatexSpan text={item.formulaLatex} />
                     </div>
-                    <p className={styles.identitySummary}>{item.summary}</p>
+                    <p className={styles.identitySummary}>
+                      {tx(`boolean.law.${item.id}.summary`, item.summary)}
+                    </p>
                     {isTeaching && (
                       <div className={styles.theoryBox}>
                         <span className={styles.theoryPrefix}>{t('boolean.steps.theoryLabel')}:</span>
-                        <span>{item.theory}</span>
+                        <span>{tx(`boolean.law.${item.id}.theory`, item.theory)}</span>
                       </div>
                     )}
                     <div className={styles.identityFooter}>

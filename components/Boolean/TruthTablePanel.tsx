@@ -55,7 +55,7 @@ function SingleTruthTable({
   const allCols = useMemo<ColDef[]>(() => {
     const cols: ColDef[] = [];
     for (const v of table.variables) {
-      cols.push({ id: `in:${v}`, label: v, kind: 'input', title: `Input ${v}` });
+      cols.push({ id: `in:${v}`, label: v, kind: 'input', title: t('boolean.tt.inputColTitle', { name: v }) });
     }
     for (const sig of table.internals) {
       cols.push({
@@ -70,11 +70,11 @@ function SingleTruthTable({
         id: `out:${outName}`,
         label: outName,
         kind: 'output',
-        title: `Output ${outName}`,
+        title: t('boolean.tt.outputColTitle', { name: outName }),
       });
     }
     return cols;
-  }, [table]);
+  }, [table, t]);
 
   const visibleCols = useMemo(() => {
     if (preset === 'io') return allCols.filter((c) => c.kind !== 'internal');
@@ -177,8 +177,8 @@ function SingleTruthTable({
                 onChange={() => onToggleId(col.id)}
               />
               <span>{col.label}</span>
-              {col.kind === 'internal' && <span className={dStyles.signalCheckRole}>int</span>}
-              {col.kind === 'output' && <span className={dStyles.signalCheckRole}>out</span>}
+              {col.kind === 'internal' && <span className={dStyles.signalCheckRole}>{t('boolean.tt.badgeInt')}</span>}
+              {col.kind === 'output' && <span className={dStyles.signalCheckRole}>{t('boolean.tt.badgeOut')}</span>}
             </label>
           ))}
         </div>
@@ -394,14 +394,17 @@ export default function TruthTablePanel({
         <div className={styles.stepsTitleGroup}>
           <h2 className={styles.cardTitle}>{t('boolean.tt.title')}</h2>
           <span className={styles.metaInline}>
-            {originalTable.rows.length} rows · {useSideBySide ? 'side-by-side' : 'stacked'}
+            {t('boolean.tt.rowsLayoutMeta', {
+              rows: originalTable.rows.length,
+              layout: (useSideBySide ? t('boolean.view.sideBySide') : t('boolean.view.stacked')).toLowerCase(),
+            })}
           </span>
         </div>
 
         <div className={styles.stepsControls}>
           {!collapsed && (
             <>
-              <div className={styles.segmented} role="group" aria-label="Truth table layout">
+              <div className={styles.segmented} role="group" aria-label={t('boolean.tt.layoutAria')}>
                 <button
                   type="button"
                   aria-pressed={paneLayout === 'side-by-side'}

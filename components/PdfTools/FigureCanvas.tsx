@@ -3,6 +3,8 @@ import React from 'react';
 
 import type { ViewportRect } from '../../lib/pdf/extractVectors';
 import { renderPage } from '../../lib/pdf/pdfjs';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
 import styles from '../../styles/PdfTools.module.css';
 
 export interface FigureBox {
@@ -32,15 +34,15 @@ interface FigureCanvasProps {
 
 const MIN_BOX_PT = 8;
 
-const HANDLES: Array<{ dir: HandleDir; className: string; label: string }> = [
-  { dir: 'nw', className: styles.figureHandleNw, label: 'Resize top-left' },
-  { dir: 'n', className: styles.figureHandleN, label: 'Resize top' },
-  { dir: 'ne', className: styles.figureHandleNe, label: 'Resize top-right' },
-  { dir: 'e', className: styles.figureHandleE, label: 'Resize right' },
-  { dir: 'se', className: styles.figureHandleSe, label: 'Resize bottom-right' },
-  { dir: 's', className: styles.figureHandleS, label: 'Resize bottom' },
-  { dir: 'sw', className: styles.figureHandleSw, label: 'Resize bottom-left' },
-  { dir: 'w', className: styles.figureHandleW, label: 'Resize left' },
+const HANDLES: Array<{ dir: HandleDir; className: string; labelKey: TranslationKey }> = [
+  { dir: 'nw', className: styles.figureHandleNw, labelKey: 'pdf.canvas.resizeNw' },
+  { dir: 'n', className: styles.figureHandleN, labelKey: 'pdf.canvas.resizeN' },
+  { dir: 'ne', className: styles.figureHandleNe, labelKey: 'pdf.canvas.resizeNe' },
+  { dir: 'e', className: styles.figureHandleE, labelKey: 'pdf.canvas.resizeE' },
+  { dir: 'se', className: styles.figureHandleSe, labelKey: 'pdf.canvas.resizeSe' },
+  { dir: 's', className: styles.figureHandleS, labelKey: 'pdf.canvas.resizeS' },
+  { dir: 'sw', className: styles.figureHandleSw, labelKey: 'pdf.canvas.resizeSw' },
+  { dir: 'w', className: styles.figureHandleW, labelKey: 'pdf.canvas.resizeW' },
 ];
 
 type DragState =
@@ -136,6 +138,7 @@ export function FigureCanvas({
   onTightenBox,
   onPageSize,
 }: FigureCanvasProps) {
+  const { t } = useI18n();
   const stageRef = React.useRef<HTMLDivElement | null>(null);
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const overlayRef = React.useRef<HTMLDivElement | null>(null);
@@ -438,7 +441,7 @@ export function FigureCanvas({
 
   return (
     <div ref={stageRef} className={styles.figureStage}>
-      {renderError && <p className={styles.note}>Could not render page: {renderError}</p>}
+      {renderError && <p className={styles.note}>{t('pdf.canvas.couldNotRender', { error: renderError })}</p>}
       {!renderError && (
         <div
           className={styles.figureWrap}
@@ -462,7 +465,7 @@ export function FigureCanvas({
               ref={overlayRef}
               className={styles.figureOverlay}
               role="region"
-              aria-label="Page figure selection canvas"
+              aria-label={t('pdf.canvas.figureRegionAria')}
               onPointerDown={handleOverlayPointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={finishDrag}
@@ -504,19 +507,19 @@ export function FigureCanvas({
                           <button
                             type="button"
                             className={styles.figureQuickBtn}
-                            title="Tighten box to content"
+                            title={t('pdf.canvas.tightenTitle')}
                             onClick={(e) => {
                               e.stopPropagation();
                               onTightenBox(box.id);
                             }}
                           >
-                            Tighten
+                            {t('pdf.canvas.tighten')}
                           </button>
                           <button
                             type="button"
                             className={[styles.figureQuickBtn, styles.figureQuickBtnDanger].join(' ')}
-                            title="Delete figure box"
-                            aria-label={`Delete ${box.label}`}
+                            title={t('pdf.canvas.deleteFigureTitle')}
+                            aria-label={t('pdf.canvas.deleteNamed', { label: box.label })}
                             onClick={(e) => {
                               e.stopPropagation();
                               onDeleteBox(box.id);
@@ -531,7 +534,7 @@ export function FigureCanvas({
                             key={h.dir}
                             className={[styles.figureHandle, h.className].join(' ')}
                             role="slider"
-                            aria-label={h.label}
+                            aria-label={t(h.labelKey)}
                             aria-valuenow={Math.round(box.rect.width)}
                             onPointerDown={(e) => handleResizePointerDown(e, box, h.dir)}
                           />
@@ -560,7 +563,7 @@ export function FigureCanvas({
             </div>
           )}
 
-          {rendering && <div className={styles.figureLoading}>Rendering page…</div>}
+          {rendering && <div className={styles.figureLoading}>{t('pdf.canvas.renderingPage')}</div>}
         </div>
       )}
     </div>

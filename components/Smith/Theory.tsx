@@ -20,7 +20,11 @@ import {
   LINE, QUARTER, SERIES_C, SERIES_L, SERIES_R, SHUNT_C, SHUNT_L, SHUNT_R, STUB_OPEN, STUB_SHORT, added, isLine, isSeries, isStub,
   turnsAt, valueFor,
 } from '../../lib/smith/parts';
-import { KIND_NAMES, defaultCircuit, sameCircuit } from '../../lib/smith/state';
+import { defaultCircuit, sameCircuit } from '../../lib/smith/state';
+import type { SweepSetting } from '../../lib/smith/state';
+import type { ValueChoice } from '../../lib/smith/values';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
 import bibCss from '../../styles/Bibliography.module.css';
 import css from '../../styles/SmithTheory.module.css';
 import Bibliography from '../Bibliography';
@@ -31,13 +35,12 @@ import { GOAL_VSWR } from './pathLayer';
 import { onFollowTopic, returnFromTopic } from './Why';
 import { markWide, watchWide } from '../Equations/wide';
 import { complexText } from './readout';
+import { eqTitle, kindName } from './smithText';
 import type { Outcome } from './SolvePanel';
 import { CirclesFigure, GammaFigure, LineFigure, MatchFigure, PlaneFigure, VswrFigure, WalksFigure } from './TheoryFigures';
 import { SOLVER_IDS, SolverTopics } from './TheorySolver';
 import { SWEEP_IDS, SweepCircuitContext, SweepTopics } from './TheorySweep';
 import type { TraceLayer } from './traceLayer';
-import type { SweepSetting } from '../../lib/smith/state';
-import type { ValueChoice } from '../../lib/smith/values';
 
 /** The topics in the order of the page; the ids are the anchors (#moving-on-the-chart). */
 export const TOPICS: readonly { id: string; title: string }[] = [
@@ -66,7 +69,6 @@ const num = (v: number): string => formatResidual(v, '', 4);
 const amt = (v: number, unit: string): string => formatResidual(v, unit, 4);
 const cx = (re: number, im: number, unit = ''): string => complexText(re, im, unit, 4);
 const fin = (...v: number[]): boolean => v.every((n) => Number.isFinite(n));
-/** A live value for the TeX printer, or undefined (the symbol stays) when it is not a finite number. */
 /** A value of TeX at rounding level (D20, lib/quantity.ts): a residual part under the floor is put in as 0. */
 const fl = (v: number): number => (belowFloor(v) ? 0 : v);
 const tv = (re: number, im = 0, unit = ''): TexPiece | undefined => (fin(re, im) ? valueTex(unit && unit !== 'dB' ? re : fl(re), unit && unit !== 'dB' ? im : fl(im), unit) : undefined);
@@ -104,13 +106,14 @@ const omegaTex = (f0: number): TexPiece | undefined => {
 };
 
 function Eq({ id, values, note }: { id: string; values?: Values; note?: string }) {
+  const { locale, t } = useI18n();
   const eq = EQUATION_BY_ID.get(id);
   if (!eq) throw new Error(`Unknown equation "${id}" in the Smith chart's theory.`);
   // M5.3: "derive" opens its derivation, with the numbers of the place the theory uses (derive.ts theorySubject).
   const title = (
     <span className={css.eqTitle}>
-      {eq.title}{note ? ` · ${note}` : ''}
-      {hasDerivation(id) && <> · <button type="button" className={css.derive} data-derive-open={id} onClick={(e) => openDerivation(id, e.currentTarget)}>derive</button></>}
+      {eqTitle(id, eq.title, locale)}{note ? ` · ${note}` : ''}
+      {hasDerivation(id) && <> · <button type="button" className={css.derive} data-derive-open={id} onClick={(e) => openDerivation(id, e.currentTarget)}>{t('sm.th.derive')}</button></>}
     </span>
   );
   const sub = values && substitutions(eq.tree, values);
@@ -157,6 +160,9 @@ interface Props {
 }
 
 function Theory({ bib, circuit: c, outcome, lists, sweep, layer }: Props) {
+  const { locale, t } = useI18n();
+  const topicTitle = (id: string) => t(`sm.th.topic.${id}` as TranslationKey);
+
   // Which topics are folded. Open on a wide screen; on a phone folded, except the one a link points at.
   const [closed, setClosed] = useState<Record<string, boolean>>({});
   useEffect(() => {
@@ -222,13 +228,11 @@ function Theory({ bib, circuit: c, outcome, lists, sweep, layer }: Props) {
   };
 
   // Citations: "[n, §x]", linked to the entry; numbered by the page's Bibliography in the order they are made here.
-  // No-break spaces keep "word [n," together, and a long section name ("Circuit elements and topology") may wrap
-  // inside: a citation held whole on one line pushed the words before it onto a line of their own.
   const cite = (...refs: [string, string][]) => (
     <span className={css.cites}>
-      {' '}
+      {'\u00A0'}
       {refs.map(([key, at], i) => (
-        <React.Fragment key={i}>{i > 0 && ', '}<a className={bibCss.cite} href={`#ref-${key}`} data-cite={key}>[{bib.number(key)}{at ? <>,{' '}{at}</> : null}]</a></React.Fragment>
+        <React.Fragment key={i}>{i > 0 && ', '}<a className={bibCss.cite} href={`#ref-${key}`} data-cite={key}>[{bib.number(key)}{at ? <>,{'\u00A0'}{at}</> : null}]</a></React.Fragment>
       ))}
     </span>
   );
@@ -238,10 +242,10 @@ function Theory({ bib, circuit: c, outcome, lists, sweep, layer }: Props) {
   const { metrics } = evaluateCircuit(c);
   const n = c.parts.length;
   const m = (k: number, slot: number): number => metrics[k * METRIC_STRIDE + slot];
-  const z0 = c.z0, f0 = c.f0, w = TAU * f0;
+  const z0 = c.z0, f0 = c.f0;
   const zr = m(0, M_ZR), zi = m(0, M_ZI), yr = m(0, M_YR), yi = m(0, M_YI), gr = m(0, M_GR), gi = m(0, M_GI);
   const start = sameCircuit(c, START);
-  const head = (what: string) => <div className={css.liveHead}>{start ? 'Start circuit' : 'Your circuit'}<span>{what}</span></div>;
+  const head = (what: string) => <div className={css.liveHead}>{start ? t('sm.th.startCircuit') : t('sm.th.yourCircuit')}<span>{what}</span></div>;
 
   const loadValues: Values = {
     Z_0: tv(z0, 0, 'Ω'), Z: tv(zr * z0, zi * z0, 'Ω'), Y: tv(yr / z0, yi / z0, 'S'), z: tv(zr, zi), y: tv(yr, yi),
@@ -253,14 +257,14 @@ function Theory({ bib, circuit: c, outcome, lists, sweep, layer }: Props) {
   // Topic 4: per part, what it keeps and what it changes (nodes i and i + 1), and which way it turns the point.
   const walks = c.parts.map((p, i) => {
     const a = added(p.kind, p.value, p.zc ?? z0, f0, f0, z0);
-    const turn = a > 0 ? 'clockwise' : a < 0 ? 'counter-clockwise' : 'not at all';
+    const turn = a > 0 ? t('sm.th.t4.sense.cw') : a < 0 ? t('sm.th.t4.sense.ccw') : t('sm.th.t4.sense.none');
     switch (p.kind) {
       case SERIES_L: case SERIES_C:
         return { keeps: 'r', kept: num(m(i, M_ZR)), what: 'x', from: num(m(i, M_ZI)), to: num(m(i + 1, M_ZI)), sense: turn };
       case SERIES_R:
-        return { keeps: 'x', kept: num(m(i, M_ZI)), what: 'r', from: num(m(i, M_ZR)), to: num(m(i + 1, M_ZR)), sense: 'towards Γ = +1' };
+        return { keeps: 'x', kept: num(m(i, M_ZI)), what: 'r', from: num(m(i, M_ZR)), to: num(m(i + 1, M_ZR)), sense: t('sm.th.t4.sense.p1') };
       case SHUNT_R:
-        return { keeps: 'b', kept: num(m(i, M_YI)), what: 'g', from: num(m(i, M_YR)), to: num(m(i + 1, M_YR)), sense: 'towards Γ = −1' };
+        return { keeps: 'b', kept: num(m(i, M_YI)), what: 'g', from: num(m(i, M_YR)), to: num(m(i + 1, M_YR)), sense: t('sm.th.t4.sense.m1') };
       case SHUNT_L: case SHUNT_C: case STUB_OPEN: case STUB_SHORT:
         return { keeps: 'g', kept: num(m(i, M_YR)), what: 'b', from: num(m(i, M_YI)), to: num(m(i + 1, M_YI)), sense: turn };
       default: {
@@ -270,7 +274,7 @@ function Theory({ bib, circuit: c, outcome, lists, sweep, layer }: Props) {
         const mag = fin(o[0], o[1]) ? Math.hypot(o[0], o[1]) : 1;
         return {
           keeps: '|Γ|', kept: num(mag), zc: amt(zc, 'Ω'), what: 'Γ', from: cx(m(i, M_GR), m(i, M_GI)), to: cx(m(i + 1, M_GR), m(i + 1, M_GI)),
-          sense: 'clockwise',
+          sense: t('sm.th.t4.sense.cw'),
         };
       }
     }
@@ -289,7 +293,7 @@ function Theory({ bib, circuit: c, outcome, lists, sweep, layer }: Props) {
     if (kind === SHUNT_L) return { ...base, b: tv(a), B: tv(a / z0, 0, 'S'), L: tv(v, 0, 'H') };
     return { ...base, b: tv(a), B: tv(a / z0, 0, 'S'), C: tv(v, 0, 'F') };
   };
-  const partNote = (kind: number) => { const i = firstOf(kind); return i < 0 ? undefined : `below: part ${i + 1}`; };
+  const partNote = (kind: number) => { const i = firstOf(kind); return i < 0 ? undefined : t('sm.th.note.part', { n: i + 1 }); };
   const firstSeries = c.parts.findIndex((p) => isSeries(p.kind));
   const firstShunt = c.parts.findIndex((p) => p.kind >= SHUNT_R && p.kind <= SHUNT_C);
   const seriesAdds: Values | undefined = firstSeries < 0 ? undefined : (() => {
@@ -324,10 +328,10 @@ function Theory({ bib, circuit: c, outcome, lists, sweep, layer }: Props) {
     return [
       ['|Γ|', L(`m-${key}-mag`, num(mag))],
       ['VSWR', L(`m-${key}-vswr`, num(s))],
-      ['Return loss', L(`m-${key}-rl`, formatReturnLoss(m(k, M_RL)))],
-      ['Mismatch loss', L(`m-${key}-ml`, amt(m(k, M_ML), 'dB'))],
-      ['Power reflected', <>{L(`m-${key}-ref`, num(reflectedPower(mag) * 100))} %</>],
-      ['Power delivered', <>{L(`m-${key}-del`, num(deliveredPower(mag) * 100))} %</>],
+      [t('sm.th.t6.rowRl'), L(`m-${key}-rl`, formatReturnLoss(m(k, M_RL)))],
+      [t('sm.th.t6.rowMl'), L(`m-${key}-ml`, amt(m(k, M_ML), 'dB'))],
+      [t('sm.th.t6.rowRef'), <>{L(`m-${key}-ref`, num(reflectedPower(mag) * 100))} %</>],
+      [t('sm.th.t6.rowDel'), <>{L(`m-${key}-del`, num(deliveredPower(mag) * 100))} %</>],
       [<>Z<sub>max</sub> = Z<sub>0</sub>·VSWR</>, L(`m-${key}-zmax`, amt(z0 * s, 'Ω'))],
       [<>Z<sub>min</sub> = Z<sub>0</sub>/VSWR</>, L(`m-${key}-zmin`, amt(z0 / s, 'Ω'))],
     ] as [React.ReactNode, React.ReactNode][];
@@ -336,14 +340,13 @@ function Theory({ bib, circuit: c, outcome, lists, sweep, layer }: Props) {
 
   let number = 0;
   const topic = (id: string, children: React.ReactNode, no?: number) => {
-    const entry = TOPICS.find((t) => t.id === id);
     number = no ?? number + 1;
     return (
       <details key={id} id={id} className={css.topic} open={!closed[id]} data-topic={id}
         onToggle={(event) => { const open = event.currentTarget.open; setClosed((was) => (!was[id] === open ? was : { ...was, [id]: !open })); }}>
-        <summary><span className={css.topicNo}>{no ?? number}</span><h3>{entry.title}</h3><span className={css.chevron} aria-hidden="true" /></summary>
+        <summary><span className={css.topicNo}>{no ?? number}</span><h3>{topicTitle(id)}</h3><span className={css.chevron} aria-hidden="true" /></summary>
         <div className={css.body}>
-          {back?.id === id && <button type="button" className={css.back} onClick={goBack} data-back-to-tool="">↩ Back to the tool</button>}
+          {back?.id === id && <button type="button" className={css.back} onClick={goBack} data-back-to-tool="">{t('sm.th.back')}</button>}
           {children}
         </div>
       </details>
@@ -356,52 +359,32 @@ function Theory({ bib, circuit: c, outcome, lists, sweep, layer }: Props) {
   return (
     <div className={css.theory} data-theory="" ref={root}>
       <p className={css.lead}>
-        What the chart shows and why the parts move the point the way they do. The boxes marked <i>Your circuit</i> follow
-        the circuit above as you change it. Everything here assumes ideal parts, lossless lines and a real reference
-        impedance Z<sub>0</sub>, at the one frequency f<sub>0</sub> (the last two topics sweep a band around it). Numbers in brackets lead to
-        the <a href="#references" className={css.jump}>sources</a>.
+        {t('sm.th.lead.a')}<i>{t('sm.th.yourCircuit')}</i>{t('sm.th.lead.b')}{Z0}{t('sm.th.lead.c')}{F0}{t('sm.th.lead.d')}
+        <a href="#references" className={css.jump}>{t('sm.th.lead.sources')}</a>.
       </p>
       <ol className={css.contents}>
-        {TOPICS.map(({ id, title }) => (
-          <li key={id}><a href={`#${id}`} onClick={() => setClosed((was) => ({ ...was, [id]: false }))}>{title}</a></li>
+        {TOPICS.map(({ id }) => (
+          <li key={id}><a href={`#${id}`} onClick={() => setClosed((was) => ({ ...was, [id]: false }))}>{topicTitle(id)}</a></li>
         ))}
       </ol>
       <div className={css.tools}>
-        <button type="button" className={css.fold} onClick={() => setAll(false)} data-open-all="">Open all</button>
-        <button type="button" className={css.fold} onClick={() => setAll(true)} data-fold-all="">Fold all</button>
+        <button type="button" className={css.fold} onClick={() => setAll(false)} data-open-all="">{t('sm.th.openAll')}</button>
+        <button type="button" className={css.fold} onClick={() => setAll(true)} data-fold-all="">{t('sm.th.foldAll')}</button>
       </div>
 
       {topic('how-to-use', (
         <>
-          <p>
-            The page opens on a worked example: a load of 25 + j25 Ω on a 50 Ω reference at 100 MHz, brought to the centre
-            of the chart by a series capacitor and a shunt inductor. Change it, or press Start over to come back to it.
-          </p>
+          <p>{t('sm.th.t1.intro')}</p>
           <ol className={css.steps}>
-            <li><b>Say what you have.</b> Type the load’s R and X in ohms, the reference impedance {Z0} (often 50 Ω) and the
-              frequency {F0} you design for. The load appears as a point on the chart, marked L.</li>
-            <li><b>Build.</b> Add a part with Add: pick its kind and where it goes. Or press Draw and drag out of the input (In)
-              on the chart: the part is added at the source end and follows your pointer. The strip shows the circuit the
-              textbook way, source left and load right; the path on the chart runs the other way, from the load towards the
-              source, because each part changes what the parts before it look like from the source side.</li>
-            <li><b>Drag.</b> Each part draws an arc that starts at the point before it and ends at a ring. Drag the ring and the
-              part’s value follows. Type a value in the part’s card when you know it exactly. Undo and Redo step through
-              every change.</li>
-            <li><b>Read.</b> Hover over or tap any place on the chart and the readout gives z, Z, y, Y, Γ, the VSWR and the
-              return loss there. The node table gives the same for every node of the path, from the load to the input.
-              The = beside a number shows its equation in the Equations panel, with your values put in; point at or tap
-              a variable there and its part, node or readout row lights up, and pointing at an arc or a node on the
-              chart lights its variables. Derive, beside an equation there or in this theory, shows how it follows, one
-              step at a time with the reason for each and, where every quantity has a value, your numbers.</li>
+            <li><b>{t('sm.th.t1.s1.b')}</b>{t('sm.th.t1.s1.a')}{Z0}{t('sm.th.t1.s1.c')}{F0}{t('sm.th.t1.s1.d')}</li>
+            <li><b>{t('sm.th.t1.s2.b')}</b>{t('sm.th.t1.s2.a')}</li>
+            <li><b>{t('sm.th.t1.s3.b')}</b>{t('sm.th.t1.s3.a')}</li>
+            <li><b>{t('sm.th.t1.s4.b')}</b>{t('sm.th.t1.s4.a')}</li>
           </ol>
-          <p>
-            The usual aim is to bring the input to the centre. There Γ = 0: nothing is reflected and all the power the
-            source sends reaches the load{cite([E, '§3.20'])}. The dashed circle around the centre is the tool’s “close
-            enough” (VSWR {num(GOAL_VSWR)}); it follows the goal when you choose another in the Solve panel.
-          </p>
+          <p>{t('sm.th.t1.aim.a')}{cite([E, '§3.20'])}{t('sm.th.t1.aim.b', { vswr: num(GOAL_VSWR) })}</p>
           <div className={css.live}>
-            {head('the input')}
-            <p>The input is now at |Γ| = {L('input-mag', num(m(n, M_MAG)))}.</p>
+            {head(t('sm.th.t1.head'))}
+            <p>{t('sm.th.t1.inputNow')}{L('input-mag', num(m(n, M_MAG)))}.</p>
           </div>
         </>
       ))}
@@ -409,40 +392,28 @@ function Theory({ bib, circuit: c, outcome, lists, sweep, layer }: Props) {
       {topic('gamma-z-y', (
         <>
           <p>
-            The chart never shows ohms. It shows ratios to one reference impedance {Z0}, the impedance of the system the
-            circuit sits in. The normalised impedance is <span className={css.nw}>z = Z/{Z0} = r + jx</span>, and the normalised admittance is its inverse,
-            <span className={css.nw}>y = 1/z = Y·{Z0} = g + jb</span>{cite([W, '“Normalization”'])}. Normalising is what makes one drawing serve every
-            system: the circle marked r = 1 is 50 Ω on a 50 Ω chart and 75 Ω on a 75 Ω chart.
+            {t('sm.th.t2.p1.a')}{Z0}{t('sm.th.t2.p1.b')}<span className={css.nw}>z = Z/{Z0} = r + jx</span>
+            {t('sm.th.t2.p1.c')}<span className={css.nw}>y = 1/z = Y·{Z0} = g + jb</span>{cite([W, '“Normalization”'])}{t('sm.th.t2.p1.d')}
           </p>
-          <Eq id="z-norm" values={loadValues} note="below: your load" />
+          <Eq id="z-norm" values={loadValues} note={t('sm.th.note.load')} />
           <Eq id="y-norm" values={loadValues} />
           <p>
-            What the chart plots is Γ, the reflection coefficient: the reflected voltage wave at a point divided by the
-            incident one{cite([E, '§3.12'])}. It follows from z alone, <span className={css.nw}>Γ = (z − 1)/(z + 1)</span>{cite([E, '§3.12'])}, and z
-            follows back from Γ{cite([S2, '§2.3'])}. Three points are worth knowing by heart: a load equal to {Z0} gives
-            Γ = 0, the centre; an open circuit gives Γ = +1, the right-hand edge; a short gives Γ = −1, the left-hand
-            edge{cite([E, '§3.12'])}. A passive load has |Γ| ≤ 1, so every passive load lies on or inside the
-            rim{cite([E, '§3.12'])}. (Γ is the reflection coefficient of the voltage; that of the current is
-            −Γ{cite([E, '§3.12'])}.)
+            {t('sm.th.t2.p2.a')}{cite([E, '§3.12'])}{t('sm.th.t2.p2.b')}<span className={css.nw}>Γ = (z − 1)/(z + 1)</span>{cite([E, '§3.12'])}
+            {t('sm.th.t2.p2.c')}{cite([S2, '§2.3'])}{t('sm.th.t2.p2.d')}{Z0}{t('sm.th.t2.p2.e')}{cite([E, '§3.12'])}
+            {t('sm.th.t2.p2.f')}{cite([E, '§3.12'])}{t('sm.th.t2.p2.g')}{cite([E, '§3.12'])}{t('sm.th.t2.p2.h')}
           </p>
           <Eq id="gamma-z" values={loadValues} />
           <Eq id="z-gamma" />
           <p>
-            So a point on the chart <i>is</i> a value of Γ, and the grid printed over it lets you read that point’s z without
-            computing anything{cite([S3, '§3.4'])}. The readout gives Γ two ways: polar (|Γ| and its angle, how far out and
-            which way round) and Cartesian ({Gr} + j{Gi}, the point’s coordinates across and up).
+            {t('sm.th.t2.p3.a')}<i>{t('sm.th.t2.p3.em')}</i>{t('sm.th.t2.p3.b')}{cite([S3, '§3.4'])}
+            {t('sm.th.t2.p3.c')}{Gr} + j{Gi}{t('sm.th.t2.p3.d')}
           </p>
-          <p>
-            Admittance needs no second plot. The same point has y = (1 − Γ)/(1 + Γ){cite([W, '“Admittance chart”'])}, which
-            is the z formula applied to −Γ: the y of a point is read like the z of the point opposite it through the centre.
-            That is why an admittance grid is the impedance grid turned half a turn about the centre; the point stays where it
-            is, only the grid changes{cite([S3, '§3.4'])}.
-          </p>
+          <p>{t('sm.th.t2.p4.a')}{cite([W, '“Admittance chart”'])}{t('sm.th.t2.p4.b')}{cite([S3, '§3.4'])}.</p>
           <Eq id="gamma-y" />
           <Eq id="y-gamma" values={loadValues} />
           <div className={css.liveRow}>
             <div className={css.live}>
-              {head('the load (node 0)')}
+              {head(t('sm.th.t2.head'))}
               <p>Z = {L('load-Z', cx(zr * z0, zi * z0, 'Ω'))}</p>
               <p>z = {L('load-z', cx(zr, zi))}</p>
               <p>y = {L('load-y', cx(yr, yi))}</p>
@@ -456,25 +427,16 @@ function Theory({ bib, circuit: c, outcome, lists, sweep, layer }: Props) {
 
       {topic('reading-the-chart', (
         <>
-          <p>The grid is two families of circles for z and two for y.</p>
+          <p>{t('sm.th.t3.intro')}</p>
           <ul>
-            <li><b>Constant r.</b> All points with the same resistance r lie on one circle, centred on the real axis, with
-              centre r/(1 + r) and radius 1/(1 + r). Every one of them touches the right-hand edge at Γ = +1; r = 0 is the
-              rim itself, and r = 1 passes through the centre.</li>
-            <li><b>Constant x.</b> Points of the same reactance x lie on a circle centred at (1, 1/x) with radius 1/|x|, of
-              which only an arc falls inside the chart; these too all pass through Γ = +1. The centre’s height 1/x is a real
-              number: a common slip in the derivation is to write ({Gi} − i/x)², where ({Gi} − 1/x)² is right. The real axis
-              is x = 0, pure resistance. The upper half is inductive (x &gt; 0), the lower half capacitive
-              (x &lt; 0){cite([S3, '§3.4'])}.</li>
-            <li><b>Constant g and b.</b> The admittance grid is the same picture mirrored left to right: g circles have their
-              centre at −g/(1 + g) and radius 1/(1 + g), b circles their centre at (−1, −1/b) and radius 1/|b|, and all of
-              them pass through Γ = −1. Read as admittance, the upper half has b &lt; 0, which is still inductive: an
-              inductor’s susceptance is negative{cite([S3, '§3.4'])}.</li>
+            <li><b>{t('sm.th.t3.r.b')}</b>{t('sm.th.t3.r.a')}</li>
+            <li><b>{t('sm.th.t3.x.b')}</b>{t('sm.th.t3.x.a')}{Gi}{t('sm.th.t3.x.c')}{Gi}{t('sm.th.t3.x.d')}{cite([S3, '§3.4'])}.</li>
+            <li><b>{t('sm.th.t3.gb.b')}</b>{t('sm.th.t3.gb.a')}{cite([S3, '§3.4'])}.</li>
           </ul>
           <Eq id="gamma-parts-z" />
           <Eq id="r-gamma" />
           <Eq id="x-gamma" />
-          <Eq id="circle-r" values={loadValues} note="below: through your load" />
+          <Eq id="circle-r" values={loadValues} note={t('sm.th.note.throughLoad')} />
           <Eq id="circle-x" values={loadValues} />
           <Eq id="z-parts" />
           <Eq id="gamma-parts-y" />
@@ -483,220 +445,166 @@ function Theory({ bib, circuit: c, outcome, lists, sweep, layer }: Props) {
           <Eq id="b-gamma" />
           <Eq id="circle-g" values={loadValues} />
           <Eq id="circle-b" values={loadValues} />
-          <p>
-            The circle equations are not taken on trust: each comes from writing r, x, g or b in terms of {Gr} and {Gi} and
-            completing the square: “derive” beside each shows every step.
-          </p>
+          <p>{t('sm.th.t3.trust.a')}{Gr}{t('sm.th.t3.trust.and')}{Gi}{t('sm.th.t3.trust.b')}</p>
           <div className={css.liveRow}>
             <div className={css.live}>
-              {head('the four circles through the load')}
-              <p>r = {L('load-r', num(zr))}: centre {L('r-centre', num(zr / (1 + zr)))}, radius {L('r-radius', num(1 / (1 + zr)))}</p>
-              <p>x = {L('load-x', num(zi))}: centre (1, {L('x-centre', num(1 / zi))}), radius {L('x-radius', num(1 / Math.abs(zi)))}{zi === 0 ? ' (the real axis)' : ''}</p>
-              <p>g = {L('load-g', num(yr))}: centre {L('g-centre', num(-yr / (1 + yr)))}, radius {L('g-radius', num(1 / (1 + yr)))}</p>
-              <p>b = {L('load-b', num(yi))}: centre (−1, {L('b-centre', num(-1 / yi))}), radius {L('b-radius', num(1 / Math.abs(yi)))}{yi === 0 ? ' (the real axis)' : ''}</p>
-              <p>All four pass through {Gr} + j{Gi} = {L('load-gamma', cx(gr, gi))}.</p>
+              {head(t('sm.th.t3.head'))}
+              <p>r = {L('load-r', num(zr))}: {t('sm.th.t3.centre')} {L('r-centre', num(zr / (1 + zr)))}, {t('sm.th.t3.radius')} {L('r-radius', num(1 / (1 + zr)))}</p>
+              <p>x = {L('load-x', num(zi))}: {t('sm.th.t3.centre')} (1, {L('x-centre', num(1 / zi))}), {t('sm.th.t3.radius')} {L('x-radius', num(1 / Math.abs(zi)))}{zi === 0 ? t('sm.th.t3.realAxis') : ''}</p>
+              <p>g = {L('load-g', num(yr))}: {t('sm.th.t3.centre')} {L('g-centre', num(-yr / (1 + yr)))}, {t('sm.th.t3.radius')} {L('g-radius', num(1 / (1 + yr)))}</p>
+              <p>b = {L('load-b', num(yi))}: {t('sm.th.t3.centre')} (−1, {L('b-centre', num(-1 / yi))}), {t('sm.th.t3.radius')} {L('b-radius', num(1 / Math.abs(yi)))}{yi === 0 ? t('sm.th.t3.realAxis') : ''}</p>
+              <p>{t('sm.th.t3.allFour')}{Gr} + j{Gi} = {L('load-gamma', cx(gr, gi))}.</p>
             </div>
             <CirclesFigure r={zr} x={zi} g={yr} b={yi} gr={gr} gi={gi} />
           </div>
           <p>
-            <b>Z, Y and ZY.</b> Z draws the r and x circles, Y the g and b circles, ZY both. The point is the same in all three;
-            only what you read off it changes{cite([S3, '§3.4'])}. ZY, the combined chart, is the one to use when a circuit
-            mixes series and shunt parts, because series parts move along the impedance grid and shunt parts along the
-            admittance grid (see {jump('moving-on-the-chart', 'Moving on the chart')}). Older practice read admittance by
-            turning the point half a turn on an impedance chart; that is not used now{cite([S3, '§3.4'])}, and this tool
-            never moves the point.
+            <b>{t('sm.th.t3.zy.b')}</b>{t('sm.th.t3.zy.a')}{cite([S3, '§3.4'])}{t('sm.th.t3.zy.c')}
+            {jump('moving-on-the-chart', topicTitle('moving-on-the-chart'))}{t('sm.th.t3.zy.d')}{cite([S3, '§3.4'])}{t('sm.th.t3.zy.e')}
           </p>
           <p>
-            <b>The scales on the rim.</b> One scale gives the angle of Γ in degrees. Two more count wavelengths “towards the
-            generator” (clockwise) and “towards the load” (counter-clockwise), from 0 at the short circuit to 0.5 for a full
-            turn{cite([S3, '§3.4'])}. A full turn is half a wavelength because the angle of Γ changes by twice the electrical
-            length of a line (see {jump('transmission-lines', 'Transmission lines')}){cite([S3, '§3.4'])}.
+            <b>{t('sm.th.t3.rim.b')}</b>{t('sm.th.t3.rim.a')}{cite([S3, '§3.4'])}{t('sm.th.t3.rim.c')}
+            {jump('transmission-lines', topicTitle('transmission-lines'))}{t('sm.th.t3.rim.d')}{cite([S3, '§3.4'])}.
           </p>
-          <p><b>Zooming.</b> Close to the centre the circles crowd together; zoom in and the grid fills in finer values.</p>
+          <p><b>{t('sm.th.t3.zoom.b')}</b>{t('sm.th.t3.zoom.a')}</p>
         </>
       ))}
 
       {topic('moving-on-the-chart', (
         <>
+          <p>{t('sm.th.t4.intro')}</p>
           <p>
-            Every part does one simple thing to the point, and each simple thing is a walk along one of the chart’s circles.
-            Learn the four walks and you can read any matching circuit off the chart.
+            <b>{t('sm.th.t4.ser.b')}</b>{t('sm.th.t4.ser.a')}<span className={css.nw}>z<sub>in</sub> = z<sub>L</sub> + z<sub>s</sub></span>{cite([S3, '§2.2.6'])}
+            {t('sm.th.t4.ser.c')}<span className={css.nw}>x = ωL/{Z0}</span>{t('sm.th.t4.ser.d')}<span className={css.nw}>x = −1/(ωC{Z0})</span>
+            {t('sm.th.t4.ser.e')}{cite([W, '“Circuit elements and topology”'])}{t('sm.th.t4.ser.f')}<span className={css.nw}>Γ = +1</span>{t('sm.th.t4.ser.g')}
           </p>
-          <p>
-            <b>Series parts add to z.</b> A part in series adds its own impedance to what it sees: <span className={css.nw}>z<sub>in</sub> = z<sub>L</sub> + z<sub>s</sub></span>{cite([S3, '§2.2.6'])}. An inductor or a capacitor in series adds only reactance, so
-            r does not change and the point slides along its constant-r circle. An inductor adds <span className={css.nw}>x = ωL/{Z0}</span>, which is
-            positive; a capacitor adds <span className={css.nw}>x = −1/(ωC{Z0})</span>, which is negative{cite([W, '“Circuit elements and topology”'])}. A
-            series resistor adds only r: the point slides along its constant-x arc, towards the open circuit at <span className={css.nw}>Γ = +1</span> as R
-            grows.
-          </p>
-          <Eq id="series-adds-z" values={seriesAdds} note={firstSeries < 0 ? undefined : `below: part ${firstSeries + 1}`} />
+          <Eq id="series-adds-z" values={seriesAdds} note={firstSeries < 0 ? undefined : t('sm.th.note.part', { n: firstSeries + 1 })} />
           <Eq id="x-series-l" values={lumpedValues(SERIES_L)} note={partNote(SERIES_L)} />
           <Eq id="x-series-c" values={lumpedValues(SERIES_C)} note={partNote(SERIES_C)} />
           <Eq id="r-series" values={lumpedValues(SERIES_R)} note={partNote(SERIES_R)} />
           <Eq id="circle-r" />
           <p>
-            <b>Shunt parts add to y.</b> A part in shunt adds its admittance: <span className={css.nw}>y<sub>in</sub> = y<sub>L</sub> + y<sub>p</sub></span>{cite([S3, '§2.2.6'])}. A capacitor adds <span className={css.nw}>b = ωC{Z0}</span>, positive; an inductor adds <span className={css.nw}>b = −{Z0}/(ωL)</span>,
-            negative{cite([W, '“Circuit elements and topology”'])}. g does not change, so the point slides along its
-            constant-g circle. A shunt resistor adds only g: the point slides along its constant-b arc, towards the short at <span className={css.nw}>Γ = −1</span> as R falls. Open and shorted stubs are shunt parts too: they add susceptance and move along g circles.
+            <b>{t('sm.th.t4.sh.b')}</b>{t('sm.th.t4.sh.a')}<span className={css.nw}>y<sub>in</sub> = y<sub>L</sub> + y<sub>p</sub></span>{cite([S3, '§2.2.6'])}
+            {t('sm.th.t4.sh.c')}<span className={css.nw}>b = ωC{Z0}</span>{t('sm.th.t4.sh.d')}<span className={css.nw}>b = −{Z0}/(ωL)</span>
+            {t('sm.th.t4.sh.e')}{cite([W, '“Circuit elements and topology”'])}{t('sm.th.t4.sh.f')}<span className={css.nw}>Γ = −1</span>{t('sm.th.t4.sh.g')}
           </p>
-          <Eq id="shunt-adds-y" values={shuntAdds} note={firstShunt < 0 ? undefined : `below: part ${firstShunt + 1}`} />
+          <Eq id="shunt-adds-y" values={shuntAdds} note={firstShunt < 0 ? undefined : t('sm.th.note.part', { n: firstShunt + 1 })} />
           <Eq id="b-shunt-c" values={lumpedValues(SHUNT_C)} note={partNote(SHUNT_C)} />
           <Eq id="b-shunt-l" values={lumpedValues(SHUNT_L)} note={partNote(SHUNT_L)} />
           <Eq id="g-shunt" values={lumpedValues(SHUNT_R)} note={partNote(SHUNT_R)} />
           <Eq id="circle-g" />
           <p>
-            <b>Which way round.</b> Every r circle runs from Γ = +1 round to the point on the real axis where x = 0. As x
-            grows from 0, the point leaves the real axis upwards, so adding inductance in series turns the point <b>clockwise</b> round
-            its r circle, and adding capacitance in series turns it <b>counter-clockwise</b>. Every g circle runs from Γ = −1
-            round to the point on the real axis where b = 0; as b grows from 0 the point leaves it downwards, so a shunt
-            capacitor turns the point <b>clockwise</b> round its g circle and a shunt inductor <b>counter-clockwise</b>. The
-            textbooks give the signs (a series inductor moves the point up along constant r{cite([S3, '§3.4'])}, a shunt
-            capacitor raises b along constant g{cite([S3, '§6.7'])}); the turning sense follows from the circle equations.
+            <b>{t('sm.th.t4.way.b')}</b>{t('sm.th.t4.way.a')}<b>{t('sm.th.t4.way.cw')}</b>{t('sm.th.t4.way.c')}<b>{t('sm.th.t4.way.ccw')}</b>
+            {t('sm.th.t4.way.d')}<b>{t('sm.th.t4.way.cw')}</b>{t('sm.th.t4.way.e')}<b>{t('sm.th.t4.way.ccw')}</b>{t('sm.th.t4.way.f')}
+            {cite([S3, '§3.4'])}{t('sm.th.t4.way.g')}{cite([S3, '§6.7'])}{t('sm.th.t4.way.h')}
           </p>
+          <p>{t('sm.th.t4.short')}</p>
           <p>
-            A shorter way to hold it: inductors move the point towards the upper half, capacitors towards the lower half,
-            whether they sit in series or in shunt. Both follow from the upper half being inductive for z and for y alike.
-          </p>
-          <p>
-            A line turns the point about the centre of its own chart, <b>clockwise</b> as it gets longer: the direction the
-            rim’s scale calls “towards the generator”{cite([S3, '§3.4, §3.5'])}. (The details are
-            in {jump('transmission-lines', 'Transmission lines')}.)
+            {t('sm.th.t4.line.a')}<b>{t('sm.th.t4.way.cw')}</b>{t('sm.th.t4.line.b')}{cite([S3, '§3.4, §3.5'])}{t('sm.th.t4.line.c')}
+            {jump('transmission-lines', topicTitle('transmission-lines'))}{t('sm.th.t4.line.d')}
           </p>
           <div className={css.tableWrap}>
             <table className={css.table}>
-              <thead><tr><th>Part</th><th>Keeps</th><th>Moves along</th><th>Arc from “no effect”</th></tr></thead>
+              <thead><tr><th>{t('sm.th.t4.tbl.part')}</th><th>{t('sm.th.t4.tbl.keeps')}</th><th>{t('sm.th.t4.tbl.along')}</th><th>{t('sm.th.t4.tbl.arc')}</th></tr></thead>
               <tbody>
-                <tr><th>Series L</th><td>r</td><td>its r circle</td><td>clockwise, upwards</td></tr>
-                <tr><th>Series C</th><td>r</td><td>its r circle</td><td>counter-clockwise, downwards</td></tr>
-                <tr><th>Series R</th><td>x</td><td>its x arc</td><td>towards Γ = +1</td></tr>
-                <tr><th>Shunt C, open stub (short)</th><td>g</td><td>its g circle</td><td>clockwise, downwards</td></tr>
-                <tr><th>Shunt L, shorted stub (short)</th><td>g</td><td>its g circle</td><td>counter-clockwise, upwards</td></tr>
-                <tr><th>Shunt R</th><td>b</td><td>its b arc</td><td>towards Γ = −1</td></tr>
-                <tr><th>Line of {Z0}</th><td>|Γ|</td><td>a circle about the centre</td><td>clockwise</td></tr>
+                <tr><th>{t('sm.th.t4.tbl.sl')}</th><td>r</td><td>{t('sm.th.t4.tbl.rCircle')}</td><td>{t('sm.th.t4.tbl.cwUp')}</td></tr>
+                <tr><th>{t('sm.th.t4.tbl.sc')}</th><td>r</td><td>{t('sm.th.t4.tbl.rCircle')}</td><td>{t('sm.th.t4.tbl.ccwDown')}</td></tr>
+                <tr><th>{t('sm.th.t4.tbl.sr')}</th><td>x</td><td>{t('sm.th.t4.tbl.xArc')}</td><td>{t('sm.th.t4.tbl.toPlus1')}</td></tr>
+                <tr><th>{t('sm.th.t4.tbl.shc')}</th><td>g</td><td>{t('sm.th.t4.tbl.gCircle')}</td><td>{t('sm.th.t4.tbl.cwDown')}</td></tr>
+                <tr><th>{t('sm.th.t4.tbl.shl')}</th><td>g</td><td>{t('sm.th.t4.tbl.gCircle')}</td><td>{t('sm.th.t4.tbl.ccwUp')}</td></tr>
+                <tr><th>{t('sm.th.t4.tbl.shr')}</th><td>b</td><td>{t('sm.th.t4.tbl.bArc')}</td><td>{t('sm.th.t4.tbl.toMinus1')}</td></tr>
+                <tr><th>{t('sm.th.t4.tbl.lineOf')}{Z0}</th><td>|Γ|</td><td>{t('sm.th.t4.tbl.centreCircle')}</td><td>{t('sm.th.t4.tbl.cw')}</td></tr>
               </tbody>
             </table>
           </div>
-          <p className={css.small}>
-            (“Short” stubs: shorter than λ/4; past that, a stub’s susceptance changes sign and the arc carries on round the
-            same g circle.)
-          </p>
+          <p className={css.small}>{t('sm.th.t4.stubsNote')}</p>
           <div className={css.figs}>
             <PlaneFigure />
             <WalksFigure />
           </div>
           <div className={css.live}>
-            {head('what each part keeps and changes, from the load')}
-            {n === 0 ? <p>No parts: the chart shows the load alone.</p> : walks.map((s, i) => (
+            {head(t('sm.th.t4.head'))}
+            {n === 0 ? <p>{t('sm.th.t4.noParts')}</p> : walks.map((s, i) => (
               <p key={i} data-walk={i}>
-                {i + 1} · {KIND_NAMES[c.parts[i].kind]} keeps {s.keeps} = {L(`part-${i}-kept`, s.kept)}
-                {s.zc && <> (against Z<sub>c</sub> = {L(`part-${i}-zc`, s.zc)})</>}, {s.what} from {L(`part-${i}-from`, s.from)} to{' '}
-                {L(`part-${i}-to`, s.to)}, {L(`part-${i}-sense`, s.sense)}
+                {i + 1} · {kindName(c.parts[i].kind, locale)}{t('sm.th.t4.keeps')}{s.keeps} = {L(`part-${i}-kept`, s.kept)}
+                {s.zc && <> ({t('sm.th.t4.againstZc')}Z<sub>c</sub> = {L(`part-${i}-zc`, s.zc)})</>}, {s.what}{t('sm.th.t4.from')}
+                {L(`part-${i}-from`, s.from)}{t('sm.th.t4.to')}{L(`part-${i}-to`, s.to)}, {L(`part-${i}-sense`, s.sense)}
               </p>
             ))}
           </div>
           <p>
-            <b>Why every arc is a circle.</b> Picture z on its own plane, r across and x up. A series reactance moves z along a
-            straight vertical line, r fixed. The chart does not plot z but <span className={css.nw}>Γ = (z − 1)/(z + 1)</span>, a fraction with a
-            first-degree expression above and below. Maps of that shape, <span className={css.nw}>(az + b)/(cz + d)</span>, are called Möbius
-            transformations, and they take every straight line and every circle to a straight line or a
-            circle{cite([M, '“Elementary properties”'])}. So the straight line “r fixed” lands on the chart as the r circle;
-            completing the square in the r circle’s equation shows the same thing directly.
+            <b>{t('sm.th.t4.mob1.b')}</b>{t('sm.th.t4.mob1.a')}<span className={css.nw}>Γ = (z − 1)/(z + 1)</span>
+            {t('sm.th.t4.mob1.c')}<span className={css.nw}>(az + b)/(cz + d)</span>{t('sm.th.t4.mob1.d')}{cite([M, '“Elementary properties”'])}
+            {t('sm.th.t4.mob1.e')}
           </p>
           <Eq id="gamma-z" />
           <p>
-            The same holds for every ideal part. With its value fixed, a part turns the impedance it sees into one of the same
-            shape, <span className={css.nw}>(A·Z + B)/(C·Z + D)</span>, with A, B, C, D from its two-port (ABCD) matrix. Going from Γ to Z and back are maps of
-            that shape too, and such maps chained one after another are again of that shape{cite([M, '“Definition”'])}; so
-            every ideal part maps the point by <span className={css.nw}>Γ′ = (aΓ + b)/(cΓ + d)</span>. Turn the part’s value and the point it would reach moves
-            along a straight line in the right plane (x for series parts, b for shunt parts) or round a circle (Γ of a line,
-            about its own centre), and the chart shows that path as a circle. A line whose impedance is not {Z0} still draws a
-            circle, centred on the real axis but not at the centre{cite([S3, '§3.5'])}. This is why the tool can draw every
-            part’s path as an exact arc and why a drag can follow it exactly.
+            {t('sm.th.t4.mob2.a')}<span className={css.nw}>(A·Z + B)/(C·Z + D)</span>{t('sm.th.t4.mob2.b')}{cite([M, '“Definition”'])}
+            {t('sm.th.t4.mob2.c')}<span className={css.nw}>Γ′ = (aΓ + b)/(cΓ + d)</span>{t('sm.th.t4.mob2.d')}{Z0}
+            {t('sm.th.t4.mob2.e')}{cite([S3, '§3.5'])}{t('sm.th.t4.mob2.f')}
           </p>
           <Eq id="abcd-zin" />
-          <Eq id="mobius" values={mobiusValues} note={n ? 'below: part 1 on your load (a, b, c, d up to a common factor)' : undefined} />
+          <Eq id="mobius" values={mobiusValues} note={n ? t('sm.th.note.mobius') : undefined} />
           <Eq id="line-rotation" />
-          <p>
-            <b>Why an arc starts where the part does nothing.</b> Each arc starts at the value where the part has no effect at
-            all, and ends at the value it has. For a series inductor that is 0 H, for a series capacitor an infinite
-            capacitance (a plain wire), for a shunt inductor an infinite inductance and for a shunt capacitor 0 F (both an
-            open), for a series resistor 0 Ω, for a shunt resistor an infinite resistance, and for a line or stub a length
-            that adds nothing (zero length; for an open stub zero length, for a shorted stub λ/4). So an arc begins exactly on
-            the point before the part and ends on the point after it, and its length on the chart is how much the part does: a
-            long arc is a part doing a lot, a tiny one a part you might leave out. It also tells you something about values:
-            a series capacitor moves the point less as it grows (x = −1/(ωC{Z0}) runs up to 0), so the long arcs come from the
-            small capacitors. In general, making an L or a C larger always turns its point clockwise, in series or in shunt.
-          </p>
+          <p><b>{t('sm.th.t4.startArc.b')}</b>{t('sm.th.t4.startArc.a')}{Z0}{t('sm.th.t4.startArc.c')}</p>
         </>
       ))}
 
       {topic('transmission-lines', (
         <>
           <p>
-            A line is a part you set by its length rather than by a value of L or C. Its electrical length is <span className={css.nw}>θ = βℓ = 2πℓ/λ</span>,
-            in radians, at the frequency {F0}{cite([E, '§3.15'])}. The tool takes it as ℓ in wavelengths or θ in degrees
-            at {F0}.
+            {t('sm.th.t5.p1.a')}<span className={css.nw}>θ = βℓ = 2πℓ/λ</span>{t('sm.th.t5.p1.b')}{F0}{cite([E, '§3.15'])}{t('sm.th.t5.p1.c')}{F0}.
           </p>
           <Eq id="line-theta" />
           <Eq id="beta" />
           <p>
-            <b>Rotation.</b> On a lossless line whose impedance is {Z0}, the reflection coefficient a length ℓ from the load is
-            the load’s turned by −2θ: <span className={css.nw}>Γ<sub>in</sub> = Γ<sub>L</sub>·e<sup>−j2θ</sup></span>{cite([S2, '§2.3'])}. Its size does not
-            change, so the point walks round a circle about the centre, and a falling angle means <b>clockwise</b> as you move
-            from the load towards the generator{cite([S3, '§3.4, §3.5'])}. The same result in impedances is the
-            input-impedance formula of a line{cite([E, '§3.15'])}.
+            <b>{t('sm.th.t5.rot.b')}</b>{t('sm.th.t5.rot.a')}{Z0}{t('sm.th.t5.rot.c')}
+            <span className={css.nw}>Γ<sub>in</sub> = Γ<sub>L</sub>·e<sup>−j2θ</sup></span>{cite([S2, '§2.3'])}
+            {t('sm.th.t5.rot.d')}<b>{t('sm.th.t5.rot.cw')}</b>{t('sm.th.t5.rot.e')}{cite([S3, '§3.4, §3.5'])}
+            {t('sm.th.t5.rot.f')}{cite([E, '§3.15'])}.
           </p>
-          <Eq id="line-rotation" values={egValues} note="below: λ/8 on your load" />
+          <Eq id="line-rotation" values={egValues} note={t('sm.th.note.lambda8')} />
           <Eq id="line-zin" />
           <p>
-            <b>Half a wavelength is a full turn.</b> θ = π at ℓ = λ/2, and 2θ = 2π brings Γ back to where it started: a λ/2
-            line shows the load’s own impedance{cite([E, '§3.15'])}. That is why the rim counts 0 to 0.5 wavelengths per turn.
-            At ℓ = λ/8 the point turns a quarter turn: your load {L('eg-z-l', cx(zr, zi))} becomes{' '}
-            {L('eg-z-in', cx(egm[M_ZR], egm[M_ZI]))}.
+            <b>{t('sm.th.t5.half.b')}</b>{t('sm.th.t5.half.a')}{cite([E, '§3.15'])}{t('sm.th.t5.half.c')}
+            {L('eg-z-l', cx(zr, zi))}{t('sm.th.t5.half.d')}{L('eg-z-in', cx(egm[M_ZR], egm[M_ZI]))}.
           </p>
           <div className={css.liveRow}>
             <div className={css.live}>
-              {head(li < 0 ? 'no line in the circuit: a λ/8 line of Z₀ on the load' : `part ${li + 1}, the first line or stub`)}
-              <p>λ/8 of {Z0} on the load: Γ<sub>L</sub> = {L('eg-gamma-l', cx(gr, gi))} → Γ<sub>in</sub> = {L('eg-gamma-in', cx(egm[M_GR], egm[M_GI]))}, z<sub>in</sub> = {L('eg-z-in', cx(egm[M_ZR], egm[M_ZI]))}</p>
+              {head(li < 0 ? t('sm.th.t5.headNone') : t('sm.th.t5.headLine', { n: li + 1 }))}
+              <p>{t('sm.th.t5.egLine.a')}{Z0}{t('sm.th.t5.egLine.b')}Γ<sub>L</sub> = {L('eg-gamma-l', cx(gr, gi))} → Γ<sub>in</sub> = {L('eg-gamma-in', cx(egm[M_GR], egm[M_GI]))}, z<sub>in</sub> = {L('eg-z-in', cx(egm[M_ZR], egm[M_ZI]))}</p>
               {li >= 0 && (
                 <>
-                  <p>Part {L('line-part', String(li + 1))}, {KIND_NAMES[c.parts[li].kind]}: θ = {L('line-theta', num(turnsAt(c.parts[li].kind, c.parts[li].value, f0, f0) * 360))}° at {F0}, Z<sub>c</sub> = {L('line-zc', amt(zcOf(c, li), 'Ω'))}</p>
-                  <p>Γ from {L('line-before', cx(m(li, M_GR), m(li, M_GI)))} to {L('line-after', cx(m(li + 1, M_GR), m(li + 1, M_GI)))}</p>
-                  {isStub(c.parts[li].kind) && <p>The stub adds b = {L('line-b', num(added(c.parts[li].kind, c.parts[li].value, zcOf(c, li), f0, f0, z0)))}</p>}
+                  <p>{t('sm.th.t5.partLine.a')}{L('line-part', String(li + 1))}, {kindName(c.parts[li].kind, locale)}: θ = {L('line-theta', num(turnsAt(c.parts[li].kind, c.parts[li].value, f0, f0) * 360))}{t('sm.th.t5.partLine.at')}{F0}, Z<sub>c</sub> = {L('line-zc', amt(zcOf(c, li), 'Ω'))}</p>
+                  <p>{t('sm.th.t5.gammaFrom')}{L('line-before', cx(m(li, M_GR), m(li, M_GI)))}{t('sm.th.t5.gammaTo')}{L('line-after', cx(m(li + 1, M_GR), m(li + 1, M_GI)))}</p>
+                  {isStub(c.parts[li].kind) && <p>{t('sm.th.t5.stubAdds')}{L('line-b', num(added(c.parts[li].kind, c.parts[li].value, zcOf(c, li), f0, f0, z0)))}</p>}
                 </>
               )}
             </div>
             <LineFigure gr={gr} gi={gi} gr2={egm[M_GR]} gi2={egm[M_GI]} />
           </div>
           <p>
-            <b>A line of another impedance.</b> When the line’s impedance Z<sub>c</sub> is not {Z0}, the line keeps the size of
-            the reflection measured against Z<sub>c</sub>, not against {Z0}, so the point circles round Z<sub>c</sub>’s point
-            instead of the centre. Seen on the {Z0} chart that is still a circle, with its centre on the real axis (not on
-            Z<sub>c</sub>’s point), and the tool draws it exactly{cite([S3, '§3.5'])}.
+            <b>{t('sm.th.t5.otherZ.b')}</b>{t('sm.th.t5.otherZ.a')}Z<sub>c</sub>{t('sm.th.t5.otherZ.c')}{Z0}{t('sm.th.t5.otherZ.d')}Z<sub>c</sub>
+            {t('sm.th.t5.otherZ.e')}{Z0}{t('sm.th.t5.otherZ.f')}Z<sub>c</sub>{t('sm.th.t5.otherZ.g')}{Z0}{t('sm.th.t5.otherZ.h')}Z<sub>c</sub>
+            {t('sm.th.t5.otherZ.i')}{cite([S3, '§3.5'])}.
           </p>
           <Eq id="line-circle-b" />
           <Eq id="line-circle-centre" />
           <Eq id="line-circle-radius" />
           <p>
-            <b>The λ/4 transformer.</b> A line a quarter wavelength long takes the point half a turn round its own circle:
-            <span className={css.nw}>Z<sub>in</sub> = Z<sub>t</sub>²/Z<sub>L</sub></span>{cite([E, '§3.19'])}. To match a resistive load R<sub>L</sub> to {Z0},
-            choose Z<sub>t</sub> = √({Z0}·R<sub>L</sub>){cite([E, '§3.19'])}: your load’s R<sub>L</sub> = {L('qw-rl', amt(c.loadR, 'Ω'))} on{' '}
-            {Z0} = {L('qw-z0', amt(z0, 'Ω'))} needs Z<sub>t</sub> = {L('qw-zt', amt(zt, 'Ω'))}
-            {c.loadX !== 0 ? <> (but your load is not resistive: see below)</> : null}. It is exact only where the line is λ/4
-            long (or λ/4 plus a multiple of λ/2), so at {F0}{cite([E, '§3.19'], [S2, '§2.4'])}. A load with reactance, like
-            the start circuit’s, must first be made resistive: by a part that cancels the reactance, or by a length of line
-            that turns the point onto the real axis.
+            <b>{t('sm.th.t5.qw.b')}</b>{t('sm.th.t5.qw.a')}<span className={css.nw}>Z<sub>in</sub> = Z<sub>t</sub>²/Z<sub>L</sub></span>{cite([E, '§3.19'])}
+            {t('sm.th.t5.qw.c')}R<sub>L</sub>{t('sm.th.t5.qw.d')}{Z0}{t('sm.th.t5.qw.e')}Z<sub>t</sub> = √({Z0}·R<sub>L</sub>){cite([E, '§3.19'])}
+            {t('sm.th.t5.qw.f')}R<sub>L</sub> = {L('qw-rl', amt(c.loadR, 'Ω'))}{t('sm.th.t5.qw.on')}{Z0} = {L('qw-z0', amt(z0, 'Ω'))}
+            {t('sm.th.t5.qw.needs')}Z<sub>t</sub> = {L('qw-zt', amt(zt, 'Ω'))}{c.loadX !== 0 ? t('sm.th.t5.qw.notRes') : null}
+            {t('sm.th.t5.qw.g')}{F0}{cite([E, '§3.19'], [S2, '§2.4'])}{t('sm.th.t5.qw.h')}
           </p>
           <Eq id="quarter-wave" />
           <Eq id="quarter-wave-match" values={{ Z_t: tv(zt, 0, 'Ω'), Z_0: tv(z0, 0, 'Ω'), R_L: tv(c.loadR, 0, 'Ω') }} />
           <p>
-            <b>Stubs.</b> A stub is a piece of line ending in a short or an open, put in shunt. A shorted line shows
-            <span className={css.nw}>Z<sub>in</sub> = jZ<sub>c</sub> tan βℓ</span>, an open one <span className={css.nw}>Z<sub>in</sub> = −jZ<sub>c</sub> cot βℓ</span>{cite([E, '§3.16'])}. In
-            shunt they add susceptance: b = ({Z0}/Z<sub>c</sub>) tan βℓ for an open stub and b = −({Z0}/Z<sub>c</sub>) cot βℓ
-            for a shorted one{cite([E, '§3.23'])}, so they move the point along its g circle like a shunt C or L
-            ({jump('moving-on-the-chart', 'Moving on the chart')}). A shorted stub shorter than λ/4 acts as an inductor and an
-            open one as a capacitor, with the values below, at one frequency only{cite([S2, '§2.4'])}. At λ/4 they swap roles:
-            a shorted λ/4 stub adds nothing (b = 0) and an open one is a short across the line.
+            <b>{t('sm.th.t5.stubs.b')}</b>{t('sm.th.t5.stubs.a')}<span className={css.nw}>Z<sub>in</sub> = jZ<sub>c</sub> tan βℓ</span>
+            {t('sm.th.t5.stubs.c')}<span className={css.nw}>Z<sub>in</sub> = −jZ<sub>c</sub> cot βℓ</span>{cite([E, '§3.16'])}
+            {t('sm.th.t5.stubs.d')}{Z0}/Z<sub>c</sub>{t('sm.th.t5.stubs.e')}{Z0}/Z<sub>c</sub>{t('sm.th.t5.stubs.f')}{cite([E, '§3.23'])}
+            {t('sm.th.t5.stubs.g')}{jump('moving-on-the-chart', topicTitle('moving-on-the-chart'))}{t('sm.th.t5.stubs.h')}
+            {cite([S2, '§2.4'])}{t('sm.th.t5.stubs.i')}
           </p>
           <Eq id="stub-short-z" />
           <Eq id="stub-open-z" />
@@ -709,47 +617,34 @@ function Theory({ bib, circuit: c, outcome, lists, sweep, layer }: Props) {
 
       {topic('how-good-is-a-match', (
         <>
-          <p>
-            Four numbers say how far from a match a point is, and all four are one number in disguise: |Γ|, the distance from
-            the centre.
-          </p>
+          <p>{t('sm.th.t6.intro')}</p>
           <ul>
-            <li><b>|Γ|</b> is the share of the incident voltage that comes back. Of the power, |Γ|² is reflected and 1 − |Γ|²
-              reaches the load{cite([E, '§3.20'])}.</li>
-            <li><b>VSWR</b>, the voltage standing wave ratio, is the ratio of the largest to the smallest voltage along the
-              line: (1 + |Γ|)/(1 − |Γ|){cite([E, '§3.14'])}. It is 1 at a match and grows without bound as |Γ| nears 1. On
-              the chart, a circle about the centre is a circle of constant VSWR, and it crosses the real axis on the right at
-              r = VSWR: the impedance at a voltage maximum is {Z0}·VSWR{cite([S2, '§2.3'])}.</li>
-            <li><b>Return loss</b> is how far the reflected power lies below the incident power, in decibels:
-              <span className={css.nw}>RL = −20 log<sub>10</sub> |Γ|</span>{cite([S3, '§2.8'])}. It is positive for a passive load{cite([S3, '§2.8'])}, and
-              larger is better. (Written 20 log<sub>10</sub> |Γ|, the same figure is negative; the sign says which of the two
-              is meant.)</li>
-            <li><b>Mismatch loss</b> is how much less power reaches the load than with a match:
-              <span className={css.nw}>ML = −10 log<sub>10</sub>(1 − |Γ|²) dB</span>. It is the power delivered above, put in decibels; the textbook names
-              it without the formula{cite([S3, '§2.8'])}.</li>
+            <li><b>|Γ|</b>{t('sm.th.t6.g.a')}{cite([E, '§3.20'])}.</li>
+            <li><b>VSWR</b>{t('sm.th.t6.vswr.a')}{cite([E, '§3.14'])}{t('sm.th.t6.vswr.b')}{Z0}·VSWR{cite([S2, '§2.3'])}.</li>
+            <li><b>{t('sm.th.t6.rl.b')}</b>{t('sm.th.t6.rl.a')}<span className={css.nw}>RL = −20 log<sub>10</sub> |Γ|</span>{cite([S3, '§2.8'])}{t('sm.th.t6.rl.c')}{cite([S3, '§2.8'])}{t('sm.th.t6.rl.d')}</li>
+            <li><b>{t('sm.th.t6.ml.b')}</b>{t('sm.th.t6.ml.a')}<span className={css.nw}>ML = −10 log<sub>10</sub>(1 − |Γ|²) dB</span>{t('sm.th.t6.ml.c')}{cite([S3, '§2.8'])}.</li>
           </ul>
           <Eq id="power-reflected" />
           <Eq id="power-delivered" />
-          <Eq id="vswr" values={loadValues} note="below: your load" />
+          <Eq id="vswr" values={loadValues} note={t('sm.th.note.load')} />
           <Eq id="gamma-vswr" />
           <Eq id="z-max" values={loadValues} />
           <Eq id="z-min" values={loadValues} />
           <Eq id="return-loss" values={loadValues} />
           <Eq id="mismatch-loss" values={loadValues} />
           <p>
-            Your load alone has |Γ| = {L('m-load-mag', num(m(0, M_MAG)))}: VSWR {L('m-load-vswr', num(m(0, M_VSWR)))}, return
-            loss {L('m-load-rl', amt(m(0, M_RL), 'dB'))}, {L('m-load-ref', num(reflectedPower(m(0, M_MAG)) * 100))} % of the
-            power reflected, mismatch loss {L('m-load-ml', amt(m(0, M_ML), 'dB'))}. The tool’s goal circle, VSWR{' '}
-            {num(GOAL_VSWR)}, is |Γ| = {L('goal-mag', num(GOAL_MAG))}: return loss {L('goal-rl', amt(returnLoss(GOAL_MAG), 'dB'))}{' '}
-            and {L('goal-ref', num(reflectedPower(GOAL_MAG) * 100))} % of the power reflected (mismatch
-            loss {L('goal-ml', amt(mismatchLoss(GOAL_MAG), 'dB'))}). Whether that is good enough is the designer’s call; the
-            tool’s choice is only a default.
+            {t('sm.th.t6.live.a')}{L('m-load-mag', num(m(0, M_MAG)))}{t('sm.th.t6.live.vswr')}{L('m-load-vswr', num(m(0, M_VSWR)))}
+            {t('sm.th.t6.live.rl')}{L('m-load-rl', amt(m(0, M_RL), 'dB'))}, {L('m-load-ref', num(reflectedPower(m(0, M_MAG)) * 100))}
+            {t('sm.th.t6.live.ref')}{L('m-load-ml', amt(m(0, M_ML), 'dB'))}{t('sm.th.t6.live.goal', { vswr: num(GOAL_VSWR) })}
+            {L('goal-mag', num(GOAL_MAG))}{t('sm.th.t6.live.goalRl')}{L('goal-rl', amt(returnLoss(GOAL_MAG), 'dB'))}
+            {t('sm.th.t6.live.goalAnd')}{L('goal-ref', num(reflectedPower(GOAL_MAG) * 100))}{t('sm.th.t6.live.goalRef')}
+            {L('goal-ml', amt(mismatchLoss(GOAL_MAG), 'dB'))}{t('sm.th.t6.live.end')}
           </p>
           <div className={css.liveRow}>
             <div className={css.live}>
-              {head('the load and the input')}
+              {head(t('sm.th.t6.head'))}
               <table className={css.metrics}>
-                <thead><tr><th /><th>Load</th><th>Input</th></tr></thead>
+                <thead><tr><th /><th>{t('sm.th.t6.colLoad')}</th><th>{t('sm.th.t6.colInput')}</th></tr></thead>
                 <tbody>
                   {loadRows.map(([label, value], i) => <tr key={i}><th>{label}</th><td>{value}</td><td>{inputRows[i][1]}</td></tr>)}
                 </tbody>
@@ -762,86 +657,75 @@ function Theory({ bib, circuit: c, outcome, lists, sweep, layer }: Props) {
 
       {topic('matching-with-two-parts', (
         <>
-          <p>
-            To match is to bring the input to the centre. The centre lies on two circles that matter: r = 1 and g = 1. A
-            series part keeps r, a shunt part keeps g ({jump('moving-on-the-chart', 'Moving on the chart')}), so the last step
-            into the centre is either a series part along r = 1 or a shunt part along g = 1. The first part’s job is to land
-            the point on that circle{cite([S3, '§6.7'])}.
-          </p>
+          <p>{t('sm.th.t7.p1.a')}{jump('moving-on-the-chart', topicTitle('moving-on-the-chart'))}{t('sm.th.t7.p1.b')}{cite([S3, '§6.7'])}.</p>
           <Eq id="series-adds-z" />
           <Eq id="shunt-adds-y" />
           <Eq id="circle-r" />
           <Eq id="circle-g" />
-          <Eq id="match-two-parts" note="series next to the load, then shunt" />
+          <Eq id="match-two-parts" note={t('sm.th.note.seriesThenShunt')} />
           <p>
-            <b>The start circuit, step by step.</b> The load is z = {L('start-load-z', cx(sm(0, M_ZR), sm(0, M_ZI)))}. A
-            series capacitor of x = {L('start-x', num(added(SERIES_C, START_C, 0, START.f0, START.f0, START.z0)))} takes it
-            along its r = {num(sm(0, M_ZR))} circle to {L('start-node1-z', cx(sm(1, M_ZR), sm(1, M_ZI)))}, whose admittance is
-            y = {L('start-node1-y', cx(sm(1, M_YR), sm(1, M_YI)))}: on the g = 1 circle. A shunt inductor of
-            b = {L('start-b', num(added(SHUNT_L, START_L, 0, START.f0, START.f0, START.z0)))} then takes y
-            to {L('start-input-y', cx(sm(2, M_YR), sm(2, M_YI)))}, the centre. At 100 MHz on 50 Ω those
-            are {L('start-c', amt(START_C, 'F'))} and {L('start-l', amt(START_L, 'H'))}.
+            <b>{t('sm.th.t7.step.b')}</b>{t('sm.th.t7.step.a')}{L('start-load-z', cx(sm(0, M_ZR), sm(0, M_ZI)))}
+            {t('sm.th.t7.step.c')}{L('start-x', num(added(SERIES_C, START_C, 0, START.f0, START.f0, START.z0)))}
+            {t('sm.th.t7.step.d', { r: num(sm(0, M_ZR)) })}{L('start-node1-z', cx(sm(1, M_ZR), sm(1, M_ZI)))}
+            {t('sm.th.t7.step.e')}{L('start-node1-y', cx(sm(1, M_YR), sm(1, M_YI)))}{t('sm.th.t7.step.f')}
+            {L('start-b', num(added(SHUNT_L, START_L, 0, START.f0, START.f0, START.z0)))}{t('sm.th.t7.step.g')}
+            {L('start-input-y', cx(sm(2, M_YR), sm(2, M_YI)))}{t('sm.th.t7.step.h')}{L('start-c', amt(START_C, 'F'))}
+            {t('sm.th.t7.step.and')}{L('start-l', amt(START_L, 'H'))}.
           </p>
-          <Eq id="x-series-c" values={{ x: tv(-1 / (START_W * START_C * START.z0)), X: tv(-1 / (START_W * START_C), 0, 'Ω'), omega: omegaTex(START.f0), C: tv(START_C, 0, 'F'), Z_0: tv(START.z0, 0, 'Ω') }} note="below: the start circuit" />
+          <Eq id="x-series-c" values={{ x: tv(-1 / (START_W * START_C * START.z0)), X: tv(-1 / (START_W * START_C), 0, 'Ω'), omega: omegaTex(START.f0), C: tv(START_C, 0, 'F'), Z_0: tv(START.z0, 0, 'Ω') }} note={t('sm.th.note.startCircuit')} />
           <Eq id="b-shunt-l" values={{ b: tv(-START.z0 / (START_W * START_L)), B: tv(-1 / (START_W * START_L), 0, 'S'), omega: omegaTex(START.f0), L: tv(START_L, 0, 'H'), Z_0: tv(START.z0, 0, 'Ω') }} />
           <p>
-            <b>Two routes, and when each works.</b> Series first (series, then shunt nearest the source) needs the load’s r
-            circle to meet the g = 1 circle, which happens when r ≤ 1. Shunt first needs the load’s g circle to meet the r = 1
-            circle, so g ≤ 1. Where a circle meets the target circle it usually meets it twice, so a route has two answers,
-            with different parts. ({jump('two-one-or-none', 'Why two, one or none')} is the next topic, with the solver.)
+            <b>{t('sm.th.t7.routes.b')}</b>{t('sm.th.t7.routes.a')}{jump('two-one-or-none', t('sm.th.t7.routes.link'))}{t('sm.th.t7.routes.c')}
           </p>
           <p>
-            <b>One part can be enough.</b> The start load already lies on g = 1 (its y
-            is {L('start-load-y', cx(sm(0, M_YR), sm(0, M_YI)))}), so a single shunt capacitor of b = +1,{' '}
-            {L('start-shunt-c', amt(START_SHUNT_C, 'F'))}, matches it on its own. A single series reactance matches any load on
-            r = 1, a single shunt reactance any load on g = 1{cite([E, '§3.22'])}. A line followed by a shunt stub does the same
-            job with line pieces: the line turns the point onto g = 1, the stub cancels b{cite([E, '§3.23'])}.
+            <b>{t('sm.th.t7.one.b')}</b>{t('sm.th.t7.one.a')}{L('start-load-y', cx(sm(0, M_YR), sm(0, M_YI)))}
+            {t('sm.th.t7.one.c')}{L('start-shunt-c', amt(START_SHUNT_C, 'F'))}{t('sm.th.t7.one.d')}{cite([E, '§3.22'])}
+            {t('sm.th.t7.one.e')}{cite([E, '§3.23'])}.
           </p>
           <Eq id="b-shunt-c" values={{ b: tv(START_W * START_SHUNT_C * START.z0), B: tv(START_W * START_SHUNT_C, 0, 'S'), omega: omegaTex(START.f0), C: tv(START_SHUNT_C, 0, 'F'), Z_0: tv(START.z0, 0, 'Ω') }} />
           <div className={css.liveRow}>
             <div className={css.live}>
-              {head('the path, node by node')}
+              {head(t('sm.th.t7.head'))}
               <table className={css.metrics}>
-                <thead><tr><th>Node</th><th>z</th><th>y</th></tr></thead>
+                <thead><tr><th>{t('sm.th.t7.colNode')}</th><th>z</th><th>y</th></tr></thead>
                 <tbody>
                   {Array.from({ length: n + 1 }, (_, k) => (
-                    <tr key={k}><th>{k === 0 ? 'Load' : k === n ? `${k} (input)` : k}</th><td>{L(`node-${k}-z`, cx(m(k, M_ZR), m(k, M_ZI)))}</td><td>{L(`node-${k}-y`, cx(m(k, M_YR), m(k, M_YI)))}</td></tr>
+                    <tr key={k}><th>{k === 0 ? t('sm.th.t7.nodeLoad') : k === n ? t('sm.th.t7.nodeInput', { k }) : k}</th><td>{L(`node-${k}-z`, cx(m(k, M_ZR), m(k, M_ZI)))}</td><td>{L(`node-${k}-y`, cx(m(k, M_YR), m(k, M_YI)))}</td></tr>
                   ))}
                 </tbody>
               </table>
               <p>
-                The load has r = {num(zr)} and g = {num(yr)}: series first is {L('route-series', zr <= 1 ? 'open' : 'closed')}{' '}
-                (r ≤ 1), shunt first is {L('route-shunt', yr <= 1 ? 'open' : 'closed')} (g ≤ 1).
+                {t('sm.th.t7.routeSummary.a', { r: num(zr), g: num(yr) })}{L('route-series', zr <= 1 ? t('sm.th.t7.open') : t('sm.th.t7.closed'))}
+                {t('sm.th.t7.routeSummary.b')}{L('route-shunt', yr <= 1 ? t('sm.th.t7.open') : t('sm.th.t7.closed'))}{t('sm.th.t7.routeSummary.c')}
               </p>
               {c.parts.map((p, i) => (
                 <p key={i}>
-                  {i + 1} · {KIND_NAMES[p.kind]} {L(`part-${i}-value`, valueText(p.kind, p.value))}
-                  {p.kind <= SHUNT_C || isStub(p.kind) ? <>: adds {p.kind === SERIES_R ? 'r' : p.kind === SHUNT_R ? 'g' : isSeries(p.kind) ? 'x' : 'b'} = {L(`part-${i}-added`, num(added(p.kind, p.value, p.zc ?? z0, f0, f0, z0)))}</> : null}
+                  {i + 1} · {kindName(p.kind, locale)} {L(`part-${i}-value`, valueText(p.kind, p.value))}
+                  {p.kind <= SHUNT_C || isStub(p.kind) ? <>{t('sm.th.t7.adds')}{p.kind === SERIES_R ? 'r' : p.kind === SHUNT_R ? 'g' : isSeries(p.kind) ? 'x' : 'b'} = {L(`part-${i}-added`, num(added(p.kind, p.value, p.zc ?? z0, f0, f0, z0)))}</> : null}
                 </p>
               ))}
-              <p>The load’s Q = {L('load-q', num(m(0, M_Q)))}.</p>
+              <p>{t('sm.th.t7.loadQ')}{L('load-q', num(m(0, M_Q)))}.</p>
             </div>
             <MatchFigure />
           </div>
           <p>
-            <b>Q.</b> For a resistive load matched by an L network, the Q of both legs is √(R<sub>high</sub>/R<sub>low</sub> − 1){cite([S3, '§6.4'])}.
-            Any point has its own Q = |x|/r = |b|/g{cite([S3, '§6.4'])}; the start load’s is {L('start-q', num(sm(0, M_Q)))}.
-            What Q means for bandwidth is in {jump('q-and-bandwidth', 'Q and bandwidth')}.
+            <b>Q.</b>{t('sm.th.t7.q.a')}√(R<sub>high</sub>/R<sub>low</sub> − 1){cite([S3, '§6.4'])}{t('sm.th.t7.q.b')}{cite([S3, '§6.4'])}
+            {t('sm.th.t7.q.c')}{L('start-q', num(sm(0, M_Q)))}{t('sm.th.t7.q.d')}{jump('q-and-bandwidth', topicTitle('q-and-bandwidth'))}.
           </p>
-          <Eq id="q-node" values={loadValues} note="below: your load" />
+          <Eq id="q-node" values={loadValues} note={t('sm.th.note.load')} />
           <Eq id="q-l-network" />
         </>
       ))}
 
       {/* Memoised on what they show: a change of the network alone (every drag's commit) does not render them again. */}
-      <SolverTopics topic={(id, children) => topic(id, children, TOPICS.findIndex((t) => t.id === id) + 1)} cite={cite} L={L} jump={jump} Eq={Eq}
+      <SolverTopics topic={(id, children) => topic(id, children, TOPICS.findIndex((x) => x.id === id) + 1)} cite={cite} L={L} jump={jump} Eq={Eq}
         outcome={outcome} lists={lists} bib={bib} folded={SOLVER_IDS.map((id) => (closed[id] ? '1' : '0')).join('')}
-        back={back && SOLVER_IDS.includes(back.id) ? `${back.id}:${back.n}` : ''} />
+        back={back && SOLVER_IDS.includes(back.id) ? `${back.id}:${back.n}` : ''} locale={locale} />
       {/* M7.4b: after the solver's, so their citations are numbered in page order. */}
       <SweepCircuitContext.Provider value={c}>
-        <SweepTopics topic={(id, children) => topic(id, children, TOPICS.findIndex((t) => t.id === id) + 1)} cite={cite} L={L} jump={jump} Eq={Eq}
+        <SweepTopics topic={(id, children) => topic(id, children, TOPICS.findIndex((x) => x.id === id) + 1)} cite={cite} L={L} jump={jump} Eq={Eq}
           sweep={sweep} layer={layer} bib={bib} folded={SWEEP_IDS.map((id) => (closed[id] ? '1' : '0')).join('')}
-          back={back && SWEEP_IDS.includes(back.id) ? `${back.id}:${back.n}` : ''} />
+          back={back && SWEEP_IDS.includes(back.id) ? `${back.id}:${back.n}` : ''} locale={locale} />
       </SweepCircuitContext.Provider>
     </div>
   );

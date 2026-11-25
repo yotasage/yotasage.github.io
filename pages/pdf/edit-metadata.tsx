@@ -20,6 +20,7 @@ import { PdfMetadata, PdfMetadataEdit } from '../../lib/pdf/metadata';
 import { pdfPreview } from '../../lib/pdf/pdfjs';
 import { EDIT_METADATA } from '../../lib/pdf/tools';
 import { runReadPdfMetadata, runWritePdfMetadata } from '../../lib/pdf/workerClient';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
@@ -77,6 +78,7 @@ function nowLocalInput(): string {
 }
 
 export default function EditMetadataPage() {
+  const { t } = useI18n();
   const [doc, setDoc] = React.useState<LoadedDoc | null>(null);
   const [locked, setLocked] = React.useState<LockedFile | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -133,7 +135,7 @@ export default function EditMetadataPage() {
         setLocked({
           name,
           bytes,
-          error: password !== undefined ? 'Incorrect password. Try again.' : null,
+          error: password !== undefined ? t('pdf.ff.wrongPw') : null,
           busy: false,
         });
       } else {
@@ -148,10 +150,10 @@ export default function EditMetadataPage() {
   async function loadFile(files: File[]) {
     const pdf = files.find(isPdf);
     if (!pdf) {
-      setNotice('Please select a PDF file.');
+      setNotice(t('pdf.ff.pickPdf'));
       return;
     }
-    setNotice(files.length > 1 ? 'Only the first PDF was opened. Edit metadata works on one PDF at a time.' : null);
+    setNotice(files.length > 1 ? t('pdf.edm.onlyFirst') : null);
     setLocked(null);
     try {
       const bytes = await readBytes(pdf);
@@ -244,7 +246,7 @@ export default function EditMetadataPage() {
     <PdfPage
       title={EDIT_METADATA.title}
       showHub
-      lead="Inspect and update standard PDF document properties, dates, and custom Info dictionary fields right in your browser."
+      lead={t('pdf.edm.lead')}
     >
       {locked && (
         <PasswordPrompt
@@ -259,15 +261,15 @@ export default function EditMetadataPage() {
         />
       )}
       {error && !doc && <div className={styles.error} style={{ marginBottom: '1rem' }}>{error}</div>}
-      {loading && !doc && !locked && <Progress fraction={0.4} label="Reading PDF metadata…" />}
+      {loading && !doc && !locked && <Progress fraction={0.4} label={t('pdf.edm.reading')} />}
 
       <ToolWorkspace
         tool={EDIT_METADATA}
         accept="application/pdf,.pdf"
         multiple={false}
-        selectLabel="Select a PDF file"
-        dropLabel="or drop a PDF here"
-        addLabel="Replace PDF"
+        selectLabel={t('pdf.p.selectPdfFile')}
+        dropLabel={t('pdf.p.dropPdf')}
+        addLabel={t('pdf.p.replacePdf')}
         hasFiles={!!doc}
         onFiles={loadFile}
         toolbar={
@@ -277,13 +279,13 @@ export default function EditMetadataPage() {
               className={styles.buttonSmall}
               onClick={() => doc && populateForm(doc.meta)}
             >
-              Reset edits
+              {t('pdf.edm.resetEdits')}
             </button>
             <button type="button" className={styles.buttonSmall} onClick={clearAllFields}>
-              Clear all fields
+              {t('pdf.edm.clearAllFields')}
             </button>
             <button type="button" className={styles.buttonSmall} onClick={clearDoc}>
-              Close
+              {t('pdf.ff.close')}
             </button>
           </>
         }
@@ -291,30 +293,27 @@ export default function EditMetadataPage() {
           <>
             <div className={styles.summaryBox}>
               <div className={styles.summaryRow}>
-                <span>Standard fields</span>
+                <span>{t('pdf.edm.stdFields')}</span>
                 <span>{filledStandardCount} / 8</span>
               </div>
               <div className={styles.summaryRow}>
-                <span>Custom fields</span>
+                <span>{t('pdf.edm.customFields')}</span>
                 <span>{activeCustomCount}</span>
               </div>
               <div className={styles.summaryRow}>
-                <span>XMP stream</span>
-                <span>{doc?.meta.hasXmp ? 'Present' : 'None'}</span>
+                <span>{t('pdf.edm.xmpStream')}</span>
+                <span>{t(doc?.meta.hasXmp ? 'pdf.edm.present' : 'pdf.edm.none')}</span>
               </div>
             </div>
 
             <Checkbox
-              label="Remove XMP metadata stream so viewers show the edited values"
+              label={t('pdf.edm.clearXmpLabel')}
               checked={clearXmp}
               onChange={setClearXmp}
             />
-            <p className={styles.note}>
-              Many PDF viewers prefer embedded XMP XML over standard Info properties. Stripping stale XMP ensures your
-              updated values appear everywhere.
-            </p>
+            <p className={styles.note}>{t('pdf.edm.clearXmpNote')}</p>
 
-            <Field label="File name">
+            <Field label={t('pdf.ff.fileName')}>
               <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
             </Field>
 
@@ -322,24 +321,26 @@ export default function EditMetadataPage() {
             {error && <div className={styles.error}>{error}</div>}
 
             <button type="button" className={styles.primary} disabled={busy || !doc} onClick={saveMetadata}>
-              {busy ? 'Saving…' : 'Save metadata'}
+              {t(busy ? 'pdf.edm.saving' : 'pdf.edm.saveBtn')}
             </button>
 
             {result && (
               <div className={styles.result}>
-                <h3>Metadata updated</h3>
+                <h3>{t('pdf.edm.doneTitle')}</h3>
                 <p>
-                  Verified: {result.verified.title ? `“${result.verified.title}”` : 'Untitled'} ·{' '}
-                  {result.verified.customFields.length} custom field
-                  {result.verified.customFields.length === 1 ? '' : 's'} ·{' '}
-                  {result.verified.hasXmp ? 'XMP kept' : 'XMP stripped'} · {formatBytes(result.bytes.length)}.
+                  {t(result.verified.customFields.length === 1 ? 'pdf.edm.verifiedOne' : 'pdf.edm.verifiedMany', {
+                    title: result.verified.title ? `“${result.verified.title}”` : t('pdf.edm.untitled'),
+                    n: result.verified.customFields.length,
+                    xmp: t(result.verified.hasXmp ? 'pdf.edm.xmpKept' : 'pdf.edm.xmpStripped'),
+                    size: formatBytes(result.bytes.length),
+                  })}
                 </p>
                 <button
                   type="button"
                   className={styles.primary}
                   onClick={() => download(result.bytes, outputName)}
                 >
-                  Download {outputName}
+                  {t('pdf.ff.downloadNamed', { name: outputName })}
                 </button>
                 <ContinueWith
                   currentToolId={EDIT_METADATA.id}
@@ -355,68 +356,68 @@ export default function EditMetadataPage() {
             <div className={styles.fileBanner}>
               <strong>{doc.name}</strong>
               <span className={styles.fileBannerMeta}>
-                {doc.pageCount !== null ? `${doc.pageCount} page${doc.pageCount === 1 ? '' : 's'} · ` : ''}
+                {doc.pageCount !== null ? `${t(doc.pageCount === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany', { n: doc.pageCount })} · ` : ''}
                 {formatBytes(doc.bytes.length)}
               </span>
               {doc.meta.hasXmp ? (
-                <span className={styles.statusLeft}>XMP stream present</span>
+                <span className={styles.statusLeft}>{t('pdf.edm.xmpPresent')}</span>
               ) : (
-                <span className={styles.statusKept}>No XMP stream</span>
+                <span className={styles.statusKept}>{t('pdf.edm.noXmp')}</span>
               )}
             </div>
 
             <div className={styles.metaCard}>
-              <h3>Standard document properties</h3>
+              <h3>{t('pdf.edm.stdPropsHeading')}</h3>
               <div className={styles.metaGrid}>
-                <Field label="Title">
+                <Field label={t('pdf.edm.title')}>
                   <input
                     className={fieldStyles.input}
                     value={title}
-                    placeholder="Document title"
+                    placeholder={t('pdf.edm.titlePh')}
                     onChange={(e) => setTitle(e.target.value)}
                   />
                 </Field>
-                <Field label="Author">
+                <Field label={t('pdf.edm.author')}>
                   <input
                     className={fieldStyles.input}
                     value={author}
-                    placeholder="Author name"
+                    placeholder={t('pdf.edm.authorPh')}
                     onChange={(e) => setAuthor(e.target.value)}
                   />
                 </Field>
-                <Field label="Subject" wide>
+                <Field label={t('pdf.edm.subject')} wide>
                   <input
                     className={fieldStyles.input}
                     value={subject}
-                    placeholder="Brief description or subject"
+                    placeholder={t('pdf.edm.subjectPh')}
                     onChange={(e) => setSubject(e.target.value)}
                   />
                 </Field>
-                <Field label="Keywords" help="Comma- or semicolon-separated keywords." wide>
+                <Field label={t('pdf.edm.keywords')} help={t('pdf.edm.keywordsHelp')} wide>
                   <input
                     className={fieldStyles.input}
                     value={keywords}
-                    placeholder="report, finance, 2026"
+                    placeholder={t('pdf.edm.keywordsPh')}
                     onChange={(e) => setKeywords(e.target.value)}
                   />
                 </Field>
-                <Field label="Creator (application)">
+                <Field label={t('pdf.edm.creator')}>
                   <input
                     className={fieldStyles.input}
                     value={creator}
-                    placeholder="e.g. LibreOffice Writer"
+                    placeholder={t('pdf.edm.creatorPh')}
                     onChange={(e) => setCreator(e.target.value)}
                   />
                 </Field>
-                <Field label="Producer (PDF library)">
+                <Field label={t('pdf.edm.producer')}>
                   <input
                     className={fieldStyles.input}
                     value={producer}
-                    placeholder="e.g. pdf-lib"
+                    placeholder={t('pdf.edm.producerPh')}
                     onChange={(e) => setProducer(e.target.value)}
                   />
                 </Field>
-                <Field label="Creation date">
+                <Field label={t('pdf.edm.creationDate')}>
                   <div className={styles.dateInputRow}>
                     <input
                       type="datetime-local"
@@ -429,7 +430,7 @@ export default function EditMetadataPage() {
                       className={styles.buttonSmall}
                       onClick={() => setCreationDate(nowLocalInput())}
                     >
-                      Now
+                      {t('pdf.edm.now')}
                     </button>
                     {creationDate && (
                       <button
@@ -437,12 +438,12 @@ export default function EditMetadataPage() {
                         className={styles.buttonSmall}
                         onClick={() => setCreationDate('')}
                       >
-                        Clear
+                        {t('pdf.ff.clear')}
                       </button>
                     )}
                   </div>
                 </Field>
-                <Field label="Modification date">
+                <Field label={t('pdf.edm.modDate')}>
                   <div className={styles.dateInputRow}>
                     <input
                       type="datetime-local"
@@ -455,7 +456,7 @@ export default function EditMetadataPage() {
                       className={styles.buttonSmall}
                       onClick={() => setModificationDate(nowLocalInput())}
                     >
-                      Now
+                      {t('pdf.edm.now')}
                     </button>
                     {modificationDate && (
                       <button
@@ -463,7 +464,7 @@ export default function EditMetadataPage() {
                         className={styles.buttonSmall}
                         onClick={() => setModificationDate('')}
                       >
-                        Clear
+                        {t('pdf.ff.clear')}
                       </button>
                     )}
                   </div>
@@ -473,40 +474,38 @@ export default function EditMetadataPage() {
 
             <div className={styles.metaCard} style={{ marginTop: '1rem' }}>
               <div className={styles.customFieldHeader}>
-                <h3>Custom metadata fields</h3>
+                <h3>{t('pdf.edm.customHeading')}</h3>
                 <button type="button" className={styles.buttonSmall} onClick={addCustomRow}>
-                  + Add field
+                  {t('pdf.edm.addField')}
                 </button>
               </div>
               {customRows.length === 0 ? (
-                <p className={styles.note}>
-                  No custom properties. Add key–value pairs to store extra strings in the PDF Info dictionary.
-                </p>
+                <p className={styles.note}>{t('pdf.edm.noCustom')}</p>
               ) : (
                 <div className={styles.customFieldList}>
                   {customRows.map((row) => (
                     <div key={row.id} className={styles.customFieldRow}>
                       <input
                         className={fieldStyles.input}
-                        placeholder="Field key (e.g. Department)"
-                        aria-label="Custom field key"
+                        placeholder={t('pdf.edm.keyPh')}
+                        aria-label={t('pdf.edm.keyAria')}
                         value={row.key}
                         onChange={(e) => updateCustomRow(row.id, 'key', e.target.value)}
                       />
                       <input
                         className={fieldStyles.input}
-                        placeholder="Value"
-                        aria-label="Custom field value"
+                        placeholder={t('pdf.edm.valPh')}
+                        aria-label={t('pdf.edm.valAria')}
                         value={row.value}
                         onChange={(e) => updateCustomRow(row.id, 'value', e.target.value)}
                       />
                       <button
                         type="button"
                         className={styles.buttonSmall}
-                        aria-label={`Remove ${row.key || 'custom field'}`}
+                        aria-label={t('pdf.edm.removeAria', { key: row.key || t('pdf.edm.customFieldFallback') })}
                         onClick={() => removeCustomRow(row.id)}
                       >
-                        Remove
+                        {t('pdf.edm.remove')}
                       </button>
                     </div>
                   ))}
@@ -514,8 +513,7 @@ export default function EditMetadataPage() {
               )}
               {collidingKeys.length > 0 && (
                 <p className={fieldStyles.warning}>
-                  Standard field name{collidingKeys.length === 1 ? '' : 's'} ({collidingKeys.join(', ')}) cannot be set
-                  as custom fields; edit them in the standard section above.
+                  {t(collidingKeys.length === 1 ? 'pdf.edm.collideOne' : 'pdf.edm.collideMany', { keys: collidingKeys.join(', ') })}
                 </p>
               )}
             </div>

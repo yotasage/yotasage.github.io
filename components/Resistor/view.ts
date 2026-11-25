@@ -6,6 +6,16 @@ import {
   colour, decodeBands, decodeMarking, encodeBands, encodeMarkings, flipMarking, formatOhms, formatTolerance, multiplierText, neighbours, otherEndLabel,
   readInput, toleranceColour,
 } from '../../lib/resistor';
+import { translate } from '../../lib/ui/i18n';
+import type { Locale, TranslationKey } from '../../lib/ui/translations';
+
+export function colourLabel(c: Colour, locale: Locale = 'en'): string {
+  return translate(locale, `res.col.${c}` as TranslationKey);
+}
+
+export function markLabel(m: MarkSystem, locale: Locale = 'en'): string {
+  return translate(locale, `res.mark.${m}` as TranslationKey);
+}
 
 export type PartType = 'axial' | 'chip';
 export type MarkSystem = 'three' | 'four' | 'eia96';
@@ -109,7 +119,7 @@ function nearestTolerance(pct: number): number {
 
 const rounded = (ohms: number, digits: number, low: number, high: number) => Math.min(high, Math.max(low, Number(ohms.toPrecision(digits))));
 
-export function resolveView(view: View, reading: Reading | undefined, text: string, tolerance: number): Resolved {
+export function resolveView(view: View, reading: Reading | undefined, text: string, tolerance: number, locale: Locale = 'en'): Resolved {
   const example = reading === undefined;
   const ohms = reading?.ohms ?? 4700;
   const type: PartType = view.type ?? (reading && (reading.kind === 'smd' || reading.kind === 'eia96') ? 'chip' : 'axial');
@@ -128,10 +138,10 @@ export function resolveView(view: View, reading: Reading | undefined, text: stri
     const digits = count <= 4 ? 2 : 3;
     const near = rounded(ohms, digits, 1e-3, digits === 2 ? 99e9 : 999e9);
     const tol = nearestTolerance(tolerance);
-    if (near !== ohms && bands(near, count, tolerance).ok) fixes.push({ label: `Use ${formatOhms(near)}`, ohms: near });
-    if (count < 5 && bands(ohms, 5, tolerance).ok) fixes.push({ label: 'Use 5 bands', view: { bands: 5 } });
-    if (tol !== tolerance && bands(ohms, count, tol).ok) fixes.push({ label: `Use ${formatTolerance(tol)}`, tolerance: tol });
-    if (!fixes.length && bands(near, count, tol).ok) fixes.push({ label: `Use ${formatOhms(near)} at ${formatTolerance(tol)}`, ohms: near, tolerance: tol });
+    if (near !== ohms && bands(near, count, tolerance).ok) fixes.push({ label: translate(locale, 'res.vw.useVal', { val: formatOhms(near) }), ohms: near });
+    if (count < 5 && bands(ohms, 5, tolerance).ok) fixes.push({ label: translate(locale, 'res.vw.use5Bands'), view: { bands: 5 } });
+    if (tol !== tolerance && bands(ohms, count, tol).ok) fixes.push({ label: translate(locale, 'res.vw.useVal', { val: formatTolerance(tol) }), tolerance: tol });
+    if (!fixes.length && bands(near, count, tol).ok) fixes.push({ label: translate(locale, 'res.vw.useValAtTol', { val: formatOhms(near), tol: formatTolerance(tol) }), ohms: near, tolerance: tol });
   }
 
   // ---- Chip
@@ -146,9 +156,9 @@ export function resolveView(view: View, reading: Reading | undefined, text: stri
   const marking = m[system];
   if (type === 'chip' && !marking) {
     const near = system === 'eia96' ? neighbours(ohms, 'E96')?.nearest : rounded(ohms, system === 'three' ? 2 : 3, 0, Infinity);
-    if (near !== undefined && near !== ohms && encodeMarkings(near)[system]) fixes.push({ label: `Use ${formatOhms(near)}`, ohms: near });
+    if (near !== undefined && near !== ohms && encodeMarkings(near)[system]) fixes.push({ label: translate(locale, 'res.vw.useVal', { val: formatOhms(near) }), ohms: near });
     for (const other of ['three', 'four', 'eia96'] as MarkSystem[]) {
-      if (other !== system && m[other]) fixes.push({ label: `Use ${MARK_LABEL[other]}`, view: { mark: other } });
+      if (other !== system && m[other]) fixes.push({ label: translate(locale, 'res.vw.useVal', { val: markLabel(other, locale) }), view: { mark: other } });
     }
   }
 
@@ -187,7 +197,7 @@ export interface BandOption {
 const sameCode = (code: BandCode | BandError, colours: Colour[]) => code.ok && code.bands.map((b) => b.colour).join() === colours.join();
 
 // The colours allowed for one band, each with its meaning there and what choosing it does.
-export function bandOptions(r: Resolved, index: number): BandOption[] {
+export function bandOptions(r: Resolved, index: number, locale: Locale = 'en'): BandOption[] {
   const n = r.colours.length;
   if (r.code.ok === false || n < 3 || !r.code.bands[index]) return [];
   const role = r.code.bands[index].role;
@@ -211,7 +221,8 @@ export function bandOptions(r: Resolved, index: number): BandOption[] {
     if (read.ok === false) return { ...option, disabled: read.error };
     const again = n === 3 ? encodeBands(read.ohms, 3) : encodeBands(read.ohms, n as BandCount, read.tolerance, read.tcr);
     if (!sameCode(again, next)) {
-      return { ...option, disabled: `That would be ${formatOhms(read.ohms)}, which is written ${again.ok ? again.bands.map((b) => b.colour).join(', ') : 'otherwise'}.` };
+      const written = again.ok ? again.bands.map((b) => colourLabel(b.colour, locale)).join(', ') : translate(locale, 'res.vw.otherwise');
+      return { ...option, disabled: translate(locale, 'res.vw.wouldBe', { ohms: formatOhms(read.ohms), written }) };
     }
     return { ...option, change: { ohms: read.ohms, tolerance: n === 3 ? 20 : read.tolerance, view: { type: 'axial', bands: n as BandCount, tcr: read.tcr ?? null } } };
   });
@@ -231,14 +242,14 @@ export interface OtherEnd {
 }
 
 // The bands read from the other end. A code read backwards is only offered when it is a code as it would be written.
-export function otherEnd(r: Resolved): OtherEnd | null {
+export function otherEnd(r: Resolved, locale: Locale = 'en'): OtherEnd | null {
   const n = r.colours.length;
   if (n < 3) return null;
   const turned = r.colours.slice().reverse();
   const read = decodeBands(turned);
   if (read.ok === false) return { ok: false, text: read.error };
   const again = n === 3 ? encodeBands(read.ohms, 3) : encodeBands(read.ohms, n as BandCount, read.tolerance, read.tcr);
-  if (!sameCode(again, turned)) return { ok: false, text: 'A code does not start with a black band that could be left out.' };
+  if (!sameCode(again, turned)) return { ok: false, text: translate(locale, 'res.vw.noLeadingBlack') };
   const givenDoubt = r.code.ok ? bandDoubt(r.code.ohms, r.code.tolerance, r.colours) : undefined;
   const doubt = bandDoubt(read.ohms, read.tolerance, turned);
   return {
@@ -255,11 +266,11 @@ export function otherEnd(r: Resolved): OtherEnd | null {
 // The digits and the multiplier of the code, with the third digit set, added (on a part with two digits, which
 // then has five bands) or, with `digit` null, taken away (four bands). The value keeps its size: 4.7 kΩ with a
 // third digit 5 is 4.75 kΩ, and 4.75 kΩ without its third digit is 4.7 kΩ.
-export function thirdDigit(r: Resolved, digit: number | null): Change | { error: string } {
+export function thirdDigit(r: Resolved, digit: number | null, locale: Locale = 'en'): Change | { error: string } {
   if (r.code.ok === false) return { error: r.code.error };
   const digits = r.code.bands.filter((b) => b.role === 'digit').map((b) => colour(b.colour).digit);
   const multiplier = r.code.bands.find((b) => b.role === 'multiplier');
-  if (digits.length < 2 || !multiplier) return { error: 'A link has no digits to change.' };
+  if (digits.length < 2 || !multiplier) return { error: translate(locale, 'res.vw.linkNoDigits') };
   const exp = colour(multiplier.colour).exp + (digits.length === 3 ? 1 : 0);
   const tolerance = toleranceHasColour(r.tolerance) && r.colours.length > 3 ? r.tolerance : digit === null ? 5 : 1;
   const ohms = digit === null ? Number(`${digits[0]}${digits[1]}e${exp}`) : Number(`${digits[0]}${digits[1]}${digit}e${exp - 1}`);
@@ -297,11 +308,11 @@ export function upsideDown(r: Resolved): { code: string; ohms: number; change: C
 }
 
 // What typing a marking changes, or why it is none.
-export function markingChange(code: string, system: MarkSystem): Change | { error: string } {
+export function markingChange(code: string, system: MarkSystem, locale: Locale = 'en'): Change | { error: string } {
   const text = code.trim();
-  if (!text) return { error: 'Type a marking, such as 472, 4701, 4R7 or 01C.' };
+  if (!text) return { error: translate(locale, 'res.vw.typeMarking') };
   const readings = decodeMarking(text);
-  if (!readings.length) return { error: `${text.toUpperCase()} is not a marking: use three or four digits, R as the decimal point, or an EIA-96 code such as 01C.` };
+  if (!readings.length) return { error: translate(locale, 'res.vw.notMarking', { code: text.toUpperCase() }) };
   // A text that reads two ways (01C is not one, 47R is) is taken in the system that is chosen.
   const read = readings.find((r) => (r.form === 'eia96') === (system === 'eia96')) ?? readings[0];
   const length = text.replace(/[A-Za-z]$/, (letter) => (read.tolerance !== undefined ? '' : letter)).length;

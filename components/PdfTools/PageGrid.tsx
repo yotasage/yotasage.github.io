@@ -4,6 +4,7 @@ import { errorMessage, moveItem } from '../../lib/pdf/files';
 import { parsePageRanges } from '../../lib/pdf/merge';
 import { formatPageRanges } from '../../lib/pdf/pages';
 import { PdfThumbPool } from '../../lib/pdf/thumbs';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PdfTools.module.css';
 
 export interface PageGridItem {
@@ -75,6 +76,7 @@ const PageThumb = React.memo(function PageThumb({
   blankAspect?: number;
   observer: ThumbObserver;
 }) {
+  const { t } = useI18n();
   const boxRef = React.useRef<HTMLDivElement>(null);
   const visibleRef = React.useRef(false);
   const [url, setUrl] = React.useState<string | null>(() => (pool ? pool.getCached(pageIndex) : null));
@@ -116,7 +118,7 @@ const PageThumb = React.memo(function PageThumb({
           className={styles.blankPage}
           style={landscape ? { width: '158px', height: '112px' } : undefined}
         >
-          Blank page
+          {t('pdf.ui.blankPage')}
         </div>
       </div>
     );
@@ -134,7 +136,7 @@ const PageThumb = React.memo(function PageThumb({
             style={rotation ? { transform: `rotate(${rotation}deg)` } : undefined}
           />
         )
-        : <span className={styles.thumbPlaceholder}>Page {pageIndex + 1}</span>}
+        : <span className={styles.thumbPlaceholder}>{t('pdf.ui.pageN', { n: pageIndex + 1 })}</span>}
     </div>
   );
 });
@@ -167,6 +169,7 @@ export function PageGrid<T extends PageGridItem>({
   renderTopActions?: (item: T, index: number) => React.ReactNode;
   renderActions?: (item: T, index: number, reorder?: PageReorderControls) => React.ReactNode;
 }) {
+  const { t } = useI18n();
   const observer = useThumbObserver();
   const listRef = React.useRef<HTMLUListElement>(null);
   const anchorRef = React.useRef<number | null>(null);
@@ -378,8 +381,8 @@ export function PageGrid<T extends PageGridItem>({
                     <button
                       type="button"
                       className={styles.dragHandle}
-                      title="Drag to reorder"
-                      aria-label={`Drag ${item.label} to reorder`}
+                      title={t('pdf.ui.dragReorder')}
+                      aria-label={t('pdf.ui.dragItemReorder', { label: item.label })}
                       onPointerDown={(e) => startPointer(e, index, true)}
                     >
                       &#x283F;
@@ -387,8 +390,8 @@ export function PageGrid<T extends PageGridItem>({
                     <button
                       type="button"
                       className={styles.iconButton}
-                      title="Move earlier"
-                      aria-label="Move earlier"
+                      title={t('pdf.ui.moveEarlier')}
+                      aria-label={t('pdf.ui.moveEarlier')}
                       disabled={!reorderControls.canMoveBack}
                       onClick={reorderControls.moveBack}
                     >
@@ -397,8 +400,8 @@ export function PageGrid<T extends PageGridItem>({
                     <button
                       type="button"
                       className={styles.iconButton}
-                      title="Move later"
-                      aria-label="Move later"
+                      title={t('pdf.ui.moveLater')}
+                      aria-label={t('pdf.ui.moveLater')}
                       disabled={!reorderControls.canMoveForward}
                       onClick={reorderControls.moveForward}
                     >
@@ -422,13 +425,14 @@ export function PageSelectionBar<T extends { id: string }>({
   items,
   selectedIds,
   onChange,
-  rangePlaceholder = 'Ranges, e.g. 1-3, 5, 8-',
+  rangePlaceholder,
 }: {
   items: T[];
   selectedIds: Set<string>;
   onChange: (next: Set<string>) => void;
   rangePlaceholder?: string;
 }) {
+  const { t } = useI18n();
   const [editing, setEditing] = React.useState(false);
   const [draft, setDraft] = React.useState('');
   const [rangeError, setRangeError] = React.useState<string | null>(null);
@@ -469,17 +473,17 @@ export function PageSelectionBar<T extends { id: string }>({
   return (
     <div className={styles.selectionBar}>
       <div className={styles.selectionButtons}>
-        <button type="button" className={styles.buttonSmall} onClick={() => selectBy(() => true)}>All</button>
-        <button type="button" className={styles.buttonSmall} onClick={() => selectBy(() => false)}>None</button>
-        <button type="button" className={styles.buttonSmall} onClick={() => selectBy((_, it) => !selectedIds.has(it.id))}>Invert</button>
-        <button type="button" className={styles.buttonSmall} onClick={() => selectBy((i) => i % 2 === 0)}>Odd</button>
-        <button type="button" className={styles.buttonSmall} onClick={() => selectBy((i) => i % 2 === 1)}>Even</button>
+        <button type="button" className={styles.buttonSmall} onClick={() => selectBy(() => true)}>{t('pdf.ui.selAll')}</button>
+        <button type="button" className={styles.buttonSmall} onClick={() => selectBy(() => false)}>{t('pdf.ui.selNone')}</button>
+        <button type="button" className={styles.buttonSmall} onClick={() => selectBy((_, it) => !selectedIds.has(it.id))}>{t('pdf.ui.selInvert')}</button>
+        <button type="button" className={styles.buttonSmall} onClick={() => selectBy((i) => i % 2 === 0)}>{t('pdf.ui.selOdd')}</button>
+        <button type="button" className={styles.buttonSmall} onClick={() => selectBy((i) => i % 2 === 1)}>{t('pdf.ui.selEven')}</button>
       </div>
       <div style={{ flex: '1 1 180px', minWidth: 160 }}>
         <input
           className={styles.rangeInput}
-          placeholder={rangePlaceholder}
-          aria-label="Page ranges"
+          placeholder={rangePlaceholder ?? t('pdf.ui.rangePh')}
+          aria-label={t('pdf.ui.rangeAria')}
           value={editing ? draft : syncedText}
           onFocus={() => {
             setEditing(true);

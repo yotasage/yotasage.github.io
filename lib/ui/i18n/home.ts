@@ -96,6 +96,22 @@ export const en = {
   'home.tool.notepad.category': 'Text & Code',
   'home.tool.notepad.desc':
     'Fast Monaco-powered text editor for quick notes and reviewing code, CSV, TeX, and log files — with side-by-side & 2×2 grid views, diff compare, extended & regex replace, occurrence counts, smart selection highlights, and auto-saved browser sessions.',
+  'home.tool.calculator.tags': 'SI & RF units|Phasors|Variables → Excel|diff · int|Equation layouts',
+  'home.tool.integral.tags': 'Indefinite & definite|u-sub · By parts|Partial fractions|Step-by-step & theory|Identities',
+  'home.tool.derivative.tags': 'Orders 1–4|Chain · Product · Quotient|Tangent line|Step-by-step & theory|Identities',
+  'home.tool.boolean.tags': 'Truth tables|TikZ · IEEE circuits|WaveDrom timing|DFF · Delays|K-Map · QM',
+  'home.tool.simsetup.tags': 'Coherent sampling|FFT|Powers of 2|Prime ratios',
+  'home.tool.resistor.tags': 'E3–E192|Colour bands|SMD · EIA-96|Combinations|Temp design',
+  'home.tool.smith.tags': 'Z · Y · ZY grids|Drag & snap|Auto-solver|Freq sweep|SVG · TikZ · S1P',
+  'home.tool.pcb.tags': 'Gerber · Excellon|KiCad · Altium|PADS · EAGLE|Realistic view|To KiCad',
+  'home.tool.emsim.tags': '2D / 3D solver|Z0 · Zdiff · Zcm|JLCPCB · KiCad|Vias|Field plots',
+  'home.tool.viewer3d.tags': 'STEP · IGES|STL · 3MF · OBJ|glTF · FBX · USDZ|Section cut|Measure',
+  'home.tool.qrcode.tags': 'Model 1 & 2|Micro QR · rMQR|Custom mask|PNG · SVG · PDF',
+  'home.tool.qrreader.tags': 'Camera · PDF · paste|Micro QR · rMQR|Wi-Fi · eSIM|2FA · Payments|Raw hex',
+  'home.tool.base64.tags': 'Data URL|HTML · CSS · MD|PNG · JPEG · WebP|Live preview',
+  'home.tool.paint.tags': 'Layers|Crop · Resize · Scale down|Rotate|B&W styles|Paint.NET Ctrl+C/V',
+  'home.tool.notepad.tags': 'Monaco Editor|Code · CSV · TeX|Side-by-side · Grid|Diff · Regex|Auto-saved',
+  'home.tool.textcase.tags': 'Sentence · Title|UPPER · lower|camelCase|snake_case|kebab-case',
 } as const;
 
 export const nb: Record<keyof typeof en, string> = {
@@ -196,4 +212,20 @@ export const nb: Record<keyof typeof en, string> = {
   'home.tool.notepad.category': 'Tekst og kode',
   'home.tool.notepad.desc':
     'Rask Monaco-basert teksteditor for notater og hurtig visning av kode, CSV, TeX og tekstfiler — med side om side, 2×2-rutenett, diff-sammenligning, utvidet og regex søk/erstatt, telling av treff, utheving av like valg og automatisk lagring i nettleseren.',
+  'home.tool.calculator.tags': 'SI- og RF-enheter|Fasorer|Variabler → Excel|diff · int|Ligningsoppsett',
+  'home.tool.integral.tags': 'Ubestemte og bestemte|Substitusjon · Delvis|Delbrøkoppspalting|Steg-for-steg og teori|Identiteter',
+  'home.tool.derivative.tags': 'Orden 1–4|Kjerne · Produkt · Brøk|Tangentlinje|Steg-for-steg og teori|Identiteter',
+  'home.tool.boolean.tags': 'Sannhetstabeller|TikZ · IEEE-kretser|WaveDrom-tidsdiagram|DFF · Forsinkelser|K-kart · QM',
+  'home.tool.simsetup.tags': 'Koherent sampling|FFT|Toerpotenser|Primtallsforhold',
+  'home.tool.resistor.tags': 'E3–E192|Fargebånd|SMD · EIA-96|Kombinasjoner|Temperaturdesign',
+  'home.tool.smith.tags': 'Z · Y · ZY-rutenett|Dra og fest|Autoløser|Frekvenssveip|SVG · TikZ · S1P',
+  'home.tool.pcb.tags': 'Gerber · Excellon|KiCad · Altium|PADS · EAGLE|Realistisk visning|Til KiCad',
+  'home.tool.emsim.tags': '2D / 3D-løser|Z0 · Zdiff · Zcm|JLCPCB · KiCad|Viaer|Feltplott',
+  'home.tool.viewer3d.tags': 'STEP · IGES|STL · 3MF · OBJ|glTF · FBX · USDZ|Snittvisning|Måling',
+  'home.tool.qrcode.tags': 'Modell 1 og 2|Micro QR · rMQR|Egen maske|PNG · SVG · PDF',
+  'home.tool.qrreader.tags': 'Kamera · PDF · lim inn|Micro QR · rMQR|Wi-Fi · eSIM|2FA · Betaling|Rå hex',
+  'home.tool.base64.tags': 'Data-URL|HTML · CSS · MD|PNG · JPEG · WebP|Direktevisning',
+  'home.tool.paint.tags': 'Lag|Beskjær · Skalering|Roter|Svart-hvitt-stiler|Paint.NET Ctrl+C/V',
+  'home.tool.notepad.tags': 'Monaco-editor|Kode · CSV · TeX|Side ved side · Rutenett|Diff · Regex|Autolagret',
+  'home.tool.textcase.tags': 'Setning · Tittel|STORE · små|camelCase|snake_case|kebab-case',
 };

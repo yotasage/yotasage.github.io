@@ -32,6 +32,8 @@ import {
 import { PdfThumbPool } from '../../lib/pdf/thumbs';
 import { SPLIT } from '../../lib/pdf/tools';
 import { runSplitPdfBySize, runSplitPdfParts } from '../../lib/pdf/workerClient';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
@@ -60,16 +62,17 @@ interface SplitResult {
   oversizedPages: number[];
 }
 
-const MODES: { id: SplitMode; title: string; text: string }[] = [
-  { id: 'ranges', title: 'Split points / ranges', text: 'Click between pages on the grid or enter custom range groups.' },
-  { id: 'everyN', title: 'Every N pages', text: 'Divide the PDF into equal chunks of a fixed page count.' },
-  { id: 'size', title: 'By file size', text: 'Keep each output PDF under a target size in MB.' },
-  { id: 'bookmarks', title: 'By bookmarks', text: 'Split at each top-level bookmark / chapter.' },
+const MODES: { id: SplitMode; titleKey: TranslationKey; textKey: TranslationKey }[] = [
+  { id: 'ranges', titleKey: 'pdf.p.split.mRanges', textKey: 'pdf.p.split.mRangesDesc' },
+  { id: 'everyN', titleKey: 'pdf.p.split.mEveryN', textKey: 'pdf.p.split.mEveryNDesc' },
+  { id: 'size', titleKey: 'pdf.p.split.mSize', textKey: 'pdf.p.split.mSizeDesc' },
+  { id: 'bookmarks', titleKey: 'pdf.p.split.mBookmarks', textKey: 'pdf.p.split.mBookmarksDesc' },
 ];
 
 const EMPTY_SELECTION = new Set<string>();
 
 export default function SplitPdfPage() {
+  const { t } = useI18n();
   const [doc, setDoc] = React.useState<LoadedDoc | null>(null);
   const [mode, setMode] = React.useState<SplitMode>('ranges');
 
@@ -153,7 +156,7 @@ export default function SplitPdfPage() {
         setLocked({
           name,
           bytes,
-          error: password !== undefined ? 'Incorrect password. Try again.' : null,
+          error: password !== undefined ? t('pdf.ff.wrongPw') : null,
           busy: false,
         });
       } else {
@@ -168,10 +171,10 @@ export default function SplitPdfPage() {
   async function loadFile(files: File[]) {
     const pdf = files.find(isPdf);
     if (!pdf) {
-      setNotice('Please select a PDF file.');
+      setNotice(t('pdf.ff.pickPdf'));
       return;
     }
-    setNotice(files.length > 1 ? 'Only the first PDF was opened.' : null);
+    setNotice(files.length > 1 ? t('pdf.p.onlyFirst') : null);
     setLocked(null);
     try {
       const bytes = await readBytes(pdf);
@@ -260,9 +263,9 @@ export default function SplitPdfPage() {
       id: `p-${i}`,
       pool: doc.pool,
       pageIndex: i,
-      label: `Page ${i + 1}`,
+      label: t('pdf.ff.pageN', { n: i + 1 }),
     }));
-  }, [doc]);
+  }, [doc, t]);
 
   function toggleBreakAfter(pageIndex: number) {
     if (!doc || pageIndex < 0 || pageIndex >= doc.pageCount - 1) return;
@@ -351,7 +354,7 @@ export default function SplitPdfPage() {
         oversizedPages = out.oversizedPages;
         setSizeParts(out.parts);
       } else {
-        if (!preview.parts || !preview.parts.length) throw new Error('No parts to split.');
+        if (!preview.parts || !preview.parts.length) throw new Error(t('pdf.p.split.noParts'));
         files = await runSplitPdfParts(
           doc.bytes,
           preview.parts,
@@ -387,15 +390,17 @@ export default function SplitPdfPage() {
     }
   }
 
-  const partCountLabel = preview.parts
-    ? `${preview.parts.length} PDF${preview.parts.length === 1 ? '' : 's'}`
-    : 'PDF';
+  const splitButtonLabel = mode === 'size'
+    ? t('pdf.p.split.splitUnder', { mb: maxSizeMb })
+    : preview.parts
+      ? t(preview.parts.length === 1 ? 'pdf.p.split.splitIntoOne' : 'pdf.p.split.splitIntoMany', { n: preview.parts.length })
+      : t('pdf.p.split.splitIntoGeneric');
 
   return (
     <PdfPage
       title={SPLIT.title}
       showHub
-      lead="Split a PDF into separate files by clicking split points, entering custom ranges, splitting every N pages, targeting a maximum file size, or splitting by top-level bookmarks."
+      lead={t('pdf.p.split.lead')}
     >
       {locked && (
         <PasswordPrompt
@@ -410,25 +415,25 @@ export default function SplitPdfPage() {
         />
       )}
       {error && !doc && <div className={styles.error} style={{ marginBottom: '1rem' }}>{error}</div>}
-      {loading && !doc && !locked && <Progress fraction={0.4} label="Opening PDF…" />}
+      {loading && !doc && !locked && <Progress fraction={0.4} label={t('pdf.p.opening')} />}
 
       <ToolWorkspace
         tool={SPLIT}
         accept="application/pdf,.pdf"
         multiple={false}
-        selectLabel="Select a PDF file"
-        dropLabel="or drop a PDF here"
-        addLabel="Replace PDF"
+        selectLabel={t('pdf.p.selectPdf')}
+        dropLabel={t('pdf.p.dropPdf')}
+        addLabel={t('pdf.p.replacePdf')}
         hasFiles={!!doc}
         onFiles={loadFile}
-        toolbar={<button type="button" className={styles.buttonSmall} onClick={clearDoc}>Close</button>}
+        toolbar={<button type="button" className={styles.buttonSmall} onClick={clearDoc}>{t('pdf.ff.close')}</button>}
         sidebar={
           <>
-            <div className={styles.levelList} role="radiogroup" aria-label="Split mode">
+            <div className={styles.levelList} role="radiogroup" aria-label={t('pdf.p.split.modeAria')}>
               {MODES.map((m) => (
                 <label key={m.id} className={[styles.level, mode === m.id ? styles.levelSelected : ''].join(' ')}>
                   <input type="radio" name="splitMode" checked={mode === m.id} onChange={() => setMode(m.id)} />
-                  <span><strong>{m.title}</strong><small>{m.text}</small></span>
+                  <span><strong>{t(m.titleKey)}</strong><small>{t(m.textKey)}</small></span>
                 </label>
               ))}
             </div>
@@ -436,14 +441,14 @@ export default function SplitPdfPage() {
             {mode === 'ranges' && (
               <div className={styles.options}>
                 <Field
-                  label="Page range groups"
-                  help="Separate output PDFs with commas (1-3, 4-6, 7-), or put one group per line / semicolon (1-3; 4, 6; 7-end)."
+                  label={t('pdf.p.split.rangeGroups')}
+                  help={t('pdf.p.split.rangeHelp')}
                 >
                   <textarea
                     className={fieldStyles.input}
                     rows={3}
                     style={{ resize: 'vertical', minHeight: '4.5rem' }}
-                    placeholder="e.g. 1-3, 4-6, 7-"
+                    placeholder={t('pdf.p.split.rangePh')}
                     value={usingCustomText ? customText : syncedRangeText}
                     onFocus={() => {
                       if (!usingCustomText) setCustomText(syncedRangeText);
@@ -457,7 +462,7 @@ export default function SplitPdfPage() {
 
             {mode === 'everyN' && (
               <div className={styles.options}>
-                <Field label="Pages per file">
+                <Field label={t('pdf.p.split.pagesPerFile')}>
                   <NumberInput
                     value={everyN}
                     onChange={(v) => setEveryN(Math.max(1, Math.round(v)))}
@@ -472,8 +477,8 @@ export default function SplitPdfPage() {
             {mode === 'size' && (
               <div className={styles.options}>
                 <Field
-                  label="Target max size (MB)"
-                  help={doc ? `Source PDF is ${formatBytes(doc.bytes.length)}. Exact part counts are computed when splitting.` : undefined}
+                  label={t('pdf.p.split.maxSize')}
+                  help={doc ? t('pdf.p.split.maxSizeHelp', { size: formatBytes(doc.bytes.length) }) : undefined}
                 >
                   <NumberInput
                     value={maxSizeMb}
@@ -489,16 +494,16 @@ export default function SplitPdfPage() {
             {mode === 'bookmarks' && (
               <div className={styles.options}>
                 {bookmarksLoading ? (
-                  <p className={styles.note}>Reading bookmarks…</p>
+                  <p className={styles.note}>{t('pdf.p.split.readingBm')}</p>
                 ) : bookmarksError ? (
-                  <p className={fieldStyles.warning}>Could not read bookmarks: {bookmarksError}</p>
+                  <p className={fieldStyles.warning}>{t('pdf.p.split.bmError', { error: bookmarksError })}</p>
                 ) : bookmarks.length === 0 ? (
                   <p className={fieldStyles.warning}>
-                    This PDF has no top-level bookmarks. Pick another split mode above.
+                    {t('pdf.p.split.noBm')}
                   </p>
                 ) : (
                   <p className={styles.note}>
-                    Found <strong>{bookmarks.length}</strong> top-level bookmark{bookmarks.length === 1 ? '' : 's'}.
+                    {t(bookmarks.length === 1 ? 'pdf.p.split.foundBmOne' : 'pdf.p.split.foundBmMany', { n: bookmarks.length })}
                   </p>
                 )}
               </div>
@@ -507,15 +512,15 @@ export default function SplitPdfPage() {
             {preview.parts && preview.parts.length > 0 && (
               <div className={styles.options}>
                 <p className={styles.note}>
-                  Output preview: <strong>{preview.parts.length}</strong> PDF{preview.parts.length === 1 ? '' : 's'}
+                  {t(preview.parts.length === 1 ? 'pdf.p.split.outPreviewOne' : 'pdf.p.split.outPreviewMany', { n: preview.parts.length })}
                 </p>
                 <div className={styles.splitPreviewList}>
                   {preview.parts.map((part, idx) => (
                     <div key={`${idx}-${part.label}`} className={styles.splitPreviewItem}>
                       <span title={part.label}>{idx + 1}. {part.label}</span>
                       <span>
-                        {mode === 'bookmarks' ? `p. ${formatOrderedRanges(part.pages)} · ` : ''}
-                        {part.pages.length} p.
+                        {mode === 'bookmarks' ? `${t('pdf.p.split.pShort')} ${formatOrderedRanges(part.pages)} · ` : ''}
+                        {part.pages.length} {t('pdf.p.split.pShort')}
                       </span>
                     </div>
                   ))}
@@ -524,7 +529,7 @@ export default function SplitPdfPage() {
             )}
 
             <div className={styles.options}>
-              <Field label={preview.parts && preview.parts.length === 1 ? 'File name' : 'ZIP file name'}>
+              <Field label={preview.parts && preview.parts.length === 1 ? t('pdf.ff.fileName') : t('pdf.p.zipFileName')}>
                 <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
               </Field>
             </div>
@@ -532,7 +537,7 @@ export default function SplitPdfPage() {
             {notice && <p className={fieldStyles.warning}>{notice}</p>}
 
             <button type="button" className={styles.primary} disabled={!canRun} onClick={applySplit}>
-              {mode === 'size' ? `Split under ${maxSizeMb} MB` : `Split into ${partCountLabel}`}
+              {splitButtonLabel}
             </button>
 
             {busy && <Progress fraction={progress.fraction} label={progress.label} />}
@@ -542,20 +547,20 @@ export default function SplitPdfPage() {
               <div className={styles.result}>
                 <h3>
                   {result.files.length === 1
-                    ? 'Your PDF is ready'
-                    : `${result.files.length} PDFs are ready`}
+                    ? t('pdf.p.pdfReady')
+                    : t('pdf.p.pdfsReady', { n: result.files.length })}
                 </h3>
                 <p>
                   {result.zipBytes
-                    ? `ZIP archive, ${formatBytes(result.zipBytes.length)}.`
+                    ? t('pdf.p.zipArchive', { size: formatBytes(result.zipBytes.length) })
                     : `${formatBytes(result.files[0].bytes.length)}.`}
                 </p>
                 {result.oversizedPages.length > 0 && (
                   <p className={fieldStyles.warning}>
-                    Page{result.oversizedPages.length === 1 ? '' : 's'}{' '}
-                    {formatOrderedRanges(result.oversizedPages)} exceeded {maxSizeMb} MB on{' '}
-                    {result.oversizedPages.length === 1 ? 'its' : 'their'} own and{' '}
-                    {result.oversizedPages.length === 1 ? 'was' : 'were'} saved as a single-page PDF.
+                    {t(result.oversizedPages.length === 1 ? 'pdf.p.split.oversizedOne' : 'pdf.p.split.oversizedMany', {
+                      ranges: formatOrderedRanges(result.oversizedPages),
+                      mb: maxSizeMb,
+                    })}
                   </p>
                 )}
                 <button
@@ -567,7 +572,7 @@ export default function SplitPdfPage() {
                     result.downloadType,
                   )}
                 >
-                  Download {result.downloadName}
+                  {t('pdf.ff.downloadNamed', { name: result.downloadName })}
                 </button>
                 {result.files.length === 1 && (
                   <ContinueWith currentToolId={SPLIT.id} files={[{ name: result.downloadName, bytes: result.files[0].bytes }]} />
@@ -575,7 +580,7 @@ export default function SplitPdfPage() {
                 {result.files.length > 1 && (
                   <details>
                     <summary className={styles.note} style={{ cursor: 'pointer' }}>
-                      Download individual parts ({result.files.length})
+                      {t('pdf.p.split.downloadParts', { n: result.files.length })}
                     </summary>
                     <div className={styles.splitPreviewList} style={{ marginTop: '0.45rem' }}>
                       {result.files.map((f) => (
@@ -605,7 +610,7 @@ export default function SplitPdfPage() {
             <div className={styles.fileBanner}>
               <strong>{doc.name}</strong>
               <span className={styles.fileBannerMeta}>
-                {doc.pageCount} page{doc.pageCount === 1 ? '' : 's'} · {formatBytes(doc.bytes.length)}
+                {t(doc.pageCount === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany', { n: doc.pageCount })} · {formatBytes(doc.bytes.length)}
               </span>
             </div>
 
@@ -613,14 +618,14 @@ export default function SplitPdfPage() {
               <div className={styles.selectionBar}>
                 <div className={styles.selectionButtons}>
                   <button type="button" className={styles.buttonSmall} onClick={splitEveryPage}>
-                    Split every page
+                    {t('pdf.p.split.everyPage')}
                   </button>
                   <button type="button" className={styles.buttonSmall} onClick={clearSplits}>
-                    Clear splits
+                    {t('pdf.p.split.clearSplits')}
                   </button>
                 </div>
                 <span className={styles.note}>
-                  Click any page (except the last) to toggle a green split cut right after it.
+                  {t('pdf.p.split.clickHint')}
                 </span>
               </div>
             )}
@@ -633,9 +638,9 @@ export default function SplitPdfPage() {
               renderBadgeExtra={(_item, index) => {
                 const nums = pagePartNumbers.get(index);
                 if (!nums || !nums.length) {
-                  return preview.parts ? <span className={styles.pillRemove}>Skipped</span> : null;
+                  return preview.parts ? <span className={styles.pillRemove}>{t('pdf.p.split.skipped')}</span> : null;
                 }
-                const label = nums.length === 1 ? `Part ${nums[0]}` : `Parts ${nums.join(',')}`;
+                const label = nums.length === 1 ? t('pdf.p.split.partN', { n: nums[0] }) : t('pdf.p.split.partsList', { list: nums.join(',') });
                 return (
                   <span className={splitAfter?.has(index) ? styles.pillAccent : styles.pillExtra}>
                     {label}
@@ -649,7 +654,7 @@ export default function SplitPdfPage() {
                     className={styles.buttonSmall}
                     onClick={() => toggleBreakAfter(index)}
                   >
-                    {splitAfter?.has(index) ? 'Remove split' : 'Split after'}
+                    {splitAfter?.has(index) ? t('pdf.p.split.removeSplit') : t('pdf.p.split.splitAfter')}
                   </button>
                 ) : null
               ) : undefined}

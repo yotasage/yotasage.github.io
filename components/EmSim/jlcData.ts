@@ -5,6 +5,7 @@
 import { jlcKey, jlcStackup } from '../../lib/emsim/jlcpcb';
 import type { JlcData, JlcEntry } from '../../lib/emsim/jlcpcb';
 import type { Stackup } from '../../lib/emsim/stackup';
+import { emT } from './emText';
 
 let data: JlcData | null = null;
 let byKey: Map<string, JlcEntry> | null = null;
@@ -19,7 +20,7 @@ export function loadJlc(): Promise<JlcData> {
     pending = (async () => {
       const m = await import('../../lib/emsim/jlcpcbStackups.json');
       const d = ((m as { default?: unknown }).default ?? m) as unknown as JlcData;
-      if (!d || !Array.isArray(d.stackups) || !d.materials) throw new Error('the list is not in the expected form');
+      if (!d || !Array.isArray(d.stackups) || !d.materials) throw new Error(emT('em.jlc.badShape'));
       byKey = new Map(d.stackups.map((e) => [jlcKey(e), e]));
       data = d;
       return d;

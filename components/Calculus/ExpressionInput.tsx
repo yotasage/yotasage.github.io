@@ -3,7 +3,7 @@ import React, { useMemo, useRef } from 'react';
 import { toLatex } from '../../lib/calculus/ast';
 import { parseMath } from '../../lib/calculus/parse';
 import type { SolverExample } from '../../lib/calculus/types';
-import { useI18n } from '../../lib/ui/i18n';
+import { type TranslationKey, useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Calculus.module.css';
 import KatexSpan from '../KatexSpan';
 
@@ -126,10 +126,10 @@ export default function ExpressionInput({
     } catch (err) {
       return {
         ok: false as const,
-        error: err instanceof Error ? err.message : 'Invalid syntax',
+        error: err instanceof Error ? err.message : t('calculus.input.invalidSyntax'),
       };
     }
-  }, [value, previewPrefixLatex, previewSuffixLatex]);
+  }, [value, previewPrefixLatex, previewSuffixLatex, t]);
 
   const insertSnippet = (snippet: string, cursorOffset = 0) => {
     const input = inputRef.current;
@@ -246,17 +246,22 @@ export default function ExpressionInput({
 
       <div className={styles.examplesRow}>
         <span className={styles.examplesLabel}>{t('calculus.input.examples')}:</span>
-        {examples.map((ex) => (
-          <button
-            key={ex.id}
-            type="button"
-            className={styles.exampleBtn}
-            onClick={() => onSelectExample(ex)}
-          >
-            <span>{ex.label}</span>
-            <span className={styles.exampleTag}>{ex.tag}</span>
-          </button>
-        ))}
+        {examples.map((ex) => {
+          const tagKey = `calculus.ex.${ex.id}` as TranslationKey;
+          const trTag = t(tagKey);
+          const tagLabel = trTag === tagKey ? ex.tag : trTag;
+          return (
+            <button
+              key={ex.id}
+              type="button"
+              className={styles.exampleBtn}
+              onClick={() => onSelectExample(ex)}
+            >
+              <span>{ex.label}</span>
+              <span className={styles.exampleTag}>{tagLabel}</span>
+            </button>
+          );
+        })}
       </div>
     </form>
   );

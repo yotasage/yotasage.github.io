@@ -28,6 +28,8 @@ import {
 import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
 import { openPdf, renderPage } from '../../lib/pdf/pdfjs';
 import { COMPARE } from '../../lib/pdf/tools';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
 import styles from '../../styles/PdfCompare.module.css';
 import shared from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
@@ -80,11 +82,11 @@ interface ActivePageCache {
   textDiff: TextDiffResult;
 }
 
-const VIEW_MODES: { id: ViewMode; label: string }[] = [
-  { id: 'overlay', label: 'Visual overlay' },
-  { id: 'side-by-side', label: 'Side-by-side' },
-  { id: 'swipe', label: 'Swipe compare' },
-  { id: 'text', label: 'Text diff' },
+const VIEW_MODES: { id: ViewMode; labelKey: TranslationKey }[] = [
+  { id: 'overlay', labelKey: 'pdf.cmp.modeOverlay' },
+  { id: 'side-by-side', labelKey: 'pdf.cmp.modeSide' },
+  { id: 'swipe', labelKey: 'pdf.cmp.modeSwipe' },
+  { id: 'text', labelKey: 'pdf.cmp.modeText' },
 ];
 
 async function extractPageTextLines(doc: PDFDocumentProxy, pageNum: number): Promise<string[]> {
@@ -182,6 +184,7 @@ function clearCanvas(canvas: HTMLCanvasElement | null): void {
 }
 
 export function PdfCompareView() {
+  const { t } = useI18n();
   const [docA, setDocA] = React.useState<LoadedSlot | null>(null);
   const [docB, setDocB] = React.useState<LoadedSlot | null>(null);
   const [lockedA, setLockedA] = React.useState<LockedSlot | null>(null);
@@ -304,7 +307,7 @@ export function PdfCompareView() {
           setLocked({
             name,
             bytes,
-            error: password !== undefined ? 'Incorrect password. Try again.' : null,
+            error: password !== undefined ? t('pdf.ff.wrongPw') : null,
             busy: false,
           });
         } else {
@@ -317,18 +320,18 @@ export function PdfCompareView() {
         }
       }
     },
-    [disposeSlotDoc],
+    [disposeSlotDoc, t],
   );
 
   const handleFilesForSlot = React.useCallback(
     async (slot: SlotKey, files: File[]) => {
       const pdfs = files.filter(isPdf);
       if (pdfs.length === 0) {
-        setNotice('Please select PDF files to compare.');
+        setNotice(t('pdf.cmp.pickPdfs'));
         return;
       }
       if (pdfs.length < files.length) {
-        setNotice(`${files.length - pdfs.length} non-PDF file(s) were skipped.`);
+        setNotice(t('pdf.cmp.skipped', { count: files.length - pdfs.length }));
       } else {
         setNotice(null);
       }
@@ -341,7 +344,7 @@ export function PdfCompareView() {
           openIntoSlot('B', pdfs[1].name, bytesB),
         ]);
         if (pdfs.length > 2) {
-          setNotice('Loaded the first two PDFs into Document A and Document B.');
+          setNotice(t('pdf.cmp.loadedTwo'));
         }
         return;
       }
@@ -349,7 +352,7 @@ export function PdfCompareView() {
       const bytes = await readBytes(pdfs[0]);
       await openIntoSlot(slot, pdfs[0].name, bytes);
     },
-    [openIntoSlot],
+    [openIntoSlot, t],
   );
 
   React.useEffect(() => {
@@ -584,7 +587,7 @@ export function PdfCompareView() {
         setActiveRenderVer((v) => v + 1);
       } catch (e) {
         if (!mountedRef.current || renderGenRef.current !== gen) return;
-        setError(`Could not render page ${pageNum}: ${errorMessage(e)}`);
+        setError(t('pdf.cmp.renderErr', { n: pageNum, error: errorMessage(e) }));
       } finally {
         if (mountedRef.current && renderGenRef.current === gen) {
           setRenderingPage(false);
@@ -680,7 +683,7 @@ export function PdfCompareView() {
     if (!docA || !docB) return;
     setExportBusy(true);
     setError(null);
-    setExportProgress({ fraction: 0, label: 'Building text diff report…' });
+    setExportProgress({ fraction: 0, label: t('pdf.cmp.buildingText') });
 
     try {
       const maxPages = Math.max(docA.numPages, docB.numPages);
@@ -705,7 +708,10 @@ export function PdfCompareView() {
           hasChanges: diff.hasChanges,
           diff,
         });
-        setExportProgress({ fraction: p / maxPages, label: `Comparing text on page ${p} of ${maxPages}…` });
+        setExportProgress({
+          fraction: p / maxPages,
+          label: t('pdf.cmp.comparingText', { p, total: maxPages }),
+        });
         await nextFrame();
       }
 
@@ -717,7 +723,7 @@ export function PdfCompareView() {
       );
       download(bytes, outName, 'text/plain;charset=utf-8');
     } catch (e) {
-      setError(`Could not build text diff: ${errorMessage(e)}`);
+      setError(t('pdf.cmp.errTextDiff', { error: errorMessage(e) }));
     } finally {
       setExportBusy(false);
       setExportProgress({ fraction: 0, label: '' });
@@ -747,7 +753,7 @@ export function PdfCompareView() {
           const p = targetPages[i];
           setExportProgress({
             fraction: i / targetPages.length,
-            label: `Rendering diff page ${p} (${i + 1} of ${targetPages.length})…`,
+            label: t('pdf.cmp.renderingDiff', { p, i: i + 1, total: targetPages.length }),
           });
           await nextFrame();
 
@@ -780,7 +786,7 @@ export function PdfCompareView() {
         offscreen.height = 0;
       }
 
-      setExportProgress({ fraction: 0.96, label: 'Saving visual diff PDF…' });
+      setExportProgress({ fraction: 0.96, label: t('pdf.cmp.savingDiff') });
       const pdfBytes = await outDoc.save();
       const outName = safeFileName(
         `${baseName(docA.name)}-vs-${baseName(docB.name)}-diff.pdf`,
@@ -790,7 +796,7 @@ export function PdfCompareView() {
       setDiffPdfOutput(file);
       download(pdfBytes, outName);
     } catch (e) {
-      setError(`Could not generate diff PDF: ${errorMessage(e)}`);
+      setError(t('pdf.cmp.errDiffPdf', { error: errorMessage(e) }));
     } finally {
       setExportBusy(false);
       setExportProgress({ fraction: 0, label: '' });
@@ -836,7 +842,7 @@ export function PdfCompareView() {
           <div className={styles.slotBody}>
             <div className={styles.slotFileName}>{loaded.name}</div>
             <div className={styles.slotMeta}>
-              {loaded.numPages} page{loaded.numPages === 1 ? '' : 's'} · {formatBytes(loaded.bytes.length)}
+              {loaded.numPages === 1 ? t('pdf.ff.pagesOne') : t('pdf.ff.pagesMany', { count: loaded.numPages })} · {formatBytes(loaded.bytes.length)}
             </div>
             <div className={styles.slotActions}>
               <FilePickerButton
@@ -845,10 +851,10 @@ export function PdfCompareView() {
                 onFiles={(files) => void handleFilesForSlot(slot, files)}
                 className={shared.buttonSmall}
               >
-                Replace {slot}
+                {t('pdf.cmp.replaceSlot', { slot })}
               </FilePickerButton>
               <button type="button" className={shared.buttonSmall} onClick={() => clearSlot(slot)}>
-                Clear
+                {t('pdf.ff.clear')}
               </button>
             </div>
           </div>
@@ -860,11 +866,9 @@ export function PdfCompareView() {
               onFiles={(files) => void handleFilesForSlot(slot, files)}
               className={shared.button}
             >
-              {loading ? 'Loading PDF…' : `Select Document ${slot}`}
+              {loading ? t('pdf.cmp.loadingPdf') : t('pdf.cmp.selectDoc', { slot })}
             </FilePickerButton>
-            <span className={styles.slotHint}>
-              Drop a PDF here, or drop 2 PDFs at once to fill A and B.
-            </span>
+            <span className={styles.slotHint}>{t('pdf.cmp.slotHint')}</span>
           </div>
         )}
       </DropTarget>
@@ -874,8 +878,8 @@ export function PdfCompareView() {
   return (
     <div className={styles.root}>
       <div className={styles.dualGrid}>
-        {renderSlotCard('A', 'Document A (Original)', docA, lockedA, loadingA)}
-        {renderSlotCard('B', 'Document B (Revised)', docB, lockedB, loadingB)}
+        {renderSlotCard('A', t('pdf.cmp.docA'), docA, lockedA, loadingA)}
+        {renderSlotCard('B', t('pdf.cmp.docB'), docB, lockedB, loadingB)}
       </div>
 
       {notice && <p className={fieldStyles.warning}>{notice}</p>}
@@ -893,19 +897,23 @@ export function PdfCompareView() {
                   ].join(' ')}
                 >
                   {scanning
-                    ? `Scanning ${scanDoneCount}/${totalPages}… (${changedPageNumbers.length} changed)`
+                    ? t('pdf.cmp.scanning', { done: scanDoneCount, total: totalPages, changed: changedPageNumbers.length })
                     : changedPageNumbers.length > 0
-                      ? `${changedPageNumbers.length} of ${totalPages} page${totalPages === 1 ? '' : 's'} changed`
-                      : `All ${totalPages} page${totalPages === 1 ? '' : 's'} identical`}
+                      ? totalPages === 1
+                        ? t('pdf.cmp.changedOne', { changed: changedPageNumbers.length })
+                        : t('pdf.cmp.changedMany', { changed: changedPageNumbers.length, total: totalPages })
+                      : totalPages === 1
+                        ? t('pdf.cmp.identicalOne')
+                        : t('pdf.cmp.identicalMany', { total: totalPages })}
                 </span>
                 {docA && docB && docA.numPages !== docB.numPages && (
                   <span className={styles.statPill}>
-                    Page count: A={docA.numPages}, B={docB.numPages}
+                    {t('pdf.cmp.pageCounts', { a: docA.numPages, b: docB.numPages })}
                   </span>
                 )}
               </>
             ) : (
-              <span>Load the second PDF to start comparing.</span>
+              <span>{t('pdf.cmp.loadSecond')}</span>
             )}
           </div>
           <div className={styles.swapActions}>
@@ -915,10 +923,10 @@ export function PdfCompareView() {
               onClick={swapDocs}
               disabled={!docA && !docB}
             >
-              Swap A ↔ B
+              {t('pdf.cmp.swap')}
             </button>
             <button type="button" className={shared.buttonSmall} onClick={clearBoth}>
-              Clear both
+              {t('pdf.cmp.clearBoth')}
             </button>
           </div>
         </div>
@@ -928,7 +936,7 @@ export function PdfCompareView() {
         <>
           <div className={styles.toolbar}>
             <div className={styles.toolbarGroup}>
-              <div className={styles.modeTabs} role="tablist" aria-label="Comparison view mode">
+              <div className={styles.modeTabs} role="tablist" aria-label={t('pdf.cmp.viewModeAria')}>
                 {VIEW_MODES.map((m) => (
                   <button
                     key={m.id}
@@ -938,7 +946,7 @@ export function PdfCompareView() {
                     className={[styles.modeTab, viewMode === m.id ? styles.modeTabActive : ''].join(' ')}
                     onClick={() => setViewMode(m.id)}
                   >
-                    {m.label}
+                    {t(m.labelKey)}
                   </button>
                 ))}
               </div>
@@ -951,10 +959,10 @@ export function PdfCompareView() {
                 disabled={activePage <= 1}
                 onClick={() => setActivePage((p) => Math.max(1, p - 1))}
               >
-                ← Prev
+                {t('pdf.vec.prev')}
               </button>
               <span className={styles.pageReadout}>
-                Page {activePage} / {totalPages}
+                {t('pdf.vec.pageOf', { current: activePage, total: totalPages })}
               </span>
               <button
                 type="button"
@@ -962,7 +970,7 @@ export function PdfCompareView() {
                 disabled={activePage >= totalPages}
                 onClick={() => setActivePage((p) => Math.min(totalPages, p + 1))}
               >
-                Next →
+                {t('pdf.vec.next')}
               </button>
               <button
                 type="button"
@@ -970,7 +978,7 @@ export function PdfCompareView() {
                 disabled={changedPageNumbers.length === 0}
                 onClick={() => jumpChanged(-1)}
               >
-                Prev change
+                {t('pdf.cmp.prevChange')}
               </button>
               <button
                 type="button"
@@ -978,14 +986,14 @@ export function PdfCompareView() {
                 disabled={changedPageNumbers.length === 0}
                 onClick={() => jumpChanged(1)}
               >
-                Next change
+                {t('pdf.cmp.nextChange')}
               </button>
             </div>
 
             <div className={styles.toolbarGroup}>
               {viewMode !== 'text' && (
                 <label className={styles.sliderWrap}>
-                  <span>Sensitivity ({threshold})</span>
+                  <span>{t('pdf.cmp.sensitivity', { n: threshold })}</span>
                   <input
                     type="range"
                     className={styles.sliderInput}
@@ -993,14 +1001,14 @@ export function PdfCompareView() {
                     max={80}
                     step={1}
                     value={threshold}
-                    aria-label="Pixel difference sensitivity threshold"
+                    aria-label={t('pdf.cmp.sensitivityAria')}
                     onChange={(e) => setThreshold(Number(e.target.value))}
                   />
                 </label>
               )}
 
               {viewMode === 'overlay' && (
-                <div className={styles.modeTabs} role="group" aria-label="Overlay background mode">
+                <div className={styles.modeTabs} role="group" aria-label={t('pdf.cmp.overlayBgAria')}>
                   <button
                     type="button"
                     aria-pressed={overlayStyle === 'overlay'}
@@ -1010,7 +1018,7 @@ export function PdfCompareView() {
                     ].join(' ')}
                     onClick={() => setOverlayStyle('overlay')}
                   >
-                    Overlay
+                    {t('pdf.cmp.overlay')}
                   </button>
                   <button
                     type="button"
@@ -1021,7 +1029,7 @@ export function PdfCompareView() {
                     ].join(' ')}
                     onClick={() => setOverlayStyle('diff-only')}
                   >
-                    Diff only
+                    {t('pdf.cmp.diffOnly')}
                   </button>
                 </div>
               )}
@@ -1033,7 +1041,7 @@ export function PdfCompareView() {
                     checked={showBoxes}
                     onChange={(e) => setShowBoxes(e.target.checked)}
                   />
-                  Highlight changed regions
+                  {t('pdf.cmp.highlightRegions')}
                 </label>
               )}
 
@@ -1044,7 +1052,7 @@ export function PdfCompareView() {
                     checked={textChangesOnly}
                     onChange={(e) => setTextChangesOnly(e.target.checked)}
                   />
-                  Changes only
+                  {t('pdf.cmp.changesOnly')}
                 </label>
               )}
 
@@ -1054,13 +1062,13 @@ export function PdfCompareView() {
                   checked={changedPagesOnly}
                   onChange={(e) => setChangedPagesOnly(e.target.checked)}
                 />
-                Changed pages only
+                {t('pdf.cmp.changedPagesOnly')}
               </label>
             </div>
           </div>
 
           <div className={styles.pageStripWrap}>
-            <div className={styles.pageStrip} role="navigation" aria-label="Page comparison strip">
+            <div className={styles.pageStrip} role="navigation" aria-label={t('pdf.cmp.pageStripAria')}>
               {visiblePageEntries.map((entry) => {
                 const dotClass =
                   entry.status === 'changed'
@@ -1074,19 +1082,19 @@ export function PdfCompareView() {
                           : styles.dotPending;
                 const statusTitle =
                   entry.status === 'changed'
-                    ? 'Changed'
+                    ? t('pdf.cmp.statusChanged')
                     : entry.status === 'identical'
-                      ? 'Identical'
+                      ? t('pdf.cmp.statusIdentical')
                       : entry.status === 'only-a'
-                        ? 'Only in A'
+                        ? t('pdf.cmp.statusOnlyA')
                         : entry.status === 'only-b'
-                          ? 'Only in B'
-                          : 'Scanning';
+                          ? t('pdf.cmp.statusOnlyB')
+                          : t('pdf.cmp.statusScanning');
                 return (
                   <button
                     key={entry.page}
                     type="button"
-                    title={`Page ${entry.page}: ${statusTitle}`}
+                    title={t('pdf.cmp.pageStatusTitle', { n: entry.page, status: statusTitle })}
                     className={[
                       styles.pagePill,
                       entry.page === activePage ? styles.pagePillActive : '',
@@ -1094,46 +1102,46 @@ export function PdfCompareView() {
                     onClick={() => setActivePage(entry.page)}
                   >
                     <span className={[styles.dot, dotClass].join(' ')} aria-hidden />
-                    <span>P{entry.page}</span>
+                    <span>{t('pdf.cmp.pagePill', { n: entry.page })}</span>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          <section className={styles.stageCard} aria-label="Comparison view">
+          <section className={styles.stageCard} aria-label={t('pdf.cmp.viewAria')}>
             <div className={styles.stageMetaRow}>
               <div className={styles.legend}>
                 {viewMode === 'overlay' && (
                   <>
                     <span className={styles.legendItem}>
                       <span className={[styles.swatch, styles.swatchRemoved].join(' ')} />
-                      Removed (A)
+                      {t('pdf.cmp.removedA')}
                     </span>
                     <span className={styles.legendItem}>
                       <span className={[styles.swatch, styles.swatchAdded].join(' ')} />
-                      Added (B)
+                      {t('pdf.cmp.addedB')}
                     </span>
                     <span className={styles.legendItem}>
                       <span className={[styles.swatch, styles.swatchModified].join(' ')} />
-                      Modified
+                      {t('pdf.cmp.modified')}
                     </span>
                   </>
                 )}
                 {viewMode === 'text' && activeTextDiff && (
                   <>
-                    <span>+{activeTextDiff.addedLines} added</span>
-                    <span>-{activeTextDiff.removedLines} removed</span>
-                    <span>{activeTextDiff.unchangedLines} unchanged</span>
+                    <span>{t('pdf.cmp.textAdded', { n: activeTextDiff.addedLines })}</span>
+                    <span>{t('pdf.cmp.textRemoved', { n: activeTextDiff.removedLines })}</span>
+                    <span>{t('pdf.cmp.textUnchanged', { n: activeTextDiff.unchangedLines })}</span>
                   </>
                 )}
                 {(viewMode === 'side-by-side' || viewMode === 'swipe') && (
                   <span>
-                    Page {activePage}
+                    {t('pdf.ff.pageN', { n: activePage })}
                     {activeScan?.status === 'only-a'
-                      ? ' — exists only in Document A'
+                      ? t('pdf.cmp.onlyInA')
                       : activeScan?.status === 'only-b'
-                        ? ' — exists only in Document B'
+                        ? t('pdf.cmp.onlyInB')
                         : ''}
                   </span>
                 )}
@@ -1141,9 +1149,14 @@ export function PdfCompareView() {
 
               <div>
                 {renderingPage
-                  ? 'Rendering page…'
+                  ? t('pdf.canvas.renderingPage')
                   : activePixelSummary
-                    ? `${activePixelSummary.changedPercent.toFixed(2)}% pixels changed · ${activePixelSummary.boxes.length} region${activePixelSummary.boxes.length === 1 ? '' : 's'}`
+                    ? activePixelSummary.boxes.length === 1
+                      ? t('pdf.cmp.pxSummaryOne', { pct: activePixelSummary.changedPercent.toFixed(2) })
+                      : t('pdf.cmp.pxSummaryMany', {
+                          pct: activePixelSummary.changedPercent.toFixed(2),
+                          count: activePixelSummary.boxes.length,
+                        })
                     : ''}
               </div>
             </div>
@@ -1153,7 +1166,7 @@ export function PdfCompareView() {
                 <canvas
                   ref={overlayCanvasRef}
                   className={styles.canvasPaper}
-                  aria-label={`Visual overlay diff for page ${activePage}`}
+                  aria-label={t('pdf.cmp.overlayAria', { n: activePage })}
                 />
               </div>
             )}
@@ -1164,7 +1177,7 @@ export function PdfCompareView() {
                   <div className={styles.sidePaneHeader}>
                     <span className={styles.slotBadgeA}>A</span>
                     <span className={styles.sidePaneName}>
-                      {docA?.name} — Page {activePage}
+                      {docA?.name} — {t('pdf.ff.pageN', { n: activePage })}
                     </span>
                   </div>
                   <div className={styles.sideCanvasWrap}>
@@ -1173,7 +1186,7 @@ export function PdfCompareView() {
                         <canvas
                           ref={sideACanvasRef}
                           className={styles.canvasPaper}
-                          aria-label={`Document A page ${activePage}`}
+                          aria-label={t('pdf.cmp.docAPage', { n: activePage })}
                         />
                         {showBoxes && activePixelSummary && activePixelSummary.boxes.length > 0 && (
                           <svg
@@ -1200,7 +1213,7 @@ export function PdfCompareView() {
                         )}
                       </div>
                     ) : (
-                      <div className={styles.missingPageBox}>Page {activePage} does not exist in Document A.</div>
+                      <div className={styles.missingPageBox}>{t('pdf.cmp.missingA', { n: activePage })}</div>
                     )}
                   </div>
                 </div>
@@ -1209,7 +1222,7 @@ export function PdfCompareView() {
                   <div className={styles.sidePaneHeader}>
                     <span className={styles.slotBadgeB}>B</span>
                     <span className={styles.sidePaneName}>
-                      {docB?.name} — Page {activePage}
+                      {docB?.name} — {t('pdf.ff.pageN', { n: activePage })}
                     </span>
                   </div>
                   <div className={styles.sideCanvasWrap}>
@@ -1218,7 +1231,7 @@ export function PdfCompareView() {
                         <canvas
                           ref={sideBCanvasRef}
                           className={styles.canvasPaper}
-                          aria-label={`Document B page ${activePage}`}
+                          aria-label={t('pdf.cmp.docBPage', { n: activePage })}
                         />
                         {showBoxes && activePixelSummary && activePixelSummary.boxes.length > 0 && (
                           <svg
@@ -1245,7 +1258,7 @@ export function PdfCompareView() {
                         )}
                       </div>
                     ) : (
-                      <div className={styles.missingPageBox}>Page {activePage} does not exist in Document B.</div>
+                      <div className={styles.missingPageBox}>{t('pdf.cmp.missingB', { n: activePage })}</div>
                     )}
                   </div>
                 </div>
@@ -1277,16 +1290,16 @@ export function PdfCompareView() {
                     <canvas
                       ref={swipeBCanvasRef}
                       className={styles.swipeCanvasBase}
-                      aria-label={`Swipe base Document B page ${activePage}`}
+                      aria-label={t('pdf.cmp.swipeBaseAria', { n: activePage })}
                     />
                     <canvas
                       ref={swipeACanvasRef}
                       className={styles.swipeCanvasTop}
                       style={{ clipPath: `inset(0 ${100 - splitPercent}% 0 0)` }}
-                      aria-label={`Swipe overlay Document A page ${activePage}`}
+                      aria-label={t('pdf.cmp.swipeTopAria', { n: activePage })}
                     />
-                    <span className={styles.swipeTagA}>A (Original)</span>
-                    <span className={styles.swipeTagB}>B (Revised)</span>
+                    <span className={styles.swipeTagA}>{t('pdf.cmp.tagA')}</span>
+                    <span className={styles.swipeTagB}>{t('pdf.cmp.tagB')}</span>
                     <div className={styles.swipeDivider} style={{ left: `${splitPercent}%` }}>
                       <div className={styles.swipeHandle} aria-hidden>
                         ↔
@@ -1301,7 +1314,7 @@ export function PdfCompareView() {
                       max={100}
                       value={splitPercent}
                       className={styles.swipeSliderInput}
-                      aria-label="Swipe curtain position"
+                      aria-label={t('pdf.cmp.swipeSliderAria')}
                       onChange={(e) => setSplitPercent(Number(e.target.value))}
                     />
                     <span>B ({splitPercent}%)</span>
@@ -1313,12 +1326,12 @@ export function PdfCompareView() {
             {viewMode === 'text' && (
               <div className={styles.textDiffWrap}>
                 {!activeTextDiff ? (
-                  <div className={styles.emptyTextDiff}>Extracting text for page {activePage}…</div>
+                  <div className={styles.emptyTextDiff}>{t('pdf.cmp.extractingText', { n: activePage })}</div>
                 ) : displayedTextLines.length === 0 ? (
                   <div className={styles.emptyTextDiff}>
                     {activeTextDiff.lines.length === 0
-                      ? 'No selectable text found on this page (it may be scanned images or vector outlines).'
-                      : 'No text differences on this page.'}
+                      ? t('pdf.cmp.noSelectableText')
+                      : t('pdf.cmp.noTextDiff')}
                   </div>
                 ) : (
                   displayedTextLines.map((line, idx) => {
@@ -1365,7 +1378,7 @@ export function PdfCompareView() {
                 disabled={exportBusy}
                 onClick={() => void handleDownloadDiffPdf()}
               >
-                {exportBusy ? 'Working…' : 'Download diff PDF'}
+                {exportBusy ? t('pdf.cmp.working') : t('pdf.cmp.dlDiffPdf')}
               </button>
               <button
                 type="button"
@@ -1373,7 +1386,7 @@ export function PdfCompareView() {
                 disabled={exportBusy}
                 onClick={() => void handleDownloadTextDiff()}
               >
-                Download text diff (.txt)
+                {t('pdf.cmp.dlTextDiff')}
               </button>
             </div>
 
@@ -1381,7 +1394,7 @@ export function PdfCompareView() {
 
             {diffPdfOutput && !exportBusy && (
               <div className={shared.result}>
-                <h3>Visual diff PDF ready</h3>
+                <h3>{t('pdf.cmp.diffReady')}</h3>
                 <p>
                   {diffPdfOutput.name} ({formatBytes(diffPdfOutput.bytes.length)})
                 </p>
@@ -1390,7 +1403,7 @@ export function PdfCompareView() {
                   className={shared.primary}
                   onClick={() => download(diffPdfOutput.bytes, diffPdfOutput.name)}
                 >
-                  Download {diffPdfOutput.name} again
+                  {t('pdf.cmp.dlAgain', { name: diffPdfOutput.name })}
                 </button>
                 <ContinueWith currentToolId={COMPARE.id} files={[diffPdfOutput]} />
               </div>

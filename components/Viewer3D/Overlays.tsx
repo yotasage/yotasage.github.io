@@ -1,6 +1,7 @@
 import React from 'react';
 import { Vector3 } from 'three';
 
+import { useI18n } from '../../lib/ui/i18n';
 import type { AxisMark, Viewer } from '../../lib/viewer3d/viewer';
 import styles from '../../styles/Viewer3D.module.css';
 
@@ -17,6 +18,7 @@ function useFrame(viewer: Viewer, read: () => void) {
 
 // The X, Y and Z axes as the camera sees them. Clicking the end of an axis looks along it at the model.
 export function AxisGizmo({ viewer }: { viewer: Viewer }) {
+  const { t } = useI18n();
   const [axes, setAxes] = React.useState<AxisMark[]>(() => viewer.axes());
   useFrame(viewer, () => setAxes(viewer.axes()));
   const c = SIZE / 2;
@@ -28,18 +30,19 @@ export function AxisGizmo({ viewer }: { viewer: Viewer }) {
     viewer.viewAlong(dir);
   };
   return (
-    <svg className={styles.gizmo} width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} role="group" aria-label="Axes: click an axis to look along it">
+    <svg className={styles.gizmo} width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} role="group" aria-label={t('viewer3d.gizmo.aria')}>
       <circle cx={c} cy={c} r={c - 2} className={styles.gizmoBack} />
       {ordered.map((m) => {
         const x = c + m.x * LENGTH;
         const y = c + m.y * LENGTH;
         const name = `${m.positive ? '+' : '−'}${m.axis.toUpperCase()}`;
+        const label = t('viewer3d.gizmo.viewFrom', { axis: name });
         return (
           <g
             key={name}
             role="button"
             tabIndex={0}
-            aria-label={`View from ${name}`}
+            aria-label={label}
             className={styles.gizmoAxis}
             onClick={() => lookAlong(m)}
             onKeyDown={(e) => {
@@ -49,7 +52,7 @@ export function AxisGizmo({ viewer }: { viewer: Viewer }) {
               }
             }}
           >
-            <title>{`View from ${name}`}</title>
+            <title>{label}</title>
             {m.positive && <line x1={c} y1={c} x2={x} y2={y} stroke={COLORS[m.axis]} strokeWidth={2.5} />}
             <circle
               cx={x}

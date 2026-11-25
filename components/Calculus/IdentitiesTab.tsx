@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { MATH_IDENTITIES } from '../../lib/calculus/identities';
 import type { IdentityCategory, MathIdentity } from '../../lib/calculus/types';
-import { useI18n } from '../../lib/ui/i18n';
+import { type TranslationKey, useI18n } from '../../lib/ui/i18n';
 import { useExperienceMode } from '../../lib/ui/mode';
 import styles from '../../styles/Calculus.module.css';
 import KatexSpan from '../KatexSpan';
@@ -75,16 +75,47 @@ export default function IdentitiesTab({
 
   const normalizedQuery = query.trim().toLowerCase();
 
+  const localizeIdentity = (item: MathIdentity) => {
+    const nameKey = `calculus.id.${item.id}.name` as TranslationKey;
+    const summaryKey = `calculus.id.${item.id}.summary` as TranslationKey;
+    const theoryKey = `calculus.id.${item.id}.theory` as TranslationKey;
+    const condKey = `calculus.id.${item.id}.condition` as TranslationKey;
+    const trName = t(nameKey);
+    const trSummary = t(summaryKey);
+    const trTheory = t(theoryKey);
+    const trCond = item.condition ? t(condKey) : undefined;
+    return {
+      name: trName === nameKey ? item.name : trName,
+      summary: trSummary === summaryKey ? item.summary : trSummary,
+      theory: trTheory === theoryKey ? item.theory : trTheory,
+      condition: item.condition
+        ? trCond && trCond !== condKey
+          ? trCond
+          : item.condition
+        : undefined,
+    };
+  };
+
   const filtered = useMemo(() => {
     return MATH_IDENTITIES.filter((item) => {
       if (category !== 'all' && item.category !== category) return false;
       if (!normalizedQuery) return true;
-      const hay = [item.name, item.summary, item.theory, item.exampleExpr, ...item.keywords]
+      const loc = localizeIdentity(item);
+      const hay = [
+        loc.name,
+        loc.summary,
+        loc.theory,
+        item.name,
+        item.summary,
+        item.theory,
+        item.exampleExpr,
+        ...item.keywords,
+      ]
         .join(' ')
         .toLowerCase();
       return hay.includes(normalizedQuery);
     });
-  }, [category, normalizedQuery]);
+  }, [category, normalizedQuery, t]);
 
   const categoryLabel = (cat: IdentityCategory): string => {
     switch (cat) {
@@ -178,6 +209,7 @@ export default function IdentitiesTab({
         <ul className={styles.identitiesGrid}>
           {filtered.map((item) => {
             const isHighlighted = highlightedRuleId === item.id;
+            const loc = localizeIdentity(item);
             return (
               <li
                 key={item.id}
@@ -190,10 +222,10 @@ export default function IdentitiesTab({
                   .join(' ')}
               >
                 <div className={styles.identityHead}>
-                  <h3 className={styles.identityTitle}>{item.name}</h3>
+                  <h3 className={styles.identityTitle}>{loc.name}</h3>
                   <span className={styles.identityMeta}>
                     {categoryLabel(item.category)}
-                    {item.condition ? ` · ${item.condition}` : ''}
+                    {loc.condition ? ` · ${loc.condition}` : ''}
                   </span>
                 </div>
 
@@ -201,12 +233,12 @@ export default function IdentitiesTab({
                   <KatexSpan text={item.formulaLatex} />
                 </div>
 
-                <p className={styles.identitySummary}>{item.summary}</p>
+                <p className={styles.identitySummary}>{loc.summary}</p>
 
                 {isTeaching && (
                   <div className={styles.theoryBox}>
                     <span className={styles.theoryPrefix}>{t('calculus.steps.theoryLabel')}:</span>
-                    <span>{item.theory}</span>
+                    <span>{loc.theory}</span>
                   </div>
                 )}
 

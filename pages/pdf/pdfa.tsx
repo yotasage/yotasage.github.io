@@ -30,6 +30,8 @@ import {
 } from '../../lib/pdf/pdfa';
 import { pdfPreview } from '../../lib/pdf/pdfjs';
 import { PDFA } from '../../lib/pdf/tools';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
@@ -50,33 +52,15 @@ interface ItemResult {
   error?: string;
 }
 
-const LEVELS: { id: PdfALevel; title: string; text: string }[] = [
-  {
-    id: '2b',
-    title: 'PDF/A-2b (Recommended)',
-    text: 'ISO 19005-2 (PDF 1.7). Preserves transparency and modern compression while guaranteeing archival visual fidelity.',
-  },
-  {
-    id: '1b',
-    title: 'PDF/A-1b (Classic 1.4)',
-    text: 'ISO 19005-1 (PDF 1.4). Strict legacy archival standard accepted by older repositories; flattens transparency.',
-  },
-  {
-    id: '3b',
-    title: 'PDF/A-3b (Attachments allowed)',
-    text: 'ISO 19005-3 (PDF 1.7). Same archival guarantees as PDF/A-2b while permitting embedded source files.',
-  },
+const LEVELS: { id: PdfALevel; titleKey: TranslationKey; textKey: TranslationKey }[] = [
+  { id: '2b', titleKey: 'pdf.p.pa.lvl2b', textKey: 'pdf.p.pa.lvl2bDesc' },
+  { id: '1b', titleKey: 'pdf.p.pa.lvl1b', textKey: 'pdf.p.pa.lvl1bDesc' },
+  { id: '3b', titleKey: 'pdf.p.pa.lvl3b', textKey: 'pdf.p.pa.lvl3bDesc' },
 ];
 
-const COLOR_OPTIONS: [PdfAColorStrategy, string][] = [
-  ['RGB', 'sRGB (recommended)'],
-  ['Gray', 'Grayscale'],
-  ['CMYK', 'CMYK'],
-];
-
-function sizeDeltaLabel(before: number, after: number): string {
+function sizeDeltaLabel(before: number, after: number, sameLabel: string): string {
   const diff = after - before;
-  if (diff === 0) return 'Same size';
+  if (diff === 0) return sameLabel;
   const pct = (Math.abs(diff) / Math.max(1, before)) * 100;
   const pctStr = pct < 0.1 ? '<0.1 %' : pct < 1 ? `${pct.toFixed(1)} %` : `${Math.round(pct)} %`;
   return diff < 0 ? `−${formatBytes(-diff)} (−${pctStr})` : `+${formatBytes(diff)} (+${pctStr})`;
@@ -90,17 +74,19 @@ function pdfALabel(report: PdfAComplianceReport): string {
 }
 
 function CheckStatusPill({ status }: { status: PdfACheckItem['status'] }) {
-  if (status === 'pass') return <span className={styles.statusDone}>Pass</span>;
-  if (status === 'warn') return <span className={styles.statusPending}>Notice</span>;
-  return <span className={styles.statusLeft}>Needs fix</span>;
+  const { t } = useI18n();
+  if (status === 'pass') return <span className={styles.statusDone}>{t('pdf.p.pa.pass')}</span>;
+  if (status === 'warn') return <span className={styles.statusPending}>{t('pdf.p.pa.notice')}</span>;
+  return <span className={styles.statusLeft}>{t('pdf.p.pa.needsFix')}</span>;
 }
 
 function ComplianceReportCard({ item, result }: { item: PdfAItem; result?: ItemResult }) {
+  const { t } = useI18n();
   const converted = result?.res;
   const activeReport = converted ? converted.afterReport : item.report;
   const headingSuffix = converted
-    ? `Post-conversion verification (${converted.afterReport.isPdfA ? pdfALabel(converted.afterReport) : `PDF/A-${converted.level}`})`
-    : 'Pre-flight compliance audit';
+    ? t('pdf.p.pa.postVer', { label: converted.afterReport.isPdfA ? pdfALabel(converted.afterReport) : `PDF/A-${converted.level}` })
+    : t('pdf.p.pa.preAudit');
 
   return (
     <section className={styles.report}>
@@ -109,9 +95,9 @@ function ComplianceReportCard({ item, result }: { item: PdfAItem; result?: ItemR
       </h3>
       {item.error && <div className={styles.error}>{item.error}</div>}
       {!item.error && item.locked && (
-        <p className={styles.note}>Password protected — enter the password above to run the pre-flight audit.</p>
+        <p className={styles.note}>{t('pdf.p.pa.pwAudit')}</p>
       )}
-      {!item.error && !item.locked && !activeReport && <p className={styles.note}>Inspecting PDF/A compliance…</p>}
+      {!item.error && !item.locked && !activeReport && <p className={styles.note}>{t('pdf.p.pa.inspecting')}</p>}
       {activeReport && (
         <table className={styles.reportTable}>
           <tbody>
@@ -126,15 +112,15 @@ function ComplianceReportCard({ item, result }: { item: PdfAItem; result?: ItemR
             ))}
             {converted && (
               <tr>
-                <th>Structural integrity (QPDF)</th>
+                <th>{t('pdf.p.pa.qpdfRow')}</th>
                 <td>
                   {converted.qpdfOk
-                    ? 'Verified clean structure with QPDF'
-                    : 'QPDF reported structural issues in the converted output'}
+                    ? t('pdf.p.pa.qpdfClean')
+                    : t('pdf.p.pa.qpdfIssues')}
                 </td>
                 <td>
                   <span className={converted.qpdfOk ? styles.statusDone : styles.statusLeft}>
-                    {converted.qpdfOk ? 'Verified' : 'Warning'}
+                    {converted.qpdfOk ? t('pdf.p.pa.verified') : t('pdf.p.pa.warning')}
                   </span>
                 </td>
               </tr>
@@ -144,7 +130,7 @@ function ComplianceReportCard({ item, result }: { item: PdfAItem; result?: ItemR
       )}
       {converted && converted.warnings.length > 0 && (
         <p className={styles.note}>
-          {converted.warnings.length} Ghostscript/QPDF notice{converted.warnings.length === 1 ? '' : 's'}:{' '}
+          {t(converted.warnings.length === 1 ? 'pdf.p.pa.noticesOne' : 'pdf.p.pa.noticesMany', { n: converted.warnings.length })}
           {converted.warnings.slice(0, 3).join(' · ')}
         </p>
       )}
@@ -154,6 +140,7 @@ function ComplianceReportCard({ item, result }: { item: PdfAItem; result?: ItemR
 }
 
 export default function PdfToPdfAPage() {
+  const { t } = useI18n();
   const [items, setItems] = React.useState<PdfAItem[]>([]);
   const [level, setLevel] = React.useState<PdfALevel>('2b');
   const [colorStrategy, setColorStrategy] = React.useState<PdfAColorStrategy>('RGB');
@@ -174,7 +161,7 @@ export default function PdfToPdfAPage() {
 
   async function addFiles(files: File[]) {
     const pdfs = files.filter(isPdf);
-    setNotice(pdfs.length < files.length ? `${files.length - pdfs.length} file(s) were skipped because they are not PDFs.` : null);
+    setNotice(pdfs.length < files.length ? t('pdf.p.skippedNonPdf', { n: files.length - pdfs.length }) : null);
     const added = await Promise.all(
       pdfs.map(async (file): Promise<PdfAItem> => ({
         id: uid(),
@@ -240,7 +227,7 @@ export default function PdfToPdfAPage() {
         .catch(() => undefined);
     } catch (e) {
       if (isPasswordError(e)) {
-        setPwError('Incorrect password. Try again.');
+        setPwError(t('pdf.ff.wrongPw'));
       } else {
         update(activeLocked.id, { locked: false, error: errorMessage(e) });
         setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
@@ -252,7 +239,7 @@ export default function PdfToPdfAPage() {
 
   function cancelUnlock() {
     if (!activeLocked) return;
-    update(activeLocked.id, { locked: false, error: 'Password required to open this PDF.' });
+    update(activeLocked.id, { locked: false, error: t('pdf.p.pwRequired') });
     setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
     setPwError(null);
   }
@@ -268,7 +255,7 @@ export default function PdfToPdfAPage() {
       const item = ready[i];
       setProgress({
         fraction: i / ready.length,
-        label: `Converting ${item.name} to PDF/A-${level}…`,
+        label: t('pdf.p.pa.converting', { name: item.name, level }),
       });
       await nextFrame();
       try {
@@ -284,7 +271,7 @@ export default function PdfToPdfAPage() {
       }
       setResults({ ...out });
     }
-    setProgress({ fraction: 1, label: 'Done' });
+    setProgress({ fraction: 1, label: t('pdf.p.done') });
     setBusy(false);
   }
 
@@ -299,17 +286,23 @@ export default function PdfToPdfAPage() {
   const qpdfCount = succeeded.filter((it) => results[it.id].res!.qpdfOk).length;
   const done = !busy && outputs.length > 0;
 
+  const colorOptions: [PdfAColorStrategy, string][] = React.useMemo(() => [
+    ['RGB', t('pdf.p.pa.colRgb')],
+    ['Gray', t('pdf.p.grayscale')],
+    ['CMYK', 'CMYK'],
+  ], [t]);
+
   return (
     <PdfPage
       title={PDFA.title}
       showHub
-      lead="Convert PDFs to ISO-compliant archival PDF/A-1b, PDF/A-2b, or PDF/A-3b locally in your browser with embedded fonts, ICC OutputIntent, and XMP metadata."
+      lead={t('pdf.p.pa.lead')}
     >
       <ToolWorkspace
         tool={PDFA}
         accept="application/pdf,.pdf"
-        selectLabel="Select PDF files"
-        dropLabel="or drop PDFs here"
+        selectLabel={t('pdf.p.selectPdfs')}
+        dropLabel={t('pdf.p.dropPdfs')}
         hasFiles={items.length > 0}
         onFiles={addFiles}
         toolbar={
@@ -322,12 +315,12 @@ export default function PdfToPdfAPage() {
               setPasswordQueue([]);
             }}
           >
-            Remove all
+            {t('pdf.p.removeAll')}
           </button>
         }
         sidebar={
           <>
-            <div className={styles.levelList} role="radiogroup" aria-label="PDF/A conformance level">
+            <div className={styles.levelList} role="radiogroup" aria-label={t('pdf.p.pa.levelAria')}>
               {LEVELS.map((opt) => (
                 <label
                   key={opt.id}
@@ -340,32 +333,31 @@ export default function PdfToPdfAPage() {
                     onChange={() => setLevel(opt.id)}
                   />
                   <span>
-                    <strong>{opt.title}</strong>
-                    <small>{opt.text}</small>
+                    <strong>{t(opt.titleKey)}</strong>
+                    <small>{t(opt.textKey)}</small>
                   </span>
                 </label>
               ))}
             </div>
 
             <div className={styles.options}>
-              <Field label="Colour space">
-                <Select value={colorStrategy} onChange={setColorStrategy} options={COLOR_OPTIONS} disabled={busy} />
+              <Field label={t('pdf.p.pa.colorSpace')}>
+                <Select value={colorStrategy} onChange={setColorStrategy} options={colorOptions} disabled={busy} />
               </Field>
-              <Field label="Document title (optional)" help="Leave blank to keep the original document title.">
+              <Field label={t('pdf.p.pa.docTitle')} help={t('pdf.p.pa.docTitleHelp')}>
                 <input
                   type="text"
                   className={fieldStyles.input}
                   value={title}
                   disabled={busy}
-                  placeholder="Keep original title"
+                  placeholder={t('pdf.p.pa.docTitlePh')}
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </Field>
             </div>
 
             <p className={styles.note}>
-              Powered by self-hosted Ghostscript 10.08.0 WebAssembly in a Web Worker. Unembedded fonts are substituted
-              and embedded, an ICC OutputIntent is attached, and ISO XMP metadata is written without uploading your files.
+              {t('pdf.p.pa.note')}
             </p>
             {notice && <p className={fieldStyles.warning}>{notice}</p>}
 
@@ -376,8 +368,8 @@ export default function PdfToPdfAPage() {
               onClick={convertAll}
             >
               {ready.length > 1
-                ? `Convert ${ready.length} PDFs to PDF/A-${level}`
-                : `Convert to PDF/A-${level}`}
+                ? t('pdf.p.pa.btnMany', { n: ready.length, level })
+                : t('pdf.p.pa.btnOne', { level })}
             </button>
 
             {busy && <Progress fraction={progress.fraction} label={progress.label} />}
@@ -386,12 +378,12 @@ export default function PdfToPdfAPage() {
               <div className={styles.result}>
                 <h3>
                   {compliantCount === outputs.length
-                    ? `Verified PDF/A-${level}`
-                    : `${compliantCount} of ${outputs.length} verified PDF/A-${level}`}
+                    ? t('pdf.p.pa.resAll', { level })
+                    : t('pdf.p.pa.resSome', { done: compliantCount, total: outputs.length, level })}
                 </h3>
                 <p>
-                  {formatBytes(beforeTotal)} &rarr; {formatBytes(afterTotal)} ({sizeDeltaLabel(beforeTotal, afterTotal)})
-                  {qpdfCount === outputs.length ? ' · QPDF verified' : ''}
+                  {formatBytes(beforeTotal)} &rarr; {formatBytes(afterTotal)} ({sizeDeltaLabel(beforeTotal, afterTotal, t('pdf.p.sameSize'))})
+                  {qpdfCount === outputs.length ? t('pdf.p.pa.qpdfVerSuffix') : ''}
                 </p>
                 {outputs.length === 1 ? (
                   <button
@@ -399,7 +391,7 @@ export default function PdfToPdfAPage() {
                     className={styles.primary}
                     onClick={() => download(outputs[0].bytes, outputs[0].name)}
                   >
-                    Download {outputs[0].name}
+                    {t('pdf.ff.downloadNamed', { name: outputs[0].name })}
                   </button>
                 ) : (
                   <button
@@ -407,7 +399,7 @@ export default function PdfToPdfAPage() {
                     className={styles.primary}
                     onClick={() => download(zipFiles(outputs), `pdfa-${level}-pdfs.zip`, 'application/zip')}
                   >
-                    Download all (ZIP)
+                    {t('pdf.p.downloadAllZip')}
                   </button>
                 )}
                 <ContinueWith currentToolId={PDFA.id} files={outputs} />
@@ -439,10 +431,10 @@ export default function PdfToPdfAPage() {
             const badges = res ? (
               <>
                 <span className={res.afterReport.isPdfA ? styles.statusDone : styles.statusLeft}>
-                  {res.afterReport.isPdfA ? `${pdfALabel(res.afterReport)} verified` : `Saved (check audit)`}
+                  {res.afterReport.isPdfA ? t('pdf.p.pa.badgeVer', { label: pdfALabel(res.afterReport) }) : t('pdf.p.pa.badgeSavedCheck')}
                 </span>
                 {res.afterReport.unembeddedFonts.length === 0 && (
-                  <span className={styles.statusDone}>Fonts embedded</span>
+                  <span className={styles.statusDone}>{t('pdf.p.pa.fontsEmb')}</span>
                 )}
                 {res.afterReport.hasOutputIntent && (
                   <span className={styles.statusDone}>ICC OutputIntent</span>
@@ -450,17 +442,17 @@ export default function PdfToPdfAPage() {
                 {res.qpdfOk && <span className={styles.statusDone}>QPDF OK</span>}
               </>
             ) : item.locked ? (
-              <span className={styles.statusLeft}>Password required</span>
+              <span className={styles.statusLeft}>{t('pdf.p.pwReqShort')}</span>
             ) : !rep ? (
-              <span className={styles.statusKept}>Inspecting…</span>
+              <span className={styles.statusKept}>{t('pdf.p.inspecting')}</span>
             ) : rep.isPdfA ? (
-              <span className={styles.statusDone}>Already {pdfALabel(rep)}</span>
+              <span className={styles.statusDone}>{t('pdf.p.pa.already', { label: pdfALabel(rep) })}</span>
             ) : (
               <>
-                <span className={styles.statusPending}>Not PDF/A</span>
+                <span className={styles.statusPending}>{t('pdf.p.pa.notPdfa')}</span>
                 {rep.unembeddedFonts.length > 0 && (
                   <span className={styles.statusLeft}>
-                    {rep.unembeddedFonts.length} unembedded font{rep.unembeddedFonts.length === 1 ? '' : 's'}
+                    {t(rep.unembeddedFonts.length === 1 ? 'pdf.p.pa.unembOne' : 'pdf.p.pa.unembMany', { n: rep.unembeddedFonts.length })}
                   </span>
                 )}
               </>
@@ -468,10 +460,10 @@ export default function PdfToPdfAPage() {
 
             const metaParts = [
               item.locked
-                ? 'Password protected'
+                ? t('pdf.p.pwProtected')
                 : item.pageCount === null
                   ? '…'
-                  : `${item.pageCount} page${item.pageCount === 1 ? '' : 's'}`,
+                  : t(item.pageCount === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany', { n: item.pageCount }),
               formatBytes(item.bytes.length),
             ];
 
@@ -489,7 +481,7 @@ export default function PdfToPdfAPage() {
                       className={styles.buttonSmall}
                       onClick={() => download(res.bytes, outName)}
                     >
-                      Download
+                      {t('pdf.p.download')}
                     </button>
                   )
                 }
@@ -498,7 +490,7 @@ export default function PdfToPdfAPage() {
                 {res && (
                   <div className={styles.fileMeta}>
                     <span className={res.afterBytes <= res.beforeBytes ? styles.saved : undefined}>
-                      {formatBytes(res.afterBytes)} ({sizeDeltaLabel(res.beforeBytes, res.afterBytes)})
+                      {formatBytes(res.afterBytes)} ({sizeDeltaLabel(res.beforeBytes, res.afterBytes, t('pdf.p.sameSize'))})
                     </span>
                   </div>
                 )}

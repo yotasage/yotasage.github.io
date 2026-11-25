@@ -16,6 +16,7 @@
 import React from 'react';
 
 import { BibEntry, formatNames, latexToText } from '../lib/bibtex';
+import { useI18n } from '../lib/ui/i18n';
 import styles from '../styles/Bibliography.module.css';
 
 export default class Bibliography {
@@ -85,21 +86,23 @@ function link(href: string, text: string) {
 }
 
 export function Reference({ entry }: { entry: BibEntry }) {
+  const { t } = useI18n();
   const f = entry.fields;
   const text = (name: string) => (f[name] ? latexToText(f[name]) : undefined);
 
-  const authors = f.author ? formatNames(f.author) : f.editor ? `${formatNames(f.editor)}, Ed.` : undefined;
+  const authors = f.author ? formatNames(f.author) : f.editor ? `${formatNames(f.editor)}, ${t('bib.editorAbbr')}` : undefined;
   const who = authors ?? text('organization') ?? text('institution');
   const title = text('title');
-  const month = f.month && /^\d+$/.test(f.month.trim()) ? MONTH_NAMES[Number(f.month) - 1] : text('month');
+  const monthNum = f.month && /^\d+$/.test(f.month.trim()) ? Number(f.month) : 0;
+  const month = monthNum >= 1 && monthNum <= 12 ? t(`bib.month.${monthNum}`) : text('month');
   // Kept on one line, so 2026-10-29 does not break at a hyphen.
   const nowrap = (value: React.ReactNode) => value && <span className={styles.nowrap}>{value}</span>;
   const date = nowrap(text('date') ?? join([month, text('year')], ' '));
-  const pages = f.pages && `${/^\s*\d+\s*$/.test(f.pages) ? 'p.' : 'pp.'} ${text('pages')}`;
+  const pages = f.pages && `${/^\s*\d+\s*$/.test(f.pages) ? t('bib.pageAbbr') : t('bib.pagesAbbr')} ${text('pages')}`;
   const online = f.doi
     ? link(`https://doi.org/${f.doi.trim()}`, `doi: ${f.doi.trim()}`)
     : f.url && link(f.url.trim(), f.url.trim());
-  const accessed = f.urldate && <>(accessed {nowrap(text('urldate'))})</>;
+  const accessed = f.urldate && <>({t('bib.accessed')} {nowrap(text('urldate'))})</>;
   const note = text('note');
   const ending = join([note && (note.endsWith('.') ? note : `${note}.`), online, accessed], ' ');
 
@@ -108,32 +111,32 @@ export function Reference({ entry }: { entry: BibEntry }) {
 
   switch (entry.type) {
     case 'article':
-      return <>{start}{join([f.journal && <i>{text('journal')}</i>, f.volume && `vol. ${text('volume')}`, f.number && `no. ${text('number')}`, pages, date], ', ')}. {ending}</>;
+      return <>{start}{join([f.journal && <i>{text('journal')}</i>, f.volume && `${t('bib.volAbbr')} ${text('volume')}`, f.number && `${t('bib.noAbbr')} ${text('number')}`, pages, date], ', ')}. {ending}</>;
     case 'book':
       return (
         <>
-          {who && `${who}, `}<i>{title}</i>{f.edition && `, ${text('edition')} ed`}.{' '}
+          {who && `${who}, `}<i>{title}</i>{f.edition && `, ${text('edition')} ${t('bib.edAbbr')}`}.{' '}
           {join([join([text('address'), text('publisher')], ': '), date], ', ')}. {ending}
         </>
       );
     case 'inproceedings':
     case 'conference':
-      return <>{start}{join([f.booktitle && <>in <i>{text('booktitle')}</i></>, text('address'), date, pages], ', ')}. {ending}</>;
+      return <>{start}{join([f.booktitle && <>{t('bib.in')} <i>{text('booktitle')}</i></>, text('address'), date, pages], ', ')}. {ending}</>;
     case 'phdthesis':
     case 'mastersthesis':
     case 'thesis': {
-      const kind = text('type') ?? (entry.type === 'phdthesis' ? 'Ph.D. dissertation' : 'M.S. thesis');
+      const kind = text('type') ?? (entry.type === 'phdthesis' ? t('bib.phdThesis') : t('bib.msThesis'));
       return <>{start}{join([kind, text('school') ?? text('institution'), text('address'), date], ', ')}. {ending}</>;
     }
     case 'techreport':
     case 'report': {
       // type replaces "Tech. Rep.", e.g. "Application Note AN9675". The institution is left out here when it is already named first.
-      const report = join([text('type') ?? (f.number ? 'Tech. Rep.' : undefined), text('number')], ' ');
+      const report = join([text('type') ?? (f.number ? t('bib.techRep') : undefined), text('number')], ' ');
       return <>{start}{join([authors && text('institution'), text('address'), report, text('version'), date], ', ')}. {ending}</>;
     }
     case 'patent':
       // IEEE: A. Inventor, “Title,” U.S. Patent 5,708,432, date.
-      return <>{start}{join([join([text('type') ?? 'Patent', text('number')], ' '), date], ', ')}. {ending}</>;
+      return <>{start}{join([join([text('type') ?? t('bib.patent'), text('number')], ' '), date], ', ')}. {ending}</>;
     default: {
       // @online, @misc, @manual, …: Organization. “Title.” Where it is published. URL (accessed date)
       const where = join([text('howpublished') ?? (authors ? text('organization') : undefined) ?? text('publisher'), date], ', ');
@@ -148,7 +151,3 @@ export function Reference({ entry }: { entry: BibEntry }) {
     }
   }
 }
-
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December',
-];

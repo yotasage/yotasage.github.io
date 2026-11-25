@@ -26,6 +26,7 @@ import type { Outcome } from '../../components/Smith/SolvePanel';
 import Strip from '../../components/Smith/Strip';
 import type { StripLock } from '../../components/Smith/Strip';
 import Theory, { TOPICS } from '../../components/Smith/Theory';
+import { kindShort, setSmithLocale } from '../../components/Smith/smithText';
 import { Why, followTopic, onBeforeFollowTopic, onReturnFromTopic } from '../../components/Smith/Why';
 import { DIRTY_VIEW } from '../../components/Smith/chartView';
 import type { ChartView } from '../../components/Smith/chartView';
@@ -45,7 +46,7 @@ import { exampleById } from '../../lib/smith/examples';
 import { keepLocks, valueLocked } from '../../lib/smith/lesson';
 import type { Lesson, Lock } from '../../lib/smith/lesson';
 import { MODE_Y, MODE_Z, MODE_ZY } from '../../lib/smith/grid';
-import { Circuit, KIND_SHORT, decodeCircuit, defaultCircuit, sameCircuit, sameNetwork, sweepParams } from '../../lib/smith/state';
+import { Circuit, decodeCircuit, defaultCircuit, sameCircuit, sameNetwork, sweepParams } from '../../lib/smith/state';
 import type { SweepSetting } from '../../lib/smith/state';
 import { PROJECT_MAX_BYTES, TOO_LARGE, openProject } from '../../lib/smith/export/project';
 import type { ExportSettings, Opened } from '../../lib/smith/export/project';
@@ -112,9 +113,11 @@ function routeForHash(rawHash: string): HashRoute | null {
   return null;
 }
 
-const MODES = [{ mode: MODE_Z, name: 'Z', title: 'Impedance grid: r and x circles' },
-  { mode: MODE_Y, name: 'Y', title: 'Admittance grid: g and b circles' },
-  { mode: MODE_ZY, name: 'ZY', title: 'Both grids' }];
+const MODES = [
+  { mode: MODE_Z, name: 'Z', titleKey: 'sm.main.modeZTitle' as const },
+  { mode: MODE_Y, name: 'Y', titleKey: 'sm.main.modeYTitle' as const },
+  { mode: MODE_ZY, name: 'ZY', titleKey: 'sm.main.modeZYTitle' as const },
+];
 
 /** The value lists per kind (D17), values.ts's text form; the link's vl wins over it. */
 const LISTS_KEY = 'smith.lists';
@@ -136,12 +139,11 @@ const challengeLocks = (ch: Challenge): Lesson => ({ locks: ch.kind === 'read' ?
 interface LessonOn { lesson: Lesson; base: Circuit; seq: number }
 /** No part locked: one array, so the effect below can tell nothing changed without a loop. */
 const NONE_FIXED: readonly boolean[] = [];
-const LESSON_WHY = 'locked by the lesson’s link (Leave the lesson unlocks it).';
-const CHALLENGE_WHY = 'fixed by the challenge (Close it to change).';
 
 export default function SmithChart({ references }: { references: BibEntry[] }) {
   useDesignSystemPage('#be185d', '#f472b6');
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  setSmithLocale(locale);
   const { mode: expMode, setMode: setExpMode } = useExperienceMode();
   const expModeRef = useRef(expMode);
   expModeRef.current = expMode;
@@ -241,7 +243,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   const [issues, setIssues] = useState<string[]>([]);
   // M8.3b: what the issues are of, the message of the last file opened, a file dragged over the page, and the export
   // settings of the project opened last (for the Export section).
-  const [issuesOf, setIssuesOf] = useState('link');
+  const [issuesOf, setIssuesOf] = useState<'link' | 'linkFile' | 'project'>('link');
   const [fileNote, setFileNote] = useState<{ ok: boolean; text: string; seq: number } | null>(null);
   const [dropping, setDropping] = useState(false);
   const [opened, setOpened] = useState<{ exports: ExportSettings; seq: number } | null>(null);
@@ -476,17 +478,19 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     setSweep(p.sweep);
     setLists(p.lists);
     setIssues(o.issues);
-    setIssuesOf(o.version === 0 ? 'link in the file' : 'project file');
+    setIssuesOf(o.version === 0 ? 'linkFile' : 'project');
     setOpened({ exports: p.exports, seq: n });
-    const what = o.version === 0 ? 'the link in' : 'the project';
-    const left = o.issues.length ? `; ${o.issues.length === 1 ? 'one thing' : `${o.issues.length} things`} could not be used (listed under Circuit)` : '';
-    setFileNote({ ok: true, seq: n, text: `Opened ${what} ${name}${left}. Undo takes the circuit back.` });
+    const what = t(o.version === 0 ? 'sm.main.openedLink' : 'sm.main.openedProject');
+    const left = o.issues.length
+      ? (o.issues.length === 1 ? t('sm.main.openedOneIssue') : t('sm.main.openedManyIssues', { n: o.issues.length }))
+      : '';
+    setFileNote({ ok: true, seq: n, text: t('sm.main.openedNote', { what, name, left }) });
     setWorkspace('workbench');
   };
   const openFile = async (file: File) => {
     if (file.size > PROJECT_MAX_BYTES) { applyOpened({ project: null, issues: [], version: null, message: TOO_LARGE }, file.name); return; }
     let text: string;
-    try { text = await file.text(); } catch { applyOpened({ project: null, issues: [], version: null, message: 'The file could not be read.' }, file.name); return; }
+    try { text = await file.text(); } catch { applyOpened({ project: null, issues: [], version: null, message: t('sm.main.fileReadErr') }, file.name); return; }
     applyOpened(openProject(text), file.name);
   };
   const openRef = useRef(openFile);
@@ -620,6 +624,11 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   const getChart = useCallback(() => chartView.current, []);
   useEffect(() => () => traceLayer.current?.dispose(), []);
   useEffect(() => { path.current?.setCircuit(circuit); solveLayer.current?.setGoal(circuit); }, [circuit]);
+  useEffect(() => {
+    setSmithLocale(locale);
+    path.current?.refreshLocale();
+    traceLayer.current?.refreshLocale();
+  }, [locale]);
   // Repaint the chart cleanly when switching back to the Workbench from Learn or Theory.
   useEffect(() => {
     if (workspace !== 'workbench') return undefined;
@@ -666,8 +675,8 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   const lock = useMemo<StripLock | null>(() => {
     if (!lesson && !challenge) return null;
     const locks: Lock[] = [...(lesson?.lesson.locks ?? []), ...(challenge?.locks.locks ?? [])];
-    return { lesson: { locks, hidden: [], text: '' }, why: lesson?.lesson.locks.length ? LESSON_WHY : CHALLENGE_WHY };
-  }, [lesson, challenge]);
+    return { lesson: { locks, hidden: [], text: '' }, why: t(lesson?.lesson.locks.length ? 'sm.main.lessonWhy' : 'sm.main.challengeWhy') };
+  }, [lesson, challenge, t]);
   // Read by the path layer when a drag or a key step starts; with nothing locked it stays the one empty array and a
   // commit (the end of every drag) touches no handle.
   const fixedRef = useRef<readonly boolean[]>(NONE_FIXED);
@@ -781,7 +790,9 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
       >
         <p>{t('smith.teaching.circuitBody')}</p>
       </TeachingCallout>
-      <Strip circuit={circuit} onChange={commit} issues={issues} issuesOf={issuesOf} selected={part} onSelect={selectPart}
+      <Strip circuit={circuit} onChange={commit} issues={issues}
+        issuesOf={t(issuesOf === 'linkFile' ? 'sm.main.issuesLinkFile' : issuesOf === 'project' ? 'sm.main.issuesProject' : 'sm.main.issuesLink')}
+        selected={part} onSelect={selectPart}
         revision={revision} drawKind={drawKind} onDraw={setDrawKind}
         onHover={(i) => { path.current?.hover(SEL_PART, i); mathLink.fromPage(SEL_PART, i); }} digits={digits} bib={bib}
         lock={lock} noSolve={noSolve} noRead={noRead} />
@@ -793,8 +804,7 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   );
 
   // The Learn section's props, the same objects between commits (the section is memoised).
-  const blocked = lesson?.lesson.locks.length
-    ? 'The lesson’s locks hold the circuit: Leave the lesson (above the circuit) to load an example or start a challenge.' : '';
+  const blocked = lesson?.lesson.locks.length ? t('sm.main.blocked') : '';
   const challengesProps = useMemo(() => ({ running: challenge?.ch.kind ?? '', progress, onStart: stable.start, blocked }),
     [challenge, progress, stable, blocked]);
   const makerProps = useMemo(() => ({ circuit, lists: listsText, challenge: challenge ? { kind: challenge.ch.kind, seed: challenge.ch.seed } : null }),
@@ -897,16 +907,16 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
   const theorySweep = useDeferredValue(noRead ? null : sweep);
   const theoryNode = useMemo(
     () => <Theory bib={bib} circuit={noRead ? START : theoryCircuit} outcome={theoryOutcome} lists={lists} sweep={theorySweep} layer={getTrace} />,
-    [bib, theoryCircuit, theoryOutcome, lists, noRead, theorySweep, getTrace],
+    [bib, theoryCircuit, theoryOutcome, lists, noRead, theorySweep, getTrace, locale],
   );
-  const refsNode = useMemo(() => bib.list(), [bib, theoryCircuit, theoryOutcome, lists, noRead, theorySweep]);
+  const refsNode = useMemo(() => bib.list(), [bib, theoryCircuit, theoryOutcome, lists, noRead, theorySweep, locale]);
 
   const modes = (
     <>
       <span className={styles.toolGroup}>
-        <div className={styles.modes} role="radiogroup" aria-label="Grid">
-          {MODES.map(({ mode: m, name, title }) => (
-            <label key={name} title={title}>
+        <div className={styles.modes} role="radiogroup" aria-label={t('sm.main.gridAria')}>
+          {MODES.map(({ mode: m, name, titleKey }) => (
+            <label key={name} title={t(titleKey)}>
               <input type="radio" name="smith-mode" value={name} checked={mode === m} onChange={() => setMode(m)} />
               {name}
             </label>
@@ -916,15 +926,14 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
       </span>
       <span className={styles.toolGroup}>
         <button type="button" className={`${styles.button} ${styles.toggle}`} aria-pressed={snap} data-snap-toggle=""
-          onClick={() => setSnap(!snap)} title="Dragging a ring snaps to the grid's circles and to the values of the part's list (E24 for R, L and C unless changed under Standard values in the Solve panel; Alt: not for this drag); arrow keys on a ring step through the list or by whole degrees">Snap</button>
+          onClick={() => setSnap(!snap)} title={t('sm.main.snapTitle')}>{t('sm.main.snap')}</button>
         <Why k="snap" />
       </span>
       <span className={styles.history}>
-        <button type="button" className={styles.button} data-undo="" disabled={!hist.current.past.length} onClick={() => travel(true)} title="Undo (Ctrl+Z)">Undo</button>
-        <button type="button" className={styles.button} data-redo="" disabled={!hist.current.future.length} onClick={() => travel(false)} title="Redo (Ctrl+Shift+Z or Ctrl+Y)">Redo</button>
+        <button type="button" className={styles.button} data-undo="" disabled={!hist.current.past.length} onClick={() => travel(true)} title={t('sm.main.undoTitle')}>{t('sm.main.undo')}</button>
+        <button type="button" className={styles.button} data-redo="" disabled={!hist.current.future.length} onClick={() => travel(false)} title={t('sm.main.redoTitle')}>{t('sm.main.redo')}</button>
         <button type="button" className={styles.button} data-start-over="" disabled={sameCircuit(circuit, lesson?.base ?? challenge?.ch.circuit ?? START)} onClick={startOver}
-          title={lesson ? 'Back to the lesson’s circuit; Undo brings this circuit back' : challenge ? 'Back to the challenge’s problem; Undo brings this circuit back'
-            : 'Back to the start circuit (Z0 = 50 Ω, load 25 + j25 Ω, f0 = 100 MHz, two parts); Undo brings this circuit back'}>Start over</button>
+          title={t(lesson ? 'sm.main.startOverLesson' : challenge ? 'sm.main.startOverChallenge' : 'sm.main.startOverDefault')}>{t('sm.main.startOver')}</button>
         <Why k="history" />
       </span>
       {/* Not while the draw tool is armed: its button takes this place, so the toolbar keeps its rows and the chart does
@@ -935,14 +944,14 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
           className={`${styles.button} ${styles.toolLink}`}
           data-export-link=""
           onClick={() => { setWorkspace('workbench'); setInspectorTab('export'); }}
-          title="The chart as a figure (TikZ, SVG, PNG), the data (CSV, Touchstone), the project file and the link"
+          title={t('sm.main.exportTitle')}
         >
           {t('smith.tab.export')}
         </button>
       )}
       {drawKind >= 0 && (
         <button type="button" className={`${styles.button} ${styles.toggle}`} aria-pressed="true" data-draw-stop="" onClick={stopDraw}
-          title="Drag from the input (In) on the chart to add the part at the source end; this button or Escape stops">Drawing {KIND_SHORT[drawKind]} ×</button>
+          title={t('sm.main.drawingTitle')}>{t('sm.main.drawing', { kind: kindShort(drawKind, locale) })}</button>
       )}
     </>
   );
@@ -951,10 +960,10 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
     <div className={styles.root} data-ds="v2">
       <PageHead
         title={t('smith.pageTitle')}
-        description="Interactive Smith chart with Z, Y, and ZY grids: drag matching networks, auto-solve components, run frequency sweeps, and export SVG, TikZ, or Touchstone."
+        description={t('sm.main.desc')}
         path="/smith-chart/main"
         ogImage="/og/smith-chart.png"
-        ogAlt="Interactive Smith chart showing an impedance matching network with arcs, markers, and live readout"
+        ogAlt={t('sm.main.ogAlt')}
       />
       <style jsx global>{`
         @page {
@@ -1054,11 +1063,11 @@ export default function SmithChart({ references }: { references: BibEntry[] }) {
         </div>
       </main>
       {/* M8.3b: a file dragged over the page, and the message of the last file opened (wherever the visitor is). */}
-      {dropping && <div className={styles.dropZone} aria-hidden="true" data-drop-zone="">Drop a project file (.smith.json) or a saved link to open it</div>}
+      {dropping && <div className={styles.dropZone} aria-hidden="true" data-drop-zone="">{t('sm.main.dropZone')}</div>}
       {fileNote && (
         <div className={styles.fileNote} role={fileNote.ok ? 'status' : 'alert'} data-file-note={fileNote.ok ? 'opened' : 'refused'}>
           <span>{fileNote.text}</span>
-          <button type="button" className={styles.iconButton} aria-label="Close this message" data-file-note-close="" onClick={() => setFileNote(null)}>×</button>
+          <button type="button" className={styles.iconButton} aria-label={t('sm.main.closeMessage')} data-file-note-close="" onClick={() => setFileNote(null)}>×</button>
         </div>
       )}
     </div>

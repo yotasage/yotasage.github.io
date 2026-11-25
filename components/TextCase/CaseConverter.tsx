@@ -16,21 +16,13 @@ const TERMS_KEY = 'text-case-terms';
 
 const TEXT_FILES = 'text/*,.txt,.md,.csv,.tsv,.log,.srt,.vtt,.json,.xml,.html,.yaml,.yml';
 
-const TITLE_STYLES: [TitleStyle, string][] = [['chicago', 'Chicago Manual of Style'], ['apa', 'APA style']];
-
-const TITLE_STYLE_HELP: Record<TitleStyle, string> = {
-  chicago: 'Lower case for a, an, the, and, but, for, or, nor, to, as and prepositions of any length (of, in, with, between …).',
-  apa: 'Lower case for a, an, the, and conjunctions and prepositions of up to three letters (and, or, of, in, on, by …). Longer ones such as with and from get a capital.',
-};
-
-const plural = (n: number, word: string) => `${groupDigits(String(n), 'space')} ${word}${n === 1 ? '' : 's'}`;
-
-function CaseButtons({ label, cases, value, onChange, code }: {
+function CaseButtons({ label, cases, value, onChange, code, getLabel }: {
   label: string;
   cases: CaseInfo[];
   value: CaseId;
   onChange: (id: CaseId) => void;
   code?: boolean;
+  getLabel: (c: CaseInfo) => string;
 }) {
   return (
     <div className={styles.group} role="group" aria-label={label}>
@@ -44,7 +36,7 @@ function CaseButtons({ label, cases, value, onChange, code }: {
             className={[styles.caseButton, code ? styles.code : '', c.id === value ? styles.selected : ''].filter(Boolean).join(' ')}
             onClick={() => onChange(c.id)}
           >
-            {c.label}
+            {getLabel(c)}
           </button>
         ))}
       </div>
@@ -119,14 +111,14 @@ export default function CaseConverter({ hideOptions = false }: { hideOptions?: b
     try {
       const content = await f.text();
       if (content.includes('\0')) {
-        setNotice(`${f.name} does not look like a text file.`);
+        setNotice(t('textcase.err.notText', { name: f.name }));
         return;
       }
       setText(content);
       const name = baseName(f.name);
       setFile({ name, ext: f.name.slice(name.length) || '.txt' });
     } catch (e) {
-      setNotice(`Could not read ${f.name}: ${errorMessage(e)}`);
+      setNotice(t('textcase.err.cantRead', { name: f.name, msg: errorMessage(e) }));
     }
   }
 
@@ -135,7 +127,7 @@ export default function CaseConverter({ hideOptions = false }: { hideOptions?: b
     try {
       setText(await navigator.clipboard.readText());
     } catch (e) {
-      setNotice(`Could not read the clipboard: ${errorMessage(e)}`);
+      setNotice(t('textcase.err.cantPaste', { msg: errorMessage(e) }));
     }
   }
 
@@ -155,7 +147,23 @@ export default function CaseConverter({ hideOptions = false }: { hideOptions?: b
     }
   }
 
-  const downloadName = `${safeFileName(`${file.name} (${info.label})`, 'text')}${file.ext}`;
+  const getCaseLabel = (c: CaseInfo) => {
+    const key = `textcase.case.${c.id}.label`;
+    const tr = t(key);
+    return tr === key ? c.label : tr;
+  };
+  const caseDescription = t(`textcase.case.${caseId}.desc`);
+  const titleStyles: [TitleStyle, string][] = [
+    ['chicago', t('textcase.style.chicago')],
+    ['apa', t('textcase.style.apa')],
+  ];
+  const titleStyleHelp: Record<TitleStyle, string> = {
+    chicago: t('textcase.style.chicagoHelp'),
+    apa: t('textcase.style.apaHelp'),
+  };
+  const fmtCount = (n: number, one: string, many: string) =>
+    `${groupDigits(String(n), 'space')} ${n === 1 ? one : many}`;
+  const downloadName = `${safeFileName(`${file.name} (${getCaseLabel(info)})`, 'text')}${file.ext}`;
 
   return (
     <div className={styles.workspace}>
@@ -169,7 +177,9 @@ export default function CaseConverter({ hideOptions = false }: { hideOptions?: b
           onChange={(e) => setText(e.target.value)}
         />
         <p className={styles.stats}>
-          {plural(stats.characters, 'character')} · {plural(stats.words, 'word')} · {plural(stats.lines, 'line')}
+          {fmtCount(stats.characters, t('textcase.stats.charOne'), t('textcase.stats.charMany'))} ·{' '}
+          {fmtCount(stats.words, t('textcase.stats.wordOne'), t('textcase.stats.wordMany'))} ·{' '}
+          {fmtCount(stats.lines, t('textcase.stats.lineOne'), t('textcase.stats.lineMany'))}
         </p>
         <div className={styles.buttonRow}>
           {canPaste && <button type="button" className={styles.buttonSmall} onClick={paste}>{t('textcase.input.paste')}</button>}
@@ -185,10 +195,10 @@ export default function CaseConverter({ hideOptions = false }: { hideOptions?: b
 
       <section className={[styles.card, styles.panel, styles.caseCard].join(' ')} aria-label={t('textcase.case.aria')}>
         <div className={styles.groups}>
-          <CaseButtons label={t('textcase.case.textGroup')} cases={TEXT_CASES} value={caseId} onChange={setCaseId} />
-          <CaseButtons label={t('textcase.case.codeGroup')} cases={CODE_CASES} value={caseId} onChange={setCaseId} code />
+          <CaseButtons label={t('textcase.case.textGroup')} cases={TEXT_CASES} value={caseId} onChange={setCaseId} getLabel={getCaseLabel} />
+          <CaseButtons label={t('textcase.case.codeGroup')} cases={CODE_CASES} value={caseId} onChange={setCaseId} code getLabel={getCaseLabel} />
         </div>
-        <p className={styles.description}>{info.description}</p>
+        <p className={styles.description}>{caseDescription}</p>
       </section>
 
       <section className={[styles.card, styles.panel, styles.resultCard].join(' ')}>
@@ -219,43 +229,43 @@ export default function CaseConverter({ hideOptions = false }: { hideOptions?: b
             <h3>{t('textcase.result.options')}</h3>
             <div className={styles.options}>
               {caseId === 'title' && (
-                <Field label="Small words in lower case" help={TITLE_STYLE_HELP[titleStyle]}>
-                  <Select value={titleStyle} onChange={setTitleStyle} options={TITLE_STYLES} />
+                <Field label={t('textcase.opt.smallWords')} help={titleStyleHelp[titleStyle]}>
+                  <Select value={titleStyle} onChange={setTitleStyle} options={titleStyles} />
                 </Field>
               )}
               {caseId === 'sentence' && (
                 <Option
-                  label="Keep names: words with a capital in the middle of a sentence (John, Oslo)"
-                  help="Except in lines where most words have a capital, such as titles."
+                  label={t('textcase.opt.keepNames')}
+                  help={t('textcase.opt.keepNamesHelp')}
                   checked={keepNames}
                   onChange={setKeepNames}
                 />
               )}
               <Option
-                label="Keep acronyms, words with capitals inside and web addresses (NASA, iPhone, MHz, example.com)"
-                help="Except in lines where most words are in capitals."
+                label={t('textcase.opt.keepSpecial')}
+                help={t('textcase.opt.keepSpecialHelp')}
                 checked={keepSpecial}
                 onChange={setKeepSpecial}
               />
               {caseId === 'sentence' && (
                 <>
                   <Option
-                    label="A new line starts a new sentence"
-                    help="Turn off for text with line breaks inside sentences, such as text copied from a PDF."
+                    label={t('textcase.opt.newLine')}
+                    help={t('textcase.opt.newLineHelp')}
                     checked={newLineSentence}
                     onChange={setNewLineSentence}
                   />
                   <Option
-                    label="Write the English word i as I"
-                    help="Turn off for languages where i is a word, such as Norwegian and Swedish."
+                    label={t('textcase.opt.englishI')}
+                    help={t('textcase.opt.englishIHelp')}
                     checked={englishI}
                     onChange={setEnglishI}
                   />
                 </>
               )}
               <Field
-                label="Words with fixed capitals"
-                help="One per line, such as iPhone, GitHub or New York. They are always written like this, also at the start of a sentence. Saved in this browser."
+                label={t('textcase.opt.fixedTerms')}
+                help={t('textcase.opt.fixedTermsHelp')}
               >
                 <textarea
                   className={[styles.textarea, styles.terms].join(' ')}
@@ -271,11 +281,8 @@ export default function CaseConverter({ hideOptions = false }: { hideOptions?: b
           <>
             <h3>{t('textcase.result.options')}</h3>
             <div className={styles.options}>
-              <Checkbox label="Only ASCII letters and digits (é → e, æ → ae, ø → o)" checked={ascii} onChange={setAscii} />
-              <p className={styles.help}>
-                Each line becomes one name. Words are split at spaces, punctuation and changes of case, so XMLHttpRequest is
-                XML, Http and Request.
-              </p>
+              <Checkbox label={t('textcase.opt.ascii')} checked={ascii} onChange={setAscii} />
+              <p className={styles.help}>{t('textcase.opt.codeHelp')}</p>
             </div>
           </>
         )}

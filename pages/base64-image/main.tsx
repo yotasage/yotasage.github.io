@@ -156,16 +156,16 @@ export default function Base64Image() {
                 <table className={styles.guideTable}>
                   <thead>
                     <tr>
-                      <th>Format</th>
-                      <th>MIME type</th>
-                      <th>Best for</th>
+                      <th>{t('base64.guide.thFormat')}</th>
+                      <th>{t('base64.guide.thMime')}</th>
+                      <th>{t('base64.guide.thBestFor')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr><td>PNG</td><td><code>image/png</code></td><td>Lossless UI, sharp icons, alpha</td></tr>
-                    <tr><td>JPEG</td><td><code>image/jpeg</code></td><td>Photos without transparency</td></tr>
-                    <tr><td>WebP</td><td><code>image/webp</code></td><td>Compact photos &amp; alpha</td></tr>
-                    <tr><td>SVG</td><td><code>image/svg+xml</code></td><td>Crisp vectors (or percent-encoded)</td></tr>
+                    <tr><td>PNG</td><td><code>image/png</code></td><td>{t('base64.guide.bestPng')}</td></tr>
+                    <tr><td>JPEG</td><td><code>image/jpeg</code></td><td>{t('base64.guide.bestJpeg')}</td></tr>
+                    <tr><td>WebP</td><td><code>image/webp</code></td><td>{t('base64.guide.bestWebp')}</td></tr>
+                    <tr><td>SVG</td><td><code>image/svg+xml</code></td><td>{t('base64.guide.bestSvg')}</td></tr>
                   </tbody>
                 </table>
               </article>

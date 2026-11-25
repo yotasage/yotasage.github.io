@@ -74,7 +74,7 @@ export function TopCommandBar({
   const { t } = useI18n();
 
   return (
-    <div className={styles.commandBar} role="toolbar" aria-label="Image actions">
+    <div className={styles.commandBar} role="toolbar" aria-label={t('paint.toolbar.actionsAria')}>
       <div className={styles.cmdGroup}>
         <button type="button" className={styles.cmdBtn} onClick={() => onOpenModal('new')}>
           {t('paint.action.new')}
@@ -450,7 +450,7 @@ export function ToolOptionsBar({
               onChange={(e) => onChangeOptions({ cropAspect: e.target.value as ToolOptions['cropAspect'] })}
               className={styles.optSelect}
             >
-              <option value="free">Free</option>
+              <option value="free">{t('paint.opt.aspectFree')}</option>
               <option value="1:1">1:1</option>
               <option value="4:3">4:3</option>
               <option value="16:9">16:9</option>
@@ -507,7 +507,7 @@ export function LeftToolStrip({
   const { t } = useI18n();
 
   return (
-    <aside className={styles.toolStrip} aria-label="Drawing tools">
+    <aside className={styles.toolStrip} aria-label={t('paint.toolbar.toolsAria')}>
       {TOOL_LIST.map((item) => {
         const active = activeTool === item.id;
         const label = t(item.labelKey);

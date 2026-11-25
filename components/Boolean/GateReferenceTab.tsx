@@ -6,7 +6,7 @@ import {
   type GateReferenceEntry,
   type ReferenceGateKind,
 } from '../../lib/boolean/gateReference';
-import { useI18n } from '../../lib/ui/i18n';
+import { type TranslationKey, useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Boolean.module.css';
 import dStyles from '../../styles/BooleanDiagrams.module.css';
 import KatexSpan from '../KatexSpan';
@@ -59,6 +59,7 @@ function GateMiniSvg({
     XNOR: '=1',
   };
 
+  const { t } = useI18n();
   const isCurvedLeft =
     variant === 'ieee' && (kind === 'OR' || kind === 'NOR' || kind === 'XOR' || kind === 'XNOR');
 
@@ -68,7 +69,7 @@ function GateMiniSvg({
       height={svgH}
       viewBox={`0 0 126 ${svgH}`}
       role="img"
-      aria-label={`${kind}${count} ${variant.toUpperCase()} symbol`}
+      aria-label={t('boolean.gates.symbolAria', { name: `${kind}${count}`, style: variant.toUpperCase() })}
     >
       {/* Input leads & pin labels */}
       {pinYs.map((py, idx) => {
@@ -211,10 +212,75 @@ function GateCard({
 
   const selection = useTableSelection(gateGrid);
 
+  const vars = gate.inputNames.join(', ');
+  const n = gate.arity;
+  const gateName = t(`boolean.gate.${gate.id}.name` as TranslationKey);
+
+  const gateSummary = (() => {
+    switch (gate.id) {
+      case 'BUFFER':
+        return t('boolean.gate.BUFFER.summary');
+      case 'NOT':
+        return t('boolean.gate.NOT.summary');
+      case 'AND':
+        return t('boolean.gate.AND.summary', { n, vars });
+      case 'OR':
+        return t('boolean.gate.OR.summary', { n, vars });
+      case 'NAND':
+        return t('boolean.gate.NAND.summary', { n });
+      case 'NOR':
+        return t('boolean.gate.NOR.summary', { n });
+      case 'XOR':
+        return n === 2 ? t('boolean.gate.XOR.summary2') : t('boolean.gate.XOR.summaryN', { n, vars });
+      case 'XNOR':
+        return n === 2
+          ? t('boolean.gate.XNOR.summary2')
+          : t('boolean.gate.XNOR.summaryN', { n, evens: n === 4 ? '0, 2, 4' : '0, 2' });
+    }
+  })();
+
+  const nandEq = (() => {
+    switch (gate.id) {
+      case 'AND':
+        return n === 2 ? gate.nandEquivalent : t('boolean.gate.AND.nandN', { n, vars });
+      case 'NAND':
+        return t('boolean.gate.NAND.nandEq', { n, vars });
+      case 'NOR':
+        return t('boolean.gate.NOR.nandEq', { n });
+      case 'XOR':
+        return n === 2
+          ? t('boolean.gate.XOR.nand2')
+          : t('boolean.gate.XOR.nandN', { blocks: n - 1, total: (n - 1) * 4 });
+      case 'XNOR':
+        return n === 2 ? t('boolean.gate.XNOR.nand2') : t('boolean.gate.XNOR.nandN', { n });
+      default:
+        return gate.nandEquivalent;
+    }
+  })();
+
+  const norEq = (() => {
+    switch (gate.id) {
+      case 'OR':
+        return n === 2 ? gate.norEquivalent : t('boolean.gate.OR.norN', { n, vars });
+      case 'NAND':
+        return t('boolean.gate.NAND.norEq', { n });
+      case 'NOR':
+        return t('boolean.gate.NOR.norEq', { n, vars });
+      case 'XOR':
+        return n === 2
+          ? t('boolean.gate.XOR.nor2')
+          : t('boolean.gate.XOR.norN', { blocks: n - 1, total: (n - 1) * 5 });
+      case 'XNOR':
+        return n === 2 ? t('boolean.gate.XNOR.nor2') : t('boolean.gate.XNOR.norN', { n });
+      default:
+        return gate.norEquivalent;
+    }
+  })();
+
   return (
     <article className={dStyles.gateRefCard} data-testid={`gate-ref-${gate.id.toLowerCase()}`}>
       <div className={styles.identityHead}>
-        <h3 className={styles.identityTitle}>{gate.name}</h3>
+        <h3 className={styles.identityTitle}>{gateName}</h3>
         <span className={styles.workTag} data-testid={`gate-marking-${gate.id.toLowerCase()}`}>
           {gate.marking}
         </span>
@@ -237,14 +303,14 @@ function GateCard({
 
       <div className={dStyles.gateRefBody}>
         <div className={styles.workContent}>
-          <p className={styles.identitySummary}>{gate.summary}</p>
+          <p className={styles.identitySummary}>{gateSummary}</p>
           <span className={styles.metaInline}>
             <strong>{t('boolean.gates.nandEq')}:</strong>{' '}
-            <code className={styles.monoCode}>{gate.nandEquivalent}</code>
+            <code className={styles.monoCode}>{nandEq}</code>
           </span>
           <span className={styles.metaInline}>
             <strong>{t('boolean.gates.norEq')}:</strong>{' '}
-            <code className={styles.monoCode}>{gate.norEquivalent}</code>
+            <code className={styles.monoCode}>{norEq}</code>
           </span>
         </div>
 
@@ -257,7 +323,7 @@ function GateCard({
           <div className={dStyles.tableWrap} style={{ maxHeight: 280, overflowY: 'auto' }}>
             <table
               className={[dStyles.truthTable, dStyles.selectableTable].join(' ')}
-              aria-label={`${gate.name} (${gate.marking}) truth table`}
+              aria-label={t('boolean.gates.tableAria', { name: `${gateName} (${gate.marking})` })}
             >
               <thead>
                 <tr>
@@ -371,7 +437,7 @@ export default function GateReferenceTab({ onTryGate }: GateReferenceTabProps) {
                     .join(' ')}
                   onClick={() => setBaseInputs(n)}
                 >
-                  {n} inputs
+                  {t('boolean.gates.inputsCount', { count: n })}
                 </button>
               ))}
             </div>

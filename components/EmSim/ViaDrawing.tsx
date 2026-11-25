@@ -38,6 +38,8 @@ import { useViaField, VIA_FIELD_DEFAULT, viaDriveText } from './useViaField';
 import type { ViaFieldSettings } from './useViaField';
 import { ViaFieldControls, ViaFieldLayer, ViaFieldProbe } from './ViaFieldView';
 import type { ViaProbeApi } from './ViaFieldView';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TFunc } from '../../lib/ui/i18n';
 
 const LABEL_MIN = 58; // px: the side view's label column at least
 const LABEL_PAD = 15; // px: the leader (10) and the label's halo and a margin beside its text
@@ -105,11 +107,11 @@ interface SideLabel { id: string; text: string; full: string }
 /** The side view's copper labels and the column they need: the full name where it fits in LABEL_SHARE of the width,
  * else the name without its bracket ("L6 out" for "L6 (bottom) out"), else cut with an ellipsis; a shortened label
  * carries its full text in a <title>. */
-function sideLabels(g: SideGeom, W: number, family: string): { labels: SideLabel[]; w: number } {
+function sideLabels(g: SideGeom, W: number, family: string, tr: TFunc): { labels: SideLabel[]; w: number } {
   const room = Math.max(LABEL_MIN, Math.floor(W * LABEL_SHARE)) - LABEL_PAD;
   let widest = 0;
   const labels = g.layers.filter((l) => l.kind === 'copper').map((l) => {
-    const end = l.signal === 'entry' ? ' in' : l.signal === 'exit' ? ' out' : l.plane ? ' ⏚' : '';
+    const end = l.signal === 'entry' ? tr('em.via.inTag') : l.signal === 'exit' ? tr('em.via.outTag') : l.plane ? ' ⏚' : '';
     const full = l.name + end;
     let text = full, px = labelPx(text, family);
     if (px > room) {
@@ -167,6 +169,7 @@ interface ViewProps {
 }
 
 function ViaView({ which, s, v, traceW, unit, digits, edit, fields }: ViewProps) {
+  const { t: tr, locale } = useI18n();
   const box = useRef<HTMLDivElement>(null);
   const content = useRef<SVGGElement>(null);
   const pzRef = useRef<PanZoom | null>(null);
@@ -182,7 +185,7 @@ function ViaView({ which, s, v, traceW, unit, digits, edit, fields }: ViewProps)
   const top = which === 'top';
 
   const g = useMemo<SideGeom | TopGeom>(() => (top ? topGeom(s, v, traceW) : sideGeom(s, v, traceW)), [top, s, v, traceW]);
-  const side = useMemo(() => (top ? null : sideLabels(g as SideGeom, W, family)), [top, g, W, family]);
+  const side = useMemo(() => (top ? null : sideLabels(g as SideGeom, W, family, tr)), [top, g, W, family, tr]);
   const fitNow = useMemo(() => fitOf(which, g, W, side ? side.w : 0), [which, g, W, side]);
   const frozen = useRef<Fit | null>(null);
   const fit = dragKey && frozen.current ? frozen.current : fitNow;
@@ -257,7 +260,7 @@ function ViaView({ which, s, v, traceW, unit, digits, edit, fields }: ViewProps)
     if (!hoverRaf.current) hoverRaf.current = requestAnimationFrame(() => { hoverRaf.current = 0; probeAtPx(px, py); });
   };
 
-  const defs = useMemo(() => (top ? topHandles(s, v, g as TopGeom) : sideHandles(s, v, g as SideGeom)), [top, s, v, g]);
+  const defs = useMemo(() => (top ? topHandles(s, v, g as TopGeom) : sideHandles(s, v, g as SideGeom)), [top, s, v, g, locale]);
   const defsRef = useRef(defs);
   defsRef.current = defs;
   const angle = useMemo(() => (top ? freeAngle(v, g as TopGeom) : 0), [top, v, g]);
@@ -460,7 +463,7 @@ function ViaView({ which, s, v, traceW, unit, digits, edit, fields }: ViewProps)
         {tg.returns.map((rr) => <text key={rr.k} x={X(rr.x) + (rr.pad / 2) * k + 2} y={Y(rr.y) - (rr.pad / 2) * k + 2} fontSize={10}>{rr.k + 1}</text>)}
         {tg.barrels.length > 1 && tg.barrels.map((br) => <text key={br.name} x={X(br.x) - (br.pad / 2) * k - 4} y={Y(br.y) + 4} textAnchor="end" className={css.sigNum}>{br.name}</text>)}
         {tg.feeds.filter((f, i) => tg.feeds.findIndex((h) => h.side === f.side) === i).map((f) => (
-          <text key={f.side} x={X(f.x1)} y={Y(f.y1) + (f.y1 > f.y0 ? -4 : 12)} textAnchor={f.x1 > f.x0 + 1e-6 ? 'end' : f.x1 < f.x0 - 1e-6 ? 'start' : 'middle'} fontSize={10}>{f.side === 'entry' ? `in ${f.layer}` : `out ${f.layer}`}</text>
+          <text key={f.side} x={X(f.x1)} y={Y(f.y1) + (f.y1 > f.y0 ? -4 : 12)} textAnchor={f.x1 > f.x0 + 1e-6 ? 'end' : f.x1 < f.x0 - 1e-6 ? 'start' : 'middle'} fontSize={10}>{tr(f.side === 'entry' ? 'em.via.inLayer' : 'em.via.outLayer', { layer: f.layer })}</text>
         ))}
       </g>,
     );
@@ -489,7 +492,7 @@ function ViaView({ which, s, v, traceW, unit, digits, edit, fields }: ViewProps)
           tabIndex={0}
           role="slider"
           aria-label={d.name}
-          aria-roledescription={xy ? 'position' : undefined}
+          aria-roledescription={xy ? tr('em.via.posRole') : undefined}
           aria-orientation={d.axis === 'x' ? 'horizontal' : d.axis === 'y' ? 'vertical' : undefined}
           aria-valuenow={Number(fromMm(d.value, u).toPrecision(digits))}
           aria-valuetext={vt}
@@ -508,7 +511,7 @@ function ViaView({ which, s, v, traceW, unit, digits, edit, fields }: ViewProps)
     }
   }
   const sideOk = top || (g as SideGeom).ok;
-  const name = top ? 'Top view of the via' : 'Side view of the via, cut along the section line';
+  const name = tr(top ? 'em.via.topViewName' : 'em.via.sideViewName');
   const what = top ? 'top' : 'side';
   return (
     <>
@@ -519,44 +522,42 @@ function ViaView({ which, s, v, traceW, unit, digits, edit, fields }: ViewProps)
         data-at-fit={atFit}
         data-add-mode={top ? addMode : undefined}
         tabIndex={sideOk ? 0 : -1}
-        aria-label={`${name}: drag or arrow keys pan, wheel, pinch or + and − zoom, 0 shows all${top && addMode ? '; Enter adds a return via at a free spot' : ''}`}
+        aria-label={tr('em.via.boxAria', { name, add: top && addMode ? tr('em.via.boxAriaAdd') : '' })}
         style={{ height: fit ? H + 2 : undefined }}
         onKeyDown={onBoxKey}
         onKeyDownCapture={onProbeKey}
         onPointerMove={onBoxMove}
       >
         {!sideOk ? (
-          <p className={css.noDrawing}>The via cannot be drawn: its barrel or drill is not set.</p>
+          <p className={css.noDrawing}>{tr('em.via.noDraw')}</p>
         ) : fit ? (
           <>
-            <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="group" aria-label={`${name}, ${k.toFixed(0)} px per mm`} {...{ [`data-via-${what}`]: '' }} data-px-per-mm={k.toFixed(3)} data-returns={top ? (g as TopGeom).returns.length : undefined}>
+            <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="group" aria-label={tr('em.via.svgAria', { name, k: k.toFixed(0) })} {...{ [`data-via-${what}`]: '' }} data-px-per-mm={k.toFixed(3)} data-returns={top ? (g as TopGeom).returns.length : undefined}>
               <rect x={0} y={0} width={W} height={H} fill={top ? 'var(--core)' : 'var(--air)'} />
               <g ref={content}>
                 {body}
                 {handles}
               </g>
             </svg>
-            <button type="button" className={css.resetView} data-via-reset={what} onClick={resetView} disabled={atFit} aria-label={`Show the whole ${what} view`} title={`Show the whole ${what} view (0)`}>
+            <button type="button" className={css.resetView} data-via-reset={what} onClick={resetView} disabled={atFit} aria-label={tr(top ? 'em.via.showWholeTop' : 'em.via.showWholeSide')} title={tr(top ? 'em.via.showWholeTopKey' : 'em.via.showWholeSideKey')}>
               <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" aria-hidden="true"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" /></svg>
             </button>
           </>
         ) : null}
       </div>
       {fieldOn && fit && <ViaFieldProbe api={probe} mod={fm.mod} store={fm.store} which={which} thick={thick} view={view} unit={unit} digits={digits} keys={probeMode} />}
-      {fieldOn && fm.mod && <FieldFoot mod={fm.mod} store={fm.store} drive={viaDriveText(which, fields!, !!v.pitch)} />}
+      {fieldOn && fm.mod && <FieldFoot mod={fm.mod} store={fm.store} drive={viaDriveText(which, fields!, !!v.pitch, locale)} />}
       {refused && <p className={css.refused} role="alert" data-via-handle-refused={what}>{refused}</p>}
       {top && (
         <div className={vcss.viewTools}>
-          <button type="button" className={base.button} aria-pressed={addMode} data-via-add-mode onClick={() => { setAddMode((m) => !m); setRefused(''); }}>{addMode ? 'Tap the view to add…' : 'Add by tap'}</button>
+          <button type="button" className={base.button} aria-pressed={addMode} data-via-add-mode onClick={() => { setAddMode((m) => !m); setRefused(''); }}>{tr(addMode ? 'em.via.tapToAdd' : 'em.via.addByTap')}</button>
           <button type="button" className={base.button} data-via-remove-sel disabled={selRet === null} onClick={() => { if (selRet !== null) { edit.remove(selRet); setSelRet(null); setRefused(''); } }}>
-            {selRet === null ? 'Remove return via' : `Remove return via ${selRet + 1}`}
+            {selRet === null ? tr('em.via.removeRet') : tr('em.via.removeRetN', { n: selRet + 1 })}
           </button>
         </div>
       )}
       <figcaption className={css.caption}>
-        {top
-          ? 'Top view: pads, antipads (dashed) in the planes, return vias numbered as in the list, feeds (pale: the exit side). '
-          : 'Side view, cut along the dashed line of the top view; return vias behind the cut are pale. '}
+        {tr(top ? 'em.via.topCap' : 'em.via.sideCap')}
         {fit && <Scale k={k} unit={unit} digits={digits} />}
       </figcaption>
     </>
@@ -564,6 +565,7 @@ function ViaView({ which, s, v, traceW, unit, digits, edit, fields }: ViewProps)
 }
 
 export default React.memo(function ViaDrawing({ s, v: v0, traceW, unit, digits, edit, store }: { s: Stackup; v: ViaStructure; traceW: number; unit: LengthUnit; digits: number; edit: ViaEdit; store: LiveVia }) {
+  const { t } = useI18n();
   const live = useLive(store);
   const v = live.via ?? v0;
   const [fields, setFields] = useState<ViaFieldSettings>(VIA_FIELD_DEFAULT);
@@ -578,7 +580,7 @@ export default React.memo(function ViaDrawing({ s, v: v0, traceW, unit, digits, 
         <Why k="via-top" bare />
         <Whys ks="via-add-tap via-remove-sel" />
       </figure>
-      <p className={css.caption}>Drag the handles (or focus one and use the arrow keys) to change pads, antipads, the drill, the pitch, the backdrill and where the return vias are; drag a view to pan, wheel or pinch to zoom.</p>
+      <p className={css.caption}>{t('em.via.handlesCap')}</p>
       <Whys ks="via-handles via-reset" />
       <ViaFieldControls f={fields} set={setFields} pair={!!v.pitch} />
       <Via3D s={s} v={v} traceW={traceW} fields={fields} />

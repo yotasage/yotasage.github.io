@@ -7,11 +7,14 @@ import { M_ANGLE, M_MAG, M_RL, M_VSWR, M_ZI, M_ZR, METRIC_STRIDE, evaluateCircui
 import { askOf } from '../../lib/smith/state';
 import type { Circuit } from '../../lib/smith/state';
 import { toDegrees } from '../../lib/smith/convert';
+import { translate, useI18n } from '../../lib/ui/i18n';
+import type { Locale } from '../../lib/ui/translations';
 import styles from '../../styles/Smith.module.css';
 import { nodeLabel, nodeName } from './pathLayer';
 import { complexText, gammaPolarText, shownDigits } from './readout';
 import { subjectName } from './mathRows';
 import { ShowEq } from './ShowEq';
+import { getSmithLocale } from './smithText';
 import { Why } from './Why';
 
 // The table of the path's nodes (step M3.2): for every node from the load to the input its z, Γ, VSWR and return
@@ -54,46 +57,54 @@ export function nodeTexts(c: Circuit): NodeTexts[] {
 const gg = new Float64Array(2);
 
 /** How the goal's node stands to the goal (M4.3b: the circuit's goal): the distance's text, the word and whether it holds. */
-export function goalLine(c: Circuit): { distance: string; word: string; met: boolean } {
+export function goalLine(c: Circuit, locale: Locale = getSmithLocale()): { distance: string; word: string; met: boolean } {
   const goal = askOf(c).goal;
   goalGamma(gg, 0, c, goal);
   const s = goalStanding(goal, gg[0], gg[1], c.z0);
-  return { distance: formatResidual(s.distance, '', shownDigits()), met: s.met, word: s.mode === 'circle' ? (s.met ? 'on it' : 'off it') : s.met ? 'inside' : 'outside' };
+  const word = s.mode === 'circle'
+    ? translate(locale, s.met ? 'sm.nodes.wordOn' : 'sm.nodes.wordOff')
+    : translate(locale, s.met ? 'sm.nodes.wordInside' : 'sm.nodes.wordOutside');
+  return { distance: formatResidual(s.distance, '', shownDigits()), met: s.met, word };
 }
 
 const FIG: Record<string, string> = { r: 'r', g: 'g', x: 'x', b: 'b' };
 
 /** The goal in words: what it is (with its node and how the chart draws it), whose distance follows and in what. */
-function goalWords(c: Circuit): { what: string; who: string; how: string } {
+function goalWords(c: Circuit, locale: Locale): { what: string; who: string; how: string } {
+  const tr = (k: Parameters<typeof translate>[1], v?: Record<string, string | number>) => translate(locale, k, v);
   const goal = askOf(c).goal, n = c.parts.length, k = Math.min(goalNode(goal, n), n);
-  const at = k === n ? '' : ` at ${k === 0 ? 'the load' : `node ${k}`}`;
-  const who = k === n ? 'The input' : k === 0 ? 'The load' : `Node ${k}`;
+  const at = k === n ? '' : k === 0 ? tr('sm.nodes.atLoad') : tr('sm.nodes.atNode', { k });
+  const who = k === n ? tr('sm.nodes.whoInput') : k === 0 ? tr('sm.nodes.whoLoad') : tr('sm.nodes.whoNode', { k });
   const p = goalPoint(goal);
   if (p) {
     const R = p.targetR ?? c.z0, X = p.targetX ?? 0;
     const centre = R === c.z0 && X === 0;
-    const what = centre ? 'the match (Γ = 0, the centre)' : R === Infinity ? 'the open (Γ = 1)' : `Z = ${complexText(R, X, 'Ω')}`;
+    const what = centre ? tr('sm.nodes.targetMatch') : R === Infinity ? tr('sm.nodes.targetOpen') : `Z = ${complexText(R, X, 'Ω')}`;
     return {
-      what: `${what}${at}, close enough within VSWR ${num(GOAL_VSWR)} ${centre ? `(|Γ| ≤ ${num(GOAL_MAG)}, dashed)` : 'of it (dashed)'}`,
-      who, how: centre ? 'from it in |Γ|' : 'from it in |Γ| as seen from the target',
+      what: centre
+        ? tr('sm.nodes.pointWhatCentre', { what, at, vswr: num(GOAL_VSWR), mag: num(GOAL_MAG) })
+        : tr('sm.nodes.pointWhatOther', { what, at, vswr: num(GOAL_VSWR) }),
+      who,
+      how: tr(centre ? 'sm.nodes.howCentre' : 'sm.nodes.howTarget'),
     };
   }
   const v = goalValue(goal), m = goalMag(goal), within = isWithin(goal);
   const rel = within ? (goal.kind === 'rl' ? '≥' : '≤') : '=';
   const mt = `|Γ| ${within ? '≤' : '='} ${fig(m)}`;
   const figure = goal.kind === 'mag' ? `|Γ| ${rel} ${fig(v)}` : goal.kind === 'vswr' ? `VSWR ${rel} ${fig(v)} (${mt})`
-    : goal.kind === 'rl' ? `return loss ${rel} ${fig(v, 'dB')} (${mt})` : `${FIG[goal.kind]} = ${fig(v)}`;
-  if (within) return { what: `${figure}${at} (dashed)`, who, how: 'from the centre in |Γ|' };
+    : goal.kind === 'rl' ? tr('sm.nodes.rlFig', { rel, val: fig(v, 'dB'), mt }) : `${FIG[goal.kind]} = ${fig(v)}`;
+  if (within) return { what: tr('sm.nodes.withinWhat', { figure, at }), who, how: tr('sm.nodes.howWithin') };
   const pole = goalPole(goal);
-  const poleText = pole ? ` Every ${FIG[goal.kind]} circle runs through the ${pole > 0 ? 'open (Γ = 1)' : 'short (Γ = −1)'}, crossed out: a value that makes it is no answer.` : '';
-  return { what: `the circle ${figure}${at} (dashed).${poleText}`, who, how: 'from it in Γ' };
+  const poleText = pole ? tr('sm.nodes.poleText', { fig: FIG[goal.kind], pole: tr(pole > 0 ? 'sm.nodes.poleOpen' : 'sm.nodes.poleShort') }) : '';
+  return { what: tr('sm.nodes.circleWhat', { figure, at, pole: poleText }), who, how: tr('sm.nodes.howCircle') };
 }
 
 export default function Nodes({ circuit, selected, onSelect, onHover, digits }: NodesProps) {
+  const { t, locale } = useI18n();
   const n = circuit.parts.length;
   const rows = useMemo(() => nodeTexts(circuit), [circuit, digits]);
-  const line = useMemo(() => goalLine(circuit), [circuit, digits]);
-  const words = useMemo(() => goalWords(circuit), [circuit, digits]);
+  const line = useMemo(() => goalLine(circuit, locale), [circuit, digits, locale]);
+  const words = useMemo(() => goalWords(circuit, locale), [circuit, digits, locale]);
   // Open beside the chart, closed on phones (read after mount, so the static page and the first render agree).
   const [open, setOpen] = useState(true);
   useEffect(() => { if (window.matchMedia('(max-width: 599px)').matches) setOpen(false); }, []);
@@ -102,34 +113,34 @@ export default function Nodes({ circuit, selected, onSelect, onHover, digits }: 
     <section className={styles.panel} data-nodes="">
       <details className={styles.nodesBox} open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
         <summary className={`${styles.panelTitle} ${styles.nodesSummary}`}>
-          <span>Nodes</span>
+          <span>{t('sm.nodes.title')}</span>
           <Why k="nodes" />
-          <span className={styles.panelNote}>{n + 1} · load → input · at f0</span>
+          <span className={styles.panelNote}>{t('sm.nodes.note', { n: n + 1 })}</span>
         </summary>
-        <ol className={styles.nodeList} aria-label="Nodes from the load to the input">
-          {rows.map((t, k) => (
+        <ol className={styles.nodeList} aria-label={t('sm.nodes.listAria')}>
+          {rows.map((r, k) => (
             <li key={k} className={styles.nodeItem}>
               <button type="button" className={styles.nodeRow} data-node-row={k} aria-pressed={k === selected}
-                aria-label={`${nodeName(k, n)}: z ${t.z}, Γ ${t.gamma}, VSWR ${t.vswr}, return loss ${t.rl}`}
+                aria-label={t('sm.nodes.rowAria', { name: nodeName(k, n, locale), z: r.z, gamma: r.gamma, vswr: r.vswr, rl: r.rl })}
                 onClick={() => onSelect(k)} onMouseEnter={() => onHover(k)} onMouseLeave={() => onHover(-1)}
                 onFocus={() => onHover(k)} onBlur={() => onHover(-1)}>
                 <span className={styles.nodeChip} data-end={k === n && n > 0 ? 'input' : k === 0 ? 'load' : undefined}>{nodeLabel(k, n)}</span>
-                <span className={styles.nodeName}>{nodeName(k, n)}</span>
+                <span className={styles.nodeName}>{nodeName(k, n, locale)}</span>
                 <span className={styles.nodeVals}>
-                  <span><i>z</i><b data-v="z">{t.z}</b></span>
-                  <span><i>Γ</i><b data-v="gamma">{t.gamma}</b></span>
-                  <span><i>VSWR</i><b data-v="vswr">{t.vswr}</b></span>
-                  <span><i>RL</i><b data-v="rl">{t.rl}</b></span>
+                  <span><i>z</i><b data-v="z">{r.z}</b></span>
+                  <span><i>Γ</i><b data-v="gamma">{r.gamma}</b></span>
+                  <span><i>VSWR</i><b data-v="vswr">{r.vswr}</b></span>
+                  <span><i>RL</i><b data-v="rl">{r.rl}</b></span>
                 </span>
               </button>
-              <ShowEq subject={{ t: 'node', k }} k={`node:${k}`} what={subjectName(circuit, { t: 'node', k })} back="the node table" />
+              <ShowEq subject={{ t: 'node', k }} k={`node:${k}`} what={subjectName(circuit, { t: 'node', k })} back={t('sm.nodes.backTable')} />
             </li>
           ))}
         </ol>
         <p className={styles.goalText} data-goal-text="" data-inside={line.met ? '' : undefined}>
           <span className={styles.goalMark} aria-hidden="true" />
-          Goal: {words.what}{words.what.endsWith('.') ? '' : '.'}
-          {' '}{words.who} is <b data-goal-distance="">{line.distance}</b> {words.how}: <strong>{line.word}</strong>.<Why k="goal" />
+          {t('sm.nodes.goalPrefix')} {words.what}{words.what.endsWith('.') ? '' : '.'}
+          {' '}{t('sm.nodes.goalBody', { who: words.who })} <b data-goal-distance="">{line.distance}</b> {words.how}: <strong>{line.word}</strong>.<Why k="goal" />
         </p>
       </details>
     </section>

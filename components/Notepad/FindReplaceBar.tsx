@@ -148,7 +148,7 @@ export default function FindReplaceBar({
             </button>
           </div>
 
-          <div className={styles.segmentedGroup} role="group" aria-label="Search mode">
+          <div className={styles.segmentedGroup} role="group" aria-label={t('notepad.find.modeAria')}>
             {SEARCH_MODES.map((m) => {
               const active = options.mode === m;
               const labelKey =
@@ -268,7 +268,7 @@ export default function FindReplaceBar({
 
           <span className={styles.cmdSep} aria-hidden="true" />
 
-          <div className={styles.presetGroup} role="group" aria-label="Quick replace presets">
+          <div className={styles.presetGroup} role="group" aria-label={t('notepad.find.presetsAria')}>
             <button type="button" className={styles.presetBtn} onClick={() => onApplyPreset('joinComma')}>
               {t('notepad.find.presetJoinComma')}
             </button>

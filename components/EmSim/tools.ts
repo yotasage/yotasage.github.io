@@ -9,6 +9,8 @@ import type { Tol, Val } from '../../lib/emsim/stackup';
 import { KIND_INFO } from '../../lib/emsim/structure';
 import { inputsOf } from '../../lib/emsim/vary';
 import type { Input } from '../../lib/emsim/vary';
+import type { Locale } from '../../lib/ui/translations';
+import { emT, getEmLocale } from './emText';
 
 export const PLACEHOLDER = { rel: 0.1, er: 0.2, mask: 0.3 } as const;
 
@@ -43,12 +45,13 @@ export type Quantity = 'ohm' | 'ratio' | 'delay';
 export interface Output { id: string; label: string; q: Quantity; keys: string[]; names: string[] }
 
 /** What a sweep can plot for n lines; the first is the main quantity. */
-export function outputsOf(n: number): Output[] {
+export function outputsOf(n: number, locale: Locale = getEmLocale()): Output[] {
+  const tr = (k: Parameters<typeof emT>[0], vars?: Record<string, string | number>) => emT(k, vars, locale);
   if (n === 1) {
     return [
       { id: 'z0', label: 'Z0', q: 'ohm', keys: ['z0'], names: ['Z0'] },
       { id: 'eeff', label: 'εeff', q: 'ratio', keys: ['eeff'], names: ['εeff'] },
-      { id: 'delay', label: 'Delay', q: 'delay', keys: ['delay'], names: ['Delay'] },
+      { id: 'delay', label: tr('em.tools.delay'), q: 'delay', keys: ['delay'], names: [tr('em.tools.delay')] },
     ];
   }
   const modes = Array.from({ length: n }, (_, i) => i + 1);
@@ -58,10 +61,10 @@ export function outputsOf(n: number): Output[] {
         { id: 'zdiff', label: 'Zdiff', q: 'ohm', keys: ['zdiff'], names: ['Zdiff'] },
         { id: 'zcm', label: 'Zcm', q: 'ohm', keys: ['zcm'], names: ['Zcm'] },
       ]
-    : [{ id: 'z0', label: 'Z0 of each line', q: 'ohm', keys: lines.map((i) => `z0.${i}`), names: lines.map((i) => `line ${i}`) }];
+    : [{ id: 'z0', label: tr('em.tools.z0Each'), q: 'ohm', keys: lines.map((i) => `z0.${i}`), names: lines.map((i) => tr('em.tools.lineN', { n: i })) }];
   out.push(
-    { id: 'eeff', label: 'εeff of the modes', q: 'ratio', keys: modes.map((i) => `mode${i}.eeff`), names: modes.map((i) => `mode ${i}`) },
-    { id: 'delay', label: 'Delay of the modes', q: 'delay', keys: modes.map((i) => `mode${i}.delay`), names: modes.map((i) => `mode ${i}`) },
+    { id: 'eeff', label: tr('em.tools.eeffModes'), q: 'ratio', keys: modes.map((i) => `mode${i}.eeff`), names: modes.map((i) => tr('em.tools.modeN', { n: i })) },
+    { id: 'delay', label: tr('em.tools.delayModes'), q: 'delay', keys: modes.map((i) => `mode${i}.delay`), names: modes.map((i) => tr('em.tools.modeN', { n: i })) },
   );
   return out;
 }
@@ -86,19 +89,20 @@ export interface TargetChoice { key: InverseKey; label: string }
 export interface VaryChoice { vary: InverseVary; label: string; use: string }
 
 /** What the target can solve for: the quantities and what is varied (empty with a reason when it cannot). */
-export function targetChoices(setup: Setup): { keys: TargetChoice[]; varies: VaryChoice[]; reason: string } {
+export function targetChoices(setup: Setup, locale: Locale = getEmLocale()): { keys: TargetChoice[]; varies: VaryChoice[]; reason: string } {
+  const tr = (k: Parameters<typeof emT>[0]) => emT(k, undefined, locale);
   const st = setup.trace;
   const info = KIND_INFO[st.kind];
-  if (st.kind === 'general' || !info) return { keys: [], varies: [], reason: 'The target is solved for the preset structures; a general arrangement has no single width to solve for.' };
-  if (info.signals === 1) return { keys: [{ key: 'z0', label: 'Z0' }], varies: [{ vary: 'w', label: 'width', use: 'Use this width' }], reason: '' };
+  if (st.kind === 'general' || !info) return { keys: [], varies: [], reason: tr('em.tools.targetNoPreset') };
+  if (info.signals === 1) return { keys: [{ key: 'z0', label: 'Z0' }], varies: [{ vary: 'w', label: tr('em.tools.varyW'), use: tr('em.tools.useW') }], reason: '' };
   const keys: TargetChoice[] = [{ key: 'zdiff', label: 'Zdiff' }, { key: 'zcm', label: 'Zcm' }];
-  if (st.kind === 'broadside') return { keys, varies: [{ vary: 'w', label: 'width', use: 'Use this width' }], reason: '' };
+  if (st.kind === 'broadside') return { keys, varies: [{ vary: 'w', label: tr('em.tools.varyW'), use: tr('em.tools.useW') }], reason: '' };
   return {
     keys,
     varies: [
-      { vary: 'w', label: 'width, gap fixed', use: 'Use this width' },
-      { vary: 's', label: 'gap, width fixed', use: 'Use this gap' },
-      { vary: 'ws', label: 'width and gap, ratio fixed', use: 'Use this width and gap' },
+      { vary: 'w', label: tr('em.tools.varyWFixed'), use: tr('em.tools.useW') },
+      { vary: 's', label: tr('em.tools.varySFixed'), use: tr('em.tools.useS') },
+      { vary: 'ws', label: tr('em.tools.varyWS'), use: tr('em.tools.useWS') },
     ],
     reason: '',
   };

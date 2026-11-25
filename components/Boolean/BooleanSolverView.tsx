@@ -143,7 +143,10 @@ export default function BooleanSolverView({
       if ('error' in res) {
         return {
           ok: false as const,
-          error: list.length > 1 ? `Equation ${i + 1}: ${res.error}` : res.error,
+          error:
+            list.length > 1
+              ? t('boolean.solver.eqError', { index: i + 1, error: res.error })
+              : res.error,
           hint: res.hint,
         };
       }
@@ -565,9 +568,16 @@ export default function BooleanSolverView({
                 : t('boolean.result.mismatch')}
             </span>
             <span className={styles.metaInline}>
-              {evalBundle.allVariables.length} input
-              {evalBundle.allVariables.length === 1 ? '' : 's'} · {evalBundle.results.length} output
-              {evalBundle.results.length === 1 ? '' : 's'}
+              {t('boolean.solver.ioSummary', {
+                inputs:
+                  evalBundle.allVariables.length === 1
+                    ? t('boolean.solver.inputOne')
+                    : t('boolean.solver.inputMany', { count: evalBundle.allVariables.length }),
+                outputs:
+                  evalBundle.results.length === 1
+                    ? t('boolean.solver.outputOne')
+                    : t('boolean.solver.outputMany', { count: evalBundle.results.length }),
+              })}
             </span>
           </div>
         )}
@@ -590,7 +600,7 @@ export default function BooleanSolverView({
                   setInspectedStepIndex(null);
                 }}
               >
-                {r.outputName} ({r.steps.length} steps)
+                {t('boolean.solver.eqSteps', { name: r.outputName, count: r.steps.length })}
               </button>
             ))}
           </div>
@@ -725,7 +735,7 @@ export default function BooleanSolverView({
       {/* Sub-navigation bar: Analysis Tabs + Alternative Layout Toggle */}
       <div className={styles.workspaceBar} data-testid="boolean-layout-bar">
         {layoutMode === 'tabs' ? (
-          <div className={styles.analysisTabList} role="tablist" aria-label="Analysis views">
+          <div className={styles.analysisTabList} role="tablist" aria-label={t('boolean.solver.analysisAria')}>
             {analysisTabs.map((tab) => {
               const active = activeTab === tab.id;
               return (
@@ -748,8 +758,8 @@ export default function BooleanSolverView({
         ) : (
           <span className={styles.metaInline}>
             {layoutMode === 'workbench'
-              ? 'Persistent Solver on left · Live Inspector on right'
-              : 'All sections stacked vertically'}
+              ? t('boolean.solver.workbenchNote')
+              : t('boolean.solver.allSectionsNote')}
           </span>
         )}
 
@@ -811,7 +821,7 @@ export default function BooleanSolverView({
               <div className={styles.workbenchCol}>{resultAndSteps}</div>
               <div className={styles.workbenchInspector}>
                 <div className={styles.workspaceBar}>
-                  <div className={styles.analysisTabList} role="tablist" aria-label="Inspector views">
+                  <div className={styles.analysisTabList} role="tablist" aria-label={t('boolean.solver.inspectorAria')}>
                     {inspectorTabs.map((tab) => {
                       const active = workbenchTab === tab.id;
                       return (

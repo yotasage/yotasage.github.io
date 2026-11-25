@@ -41,6 +41,8 @@ import type { Circuit, SweepSetting } from '../../lib/smith/state';
 import { Trace, markersAt, runSweep, sweepCircuit } from '../../lib/smith/sweep';
 import type { MarkerPoint } from '../../lib/smith/sweep';
 import type { ValueChoice } from '../../lib/smith/values';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
 import styles from '../../styles/Smith.module.css';
 import css from '../../styles/SmithExport.module.css';
 import type { ChartView } from './chartView';
@@ -87,22 +89,23 @@ export const DEFAULT_PREFS: Readonly<ExportPrefs> = {
   csvAll: false, csvForm: 'plain', ts: 'RI',
 };
 
-const SIZES: readonly { id: Size; label: string; title: string }[] = [
-  { id: 'column', label: '88 mm', title: 'A column of a two-column paper' },
-  { id: 'text', label: '160 mm', title: 'The text width of an A4 report' },
-  { id: 'page', label: '180 mm', title: 'A page width with small margins' },
-  { id: 'other', label: 'Other', title: 'Any width in mm, cm or in, or \\linewidth' },
+const SIZES: readonly { id: Size; label?: string; labelKey?: TranslationKey; titleKey: TranslationKey }[] = [
+  { id: 'column', label: '88 mm', titleKey: 'sm.ex.sizeColTitle' },
+  { id: 'text', label: '160 mm', titleKey: 'sm.ex.sizeTextTitle' },
+  { id: 'page', label: '180 mm', titleKey: 'sm.ex.sizePageTitle' },
+  { id: 'other', labelKey: 'sm.ex.sizeOther', titleKey: 'sm.ex.sizeOtherTitle' },
 ];
-const COLOUR_NAMES: Readonly<Record<ColourMode, string>> = { colour: 'Colour', grey: 'Greyscale', bw: 'Black and white' };
-const DETAIL_LABELS: Readonly<Record<DetailPreset, string>> = { minimal: 'Minimal', standard: 'Standard', full: 'Full' };
+const COLOUR_KEYS: Readonly<Record<ColourMode, TranslationKey>> = { colour: 'sm.ex.colColour', grey: 'sm.ex.colGrey', bw: 'sm.ex.colBw' };
+const DETAIL_KEYS_T: Readonly<Record<DetailPreset, TranslationKey>> = { minimal: 'sm.ex.detMinimal', standard: 'sm.ex.detStandard', full: 'sm.ex.detFull' };
+const DENSITY_KEYS: Readonly<Record<Density, TranslationKey>> = { coarse: 'sm.ex.denCoarse', normal: 'sm.ex.denNormal', fine: 'sm.ex.denFine' };
 const DENSITIES: readonly Density[] = ['coarse', 'normal', 'fine'];
 const GRIDS: readonly { id: GridKind; label: string }[] = [{ id: 'z', label: 'Z' }, { id: 'y', label: 'Y' }, { id: 'zy', label: 'ZY' }];
 /** The switchable items, in the order of the list. */
-const ITEMS: readonly { k: keyof Detail; label: string }[] = [
-  { k: 'gridLabels', label: 'Grid labels' }, { k: 'scales', label: 'Perimeter scales' }, { k: 'path', label: 'Path' },
-  { k: 'nodes', label: 'Nodes' }, { k: 'nodeLabels', label: 'Node labels' }, { k: 'loci', label: 'Part arcs' },
-  { k: 'goal', label: 'Goal' }, { k: 'construction', label: 'Construction circles' }, { k: 'solutions', label: 'Solutions' },
-  { k: 'trace', label: 'Trace' }, { k: 'markers', label: 'Markers' }, { k: 'legend', label: 'Legend' },
+const ITEMS: readonly { k: keyof Detail; key: TranslationKey }[] = [
+  { k: 'gridLabels', key: 'sm.ex.item.gridLabels' }, { k: 'scales', key: 'sm.ex.item.scales' }, { k: 'path', key: 'sm.ex.item.path' },
+  { k: 'nodes', key: 'sm.ex.item.nodes' }, { k: 'nodeLabels', key: 'sm.ex.item.nodeLabels' }, { k: 'loci', key: 'sm.ex.item.loci' },
+  { k: 'goal', key: 'sm.ex.item.goal' }, { k: 'construction', key: 'sm.ex.item.construction' }, { k: 'solutions', key: 'sm.ex.item.solutions' },
+  { k: 'trace', key: 'sm.ex.item.trace' }, { k: 'markers', key: 'sm.ex.item.markers' }, { k: 'legend', key: 'sm.ex.item.legend' },
 ];
 const DETAIL_KEYS = Object.keys(DETAIL_PRESETS.standard) as (keyof Detail)[];
 
@@ -193,7 +196,7 @@ function save(blob: Blob, name: string): void {
 }
 
 /** The SVG drawn on a canvas of w × h px, as a PNG Blob. */
-function rasterise(svg: string, w: number, h: number): Promise<Blob> {
+function rasterise(svg: string, w: number, h: number, canvasFail: string, svgFail: string): Promise<Blob> {
   return new Promise((done, fail) => {
     const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
     const img = new Image();
@@ -205,10 +208,10 @@ function rasterise(svg: string, w: number, h: number): Promise<Blob> {
         const g = canvas.getContext('2d');
         g.drawImage(img, 0, 0, w, h);
         URL.revokeObjectURL(url);
-        canvas.toBlob((b) => (b ? done(b) : fail(new Error('The canvas gave no PNG.'))), 'image/png');
+        canvas.toBlob((b) => (b ? done(b) : fail(new Error(canvasFail))), 'image/png');
       } catch (e) { URL.revokeObjectURL(url); fail(e); }
     };
-    img.onerror = () => { URL.revokeObjectURL(url); fail(new Error('The SVG could not be drawn.')); };
+    img.onerror = () => { URL.revokeObjectURL(url); fail(new Error(svgFail)); };
     img.src = url;
   });
 }
@@ -263,6 +266,7 @@ export interface ExportProbe {
 interface Info { width: number; height: number; linewidth: boolean; whole: boolean; ms: number; dropped: number }
 
 function ExportPanel({ circuit, sweep, outcome, chart, busy, search, lists, digits, opened, onOpen }: ExportPanelProps) {
+  const { t } = useI18n();
   const root = useRef<HTMLElement>(null);
   const frameWrap = useRef<HTMLDivElement>(null);
   const preview = useRef<HTMLDivElement>(null);
@@ -391,20 +395,20 @@ function ExportPanel({ circuit, sweep, outcome, chart, busy, search, lists, digi
   const csvOptions = (): CsvOptions => ({ digits: prefs.csvAll ? 0 : shownDigits(), form: prefs.csvForm });
   const saveText = (text: string, type: string, name: string) => {
     save(new Blob([text], { type }), name);
-    setNote(`Saved ${name} (${kB(new TextEncoder().encode(text).length)}).`);
+    setNote(t('sm.ex.saved', { name, size: kB(new TextEncoder().encode(text).length) }));
   };
   const onNodes = () => saveText(nodesCsv(circuit, csvOptions()), 'text/csv;charset=utf-8', `${stem}-nodes.csv`);
   const onTrace = () => {
-    const t = sweep && (inputFor(), traceCache.current.trace);
-    if (t) saveText(traceCsv(t, circuit.z0, csvOptions()), 'text/csv;charset=utf-8', `${stem}-trace.csv`);
+    const tr = sweep && (inputFor(), traceCache.current.trace);
+    if (tr) saveText(traceCsv(tr, circuit.z0, csvOptions()), 'text/csv;charset=utf-8', `${stem}-trace.csv`);
   };
   const onMarkers = () => {
     const m = sweep && (inputFor(), traceCache.current.markers);
     if (m && m.length) saveText(markersCsv(m, csvOptions()), 'text/csv;charset=utf-8', `${stem}-markers.csv`);
   };
   const onS1p = () => {
-    const t = sweep && (inputFor(), traceCache.current.trace);
-    if (t) saveText(touchstone({ freqs: t.freqs, gamma: t.gamma, n: t.n, z0: circuit.z0, link: link(), format: prefs.ts }), 'text/plain;charset=utf-8', `${stem}.s1p`);
+    const tr = sweep && (inputFor(), traceCache.current.trace);
+    if (tr) saveText(touchstone({ freqs: tr.freqs, gamma: tr.gamma, n: tr.n, z0: circuit.z0, link: link(), format: prefs.ts }), 'text/plain;charset=utf-8', `${stem}.s1p`);
   };
   const onProject = () => {
     const v = chart();
@@ -413,43 +417,43 @@ function ExportPanel({ circuit, sweep, outcome, chart, busy, search, lists, digi
   };
   const onCopyLink = async () => {
     const ok = await copyText(link());
-    setNote(ok ? 'Copied the link: it opens this circuit, its lists and its sweep.' : 'The browser did not allow copying; copy the address bar instead.');
+    setNote(t(ok ? 'sm.ex.copiedLink' : 'sm.ex.copyLinkFail'));
   };
   const onCopy = async () => {
     const f = fig();
     if (!f) return;
-    const t = figureTikz(f);
-    const text = prefs.tex === 'picture' ? t.picture : t.document;
+    const tk = figureTikz(f);
+    const text = prefs.tex === 'picture' ? tk.picture : tk.document;
     const ok = await copyText(text);
-    setNote(ok ? `Copied the TikZ ${prefs.tex === 'picture' ? 'picture' : 'document'} (${kB(text.length)}).` : 'The browser did not allow copying; use Save .tex.');
+    setNote(ok ? t(prefs.tex === 'picture' ? 'sm.ex.copiedTikzPic' : 'sm.ex.copiedTikzDoc', { size: kB(text.length) }) : t('sm.ex.copyTikzFail'));
   };
   const onTex = () => {
     const f = fig();
     if (!f) return;
-    const t = figureTikz(f);
-    const text = prefs.tex === 'picture' ? t.picture : t.document;
+    const tk = figureTikz(f);
+    const text = prefs.tex === 'picture' ? tk.picture : tk.document;
     save(new Blob([text], { type: 'application/x-tex' }), `${stem}.tex`);
-    setNote(`Saved ${stem}.tex (${kB(text.length)}).`);
+    setNote(t('sm.ex.saved', { name: `${stem}.tex`, size: kB(text.length) }));
   };
   const onSvg = () => {
     const f = fig();
     if (!f) return;
     const text = figureSvg(f);
     save(new Blob([text], { type: 'image/svg+xml' }), `${stem}.svg`);
-    setNote(`Saved ${stem}.svg (${kB(text.length)}).`);
+    setNote(t('sm.ex.saved', { name: `${stem}.svg`, size: kB(text.length) }));
   };
   const onPng = async () => {
     const f = fig();
     if (!f) return;
     const [w, h] = pngSize(f, prefs.png);
     if (!pngFits(w, h)) return;
-    setNote('Drawing the PNG…');
+    setNote(t('sm.ex.drawingPng'));
     try {
-      const b = await rasterise(figureSvg(f), w, h);
+      const b = await rasterise(figureSvg(f), w, h, t('sm.ex.pngCanvasFail'), t('sm.ex.pngSvgFail'));
       save(b, `${stem}.png`);
-      setNote(`Saved ${stem}.png (${w} × ${h} px, ${kB(b.size)}).`);
+      setNote(t('sm.ex.savedPng', { name: `${stem}.png`, w, h, size: kB(b.size) }));
     } catch (e) {
-      setNote(`No PNG: ${(e as Error).message}`);
+      setNote(t('sm.ex.noPng', { msg: (e as Error).message }));
     }
   };
 
@@ -470,117 +474,119 @@ function ExportPanel({ circuit, sweep, outcome, chart, busy, search, lists, digi
   return (
     <section id="export" ref={root} className={css.export} aria-labelledby="smith-export" data-export="">
       <h2 className={`${styles.panelTitle} ${css.title}`} id="smith-export">
-        <span className={css.head}>Export <Why k="export" /></span>
-        <span className={styles.panelNote}>figures, data and projects, made on this device</span>
+        <span className={css.head}>{t('sm.ex.title')} <Why k="export" /></span>
+        <span className={styles.panelNote}>{t('sm.ex.note')}</span>
       </h2>
 
       <div className={css.layout}>
         <div className={css.options}>
           <div className={css.group} role="group" aria-labelledby="smith-export-area">
-            <span className={css.label} id="smith-export-area">Shows <Why k="export-area" /></span>
+            <span className={css.label} id="smith-export-area">{t('sm.ex.shows')} <Why k="export-area" /></span>
             <div className={css.pair}>
               {(['whole', 'view'] as const).map((a) => (
                 <button key={a} type="button" className={toggle(prefs.area === a)} aria-pressed={prefs.area === a} data-export-area={a}
-                  onClick={() => setPrefs({ area: a })}>{a === 'whole' ? 'Whole chart' : 'Current view'}</button>
+                  onClick={() => setPrefs({ area: a })}>{t(a === 'whole' ? 'sm.ex.whole' : 'sm.ex.view')}</button>
               ))}
             </div>
           </div>
 
           <div className={css.group} role="group" aria-labelledby={sizeId}>
-            <span className={css.label} id={sizeId}>Width <Why k="export-size" /></span>
+            <span className={css.label} id={sizeId}>{t('sm.ex.width')} <Why k="export-size" /></span>
             <div className={css.four}>
               {SIZES.map((s) => (
                 <button key={s.id} type="button" className={toggle(prefs.size === s.id)} aria-pressed={prefs.size === s.id} data-export-size={s.id}
-                  title={s.title} onClick={() => setPrefs({ size: s.id })}>{s.label}</button>
+                  title={t(s.titleKey)} onClick={() => setPrefs({ size: s.id })}>{s.labelKey ? t(s.labelKey) : s.label}</button>
               ))}
             </div>
             {prefs.size === 'other' && (
               <div className={styles.field}>
-                <label className={styles.fieldLabel} htmlFor={otherId}>Width (mm, cm, in or \linewidth)</label>
+                <label className={styles.fieldLabel} htmlFor={otherId}>{t('sm.ex.otherLabel')}</label>
                 <input id={otherId} className={styles.input} data-export-other="" value={prefs.other} spellCheck={false} autoComplete="off"
                   aria-invalid={width ? undefined : true} aria-describedby={width ? undefined : `${otherId}-error`}
                   onChange={(e) => setPrefs({ other: e.currentTarget.value })} />
                 {!width && <span className={styles.fieldError} id={`${otherId}-error`} data-export-error="">
-                  Write a width from {MIN_WIDTH} to {MAX_WIDTH} mm, as 120 mm, 12 cm, 4.5 in, or \linewidth.</span>}
-                {width?.linewidth && <span className={css.hint}>Fills the line where it is pasted; the grid and text are chosen for {LINEWIDTH_MM} mm.</span>}
+                  {t('sm.ex.otherErr', { min: MIN_WIDTH, max: MAX_WIDTH })}</span>}
+                {width?.linewidth && <span className={css.hint}>{t('sm.ex.lwHint', { mm: LINEWIDTH_MM })}</span>}
               </div>
             )}
           </div>
 
           <div className={css.group} role="group" aria-labelledby="smith-export-detail">
-            <span className={css.label} id="smith-export-detail">Detail <Why k="export-detail" /></span>
+            <span className={css.label} id="smith-export-detail">{t('sm.ex.detail')} <Why k="export-detail" /></span>
             <div className={css.three}>
               {DETAIL_NAMES.map((p) => (
                 <button key={p} type="button" className={toggle(preset === p)} aria-pressed={preset === p} data-export-detail={p}
-                  onClick={() => setPrefs({ detail: p })}>{DETAIL_LABELS[p]}</button>
+                  onClick={() => setPrefs({ detail: p })}>{t(DETAIL_KEYS_T[p])}</button>
               ))}
             </div>
             <details className={css.items} data-export-items="">
-              <summary>Items{preset ? '' : ' (changed)'}</summary>
+              <summary>{t('sm.ex.items')}{preset ? '' : t('sm.ex.itemsChanged')}</summary>
               <div className={css.selects}>
                 <label className={styles.field}>
-                  <span className={styles.fieldLabel}>Grid</span>
+                  <span className={styles.fieldLabel}>{t('sm.ex.grid')}</span>
                   <select className={styles.select} data-export-item="grid" value={detail.grid} onChange={(e) => setItem('grid', e.currentTarget.value)}>
                     {GRIDS.map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}
                   </select>
                 </label>
                 <label className={styles.field}>
-                  <span className={styles.fieldLabel}>Density</span>
+                  <span className={styles.fieldLabel}>{t('sm.ex.density')}</span>
                   <select className={styles.select} data-export-item="density" value={detail.density} onChange={(e) => setItem('density', e.currentTarget.value)}>
-                    {DENSITIES.map((d) => <option key={d} value={d}>{d[0].toUpperCase() + d.slice(1)}</option>)}
+                    {DENSITIES.map((d) => <option key={d} value={d}>{t(DENSITY_KEYS[d])}</option>)}
                   </select>
                 </label>
               </div>
               <div className={css.checks}>
-                {ITEMS.map(({ k, label }) => (
+                {ITEMS.map(({ k, key }) => (
                   <label key={k} className={css.check}>
                     <input type="checkbox" data-export-item={k} checked={detail[k] as boolean} onChange={(e) => setItem(k, e.currentTarget.checked)} />
-                    {label}
+                    {t(key)}
                   </label>
                 ))}
               </div>
               <button type="button" className={`${styles.button} ${css.btn}`} data-export-blank="" onClick={() => {
                 const d = blankDetail(detail);
                 setPrefs({ detail: presetOf(d) ?? d });
-              }}>Blank chart (circuit off)</button>
+              }}>{t('sm.ex.blank')}</button>
             </details>
           </div>
 
           <div className={css.group} role="group" aria-labelledby="smith-export-colour">
-            <span className={css.label} id="smith-export-colour">Colour <Why k="export-colour" /></span>
+            <span className={css.label} id="smith-export-colour">{t('sm.ex.colour')} <Why k="export-colour" /></span>
             <div className={css.three}>
               {COLOUR_MODES.map((c) => (
                 <button key={c} type="button" className={toggle(prefs.colour === c)} aria-pressed={prefs.colour === c} data-export-colour={c}
-                  onClick={() => setPrefs({ colour: c })}>{COLOUR_NAMES[c]}</button>
+                  onClick={() => setPrefs({ colour: c })}>{t(COLOUR_KEYS[c])}</button>
               ))}
             </div>
           </div>
 
           <label className={`${styles.field} ${css.narrow}`}>
-            <span className={styles.fieldLabel}>Text size (grid labels)</span>
+            <span className={styles.fieldLabel}>{t('sm.ex.textSize')}</span>
             <select className={styles.select} data-export-pt="" value={prefs.fontPt} onChange={(e) => setPrefs({ fontPt: Number(e.currentTarget.value) })}>
-              {(TEXT_SIZES.includes(prefs.fontPt) ? TEXT_SIZES : [...TEXT_SIZES, prefs.fontPt].sort((a, b) => a - b)).map((s) => <option key={s} value={s}>{s} pt{s === DEFAULT_PT ? ' (default)' : s === MIN_PT ? ' (least)' : ''}</option>)}
+              {(TEXT_SIZES.includes(prefs.fontPt) ? TEXT_SIZES : [...TEXT_SIZES, prefs.fontPt].sort((a, b) => a - b)).map((s) => (
+                <option key={s} value={s}>{s} pt{s === DEFAULT_PT ? t('sm.ex.ptDefault') : s === MIN_PT ? t('sm.ex.ptLeast') : ''}</option>
+              ))}
             </select>
           </label>
 
           <div className={css.out}>
-            <h3 className={css.sub}>LaTeX <Why k="export-tikz" /></h3>
-            <div className={css.pair} role="group" aria-label="TikZ form">
-              {(['picture', 'document'] as const).map((t) => (
-                <button key={t} type="button" className={toggle(prefs.tex === t)} aria-pressed={prefs.tex === t} data-export-tex={t}
-                  title={t === 'picture' ? 'A tikzpicture to paste into a document with \\usepackage{tikz}' : 'A standalone document that compiles as it is'}
-                  onClick={() => setPrefs({ tex: t })}>{t === 'picture' ? 'Picture' : 'Standalone document'}</button>
+            <h3 className={css.sub}>{t('sm.ex.latex')} <Why k="export-tikz" /></h3>
+            <div className={css.pair} role="group" aria-label={t('sm.ex.tikzAria')}>
+              {(['picture', 'document'] as const).map((k) => (
+                <button key={k} type="button" className={toggle(prefs.tex === k)} aria-pressed={prefs.tex === k} data-export-tex={k}
+                  title={t(k === 'picture' ? 'sm.ex.picTitle' : 'sm.ex.docTitle')}
+                  onClick={() => setPrefs({ tex: k })}>{t(k === 'picture' ? 'sm.ex.pic' : 'sm.ex.doc')}</button>
               ))}
             </div>
             <div className={css.row}>
-              <button type="button" className={`${styles.button} ${css.btn}`} data-export-copy="" disabled={!info} onClick={onCopy}>Copy TikZ</button>
-              <button type="button" className={`${styles.button} ${css.btn}`} data-export-tex-save="" disabled={!info} onClick={onTex}>Save .tex</button>
+              <button type="button" className={`${styles.button} ${css.btn}`} data-export-copy="" disabled={!info} onClick={onCopy}>{t('sm.ex.copyTikz')}</button>
+              <button type="button" className={`${styles.button} ${css.btn}`} data-export-tex-save="" disabled={!info} onClick={onTex}>{t('sm.ex.saveTex')}</button>
             </div>
-            <h3 className={css.sub}>Image <Why k="export-image" /></h3>
+            <h3 className={css.sub}>{t('sm.ex.image')} <Why k="export-image" /></h3>
             <div className={css.row}>
-              <button type="button" className={`${styles.button} ${css.btn}`} data-export-svg="" disabled={!info} onClick={onSvg}>Save SVG</button>
+              <button type="button" className={`${styles.button} ${css.btn}`} data-export-svg="" disabled={!info} onClick={onSvg}>{t('sm.ex.saveSvg')}</button>
               <label className={css.inline}>
-                <select className={`${styles.select} ${css.factor}`} data-export-png-factor="" value={prefs.png} aria-label="PNG scale"
+                <select className={`${styles.select} ${css.factor}`} data-export-png-factor="" value={prefs.png} aria-label={t('sm.ex.pngScaleAria')}
                   onChange={(e) => setPrefs({ png: Number(e.currentTarget.value) })}>
                   {PNG_FACTORS.map((f) => {
                     const px = info ? pngSize(info, f) : null;
@@ -588,78 +594,77 @@ function ExportPanel({ circuit, sweep, outcome, chart, busy, search, lists, digi
                   })}
                 </select>
               </label>
-              <button type="button" className={`${styles.button} ${css.btn}`} data-export-png="" disabled={!info || !pngPx || !pngFits(pngPx[0], pngPx[1])} onClick={onPng}>Save PNG</button>
+              <button type="button" className={`${styles.button} ${css.btn}`} data-export-png="" disabled={!info || !pngPx || !pngFits(pngPx[0], pngPx[1])} onClick={onPng}>{t('sm.ex.savePng')}</button>
             </div>
-            <h3 className={css.sub}>Data <Why k="export-data" /></h3>
+            <h3 className={css.sub}>{t('sm.ex.data')} <Why k="export-data" /></h3>
             <div className={css.selects}>
               <label className={styles.field}>
-                <span className={styles.fieldLabel}>CSV digits</span>
+                <span className={styles.fieldLabel}>{t('sm.ex.csvDigits')}</span>
                 <select className={styles.select} data-export-csv-digits="" value={prefs.csvAll ? 'all' : 'shown'} onChange={(e) => setPrefs({ csvAll: e.currentTarget.value === 'all' })}>
-                  <option value="shown">As shown ({digits})</option>
-                  <option value="all">Every digit</option>
+                  <option value="shown">{t('sm.ex.csvShown', { n: digits })}</option>
+                  <option value="all">{t('sm.ex.csvAll')}</option>
                 </select>
               </label>
               <label className={styles.field}>
-                <span className={styles.fieldLabel}>Numbers</span>
+                <span className={styles.fieldLabel}>{t('sm.ex.numbers')}</span>
                 <select className={styles.select} data-export-csv-form="" value={prefs.csvForm} onChange={(e) => setPrefs({ csvForm: e.currentTarget.value as NumberForm })}>
-                  <option value="plain">Plain (0.000031)</option>
-                  <option value="eng">Engineering (31e-6)</option>
+                  <option value="plain">{t('sm.ex.numPlain')}</option>
+                  <option value="eng">{t('sm.ex.numEng')}</option>
                 </select>
               </label>
             </div>
-            <div className={css.three} role="group" aria-label="Save CSV">
-              <button type="button" className={`${styles.button} ${css.btn}`} data-export-csv="nodes" onClick={onNodes} title="Every node at f0: z, y, Γ, VSWR, return loss, Q">Nodes CSV</button>
-              <button type="button" className={`${styles.button} ${css.btn}`} data-export-csv="trace" disabled={!sweep} onClick={onTrace} title="Γ, return loss, VSWR and Z at every frequency of the sweep">Trace CSV</button>
-              <button type="button" className={`${styles.button} ${css.btn}`} data-export-csv="markers" disabled={!sweep || !sweep.markers.length} onClick={onMarkers} title="The markers' rows of the marker table">Markers CSV</button>
+            <div className={css.three} role="group" aria-label={t('sm.ex.saveCsvAria')}>
+              <button type="button" className={`${styles.button} ${css.btn}`} data-export-csv="nodes" onClick={onNodes} title={t('sm.ex.nodesCsvTitle')}>{t('sm.ex.nodesCsv')}</button>
+              <button type="button" className={`${styles.button} ${css.btn}`} data-export-csv="trace" disabled={!sweep} onClick={onTrace} title={t('sm.ex.traceCsvTitle')}>{t('sm.ex.traceCsv')}</button>
+              <button type="button" className={`${styles.button} ${css.btn}`} data-export-csv="markers" disabled={!sweep || !sweep.markers.length} onClick={onMarkers} title={t('sm.ex.markersCsvTitle')}>{t('sm.ex.markersCsv')}</button>
             </div>
             <div className={css.row}>
               <label className={css.inline}>
-                <select className={`${styles.select} ${css.factor}`} data-export-ts="" value={prefs.ts} aria-label="Touchstone numbers"
+                <select className={`${styles.select} ${css.factor}`} data-export-ts="" value={prefs.ts} aria-label={t('sm.ex.tsAria')}
                   onChange={(e) => setPrefs({ ts: e.currentTarget.value as TouchstoneFormat })}>
-                  <option value="RI">RI (re, im)</option>
-                  <option value="MA">MA (|Γ|, angle)</option>
-                  <option value="DB">DB (dB, angle)</option>
+                  <option value="RI">{t('sm.ex.tsRI')}</option>
+                  <option value="MA">{t('sm.ex.tsMA')}</option>
+                  <option value="DB">{t('sm.ex.tsDB')}</option>
                 </select>
               </label>
-              <button type="button" className={`${styles.button} ${css.btn}`} data-export-s1p="" disabled={!sweep} onClick={onS1p}>Save .s1p</button>
+              <button type="button" className={`${styles.button} ${css.btn}`} data-export-s1p="" disabled={!sweep} onClick={onS1p}>{t('sm.ex.saveS1p')}</button>
               <Why k="export-s1p" />
             </div>
-            {!sweep && <p className={css.hint} data-export-no-sweep="">The trace, markers and .s1p need a sweep: switch on Sweep in the tool.</p>}
-            <h3 className={css.sub}>Project <Why k="export-project" /> and link <Why k="export-link" /></h3>
+            {!sweep && <p className={css.hint} data-export-no-sweep="">{t('sm.ex.noSweep')}</p>}
+            <h3 className={css.sub}>{t('sm.ex.projLink')} <Why k="export-project" /> {t('sm.ex.andLink')} <Why k="export-link" /></h3>
             <div className={css.three}>
-              <button type="button" className={`${styles.button} ${css.btn}`} data-export-project="" onClick={onProject}
-                title="The circuit, its unknowns and goal, the sweep, your value lists and these settings">Save project</button>
-              <label className={`${styles.button} ${css.btn} ${css.file}`} title="Open a saved project (.smith.json) or a link saved as text">
-                Open project
+              <button type="button" className={`${styles.button} ${css.btn}`} data-export-project="" onClick={onProject} title={t('sm.ex.saveProjTitle')}>{t('sm.ex.saveProj')}</button>
+              <label className={`${styles.button} ${css.btn} ${css.file}`} title={t('sm.ex.openProjTitle')}>
+                {t('sm.ex.openProj')}
                 <input type="file" className={css.fileInput} data-export-open="" accept=".json,.txt,application/json,text/plain"
                   onChange={(e) => { const f = e.currentTarget.files?.[0]; e.currentTarget.value = ''; if (f) onOpen(f); }} />
               </label>
-              <button type="button" className={`${styles.button} ${css.btn}`} data-export-link-copy="" onClick={onCopyLink}>Copy link</button>
+              <button type="button" className={`${styles.button} ${css.btn}`} data-export-link-copy="" onClick={onCopyLink}>{t('sm.ex.copyLink')}</button>
             </div>
-            <p className={css.hint}>Or drop a project file on the page. Files are read on this device; nothing is uploaded.</p>
+            <p className={css.hint}>{t('sm.ex.dropHint')}</p>
             <p className={css.hint} aria-live="polite" data-export-note="">{note}</p>
           </div>
         </div>
 
         <div className={css.previewCol}>
-          <h3 className={css.sub}>Preview <Why k="export-preview" /></h3>
+          <h3 className={css.sub}>{t('sm.ex.preview')} <Why k="export-preview" /></h3>
           <p className={css.hint} data-export-size-note="">
             {info ? <>
-              {mmText(info.width)} × {mmText(info.height)}{info.linewidth ? `, shown at the assumed ${mmText(info.width)}: in LaTeX it fills \\linewidth` : ''}
-              {!info.whole ? ', the chart’s current view' : ''}{fitted ? `; scaled to ${Math.round(scale * 100)} % to fit the screen` : '; true size'}.
-            </> : width ? 'Built when this section is on the screen.' : 'No figure until the width can be read.'}
+              {mmText(info.width)} × {mmText(info.height)}{info.linewidth ? t('sm.ex.prevLw', { w: mmText(info.width) }) : ''}
+              {!info.whole ? t('sm.ex.prevView') : ''}{fitted ? t('sm.ex.prevScaled', { pct: Math.round(scale * 100) }) : t('sm.ex.prevTrue')}.
+            </> : width ? t('sm.ex.prevWait') : t('sm.ex.prevBadW')}
           </p>
           {tooWide && (
             <label className={css.check}>
               <input type="checkbox" data-export-fit="" checked={prefs.fit} onChange={(e) => setPrefs({ fit: e.currentTarget.checked })} />
-              Fit to screen (scaled)
+              {t('sm.ex.fitScreen')}
             </label>
           )}
           <div ref={frameWrap} className={css.frameWrap} data-export-wrap="">
             <div className={css.frame} data-export-frame="" data-fitted={fitted ? '' : undefined}
               style={info ? { width: fitted ? `${room}px` : `${info.width}mm`, height: fitted ? `${(room * info.height) / info.width}px` : `${info.height}mm` } : undefined}>
               <div ref={preview} className={css.preview} data-export-preview="" role="img"
-                aria-label={info ? `Preview of the figure, ${mmText(info.width)} wide` : 'Preview of the figure'}
+                aria-label={info ? t('sm.ex.prevAriaSized', { w: mmText(info.width) }) : t('sm.ex.prevAria')}
                 style={fitted || !visible ? { transform: fitted ? `scale(${scale})` : undefined, contentVisibility: visible ? undefined : 'hidden' } : undefined} />
             </div>
           </div>

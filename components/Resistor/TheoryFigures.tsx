@@ -1,14 +1,11 @@
 import React from 'react';
 
 import { ChipSize, deratedPower } from '../../lib/resistor';
+import { useI18n } from '../../lib/ui/i18n';
 import css from '../../styles/ResistorTheory.module.css';
-
-// The small figures of the Theory section. Every colour is a class of ResistorTheory.module.css, which takes it from
-// the theme variables, so the figures follow the light and the dark theme.
 
 const NBSP = ' ';
 
-// A number with an SI prefix and its unit, kept together: "82 mW", "8.8 nV".
 export function eng(value: number, unit: string, digits = 3): string {
   if (!Number.isFinite(value)) return '–';
   if (value === 0) return `0${NBSP}${unit}`;
@@ -18,7 +15,6 @@ export function eng(value: number, unit: string, digits = 3): string {
   return `${value < 0 ? '−' : ''}${Number((abs / scale).toPrecision(digits))}${NBSP}${prefix}${unit}`;
 }
 
-// A resistor as an IEC rectangle, lying or standing, with its name beside it.
 function Res({ x, y, label, upright }: { x: number; y: number; label: string; upright?: boolean }) {
   return upright ? (
     <>
@@ -34,8 +30,9 @@ function Res({ x, y, label, upright }: { x: number; y: number; label: string; up
 }
 
 export function SeriesFigure() {
+  const { t } = useI18n();
   return (
-    <svg className={css.fig} viewBox="0 0 150 56" width={150} height={56} role="img" aria-label="Two resistors in series">
+    <svg className={css.fig} viewBox="0 0 150 56" width={150} height={56} role="img" aria-label={t('res.tf.serAria')}>
       <path className={css.figWire} d="M6 34H26M62 34H88M124 34H144" />
       <Res x={26} y={34} label="R₁" />
       <Res x={88} y={34} label="R₂" />
@@ -46,8 +43,9 @@ export function SeriesFigure() {
 }
 
 export function ParallelFigure() {
+  const { t } = useI18n();
   return (
-    <svg className={css.fig} viewBox="0 0 150 76" width={150} height={76} role="img" aria-label="Two resistors in parallel">
+    <svg className={css.fig} viewBox="0 0 150 76" width={150} height={76} role="img" aria-label={t('res.tf.parAria')}>
       <path className={css.figWire} d="M6 44H34M116 44H144M34 24V64M116 24V64M34 24H57M93 24H116M34 64H57M93 64H116" />
       <Res x={57} y={24} label="R₁" />
       <Res x={57} y={64} label="" />
@@ -61,8 +59,9 @@ export function ParallelFigure() {
 }
 
 export function DividerFigure() {
+  const { t } = useI18n();
   return (
-    <svg className={css.fig} viewBox="0 0 150 132" width={150} height={132} role="img" aria-label="A voltage divider: R1 from the input to the output, R2 from the output to ground">
+    <svg className={css.fig} viewBox="0 0 150 132" width={150} height={132} role="img" aria-label={t('res.tf.divAria')}>
       <path className={css.figWire} d="M40 8V20M40 56V76M40 112V122M30 122H50M40 66H92" />
       <path className={css.figAccent} d="M92 66H104" />
       <Res x={40} y={20} label="R₁" upright />
@@ -75,13 +74,12 @@ export function DividerFigure() {
   );
 }
 
-// One decade of E12 with the range of each value at ±10 %: the ranges of neighbours just meet.
 export function BandsFigure({ values }: { values: number[] }) {
+  const { t } = useI18n();
   const all = [...values.map((v) => v / 100), 10];
-  // Rounded, so that the page built by Node and the browser agree to the last digit.
   const x = (v: number) => Math.round((14 + (Math.log10(v / 0.88) / Math.log10(11.4 / 0.88)) * 512) * 100) / 100;
   return (
-    <svg className={css.figWide} viewBox="0 0 540 62" width={540} height={62} role="img" aria-label="The E12 values of one decade on a logarithmic axis, each with its range at plus and minus 10 percent; the ranges of neighbouring values just meet">
+    <svg className={css.figWide} viewBox="0 0 540 62" width={540} height={62} role="img" aria-label={t('res.tf.bandsAria')}>
       {all.map((v, i) => (
         <g key={v}>
           <rect className={i % 2 ? css.figBandB : css.figBandA} x={x(v * 0.9)} y={i % 2 ? 19 : 8} width={Math.round((x(v * 1.1) - x(v * 0.9)) * 100) / 100} height={9} rx={1.5} />
@@ -94,34 +92,33 @@ export function BandsFigure({ values }: { values: number[] }) {
   );
 }
 
-// The rated power of a chip size against the ambient temperature: flat up to 70 °C, then a straight line to zero at
-// the maximum temperature (deratedPower), with the points at 85 and 125 °C.
 export function DeratingChart({ size }: { size: ChipSize }) {
+  const { t } = useI18n();
   const top = size.maxTemperature;
   const span = 165;
-  const x = (t: number) => Math.round((46 + (t / span) * 282) * 100) / 100;
+  const x = (temp: number) => Math.round((46 + (temp / span) * 282) * 100) / 100;
   const y = (fraction: number) => Math.round((150 - fraction * 112) * 100) / 100;
-  const marks = [85, 125].filter((t) => t < top);
+  const marks = [85, 125].filter((temp) => temp < top);
   const ticks = [...new Set([25, 70, ...marks, top])];
   return (
     <svg className={css.figChart} viewBox="0 0 340 190" width={340} height={190} role="img"
-      aria-label={`Rated power of a ${size.imperial} chip against the ambient temperature: ${eng(size.power, 'W')} up to 70 °C, falling in a straight line to zero at ${top} °C`}>
+      aria-label={t('res.tf.derAria', { imp: size.imperial, pwr: eng(size.power, 'W'), top })}>
       <path className={css.figArea} d={`M${x(0)} ${y(0)}V${y(1)}H${x(70)}L${x(top)} ${y(0)}Z`} />
       {[0.5, 1].map((f) => <path key={f} className={css.figGrid} d={`M${x(0)} ${y(f)}H${x(span)}`} />)}
-      {ticks.map((t) => <path key={t} className={css.figGrid} d={`M${x(t)} ${y(0)}V${y(1) - 6}`} />)}
+      {ticks.map((temp) => <path key={temp} className={css.figGrid} d={`M${x(temp)} ${y(0)}V${y(1) - 6}`} />)}
       <path className={css.figAxis} d={`M${x(0)} ${y(1) - 12}V${y(0)}H${x(span)}`} />
       <path className={css.figCurve} d={`M${x(0)} ${y(1)}H${x(70)}L${x(top)} ${y(0)}`} />
-      {ticks.map((t) => <text key={t} className={css.figNum} x={x(t)} y={165} textAnchor="middle">{t}</text>)}
-      <text className={css.figText} x={x(span)} y={182} textAnchor="end">ambient temperature, °C</text>
+      {ticks.map((temp) => <text key={temp} className={css.figNum} x={x(temp)} y={165} textAnchor="middle">{temp}</text>)}
+      <text className={css.figText} x={x(span)} y={182} textAnchor="end">{t('res.tf.ambTemp')}</text>
       <text className={css.figNum} x={40} y={y(1) + 4} textAnchor="end">{eng(size.power, 'W').replace(NBSP, ' ')}</text>
       <text className={css.figNum} x={40} y={y(0.5) + 4} textAnchor="end">50 %</text>
       <text className={css.figNum} x={40} y={y(0) + 4} textAnchor="end">0</text>
-      {marks.map((t) => {
-        const fraction = deratedPower(1, t, top);
+      {marks.map((temp) => {
+        const fraction = deratedPower(1, temp, top);
         return (
-          <g key={t}>
-            <circle className={css.figPoint} cx={x(t)} cy={y(fraction)} r={3.2} />
-            <text className={css.figNumStrong} x={x(t) + 7} y={y(fraction) - 6}>{eng(deratedPower(size.power, t, top), 'W').replace(NBSP, ' ')}</text>
+          <g key={temp}>
+            <circle className={css.figPoint} cx={x(temp)} cy={y(fraction)} r={3.2} />
+            <text className={css.figNumStrong} x={x(temp) + 7} y={y(fraction) - 6}>{eng(deratedPower(size.power, temp, top), 'W').replace(NBSP, ' ')}</text>
           </g>
         );
       })}
@@ -129,10 +126,10 @@ export function DeratingChart({ size }: { size: ChipSize }) {
   );
 }
 
-// A real resistor at high frequency: an inductance in series, a capacitance across.
 export function ParasiticsFigure() {
+  const { t } = useI18n();
   return (
-    <svg className={css.fig} viewBox="0 0 230 84" width={230} height={84} role="img" aria-label="Equivalent circuit of a resistor at high frequency: the resistance in series with a small inductance, and a small capacitance across both">
+    <svg className={css.fig} viewBox="0 0 230 84" width={230} height={84} role="img" aria-label={t('res.tf.paraAria')}>
       <path className={css.figWire} d="M6 56H38M94 56H120M156 56H224M24 56V20H104M112 20H200V56M104 11V29M112 11V29" />
       <path className={css.figWire} d="M38 56a7 7 0 0 1 14 0a7 7 0 0 1 14 0a7 7 0 0 1 14 0a7 7 0 0 1 14 0" />
       <Res x={120} y={56} label="" />
@@ -147,20 +144,19 @@ export function ParasiticsFigure() {
   );
 }
 
-// A shunt with a Kelvin connection: the current flows through the wide traces, the voltage is taken by two thin
-// traces from the inner edges of the pads.
 export function KelvinFigure() {
+  const { t } = useI18n();
   return (
-    <svg className={css.fig} viewBox="0 0 280 118" width={280} height={118} role="img" aria-label="A current-sense resistor with a Kelvin connection: wide traces carry the current to the pads, two thin traces from the inner edges of the pads take the voltage to the amplifier">
+    <svg className={css.fig} viewBox="0 0 280 118" width={280} height={118} role="img" aria-label={t('res.tf.kelvinAria')}>
       <rect className={css.figCopper} x={4} y={22} width={100} height={34} rx={2} />
       <rect className={css.figCopper} x={176} y={22} width={100} height={34} rx={2} />
       <rect className={css.figPart} x={92} y={18} width={96} height={42} rx={2} />
       <path className={css.figAccent} d="M112 56V92H128M168 56V92H152" />
-      <text className={css.figText} x={140} y={43} textAnchor="middle">shunt</text>
+      <text className={css.figText} x={140} y={43} textAnchor="middle">{t('res.tf.shunt')}</text>
       <text className={css.figText} x={30} y={43} textAnchor="middle">I →</text>
       <text className={css.figText} x={250} y={43} textAnchor="middle">I →</text>
       <text className={css.figTextAccent} x={140} y={96} textAnchor="middle">V</text>
-      <text className={css.figText} x={140} y={112} textAnchor="middle">to the amplifier</text>
+      <text className={css.figText} x={140} y={112} textAnchor="middle">{t('res.tf.toAmp')}</text>
     </svg>
   );
 }

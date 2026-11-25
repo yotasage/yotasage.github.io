@@ -135,7 +135,7 @@ export default function NotepadWorkspace() {
         if (alive) setMonaco(api);
       })
       .catch((err: unknown) => {
-        if (alive) setMonacoError(err instanceof Error ? err.message : 'Unknown Monaco load error');
+        if (alive) setMonacoError(err instanceof Error ? err.message : '__UNKNOWN__');
       });
     return () => {
       alive = false;
@@ -727,7 +727,7 @@ export default function NotepadWorkspace() {
         docs={workspace.docs}
         doc={doc}
         monaco={monaco}
-        monacoError={monacoError}
+        monacoError={monacoError === '__UNKNOWN__' ? t('notepad.loadErrorUnknown') : monacoError}
         model={model}
         theme={theme}
         settings={workspace.settings}
@@ -923,7 +923,7 @@ export default function NotepadWorkspace() {
               className={styles.splitHandle}
               role="separator"
               aria-orientation="vertical"
-              aria-label="Resize side-by-side panes"
+              aria-label={t('notepad.workspace.resizeAria')}
               onPointerDown={startSplitResize}
             />
             <div className={styles.splitSlot} style={{ flexBasis: `${100 - viewState.splitRatio}%` }}>
@@ -959,7 +959,11 @@ export default function NotepadWorkspace() {
               />
             ) : (
               <div className={styles.editorLoading}>
-                {monacoError ? t('notepad.loadError', { error: monacoError }) : t('notepad.loadingEditor')}
+                {monacoError
+                  ? t('notepad.loadError', {
+                      error: monacoError === '__UNKNOWN__' ? t('notepad.loadErrorUnknown') : monacoError,
+                    })
+                  : t('notepad.loadingEditor')}
               </div>
             )}
           </div>

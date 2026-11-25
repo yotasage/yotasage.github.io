@@ -4,6 +4,8 @@
 import { formatLength, fromMm } from '../../lib/emsim/units';
 import type { LengthUnit } from '../../lib/emsim/units';
 import type { Source, Tol } from '../../lib/emsim/stackup';
+import type { Locale } from '../../lib/ui/translations';
+import { emT, getEmLocale } from './emText';
 
 // The units the page offers for lengths (the readers also take in and oz when typed).
 export type ShownUnit = 'mm' | 'mil' | 'um';
@@ -45,12 +47,12 @@ export interface SourceTag {
 }
 
 // The short tag a value carries (the Sources list under the table explains each).
-export function sourceTag(s: Source): SourceTag {
+export function sourceTag(s: Source, locale: Locale = getEmLocale()): SourceTag {
   if (s.kind === 'preset') return { kind: 'preset', text: s.note ? `${s.ref}*` : s.ref };
   if (s.kind === 'kicad') {
-    if (s.absent) return { kind: 'warn', text: 'KiCad dflt' };
-    if (s.placeholder) return { kind: 'warn', text: 'KiCad tmpl' };
+    if (s.absent) return { kind: 'warn', text: emT('em.src.kicadDflt', undefined, locale) };
+    if (s.placeholder) return { kind: 'warn', text: emT('em.src.kicadTmpl', undefined, locale) };
     return { kind: 'kicad', text: 'KiCad' };
   }
-  return { kind: 'typed', text: 'typed' };
+  return { kind: 'typed', text: emT('em.src.typed', undefined, locale) };
 }

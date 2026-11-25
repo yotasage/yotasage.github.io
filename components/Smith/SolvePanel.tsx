@@ -9,13 +9,16 @@ import { cancelSolve, cancelSuggest, solveOffPage, stopSolveWorkers, suggestOffP
 import type { Suggestion, Suggestions } from '../../lib/smith/suggest';
 import type { Solution, SolvedValue, SolveResult, ValueRange } from '../../lib/smith/solve';
 import {
-  Ask, askOf, Circuit, cleanAsk, KIND_NAMES, numText, sameUnknown, toggleUnknown, Unknown, unknownName, withGoal, withPart,
+  Ask, askOf, Circuit, cleanAsk, numText, sameUnknown, toggleUnknown, Unknown, withGoal, withPart,
 } from '../../lib/smith/state';
 import { LIST_IDS, VALUE_UNITS, parseOwnList, standardVariants } from '../../lib/smith/values';
 import type { ListId, ValueChoice, ValueKind, Variant } from '../../lib/smith/values';
+import { translate, useI18n } from '../../lib/ui/i18n';
+import type { Locale, TranslationKey } from '../../lib/ui/translations';
 import styles from '../../styles/SmithSolve.module.css';
 import base from '../../styles/Smith.module.css';
 import { nodeName } from './pathLayer';
+import { kindName as partKindName, unknownLabel } from './smithText';
 import { Field } from './Strip';
 import type { CircleShape } from './solveLayer';
 import { Why } from './Why';
@@ -130,22 +133,15 @@ const symbolOf = (kind: number, param: string): string => (param === 'f0' ? 'f0'
 /** A small number: plain to three digits, else in e-notation; a residual at rounding level the bound of plan.md D20. */
 const small = (v: number): string => (v === 0 ? '0' : belowFloor(v) ? formatResidual(v) : v >= 1e-3 ? formatAmount(v, '', 3) : v.toExponential(1).replace('-', '−'));
 /** A kind's name inside a sentence ("series C"). */
-const kindName = (k: number): string => `${KIND_NAMES[k][0].toLowerCase()}${KIND_NAMES[k].slice(1)}`;
+const kindLower = (k: number, locale: Locale): string => {
+  const s = partKindName(k, locale);
+  return `${s[0].toLowerCase()}${s.slice(1)}`;
+};
 const sentence = (s: string): string => (s ? `${s[0].toUpperCase()}${s.slice(1)}${/[.!?]$/.test(s) ? '' : '.'}` : '');
 
 /** Goal kinds as the selector offers them ("centre" is the point target at Z0). */
 type Choice = 'centre' | GoalKind;
-const CHOICES: { id: Choice; text: string }[] = [
-  { id: 'centre', text: 'the centre (a match)' },
-  { id: 'point', text: 'a point Z' },
-  { id: 'vswr', text: 'a VSWR' },
-  { id: 'mag', text: 'a |Γ|' },
-  { id: 'rl', text: 'a return loss' },
-  { id: 'r', text: 'an r circle (r = 1)' },
-  { id: 'g', text: 'a g circle (g = 1)' },
-  { id: 'x', text: 'an x circle (x = 0: no reactance)' },
-  { id: 'b', text: 'a b circle (b = 0: no susceptance)' },
-];
+const CHOICE_IDS: readonly Choice[] = ['centre', 'point', 'vswr', 'mag', 'rl', 'r', 'g', 'x', 'b'];
 const choiceOf = (g: Goal): Choice => (g.kind === 'point' && g.targetR === undefined ? 'centre' : g.kind);
 
 /** The goal a choice starts with: no typing needed (VSWR ≤ 1.5, |Γ| ≤ 0.2, RL ≥ 14 dB, the unit circles, x or b = 0). */
@@ -173,14 +169,13 @@ const FIGURE: Record<string, { label: string; unit: string; infinite: boolean }>
 };
 
 /** What solver.md's counting table says for this many unknowns and this goal. */
-function countText(n: number, g: Goal): string {
+function countText(n: number, g: Goal, locale: Locale): string {
   if (n === 1) {
-    if (g.kind === 'point') return 'One value and a point: exact only by chance, so the solver gives the nearest value.';
-    if (isWithin(g)) return 'One value and a goal with “at most”: the ranges of values that keep it.';
-    return 'One value and a circle: 0, 1 or 2 values, where the part’s circle crosses the goal’s.';
+    if (g.kind === 'point') return translate(locale, 'sm.solve.count1Point');
+    if (isWithin(g)) return translate(locale, 'sm.solve.count1Within');
+    return translate(locale, 'sm.solve.count1Circle');
   }
-  if (g.kind === 'point') return 'Two values and a point: 0, 1 or 2 solutions, where two circles cross.';
-  return 'Two values and a circle: a family; for each value of the first, 0 to 2 values of the second.';
+  return translate(locale, g.kind === 'point' ? 'sm.solve.count2Point' : 'sm.solve.count2Circle');
 }
 
 /**
@@ -213,7 +208,7 @@ export function statusOf(o: Outcome | null): string {
 }
 
 /** A second value to free for a best value: the nearest other part on the source side of the unknown, before the goal. */
-function suggestSecond(c: Circuit, r: SolveResult): string {
+function suggestSecond(c: Circuit, r: SolveResult, locale: Locale): string {
   const u = r.unknowns[0];
   const g = r.goalNode, a = u.param === 'f0' ? -1 : u.part;
   let best = -1;
@@ -222,22 +217,23 @@ function suggestSecond(c: Circuit, r: SolveResult): string {
       if (j >= 0 && j < g && j !== a && best < 0 && c.parts[j].kind !== SERIES_R && c.parts[j].kind !== SHUNT_R) best = j;
     }
   }
-  if (best < 0 && a >= 0) return 'Free a second value to reach the point exactly (add a part, or mark f0), or choose a circle goal.';
-  if (best < 0) return 'Free a second value to reach the point exactly (mark a part’s value), or choose a circle goal.';
-  return `Free a second value to reach the point exactly, for example ${unknownName(c, { part: best, param: 'value' })}, or choose a circle goal.`;
+  if (best < 0 && a >= 0) return translate(locale, 'sm.solve.suggestSecondAdd');
+  if (best < 0) return translate(locale, 'sm.solve.suggestSecondMark');
+  return translate(locale, 'sm.solve.suggestSecondPart', { name: unknownLabel(c, { part: best, param: 'value' }, locale) });
 }
 
 // ---------------------------------------------------------------------------------------------------------------
 
 function ValueText({ c, v }: { c: Circuit; v: SolvedValue }) {
+  const { t, locale } = useI18n();
   const own = v.param === 'f0' ? -1 : c.parts[v.part]?.kind ?? -1;
   const kind = v.param === 'value' ? v.kind : own;
   return (
     <span className={styles.value} data-value="" data-part={v.part} data-param={v.param} data-kind={v.kind} data-raw={numText(v.value)}>
-      <span className={styles.who}>{v.param === 'f0' ? 'f0' : `Part ${v.part + 1}`}{v.param === 'value' && v.kind !== own ? ` as a ${kindName(v.kind)},` : ''}</span>
+      <span className={styles.who}>{v.param === 'f0' ? 'f0' : t('sm.solve.partN', { n: v.part + 1 })}{v.param === 'value' && v.kind !== own ? t('sm.solve.asKind', { kind: kindLower(v.kind, locale) }) : ''}</span>
       {' '}<b>{symbolOf(kind, v.param)} = {amount(kind, v.param, v.value)}</b>
-      {v.swapped && <span className={styles.flag} data-swapped=""> true at this frequency only</span>}
-      {v.period > 0 && <span className={styles.flag} data-period=""> (+ λ/2 gives the same match at f0, over a narrower band)</span>}
+      {v.swapped && <span className={styles.flag} data-swapped="">{t('sm.solve.atF0Only')}</span>}
+      {v.period > 0 && <span className={styles.flag} data-period="">{t('sm.solve.periodHint')}</span>}
     </span>
   );
 }
@@ -263,10 +259,13 @@ interface ListCtx {
 const withValues = (s: Solution, values: readonly number[]): Solution => ({ ...s, values: s.values.map((v, j) => ({ ...v, value: values[j] })) });
 
 /** How near the goal a variant comes, in the words of its goal. */
-function variantMeta(g: Goal, v: Variant, node: string): string {
-  if (g.kind === 'point') return `comes within ${small(v.mismatch)} of the target (|Γ| = ${small(v.gamma)} at ${node})`;
+function variantMeta(g: Goal, v: Variant, node: string, locale: Locale): string {
+  if (g.kind === 'point') return translate(locale, 'sm.solve.varPoint', { mismatch: small(v.mismatch), gamma: small(v.gamma), node });
   const within = isWithin(g);
-  return `|Γ| = ${small(v.gamma)} at ${node}; ${v.meets ? (within ? 'keeps the goal' : 'on the goal') : `${within ? 'outside the goal' : 'off the goal'} by ${small(v.residual)}`}`;
+  const standing = v.meets
+    ? translate(locale, within ? 'sm.solve.keepsGoal' : 'sm.solve.onGoal')
+    : translate(locale, within ? 'sm.solve.outsideBy' : 'sm.solve.offBy', { res: small(v.residual) });
+  return translate(locale, 'sm.solve.varCircle', { gamma: small(v.gamma), node, standing });
 }
 
 /**
@@ -274,6 +273,7 @@ function variantMeta(g: Goal, v: Variant, node: string): string {
  * suggestion's are folded (`fold`), so the list of suggestions stays short enough to scan on a phone.
  */
 function Variants({ x, s, pv, given, shape, fold }: { x: ListCtx; s: Solution; pv: string; given?: Variant[]; shape?: CircleShape; fold?: boolean }) {
+  const { t, locale } = useI18n();
   const list = useMemo(() => given ?? standardVariants(x.c, x.goal, s, x.lists), [given, x.c, x.goal, s, x.lists]);
   if (!list.some((v) => !v.exact)) return null;
   const items = (
@@ -284,7 +284,7 @@ function Variants({ x, s, pv, given, shape, fold }: { x: ListCtx; s: Solution; p
           if (shape) x.shapes?.set(key, shape);
           return (
             <li key={j} className={styles.variant} data-variant={j} data-pv={key} tabIndex={0} data-meets={v.meets ? '' : undefined}
-              aria-label={`Standard values ${j + 1}: focus to preview on the chart`}>
+              aria-label={t('sm.solve.variantAria', { n: j + 1 })}>
               <span className={styles.variantValues}>
                 {sv.values.map((u, i) => (
                   <span key={i} data-variant-value="" data-raw={numText(u.value)}>
@@ -292,9 +292,9 @@ function Variants({ x, s, pv, given, shape, fold }: { x: ListCtx; s: Solution; p
                   </span>
                 ))}
               </span>
-              <span className={styles.meta}>{variantMeta(x.goal, v, x.node)}</span>
+              <span className={styles.meta}>{variantMeta(x.goal, v, x.node, locale)}</span>
               <button type="button" className={`${base.button} ${styles.small}`} data-apply-variant={j} disabled={x.stale}
-                onClick={() => x.apply(sv)} title="Put these standard values in the circuit (one step; Undo takes it back)">Apply</button>
+                onClick={() => x.apply(sv)} title={t('sm.solve.applyVariantTitle')}>{t('sm.solve.apply')}</button>
             </li>
           );
         })}
@@ -303,20 +303,21 @@ function Variants({ x, s, pv, given, shape, fold }: { x: ListCtx; s: Solution; p
   if (fold) {
     return (
       <details className={styles.variantBox} data-variant-fold="">
-        <summary className={styles.variantHead}>With standard values ({list.length})</summary>
+        <summary className={styles.variantHead}>{t('sm.solve.withStdCount', { n: list.length })}</summary>
         {items}
       </details>
     );
   }
   return (
     <div className={styles.variantBox}>
-      <span className={styles.variantHead}>With standard values: <Why k="solve-variant" /></span>
+      <span className={styles.variantHead}>{t('sm.solve.withStd')} <Why k="solve-variant" /></span>
       {items}
     </div>
   );
 }
 
 function SolutionList({ x, list, best, item = 'solution' }: { x: ListCtx; list: Solution[]; best?: boolean; item?: 'solution' | 'member' }) {
+  const { t } = useI18n();
   return (
     <ol className={styles.solutions}>
       {list.map((s, k) => {
@@ -325,18 +326,18 @@ function SolutionList({ x, list, best, item = 'solution' }: { x: ListCtx; list: 
         const attrs = item === 'solution' ? { 'data-solution': k } : { 'data-member': k };
         return (
           <li key={k} className={styles.solution} {...attrs} data-residual={numText(s.residual)} data-pv={key} tabIndex={0}
-            aria-label={`${item === 'solution' ? 'Solution' : 'Member'} ${k + 1}: focus to preview its path on the chart`}>
+            aria-label={t('sm.solve.solAria', { item: t(item === 'solution' ? 'sm.solve.solution' : 'sm.solve.member'), n: k + 1 })}>
             <div className={styles.values}>{s.values.map((v, j) => <ValueText key={j} c={x.c} v={v} />)}</div>
             <div className={styles.meta}>
               {best
-                ? <span>comes within <b>{small(s.mismatch)}</b> of the target (|Γ| = {small(s.gamma)} at {x.node})</span>
-                : <span>|Γ| = {small(s.gamma)} at {x.node}; off the goal by {small(s.residual)}</span>}
-              {!s.realisable && !s.atF0Only && <span className={styles.flag}> not of the part’s own kind</span>}
+                ? <span>{t('sm.solve.comesWithin')} <b>{small(s.mismatch)}</b> {t('sm.solve.ofTarget', { gamma: small(s.gamma), node: x.node })}</span>
+                : <span>{t('sm.solve.offGoalMeta', { gamma: small(s.gamma), node: x.node, res: small(s.residual) })}</span>}
+              {!s.realisable && !s.atF0Only && <span className={styles.flag}>{t('sm.solve.notOwnKind')}</span>}
               {k === 0 && <Why k="solve-solution" />}
             </div>
             <span className={styles.applyGroup}>
               <button type="button" className={base.button} {...{ [item === 'solution' ? 'data-apply' : 'data-apply-member']: k }} disabled={x.stale}
-                onClick={() => x.apply(s)} title="Put these values in the circuit (one step; Undo takes it back)">Apply</button>
+                onClick={() => x.apply(s)} title={t('sm.solve.applyTitle')}>{t('sm.solve.apply')}</button>
             </span>
             <div className={styles.variantRow}><Variants x={x} s={s} pv={`v${key}`} /></div>
           </li>
@@ -347,10 +348,11 @@ function SolutionList({ x, list, best, item = 'solution' }: { x: ListCtx; list: 
 }
 
 /** A part's value as it is now, beside a suggested one ("now 31.83 pF"). */
-function nowText(c: Circuit, v: SolvedValue): string {
+function nowText(c: Circuit, v: SolvedValue, locale: Locale): string {
   const p = c.parts[v.part];
   if (!p || v.param === 'f0') return '';
-  return v.param === 'zc' ? `now ${amount(-1, 'zc', p.zc ?? c.z0)}` : `now ${amount(p.kind, 'value', p.value)}`;
+  const val = v.param === 'zc' ? amount(-1, 'zc', p.zc ?? c.z0) : amount(p.kind, 'value', p.value);
+  return translate(locale, 'sm.solve.nowVal', { val });
 }
 
 /** A suggestion's construction as the chart draws it (solveLayer.ts): two unknowns cross like a solved pair. */
@@ -361,6 +363,7 @@ const shapeOf = (g: Suggestion): CircleShape => ({ circleNode: g.circleNode, cir
  * "Solve for" (marks its parts as the unknowns), its standard values and a preview with its circles.
  */
 function SuggestionList({ x, list, onMark }: { x: ListCtx; list: Suggestion[]; onMark: (g: Suggestion) => void }) {
+  const { t, locale } = useI18n();
   const point = x.goal.kind === 'point';
   return (
     <ol className={styles.solutions} data-suggestions="">
@@ -371,26 +374,26 @@ function SuggestionList({ x, list, onMark }: { x: ListCtx; list: Suggestion[]; o
         return (
           <li key={k} className={`${styles.solution} ${styles.suggestion}`} data-suggestion={k} data-meets={g.meets ? '' : undefined}
             data-residual={numText(s.residual)} data-mismatch={numText(s.mismatch)} data-gamma={numText(s.gamma)} data-pv={key} tabIndex={0}
-            aria-label={`Suggestion ${k + 1}: focus to preview its path on the chart`}>
+            aria-label={t('sm.solve.sugAria', { n: k + 1 })}>
             <div className={styles.values}>
               {s.values.map((v, j) => (
-                <span key={j}><ValueText c={x.c} v={v} /> <span className={styles.was}>({nowText(x.c, v)})</span></span>
+                <span key={j}><ValueText c={x.c} v={v} /> <span className={styles.was}>({nowText(x.c, v, locale)})</span></span>
               ))}
             </div>
             <div className={styles.meta}>
               {g.meets
-                ? <span>meets the goal: |Γ| = <b>{small(s.gamma)}</b> at {x.node}</span>
+                ? <span>{t('sm.solve.meetsGoal')} <b>{small(s.gamma)}</b> {t('sm.solve.atNode', { node: x.node })}</span>
                 : point
-                  ? <span>comes within <b>{small(s.mismatch)}</b> of the target (|Γ| = {small(s.gamma)} at {x.node})</span>
-                  : <span>|Γ| = {small(s.gamma)} at {x.node}; off the goal by {small(s.residual)}</span>}
-              {!s.realisable && !s.atF0Only && <span className={styles.flag}> not of the part’s own kind</span>}
+                  ? <span>{t('sm.solve.comesWithin')} <b>{small(s.mismatch)}</b> {t('sm.solve.ofTarget', { gamma: small(s.gamma), node: x.node })}</span>
+                  : <span>{t('sm.solve.offGoalMeta', { gamma: small(s.gamma), node: x.node, res: small(s.residual) })}</span>}
+              {!s.realisable && !s.atF0Only && <span className={styles.flag}>{t('sm.solve.notOwnKind')}</span>}
               {k === 0 && <Why k="solve-suggest" />}
             </div>
             <span className={styles.actions}>
               <button type="button" className={base.button} data-apply-suggestion={k} disabled={x.stale}
-                onClick={() => x.apply(s)} title="Put these values in the circuit (one step; Undo takes it back)">Apply</button>
+                onClick={() => x.apply(s)} title={t('sm.solve.applyTitle')}>{t('sm.solve.apply')}</button>
               <button type="button" className={`${base.button} ${styles.small}`} data-mark-suggestion={k} disabled={x.stale}
-                onClick={() => onMark(g)} title="Mark these values as unknowns, to see every solution and the circles">Solve for</button>
+                onClick={() => onMark(g)} title={t('sm.solve.markTitle')}>{t('sm.solve.solveFor')}</button>
             </span>
             <div className={styles.variantRow}><Variants x={x} s={s} pv={`v${key}`} given={g.variants} shape={shape} fold /></div>
           </li>
@@ -401,14 +404,12 @@ function SuggestionList({ x, list, onMark }: { x: ListCtx; list: Suggestion[]; o
 }
 
 /** The suggestions' heading for a status of suggest.ts, in plain words. */
-function suggestHead(o: Suggestions, node: string, some: boolean): string {
+function suggestHead(o: Suggestions, node: string, some: boolean, locale: Locale): string {
   switch (o.status) {
-    case 'holds': return `The circuit already meets the goal at ${node}: nothing needs to change.`;
-    case 'rejected': return `No suggestions: ${o.reason}.`;
-    case 'none': return `No change of one or two parts meets the goal: ${o.reason}. Add a part, or choose another goal.`;
-    default: return some
-      ? 'Suggestions: change one value, or two, to meet the goal (the smallest changes first).'
-      : 'No change of one or two parts meets the goal exactly; the nearest:';
+    case 'holds': return translate(locale, 'sm.solve.sugHolds', { node });
+    case 'rejected': return translate(locale, 'sm.solve.sugRejected', { reason: o.reason });
+    case 'none': return translate(locale, 'sm.solve.sugNone', { reason: o.reason });
+    default: return translate(locale, some ? 'sm.solve.sugSome' : 'sm.solve.sugNearest');
   }
 }
 
@@ -435,6 +436,7 @@ export function familyT(ranges: readonly ValueRange[], p: number): number {
 
 /** The family's slider: a value of the first unknown inside its ranges and the 0 to 2 members there, live (D14: keys, touch). */
 function FamilySlider({ x, r, onMove }: { x: ListCtx; r: SolveResult; onMove: () => void }) {
+  const { t: tr, locale } = useI18n();
   const ranges = r.ranges;
   const [pos, setPos] = useState(() => {
     let total = 0;
@@ -447,16 +449,16 @@ function FamilySlider({ x, r, onMove }: { x: ListCtx; r: SolveResult; onMove: ()
   x.makers.set('fam', () => (members.length ? applySolution(x.c, members[0]) : x.c));
   useEffect(onMove, [t, onMove]);
   const first = members[0]?.values[0];
-  const firstText = first ? `${symbolOf(first.param === 'value' ? first.kind : x.c.parts[first.part]?.kind ?? -1, first.param)} = ${amount(first.param === 'value' ? first.kind : x.c.parts[first.part]?.kind ?? -1, first.param, first.value)}` : 'no member here';
+  const firstText = first ? `${symbolOf(first.param === 'value' ? first.kind : x.c.parts[first.part]?.kind ?? -1, first.param)} = ${amount(first.param === 'value' ? first.kind : x.c.parts[first.part]?.kind ?? -1, first.param, first.value)}` : tr('sm.solve.noMemberHere');
   return (
     <div className={styles.family} data-family="">
       <div className={styles.familyLabel}>
-        <span><label htmlFor={sliderId}>Pick a member by {unknownName(x.c, r.unknowns[0])}:</label> <Why k="solve-family" /></span>
+        <span><label htmlFor={sliderId}>{tr('sm.solve.pickMember', { name: unknownLabel(x.c, r.unknowns[0], locale) })}</label> <Why k="solve-family" /></span>
         <input id={sliderId} type="range" className={styles.slider} min={0} max={FAMILY_STEPS} step={1} value={pos} data-family-slider="" data-pv="fam"
           data-t={numText(t)} aria-valuetext={firstText} onChange={(e) => setPos(Number(e.target.value))} />
       </div>
       <p className={styles.familyNow} data-family-first={first ? numText(first.value) : ''}>
-        {first ? <>{firstText}{first.swapped ? ' (true at this frequency only)' : ''}: {members.length === 2 ? 'two values' : 'one value'} of {unknownName(x.c, r.unknowns[1])}</> : 'No member at this value.'}
+        {first ? <>{firstText}{first.swapped ? tr('sm.solve.atF0OnlyParen') : ''}: {tr('sm.solve.memberValuesOf', { count: tr(members.length === 2 ? 'sm.solve.twoValuesOf' : 'sm.solve.oneValueOf'), name: unknownLabel(x.c, r.unknowns[1], locale) })}</> : tr('sm.solve.noMemberVal')}
       </p>
       {members.length > 0 && <SolutionList x={x} list={members} item="member" />}
     </div>
@@ -464,24 +466,25 @@ function FamilySlider({ x, r, onMove }: { x: ListCtx; r: SolveResult; onMove: ()
 }
 
 const LIST_KINDS: { kind: ValueKind; name: string }[] = [{ kind: 'R', name: 'R' }, { kind: 'L', name: 'L' }, { kind: 'C', name: 'C' }, { kind: 'Z', name: 'Zt, Zc' }];
-const listName = (id: string): string => (id === 'own' ? 'own list' : id === 'any' ? 'any value' : id);
+const listName = (id: string, locale: Locale): string => (id === 'own' ? translate(locale, 'sm.solve.listOwn') : id === 'any' ? translate(locale, 'sm.solve.listAny') : id);
 /** An own list as text to edit (no spaces inside an amount, so the reader splits only between values). */
 const ownText = (kind: ValueKind, values: readonly number[]): string =>
   values.map((v) => formatAmount(v, VALUE_UNITS[kind], 4).replace(/\s+/g, '')).join(', ');
 
 /** The value list per kind (D17): what Snap and the standard values below each solution use; kept in the link. */
 function ListsSetting({ lists, onLists }: { lists: ValueChoice; onLists: (next: ValueChoice) => void }) {
+  const { t, locale } = useI18n();
   const [texts, setTexts] = useState<Partial<Record<ValueKind, string>>>({});
   const [rejected, setRejected] = useState<Partial<Record<ValueKind, string[]>>>({});
   const choose = (kind: ValueKind, id: ListId) => {
     if (id === 'own') {
       const values = lists[kind].id === 'own' ? lists[kind].values ?? [] : [];
-      setTexts((t) => ({ ...t, [kind]: t[kind] ?? ownText(kind, values) }));
+      setTexts((prev) => ({ ...prev, [kind]: prev[kind] ?? ownText(kind, values) }));
       onLists({ ...lists, [kind]: { id, values } });
     } else onLists({ ...lists, [kind]: { id } });
   };
   const typeOwn = (kind: ValueKind, text: string) => {
-    setTexts((t) => ({ ...t, [kind]: text }));
+    setTexts((prev) => ({ ...prev, [kind]: text }));
     const { values, rejected: bad } = parseOwnList(text, kind);
     setRejected((r) => ({ ...r, [kind]: bad }));
     onLists({ ...lists, [kind]: { id: 'own', values } });
@@ -489,10 +492,10 @@ function ListsSetting({ lists, onLists }: { lists: ValueChoice; onLists: (next: 
   return (
     <details className={styles.lists} data-lists="">
       <summary className={styles.listsSummary}>
-        Standard values: {LIST_KINDS.map(({ kind, name }) => `${name.split(',')[0]} ${listName(lists[kind].id)}`).join(' · ')}
+        {t('sm.solve.stdValues')} {LIST_KINDS.map(({ kind, name }) => `${name.split(',')[0]} ${listName(lists[kind].id, locale)}`).join(' · ')}
         {' '}<Why k="solve-lists" />
       </summary>
-      <p className={styles.hint}>Snap rounds a dragged value to its kind’s list, and each solution shows its neighbours in it with what they cost.</p>
+      <p className={styles.hint}>{t('sm.solve.listsHint')}</p>
       <div className={styles.listGrid}>
         {LIST_KINDS.map(({ kind, name }) => {
           const l = lists[kind];
@@ -502,18 +505,18 @@ function ListsSetting({ lists, onLists }: { lists: ValueChoice; onLists: (next: 
                 <label className={styles.goalPart}>
                   <span className={styles.label}>{name}</span>
                   <select className={base.select} data-list-kind={kind} value={l.id} onChange={(e) => choose(kind, e.target.value as ListId)}>
-                    {LIST_IDS.map((id) => <option key={id} value={id}>{listName(id)}</option>)}
+                    {LIST_IDS.map((id) => <option key={id} value={id}>{listName(id, locale)}</option>)}
                   </select>
                 </label>
                 <Why k={`list-${kind}`} />
               </div>
               {l.id === 'own' && (
                 <label className={styles.ownBox}>
-                  <span className={styles.label}>{name} values ({l.values?.length ?? 0})</span>
+                  <span className={styles.label}>{t('sm.solve.kindValuesCount', { name, n: l.values?.length ?? 0 })}</span>
                   <textarea className={styles.own} rows={2} data-list-own={kind} spellCheck={false}
                     value={texts[kind] ?? ownText(kind, l.values ?? [])} onChange={(e) => typeOwn(kind, e.target.value)}
                     placeholder={kind === 'R' ? '10, 22, 47, 4k7' : kind === 'L' ? '10n, 22n, 47n' : kind === 'C' ? '1p, 2.2p, 4.7p' : '35, 50, 75'} />
-                  {(rejected[kind]?.length ?? 0) > 0 && <span className={styles.flag} data-list-rejected={kind}>Not read: {rejected[kind]!.slice(0, 5).join(', ')}</span>}
+                  {(rejected[kind]?.length ?? 0) > 0 && <span className={styles.flag} data-list-rejected={kind}>{t('sm.solve.notRead', { list: rejected[kind]!.slice(0, 5).join(', ') })}</span>}
                 </label>
               )}
             </div>
@@ -525,29 +528,32 @@ function ListsSetting({ lists, onLists }: { lists: ValueChoice; onLists: (next: 
 }
 
 /** Where the construction's circles are on the chart and what they mean (solver.md "On the chart"). */
-function circlesText(c: Circuit, r: SolveResult): string {
+function circlesText(c: Circuit, r: SolveResult, locale: Locale): string {
   if (r.circleNode < 0) return '';
   const n = c.parts.length, k = r.circleNode;
-  const at = k === n ? 'the input' : k === 0 ? 'the load' : `node ${k}`;
-  const a = unknownName(c, r.unknowns[0]);
-  if (r.status === 'family') return `On the chart: the circle ${a} moves ${at} on (its colour) and the goal carried back past ${unknownName(c, r.unknowns[1])} (the goal’s colour); each member is a point of the first that ${unknownName(c, r.unknowns[1])} carries onto the second.`;
-  if (r.unknowns.length === 2) return `On the chart at ${at}: the circle ${a} reaches (its colour) and the circle ${unknownName(c, r.unknowns[1])} must start on (its colour); the solutions are where they cross.`;
-  if (r.status === 'best') return `On the chart at ${at}: the circle ${a} moves the node on and the circle of the nearest mismatch, which it touches at the best value.`;
-  return `On the chart at ${at}: the circle ${a} moves the node on and the goal carried back to it; the values are where they cross.`;
+  const at = k === n ? translate(locale, 'sm.solve.theInput') : k === 0 ? translate(locale, 'sm.solve.theLoad') : translate(locale, 'sm.solve.nodeN', { k });
+  const a = unknownLabel(c, r.unknowns[0], locale);
+  if (r.status === 'family') return translate(locale, 'sm.solve.circlesFamily', { a, at, b: unknownLabel(c, r.unknowns[1], locale) });
+  if (r.unknowns.length === 2) return translate(locale, 'sm.solve.circlesTwo', { at, a, b: unknownLabel(c, r.unknowns[1], locale) });
+  if (r.status === 'best') return translate(locale, 'sm.solve.circlesBest', { at, a });
+  return translate(locale, 'sm.solve.circlesOne', { at, a });
 }
 
 function RangeList({ c, r, first }: { c: Circuit; r: SolveResult; first: Unknown }) {
+  const { t, locale } = useI18n();
   return (
     <ul className={styles.ranges}>
       {r.ranges.map((g: ValueRange, k) => {
         const kind = first.param === 'value' && g.kind >= 0 ? g.kind : first.param === 'f0' ? -1 : c.parts[first.part].kind;
         const sym = symbolOf(kind, first.param ?? 'value');
+        const what = first.param === 'f0' ? 'f0' : t('sm.solve.rangePartSym', { sym, n: first.part + 1 });
+        const asKind = first.param === 'value' && g.kind >= 0 && g.kind !== c.parts[first.part].kind ? t('sm.solve.rangeAsKind', { kind: kindLower(g.kind, locale) }) : '';
         return (
           <li key={k} data-range={k} data-min={numText(g.min)} data-max={numText(g.max)}>
-            any {first.param === 'f0' ? 'f0' : `${sym} of part ${first.part + 1}`}{first.param === 'value' && g.kind >= 0 && g.kind !== c.parts[first.part].kind ? ` (as a ${kindName(g.kind)})` : ''}
-            {' '}from <b>{amount(kind, first.param ?? 'value', g.min)}</b> to <b>{amount(kind, first.param ?? 'value', g.max)}</b>
-            {g.swapped && <span className={styles.flag}> true at this frequency only</span>}
-            {r.status === 'family' && <span className={styles.meta}> ({g.branches === 2 ? 'one or two values' : 'one value'} of the second each)</span>}
+            {t('sm.solve.rangeAny', { what, asKind })}
+            {' '}{t('sm.solve.rangeFrom')} <b>{amount(kind, first.param ?? 'value', g.min)}</b> {t('sm.solve.rangeTo')} <b>{amount(kind, first.param ?? 'value', g.max)}</b>
+            {g.swapped && <span className={styles.flag}>{t('sm.solve.atF0Only')}</span>}
+            {r.status === 'family' && <span className={styles.meta}>{t('sm.solve.rangeBranchesOf', { count: t(g.branches === 2 ? 'sm.solve.rangeBranches2' : 'sm.solve.rangeBranches1') })}</span>}
           </li>
         );
       })}
@@ -556,6 +562,7 @@ function RangeList({ c, r, first }: { c: Circuit; r: SolveResult; first: Unknown
 }
 
 function SolvePanel({ circuit, onChange, revision, busy, onResult, onPreview, lists, onLists, noSuggest }: SolvePanelProps) {
+  const { t, locale } = useI18n();
   const c = circuit;
   const n = c.parts.length;
   const ask = askOf(c);
@@ -607,7 +614,7 @@ function SolvePanel({ circuit, onChange, revision, busy, onResult, onPreview, li
   const toggle = (u: Unknown) => {
     const { circuit: next, dropped } = toggleUnknown(c, u);
     onChange(next);
-    setMarkNote(dropped ? { text: `At most two at a time: ${unknownName(c, dropped)} is no longer solved for.`, after: next } : null);
+    setMarkNote(dropped ? { text: t('sm.strip.maxTwoNote', { name: unknownLabel(c, dropped, locale) }), after: next } : null);
   };
   const f0Marked = ask.unknowns.some((u) => u.param === 'f0');
 
@@ -616,9 +623,9 @@ function SolvePanel({ circuit, onChange, revision, busy, onResult, onPreview, li
   const node = goalNode(goal, n);
   const figure = FIGURE[goal.kind];
   const goalField = (name: string, label: string, unit: string, infinite: boolean, value: number, make: (v: number) => Goal) => (
-    <Field name={name} label={label} revision={revision} shown={formatAmount(value, unit, DIGITS)} edit={(t) => {
-      const v = readAmount(t, unit || undefined, infinite);
-      if (v === null) return t.trim() ? `cannot read “${t.trim()}”${unit ? ` as ${unit}` : ' as a number'}` : 'empty';
+    <Field name={name} label={label} revision={revision} shown={formatAmount(value, unit, DIGITS)} edit={(txt) => {
+      const v = readAmount(txt, unit || undefined, infinite);
+      if (v === null) return txt.trim() ? (unit ? t('sm.err.cannotReadAs', { text: txt.trim(), unit }) : t('sm.err.cannotReadNum', { text: txt.trim() })) : t('sm.err.empty');
       const g = make(v);
       const why = goalProblem(g, n);
       if (why) return why;
@@ -631,7 +638,7 @@ function SolvePanel({ circuit, onChange, revision, busy, onResult, onPreview, li
   const status = statusOf(outcome);
   const r = outcome?.result ?? null;
   const oc = outcome?.circuit ?? c;
-  const nodeText = (k: number) => (k === oc.parts.length ? 'the input' : k === 0 ? 'the load' : `node ${k}`);
+  const nodeText = (k: number) => (k === oc.parts.length ? t('sm.solve.theInput') : k === 0 ? t('sm.solve.theLoad') : t('sm.solve.nodeN', { k }));
   const apply = (s: Solution) => { if (!stale) onChange(applySolution(oc, s)); };
   const reason = r ? sentence(r.reason) : '';
 
@@ -672,10 +679,10 @@ function SolvePanel({ circuit, onChange, revision, busy, onResult, onPreview, li
   sugBase.current = sugShown?.circuit ?? null;
   let suggestBox: React.ReactNode = null;
   if (unmarkedNow) {
-    if (!sugShown) suggestBox = <div className={styles.suggest} data-suggest-status="looking"><p className={styles.hint}>Looking for suggestions…</p></div>;
+    if (!sugShown) suggestBox = <div className={styles.suggest} data-suggest-status="looking"><p className={styles.hint}>{t('sm.solve.looking')}</p></div>;
     else {
       const sc = sugShown.circuit, so = sugShown.o, sg = askOf(sc).goal, gn = goalNode(sg, sc.parts.length);
-      const sn = gn === sc.parts.length ? 'the input' : gn === 0 ? 'the load' : `node ${gn}`;
+      const sn = gn === sc.parts.length ? t('sm.solve.theInput') : gn === 0 ? t('sm.solve.theLoad') : t('sm.solve.nodeN', { k: gn });
       const applySug = (s: Solution) => { if (!sugStale) onChange(applySolution(sc, s)); };
       const mark = (g: Suggestion) => {
         if (sugStale) return;
@@ -686,7 +693,7 @@ function SolvePanel({ circuit, onChange, revision, busy, onResult, onPreview, li
       const sx: ListCtx = { c: sc, goal: sg, node: sn, stale: sugStale, lists: sugShown.lists, apply: applySug, makers, shapes };
       suggestBox = (
         <div className={styles.suggest} data-suggest-status={so.status}>
-          <p className={styles.suggestHead} data-suggest-head="">{suggestHead(so, sn, so.list.some((g) => g.meets))}</p>
+          <p className={styles.suggestHead} data-suggest-head="">{suggestHead(so, sn, so.list.some((g) => g.meets), locale)}</p>
           {so.list.length > 0 && <SuggestionList x={sx} list={so.list} onMark={mark} />}
         </div>
       );
@@ -694,37 +701,32 @@ function SolvePanel({ circuit, onChange, revision, busy, onResult, onPreview, li
   }
 
   let body: React.ReactNode = null;
-  if (status === 'solving') body = <p className={styles.message}>Solving…</p>;
+  if (status === 'solving') body = <p className={styles.message}>{t('sm.solve.solving')}</p>;
   else if (status === 'nothing') {
-    body = (
-      <p className={styles.message}>
-        Nothing is marked yet. Select a part in the strip and press its value under “Solve for” on its card (a line or stub
-        also offers Zc), or press f0 above. Mark two values to reach a point, one to reach a circle; or take a suggestion.
-      </p>
-    );
+    body = <p className={styles.message}>{t('sm.solve.nothingBody')}</p>;
   } else if (r) {
     const first = r.unknowns[0];
     const head: Record<string, string> = {
-      solved: `${r.solutions.length === 2 ? 'Two' : r.solutions.length} solutions.`,
-      tangent: 'One solution: the two circles just touch.',
-      one: 'One solution.',
-      none: `No solution. ${reason}`,
-      samejob: `These two parts do the same job. ${reason}`,
-      'samejob-all': 'These two parts do the same job: their circles are one, so any value of one has a value of the other. Fix one of them.',
-      coincident: `Every value works. ${reason}`,
-      degenerate: `${reason} Fix one of them, or choose another target.`,
-      best: `One value alone reaches a point only by chance. ${r.solutions.length ? 'The nearest it comes:' : reason}`,
-      range: r.ranges.length ? 'The values that keep the goal:' : `No value keeps the goal. ${reason}`,
-      family: r.ranges.length ? 'A family of solutions: for every value of the first unknown in a range, the second has a value that meets the goal.' : reason,
-      rejected: `Cannot solve this: ${reason}`,
+      solved: r.solutions.length === 2 ? t('sm.solve.headTwo') : t('sm.solve.headCount', { n: r.solutions.length }),
+      tangent: t('sm.solve.headTangent'),
+      one: t('sm.solve.headOne'),
+      none: t('sm.solve.headNone', { reason }),
+      samejob: t('sm.solve.headSameJob', { reason }),
+      'samejob-all': t('sm.solve.headSameJobAll'),
+      coincident: t('sm.solve.headCoincident', { reason }),
+      degenerate: t('sm.solve.headDegenerate', { reason }),
+      best: r.solutions.length ? t('sm.solve.headBestNear') : t('sm.solve.headBestReason', { reason }),
+      range: r.ranges.length ? t('sm.solve.headRange') : t('sm.solve.headRangeNone', { reason }),
+      family: r.ranges.length ? t('sm.solve.headFamily') : reason,
+      rejected: t('sm.solve.headRejected', { reason }),
     };
     body = (
       <>
         <p className={styles.message} data-solve-head="">{head[status]}</p>
-        {r.status === 'best' && <p className={styles.hint} data-solve-suggest="">{suggestSecond(oc, r)}</p>}
+        {r.status === 'best' && <p className={styles.hint} data-solve-suggest="">{suggestSecond(oc, r, locale)}</p>}
         {(r.status === 'range' || r.status === 'family') && r.ranges.length > 0 && <RangeList c={oc} r={r} first={first} />}
-        {r.status === 'family' && r.family && r.family.ends.length > 0 && <p className={styles.hint}>At the ends of the ranges:</p>}
-        {r.status === 'range' && r.solutions.length > 0 && <p className={styles.hint}>The edges, where the goal holds exactly:</p>}
+        {r.status === 'family' && r.family && r.family.ends.length > 0 && <p className={styles.hint}>{t('sm.solve.atEnds')}</p>}
+        {r.status === 'range' && r.solutions.length > 0 && <p className={styles.hint}>{t('sm.solve.atEdges')}</p>}
         {r.solutions.length > 0 && r.status !== 'family' && (
           <SolutionList x={x} list={r.solutions} best={r.status === 'best'} />
         )}
@@ -734,8 +736,7 @@ function SolvePanel({ circuit, onChange, revision, busy, onResult, onPreview, li
         {r.status === 'family' && r.family && r.ranges.length > 0 && <FamilySlider key={r.ranges.map((g) => `${g.t0}:${g.t1}`).join()} x={x} r={r} onMove={showPreview} />}
         {r.status === 'family' && r.ranges.length > 0 && (
           <p className={styles.hint}>
-            Or fix {unknownName(oc, first)} at a value inside a range and solve for {unknownName(oc, r.unknowns[1])} alone, or
-            choose a point target.
+            {t('sm.solve.familyHint', { first: unknownLabel(oc, first, locale), second: unknownLabel(oc, r.unknowns[1], locale) })}
           </p>
         )}
       </>
@@ -744,34 +745,34 @@ function SolvePanel({ circuit, onChange, revision, busy, onResult, onPreview, li
 
   return (
     <section ref={box} className={`${base.panel} ${styles.panel}`} aria-labelledby="smith-solve" data-solve="">
-      <h2 className={base.panelTitle} id="smith-solve">Find the missing value <span className={base.panelNote}>at f0</span></h2>
+      <h2 className={base.panelTitle} id="smith-solve">{t('sm.solve.title')} <span className={base.panelNote}>{t('sm.strip.atF0')}</span></h2>
 
       <div className={styles.row}>
-        <span className={styles.label}>Solve for</span>
-        {ask.unknowns.length === 0 && <span className={styles.none}>nothing marked</span>}
+        <span className={styles.label}>{t('sm.solve.solveFor')}</span>
+        {ask.unknowns.length === 0 && <span className={styles.none}>{t('sm.solve.nothingMarked')}</span>}
         {ask.unknowns.map((u, i) => (
           <button key={`${u.param}${u.part}`} type="button" className={styles.chip} data-unmark={i} onClick={() => toggle(u)}
-            title="No longer solve for this" aria-label={`No longer solve for ${unknownName(c, u)}`}>
-            {unknownName(c, u)} <span aria-hidden="true">×</span>
+            title={t('sm.solve.unmarkTitle')} aria-label={t('sm.solve.unmarkAria', { name: unknownLabel(c, u, locale) })}>
+            {unknownLabel(c, u, locale)} <span aria-hidden="true">×</span>
           </button>
         ))}
         <button type="button" className={`${base.button} ${base.toggle}`} aria-pressed={f0Marked} data-solve-mark="f0"
-          onClick={() => toggle({ part: -1, param: 'f0' })} title="Let the solver find the frequency at which the goal holds (f0/10 to 10·f0)">f0</button>
+          onClick={() => toggle({ part: -1, param: 'f0' })} title={t('sm.solve.f0Title')}>f0</button>
         <Why k="solve-mark" />
       </div>
       {markNote && markNote.after === c && <p className={styles.note} role="status" data-mark-note="">{markNote.text}</p>}
 
       <div className={styles.goal}>
         <label className={styles.goalPart}>
-          <span className={styles.label}>Goal at</span>
+          <span className={styles.label}>{t('sm.solve.goalAt')}</span>
           <select className={base.select} data-goal-node="" value={node} onChange={(e) => setGoal({ ...goal, node: Number(e.target.value) })}>
-            {Array.from({ length: n + 1 }, (_, k) => n - k).map((k) => <option key={k} value={k}>{k === n ? 'the input' : nodeName(k, n).toLowerCase()}</option>)}
+            {Array.from({ length: n + 1 }, (_, k) => n - k).map((k) => <option key={k} value={k}>{k === n ? t('sm.solve.theInput') : nodeName(k, n, locale).toLowerCase()}</option>)}
           </select>
         </label>
         <label className={styles.goalPart}>
-          <span className={styles.label}>reach</span>
+          <span className={styles.label}>{t('sm.solve.reach')}</span>
           <select className={base.select} data-goal-kind="" value={choice} onChange={(e) => setGoal(startGoal(e.target.value as Choice, c.z0, goal.node))}>
-            {CHOICES.map(({ id, text }) => <option key={id} value={id}>{text}</option>)}
+            {CHOICE_IDS.map((id) => <option key={id} value={id}>{t(`sm.solve.choice.${id}` as TranslationKey)}</option>)}
           </select>
         </label>
         <Why k="solve-goal" />
@@ -780,24 +781,24 @@ function SolvePanel({ circuit, onChange, revision, busy, onResult, onPreview, li
         <div className={styles.goalFields}>
           {choice === 'point' && goalField('goal-R', 'R', 'Ω', true, goal.targetR ?? c.z0, (v) => ({ ...goal, targetR: v, targetX: v === Infinity ? 0 : goal.targetX ?? 0 }))}
           {choice === 'point' && goalField('goal-X', 'X', 'Ω', false, goal.targetX ?? 0, (v) => ({ ...goal, targetX: v }))}
-          {figure && goalField('goal-value', figure.label, figure.unit, figure.infinite, goalValue(goal), (v) => ({ ...goal, value: v }))}
+          {figure && goalField('goal-value', goal.kind === 'rl' ? t('sm.chart.returnLoss') : figure.label, figure.unit, figure.infinite, goalValue(goal), (v) => ({ ...goal, value: v }))}
           {(goal.kind === 'vswr' || goal.kind === 'mag' || goal.kind === 'rl') && (
             <label className={styles.within}>
               <input type="checkbox" data-goal-within="" checked={!!goal.within} onChange={(e) => setGoal({ ...goal, within: e.target.checked })} />
-              {goal.kind === 'rl' ? 'or more' : 'or less'}
+              {t(goal.kind === 'rl' ? 'sm.solve.orMore' : 'sm.solve.orLess')}
             </label>
           )}
         </div>
       )}
 
       {ask.unknowns.length > 0 && (
-        <p className={styles.count} data-solve-count="">{countText(ask.unknowns.length, goal)} <Why k="solve-count" /></p>
+        <p className={styles.count} data-solve-count="">{countText(ask.unknowns.length, goal, locale)} <Why k="solve-count" /></p>
       )}
       <div className={styles.result} data-solve-status={status} aria-live="polite" aria-busy={stale || sugStale || undefined}
         onMouseOver={onOver} onMouseLeave={onOut} onFocus={onFocusIn} onBlur={onFocusOut}>
         {body}
         {suggestBox}
-        {r && r.circleNode >= 0 && <p className={styles.hint} data-solve-circles="">{circlesText(oc, r)} <Why k="solve-circles" /></p>}
+        {r && r.circleNode >= 0 && <p className={styles.hint} data-solve-circles="">{circlesText(oc, r, locale)} <Why k="solve-circles" /></p>}
         {r && r.solutions.length + (r.family?.ends.length ?? 0) > 0 && <span className={styles.applyWhy}><Why k="solve-apply" /></span>}
       </div>
       <ListsSetting lists={lists} onLists={onLists} />

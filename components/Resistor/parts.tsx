@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 import { ohmsParts } from '../../lib/resistor';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Resistor.module.css';
 
 // A resistance with its unit in a quieter colour.
@@ -8,15 +9,16 @@ export function Ohms({ ohms, digits, className }: { ohms: number; digits?: numbe
   const [number, unit] = ohmsParts(ohms, digits);
   return (
     <span className={[styles.num, className].filter(Boolean).join(' ')}>
-      {number}<span className={styles.unit}>{' '}{unit}</span>
+      {number}<span className={styles.unit}>{'\u00A0'}{unit}</span>
     </span>
   );
 }
 
 // A resistance that becomes the current value when clicked.
 export function ValueButton({ ohms, onPick, className }: { ohms: number; onPick: (ohms: number) => void; className?: string }) {
+  const { t } = useI18n();
   return (
-    <button type="button" className={[styles.valueButton, className].filter(Boolean).join(' ')} onClick={() => onPick(ohms)} title="Use this value">
+    <button type="button" className={[styles.valueButton, className].filter(Boolean).join(' ')} onClick={() => onPick(ohms)} title={t('res.useValue')}>
       <Ohms ohms={ohms} />
     </button>
   );

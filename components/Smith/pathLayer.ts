@@ -34,8 +34,11 @@ import { FAM_AXIS, FAM_B, FAM_G, FAM_R, FAM_X, MODE_Y } from '../../lib/smith/gr
 import { NODE_STRIDE, evaluate, nodeGamma } from '../../lib/smith/network';
 import type { Circuit } from '../../lib/smith/network';
 import { LINE, PART_STRIDE, PartKind, STUB_OPEN, STUB_SHORT, packParts } from '../../lib/smith/parts';
-import { KIND_NAMES, MAX_PARTS, askOf, insertPart, startPart, stepValue, withPart } from '../../lib/smith/state';
+import { MAX_PARTS, askOf, insertPart, startPart, stepValue, withPart } from '../../lib/smith/state';
+import { translate } from '../../lib/ui/i18n';
+import type { Locale } from '../../lib/ui/translations';
 import { ChartView, DIRTY_CONTENT, DIRTY_VIEW, TAP_MS, TAP_SLOP } from './chartView';
+import { getSmithLocale, kindName } from './smithText';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const TAU = 2 * Math.PI;
@@ -54,8 +57,12 @@ export const partColour = (index: number): string => `var(--part-${(index % 8) +
 /** A node's short label on the chart and in the table: L the load, k between parts k and k + 1, In the input. */
 export const nodeLabel = (k: number, n: number): string => (k === 0 ? 'L' : k === n ? 'In' : String(k));
 /** A node's name in the table. */
-export const nodeName = (k: number, n: number): string =>
-  k === 0 ? (n === 0 ? 'Load = input' : 'Load') : k === n ? 'Input' : `Between ${k} and ${k + 1}`;
+export const nodeName = (k: number, n: number, locale: Locale = getSmithLocale()): string =>
+  k === 0
+    ? translate(locale, n === 0 ? 'sm.nodes.loadEqInput' : 'sm.nodes.load')
+    : k === n
+      ? translate(locale, 'sm.nodes.input')
+      : translate(locale, 'sm.nodes.between', { a: k, b: k + 1 });
 
 /** An arc flatter than this (sagitta in px) is drawn as its chord. */
 const FLAT_PX = 0.02;
@@ -87,7 +94,7 @@ const MOUSE_SLOP = 3;
  */
 const VKIND = Array.from({ length: 10 }, (_, k) => valueKindOf(k));
 const SNAP_UNIT = ['Ω', 'H', 'F', 'Ω', 'H', 'F', 'λ', 'λ', 'λ', 'Ω'];
-const LIST_NAME = (l: ValueList): string => (l.id === 'own' ? 'own list' : l.id);
+const LIST_NAME = (l: ValueList): string => (l.id === 'own' ? translate(getSmithLocale(), 'sm.path.ownList') : l.id);
 /** Any list for stepValue: lengths then step by whole degrees. */
 const LENGTH_STEPS: readonly number[] = [];
 const FAM_NAME = ['r', 'x', 'g', 'b'];
@@ -244,7 +251,7 @@ export class PathLayer {
     this.keyBox = document.createElement('div');
     this.keyBox.setAttribute('data-layer', 'handle-keys');
     this.keyBox.setAttribute('role', 'group');
-    this.keyBox.setAttribute('aria-label', 'Part values, from the source to the load');
+    this.keyBox.setAttribute('aria-label', translate(getSmithLocale(), 'sm.path.keysAria'));
     view.box.append(this.overlay, this.keyBox);
     this.build(0);
     // Keys on a focused slider stop here (the box's own keys pan); Ctrl/Cmd and Alt chords go on to the page.
@@ -347,13 +354,25 @@ export class PathLayer {
     this.count = n;
     for (let i = 0; i < n; i++) {
       const p = c.parts[i], hd = this.keyEls[i];
-      const label = `Part ${i + 1}, ${KIND_NAMES[p.kind]}: arrow keys change the value, Shift in larger steps`;
+      const label = translate(getSmithLocale(), 'sm.path.sliderAria', { n: i + 1, kind: kindName(p.kind) });
       if (hd.getAttribute('aria-label') !== label) hd.setAttribute('aria-label', label);
       const t = formatAmount(p.value, KEY_UNIT[p.kind], 4);
       if (hd.getAttribute('aria-valuetext') !== t) hd.setAttribute('aria-valuetext', t);
     }
     this.markFixed();
     this.evaluate(c);
+  }
+
+  /** Re-applies localized aria-labels when the active language changes. */
+  refreshLocale(): void {
+    const loc = getSmithLocale();
+    this.keyBox.setAttribute('aria-label', translate(loc, 'sm.path.keysAria'));
+    if (!this.circuit) return;
+    for (let i = 0; i < this.circuit.parts.length; i++) {
+      const p = this.circuit.parts[i], hd = this.keyEls[i];
+      if (!hd) continue;
+      hd.setAttribute('aria-label', translate(loc, 'sm.path.sliderAria', { n: i + 1, kind: kindName(p.kind, loc) }));
+    }
   }
 
   /** The parts whose value is locked (by index; M6.3b). Their handles keep their place and say so. */

@@ -2,6 +2,7 @@ import React from 'react';
 
 import { QrSymbol } from '../../lib/qr/encoder';
 import { drawToCanvas, RenderOptions } from '../../lib/qr/render';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/QrGen.module.css';
 
 const PREVIEW_PX = 360;
@@ -28,6 +29,7 @@ export default function SymbolPreview({ symbols, opts, selected, onSelect }: {
   selected: number;
   onSelect: (i: number) => void;
 }) {
+  const { t } = useI18n();
   const many = symbols.length > 1;
   return (
     <div className={styles.preview}>
@@ -40,7 +42,7 @@ export default function SymbolPreview({ symbols, opts, selected, onSelect }: {
           disabled={!many}
         >
           <SymbolCanvas sym={sym} opts={opts} />
-          {many && <span className={styles.caption}>Symbol {i + 1} of {symbols.length}</span>}
+          {many && <span className={styles.caption}>{t('qrgen.preview.symbolOf', { i: i + 1, total: symbols.length })}</span>}
         </button>
       ))}
     </div>

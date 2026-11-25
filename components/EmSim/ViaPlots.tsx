@@ -23,6 +23,7 @@ import { feedExport } from './exportFeed';
 import { FLOOR, qText } from './trace';
 import { NumInput } from './ValField';
 import { Why } from './Why';
+import { useI18n } from '../../lib/ui/i18n';
 
 export const TR_PRESETS = [15e-12, 35e-12, 100e-12];
 export const TR_MIN = 5e-12, TR_MAX = 500e-12;
@@ -60,6 +61,7 @@ interface Props {
 }
 
 function ViaPlots({ r, stale, trace, tr, onTr, z0, onZ0 }: Props) {
+  const { t: trText } = useI18n();
   const pair = r.n === 2;
   const [tdrMode, setTdrMode] = useState<TdrMode>('diff');
   const [sMode, setSMode] = useState<SMode>('dd');
@@ -69,10 +71,10 @@ function ViaPlots({ r, stale, trace, tr, onTr, z0, onZ0 }: Props) {
   const [zReason, setZReason] = useState('');
 
   const T = pair && tdrMode === 'common' ? r.tdrCommon : r.tdr;
-  const modeName = pair ? (tdrMode === 'common' ? 'common' : 'differential') : '';
+  const modeName = pair ? trText(tdrMode === 'common' ? 'em.via.modeCommon' : 'em.via.modeDiff') : '';
   const ts = useMemo(() => Array.from(T.t), [T]);
   const zSeries: PlotSeries[] = useMemo(() => [{ name: 'Z', ys: Array.from(T.z) }], [T]);
-  const tdtSeries: PlotSeries[] = useMemo(() => [{ name: 'Step through', ys: Array.from(T.tdt) }], [T]);
+  const tdtSeries: PlotSeries[] = useMemo(() => [{ name: trText('em.via.stepThrough'), ys: Array.from(T.tdt) }], [T, trText]);
   const tDomain = useMemo(() => [ts[0], ts[ts.length - 1]] as [number, number], [ts]);
   const tScale = useMemo(() => timeScale({ min: tDomain[0], max: tDomain[1] }), [tDomain]);
 
@@ -81,27 +83,27 @@ function ViaPlots({ r, stale, trace, tr, onTr, z0, onZ0 }: Props) {
   const feedSignals = trace.kind === 'general' ? trace.signals.length : KIND_INFO[trace.kind]?.signals ?? 1;
   const modeZ = (z: number): number => (!pair ? z : tdrMode === 'diff' ? (feedSignals === 1 ? 2 * z : z) : feedSignals === 1 ? z / 2 : NaN);
   const lines = useMemo(() => {
-    const out: { y: number; name: string }[] = [{ y: T.zRef, name: `Port ${T.zRef.toFixed(2)} Ω` }];
+    const out: { y: number; name: string }[] = [{ y: T.zRef, name: trText('em.via.portRef', { z: T.zRef.toFixed(2) }) }];
     const fz = r.feeds.map((f) => ({ side: f.side, z: modeZ(f.z0) })).filter((f) => Number.isFinite(f.z));
-    if (fz.length === 2 && Math.abs(fz[0].z - fz[1].z) < 0.005) out.push({ y: fz[0].z, name: `Traces ${fz[0].z.toFixed(2)} Ω` });
-    else for (const f of fz) out.push({ y: f.z, name: `${f.side === 'entry' ? 'In' : 'Out'} trace ${f.z.toFixed(2)} Ω` });
+    if (fz.length === 2 && Math.abs(fz[0].z - fz[1].z) < 0.005) out.push({ y: fz[0].z, name: trText('em.via.tracesRef', { z: fz[0].z.toFixed(2) }) });
+    else for (const f of fz) out.push({ y: f.z, name: trText(f.side === 'entry' ? 'em.via.inTraceRef' : 'em.via.outTraceRef', { z: f.z.toFixed(2) }) });
     return out;
     // modeZ follows pair, tdrMode and the trace's signals
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [T, r.feeds, tdrMode, pair, feedSignals]);
+  }, [T, r.feeds, tdrMode, pair, feedSignals, trText]);
   // The shortest feed's round trip against the edge: under about twice the edge its flat part does not show.
   const trips = r.feeds.map((f) => (2 * f.length * 1e-3 * Math.sqrt(f.eeff)) / CLIGHT);
   const trip = trips.length ? Math.min(...trips) : NaN;
 
   const tAt = (t: number) => `${Number((t * tScale.k).toFixed(tScale.unit === 'ps' ? 1 : 4))} ${tScale.unit}`;
   const zReadout = (t: number) => {
-    if (!Number.isFinite(t)) return NO_CURSOR;
+    if (!Number.isFinite(t)) return trText('em.via.noCursor');
     const z = readAt(ts, zSeries[0].ys, t);
     return `${tAt(t)}: Z${pair ? (tdrMode === 'diff' ? 'diff' : 'cm') : ''} ${qText(z, T.err.z, FLOOR.ohm).v} Ω`;
   };
   const tdtReadout = (t: number) => {
-    if (!Number.isFinite(t)) return NO_CURSOR;
-    return `${tAt(t)}: ${readAt(ts, tdtSeries[0].ys, t).toFixed(4)} of the step through`;
+    if (!Number.isFinite(t)) return trText('em.via.noCursor');
+    return trText('em.via.tdtRead', { t: tAt(t), v: readAt(ts, tdtSeries[0].ys, t).toFixed(4) });
   };
 
   // ---- S: the single-ended 2-port, or the pair's mixed-mode 4-port (D1, D2, C1, C2) ----
@@ -129,12 +131,12 @@ function ViaPlots({ r, stale, trace, tr, onTr, z0, onZ0 }: Props) {
   const fDomain = useMemo(() => [0, S.fs[S.fs.length - 1]] as [number, number], [S]);
   const fValid = np.valid.fMax / 1e9;
   const sReadout = (q: 0 | 1) => (f: number) => {
-    if (!Number.isFinite(f)) return NO_CURSOR;
+    if (!Number.isFinite(f)) return trText('em.via.noCursor');
     const db = readAt(S.fs, S.parts[q].db, f);
     const re = readAt(S.fs, S.parts[q].re, f), im = readAt(S.fs, S.parts[q].im, f);
-    if (!Number.isFinite(db)) return NO_CURSOR;
-    const mag = db <= DB_FLOOR ? `below ${DB_FLOOR} dB` : `${db.toFixed(2)} dB ∠ ${phaseOf(re, im).toFixed(1)}°`;
-    return `${f.toFixed(2)} GHz: ${names[q]} ${mag}${f > fValid ? ' (beyond the model’s range)' : ''}`.replace(/-/g, '−');
+    if (!Number.isFinite(db)) return trText('em.via.noCursor');
+    const mag = db <= DB_FLOOR ? trText('em.via.belowDb', { db: DB_FLOOR }) : `${db.toFixed(2)} dB ∠ ${phaseOf(re, im).toFixed(1)}°`;
+    return `${f.toFixed(2)} GHz: ${names[q]} ${mag}${f > fValid ? trText('em.via.beyondRange') : ''}`.replace(/-/g, '−');
   };
 
   // The plots as shown, for the Export section (M8.1b); none while the result is stale.
@@ -149,48 +151,49 @@ function ViaPlots({ r, stale, trace, tr, onTr, z0, onZ0 }: Props) {
     feedExport({
       viaRun: r,
       via: [
-        { id: 'via-tdr', label: `Via: TDR${mode}`, spec: { name: 'via-tdr', what: `TDR of the via${mode}`, x: tAx, y: { ...zAx, label: `${zName} (Ω)` }, series: [{ xs: ts, ys: zSeries[0].ys }], refs: lines.map((l) => ({ y: l.y, label: l.name })) } },
-        { id: 'via-tdt', label: `Via: TDT${mode}`, spec: { name: 'via-tdt', what: `TDT of the via${mode}`, x: tAx, y: { ...dAx, label: 'Step through' }, series: [{ xs: ts, ys: tdtSeries[0].ys }] } },
-        { id: 'via-s', label: `Via: |${names[0]}| and |${names[1]}|`, spec: { name: 'via-s-params', what: `|${names[0]}| and |${names[1]}| of the via`, x: { min: 0, max: fMax, label: 'f (GHz)' }, y: { ...sAx, label: '|S| (dB)' }, series: [{ xs: S.fs, ys: S.parts[0].db, label: `|${names[0]}|` }, { xs: S.fs, ys: S.parts[1].db, label: `|${names[1]}|` }], refs: fValid < fMax ? [{ x: fValid, label: 'lumped model' }] : [] } },
+        { id: 'via-tdr', label: trText('em.via.expTdrLbl', { mode }), spec: { name: 'via-tdr', what: trText('em.via.expTdrWhat', { mode }), x: tAx, y: { ...zAx, label: `${zName} (Ω)` }, series: [{ xs: ts, ys: zSeries[0].ys }], refs: lines.map((l) => ({ y: l.y, label: l.name })) } },
+        { id: 'via-tdt', label: trText('em.via.expTdtLbl', { mode }), spec: { name: 'via-tdt', what: trText('em.via.expTdtWhat', { mode }), x: tAx, y: { ...dAx, label: trText('em.via.stepThrough') }, series: [{ xs: ts, ys: tdtSeries[0].ys }] } },
+        { id: 'via-s', label: trText('em.via.expSLbl', { a: names[0], b: names[1] }), spec: { name: 'via-s-params', what: trText('em.via.expSWhat', { a: names[0], b: names[1] }), x: { min: 0, max: fMax, label: 'f (GHz)' }, y: { ...sAx, label: '|S| (dB)' }, series: [{ xs: S.fs, ys: S.parts[0].db, label: `|${names[0]}|` }, { xs: S.fs, ys: S.parts[1].db, label: `|${names[1]}|` }], refs: fValid < fMax ? [{ x: fValid, label: trText('em.via.lumpedModel') }] : [] } },
       ],
     });
     // names follow S
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stale, r, ts, zSeries, tdtSeries, lines, S, tDomain, tScale, fDomain, fValid, pair, tdrMode]);
+  }, [stale, r, ts, zSeries, tdtSeries, lines, S, tDomain, tScale, fDomain, fValid, pair, tdrMode, trText]);
   useEffect(() => () => feedExport({ via: [], viaRun: null }), []);
 
   const portShown = pair ? 2 * z0 : z0;
+  const modeParen = modeName ? ` (${modeName})` : '';
   return (
     <div className={vcss.plots} data-via-plots data-stale={stale} data-tr={r.tr} data-z0={r.z0}>
-      <h4 className={vcss.h4}>TDR and TDT</h4>
+      <h4 className={vcss.h4}>{trText('em.via.tdrTdt')}</h4>
       <Why k="via-tdr" bare />
       <div className={vcss.plotControls}>
         <div className={stk.field} data-field="via.tr">
-          <label className={stk.fieldLabel} htmlFor="via-tr">Rise time (10–90 %)</label>
+          <label className={stk.fieldLabel} htmlFor="via-tr">{trText('em.via.riseTime')}</label>
           <div className={stk.valueRow}>
             <NumInput id="via-tr" className={base.input} shown={psText(tr)} aria-invalid={trReason ? true : undefined}
-              parse={(x) => readTime(x, { min: TR_MIN, max: TR_MAX, what: 'The rise time' })} onReason={setTrReason} onValue={onTr} />
+              parse={(x) => readTime(x, { min: TR_MIN, max: TR_MAX, what: trText('em.via.riseWhat') })} onReason={setTrReason} onValue={onTr} />
           </div>
           {trReason && <p className={stk.reason} role="alert">{trReason}</p>}
         </div>
-        <div className={vcss.presets} role="group" aria-label="Rise time presets">
+        <div className={vcss.presets} role="group" aria-label={trText('em.via.risePresetsAria')}>
           {TR_PRESETS.map((p) => (
             <button key={p} type="button" className={base.button} aria-pressed={Math.abs(p - tr) < 1e-15} data-via-tr-preset={Math.round(p * 1e12)} onClick={() => onTr(p)}>{Math.round(p * 1e12)} ps</button>
           ))}
         </div>
         <div className={stk.field} data-field="via.port">
-          <label className={stk.fieldLabel} htmlFor="via-port">{pair ? 'Port (differential)' : 'Port'}</label>
+          <label className={stk.fieldLabel} htmlFor="via-port">{trText(pair ? 'em.via.portDiff' : 'em.via.port')}</label>
           <div className={stk.valueRow}>
             <NumInput id="via-port" className={base.input} shown={String(Number(portShown.toPrecision(10)))} aria-invalid={zReason ? true : undefined}
-              parse={(x) => readPlain(x, { min: 1, max: 1000, what: 'The port impedance' })} onReason={setZReason} onValue={(v) => onZ0(pair ? v / 2 : v)} />
+              parse={(x) => readPlain(x, { min: 1, max: 1000, what: trText('em.via.portWhat') })} onReason={setZReason} onValue={(v) => onZ0(pair ? v / 2 : v)} />
             <span className={stk.unit}>Ω</span>
           </div>
           {zReason && <p className={stk.reason} role="alert">{zReason}</p>}
         </div>
         {pair && (
-          <div className={base.seg} role="group" aria-label="TDR mode" data-via-tdr-mode={tdrMode}>
-            <button type="button" aria-pressed={tdrMode === 'diff'} onClick={() => setTdrMode('diff')} data-via-tdr-mode-set="diff">Differential</button>
-            <button type="button" aria-pressed={tdrMode === 'common'} onClick={() => setTdrMode('common')} data-via-tdr-mode-set="common">Common</button>
+          <div className={base.seg} role="group" aria-label={trText('em.via.tdrModeAria')} data-via-tdr-mode={tdrMode}>
+            <button type="button" aria-pressed={tdrMode === 'diff'} onClick={() => setTdrMode('diff')} data-via-tdr-mode-set="diff">{trText('em.via.diff')}</button>
+            <button type="button" aria-pressed={tdrMode === 'common'} onClick={() => setTdrMode('common')} data-via-tdr-mode-set="common">{trText('em.via.common')}</button>
           </div>
         )}
       </div>
@@ -199,39 +202,39 @@ function ViaPlots({ r, stale, trace, tr, onTr, z0, onZ0 }: Props) {
         <Why k="via-port" />
         {pair && <Why k="via-tdr-mode" />}
       </div>
-      <Plot name="via-tdr" title={`Impedance${modeName ? ` (${modeName})` : ''} (Ω)`} xs={ts} series={zSeries} xDomain={tDomain} xScale={tScale}
-        xLabel={`Time (${tScale.unit}), there and back from the port`} cursor={tCur} onCursor={setTCur} readout={zReadout} lines={lines} stale={stale} />
-      <Plot name="via-tdt" title={`Step through${modeName ? ` (${modeName})` : ''}`} xs={ts} series={tdtSeries} xDomain={tDomain} xScale={tScale}
-        xLabel={`Time (${tScale.unit}) from the step at the port`} cursor={tCur} onCursor={setTCur} readout={tdtReadout} stale={stale} />
+      <Plot name="via-tdr" title={trText('em.via.impTitle', { mode: modeParen })} xs={ts} series={zSeries} xDomain={tDomain} xScale={tScale}
+        xLabel={trText('em.via.timeBack', { unit: tScale.unit })} cursor={tCur} onCursor={setTCur} readout={zReadout} lines={lines} stale={stale} />
+      <Plot name="via-tdt" title={trText('em.via.stepTitle', { mode: modeParen })} xs={ts} series={tdtSeries} xDomain={tDomain} xScale={tScale}
+        xLabel={trText('em.via.timeStep', { unit: tScale.unit })} cursor={tCur} onCursor={setTCur} readout={tdtReadout} stale={stale} />
       <p className={css.small} data-via-tdr-err={T.err.z}>
-        A {Math.round(r.tr * 1e12 * 100) / 100} ps edge. The record itself is right to {small(T.err.z)} Ω (the edge’s spectrum cut at 10⁻⁷ and the record’s settling); the model’s own error is in the results above.
+        {trText('em.via.tdrErrNote', { tr: Math.round(r.tr * 1e12 * 100) / 100, err: small(T.err.z) })}
       </p>
       {r.feeds.length === 0 ? (
-        <p className={css.small} data-via-tdr-short="none">No feed traces: the record shows the via between the ports alone.</p>
+        <p className={css.small} data-via-tdr-short="none">{trText('em.via.noFeedsNote')}</p>
       ) : trip < 2 * r.tr && (
         <p className={css.small} data-via-tdr-short={trip}>
-          The feed traces show their own impedance as a flat part only when their round trip ({(trip * 1e12).toFixed(1)} ps for the shorter) is longer than about twice the edge: make them longer or the edge faster.
+          {trText('em.via.shortFeedsNote', { trip: (trip * 1e12).toFixed(1) })}
         </p>
       )}
       <Why k="via-tdt" bare />
 
-      <h4 className={vcss.h4}>S-parameters</h4>
+      <h4 className={vcss.h4}>{trText('em.via.sparams')}</h4>
       <Why k="via-s" bare />
       {pair && (
         <>
-          <div className={base.seg} role="group" aria-label="Mixed-mode terms" data-via-s-mode={sMode}>
-            {S_MODES.map((x) => <button key={x.m} type="button" aria-pressed={sMode === x.m} onClick={() => setSMode(x.m)} data-via-s-mode-set={x.m}>{x.text}</button>)}
+          <div className={base.seg} role="group" aria-label={trText('em.via.mixedAria')} data-via-s-mode={sMode}>
+            {S_MODES.map((x) => <button key={x.m} type="button" aria-pressed={sMode === x.m} onClick={() => setSMode(x.m)} data-via-s-mode-set={x.m}>{trText(`em.via.sm.${x.m}`)}</button>)}
           </div>
           <div className={vcss.whyRow}><Why k="via-s-mode" /></div>
         </>
       )}
-      <Plot name="via-s11" title={`|${names[0]}| (dB)`} xs={S.fs} series={reflSeries} xDomain={fDomain} xLabel="Frequency (GHz)"
+      <Plot name="via-s11" title={`|${names[0]}| (dB)`} xs={S.fs} series={reflSeries} xDomain={fDomain} xLabel={trText('em.via.freqGhz')}
         cursor={fCur} onCursor={setFCur} readout={sReadout(0)} fadeFrom={fValid} stale={stale} />
-      <Plot name="via-s21" title={`|${names[1]}| (dB)`} xs={S.fs} series={thruSeries} xDomain={fDomain} xLabel="Frequency (GHz)"
+      <Plot name="via-s21" title={`|${names[1]}| (dB)`} xs={S.fs} series={thruSeries} xDomain={fDomain} xLabel={trText('em.via.freqGhz')}
         cursor={fCur} onCursor={setFCur} readout={sReadout(1)} fadeFrom={fValid} stale={stale} />
       {fValid < fDomain[1] && (
         <p className={css.small} data-via-s-fade={np.valid.fMax}>
-          Faded above {fValid.toFixed(1)} GHz: the model no longer holds there ({np.valid.reason}).
+          {trText('em.via.fadedAbove', { f: fValid.toFixed(1), reason: np.valid.reason })}
         </p>
       )}
       <Why k="via-s-ports" bare />

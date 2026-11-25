@@ -8,6 +8,8 @@ import {
   PdfEditTextItem,
 } from '../../lib/pdf/editPdf';
 import { renderPage } from '../../lib/pdf/pdfjs';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
 import styles from '../../styles/PdfTools.module.css';
 
 export type EditorTool =
@@ -148,11 +150,11 @@ type PointerInteraction =
       moved: boolean;
     };
 
-const CORNERS: Array<{ corner: CornerHandle; className: string; label: string }> = [
-  { corner: 'nw', className: styles.signHandleNw, label: 'Resize top-left corner' },
-  { corner: 'ne', className: styles.signHandleNe, label: 'Resize top-right corner' },
-  { corner: 'se', className: styles.signHandleSe, label: 'Resize bottom-right corner' },
-  { corner: 'sw', className: styles.signHandleSw, label: 'Resize bottom-left corner' },
+const CORNERS: Array<{ corner: CornerHandle; className: string; labelKey: TranslationKey }> = [
+  { corner: 'nw', className: styles.signHandleNw, labelKey: 'pdf.canvas.resizeNw' },
+  { corner: 'ne', className: styles.signHandleNe, labelKey: 'pdf.canvas.resizeNe' },
+  { corner: 'se', className: styles.signHandleSe, labelKey: 'pdf.canvas.resizeSe' },
+  { corner: 'sw', className: styles.signHandleSw, labelKey: 'pdf.canvas.resizeSw' },
 ];
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -216,26 +218,24 @@ function getInkBounds(points: Array<{ x: number; y: number }>): {
   };
 }
 
-function toolHintLabel(tool: EditorTool, hasArmedImage: boolean): string | null {
+function toolHintKey(tool: EditorTool, hasArmedImage: boolean): TranslationKey | null {
   switch (tool) {
     case 'text':
-      return 'Click anywhere on the page to place a text box';
+      return 'pdf.ed.hintText';
     case 'highlight':
-      return 'Drag across the page to add a highlight';
+      return 'pdf.ed.hintHighlight';
     case 'ink':
-      return 'Draw freely on the page';
+      return 'pdf.ed.hintInk';
     case 'rect':
-      return 'Drag to draw a rectangle';
+      return 'pdf.ed.hintRect';
     case 'ellipse':
-      return 'Drag to draw an ellipse';
+      return 'pdf.ed.hintEllipse';
     case 'line':
-      return 'Drag to draw a straight line';
+      return 'pdf.ed.hintLine';
     case 'arrow':
-      return 'Drag from tail to head to draw an arrow';
+      return 'pdf.ed.hintArrow';
     case 'image':
-      return hasArmedImage
-        ? 'Click anywhere on the page to place the image'
-        : 'Upload an image from the sidebar to place it on the page';
+      return hasArmedImage ? 'pdf.ed.hintImageArmed' : 'pdf.ed.hintImageNone';
     case 'select':
     default:
       return null;
@@ -264,6 +264,7 @@ export function PdfEditor({
   onDelete,
   onPageSize,
 }: PdfEditorProps) {
+  const { t } = useI18n();
   const stageRef = React.useRef<HTMLDivElement | null>(null);
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const overlayRef = React.useRef<HTMLDivElement | null>(null);
@@ -370,7 +371,7 @@ export function PdfEditor({
         if (ctx) ctx.drawImage(rendered, 0, 0);
       } catch (e) {
         if (!cancelled) {
-          setRenderError(e instanceof Error ? e.message : 'Could not render this page.');
+          setRenderError(e instanceof Error ? e.message : t('pdf.ed.errRender'));
         }
       } finally {
         if (!cancelled) setRendering(false);
@@ -866,7 +867,8 @@ export function PdfEditor({
   };
 
   const ptToPxScale = cssWidth / Math.max(1, pageSize.width);
-  const bannerText = toolHintLabel(activeTool, hasArmedImage);
+  const hintKey = toolHintKey(activeTool, hasArmedImage);
+  const bannerText = hintKey ? t(hintKey) : null;
   const vw = pageSize.width;
   const vh = pageSize.height;
 
@@ -1140,7 +1142,7 @@ export function PdfEditor({
                   <div
                     role="button"
                     tabIndex={interactive ? 0 : -1}
-                    aria-label={`${item.kind === 'arrow' ? 'Arrow' : 'Line'} edit`}
+                    aria-label={item.kind === 'arrow' ? t('pdf.ed.arrowEditAria') : t('pdf.ed.lineEditAria')}
                     className={[
                       styles.editLineHit,
                       isSelected ? styles.editLineHitSelected : '',
@@ -1158,7 +1160,7 @@ export function PdfEditor({
                     <>
                       <span
                         role="slider"
-                        aria-label="Move start point"
+                        aria-label={t('pdf.ed.moveStartAria')}
                         aria-valuenow={Math.round(item.x1 * 100)}
                         className={styles.editEndpointHandle}
                         style={{ left: `${item.x1 * 100}%`, top: `${item.y1 * 100}%` }}
@@ -1166,7 +1168,7 @@ export function PdfEditor({
                       />
                       <span
                         role="slider"
-                        aria-label="Move end point"
+                        aria-label={t('pdf.ed.moveEndAria')}
                         aria-valuenow={Math.round(item.x2 * 100)}
                         className={styles.editEndpointHandle}
                         style={{ left: `${item.x2 * 100}%`, top: `${item.y2 * 100}%` }}
@@ -1188,12 +1190,12 @@ export function PdfEditor({
                             onDuplicate(item.id);
                           }}
                         >
-                          Duplicate
+                          {t('pdf.vec.duplicate')}
                         </button>
                         <button
                           type="button"
                           className={[styles.signBoxActionBtn, styles.signBoxActionDanger].join(' ')}
-                          aria-label="Delete item"
+                          aria-label={t('pdf.ed.deleteItemAria')}
                           onPointerDown={(e) => e.stopPropagation()}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1216,7 +1218,7 @@ export function PdfEditor({
                   key={item.id}
                   role="button"
                   tabIndex={interactive ? 0 : -1}
-                  aria-label="Freehand drawing"
+                  aria-label={t('pdf.ed.freehandAria')}
                   className={[
                     styles.editBox,
                     styles.editBoxVector,
@@ -1243,12 +1245,12 @@ export function PdfEditor({
                             onDuplicate(item.id);
                           }}
                         >
-                          Duplicate
+                          {t('pdf.vec.duplicate')}
                         </button>
                         <button
                           type="button"
                           className={[styles.signBoxActionBtn, styles.signBoxActionDanger].join(' ')}
-                          aria-label="Delete item"
+                          aria-label={t('pdf.ed.deleteItemAria')}
                           onPointerDown={(e) => e.stopPropagation()}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1258,11 +1260,11 @@ export function PdfEditor({
                           ×
                         </button>
                       </div>
-                      {CORNERS.map(({ corner, className, label }) => (
+                      {CORNERS.map(({ corner, className, labelKey }) => (
                         <span
                           key={corner}
                           role="slider"
-                          aria-label={label}
+                          aria-label={t(labelKey)}
                           aria-valuenow={Math.round(bounds.width * 100)}
                           className={[styles.signHandle, className].join(' ')}
                           onPointerDown={(e) => startInkResize(e, item, corner)}
@@ -1292,7 +1294,7 @@ export function PdfEditor({
                 key={item.id}
                 role="button"
                 tabIndex={interactive ? 0 : -1}
-                aria-label={`${item.kind} edit`}
+                aria-label={t('pdf.ed.itemEditAria', { kind: item.kind })}
                 className={[
                   styles.editBox,
                   item.kind === 'highlight' || item.kind === 'rect' || item.kind === 'ellipse'
@@ -1323,12 +1325,12 @@ export function PdfEditor({
                   assetPreviews[item.assetId] ? (
                     <img
                       src={assetPreviews[item.assetId]}
-                      alt="Placed image"
+                      alt={t('pdf.ed.placedImgAlt')}
                       className={styles.signBoxImg}
                       draggable={false}
                     />
                   ) : (
-                    <span className={styles.signBoxFallback}>Image</span>
+                    <span className={styles.signBoxFallback}>{t('pdf.ed.imageFallback')}</span>
                   )
                 )}
 
@@ -1338,7 +1340,7 @@ export function PdfEditor({
                       autoFocus
                       className={styles.editInlineTextarea}
                       value={editingTextValue}
-                      placeholder="Type text…"
+                      placeholder={t('pdf.ed.typeTextPlaceholder')}
                       style={{
                         ...cssFontForEdit(item.font),
                         color: item.color,
@@ -1367,7 +1369,7 @@ export function PdfEditor({
                         padding: `${textPadY}px ${textPadX}px`,
                       }}
                     >
-                      {item.text || (item.backgroundColor ? '' : 'Double-click to edit')}
+                      {item.text || (item.backgroundColor ? '' : t('pdf.ed.dblClickEdit'))}
                     </div>
                   ))}
 
@@ -1385,7 +1387,7 @@ export function PdfEditor({
                             setEditingTextValue(item.text);
                           }}
                         >
-                          Edit
+                          {t('pdf.canvas.edit')}
                         </button>
                       )}
                       <button
@@ -1397,12 +1399,12 @@ export function PdfEditor({
                           onDuplicate(item.id);
                         }}
                       >
-                        Duplicate
+                        {t('pdf.vec.duplicate')}
                       </button>
                       <button
                         type="button"
                         className={[styles.signBoxActionBtn, styles.signBoxActionDanger].join(' ')}
-                        aria-label="Delete item"
+                        aria-label={t('pdf.ed.deleteItemAria')}
                         onPointerDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1412,11 +1414,11 @@ export function PdfEditor({
                         ×
                       </button>
                     </div>
-                    {CORNERS.map(({ corner, className, label }) => (
+                    {CORNERS.map(({ corner, className, labelKey }) => (
                       <span
                         key={corner}
                         role="slider"
-                        aria-label={label}
+                        aria-label={t(labelKey)}
                         aria-valuenow={Math.round(item.width * 100)}
                         className={[styles.signHandle, className].join(' ')}
                         onPointerDown={(e) => startBoxResize(e, item, corner)}
@@ -1429,7 +1431,7 @@ export function PdfEditor({
           })}
         </div>
 
-        {rendering && <div className={styles.figureLoading}>Rendering page…</div>}
+        {rendering && <div className={styles.figureLoading}>{t('pdf.canvas.renderingPage')}</div>}
         {renderError && <div className={styles.figureLoading}>{renderError}</div>}
       </div>
     </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Object3D } from 'three';
 
+import { useI18n } from '../../lib/ui/i18n';
 import { isHelper } from '../../lib/viewer3d/stats';
 import styles from '../../styles/Viewer3D.module.css';
 
@@ -51,6 +52,7 @@ interface TreeContext {
 }
 
 function Row({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: TreeContext }) {
+  const { t } = useI18n();
   const open = ctx.expanded.has(node.object.uuid);
   const selected = ctx.selected === node.object;
   const hidden = node.children.length - MAX_CHILDREN;
@@ -62,19 +64,19 @@ function Row({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: TreeCon
         style={{ paddingLeft: `${depth * 0.9}rem` }}
       >
         {node.children.length ? (
-          <button type="button" className={styles.treeToggle} aria-expanded={open} aria-label={open ? `Collapse ${node.name}` : `Expand ${node.name}`} onClick={() => ctx.toggleOpen(node.object)}>
+          <button type="button" className={styles.treeToggle} aria-expanded={open} aria-label={open ? t('viewer3d.tree.collapse', { name: node.name }) : t('viewer3d.tree.expand', { name: node.name })} onClick={() => ctx.toggleOpen(node.object)}>
             {open ? '▾' : '▸'}
           </button>
         ) : (
           <span className={styles.treeToggle} />
         )}
-        <input type="checkbox" checked={node.object.visible} aria-label={`Show ${node.name}`} onChange={() => ctx.toggleVisible(node.object)} />
+        <input type="checkbox" checked={node.object.visible} aria-label={t('viewer3d.tree.show', { name: node.name })} onChange={() => ctx.toggleVisible(node.object)} />
         <button type="button" className={styles.treeName} title={node.name} onClick={() => ctx.select(node.object)}>{node.name}</button>
       </div>
       {open && node.children.length > 0 && (
         <ul>
           {node.children.slice(0, MAX_CHILDREN).map((child) => <Row key={child.object.uuid} node={child} depth={depth + 1} ctx={ctx} />)}
-          {hidden > 0 && <li className={styles.treeMore} style={{ paddingLeft: `${(depth + 1) * 0.9 + 1.4}rem` }}>and {hidden} more</li>}
+          {hidden > 0 && <li className={styles.treeMore} style={{ paddingLeft: `${(depth + 1) * 0.9 + 1.4}rem` }}>{t('viewer3d.tree.andMore', { n: hidden })}</li>}
         </ul>
       )}
     </li>
@@ -87,6 +89,7 @@ export default function PartTree({ nodes, selected, onSelect, onToggleVisible }:
   onSelect: (o: Object3D) => void;
   onToggleVisible: (o: Object3D) => void;
 }) {
+  const { t } = useI18n();
   // The first two levels start open.
   const [expanded, setExpanded] = React.useState(() => new Set(nodes.flatMap((n) => [n, ...n.children]).map((n) => n.object.uuid)));
   const selectedRow = React.useRef<HTMLDivElement>(null);
@@ -124,7 +127,7 @@ export default function PartTree({ nodes, selected, onSelect, onToggleVisible }:
   };
 
   return (
-    <ul ref={list} className={styles.tree} aria-label="Parts">
+    <ul ref={list} className={styles.tree} aria-label={t('viewer3d.tree.aria')}>
       {nodes.slice(0, MAX_CHILDREN).map((node) => <Row key={node.object.uuid} node={node} depth={0} ctx={ctx} />)}
     </ul>
   );

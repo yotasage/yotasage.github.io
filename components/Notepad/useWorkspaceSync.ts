@@ -409,7 +409,7 @@ export function useWorkspaceSync({ t, onResetRawBytes }: UseWorkspaceSyncOptions
       const text = await file.text();
       const parsed = parseWorkspaceJson(text);
       if (parsed.error || !parsed.state) {
-        setSyncError(t('notepad.sync.importError', { error: parsed.error ?? 'Invalid file' }));
+        setSyncError(t('notepad.sync.importError', { error: parsed.error ?? t('notepad.sync.invalidFile') }));
         setSyncMessage(null);
         return;
       }
@@ -456,7 +456,7 @@ export function useWorkspaceSync({ t, onResetRawBytes }: UseWorkspaceSyncOptions
       setSyncError(null);
       setSyncMessage(t('notepad.sync.linkedStatus', { name: linkedHandle.name }));
     } catch (err) {
-      setSyncError(err instanceof Error ? err.message : 'Failed to write linked file.');
+      setSyncError(err instanceof Error ? err.message : t('notepad.sync.writeFailed'));
     }
   }, [linkedHandle, t]);
 
@@ -466,9 +466,9 @@ export function useWorkspaceSync({ t, onResetRawBytes }: UseWorkspaceSyncOptions
       const file = await linkedHandle.getFile();
       await handleImportWorkspace(file);
     } catch (err) {
-      setSyncError(err instanceof Error ? err.message : 'Failed to read linked file.');
+      setSyncError(err instanceof Error ? err.message : t('notepad.sync.readFailed'));
     }
-  }, [linkedHandle, handleImportWorkspace]);
+  }, [linkedHandle, handleImportWorkspace, t]);
 
   const handleResetStarter = useCallback(() => {
     onResetRawBytes();

@@ -6,6 +6,7 @@ import { INTEGRAL_EXAMPLES } from '../../lib/calculus/identities';
 import { solveIntegral } from '../../lib/calculus/integrate';
 import type { SolverExample } from '../../lib/calculus/types';
 import { useI18n } from '../../lib/ui/i18n';
+import { localizeCalculusText } from '../../lib/ui/localizeCalculusStep';
 import styles from '../../styles/Calculus.module.css';
 import KatexSpan from '../KatexSpan';
 import ExpressionInput, { type SolveFeedback } from './ExpressionInput';
@@ -55,7 +56,7 @@ export default function IntegralSolverView({
   onSolve,
   onInspectRule,
 }: IntegralSolverViewProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [copiedKey, setCopiedKey] = useState<'latex' | 'text' | null>(null);
   const [solveFeedback, setSolveFeedback] = useState<SolveFeedback>({ status: 'idle', seq: 0 });
 
@@ -251,8 +252,8 @@ export default function IntegralSolverView({
           className={[styles.resultCard, styles.resultCardError, resultPulseClass].filter(Boolean).join(' ')}
           role="alert"
         >
-          <p className={styles.errorMsg}>{result.error}</p>
-          {result.hint && <p className={styles.errorHint}>{result.hint}</p>}
+          <p className={styles.errorMsg}>{localizeCalculusText(result.error, locale)}</p>
+          {result.hint && <p className={styles.errorHint}>{localizeCalculusText(result.hint, locale)}</p>}
         </section>
       ) : (
         <>
@@ -321,7 +322,9 @@ export default function IntegralSolverView({
                     })
                   : result.verification.status === 'numeric-only'
                     ? t('calculus.result.numericMethod')
-                    : result.verification.note ?? t('calculus.result.symbolicOnly')}
+                    : result.verification.note
+                      ? localizeCalculusText(result.verification.note, locale)
+                      : t('calculus.result.symbolicOnly')}
               </span>
               <code className={styles.identityExampleCode}>{result.resultText}</code>
             </div>

@@ -72,15 +72,32 @@ export default function PcbViewerPage() {
             <article className={styles.guideCard}>
               <h3>{t('pcb.guide.formatsTitle')}</h3>
               <dl className={styles.formatList}>
-                {PCB_FORMATS.map((g) => (
-                  <div key={g.title} className={styles.formatItem}>
-                    <dt>{g.title}</dt>
-                    <dd>
-                      {g.formats}
-                      {g.note && <small>{g.note}</small>}
-                    </dd>
-                  </div>
-                ))}
+                {PCB_FORMATS.map((g, idx) => {
+                  const fmtMap = [
+                    ['pcb.fmt.gerberTitle', 'pcb.fmt.gerberFmt', 'pcb.fmt.gerberNote'],
+                    ['pcb.fmt.drillTitle', 'pcb.fmt.drillFmt', 'pcb.fmt.drillNote'],
+                    ['pcb.fmt.jobTitle', null, 'pcb.fmt.jobNote'],
+                    ['pcb.fmt.pnpTitle', 'pcb.fmt.pnpFmt', 'pcb.fmt.pnpNote'],
+                    ['pcb.fmt.kicadTitle', 'pcb.fmt.kicadFmt', 'pcb.fmt.kicadNote'],
+                    ['pcb.fmt.altiumTitle', 'pcb.fmt.altiumFmt', 'pcb.fmt.altiumNote'],
+                    ['pcb.fmt.padsTitle', 'pcb.fmt.padsFmt', 'pcb.fmt.padsNote'],
+                    ['pcb.fmt.eagleTitle', 'pcb.fmt.eagleFmt', 'pcb.fmt.eagleNote'],
+                    ['pcb.fmt.archTitle', 'pcb.fmt.archFmt', null],
+                  ] as const;
+                  const entry = fmtMap[idx];
+                  const titleText = entry ? t(entry[0]) : g.title;
+                  const formatsText = entry && entry[1] ? t(entry[1]) : g.formats;
+                  const noteText = entry && entry[2] ? t(entry[2]) : g.note;
+                  return (
+                    <div key={g.title} className={styles.formatItem}>
+                      <dt>{titleText}</dt>
+                      <dd>
+                        {formatsText}
+                        {noteText && <small>{noteText}</small>}
+                      </dd>
+                    </div>
+                  );
+                })}
               </dl>
             </article>
 
@@ -88,20 +105,53 @@ export default function PcbViewerPage() {
               <article className={styles.guideCard}>
                 <h3>{t('pcb.guide.viewsTitle')}</h3>
                 <ul className={styles.guideList}>
-                  <li><strong>Layer view:</strong> Show or hide individual copper, mask, silkscreen, paste, drill, and fabrication layers, reorder draw order, and customize layer colours.</li>
-                  <li><strong>Realistic view:</strong> Preview solder mask, silkscreen, copper finish (ENIG / HASL / bare), and drilled holes from Top or mirrored Bottom.</li>
-                  <li><strong>Navigation:</strong> Drag to pan, scroll or pinch to zoom, press <code>F</code> to fit the board, arrow keys to pan, <code>+</code>/<code>−</code> to zoom, and <code>Esc</code> to clear overlays.</li>
-                  <li><strong>Units:</strong> Switch live cursor readout, board dimensions, and measurements between <code>mm</code> and <code>inch</code>.</li>
+                  <li><strong>{t('pcb.guide.layerStrong')}</strong>{t('pcb.guide.layerBody')}</li>
+                  <li><strong>{t('pcb.guide.realStrong')}</strong>{t('pcb.guide.realBody')}</li>
+                  <li>
+                    <strong>{t('pcb.guide.navStrong')}</strong>
+                    {t('pcb.guide.navPre')}
+                    <code>F</code>
+                    {t('pcb.guide.navMid1')}
+                    <code>+</code>/<code>−</code>
+                    {t('pcb.guide.navMid2')}
+                    <code>Esc</code>
+                    {t('pcb.guide.navPost')}
+                  </li>
+                  <li>
+                    <strong>{t('pcb.guide.unitsStrong')}</strong>
+                    {t('pcb.guide.unitsPre')}
+                    <code>mm</code>
+                    {t('pcb.guide.unitsAnd')}
+                    <code>{t('pcb.ws.inch')}</code>
+                    {t('pcb.guide.unitsPost')}
+                  </li>
                 </ul>
               </article>
 
               <article className={styles.guideCard}>
                 <h3>{t('pcb.guide.inspectTitle')}</h3>
                 <ul className={styles.guideList}>
-                  <li><strong>Click to inspect:</strong> Click any pad, track, via, hole, or component to view its layer, size, net, and footprint (click the same spot again to cycle stacked items).</li>
-                  <li><strong>Net &amp; part highlight:</strong> Search components or nets in the sidebar to highlight them across every layer and zoom right in.</li>
-                  <li><strong>Precision measure:</strong> Enable <code>Measure</code> to snap to pad centres and drill holes for ΔX, ΔY, and straight-line distance.</li>
-                  <li><strong>Exports:</strong> Save views as <code>PNG</code> or <code>SVG</code>, print-ready 1:1 <code>PDF</code>, outline or layer <code>DXF</code>, <code>BOM / Pick-and-place CSV</code>, or convert Altium/PADS/EAGLE boards to <code>.kicad_pcb</code>.</li>
+                  <li><strong>{t('pcb.guide.clickStrong')}</strong>{t('pcb.guide.clickBody')}</li>
+                  <li><strong>{t('pcb.guide.hlStrong')}</strong>{t('pcb.guide.hlBody')}</li>
+                  <li>
+                    <strong>{t('pcb.guide.measStrong')}</strong>
+                    {t('pcb.guide.measPre')}
+                    <code>{t('pcb.ws.measure')}</code>
+                    {t('pcb.guide.measPost')}
+                  </li>
+                  <li>
+                    <strong>{t('pcb.guide.expStrong')}</strong>
+                    {t('pcb.guide.expPre')}
+                    <code>PNG</code>
+                    {t('pcb.guide.expOr')}
+                    <code>SVG</code>
+                    {t('pcb.guide.expMid1')}
+                    <code>PDF</code>
+                    {t('pcb.guide.expMid2')}
+                    <code>DXF</code>, <code>BOM / Pick-and-place CSV</code>
+                    {t('pcb.guide.expMid3')}
+                    <code>.kicad_pcb</code>.
+                  </li>
                 </ul>
               </article>
             </div>

@@ -131,7 +131,7 @@ export default function ColorPickerPanel({
         </div>
 
         <div className={styles.swatchMeta}>
-          <div className={styles.slotTabs} role="group" aria-label="Color slot">
+          <div className={styles.slotTabs} role="group" aria-label={t('paint.color.slotAria')}>
             <button
               type="button"
               className={[styles.miniTab, activeSlot === 'primary' ? styles.miniTabActive : ''].join(' ')}
@@ -181,7 +181,7 @@ export default function ColorPickerPanel({
         style={{ backgroundColor: huePureCss }}
         onPointerDown={handleSvPointerDown}
         role="application"
-        aria-label="Saturation and brightness picker"
+        aria-label={t('paint.color.svAria')}
       >
         <div className={styles.svWhite} />
         <div className={styles.svBlack} />
@@ -205,7 +205,7 @@ export default function ColorPickerPanel({
           value={effectiveHue}
           onChange={(e) => handleHueChange(Number(e.target.value))}
           className={styles.hueRange}
-          aria-label="Hue slider"
+          aria-label={t('paint.color.hueSliderAria')}
         />
         <input
           type="number"
@@ -217,7 +217,7 @@ export default function ColorPickerPanel({
             handleHueChange(v);
           }}
           className={styles.sliderNumInput}
-          aria-label="Hue"
+          aria-label={t('paint.color.hueAria')}
         />
         <span className={styles.sliderUnit}>°</span>
       </div>
@@ -265,7 +265,7 @@ export default function ColorPickerPanel({
           className={styles.tinyBtn}
           onClick={() => setActiveColor(BLACK)}
           title="#000000"
-          aria-label="Set black"
+          aria-label={t('paint.color.setBlackAria')}
         >
           <span className={styles.miniDot} style={{ background: '#000' }} />
         </button>
@@ -274,7 +274,7 @@ export default function ColorPickerPanel({
           className={styles.tinyBtn}
           onClick={() => setActiveColor(WHITE)}
           title="#FFFFFF"
-          aria-label="Set white"
+          aria-label={t('paint.color.setWhiteAria')}
         >
           <span className={styles.miniDot} style={{ background: '#fff' }} />
         </button>

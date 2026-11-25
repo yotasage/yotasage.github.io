@@ -29,8 +29,10 @@ import type { PlotPaths } from '../../lib/smith/plot';
 import { SWEEP_LIMIT_DB } from '../../lib/smith/state';
 import { TRACE_SCALE, Trace, bandFigures, gammaAt, pathData, pickOnTrace, refine, segmentAt, sweepBand, sweepCircuit } from '../../lib/smith/sweep';
 import type { Band, BandFigures, SweepCircuit, SweepReply } from '../../lib/smith/sweep';
+import { translate } from '../../lib/ui/i18n';
 import { ChartView, DIRTY_CONTENT, DIRTY_VIEW, TAP_MS, TAP_SLOP } from './chartView';
 import { PathLayer, SEL_NONE } from './pathLayer';
+import { getSmithLocale } from './smithText';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 /** Script per drag frame for the trace (sweep, `d`, setAttribute). */
@@ -143,7 +145,7 @@ export class TraceLayer {
     this.overlay = document.createElement('div');
     this.overlay.setAttribute('data-layer', 'sweep-marks');
     this.overlay.setAttribute('role', 'group');
-    this.overlay.setAttribute('aria-label', 'Markers on the frequency sweep');
+    this.overlay.setAttribute('aria-label', translate(getSmithLocale(), 'sm.tr.overlayAria'));
     this.overlay.hidden = true;
     view.box.appendChild(this.overlay);
     this.overlay.addEventListener('keydown', this.keyDown);
@@ -250,6 +252,14 @@ export class TraceLayer {
       this.setMarkerCount(this.markers.length);
       if (this.sc) for (let m = 0; m < this.markers.length; m++) gammaAt(this.mg, 2 * m, this.sc, this.markers[m]);
     }
+    this.marksDirty = true;
+    this.view.request(DIRTY_CONTENT);
+  }
+
+  /** Re-applies localized aria-labels when the UI language changes. */
+  refreshLocale(): void {
+    this.overlay.setAttribute('aria-label', translate(getSmithLocale(), 'sm.tr.overlayAria'));
+    this.labelF.fill(NaN);
     this.marksDirty = true;
     this.view.request(DIRTY_CONTENT);
   }
@@ -504,7 +514,7 @@ export class TraceLayer {
         const t = formatAmount(f, 'Hz', 4);
         this.labelEls[m].textContent = `M${m + 1} ${t}`;
         el.setAttribute('aria-valuetext', t);
-        el.setAttribute('aria-label', `Marker ${m + 1} of ${n} on the sweep: arrow keys move it along the trace, Delete removes it`);
+        el.setAttribute('aria-label', translate(getSmithLocale(), 'sm.tr.markerAria', { n: m + 1, total: n }));
         el.setAttribute('aria-valuenow', String(f));
         if (b) { el.setAttribute('aria-valuemin', String(b.start)); el.setAttribute('aria-valuemax', String(b.stop)); }
         el.setAttribute('data-f', String(f));

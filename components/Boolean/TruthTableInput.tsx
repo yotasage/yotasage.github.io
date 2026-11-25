@@ -111,12 +111,22 @@ export default function TruthTableInput({
       if (trimmed) counts.set(trimmed, (counts.get(trimmed) ?? 0) + 1);
     }
 
+    const localizeSyntaxErr = (raw: string, name: string): string => {
+      if (raw.includes('cannot be empty')) return t('boolean.ttInput.errEmpty');
+      if (raw.includes('reserved Boolean operator')) {
+        return t('boolean.ttInput.errReserved', { name: name.trim() });
+      }
+      if (raw.includes('Use letters, digits')) return t('boolean.ttInput.errFormat');
+      return raw;
+    };
+
     let firstError: string | null = null;
     const check = (id: string, name: string) => {
       const syntaxErr = validateSignalName(name);
       if (syntaxErr) {
-        errorsById.set(id, syntaxErr);
-        if (!firstError) firstError = syntaxErr;
+        const localized = localizeSyntaxErr(syntaxErr, name);
+        errorsById.set(id, localized);
+        if (!firstError) firstError = localized;
         return;
       }
       const trimmed = name.trim();
@@ -158,7 +168,8 @@ export default function TruthTableInput({
 
       if (minterms.length > MAX_FULL_PREVIEW_MINTERMS && minterms.length < totalRows) {
         const firstFew = minterms.slice(0, 6);
-        return `${varToLatex(trimmedName)} = \\sum m(${firstFew.join(', ')}, \\dots)\\;\\text{(${minterms.length} minterms)}`;
+        const mintermsText = t('boolean.ttInput.mintermsCount', { count: minterms.length });
+        return `${varToLatex(trimmedName)} = \\sum m(${firstFew.join(', ')}, \\dots)\\;\\text{(${mintermsText})}`;
       }
 
       const eq = generatedEquations[idx];
@@ -170,7 +181,7 @@ export default function TruthTableInput({
         return `${varToLatex(trimmedName)} = 0`;
       }
     });
-  }, [validation.isValid, outputs, totalRows, generatedEquations, notation, explicitAnd]);
+  }, [validation.isValid, outputs, totalRows, generatedEquations, notation, explicitAnd, t]);
 
   const importCandidate = useMemo(() => {
     const nonEmpty = currentEquations.map((s) => s.trim()).filter(Boolean);
@@ -695,7 +706,11 @@ export default function TruthTableInput({
                             type="button"
                             data-sel-cell-btn="1"
                             aria-pressed={val === 1}
-                            aria-label={`${col.name.trim() || `Out ${oIdx + 1}`} row ${rowIdx}: ${val}`}
+                            aria-label={t('boolean.ttInput.cellAria', {
+                              name: col.name.trim() || t('boolean.ttInput.defaultOut', { index: oIdx + 1 }),
+                              row: rowIdx,
+                              val,
+                            })}
                             className={[
                               dStyles.ttOutputCellBtn,
                               val === 1 ? dStyles.valOne : dStyles.valZero,

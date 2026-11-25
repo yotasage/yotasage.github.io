@@ -14,6 +14,7 @@ import {
 } from '../../lib/pcb/render/colors';
 import { BACKGROUND_DARK, BACKGROUND_LIGHT, BoardView, LayerStyle, ViewMode } from '../../lib/pcb/render/view';
 import { computePcbStats } from '../../lib/pcb/stats';
+import { Locale, translate, useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PcbViewer.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 import AssemblyCard from './AssemblyCard';
@@ -83,12 +84,16 @@ function zoomBox(lit: Highlight, layers: Layer[], kind: HighlightTarget['kind'])
 }
 
 // Where the lists of components and nets of a Gerber set come from.
-function listSource(board: Board, files: LoadedFile[]): string | undefined {
+function listSource(board: Board, files: LoadedFile[], locale: Locale): string | undefined {
   if (board.design) return undefined;
   const pnp = files.filter((f) => f.pnpState).map((f) => f.source.name);
   const x2 = board.objects.some((o) => o.kind !== 'placement' && (o.net !== undefined || o.component));
-  if (!pnp.length) return 'The lists come from the X2 attributes of the Gerber files.';
-  return `The components come from ${pnp.join(' and ')}${x2 ? ', the nets and pads from the X2 attributes of the Gerber files' : ''}.`;
+  if (!pnp.length) return translate(locale, 'pcb.ws.srcX2');
+  const joinWord = locale === 'nb' ? ' og ' : ' and ';
+  return translate(locale, 'pcb.ws.srcPnp', {
+    files: pnp.join(joinWord),
+    x2Part: x2 ? translate(locale, 'pcb.ws.srcPnpX2') : '',
+  });
 }
 
 function styleFromStackup(board: Board | null): RealisticStyle {
@@ -109,6 +114,9 @@ function mergeOrder(defaults: string[], current: string[]): string[] {
 }
 
 export default function Workspace({ initial }: { initial: PickedFile[] }) {
+  const { t, locale } = useI18n();
+  const localeRef = React.useRef(locale);
+  localeRef.current = locale;
   const canvas = React.useRef<HTMLCanvasElement>(null);
   const viewport = React.useRef<HTMLDivElement>(null);
   const [view, setView] = React.useState<BoardView | null>(null);
@@ -124,7 +132,7 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
   const [realistic, setRealistic] = React.useState<RealisticStyle>(() => styleFromStackup(null));
   const [units, setUnits] = React.useState<Units>('mm');
   const [canvasTheme, setCanvasTheme] = React.useState<'dark' | 'light'>('dark');
-  const [status, setStatus] = React.useState<Status>({ kind: 'loading', text: 'Reading…' });
+  const [status, setStatus] = React.useState<Status>({ kind: 'loading', text: translate(locale, 'pcb.ws.reading') });
   const [busy, setBusy] = React.useState(false);
   const [fullscreen, setFullscreen] = React.useState(false);
   const [fsDrawer, setFsDrawer] = React.useState<FullscreenTab | null>(null);
@@ -220,7 +228,7 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
   // Reads files and adds them to the board, or replaces everything. Loads run one after the other.
   const open = React.useCallback((picked: PickedFile[], replaceAll: boolean) => {
     queue.current = queue.current.then(async () => {
-      setStatus({ kind: 'loading', text: 'Reading…' });
+      setStatus({ kind: 'loading', text: translate(localeRef.current, 'pcb.ws.reading') });
       let replace = replaceAll;
       const reset = () => {
         customOrder.current = false;
@@ -244,7 +252,7 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
         const nextOverrides = replace ? new Map<string, LayerOverride>() : latest.current.overrides;
         const nextFormats = replace ? new Map<string, DrillFormat>() : latest.current.drillFormats;
         const nextMappings = replace ? new Map<string, PnpMapping>() : latest.current.pnpMappings;
-        setStatus({ kind: 'loading', text: 'Identifying the layers…' });
+        setStatus({ kind: 'loading', text: translate(localeRef.current, 'pcb.ws.identifying') });
         await new Promise((resolve) => setTimeout(resolve, 0));
         const next = buildBoard(all, nextOverrides, nextFormats, nextMappings);
         const hadLayers = !replace && latest.current.files.some((f) => f.gerber || f.drill || f.designBoard);
@@ -264,7 +272,7 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
         show(next, !hadLayers);
         setStatus(next ? { kind: 'ready' } : { kind: 'empty' });
       } catch (e) {
-        setStatus({ kind: 'error', text: `The files could not be read: ${errorMessage(e)}` });
+        setStatus({ kind: 'error', text: translate(localeRef.current, 'pcb.ws.readErr', { msg: errorMessage(e) }) });
       }
     });
   }, [show]);
@@ -536,27 +544,29 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
   const hasParts = Boolean(board && catalog && (catalog.parts.length > 0 || catalog.nets.length > 0));
   const openButtons = (
     <div className={fieldStyles.buttonRow}>
-      <PickButton onFiles={(f) => open(f, false)} className={fieldStyles.buttonSmall}>Add files</PickButton>
-      {folders && <PickButton folder onFiles={(f) => open(f, false)} className={fieldStyles.buttonSmall}>Add folder</PickButton>}
-      <PickButton onFiles={(f) => open(f, true)} className={fieldStyles.buttonSmall}>Open other files</PickButton>
+      <PickButton onFiles={(f) => open(f, false)} className={fieldStyles.buttonSmall}>{t('pcb.ws.addFiles')}</PickButton>
+      {folders && <PickButton folder onFiles={(f) => open(f, false)} className={fieldStyles.buttonSmall}>{t('pcb.ws.addFolder')}</PickButton>}
+      <PickButton onFiles={(f) => open(f, true)} className={fieldStyles.buttonSmall}>{t('pcb.ws.openOther')}</PickButton>
     </div>
   );
 
   const layersSection = board ? (
     <>
       <LayerPanel layers={layersInOrder} styles={layerStyles} actions={actions} files={files} />
-      <p className={fieldStyles.help}>The top of the list is drawn on top. Seen from the bottom, the layers of the two sides swap places.</p>
+      <p className={fieldStyles.help}>{t('pcb.ws.layersHelp')}</p>
     </>
   ) : null;
 
   const partsSection = board && hasParts && catalog ? (
-    <PartsCard key={board.name} catalog={catalog} highlight={highlight} onPick={pickTarget} onClear={() => setHighlight(null)} source={listSource(board, files)} />
+    <PartsCard key={board.name} catalog={catalog} highlight={highlight} onPick={pickTarget} onClear={() => setHighlight(null)} source={listSource(board, files, locale)} />
   ) : null;
 
+  const nonZipCount = files.filter((f) => f.detected.id !== 'zip').length;
+  const hlText = lit?.items ? targetLabel(lit.target, locale) : undefined;
   const toolsSections = (
     <div className={styles.fsToolsStack}>
       {board && mode === 'realistic' && (
-        <Card title="Realistic view">
+        <Card title={t('pcb.ws.cardRealistic')}>
           <RealisticFields
             value={realistic}
             board={board}
@@ -568,31 +578,31 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
         </Card>
       )}
       {board && (
-        <Card title="Measure">
+        <Card title={t('pcb.ws.cardMeasure')}>
           <MeasureCard measuring={measuring} points={points} onToggle={toggleMeasuring} onClear={() => setPoints([])} />
         </Card>
       )}
       {board && view && (
-        <Card title="Save">
-          <SaveCard view={view} board={board} mode={mode} flipped={flipped} layerStyles={layerStyles} colors={realisticColors(realistic)} highlighted={lit?.items ? targetLabel(lit.target) : undefined} />
+        <Card title={t('pcb.ws.cardSave')}>
+          <SaveCard view={view} board={board} mode={mode} flipped={flipped} layerStyles={layerStyles} colors={realisticColors(realistic)} highlighted={hlText} />
         </Card>
       )}
       {board?.design && board.placements.length > 0 && (
-        <Card title="BOM and pick-and-place">
+        <Card title={t('pcb.ws.cardAssembly')}>
           <AssemblyCard board={board} />
         </Card>
       )}
       {board && !board.design && files.some((f) => f.pnpState) && (
-        <Card title="Pick-and-place">
+        <Card title={t('pcb.ws.cardPlacement')}>
           <PlacementCard files={files} onChange={setPnpMapping} />
         </Card>
       )}
       {files.length > 0 && (
-        <Card title={`Files (${files.filter((f) => f.detected.id !== 'zip').length})`}>
+        <Card title={t('pcb.ws.cardFiles', { n: nonZipCount })}>
           <FileList files={files} layers={board?.layers ?? []} />
         </Card>
       )}
-      <Card title="Open files">{openButtons}</Card>
+      <Card title={t('pcb.ws.openFilesCard')}>{openButtons}</Card>
     </div>
   );
 
@@ -606,32 +616,32 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
           canvasTheme === 'light' ? styles.viewportLight : '',
         ].join(' ')}
       >
-        <div className={styles.toolbar} role="toolbar" aria-label="View">
-          <button type="button" className={styles.toolButton} disabled={!ready} onClick={() => view?.fit()} title="Show the whole board">Fit</button>
-          <span className={styles.segmented} role="group" aria-label="Side">
-            <button type="button" className={styles.toolButton} aria-pressed={!flipped} onClick={() => setFlipped(false)} title="Look at the board from the top">Top</button>
-            <button type="button" className={styles.toolButton} aria-pressed={flipped} onClick={() => setFlipped(true)} title="Look at the board from the bottom (mirrored)">Bottom</button>
+        <div className={styles.toolbar} role="toolbar" aria-label={t('pcb.ws.viewAria')}>
+          <button type="button" className={styles.toolButton} disabled={!ready} onClick={() => view?.fit()} title={t('pcb.ws.fitTitle')}>{t('pcb.ws.fit')}</button>
+          <span className={styles.segmented} role="group" aria-label={t('pcb.ws.sideAria')}>
+            <button type="button" className={styles.toolButton} aria-pressed={!flipped} onClick={() => setFlipped(false)} title={t('pcb.ws.topTitle')}>{t('pcb.ws.top')}</button>
+            <button type="button" className={styles.toolButton} aria-pressed={flipped} onClick={() => setFlipped(true)} title={t('pcb.ws.bottomTitle')}>{t('pcb.ws.bottom')}</button>
           </span>
-          <span className={styles.segmented} role="group" aria-label="View">
-            <button type="button" className={styles.toolButton} aria-pressed={mode === 'layers'} onClick={() => setMode('layers')} title="Each layer in its own colour">Layers</button>
-            <button type="button" className={styles.toolButton} aria-pressed={mode === 'realistic'} onClick={() => setMode('realistic')} title="The board as it looks: mask, copper, finish, silkscreen and holes">Realistic</button>
+          <span className={styles.segmented} role="group" aria-label={t('pcb.ws.viewAria')}>
+            <button type="button" className={styles.toolButton} aria-pressed={mode === 'layers'} onClick={() => setMode('layers')} title={t('pcb.ws.layersTitle')}>{t('pcb.ws.layers')}</button>
+            <button type="button" className={styles.toolButton} aria-pressed={mode === 'realistic'} onClick={() => setMode('realistic')} title={t('pcb.ws.realisticTitle')}>{t('pcb.ws.realistic')}</button>
           </span>
-          <button type="button" className={styles.toolButton} disabled={!ready} aria-pressed={measuring} onClick={toggleMeasuring} title="Measure the distance between two points">Measure</button>
-          <button type="button" className={styles.toolButton} disabled={!ready} onClick={() => view?.zoomBy(1 / 1.5)} aria-label="Zoom out">−</button>
-          <button type="button" className={styles.toolButton} disabled={!ready} onClick={() => view?.zoomBy(1.5)} aria-label="Zoom in">+</button>
+          <button type="button" className={styles.toolButton} disabled={!ready} aria-pressed={measuring} onClick={toggleMeasuring} title={t('pcb.ws.measureTitle')}>{t('pcb.ws.measure')}</button>
+          <button type="button" className={styles.toolButton} disabled={!ready} onClick={() => view?.zoomBy(1 / 1.5)} aria-label={t('pcb.ws.zoomOut')}>−</button>
+          <button type="button" className={styles.toolButton} disabled={!ready} onClick={() => view?.zoomBy(1.5)} aria-label={t('pcb.ws.zoomIn')}>+</button>
           <span className={styles.toolbarSpacer} />
-          <span className={styles.segmented} role="group" aria-label="Units">
+          <span className={styles.segmented} role="group" aria-label={t('pcb.ws.unitsAria')}>
             <button type="button" className={styles.toolButton} aria-pressed={units === 'mm'} onClick={() => setUnits('mm')}>mm</button>
-            <button type="button" className={styles.toolButton} aria-pressed={units === 'in'} onClick={() => setUnits('in')}>inch</button>
+            <button type="button" className={styles.toolButton} aria-pressed={units === 'in'} onClick={() => setUnits('in')}>{t('pcb.ws.inch')}</button>
           </span>
           <button
             type="button"
             className={styles.toolButton}
             aria-pressed={canvasTheme === 'light'}
-            onClick={() => setCanvasTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
-            title="Switch board canvas between dark (default, best for copper and silkscreen) and light backdrop"
+            onClick={() => setCanvasTheme((cur) => (cur === 'dark' ? 'light' : 'dark'))}
+            title={t('pcb.ws.canvasTitle')}
           >
-            {canvasTheme === 'light' ? 'Canvas: Light' : 'Canvas: Dark'}
+            {canvasTheme === 'light' ? t('pcb.ws.canvasLight') : t('pcb.ws.canvasDark')}
           </button>
           {fullscreen && board && (
             <>
@@ -640,23 +650,23 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
                 className={styles.toolButton}
                 aria-pressed={fsDrawer === 'layers'}
                 onClick={() => setFsDrawer((cur) => (cur === 'layers' ? null : 'layers'))}
-                title="Show or hide the layer list"
+                title={t('pcb.ws.layerListTitle')}
               >
-                Layer list
+                {t('pcb.ws.layerList')}
               </button>
               <button
                 type="button"
                 className={styles.toolButton}
                 aria-pressed={fsDrawer !== null && fsDrawer !== 'layers'}
                 onClick={() => setFsDrawer((cur) => (cur && cur !== 'layers' ? null : 'tools'))}
-                title="Show or hide stats, parts, measure, export, and other tools"
+                title={t('pcb.ws.toolsTitle')}
               >
-                Tools
+                {t('pcb.ws.tools')}
               </button>
             </>
           )}
           <button type="button" className={styles.toolButton} aria-pressed={fullscreen} onClick={toggleFullscreen}>
-            {fullscreen ? 'Exit full screen' : 'Full screen'}
+            {fullscreen ? t('pcb.ws.exitFullscreen') : t('pcb.ws.fullscreen')}
           </button>
         </div>
 
@@ -666,19 +676,25 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
               ref={canvas}
               className={[styles.canvas, measuring ? styles.canvasMeasure : ''].join(' ')}
               tabIndex={0}
-              aria-label="Board view. Click or tap to see what is there; drag to move, scroll or pinch to zoom; arrow keys move, + and − zoom, F fits the board, Escape closes."
+              aria-label={t('pcb.ws.canvasAria')}
             />
             {view && ready && (measuring || points.length === 2) && <MeasureOverlay view={view} points={points} hover={measuring ? hover : null} />}
             {view && ready && <CursorReadout view={view} units={units} />}
             {ready && (flipped || mode === 'realistic' || highlight) && (
               <div className={styles.badges}>
                 {(flipped || mode === 'realistic') && (
-                  <span className={styles.sideBadge}>{mode === 'realistic' ? `Realistic · ${flipped ? 'bottom' : 'top'}` : 'Seen from the bottom'}</span>
+                  <span className={styles.sideBadge}>
+                    {mode === 'realistic' ? (flipped ? t('pcb.ws.badgeRealBottom') : t('pcb.ws.badgeRealTop')) : t('pcb.ws.badgeBottom')}
+                  </span>
                 )}
                 {highlight && (
                   <span className={styles.highlightBadge}>
-                    <span className={styles.highlightName} title={targetLabel(highlight)}>{lit && !lit.items ? `${targetLabel(highlight)}: nothing on the layers` : `Highlighted: ${targetLabel(highlight)}`}</span>
-                    <button type="button" onClick={() => setHighlight(null)} aria-label="Clear the highlight">×</button>
+                    <span className={styles.highlightName} title={targetLabel(highlight, locale)}>
+                      {lit && !lit.items
+                        ? t('pcb.ws.hlNothing', { target: targetLabel(highlight, locale) })
+                        : t('pcb.ws.hlActive', { target: targetLabel(highlight, locale) })}
+                    </span>
+                    <button type="button" onClick={() => setHighlight(null)} aria-label={t('pcb.ws.clearHl')}>×</button>
                   </span>
                 )}
               </div>
@@ -698,18 +714,18 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
               <p className={styles.viewHint}>
                 {measuring ? (
                   <>
-                    <span className={styles.mouseHint}>Click two points to measure · Drag to move · Esc clears</span>
-                    <span className={styles.touchHint}>Tap two points to measure · Drag to move</span>
+                    <span className={styles.mouseHint}>{t('pcb.ws.hintMeasMouse')}</span>
+                    <span className={styles.touchHint}>{t('pcb.ws.hintMeasTouch')}</span>
                   </>
                 ) : (
                   <>
-                    <span className={styles.mouseHint}>Click to inspect · Drag to move · Scroll to zoom · F to fit</span>
-                    <span className={styles.touchHint}>Tap to inspect · One finger moves · Two fingers zoom</span>
+                    <span className={styles.mouseHint}>{t('pcb.ws.hintNormMouse')}</span>
+                    <span className={styles.touchHint}>{t('pcb.ws.hintNormTouch')}</span>
                   </>
                 )}
               </p>
             )}
-            {busy && <span className={styles.busy} aria-label="Drawing" />}
+            {busy && <span className={styles.busy} aria-label={t('pcb.ws.drawingAria')} />}
             {status.kind === 'loading' && (
               <div className={styles.overlay} role="status">
                 <span className={styles.spinner} aria-hidden />
@@ -718,7 +734,7 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
             )}
             {status.kind === 'empty' && (
               <div className={[styles.overlay, styles.overlayError].join(' ')} role="alert">
-                <span>No board, Gerber or drill layers were found among these files. The file list says what each file is.</span>
+                <span>{t('pcb.ws.emptyOverlay')}</span>
                 {openButtons}
               </div>
             )}
@@ -737,20 +753,20 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
               layerCount={board.layers.length}
               onSelectTab={setFsDrawer}
               onClose={() => setFsDrawer(null)}
-              layersContent={<Card title={`Layers (${board.layers.length})`}>{layersSection}</Card>}
+              layersContent={<Card title={t('pcb.ws.cardLayers', { n: board.layers.length })}>{layersSection}</Card>}
               statsContent={
                 <div className={styles.fsToolsStack}>
-                  <Card title="Board">
+                  <Card title={t('pcb.ws.cardBoard')}>
                     <BoardInfo board={board} units={units} shown={shown} />
                   </Card>
                   {stats && (
-                    <Card title="Board statistics">
+                    <Card title={t('pcb.ws.cardStats')}>
                       <BoardStats stats={stats} units={units} />
                     </Card>
                   )}
                 </div>
               }
-              partsContent={partsSection ? <Card title="Components and nets">{partsSection}</Card> : null}
+              partsContent={partsSection ? <Card title={t('pcb.ws.cardParts')}>{partsSection}</Card> : null}
               toolsContent={toolsSections}
             />
           )}
@@ -758,30 +774,26 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
       </div>
 
       <aside className={styles.sidebar}>
-        <Card title="Board">
-          {board ? <BoardInfo board={board} units={units} shown={shown} /> : <p className={fieldStyles.help}>{status.kind === 'loading' ? 'Reading the files…' : 'No board.'}</p>}
+        <Card title={t('pcb.ws.cardBoard')}>
+          {board ? <BoardInfo board={board} units={units} shown={shown} /> : <p className={fieldStyles.help}>{status.kind === 'loading' ? t('pcb.ws.readingFiles') : t('pcb.ws.noBoard')}</p>}
           {openButtons}
-          <p className={fieldStyles.help}>
-            {board?.design
-              ? 'The board is drawn from its design file. Adding another design file shows that one instead; Gerber and drill files are not added to a design.'
-              : 'Add files adds layers to this board; drop files or folders on the page to do the same. A design file (KiCad, Altium, PADS, EAGLE) replaces the board.'}
-          </p>
+          <p className={fieldStyles.help}>{board?.design ? t('pcb.ws.designHelp') : t('pcb.ws.gerberHelp')}</p>
         </Card>
 
         {board && stats && (
-          <Card title="Board statistics">
+          <Card title={t('pcb.ws.cardStats')}>
             <BoardStats stats={stats} units={units} />
           </Card>
         )}
 
         {hasParts && (
-          <Card title="Components and nets">
+          <Card title={t('pcb.ws.cardParts')}>
             {partsSection}
           </Card>
         )}
 
         {board && mode === 'realistic' && (
-          <Card title="Realistic view">
+          <Card title={t('pcb.ws.cardRealistic')}>
             <RealisticFields
               value={realistic}
               board={board}
@@ -794,38 +806,38 @@ export default function Workspace({ initial }: { initial: PickedFile[] }) {
         )}
 
         {board && (
-          <Card title="Measure">
+          <Card title={t('pcb.ws.cardMeasure')}>
             <MeasureCard measuring={measuring} points={points} onToggle={toggleMeasuring} onClear={() => setPoints([])} />
           </Card>
         )}
 
         {board && (
-          <Card title={`Layers (${board.layers.length})`}>
+          <Card title={t('pcb.ws.cardLayers', { n: board.layers.length })}>
             <LayerPanel layers={layersInOrder} styles={layerStyles} actions={actions} files={files} />
-            <p className={fieldStyles.help}>The top of the list is drawn on top. Seen from the bottom, the layers of the two sides swap places.</p>
+            <p className={fieldStyles.help}>{t('pcb.ws.layersHelp')}</p>
           </Card>
         )}
 
         {board && view && (
-          <Card title="Save">
-            <SaveCard view={view} board={board} mode={mode} flipped={flipped} layerStyles={layerStyles} colors={realisticColors(realistic)} highlighted={lit?.items ? targetLabel(lit.target) : undefined} />
+          <Card title={t('pcb.ws.cardSave')}>
+            <SaveCard view={view} board={board} mode={mode} flipped={flipped} layerStyles={layerStyles} colors={realisticColors(realistic)} highlighted={hlText} />
           </Card>
         )}
 
         {board?.design && board.placements.length > 0 && (
-          <Card title="BOM and pick-and-place">
+          <Card title={t('pcb.ws.cardAssembly')}>
             <AssemblyCard board={board} />
           </Card>
         )}
 
         {board && !board.design && files.some((f) => f.pnpState) && (
-          <Card title="Pick-and-place">
+          <Card title={t('pcb.ws.cardPlacement')}>
             <PlacementCard files={files} onChange={setPnpMapping} />
           </Card>
         )}
 
         {files.length > 0 && (
-          <Card title={`Files (${files.filter((f) => f.detected.id !== 'zip').length})`}>
+          <Card title={t('pcb.ws.cardFiles', { n: nonZipCount })}>
             <FileList files={files} layers={board?.layers ?? []} />
           </Card>
         )}

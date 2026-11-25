@@ -11,6 +11,7 @@ import { parsePageRanges } from '../../lib/pdf/merge';
 import { pdfPreview } from '../../lib/pdf/pdfjs';
 import { MERGE } from '../../lib/pdf/tools';
 import { runMergePdfs } from '../../lib/pdf/workerClient';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
@@ -38,6 +39,7 @@ function selection(item: MergeItem): { pages: number[] | null; error: string | n
 }
 
 export default function MergePdf() {
+  const { t } = useI18n();
   const [items, setItems] = React.useState<MergeItem[]>([]);
   const [fileName, setFileName] = React.useState('merged');
   const [busy, setBusy] = React.useState(false);
@@ -55,7 +57,7 @@ export default function MergePdf() {
 
   async function addFiles(files: File[]) {
     const pdfs = files.filter(isPdf);
-    setNotice(pdfs.length < files.length ? `${files.length - pdfs.length} file(s) were skipped because they are not PDFs.` : null);
+    setNotice(pdfs.length < files.length ? t('pdf.p.skippedNonPdf', { n: files.length - pdfs.length }) : null);
     const added = await Promise.all(pdfs.map(async (file): Promise<MergeItem> => ({
       id: uid(), name: file.name, bytes: await readBytes(file), pageCount: null, thumb: null, error: null, range: '',
     })));
@@ -98,7 +100,7 @@ export default function MergePdf() {
       setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
     } catch (e) {
       if (isPasswordError(e)) {
-        setPwError('Incorrect password. Try again.');
+        setPwError(t('pdf.ff.wrongPw'));
       } else {
         update(activeLocked.id, { locked: false, error: errorMessage(e) });
         setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
@@ -110,7 +112,7 @@ export default function MergePdf() {
 
   function cancelUnlock() {
     if (!activeLocked) return;
-    update(activeLocked.id, { locked: false, error: 'Password required to open this PDF.' });
+    update(activeLocked.id, { locked: false, error: t('pdf.p.pwRequired') });
     setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
     setPwError(null);
   }
@@ -140,41 +142,40 @@ export default function MergePdf() {
   const outputName = `${safeFileName(fileName, 'merged').replace(/\.pdf$/i, '')}.pdf`;
 
   return (
-    <PdfPage title={MERGE.title} showHub lead="Combine PDFs into a single document. Drag the files into the order you want and optionally pick which pages to take from each.">
+    <PdfPage title={MERGE.title} showHub lead={t('pdf.p.merge.lead')}>
       <ToolWorkspace
         tool={MERGE}
         accept="application/pdf,.pdf"
-        selectLabel="Select PDF files"
-        dropLabel="or drop PDFs here"
+        selectLabel={t('pdf.p.selectPdfs')}
+        dropLabel={t('pdf.p.dropPdfs')}
         hasFiles={items.length > 0}
         onFiles={addFiles}
         toolbar={
           <>
-            <button type="button" className={styles.buttonSmall} onClick={() => setItems((l) => [...l].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })))}>Sort A → Z</button>
-            <button type="button" className={styles.buttonSmall} onClick={() => setItems((l) => [...l].sort((a, b) => b.name.localeCompare(a.name, undefined, { numeric: true })))}>Sort Z → A</button>
-            <button type="button" className={styles.buttonSmall} onClick={() => setItems([])}>Remove all</button>
+            <button type="button" className={styles.buttonSmall} onClick={() => setItems((l) => [...l].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })))}>{t('pdf.p.sortAZ')}</button>
+            <button type="button" className={styles.buttonSmall} onClick={() => setItems((l) => [...l].sort((a, b) => b.name.localeCompare(a.name, undefined, { numeric: true })))}>{t('pdf.p.sortZA')}</button>
+            <button type="button" className={styles.buttonSmall} onClick={() => setItems([])}>{t('pdf.p.removeAll')}</button>
           </>
         }
         sidebar={
           <>
             <p className={styles.note}>
-              Leave <em>Pages</em> empty to include the whole file. Use ranges such as <code>1-3, 5, 8-</code> or <code>end-1</code> to reverse.
-              Bookmarks and form fields of the source files are not kept.
+              {t('pdf.p.merge.noteBefore')}<em>{t('pdf.p.merge.pagesEm')}</em>{t('pdf.p.merge.noteMid1')}<code>1-3, 5, 8-</code>{t('pdf.p.merge.noteMid2')}<code>end-1</code>{t('pdf.p.merge.noteAfter')}
             </p>
-            <Field label="File name">
+            <Field label={t('pdf.ff.fileName')}>
               <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
             </Field>
-            <p className={styles.note}>{items.length} files, {totalPages} pages in total.</p>
+            <p className={styles.note}>{t('pdf.p.merge.summary', { files: items.length, pages: totalPages })}</p>
             {notice && <p className={fieldStyles.warning}>{notice}</p>}
-            {items.length < 2 && <p className={fieldStyles.warning}>Add at least two PDFs to merge.</p>}
-            <button type="button" className={styles.primary} disabled={!canMerge} onClick={merge}>Merge PDF</button>
-            {busy && <Progress fraction={progress} label="Merging…" />}
+            {items.length < 2 && <p className={fieldStyles.warning}>{t('pdf.p.merge.needTwo')}</p>}
+            <button type="button" className={styles.primary} disabled={!canMerge} onClick={merge}>{t('pdf.p.merge.action')}</button>
+            {busy && <Progress fraction={progress} label={t('pdf.p.merge.busy')} />}
             {error && <div className={styles.error}>{error}</div>}
             {result && (
               <div className={styles.result}>
-                <h3>Your PDF is ready</h3>
-                <p>{result.pages} pages, {formatBytes(result.bytes.length)}.</p>
-                <button type="button" className={styles.primary} onClick={() => download(result.bytes, outputName)}>Download {outputName}</button>
+                <h3>{t('pdf.p.pdfReady')}</h3>
+                <p>{t(result.pages === 1 ? 'pdf.p.pagesAndSizeOne' : 'pdf.p.pagesAndSizeMany', { n: result.pages, size: formatBytes(result.bytes.length) })}</p>
+                <button type="button" className={styles.primary} onClick={() => download(result.bytes, outputName)}>{t('pdf.ff.downloadNamed', { name: outputName })}</button>
                 <ContinueWith currentToolId={MERGE.id} files={[{ name: outputName, bytes: result.bytes }]} />
               </div>
             )}
@@ -196,19 +197,24 @@ export default function MergePdf() {
           onChange={setItems}
           renderCard={(item, index, controls) => {
             const sel = selections[index];
+            const pageLabel = item.locked
+              ? t('pdf.p.pwProtected')
+              : item.pageCount === null
+                ? '…'
+                : t(item.pageCount === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany', { n: item.pageCount });
             return (
               <FileCard
                 index={index}
                 thumb={item.thumb}
                 name={item.name}
-                meta={`${item.locked ? 'Password protected' : item.pageCount === null ? '…' : `${item.pageCount} page${item.pageCount === 1 ? '' : 's'}`} · ${formatBytes(item.bytes.length)}`}
+                meta={`${pageLabel} · ${formatBytes(item.bytes.length)}`}
                 error={item.error}
                 controls={controls}
               >
                 <input
                   className={styles.rangeInput}
-                  placeholder="Pages: all"
-                  aria-label={`Pages to take from ${item.name}`}
+                  placeholder={t('pdf.p.merge.pagesPh')}
+                  aria-label={t('pdf.p.merge.pagesAria', { name: item.name })}
                   value={item.range}
                   onChange={(e) => update(item.id, { range: e.target.value })}
                 />

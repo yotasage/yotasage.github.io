@@ -21,6 +21,7 @@ import { goalNode } from '../../lib/smith/goal';
 import type { Circuit } from '../../lib/smith/network';
 import { askOf } from '../../lib/smith/state';
 import type { Circuit as StateCircuit } from '../../lib/smith/state';
+import { translate, useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Smith.module.css';
 import css from '../../styles/SmithMath.module.css';
 import { mathHtml as sharedMathHtml } from '../Equations/math';
@@ -29,6 +30,7 @@ import { hasDerivation } from './derive';
 import { mathLink } from './mathLink';
 import type { ShowRequest } from './mathLink';
 import { COLOUR_KEYS, MathRow, Spec, Subject, rowOf, specsFor, subjectName } from './mathRows';
+import { getSmithLocale } from './smithText';
 import { Why } from './Why';
 import { markWide, watchWide } from '../Equations/wide';
 
@@ -52,7 +54,7 @@ function liveHtml(r: MathRow): string {
   const t = r.targets;
   for (const l of r.lines) h += `<span class="${css.line}">${mathHtml(`{}= ${l}`, t)}</span>`;
   h += `<span class="${css.line} ${css.result}" data-math-result="">${mathHtml(r.bound ? r.result : `{}= ${r.result}`, t)}</span>`;
-  if (r.raw) h += `<span class="${css.raw}" data-math-raw="">computed: ${r.raw}</span>`;
+  if (r.raw) h += `<span class="${css.raw}" data-math-raw="">${translate(getSmithLocale(), 'sm.math.computed', { raw: r.raw })}</span>`;
   return h;
 }
 
@@ -214,6 +216,7 @@ function tokensAt(target: EventTarget | null): string {
 }
 
 function MathPanel({ circuit, subject: selected, digits, live }: MathPanelProps) {
+  const { t, locale } = useI18n();
   const [follow, setFollow] = useState<'selection' | 'point'>('selection');
   const subject: Subject = follow === 'point' ? { t: 'point' } : selected;
   // The goal's node and kind: which variables also stand for the goal (mathRows' targets).
@@ -222,7 +225,7 @@ function MathPanel({ circuit, subject: selected, digits, live }: MathPanelProps)
   // The rows' frames: the symbolic lines from the committed circuit (they do not depend on the numbers).
   const rows = useMemo(() => specsFor(circuit, subject, 0, 0).map((s) => rowOf(s, digits)),
     // The shape changes with the subject, the selected part's kind and the goal only.
-    [subject.t, subject.t === 'part' ? subject.i : subject.t === 'node' ? subject.k : -1, subject.t === 'part' ? circuit.parts[subject.i]?.kind : -1, circuit.parts.length, goalKey]);
+    [subject.t, subject.t === 'part' ? subject.i : subject.t === 'node' ? subject.k : -1, subject.t === 'part' ? circuit.parts[subject.i]?.kind : -1, circuit.parts.length, goalKey, locale]);
   const sKey = subjectKey(subject);
   const key = rows.map((r) => r.id).join(',') + `|${sKey}|${goalKey}`;
   const symbolic = useMemo(() => rows.map((r) => ({ lhs: mathHtml(r.lhs, r.targets), rhs: mathHtml(`{}= ${r.rhs}`, r.targets) })), [key]);
@@ -312,28 +315,28 @@ function MathPanel({ circuit, subject: selected, digits, live }: MathPanelProps)
     io.observe(el.querySelector('ol') ?? el);
     return () => { io.disconnect(); live.setRoot(null); };
   }, [live, open]);
-  useLayoutEffect(() => { live.set(circuit, subject, digits, rows.length); }, [circuit, key, digits, live]);
+  useLayoutEffect(() => { live.set(circuit, subject, digits, rows.length); }, [circuit, key, digits, live, locale]);
   // An equation wider than a phone scrolls sideways in its row with a Tab stop (wide.ts): checked after a render (the
   // lines are written just above) and when the panel's width changes, never in a drag's frames.
   useLayoutEffect(() => { if (open && section.current) markWide(section.current, WIDE); });
   useEffect(() => (section.current ? watchWide(section.current, WIDE) : undefined), []);
 
-  const name = subjectName(circuit, subject);
+  const name = subjectName(circuit, subject, locale);
   return (
     <section className={styles.panel} data-math="" data-math-subject={sKey} ref={section}>
       <details className={css.box} open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
         <summary className={`${styles.panelTitle} ${css.summary}`}>
-          <span>Equations</span>
+          <span>{t('sm.math.title')}</span>
           <span className={css.summaryWhy}><Why k="math" /></span>
           <span className={styles.panelNote}>{name}</span>
         </summary>
-        <div className={css.follow} role="group" aria-label="Show the equations of">
-          <button type="button" aria-pressed={follow === 'selection'} data-math-follow="selection" onClick={() => setFollow('selection')}>Selected part or node</button>
-          <button type="button" aria-pressed={follow === 'point'} data-math-follow="point" onClick={() => setFollow('point')}>Readout point</button>
+        <div className={css.follow} role="group" aria-label={t('sm.math.followAria')}>
+          <button type="button" aria-pressed={follow === 'selection'} data-math-follow="selection" onClick={() => setFollow('selection')}>{t('sm.math.followSel')}</button>
+          <button type="button" aria-pressed={follow === 'point'} data-math-follow="point" onClick={() => setFollow('point')}>{t('sm.math.followPoint')}</button>
         </div>
-        <p className={css.empty}>Hover, tap or use the arrow keys on the chart to read a point.</p>
-        <p className={css.keys} id="smith-math-keys">Point at or tap a variable to light up what it stands for; in a focused equation, ← and → step through them, and Enter shows its derivation.</p>
-        <p className={css.keys}>Derive shows where an equation comes from, one step at a time. <Why k="derive" /></p>
+        <p className={css.empty}>{t('sm.chart.readEmpty')}</p>
+        <p className={css.keys} id="smith-math-keys">{t('sm.math.keysHint')}</p>
+        <p className={css.keys}>{t('sm.math.deriveHint')} <Why k="derive" /></p>
         <ol className={css.rows} ref={list}
           onPointerOver={(e) => { if (e.pointerType !== 'touch') mathLink.point('hover', tokensAt(e.target)); }}
           onPointerLeave={() => mathLink.point('hover', '')}
@@ -350,8 +353,8 @@ function MathPanel({ circuit, subject: selected, digits, live }: MathPanelProps)
               </div>
               <span className={css.title}>{r.title}</span>
               {/* The way back is the next Tab stop after a shown row (M5.2); Derive follows it. */}
-              {j === backAt && <button type="button" className={css.back} data-math-back="" onClick={goBack}>↩ Back to {req.back}</button>}
-              {hasDerivation(r.id) && <button type="button" className={css.derive} data-derive-open={r.id} onClick={(e) => derive(r.id, e.currentTarget)}>Derive</button>}
+              {j === backAt && <button type="button" className={css.back} data-math-back="" onClick={goBack}>{t('sm.math.backTo', { back: req.back })}</button>}
+              {hasDerivation(r.id) && <button type="button" className={css.derive} data-derive-open={r.id} onClick={(e) => derive(r.id, e.currentTarget)}>{t('sm.math.derive')}</button>}
             </li>
           ))}
         </ol>

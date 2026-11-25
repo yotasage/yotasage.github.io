@@ -22,6 +22,7 @@ import { pdfPreview } from '../../lib/pdf/pdfjs';
 import { SecurityInfo } from '../../lib/pdf/security';
 import { UNLOCK } from '../../lib/pdf/tools';
 import { runInspectSecurity, runUnlockPdf } from '../../lib/pdf/workerClient';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
@@ -44,6 +45,7 @@ interface ItemResult {
 }
 
 export default function UnlockPdfPage() {
+  const { t } = useI18n();
   const [items, setItems] = React.useState<Item[]>([]);
   const [sharedPassword, setSharedPassword] = React.useState('');
   const [showSharedPwd, setShowSharedPwd] = React.useState(false);
@@ -57,7 +59,7 @@ export default function UnlockPdfPage() {
 
   async function addFiles(files: File[]) {
     const pdfs = files.filter(isPdf);
-    setNotice(pdfs.length < files.length ? `${files.length - pdfs.length} file(s) were skipped because they are not PDFs.` : null);
+    setNotice(pdfs.length < files.length ? t('pdf.p.skippedNonPdf', { n: files.length - pdfs.length }) : null);
     const added = await Promise.all(
       pdfs.map(async (file): Promise<Item> => ({
         id: uid(),
@@ -110,8 +112,8 @@ export default function UnlockPdfPage() {
     } catch (e) {
       const msg = isPasswordError(e)
         ? pwd
-          ? 'Incorrect password. Try a different password below.'
-          : 'Password required to unlock this PDF.'
+          ? t('pdf.ulk.wrongPw')
+          : t('pdf.ulk.needPw')
         : errorMessage(e);
       update(item.id, { unlocking: false, unlockError: msg });
       return false;
@@ -143,17 +145,19 @@ export default function UnlockPdfPage() {
   }));
   const done = !busy && outputs.length > 0;
 
+  const decCount = succeeded.filter((it) => results[it.id].wasEncrypted).length;
+
   return (
     <PdfPage
       title={UNLOCK.title}
       showHub
-      lead="Decrypt password-protected PDFs and remove owner permission restrictions locally in your browser when you know the password."
+      lead={t('pdf.ulk.lead')}
     >
       <ToolWorkspace
         tool={UNLOCK}
         accept="application/pdf,.pdf"
-        selectLabel="Select PDF files"
-        dropLabel="or drop PDFs here"
+        selectLabel={t('pdf.p.selectPdfs')}
+        dropLabel={t('pdf.p.dropPdfs')}
         hasFiles={items.length > 0}
         onFiles={addFiles}
         toolbar={
@@ -165,29 +169,29 @@ export default function UnlockPdfPage() {
               setResults({});
             }}
           >
-            Remove all
+            {t('pdf.p.removeAll')}
           </button>
         }
         sidebar={
           <>
             <div className={styles.summaryBox}>
               <div className={styles.summaryRow}>
-                <span>Files loaded</span>
+                <span>{t('pdf.ulk.filesLoaded')}</span>
                 <span>{items.length}</span>
               </div>
               <div className={styles.summaryRow}>
-                <span>Encrypted</span>
+                <span>{t('pdf.ulk.encrypted')}</span>
                 <span>{encryptedCount}</span>
               </div>
               <div className={styles.summaryRow}>
-                <span>Unlocked</span>
+                <span>{t('pdf.ulk.unlocked')}</span>
                 <span>{succeeded.length}</span>
               </div>
             </div>
 
             <Field
-              label="Shared password (optional)"
-              help="Applied to all password-protected files below that do not have a per-file password entered on their card."
+              label={t('pdf.ulk.sharedPwLabel')}
+              help={t('pdf.ulk.sharedPwHelp')}
             >
               <div className={styles.passwordInputRow}>
                 <input
@@ -195,23 +199,21 @@ export default function UnlockPdfPage() {
                   className={fieldStyles.input}
                   value={sharedPassword}
                   autoComplete="current-password"
-                  placeholder={needsPwdCount > 0 ? 'Enter PDF password' : 'No open password required'}
+                  placeholder={t(needsPwdCount > 0 ? 'pdf.ulk.sharedPwPh' : 'pdf.ulk.noOpenPwPh')}
                   onChange={(e) => setSharedPassword(e.target.value)}
                 />
                 <button
                   type="button"
                   className={styles.passwordToggle}
-                  aria-label={showSharedPwd ? 'Hide password' : 'Show password'}
+                  aria-label={t(showSharedPwd ? 'pdf.ulk.hidePw' : 'pdf.ulk.showPw')}
                   onClick={() => setShowSharedPwd((v) => !v)}
                 >
-                  {showSharedPwd ? 'Hide' : 'Show'}
+                  {t(showSharedPwd ? 'pdf.prt.hide' : 'pdf.prt.show')}
                 </button>
               </div>
             </Field>
 
-            <p className={styles.note}>
-              PDFs with owner restrictions only (no open password) can be unlocked directly with an empty password.
-            </p>
+            <p className={styles.note}>{t('pdf.ulk.ownerNote')}</p>
             {notice && <p className={fieldStyles.warning}>{notice}</p>}
 
             <button
@@ -221,8 +223,10 @@ export default function UnlockPdfPage() {
               onClick={unlockAll}
             >
               {pendingItems.length > 0 && succeeded.length > 0
-                ? `Unlock ${pendingItems.length} remaining`
-                : `Unlock ${ready.length > 1 ? `${ready.length} PDFs` : 'PDF'}`}
+                ? t('pdf.ulk.btnRem', { n: pendingItems.length })
+                : ready.length > 1
+                  ? t('pdf.ulk.btnMany', { n: ready.length })
+                  : t('pdf.ulk.btnOne')}
             </button>
 
             {busy && <Progress fraction={progress.fraction} label={progress.label} />}
@@ -230,13 +234,12 @@ export default function UnlockPdfPage() {
             {done && (
               <div className={styles.result}>
                 <h3>
-                  {outputs.length === 1 ? 'Your PDF is unlocked' : `${outputs.length} PDFs are unlocked`}
+                  {outputs.length === 1 ? t('pdf.ulk.doneOne') : t('pdf.ulk.doneMany', { n: outputs.length })}
                 </h3>
                 <p>
-                  {succeeded.filter((it) => results[it.id].wasEncrypted).length} encrypted file
-                  {succeeded.filter((it) => results[it.id].wasEncrypted).length === 1 ? '' : 's'} decrypted.
+                  {t(decCount === 1 ? 'pdf.ulk.decOne' : 'pdf.ulk.decMany', { n: decCount })}
                   {pendingItems.length > 0
-                    ? ` ${pendingItems.length} file${pendingItems.length === 1 ? '' : 's'} still need a password.`
+                    ? t(pendingItems.length === 1 ? 'pdf.ulk.remOne' : 'pdf.ulk.remMany', { n: pendingItems.length })
                     : ''}
                 </p>
                 {outputs.length === 1 ? (
@@ -245,7 +248,7 @@ export default function UnlockPdfPage() {
                     className={styles.primary}
                     onClick={() => download(outputs[0].bytes, outputs[0].name)}
                   >
-                    Download {outputs[0].name}
+                    {t('pdf.ff.downloadNamed', { name: outputs[0].name })}
                   </button>
                 ) : (
                   <button
@@ -253,7 +256,7 @@ export default function UnlockPdfPage() {
                     className={styles.primary}
                     onClick={() => download(zipFiles(outputs), 'unlocked-pdfs.zip', 'application/zip')}
                   >
-                    Download all (ZIP)
+                    {t('pdf.p.downloadAllZip')}
                   </button>
                 )}
                 <ContinueWith currentToolId={UNLOCK.id} files={outputs} />
@@ -282,19 +285,19 @@ export default function UnlockPdfPage() {
             const sec = item.security;
             const statusNode = r ? (
               <span className={styles.statusDone}>
-                {r.wasEncrypted ? 'Unlocked' : 'Already unlocked'}
+                {t(r.wasEncrypted ? 'pdf.ulk.unlocked' : 'pdf.ulk.already')}
               </span>
             ) : !sec ? (
-              <span className={styles.statusKept}>Inspecting…</span>
+              <span className={styles.statusKept}>{t('pdf.p.inspecting')}</span>
             ) : !sec.isEncrypted ? (
-              <span className={styles.statusDone}>Already unlocked</span>
+              <span className={styles.statusDone}>{t('pdf.ulk.already')}</span>
             ) : sec.needsPassword ? (
               <span className={styles.statusLeft}>
-                Password required{sec.algorithm ? ` · ${sec.algorithm}` : ''}
+                {t('pdf.p.pwReqShort')}{sec.algorithm ? ` · ${sec.algorithm}` : ''}
               </span>
             ) : (
               <span className={styles.statusPending}>
-                Owner locked{sec.algorithm ? ` · ${sec.algorithm}` : ''}
+                {t('pdf.ulk.ownerLocked')}{sec.algorithm ? ` · ${sec.algorithm}` : ''}
               </span>
             );
 
@@ -304,9 +307,9 @@ export default function UnlockPdfPage() {
                 name={item.name}
                 meta={`${
                   item.pageCount !== null
-                    ? `${item.pageCount} page${item.pageCount === 1 ? '' : 's'}`
+                    ? t(item.pageCount === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany', { n: item.pageCount })
                     : sec?.needsPassword && !r
-                      ? 'Encrypted'
+                      ? t('pdf.ulk.encrypted')
                       : '…'
                 } · ${formatBytes(r ? r.bytes.length : item.bytes.length)}`}
                 error={item.error ?? item.unlockError}
@@ -318,7 +321,7 @@ export default function UnlockPdfPage() {
                       className={styles.buttonSmall}
                       onClick={() => download(output.bytes, output.name)}
                     >
-                      Download
+                      {t('pdf.p.download')}
                     </button>
                   )
                 }
@@ -335,8 +338,8 @@ export default function UnlockPdfPage() {
                     <input
                       type={showSharedPwd ? 'text' : 'password'}
                       className={styles.rangeInput}
-                      placeholder={sharedPassword ? 'Override shared password' : 'File password'}
-                      aria-label={`Password for ${item.name}`}
+                      placeholder={t(sharedPassword ? 'pdf.ulk.overridePh' : 'pdf.ulk.filePwPh')}
+                      aria-label={t('pdf.ulk.pwForAria', { name: item.name })}
                       value={item.perFilePassword}
                       disabled={item.unlocking || busy}
                       onChange={(e) =>
@@ -349,7 +352,7 @@ export default function UnlockPdfPage() {
                         className={styles.buttonSmall}
                         disabled={item.unlocking || busy || (!item.perFilePassword && !sharedPassword)}
                       >
-                        {item.unlocking ? 'Unlocking…' : 'Unlock'}
+                        {t(item.unlocking ? 'pdf.ulk.unlocking' : 'pdf.ulk.unlock')}
                       </button>
                     </div>
                   </form>

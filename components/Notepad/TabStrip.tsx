@@ -38,7 +38,7 @@ export default function TabStrip({
   };
 
   return (
-    <div className={styles.tabStrip} role="tablist" aria-label="Open files">
+    <div className={styles.tabStrip} role="tablist" aria-label={t('notepad.tabs.openFilesAria')}>
       {docs.map((doc) => {
         const isCurrent = doc.id === activeDocId && !isDiffMode;
         const isRenaming = renamingDocId === doc.id;
@@ -72,7 +72,7 @@ export default function TabStrip({
                   setRenamingDocId(doc.id);
                   setRenameDraft(doc.name);
                 }}
-                title={`${doc.name} (double-click to rename)`}
+                title={t('notepad.tabs.renameTooltip', { name: doc.name })}
               >
                 {doc.pinned && (
                   <span className={styles.pinMark} aria-hidden="true">

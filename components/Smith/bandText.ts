@@ -4,15 +4,18 @@
 
 import { formatAmount, formatReturnLoss } from '../../lib/quantity';
 import type { BandFigures, Interval } from '../../lib/smith/sweep';
+import { translate } from '../../lib/ui/i18n';
+import type { Locale } from '../../lib/ui/translations';
+import { getSmithLocale } from './smithText';
 
 export const hzText = (f: number, d: number): string => formatAmount(f, 'Hz', d, true);
 
 /** Where an interval lies: "95.10 MHz – 104.9 MHz", or in words when it runs past the band's start or end. */
-export function spanText(iv: Interval, d: number): string {
+export function spanText(iv: Interval, d: number, locale: Locale = getSmithLocale()): string {
   const lo = hzText(iv.lo, d), hi = hzText(iv.hi, d);
-  if (iv.openLo && iv.openHi) return `the whole band (${lo} – ${hi}), perhaps beyond both ends`;
-  if (iv.openLo) return `from before the band’s start (${lo}) to ${hi}`;
-  if (iv.openHi) return `from ${lo} to past the band’s end (${hi})`;
+  if (iv.openLo && iv.openHi) return translate(locale, 'sm.bt.wholeBand', { lo, hi });
+  if (iv.openLo) return translate(locale, 'sm.bt.openLo', { lo, hi });
+  if (iv.openHi) return translate(locale, 'sm.bt.openHi', { lo, hi });
   return `${lo} – ${hi}`;
 }
 
@@ -31,29 +34,41 @@ export interface FigureTexts {
 }
 
 /** Every band figure in words, at `d` significant digits; f0 and the limit (a return loss in dB) as the page has them. */
-export function figureTexts(fig: BandFigures, f0: number, limit: number, d: number): FigureTexts {
+export function figureTexts(fig: BandFigures, f0: number, limit: number, d: number, locale: Locale = getSmithLocale()): FigureTexts {
   const a = fig.atF0, q = fig.q;
   let f0Text: FigureText;
   if (a) {
-    const open = a.openLo || a.openHi, least = open ? 'at least ' : '';
-    f0Text = [`${spanText(a, d)}:`, `${least}${formatAmount(a.hi - a.lo, 'Hz', d, true)} wide, ${least}${formatAmount(100 * fig.fractional, '%', d, true)} of f0`];
+    const open = a.openLo || a.openHi, least = open ? translate(locale, 'sm.bt.atLeast') : '';
+    f0Text = [
+      `${spanText(a, d, locale)}:`,
+      translate(locale, 'sm.bt.f0Detail', {
+        least,
+        bw: formatAmount(a.hi - a.lo, 'Hz', d, true),
+        frac: formatAmount(100 * fig.fractional, '%', d, true),
+      }),
+    ];
   } else if (!(f0 >= fig.start && f0 <= fig.stop)) {
-    f0Text = ['none:', `f0 (${hzText(f0, d)}) is outside the band`];
+    f0Text = [translate(locale, 'sm.bt.none'), translate(locale, 'sm.bt.f0Outside', { f0: hzText(f0, d) })];
   } else {
-    f0Text = ['none:', 'the match at f0 is worse than the limit'];
+    f0Text = [translate(locale, 'sm.bt.none'), translate(locale, 'sm.bt.f0Worse')];
   }
   let qText: FigureText;
-  if (!q) qText = ['none:', 'no power is delivered at the best match'];
+  if (!q) qText = [translate(locale, 'sm.bt.none'), translate(locale, 'sm.bt.qNone')];
   else if (q.openLo || q.openHi) {
-    qText = [`at most ${formatAmount(q.q, '', d, true)}`,
-      `at ${hzText(q.f, d)}; the band ends before the power falls to half${q.openLo && q.openHi ? ' on both sides' : ''}, so the true width is larger`];
-  } else qText = [formatAmount(q.q, '', d, true), `at ${hzText(q.f, d)}`];
+    qText = [
+      translate(locale, 'sm.bt.qAtMost', { q: formatAmount(q.q, '', d, true) }),
+      translate(locale, 'sm.bt.qOpenDetail', {
+        f: hzText(q.f, d),
+        both: q.openLo && q.openHi ? translate(locale, 'sm.bt.qBothSides') : '',
+      }),
+    ];
+  } else qText = [formatAmount(q.q, '', d, true), translate(locale, 'sm.bt.atFreq', { f: hzText(q.f, d) })];
   return {
-    worst: [formatReturnLoss(fig.worstRL, d), `at ${hzText(fig.worst.f, d)}`],
-    best: [formatReturnLoss(fig.bestRL, d), `at ${hzText(fig.best.f, d)}`],
+    worst: [formatReturnLoss(fig.worstRL, d), translate(locale, 'sm.bt.atFreq', { f: hzText(fig.worst.f, d) })],
+    best: [formatReturnLoss(fig.bestRL, d), translate(locale, 'sm.bt.atFreq', { f: hzText(fig.best.f, d) })],
     vswr: [formatAmount(fig.maxVswr, '', d, true), ''],
-    limitLabel: `Return loss ≥ ${formatAmount(limit, 'dB', 4)}`,
-    intervals: fig.intervals.length === 0 ? ['nowhere in the band'] : fig.intervals.map((iv) => spanText(iv, d)),
+    limitLabel: translate(locale, 'sm.bt.limitLabel', { limit: formatAmount(limit, 'dB', 4) }),
+    intervals: fig.intervals.length === 0 ? [translate(locale, 'sm.bt.nowhere')] : fig.intervals.map((iv) => spanText(iv, d, locale)),
     f0: f0Text,
     q: qText,
   };

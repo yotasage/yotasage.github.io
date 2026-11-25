@@ -28,6 +28,7 @@ import {
 import { RESIZE_PRESETS, ResizeUnit, toPoints } from '../../lib/pdf/resize';
 import { NUP } from '../../lib/pdf/tools';
 import { runBookletPdf, runGetPageBoxes, runNupPdf } from '../../lib/pdf/workerClient';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
@@ -160,6 +161,7 @@ function BookletSideSvg({
   drawBorder: boolean;
   flip180: boolean;
 }) {
+  const { t } = useI18n();
   const svgW = 240;
   const scale = svgW / Math.max(1, sheetW);
   const svgH = Math.max(100, Math.round(sheetH * scale));
@@ -194,7 +196,7 @@ function BookletSideSvg({
           fontSize={pageNum === null ? 10 : 14}
           fontWeight={700}
         >
-          {pageNum === null ? 'Blank' : `p. ${pageNum}`}
+          {pageNum === null ? t('pdf.nup.blank') : t('pdf.nup.pageAbbr', { n: pageNum })}
         </text>
       </g>
     );
@@ -207,7 +209,10 @@ function BookletSideSvg({
       height={svgH}
       className={styles.diagramSvg}
       role="img"
-      aria-label={`Booklet side: left ${leftPage ?? 'blank'}, right ${rightPage ?? 'blank'}${flip180 ? ', rotated 180 degrees' : ''}`}
+      aria-label={t(flip180 ? 'pdf.nup.bookletSvgAriaRot' : 'pdf.nup.bookletSvgAria', {
+        left: leftPage ?? t('pdf.nup.blank').toLowerCase(),
+        right: rightPage ?? t('pdf.nup.blank').toLowerCase(),
+      })}
     >
       <rect x={1} y={1} width={svgW - 2} height={svgH - 2} fill="#f7f7f7" stroke="#888" strokeWidth={1.2} rx={3} />
       <g transform={flip180 ? `rotate(180 ${svgW / 2} ${svgH / 2})` : undefined}>
@@ -234,6 +239,7 @@ function BookletSideSvg({
 }
 
 export default function NupBookletPage() {
+  const { t } = useI18n();
   const [doc, setDoc] = React.useState<LoadedDoc | null>(null);
   const [locked, setLocked] = React.useState<LockedFile | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -306,7 +312,7 @@ export default function NupBookletPage() {
         setLocked({
           name,
           bytes,
-          error: password !== undefined ? 'Incorrect password. Try again.' : null,
+          error: password !== undefined ? t('pdf.ff.wrongPw') : null,
           busy: false,
         });
       } else {
@@ -321,10 +327,10 @@ export default function NupBookletPage() {
   async function loadFile(files: File[]) {
     const pdf = files.find(isPdf);
     if (!pdf) {
-      setNotice('Please select a PDF file.');
+      setNotice(t('pdf.ff.pickPdf'));
       return;
     }
-    setNotice(files.length > 1 ? 'Only the first PDF was opened. This tool works on one PDF at a time.' : null);
+    setNotice(files.length > 1 ? t('pdf.nup.onlyFirst') : null);
     setLocked(null);
     try {
       const bytes = await readBytes(pdf);
@@ -498,7 +504,7 @@ export default function NupBookletPage() {
     <PdfPage
       title={NUP.title}
       showHub
-      lead="Place multiple PDF pages per sheet (N-up) or impose a ready-to-print saddle-stitch duplex booklet with live sheet diagrams."
+      lead={t('pdf.nup.lead')}
     >
       {locked && (
         <PasswordPrompt
@@ -513,20 +519,20 @@ export default function NupBookletPage() {
         />
       )}
       {error && !doc && <div className={styles.error} style={{ marginBottom: '1rem' }}>{error}</div>}
-      {loading && !doc && !locked && <Progress fraction={0.45} label="Inspecting PDF pages…" />}
+      {loading && !doc && !locked && <Progress fraction={0.45} label={t('pdf.p.inspectingPdfPages')} />}
 
       <ToolWorkspace
         tool={NUP}
         accept="application/pdf,.pdf"
         multiple={false}
-        selectLabel="Select a PDF file"
-        dropLabel="or drop a PDF here"
-        addLabel="Replace PDF"
+        selectLabel={t('pdf.p.selectPdfFile')}
+        dropLabel={t('pdf.p.dropPdf')}
+        addLabel={t('pdf.p.replacePdf')}
         hasFiles={!!doc}
         onFiles={loadFile}
         toolbar={
           <button type="button" className={styles.buttonSmall} onClick={clearDoc}>
-            Close
+            {t('pdf.ff.close')}
           </button>
         }
         sidebar={
@@ -537,106 +543,106 @@ export default function NupBookletPage() {
                 className={[styles.tab, mode === 'nup' ? styles.tabActive : ''].join(' ')}
                 onClick={() => setMode('nup')}
               >
-                Pages per sheet
+                {t('pdf.nup.tabNup')}
               </button>
               <button
                 type="button"
                 className={[styles.tab, mode === 'booklet' ? styles.tabActive : ''].join(' ')}
                 onClick={() => setMode('booklet')}
               >
-                Booklet (duplex)
+                {t('pdf.nup.tabBooklet')}
               </button>
             </div>
 
             {mode === 'nup' ? (
               <>
-                <Field label="Pages per sheet">
+                <Field label={t('pdf.nup.tabNup')}>
                   <Select
                     value={perSheetChoice}
                     onChange={setPerSheetChoice}
                     options={[
-                      ['2', '2 pages per sheet'],
-                      ['4', '4 pages per sheet (2 × 2)'],
-                      ['6', '6 pages per sheet'],
-                      ['9', '9 pages per sheet (3 × 3)'],
-                      ['16', '16 pages per sheet (4 × 4)'],
-                      ['custom', 'Custom grid (cols × rows)'],
+                      ['2', t('pdf.nup.per2')],
+                      ['4', t('pdf.nup.per4')],
+                      ['6', t('pdf.nup.per6')],
+                      ['9', t('pdf.nup.per9')],
+                      ['16', t('pdf.nup.per16')],
+                      ['custom', t('pdf.nup.perCustom')],
                     ]}
                   />
                 </Field>
 
                 {perSheetChoice === 'custom' && (
                   <div className={styles.optionRow}>
-                    <Field label="Columns">
+                    <Field label={t('pdf.nup.cols')}>
                       <NumberInput value={customCols} min={1} max={8} step={1} onChange={setCustomCols} />
                     </Field>
-                    <Field label="Rows">
+                    <Field label={t('pdf.nup.rows')}>
                       <NumberInput value={customRows} min={1} max={8} step={1} onChange={setCustomRows} />
                     </Field>
                   </div>
                 )}
 
-                <Field label="Reading order">
+                <Field label={t('pdf.nup.readingOrder')}>
                   <Select
                     value={readingOrder}
                     onChange={setReadingOrder}
                     options={[
-                      ['lr-tb', 'Left → right, top → bottom'],
-                      ['rl-tb', 'Right → left, top → bottom'],
-                      ['tb-lr', 'Top → bottom, left → right'],
-                      ['tb-rl', 'Top → bottom, right → left'],
+                      ['lr-tb', t('pdf.nup.ordLrTb')],
+                      ['rl-tb', t('pdf.nup.ordRlTb')],
+                      ['tb-lr', t('pdf.nup.ordTbLr')],
+                      ['tb-rl', t('pdf.nup.ordTbRl')],
                     ]}
                   />
                 </Field>
 
-                <Field label="Sheet orientation">
+                <Field label={t('pdf.nup.sheetOrient')}>
                   <Select
                     value={orientation}
                     onChange={setOrientation}
                     options={[
-                      ['auto', 'Auto (best fit)'],
-                      ['portrait', 'Portrait'],
-                      ['landscape', 'Landscape'],
+                      ['auto', t('pdf.nup.orientAuto')],
+                      ['portrait', t('pdf.p.portrait')],
+                      ['landscape', t('pdf.p.landscape')],
                     ]}
                   />
                 </Field>
               </>
             ) : (
               <>
-                <Field label="Binding edge">
+                <Field label={t('pdf.nup.bindingEdge')}>
                   <Select
                     value={binding}
                     onChange={setBinding}
                     options={[
-                      ['left', 'Left binding (LTR booklet)'],
-                      ['right', 'Right binding (RTL booklet)'],
+                      ['left', t('pdf.nup.bindLeft')],
+                      ['right', t('pdf.nup.bindRight')],
                     ]}
                   />
                 </Field>
 
-                <Field label="Duplex printer flip">
+                <Field label={t('pdf.nup.duplexFlip')}>
                   <Select
                     value={duplexEdge}
                     onChange={setDuplexEdge}
                     options={[
-                      ['short-edge', 'Flip on short edge (standard landscape)'],
-                      ['long-edge', 'Flip on long edge (rotates backs 180°)'],
+                      ['short-edge', t('pdf.nup.flipShort')],
+                      ['long-edge', t('pdf.nup.flipLong')],
                     ]}
                   />
                 </Field>
               </>
             )}
 
-            <Field label="Output paper size">
+            <Field label={t('pdf.nup.outputPaper')}>
               <Select
                 value={paperSize}
                 onChange={setPaperSize}
                 options={[
-                  ['a4', RESIZE_PRESETS.a4.label],
-                  ['a3', RESIZE_PRESETS.a3.label],
-                  ['letter', RESIZE_PRESETS.letter.label],
-                  ['legal', RESIZE_PRESETS.legal.label],
-                  ['custom', 'Custom dimensions'],
+                  ['a4', t('pdf.p.paperA4')],
+                  ['a3', t('pdf.p.paperA3')],
+                  ['letter', t('pdf.p.paperLetter')],
+                  ['legal', t('pdf.p.paperLegal')],
+                  ['custom', t('pdf.p.customDims')],
                 ]}
               />
             </Field>
@@ -644,21 +650,21 @@ export default function NupBookletPage() {
             {paperSize === 'custom' && (
               <>
                 <div className={styles.optionRow}>
-                  <Field label={`Width (${customUnit})`}>
+                  <Field label={t('pdf.p.widthUnit', { u: customUnit })}>
                     <NumberInput value={customWidth} min={1} max={10000} step="any" onChange={setCustomWidth} />
                   </Field>
-                  <Field label={`Height (${customUnit})`}>
+                  <Field label={t('pdf.p.heightUnit', { u: customUnit })}>
                     <NumberInput value={customHeight} min={1} max={10000} step="any" onChange={setCustomHeight} />
                   </Field>
                 </div>
-                <Field label="Unit">
+                <Field label={t('pdf.p.unit')}>
                   <Select
                     value={customUnit}
                     onChange={setCustomUnit}
                     options={[
-                      ['mm', 'Millimetres (mm)'],
-                      ['in', 'Inches (in)'],
-                      ['pt', 'PDF points (pt)'],
+                      ['mm', t('pdf.p.unitMm')],
+                      ['in', t('pdf.p.unitIn')],
+                      ['pt', t('pdf.p.unitPt')],
                     ]}
                   />
                 </Field>
@@ -666,24 +672,24 @@ export default function NupBookletPage() {
             )}
 
             <div className={styles.optionRow}>
-              <Field label="Outer margin (pt)">
+              <Field label={t('pdf.nup.outerMargin')}>
                 <NumberInput value={margin} min={0} max={144} step={2} onChange={setMargin} />
               </Field>
-              <Field label={mode === 'booklet' ? 'Spine gutter (pt)' : 'Cell gutter (pt)'}>
+              <Field label={mode === 'booklet' ? t('pdf.nup.spineGutter') : t('pdf.nup.cellGutter')}>
                 <NumberInput value={gutter} min={0} max={144} step={2} onChange={setGutter} />
               </Field>
             </div>
 
             {mode === 'booklet' && (
-              <Checkbox label="Draw center fold marks" checked={drawFoldMark} onChange={setDrawFoldMark} />
+              <Checkbox label={t('pdf.nup.drawFoldMark')} checked={drawFoldMark} onChange={setDrawFoldMark} />
             )}
-            <Checkbox label="Draw hairline page borders" checked={drawBorder} onChange={setDrawBorder} />
+            <Checkbox label={t('pdf.nup.drawBorder')} checked={drawBorder} onChange={setDrawBorder} />
 
-            <Field label="Page range (optional)" help="Blank = all pages. E.g. 1-8">
+            <Field label={t('pdf.p.pageRangeOpt')} help={t('pdf.nup.rangeHelp')}>
               <input
                 className={fieldStyles.input}
                 value={pageRange}
-                placeholder="All pages"
+                placeholder={t('pdf.p.allPages')}
                 onChange={(e) => setPageRange(e.target.value)}
               />
             </Field>
@@ -691,7 +697,7 @@ export default function NupBookletPage() {
             {paper.error && <p className={fieldStyles.warning}>{paper.error}</p>}
             {selectedState.error && <p className={fieldStyles.warning}>{selectedState.error}</p>}
 
-            <Field label="File name">
+            <Field label={t('pdf.ff.fileName')}>
               <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
             </Field>
 
@@ -705,25 +711,33 @@ export default function NupBookletPage() {
               onClick={buildPdf}
             >
               {busy
-                ? 'Building PDF…'
+                ? t('pdf.nup.building')
                 : mode === 'booklet'
-                  ? `Create booklet (${bookletSheetCount} duplex sheet${bookletSheetCount === 1 ? '' : 's'})`
-                  : `Create ${nupLayout.cols}×${nupLayout.rows} PDF (${nupSheetCount} sheet${nupSheetCount === 1 ? '' : 's'})`}
+                  ? t(bookletSheetCount === 1 ? 'pdf.nup.btnBookletOne' : 'pdf.nup.btnBookletMany', {
+                      n: bookletSheetCount,
+                    })
+                  : t(nupSheetCount === 1 ? 'pdf.nup.btnNupOne' : 'pdf.nup.btnNupMany', {
+                      cols: nupLayout.cols,
+                      rows: nupLayout.rows,
+                      n: nupSheetCount,
+                    })}
             </button>
 
             {result && (
               <div className={styles.result}>
-                <h3>{mode === 'booklet' ? 'Booklet ready' : 'N-up PDF ready'}</h3>
+                <h3>{mode === 'booklet' ? t('pdf.nup.bookletReady') : t('pdf.nup.nupReady')}</h3>
                 <p>
-                  Created {result.sheetCount} output PDF page{result.sheetCount === 1 ? '' : 's'} ·{' '}
-                  {formatBytes(result.bytes.length)}.
+                  {t(result.sheetCount === 1 ? 'pdf.nup.createdOne' : 'pdf.nup.createdMany', {
+                    n: result.sheetCount,
+                    size: formatBytes(result.bytes.length),
+                  })}
                 </p>
                 <button
                   type="button"
                   className={styles.primary}
                   onClick={() => download(result.bytes, outputName)}
                 >
-                  Download {outputName}
+                  {t('pdf.ff.downloadNamed', { name: outputName })}
                 </button>
                 <ContinueWith currentToolId={NUP.id} files={[{ name: outputName, bytes: result.bytes }]} />
               </div>
@@ -736,18 +750,28 @@ export default function NupBookletPage() {
             <div className={styles.fileBanner}>
               <strong>{doc.name}</strong>
               <span className={styles.fileBannerMeta}>
-                {pageCount} page{pageCount === 1 ? '' : 's'} · {formatBytes(doc.bytes.length)}
+                {t(pageCount === 1 ? 'pdf.p.pagesAndSizeOne' : 'pdf.p.pagesAndSizeMany', {
+                  n: pageCount,
+                  size: formatBytes(doc.bytes.length),
+                })}
               </span>
               {mode === 'nup' ? (
                 <span className={[styles.previewBadge, styles.previewBadgeInfo].join(' ')}>
-                  {selectedState.indices.length} pages &rarr; {nupSheetCount} sheet{nupSheetCount === 1 ? '' : 's'} (
-                  {nupLayout.cols}×{nupLayout.rows})
+                  {t(nupSheetCount === 1 ? 'pdf.nup.badgeNupOne' : 'pdf.nup.badgeNupMany', {
+                    pages: selectedState.indices.length,
+                    sheets: nupSheetCount,
+                    cols: nupLayout.cols,
+                    rows: nupLayout.rows,
+                  })}
                 </span>
               ) : (
                 <span className={[styles.previewBadge, styles.previewBadgeInfo].join(' ')}>
-                  {selectedState.indices.length} pages &rarr; {paddedTotal} booklet pages across {bookletSheetCount}{' '}
-                  duplex sheet{bookletSheetCount === 1 ? '' : 's'}
-                  {blankCount > 0 ? ` (${blankCount} blank)` : ''}
+                  {t(bookletSheetCount === 1 ? 'pdf.nup.badgeBookletOne' : 'pdf.nup.badgeBookletMany', {
+                    pages: selectedState.indices.length,
+                    total: paddedTotal,
+                    sheets: bookletSheetCount,
+                  })}
+                  {blankCount > 0 ? t('pdf.nup.blankSuffix', { n: blankCount }) : ''}
                 </span>
               )}
             </div>
@@ -756,8 +780,12 @@ export default function NupBookletPage() {
               <div className={styles.diagramCard}>
                 <div className={styles.diagramHeader}>
                   <h3>
-                    Sheet {safeSheetIdx + 1} of {nupSheetCount} ({nupLayout.landscape ? 'Landscape' : 'Portrait'}{' '}
-                    {paperSize.toUpperCase()})
+                    {t('pdf.nup.sheetTitle', {
+                      idx: safeSheetIdx + 1,
+                      total: nupSheetCount,
+                      orient: nupLayout.landscape ? t('pdf.p.landscape') : t('pdf.p.portrait'),
+                      paper: paperSize.toUpperCase(),
+                    })}
                   </h3>
                   {nupSheetCount > 1 && (
                     <div className={styles.canvasNav}>
@@ -767,7 +795,7 @@ export default function NupBookletPage() {
                         disabled={safeSheetIdx <= 0}
                         onClick={() => setPreviewSheetIndex((i) => Math.max(0, i - 1))}
                       >
-                        &larr; Prev
+                        {t('pdf.p.prev')}
                       </button>
                       <button
                         type="button"
@@ -775,7 +803,7 @@ export default function NupBookletPage() {
                         disabled={safeSheetIdx >= nupSheetCount - 1}
                         onClick={() => setPreviewSheetIndex((i) => Math.min(nupSheetCount - 1, i + 1))}
                       >
-                        Next &rarr;
+                        {t('pdf.p.next')}
                       </button>
                     </div>
                   )}
@@ -787,7 +815,11 @@ export default function NupBookletPage() {
                     height={nupSvg.h}
                     className={styles.diagramSvg}
                     role="img"
-                    aria-label={`N-up sheet ${safeSheetIdx + 1} layout showing ${nupLayout.cols} by ${nupLayout.rows} grid`}
+                    aria-label={t('pdf.nup.nupSvgAria', {
+                      idx: safeSheetIdx + 1,
+                      cols: nupLayout.cols,
+                      rows: nupLayout.rows,
+                    })}
                   >
                     <rect
                       x={1}
@@ -830,15 +862,18 @@ export default function NupBookletPage() {
             ) : (
               <div className={styles.diagramCard}>
                 <div className={styles.diagramHeader}>
-                  <h3>Booklet imposition preview</h3>
+                  <h3>{t('pdf.nup.bookletPreviewTitle')}</h3>
                   <span className={styles.fileBannerMeta}>
-                    {selectedState.indices.length} pages &rarr; {paddedTotal} booklet pages · {bookletSheetCount} duplex
-                    sheet{bookletSheetCount === 1 ? '' : 's'} ({bookletSides.length} PDF pages)
+                    {t(bookletSheetCount === 1 ? 'pdf.nup.bookletSummaryOne' : 'pdf.nup.bookletSummaryMany', {
+                      pages: selectedState.indices.length,
+                      total: paddedTotal,
+                      sheets: bookletSheetCount,
+                      pdfPages: bookletSides.length,
+                    })}
                   </span>
                 </div>
                 <p className={styles.canvasTip} style={{ marginBottom: 0 }}>
-                  Print double-sided ({duplexEdge === 'short-edge' ? 'flip on short edge' : 'flip on long edge'}), stack
-                  sheets in order, and fold in half down the center.
+                  {duplexEdge === 'short-edge' ? t('pdf.nup.duplexTipShort') : t('pdf.nup.duplexTipLong')}
                 </p>
                 <div className={styles.bookletSheetList}>
                   {Array.from({ length: displayedBookletSheets }, (_, s) => {
@@ -850,15 +885,17 @@ export default function NupBookletPage() {
                       <div key={s} className={styles.bookletSheetCard}>
                         <div className={styles.bookletSheetTitle}>
                           <span>
-                            Physical sheet {s + 1} of {bookletSheetCount}
+                            {t('pdf.nup.physSheet', { idx: s + 1, total: bookletSheetCount })}
                           </span>
                           <span className={styles.fileBannerMeta}>
-                            Output PDF pages {s * 2 + 1} &amp; {s * 2 + 2}
+                            {t('pdf.nup.outPdfPages', { a: s * 2 + 1, b: s * 2 + 2 })}
                           </span>
                         </div>
                         <div className={styles.bookletPairGrid}>
                           <div className={styles.bookletSideBox}>
-                            <span className={styles.bookletSideLabel}>Front (PDF page {s * 2 + 1})</span>
+                            <span className={styles.bookletSideLabel}>
+                              {t('pdf.nup.frontLabel', { n: s * 2 + 1 })}
+                            </span>
                             <BookletSideSvg
                               leftPage={mapNum(front[0])}
                               rightPage={mapNum(front[1])}
@@ -873,8 +910,9 @@ export default function NupBookletPage() {
                           </div>
                           <div className={styles.bookletSideBox}>
                             <span className={styles.bookletSideLabel}>
-                              Back (PDF page {s * 2 + 2}
-                              {duplexEdge === 'long-edge' ? ' · 180° rotated' : ''})
+                              {t(duplexEdge === 'long-edge' ? 'pdf.nup.backLabelRot' : 'pdf.nup.backLabel', {
+                                n: s * 2 + 2,
+                              })}
                             </span>
                             <BookletSideSvg
                               leftPage={mapNum(back[0])}
@@ -894,8 +932,11 @@ export default function NupBookletPage() {
                   })}
                   {bookletSheetCount > displayedBookletSheets && (
                     <p className={styles.note}>
-                      Showing first {displayedBookletSheets} of {bookletSheetCount} duplex sheets. All{' '}
-                      {bookletSheetCount} sheets ({bookletSides.length} PDF pages) will be generated.
+                      {t('pdf.nup.moreSheetsNote', {
+                        shown: displayedBookletSheets,
+                        total: bookletSheetCount,
+                        pdfPages: bookletSides.length,
+                      })}
                     </p>
                   )}
                 </div>

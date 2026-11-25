@@ -13,6 +13,8 @@ import { consumeHandoff, handoffToFiles } from '../../lib/pdf/handoff';
 import { pdfPreview } from '../../lib/pdf/pdfjs';
 import { COMPRESS } from '../../lib/pdf/tools';
 import { runCompressPdf, runInspectPdfSizeBreakdown } from '../../lib/pdf/workerClient';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
@@ -40,31 +42,12 @@ interface ItemResult {
 
 type Level = 'lossless' | 'recommended' | 'strong' | 'ghostscript' | 'custom';
 
-const LEVELS: { id: Level; title: string; text: string; dpi: number; quality: number }[] = [
-  { id: 'lossless', title: 'Lossless', text: 'Removes unused objects and recompresses streams. Nothing visible changes.', dpi: 150, quality: 75 },
-  { id: 'recommended', title: 'Recommended', text: 'Images at up to 150 DPI, JPEG quality 75 %. Good for screens and office printing.', dpi: 150, quality: 75 },
-  { id: 'strong', title: 'Strong', text: 'Images at up to 96 DPI, JPEG quality 50 %. Smallest files, visibly softer images.', dpi: 96, quality: 50 },
-  {
-    id: 'ghostscript',
-    title: 'Ghostscript (maximum)',
-    text: 'Deep vector-preserving compression with Ghostscript WebAssembly. Keeps selectable text and vector graphics; loaded locally on demand.',
-    dpi: 150,
-    quality: 75,
-  },
-  { id: 'custom', title: 'Custom', text: 'Choose the image resolution and JPEG quality yourself.', dpi: 150, quality: 75 },
-];
-
-const GS_PRESETS: [GhostscriptCompressPreset, string][] = [
-  ['screen', 'Screen — 72 DPI (smallest)'],
-  ['ebook', 'eBook — 150 DPI (balanced)'],
-  ['printer', 'Printer — 300 DPI (high quality)'],
-  ['prepress', 'Prepress — 300 DPI (archival color)'],
-];
-
-const COLOR_MODES: [CompressColorMode, string][] = [
-  ['original', 'Keep original'],
-  ['grayscale', 'Grayscale'],
-  ['bw1bit', '1-bit B&W (best for scans)'],
+const LEVELS: { id: Level; titleKey: TranslationKey; textKey: TranslationKey; dpi: number; quality: number }[] = [
+  { id: 'lossless', titleKey: 'pdf.p.cmp.lvlLossless', textKey: 'pdf.p.cmp.lvlLosslessDesc', dpi: 150, quality: 75 },
+  { id: 'recommended', titleKey: 'pdf.p.cmp.lvlRec', textKey: 'pdf.p.cmp.lvlRecDesc', dpi: 150, quality: 75 },
+  { id: 'strong', titleKey: 'pdf.p.cmp.lvlStrong', textKey: 'pdf.p.cmp.lvlStrongDesc', dpi: 96, quality: 50 },
+  { id: 'ghostscript', titleKey: 'pdf.p.cmp.lvlGs', textKey: 'pdf.p.cmp.lvlGsDesc', dpi: 150, quality: 75 },
+  { id: 'custom', titleKey: 'pdf.p.cmp.lvlCustom', textKey: 'pdf.p.cmp.lvlCustomDesc', dpi: 150, quality: 75 },
 ];
 
 function savedPercent(before: number, after: number): string {
@@ -73,21 +56,14 @@ function savedPercent(before: number, after: number): string {
   return pct < 1 ? `${pct.toFixed(1)} %` : `${Math.round(pct)} %`;
 }
 
-function summarizeDetails(images: number, duplicatesMerged: number, qpdfSavedBytes: number): string {
-  const parts: string[] = [];
-  if (images > 0) parts.push(`${images} image${images === 1 ? '' : 's'} compressed`);
-  if (duplicatesMerged > 0) parts.push(`${duplicatesMerged} duplicate object${duplicatesMerged === 1 ? '' : 's'} merged`);
-  if (qpdfSavedBytes > 0) parts.push(`QPDF saved ${formatBytes(qpdfSavedBytes)}`);
-  return parts.join(' · ');
-}
-
 function SizeBreakdownCard({ name, breakdown }: { name: string; breakdown: PdfSizeBreakdown }) {
+  const { t } = useI18n();
   const visible = breakdown.categories.filter((c) => c.bytes > 0);
   const sum = Math.max(1, visible.reduce((s, c) => s + c.bytes, 0));
   return (
     <section className={styles.report}>
-      <h3>Size breakdown — {name} ({formatBytes(breakdown.totalBytes)})</h3>
-      <div className={styles.breakdownBar} role="img" aria-label={`File size breakdown for ${name}`}>
+      <h3>{t('pdf.p.cmp.breakdownTitle', { name, size: formatBytes(breakdown.totalBytes) })}</h3>
+      <div className={styles.breakdownBar} role="img" aria-label={t('pdf.p.cmp.breakdownAria', { name })}>
         {visible.map((c) => (
           <div
             key={c.id}
@@ -113,6 +89,7 @@ function SizeBreakdownCard({ name, breakdown }: { name: string; breakdown: PdfSi
 }
 
 export default function CompressPdf() {
+  const { t } = useI18n();
   const [items, setItems] = React.useState<CompressItem[]>([]);
   const [level, setLevel] = React.useState<Level>('recommended');
   const [customDpi, setCustomDpi] = React.useState(150);
@@ -148,7 +125,7 @@ export default function CompressPdf() {
 
   async function addFiles(files: File[]) {
     const pdfs = files.filter(isPdf);
-    setNotice(pdfs.length < files.length ? `${files.length - pdfs.length} file(s) were skipped because they are not PDFs.` : null);
+    setNotice(pdfs.length < files.length ? t('pdf.p.skippedNonPdf', { n: files.length - pdfs.length }) : null);
     const added = await Promise.all(pdfs.map(async (file): Promise<CompressItem> => ({
       id: uid(), name: file.name, bytes: await readBytes(file), pageCount: null, thumb: null, error: null, breakdown: null,
     })));
@@ -199,7 +176,7 @@ export default function CompressPdf() {
         .catch(() => undefined);
     } catch (e) {
       if (isPasswordError(e)) {
-        setPwError('Incorrect password. Try again.');
+        setPwError(t('pdf.ff.wrongPw'));
       } else {
         update(activeLocked.id, { locked: false, error: errorMessage(e) });
         setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
@@ -211,7 +188,7 @@ export default function CompressPdf() {
 
   function cancelUnlock() {
     if (!activeLocked) return;
-    update(activeLocked.id, { locked: false, error: 'Password required to open this PDF.' });
+    update(activeLocked.id, { locked: false, error: t('pdf.p.pwRequired') });
     setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
     setPwError(null);
   }
@@ -273,86 +250,107 @@ export default function CompressPdf() {
   const totalImages = succeeded.reduce((s, it) => s + results[it.id].images, 0);
   const totalDuplicates = succeeded.reduce((s, it) => s + results[it.id].duplicatesMerged, 0);
   const totalQpdfSaved = succeeded.reduce((s, it) => s + results[it.id].qpdfSavedBytes, 0);
+  function summarizeDetails(images: number, duplicatesMerged: number, qpdfSavedBytes: number): string {
+    const parts: string[] = [];
+    if (images > 0) parts.push(t(images === 1 ? 'pdf.p.cmp.imgCompOne' : 'pdf.p.cmp.imgCompMany', { n: images }));
+    if (duplicatesMerged > 0) parts.push(t(duplicatesMerged === 1 ? 'pdf.p.cmp.dupOne' : 'pdf.p.cmp.dupMany', { n: duplicatesMerged }));
+    if (qpdfSavedBytes > 0) parts.push(t('pdf.p.cmp.qpdfSaved', { size: formatBytes(qpdfSavedBytes) }));
+    return parts.join(' · ');
+  }
+
+  const gsPresets: [GhostscriptCompressPreset, string][] = React.useMemo(() => [
+    ['screen', t('pdf.p.cmp.gsScreen')],
+    ['ebook', t('pdf.p.cmp.gsEbook')],
+    ['printer', t('pdf.p.cmp.gsPrinter')],
+    ['prepress', t('pdf.p.cmp.gsPrepress')],
+  ], [t]);
+
+  const colorModes: [CompressColorMode, string][] = React.useMemo(() => [
+    ['original', t('pdf.p.cmp.cmOrig')],
+    ['grayscale', t('pdf.p.grayscale')],
+    ['bw1bit', t('pdf.p.cmp.cmBw')],
+  ], [t]);
+
   const summaryDetail = summarizeDetails(totalImages, totalDuplicates, totalQpdfSaved);
   const done = !busy && outputs.length > 0;
 
   return (
-    <PdfPage title={COMPRESS.title} showHub lead="Reduce the file size of PDFs while keeping text, links and bookmarks. Images are downsampled to their on-page size and re-encoded; duplicate objects and streams are repacked losslessly.">
+    <PdfPage title={COMPRESS.title} showHub lead={t('pdf.p.cmp.lead')}>
       <ToolWorkspace
         tool={COMPRESS}
         accept="application/pdf,.pdf"
-        selectLabel="Select PDF files"
-        dropLabel="or drop PDFs here"
+        selectLabel={t('pdf.p.selectPdfs')}
+        dropLabel={t('pdf.p.dropPdfs')}
         hasFiles={items.length > 0}
         onFiles={addFiles}
-        toolbar={<button type="button" className={styles.buttonSmall} onClick={() => setItems([])}>Remove all</button>}
+        toolbar={<button type="button" className={styles.buttonSmall} onClick={() => setItems([])}>{t('pdf.p.removeAll')}</button>}
         sidebar={
           <>
-            <div className={styles.levelList} role="radiogroup" aria-label="Compression level">
+            <div className={styles.levelList} role="radiogroup" aria-label={t('pdf.p.cmp.levelAria')}>
               {LEVELS.map((l) => (
                 <label key={l.id} className={[styles.level, level === l.id ? styles.levelSelected : ''].join(' ')}>
                   <input type="radio" name="level" checked={level === l.id} onChange={() => setLevel(l.id)} />
-                  <span><strong>{l.title}</strong><small>{l.text}</small></span>
+                  <span><strong>{t(l.titleKey)}</strong><small>{t(l.textKey)}</small></span>
                 </label>
               ))}
             </div>
             {level === 'custom' && (
               <div className={styles.optionRow}>
-                <Field label="Max image DPI"><NumberInput value={customDpi} onChange={setCustomDpi} min={30} max={600} /></Field>
-                <Field label="JPEG quality (%)"><NumberInput value={customQuality} onChange={setCustomQuality} min={5} max={100} /></Field>
+                <Field label={t('pdf.p.cmp.maxDpi')}><NumberInput value={customDpi} onChange={setCustomDpi} min={30} max={600} /></Field>
+                <Field label={t('pdf.p.jpegQuality')}><NumberInput value={customQuality} onChange={setCustomQuality} min={5} max={100} /></Field>
               </div>
             )}
             <div className={styles.options}>
               {isGhostscript ? (
                 <>
-                  <Field label="Ghostscript preset">
+                  <Field label={t('pdf.p.cmp.gsPreset')}>
                     <Select<GhostscriptCompressPreset>
                       value={gsPreset}
                       onChange={setGsPreset}
-                      options={GS_PRESETS}
+                      options={gsPresets}
                     />
                   </Field>
                   <Checkbox
-                    label="Convert colours to grayscale"
+                    label={t('pdf.p.cmp.gsGray')}
                     checked={gsGrayscale}
                     onChange={setGsGrayscale}
                   />
                 </>
               ) : (
                 <>
-                  <Field label="Colour mode">
+                  <Field label={t('pdf.p.cmp.colorMode')}>
                     <Select<CompressColorMode>
                       value={lossless ? 'original' : colorMode}
                       disabled={lossless}
                       onChange={setColorMode}
-                      options={COLOR_MODES}
+                      options={colorModes}
                     />
                   </Field>
                   <Checkbox
-                    label={`Convert every page to an image at ${dpi} DPI (best for scans; removes selectable text, links and forms)`}
+                    label={t('pdf.p.cmp.rasterize', { dpi })}
                     checked={rasterize && !lossless}
                     disabled={lossless}
                     onChange={setRasterize}
                   />
-                  <Checkbox label="Merge duplicate fonts & images" checked={deduplicateObjects} onChange={setDeduplicateObjects} />
+                  <Checkbox label={t('pdf.p.cmp.dedup')} checked={deduplicateObjects} onChange={setDeduplicateObjects} />
                 </>
               )}
-              <Checkbox label="Remove document metadata (title, author, XMP)" checked={removeMetadata} onChange={setRemoveMetadata} />
-              <Checkbox label="Deep structure optimization (QPDF WebAssembly)" checked={qpdfOptimize} onChange={setQpdfOptimize} />
+              <Checkbox label={t('pdf.p.cmp.remMeta')} checked={removeMetadata} onChange={setRemoveMetadata} />
+              <Checkbox label={t('pdf.p.cmp.qpdfOpt')} checked={qpdfOptimize} onChange={setQpdfOptimize} />
             </div>
             {notice && <p className={fieldStyles.warning}>{notice}</p>}
             <button type="button" className={styles.primary} disabled={busy || ready.length === 0} onClick={compress}>
-              Compress {ready.length > 1 ? `${ready.length} PDFs` : 'PDF'}
+              {ready.length > 1 ? t('pdf.p.cmp.btnMany', { n: ready.length }) : t('pdf.p.cmp.btnOne')}
             </button>
             {busy && <Progress fraction={progress.fraction} label={progress.label} />}
             {done && (
               <div className={styles.result}>
-                <h3>{after < before ? `Saved ${savedPercent(before, after)}` : 'No savings'}</h3>
+                <h3>{after < before ? t('pdf.p.cmp.savedPct', { pct: savedPercent(before, after) }) : t('pdf.p.cmp.noSavings')}</h3>
                 <p>{formatBytes(before)} &rarr; {formatBytes(after)}</p>
                 {summaryDetail && <p className={styles.hint}>{summaryDetail}</p>}
                 {outputs.length === 1
-                  ? <button type="button" className={styles.primary} onClick={() => download(outputs[0].bytes, outputs[0].name)}>Download</button>
-                  : <button type="button" className={styles.primary} onClick={() => download(zipFiles(outputs), 'compressed-pdfs.zip', 'application/zip')}>Download all (ZIP)</button>}
+                  ? <button type="button" className={styles.primary} onClick={() => download(outputs[0].bytes, outputs[0].name)}>{t('pdf.p.download')}</button>
+                  : <button type="button" className={styles.primary} onClick={() => download(zipFiles(outputs), 'compressed-pdfs.zip', 'application/zip')}>{t('pdf.p.downloadAllZip')}</button>}
                 <ContinueWith currentToolId={COMPRESS.id} files={outputs} />
               </div>
             )}
@@ -377,21 +375,26 @@ export default function CompressPdf() {
             const r = results[item.id];
             const name = `${baseName(item.name)}-compressed.pdf`;
             const cardDetail = r && !r.error ? summarizeDetails(r.images, r.duplicatesMerged, r.qpdfSavedBytes) : '';
+            const pageLabel = item.locked
+              ? t('pdf.p.pwProtected')
+              : item.pageCount === null
+                ? '…'
+                : t(item.pageCount === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany', { n: item.pageCount });
             return (
               <FileCard
                 thumb={item.thumb}
                 name={item.name}
-                meta={`${item.locked ? 'Password protected' : item.pageCount === null ? '…' : `${item.pageCount} page${item.pageCount === 1 ? '' : 's'}`} · ${formatBytes(item.bytes.length)}`}
+                meta={`${pageLabel} · ${formatBytes(item.bytes.length)}`}
                 error={item.error ?? r?.error}
                 controls={controls}
                 actions={r && !r.error && (
-                  <button type="button" className={styles.buttonSmall} onClick={() => download(r.bytes, name)}>Download</button>
+                  <button type="button" className={styles.buttonSmall} onClick={() => download(r.bytes, name)}>{t('pdf.p.download')}</button>
                 )}
               >
                 {r && !r.error && (
                   <div className={styles.fileMeta}>
                     {r.kept
-                      ? 'Already optimal; the original is kept.'
+                      ? t('pdf.p.cmp.alreadyOpt')
                       : <span className={styles.saved}>{formatBytes(r.bytes.length)} (−{savedPercent(item.bytes.length, r.bytes.length)})</span>}
                     {cardDetail && <div>{cardDetail}</div>}
                   </div>

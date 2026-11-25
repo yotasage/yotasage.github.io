@@ -15,6 +15,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import DerivationDialog, { reasonHtml, sidesHtml } from '../Equations/DerivationDialog';
 import type { DerivationLink, DerivationView } from '../Equations/DerivationDialog';
 import type { Circuit } from '../../lib/smith/network';
+import { useI18n } from '../../lib/ui/i18n';
 import { derivation, theorySubject } from './derive';
 import { mathLink } from './mathLink';
 import { MATH_CLASSES } from './MathPanel';
@@ -40,6 +41,7 @@ export function openDerivation(id: string, from: HTMLElement | null, subject?: S
 const tokensAt = (target: EventTarget | null): string => (target as Element | null)?.closest?.('[data-mt]')?.getAttribute('data-mt') ?? '';
 
 function Derivation({ circuit, digits }: { circuit: Circuit; digits: number }) {
+  const { t, locale } = useI18n();
   const [req, setReq] = useState<(Request & { n: number }) | null>(null);
   useEffect(() => {
     opener = (r) => setReq((was) => ({ ...r, n: (was?.n ?? 0) + 1 }));
@@ -50,16 +52,16 @@ function Derivation({ circuit, digits }: { circuit: Circuit; digits: number }) {
     if (!req) return null;
     const subject = req.subject === undefined ? theorySubject(circuit, req.id) : req.subject;
     return derivation(circuit, req.id, subject, digits, req.gr, req.gi);
-  }, [req, circuit, digits]);
+  }, [req, circuit, digits, locale]);
   const view = useMemo<DerivationView | null>(() => d && {
     id: d.id,
     title: d.title,
     goal: sidesHtml(d.tex, d.targets, '', MATH_CLASSES),
     meta: (
       <>
-        {d.assumptions.length > 0 && <>Assumes {d.assumptions.join(', ')}. </>}
-        {d.owner && <>Finishes the owner’s notes, {d.owner}. </>}
-        {d.source ? <>Numbers: {d.source}, where every quantity of a step has a value.</> : <>Symbols only: no numbers of your circuit fit these steps.</>}
+        {d.assumptions.length > 0 && t('sm.derive.assumes', { list: d.assumptions.join(', ') })}
+        {d.owner && t('sm.derive.owner', { owner: d.owner })}
+        {d.source ? t('sm.derive.numbers', { source: d.source }) : t('sm.derive.symbolsOnly')}
       </>
     ),
     steps: d.steps.map((s) => ({
@@ -69,7 +71,7 @@ function Derivation({ circuit, digits }: { circuit: Circuit; digits: number }) {
       sides: JSON.stringify(s.sides),
     })),
     bind: JSON.stringify(d.binding),
-  }, [d]);
+  }, [d, t]);
 
   // ← and → in a focused step: its variables' targets one by one; Escape (a first press) ends that.
   const stop = useRef(-1);

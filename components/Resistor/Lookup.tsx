@@ -4,9 +4,12 @@ import {
   BandCode, BandError, ReadAs, SERIES, SeriesId, colour, encodeBands, encodeMarkings, errorPct, formatError, formatOhms, formatPct,
   formatTolerance, neighbours, series, toleranceLetter, usualSeries,
 } from '../../lib/resistor';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
 import styles from '../../styles/Resistor.module.css';
 import Bibliography from '../Bibliography';
 import { Ohms, ValueButton } from './parts';
+import { colourLabel } from './view';
 
 interface Props {
   // The current value; undefined when nothing is read.
@@ -32,6 +35,7 @@ const SHORT_TOLERANCE: Record<SeriesId, string> = {
 
 // The value below, above and nearest in every series.
 function SeriesTable({ ohms, tolerance, stepSeries, onSeries, onValue }: Props) {
+  const { t } = useI18n();
   const rows = SERIES.map((s) => {
     const n = neighbours(ohms, s.id);
     return { s, n, error: errorPct(n.nearest, ohms) };
@@ -41,20 +45,21 @@ function SeriesTable({ ohms, tolerance, stepSeries, onSeries, onValue }: Props) 
   const usual = usualSeries(tolerance);
 
   return (
-    <div className={styles.table} role="table" aria-label="Standard values in every series">
+    <div className={styles.table} role="table" aria-label={t('res.lu.tableAria')}>
       <div className={styles.headRow} role="row">
-        <span className={styles.label} role="columnheader">Series</span>
-        <span className={styles.label} role="columnheader">Nearest</span>
-        <span className={styles.label} role="columnheader">Error</span>
-        <span className={[styles.label, styles.headScale].join(' ')} role="columnheader" title="The bar runs from the wanted value in the middle to this error at either end">
+        <span className={styles.label} role="columnheader">{t('res.lu.series')}</span>
+        <span className={styles.label} role="columnheader">{t('res.lu.nearest')}</span>
+        <span className={styles.label} role="columnheader">{t('res.lu.error')}</span>
+        <span className={[styles.label, styles.headScale].join(' ')} role="columnheader" title={t('res.lu.scaleTitle')}>
           {largest === 0 ? '' : `±${formatPct(scale)}`}
         </span>
-        <span className={[styles.label, styles.headPair].join(' ')} role="columnheader">Below</span>
-        <span className={[styles.label, styles.headPair].join(' ')} role="columnheader">Above</span>
+        <span className={[styles.label, styles.headPair].join(' ')} role="columnheader">{t('res.lu.below')}</span>
+        <span className={[styles.label, styles.headPair].join(' ')} role="columnheader">{t('res.lu.above')}</span>
       </div>
       {rows.map(({ s, n, error }) => {
         const isUsual = s.id === usual || (s.id === 'E24+E96' && usual === 'E96');
         const width = Math.min(50, (Math.abs(error) / scale) * 50);
+        const tolText = t(`res.serTol.${s.id}` as TranslationKey);
         return (
           <div key={s.id} className={styles.row} role="row">
             <button
@@ -63,7 +68,7 @@ function SeriesTable({ ohms, tolerance, stepSeries, onSeries, onValue }: Props) 
               aria-checked={s.id === stepSeries}
               className={styles.seriesCell}
               onClick={() => onSeries(s.id)}
-              title={`Step through ${s.label} with the arrow keys. Usual tolerance: ${s.tolerance}.`}
+              title={t('res.lu.seriesBtnTitle', { series: s.label, tol: tolText })}
             >
               <span className={styles.seriesMark} />
               <span className={styles.seriesName}>{s.label}</span>
@@ -73,7 +78,7 @@ function SeriesTable({ ohms, tolerance, stepSeries, onSeries, onValue }: Props) 
               <ValueButton ohms={n.nearest} onPick={onValue} className={styles.nearest} />
             </span>
             <span role="cell" className={[styles.num, styles.error].join(' ')}>
-              {n.exact ? <span className={styles.exact}>exact</span> : formatError(error)}
+              {n.exact ? <span className={styles.exact}>{t('res.exact')}</span> : formatError(error)}
             </span>
             <span role="cell" className={styles.errorBar} data-exact={n.exact} aria-hidden>
               {n.exact
@@ -81,7 +86,7 @@ function SeriesTable({ ohms, tolerance, stepSeries, onSeries, onValue }: Props) 
                 : <span className={styles.errorFill} style={error < 0 ? { right: '50%', width: `${width}%` } : { left: '50%', width: `${width}%` }} />}
             </span>
             <span className={styles.flanks}>
-              {([['below', n.below], ['above', n.above]] as [string, number][]).map(([name, value]) => (
+              {([[t('res.lu.belowLow'), n.below], [t('res.lu.aboveLow'), n.above]] as [string, number][]).map(([name, value]) => (
                 <span key={name} className={styles.flank} role="cell">
                   <span className={styles.flankLabel}>{name}</span>
                   <ValueButton ohms={value} onPick={onValue} className={styles.flankValue} />
@@ -97,6 +102,7 @@ function SeriesTable({ ohms, tolerance, stepSeries, onSeries, onValue }: Props) 
 }
 
 function Strip({ title, code }: { title: string; code: BandCode | BandError }) {
+  const { locale } = useI18n();
   return (
     <div>
       <div className={styles.codeHead}>
@@ -105,11 +111,11 @@ function Strip({ title, code }: { title: string; code: BandCode | BandError }) {
       </div>
       {code.ok ? (
         <>
-          <div className={styles.strip} role="list" aria-label={`${title}: ${code.bands.map((b) => b.colour).join(', ')}`}>
+          <div className={styles.strip} role="list" aria-label={`${title}: ${code.bands.map((b) => colourLabel(b.colour, locale)).join(', ')}`}>
             {code.bands.map((band, i) => (
               <div key={i} className={styles.band} role="listitem" data-apart={band.role === 'tolerance' || band.role === 'tcr'}>
                 <span className={styles.swatch} style={{ background: colour(band.colour).hex }} />
-                <span className={styles.bandName}>{band.colour}</span>
+                <span className={styles.bandName}>{colourLabel(band.colour, locale)}</span>
                 <span className={[styles.num, styles.bandMeaning].join(' ')}>{band.meaning}</span>
               </div>
             ))}
@@ -122,25 +128,27 @@ function Strip({ title, code }: { title: string; code: BandCode | BandError }) {
 }
 
 function Marking({ title, code, how, why, withLetter }: { title: string; code?: string; how?: string; why?: string; withLetter?: string }) {
+  const { t } = useI18n();
   return (
     <div className={styles.marking}>
       <span className={styles.label}>{title}</span>
       <span className={[styles.num, styles.markingCode].join(' ')} data-none={!code}>{code ?? '–'}</span>
       <div className={styles.markingHow}>
-        {code ? how : `None: ${why}.`}
-        {code && withLetter && <div>with tolerance <span className={styles.num}>{code}{withLetter}</span></div>}
+        {code ? how : t('res.lu.noneWhy', { why: why ?? '' })}
+        {code && withLetter && <div>{t('res.lu.withTolerance')} <span className={styles.num}>{code}{withLetter}</span></div>}
       </div>
     </div>
   );
 }
 
 function Guide({ onExample }: { onExample: (text: string, as?: ReadAs) => void }) {
+  const { t } = useI18n();
   // The third entry is what the examples of the row are read as, where a text could be both.
   const rows: [string[], string, ReadAs?][] = [
-    [['4k7', '4.7k', '4,7 kΩ', '4700', '1M5', '10m'], 'A value in any notation: with a decimal point or comma, a multiplier (m, k, M or Meg, G), or the letter in place of the point.', 'value'],
-    [['472', '4992', '4R7', '103J', '01C', 'R005'], 'The marking of a chip resistor: three or four digits, R as the decimal point, a tolerance letter, EIA-96 or milliohms. Digits alone are a value first: these examples set “Read as” to Marking, beside the field.', 'marking'],
-    [['yellow violet red gold', 'brn blk blk red brn'], 'The colours of 3 to 6 bands, as names or abbreviations, from either end.'],
-    [['4k7 1%', '101', '601'], 'A tolerance after the value. A text that reads several ways (101 is 101 Ω, and 100 Ω as a marking), also upside down, shows every reading: pick one.'],
+    [['4k7', '4.7k', '4,7 kΩ', '4700', '1M5', '10m'], t('res.lu.guide1'), 'value'],
+    [['472', '4992', '4R7', '103J', '01C', 'R005'], t('res.lu.guide2'), 'marking'],
+    [['yellow violet red gold', 'brn blk blk red brn'], t('res.lu.guide3')],
+    [['4k7 1%', '101', '601'], t('res.lu.guide4')],
   ];
   return (
     <dl className={styles.guide}>
@@ -156,14 +164,15 @@ function Guide({ onExample }: { onExample: (text: string, as?: ReadAs) => void }
 
 // The Lookup section: standard values, colour bands and markings of the current value.
 export default function Lookup(props: Props) {
+  const { t } = useI18n();
   const { ohms, tcr, tolerance, stepSeries, seriesChosen, onExample, bib } = props;
 
   if (ohms === undefined) {
     return (
       <div className={styles.block}>
         <div className={styles.blockHead}>
-          <h3>What you can type</h3>
-          <span className={styles.blockMeta}>Results follow as you type</span>
+          <h3>{t('res.lu.whatType')}</h3>
+          <span className={styles.blockMeta}>{t('res.lu.asYouType')}</span>
         </div>
         <Guide onExample={onExample} />
       </div>
@@ -179,53 +188,51 @@ export default function Lookup(props: Props) {
       {ohms > 0 && (
         <div className={styles.block}>
           <div className={styles.blockHead}>
-            <h3>Standard values</h3>
-            <span className={styles.blockMeta}>around <Ohms ohms={ohms} /></span>
+            <h3>{t('res.lu.stdValues')}</h3>
+            <span className={styles.blockMeta}>{t('res.lu.around')} <Ohms ohms={ohms} /></span>
           </div>
           <SeriesTable {...props} />
           <p className={styles.caption}>
-            An error is (standard value − <span className={styles.num}>{formatOhms(ohms)}</span>) / <span className={styles.num}>{formatOhms(ohms)}</span>: positive when the standard value is the larger one. Click a value to use it.{' '}
-            <span className={styles.keys}><span className={styles.key}>↑</span> <span className={styles.key}>↓</span></span> in the field step through <b>{stepName}</b>
-            {seriesChosen ? '' : `, the series usual for ${formatTolerance(tolerance)}`}; click a series to step through that one.
+            {t('res.lu.errCaptionPre')}<span className={styles.num}>{formatOhms(ohms)}</span>) / <span className={styles.num}>{formatOhms(ohms)}</span>{t('res.lu.errCaptionMid')}
+            <span className={styles.keys}><span className={styles.key}>↑</span> <span className={styles.key}>↓</span></span>{t('res.lu.stepThrough')}<b>{stepName}</b>
+            {seriesChosen ? '' : t('res.lu.usualFor', { tol: formatTolerance(tolerance) })}{t('res.lu.clickSeries')}
           </p>
           <p className={styles.caption}>
-            A series is usual for a tolerance when its steps are about twice that tolerance, so that the ranges of neighbouring values just meet {bib.cite('VishayBasics')}: more
-            in <a href="#theory-series" className={styles.textLink}>Theory</a>.
+            {t('res.lu.seriesUsualPre')}{bib.cite('VishayBasics')}{t('res.lu.moreIn')}<a href="#theory-series" className={styles.textLink}>{t('res.lu.theoryLink')}</a>.
           </p>
         </div>
       )}
 
       <div className={styles.block}>
         <div className={styles.blockHead}>
-          <h3>Colour bands</h3>
-          <span className={styles.blockMeta}>IEC 60062 {bib.cite('IEC60062')}, at {formatTolerance(tolerance)}</span>
+          <h3>{t('res.lu.colourBands')}</h3>
+          <span className={styles.blockMeta}>IEC 60062 {bib.cite('IEC60062')}{t('res.lu.iecAt', { tol: formatTolerance(tolerance) })}</span>
         </div>
         {ohms === 0 ? (
-          <div className={styles.codes}><Strip title="Link" code={encodeBands(0, 4)} /></div>
+          <div className={styles.codes}><Strip title={t('res.lu.link')} code={encodeBands(0, 4)} /></div>
         ) : (
           <div className={styles.codes}>
-            <Strip title="4 bands" code={encodeBands(ohms, 4, tolerance)} />
-            <Strip title="5 bands" code={encodeBands(ohms, 5, tolerance)} />
-            {tcr !== undefined && <Strip title="6 bands" code={encodeBands(ohms, 6, tolerance, tcr)} />}
+            <Strip title={t('res.lu.bands4')} code={encodeBands(ohms, 4, tolerance)} />
+            <Strip title={t('res.lu.bands5')} code={encodeBands(ohms, 5, tolerance)} />
+            {tcr !== undefined && <Strip title={t('res.lu.bands6')} code={encodeBands(ohms, 6, tolerance, tcr)} />}
           </div>
         )}
       </div>
 
       <div className={styles.block}>
         <div className={styles.blockHead}>
-          <h3>SMD marking</h3>
-          <span className={styles.blockMeta}>as printed on chip resistors</span>
+          <h3>{t('res.lu.smdMarking')}</h3>
+          <span className={styles.blockMeta}>{t('res.lu.asPrinted')}</span>
         </div>
         <div className={styles.markings}>
-          <Marking title="3 characters" code={markings.three} how={markings.how.three} why={markings.why.three} withLetter={ohms > 0 ? letter : undefined} />
-          <Marking title="4 characters" code={markings.four} how={markings.how.four} why={markings.why.four} withLetter={ohms > 0 ? letter : undefined} />
-          <Marking title="EIA-96" code={markings.eia96} how={markings.how.eia96} why={markings.why.eia96} />
-          {markings.milli && <Marking title="Milliohms" code={markings.milli} how={markings.how.milli} />}
+          <Marking title={t('res.lu.chars3')} code={markings.three} how={markings.how.three} why={markings.why.three} withLetter={ohms > 0 ? letter : undefined} />
+          <Marking title={t('res.lu.chars4')} code={markings.four} how={markings.how.four} why={markings.why.four} withLetter={ohms > 0 ? letter : undefined} />
+          <Marking title={t('res.lu.eia96')} code={markings.eia96} how={markings.how.eia96} why={markings.why.eia96} />
+          {markings.milli && <Marking title={t('res.lu.milliohms')} code={markings.milli} how={markings.how.milli} />}
         </div>
         <p className={styles.caption}>
-          The last digit of a code is the number of zeros that follow the others. Sizes 01005 to 0402 usually carry no marking; 0603 carries three characters at 5 % and
-          EIA-96 at 1 %, larger sizes four characters at 1 % {bib.cite('YageoRC')}.
-          EIA-96 is used on 1 % parts{ohms > 0 && markings.eia96 && tolerance !== 1 ? `, so not at ${formatTolerance(tolerance)}` : ''}.
+          {t('res.lu.smdNote1')}{bib.cite('YageoRC')}{t('res.lu.smdNote2')}
+          {ohms > 0 && markings.eia96 && tolerance !== 1 ? t('res.lu.smdNoteNotAt', { tol: formatTolerance(tolerance) }) : ''}.
         </p>
       </div>
     </>

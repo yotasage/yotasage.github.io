@@ -113,7 +113,7 @@ export default function Toolbar({
   const isDiff = layout === 'diff';
 
   return (
-    <div ref={toolbarRef} className={styles.commandBar} role="toolbar" aria-label="Scratchpad toolbar">
+    <div ref={toolbarRef} className={styles.commandBar} role="toolbar" aria-label={t('notepad.toolbar.aria')}>
       <div className={styles.cmdGroup}>
         <button type="button" className={styles.cmdBtnPrimary} onClick={onNewDoc}>
           + {t('notepad.newFile')}

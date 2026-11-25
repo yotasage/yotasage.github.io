@@ -11,6 +11,7 @@ import type { Circuit } from '../../lib/smith/network';
 import { LINE, SERIES_C, SERIES_L, SHUNT_L, STUB_OPEN } from '../../lib/smith/parts';
 import { Band, Trace, bandFigures, markerAt, runSweep, sweepCircuit } from '../../lib/smith/sweep';
 import { defaultCircuit } from '../../lib/smith/state';
+import { useI18n } from '../../lib/ui/i18n';
 import css from '../../styles/SmithTheory.module.css';
 import { Disc, Dot, Figure, Label, P, Ring, f, head } from './TheoryFigures';
 
@@ -98,31 +99,32 @@ const Arrow = ({ s, cls }: { s: Swept | undefined; cls: string }) => (s ? <g cla
 // Topic 11: series resonators on r = 1; the start load with the λ/8 stub alone and behind λ/2 of line.
 
 export function QBandFigure() {
+  const { t } = useI18n();
   const box = useRef<HTMLDivElement>(null);
   const s = useSwept(box);
   return (
     <div ref={box}>
-    <Figure wide caption={<>Ticks at 90 and 110 MHz; dashed, 10 dB of return loss. Left, series resonators on 50 Ω along r = 1: <span className={css.key1}>x = ±2</span> and <span className={css.key2}>x = ±5</span>, whose ticks lie further out (10 MHz to 1 GHz). Right, the start load with <span className={css.key1}>the λ/8 open stub alone</span> and <span className={css.key2}>behind λ/2 of line</span>: longer, its ticks outside the circle (50 to 150 MHz).</>}>
-      <Disc label="Traces of two series resonators on the r = 1 circle, with ticks at 90 and 110 MHz" clip>
-        <Ring c={[0.5, 0]} R={0.5} cls={css.figZ} />
-        <Limit mag={R10} />
-        <g className={css.figPart2}>{s && <path d={s.rlc5.d} className={css.figStroke} />}</g>
-        <Trace1 s={s?.rlc2} cls={css.figPart1} />
-        <Ticks s={s?.rlc2} cls={css.figPart1} at={[9e7, 1.1e8]} />
-        <Ticks s={s?.rlc5} cls={css.figPart2} at={[9e7, 1.1e8]} />
-        <Label p={[0.5, 0.58]}>r = 1</Label>
-      </Disc>
-      <Disc label="The start load matched by a λ/8 open stub, alone and behind λ/2 of line, with ticks at 90 and 110 MHz" clip>
-        <Ring c={[-0.5, 0]} R={0.5} cls={css.figY} />
-        <Limit mag={R10} />
-        <Trace1 s={s?.half} cls={css.figPart2} />
-        <Trace1 s={s?.stub} cls={css.figPart1} />
-        <Ticks s={s?.half} cls={css.figPart2} at={[9e7, 1.1e8]} />
-        <Ticks s={s?.stub} cls={css.figPart1} at={[9e7, 1.1e8]} />
-        <Dot p={[-0.2, 0.4]} cls={css.figLoad} r={0.045} />
-        <Label p={[-0.3, 0.52]} cls={css.figBold}>L</Label>
-      </Disc>
-    </Figure>
+      <Figure wide caption={<>{t('sm.sfig.qb.cap.a')}<span className={css.key1}>x = ±2</span>{t('sm.sfig.qb.cap.and')}<span className={css.key2}>x = ±5</span>{t('sm.sfig.qb.cap.b')}<span className={css.key1}>{t('sm.sfig.qb.stub')}</span>{t('sm.sfig.qb.cap.and')}<span className={css.key2}>{t('sm.sfig.qb.half')}</span>{t('sm.sfig.qb.cap.c')}</>}>
+        <Disc label={t('sm.sfig.qb.ariaL')} clip>
+          <Ring c={[0.5, 0]} R={0.5} cls={css.figZ} />
+          <Limit mag={R10} />
+          <g className={css.figPart2}>{s && <path d={s.rlc5.d} className={css.figStroke} />}</g>
+          <Trace1 s={s?.rlc2} cls={css.figPart1} />
+          <Ticks s={s?.rlc2} cls={css.figPart1} at={[9e7, 1.1e8]} />
+          <Ticks s={s?.rlc5} cls={css.figPart2} at={[9e7, 1.1e8]} />
+          <Label p={[0.5, 0.58]}>r = 1</Label>
+        </Disc>
+        <Disc label={t('sm.sfig.qb.ariaR')} clip>
+          <Ring c={[-0.5, 0]} R={0.5} cls={css.figY} />
+          <Limit mag={R10} />
+          <Trace1 s={s?.half} cls={css.figPart2} />
+          <Trace1 s={s?.stub} cls={css.figPart1} />
+          <Ticks s={s?.half} cls={css.figPart2} at={[9e7, 1.1e8]} />
+          <Ticks s={s?.stub} cls={css.figPart1} at={[9e7, 1.1e8]} />
+          <Dot p={[-0.2, 0.4]} cls={css.figLoad} r={0.045} />
+          <Label p={[-0.3, 0.52]} cls={css.figBold}>L</Label>
+        </Disc>
+      </Figure>
     </div>
   );
 }
@@ -133,6 +135,7 @@ export function QBandFigure() {
 /** The plot's frame in chart-like units (so the figures' stroke widths and text sizes apply): x 0…W, return loss 0…top dB down. */
 const PW = 2.4, PH = 1.5, PX = 0.4, PY = 0.08, PB = 0.22;
 function Plot({ s, band, top, limit, marks, cls, label }: { s: Swept | undefined; band: Band; top: number; limit: number; marks: number[]; cls: string; label: string }) {
+  const { t } = useI18n();
   const w = PW - PX - 0.06, h = PH - PY - PB;
   const x = (fq: number) => PX + ((fq - band.start) / (band.stop - band.start)) * w;
   const y = (rl: number) => PY + (Math.min(rl, top) / top) * h;
@@ -144,47 +147,48 @@ function Plot({ s, band, top, limit, marks, cls, label }: { s: Swept | undefined
     <svg viewBox={`0 0 ${PW} ${PH}`} className={css.disc} role="img" aria-label={label}>
       <rect x={PX} y={PY} width={w} height={h} className={css.figBack} />
       {s?.edges.map((e, i) => <rect key={i} x={f(x(e.lo))} y={PY} width={f(x(e.hi) - x(e.lo))} height={h} className={css.figShade} />)}
-      {ticks.map((t) => (
-        <React.Fragment key={t}>
-          <line x1={PX} x2={PX + w} y1={f(y(t))} y2={f(y(t))} className={css.figAxis} />
-          <text x={PX - 0.04} y={f(y(t))} textAnchor="end" dominantBaseline="middle">{t === top ? `${t} dB` : t}</text>
+      {ticks.map((tk) => (
+        <React.Fragment key={tk}>
+          <line x1={PX} x2={PX + w} y1={f(y(tk))} y2={f(y(tk))} className={css.figAxis} />
+          <text x={PX - 0.04} y={f(y(tk))} textAnchor="end" dominantBaseline="middle">{tk === top ? `${tk} dB` : tk}</text>
         </React.Fragment>
       ))}
       <g className={css.figAccent}><line x1={PX} x2={PX + w} y1={f(y(limit))} y2={f(y(limit))} className={css.figDash} /></g>
       <g className={cls}><path d={d} className={css.figThin} /></g>
       {marks.map((m) => <Dot key={m} p={[x(m), -y(rlAt(m))]} cls={css.figLoad} r={0.035} />)}
       <text x={PX} y={PH - 0.05}>{band.start / 1e6}</text>
-      <text x={PX + w / 2} y={PH - 0.05} textAnchor="middle">return loss</text>
+      <text x={PX + w / 2} y={PH - 0.05} textAnchor="middle">{t('sm.sfig.plot.rl')}</text>
       <text x={PX + w} y={PH - 0.05} textAnchor="end">{band.stop / 1e6} MHz</text>
     </svg>
   );
 }
 
 export function ReadTraceFigure() {
+  const { t } = useI18n();
   const box = useRef<HTMLDivElement>(null);
   const s = useSwept(box);
   const st = s?.start, two = s?.two;
   const START_MARKS = [5e7, 79_495_746, 1e8, 1.5e8];
   return (
     <div ref={box}>
-      <Figure wide stack caption={<>(a) <span className={css.key1}>The start circuit</span> from 50 to 150 MHz, the arrow for rising f, dots at 50, 79.50 (where it enters the dashed 10 dB circle), 100 and 150 MHz; beside it the same band as return loss, the matched stretch shaded.</>}>
-        <Disc label="The start circuit's trace from 50 to 150 MHz with the 10 dB circle" clip
+      <Figure wide stack caption={<>(a) <span className={css.key1}>{t('sm.sfig.rt.a.title')}</span>{t('sm.sfig.rt.a.rest')}</>}>
+        <Disc label={t('sm.sfig.rt.a.ariaDisc')} clip
           outside={st && <><Label p={[st.at(5e7)[0] + 0.08, st.at(5e7)[1]]} anchor="start">50</Label><Label p={[st.at(1.5e8)[0] - 0.08, st.at(1.5e8)[1] - 0.1]} anchor="end">150</Label></>}>
           <Limit mag={R10} />
           <Trace1 s={st} cls={css.figPart1} />
           <Arrow s={st} cls={css.figPart1} />
           {st && START_MARKS.map((fq) => <Dot key={fq} p={st.at(fq)} cls={css.figLoad} r={0.035} />)}
         </Disc>
-        <Plot s={st} band={DEF} top={30} limit={10} marks={START_MARKS} cls={css.figPart1} label="Return loss of the start circuit from 50 to 150 MHz with the 10 dB line" />
+        <Plot s={st} band={DEF} top={30} limit={10} marks={START_MARKS} cls={css.figPart1} label={t('sm.sfig.rt.a.ariaPlot')} />
       </Figure>
-      <Figure wide stack caption={<>(b) <span className={css.key2}>The two-section match of 10 Ω</span>: its trace loops through the centre at 61.80 and 100 MHz, and its plot dips twice; dashed, 20 dB.</>}>
-        <Disc label="The two-section match's trace with its loop through the centre and the 20 dB circle" clip>
+      <Figure wide stack caption={<>(b) <span className={css.key2}>{t('sm.sfig.rt.b.title')}</span>{t('sm.sfig.rt.b.rest')}</>}>
+        <Disc label={t('sm.sfig.rt.b.ariaDisc')} clip>
           <Limit mag={R20} />
           <Trace1 s={two} cls={css.figPart2} />
           <Arrow s={two} cls={css.figPart2} />
           <Dot p={[0, 0]} cls={css.figLoad} r={0.03} />
         </Disc>
-        <Plot s={two} band={DEF} top={40} limit={20} marks={[61_803_399, 1e8]} cls={css.figPart2} label="Return loss of the two-section match from 50 to 150 MHz with the 20 dB line" />
+        <Plot s={two} band={DEF} top={40} limit={20} marks={[61_803_399, 1e8]} cls={css.figPart2} label={t('sm.sfig.rt.b.ariaPlot')} />
       </Figure>
     </div>
   );

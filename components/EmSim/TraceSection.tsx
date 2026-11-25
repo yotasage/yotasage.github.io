@@ -46,6 +46,9 @@ import { feedTheory } from './theoryFeed';
 import { feedExport } from './exportFeed';
 import { KINDS, coppersOf, etchOf, isCoplanar, isPair, withKind, withSignalLayer } from './trace';
 import type { GenSel } from './trace';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
+import { kindName } from './emText';
 import { Why, Whys } from './Why';
 
 // One client for the page, made when the first solve is asked for.
@@ -67,7 +70,7 @@ const TraceTools = lazy(() => import('./TraceTools'));
 // M4.3a: the equation panel (KaTeX and the registry), loaded when a result number is first opened.
 // @ts-expect-error TS2835: Turbopack resolves the path without an extension (CLAUDE.md, tsconfig bullet).
 const EqPanel = lazy(() => import('./EqPanel'));
-const TOOLS: [ToolName, string][] = [['target', 'Target'], ['sweep', 'Sweep'], ['tolerance', 'Tolerance'], ['calc', 'Calculators']];
+const TOOLS: ToolName[] = ['target', 'sweep', 'tolerance', 'calc'];
 
 const QUICK_ABOVE_MS = 30; // a full solve slower than about two frames: the drag uses the fast path
 const STARVED_MS = 100;
@@ -83,6 +86,7 @@ interface Props {
 }
 
 export default function TraceSection({ setup, commit, unit, digits, kicad }: Props) {
+  const { t, locale } = useI18n();
   // ---- a handle drag's live setup ----
   const [live, setLive] = useState<Setup | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -131,15 +135,15 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
   const stackErr = useMemo(() => stackupIssues(s).find((i) => i.level === 'error') ?? null, [s]);
   const issues = useMemo(() => structureIssues(s, st), [s, st]);
   const { sec, reason } = useMemo(() => {
-    if (stackErr) return { sec: null, reason: `The stackup has an error to fix first: ${stackErr.message}` };
+    if (stackErr) return { sec: null, reason: t('em.tr.stackErr', { msg: stackErr.message }) };
     const bad = issues.find((i) => i.level === 'error');
     if (bad) return { sec: null, reason: bad.message };
     try {
       return { sec: section(s, st), reason: '' };
     } catch (e) {
-      return { sec: null, reason: `The cross-section could not be drawn: ${e instanceof Error ? e.message : String(e)}` };
+      return { sec: null, reason: t('em.tr.drawErr', { msg: e instanceof Error ? e.message : String(e) }) };
     }
-  }, [s, st, issues, stackErr]);
+  }, [s, st, issues, stackErr, t]);
 
   // ---- the solve: the newest setup wins; the old result stays, marked stale, until the new one arrives ----
   const [res, setRes] = useState<SolveResult | null>(null);
@@ -186,7 +190,7 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
       }, (e) => {
         if (!on) return;
         setState('error');
-        setMessage(`The solve failed: ${e instanceof Error ? e.message : String(e)}`);
+        setMessage(t('em.tr.solveErr', { msg: e instanceof Error ? e.message : String(e) }));
         setStale(false);
       });
     return () => { on = false; };
@@ -230,7 +234,7 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
     <label className={css.ctl}>
       {label}
       <select className={base.select} data-trace-plane={which} value={st[which]} onChange={(e) => { const v = e.target.value; setTrace((t) => ({ ...t, [which]: v })); }}>
-        <option value="">none</option>
+        <option value="">{t('em.tr.none')}</option>
         {coppers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
       </select>
     </label>
@@ -238,51 +242,48 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
 
   return (
     <section id="trace" className={base.section} aria-labelledby="trace-h">
-      <h2 id="trace-h" className={base.h2}>Trace</h2>
-      <p className={base.lede}>
-        The line's cross-section on this stackup. Pick a kind of structure or one of your KiCad net classes, then type
-        the widths and gaps; the drawing is what the solver sees, and the results follow every change.
-      </p>
+      <h2 id="trace-h" className={base.h2}>{t('em.tr.title')}</h2>
+      <p className={base.lede}>{t('em.tr.lede')}</p>
 
       <div className={css.tools}>
         <label className={css.ctl}>
-          Structure
+          {t('em.tr.structure')}
           <select
             className={base.select}
             data-trace-kind
             value={st.kind}
             onChange={(e) => { const k = e.target.value as TraceKind; setTrace((t, cur) => (k === 'general' ? toGeneral(cur.stackup, t) : withKind(t, cur.stackup, k))); }}
           >
-            {kinds.map((k) => <option key={k.kind} value={k.kind} disabled={!k.ok}>{k.name}{k.ok ? '' : ' (needs more copper layers)'}</option>)}
-            <option value="general">General arrangement (traces and grounds placed freely)</option>
+            {kinds.map((k) => <option key={k.kind} value={k.kind} disabled={!k.ok}>{kindName(k.kind, locale)}{k.ok ? '' : t('em.tr.needsCopper')}</option>)}
+            <option value="general">{t('em.tr.generalOpt')}</option>
           </select>
         </label>
         {st.kind !== 'general' && (
-          <button type="button" className={base.button} data-trace-to-general onClick={() => setTrace((t, cur) => toGeneral(cur.stackup, t))} title="The same structure as traces and grounds you can add to, remove and move">
-            Edit as general
+          <button type="button" className={base.button} data-trace-to-general onClick={() => setTrace((t, cur) => toGeneral(cur.stackup, t))} title={t('em.tr.editAsGenTitle')}>
+            {t('em.tr.editAsGen')}
           </button>
         )}
         <div className={css.classes} data-class-structures>
           {fromClasses.length > 0 ? (
             <>
-              <span className={css.classesLabel}>Net classes of {kicad.project.file}</span>
+              <span className={css.classesLabel}>{t('em.tr.netClassesOf', { file: kicad.project!.file })}</span>
               <div className={css.classButtons}>
                 {fromClasses.flatMap(({ c, single, pair: p }) => [
                   single && (
                     <button key={`${c.name}:single`} type="button" className={base.button} data-class-structure={`${c.name}:single`} aria-pressed={sameStructure(st, single)} onClick={() => commit((cur) => { const x = structuresFromClass(cur.stackup, c).single; return x ? { ...cur, trace: x } : cur; })}>
-                      {c.name} <span className={css.classDim}>trace {lenText(single.w.v, unit, digits)}</span>
+                      {c.name} <span className={css.classDim}>{t('em.tr.ncTrace', { val: lenText(single.w.v, unit, digits) })}</span>
                     </button>
                   ),
                   p && (
                     <button key={`${c.name}:pair`} type="button" className={base.button} data-class-structure={`${c.name}:pair`} aria-pressed={sameStructure(st, p)} onClick={() => commit((cur) => { const x = structuresFromClass(cur.stackup, c).pair; return x ? { ...cur, trace: x } : cur; })}>
-                      {c.name} <span className={css.classDim}>pair {lenText(p.w.v, unit, digits)} / {lenText(p.s.v, unit, digits)}</span>
+                      {c.name} <span className={css.classDim}>{t('em.tr.ncPair', { w: lenText(p.w.v, unit, digits), s: lenText(p.s.v, unit, digits) })}</span>
                     </button>
                   ),
                 ].filter(Boolean))}
               </div>
             </>
           ) : (
-            <span className={css.classesLabel}>Open a KiCad project (.kicad_pro) in the Stackup section to make its net classes into structures here.</span>
+            <span className={css.classesLabel}>{t('em.tr.ncEmpty')}</span>
           )}
         </div>
       </div>
@@ -292,7 +293,7 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
         <div className={css.drawArea}>
           <TraceDrawing s={s} st={st} sec={sec} reason={reason} unit={unit} digits={digits} widen={widen} edit={edit} sel={selNow} onSelect={setSel} fields={fieldSet} fieldEnv={fieldEnv} />
           <div className={stk.figTools}>
-            <button type="button" className={base.button} aria-pressed={widen} data-trace-widen onClick={() => setWiden((w) => !w)}>Widen thin layers</button>
+            <button type="button" className={base.button} aria-pressed={widen} data-trace-widen onClick={() => setWiden((w) => !w)}>{t('em.stk.widen')}</button>
           </div>
           <Whys ks="trace-view handles trace-reset trace-widen" />
           <FieldControls f={fieldSet} n={sec ? sec.signals : 1} set={setFieldSet} />
@@ -302,7 +303,7 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
           <div className={css.selects}>
             {!general && (
               <label className={css.ctl}>
-                {broadside ? 'Signal layer 1' : 'Signal layer'}
+                {broadside ? t('em.tr.sigLayer1') : t('em.tr.sigLayer')}
                 <select className={base.select} data-trace-layer value={st.layer} onChange={(e) => { const v = e.target.value; setTrace((t, cur) => withSignalLayer(t, cur.stackup, v)); }}>
                   {coppers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
@@ -310,22 +311,22 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
             )}
             {broadside && (
               <label className={css.ctl}>
-                Signal layer 2
+                {t('em.tr.sigLayer2')}
                 <select className={base.select} data-trace-layer2 value={st.layer2} onChange={(e) => { const v = e.target.value; setTrace((t) => ({ ...t, layer2: v })); }}>
                   {coppers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </label>
             )}
-            {planeSelect('above', 'Plane above')}
-            {planeSelect('below', 'Plane below')}
+            {planeSelect('above', t('em.tr.planeAbove'))}
+            {planeSelect('below', t('em.tr.planeBelow'))}
           </div>
           <Whys ks={`${general ? '' : 'layer '}${broadside ? 'layer2 ' : ''}plane`} />
           {st.kind !== 'general' ? (
             <div className={stk.fields}>
-              <ValField name="trace.w" label={pair ? 'Width (each)' : 'Width'} x={st.w} unit={unit} digits={digits} onChange={onVal('w')} />
-              {pair && <ValField name="trace.s" label={broadside ? 'Offset across' : 'Gap'} x={st.s} unit={unit} digits={digits} zero={broadside} onChange={onVal('s')} />}
-              {coplanar && <ValField name="trace.g" label="Gap to ground" x={st.g} unit={unit} digits={digits} onChange={onVal('g')} />}
-              {coplanar && <ValField name="trace.gw" label="Ground width" x={st.gw} unit={unit} digits={digits} nullable placeholder="to the edge" onChange={onVal('gw')} />}
+              <ValField name="trace.w" label={pair ? t('em.tr.widthEach') : t('em.tr.width')} x={st.w} unit={unit} digits={digits} onChange={onVal('w')} />
+              {pair && <ValField name="trace.s" label={broadside ? t('em.tr.offset') : t('em.tr.gap')} x={st.s} unit={unit} digits={digits} zero={broadside} onChange={onVal('s')} />}
+              {coplanar && <ValField name="trace.g" label={t('em.tr.gapToGnd')} x={st.g} unit={unit} digits={digits} onChange={onVal('g')} />}
+              {coplanar && <ValField name="trace.gw" label={t('em.tr.gndWidth')} x={st.gw} unit={unit} digits={digits} nullable placeholder={t('em.tr.toEdge')} onChange={onVal('gw')} />}
             </div>
           ) : null}
           {st.kind !== 'general' ? (
@@ -336,20 +337,20 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
           {outer && hasMask && (
             <label className={css.check}>
               <input type="checkbox" checked={st.masked} data-trace-masked onChange={(e) => { const m = e.target.checked; setTrace((t) => ({ ...t, masked: m })); }} />
-              Solder mask over the trace
+              {t('em.tr.masked')}
             </label>
           )}
           {outer && hasMask && <Why k="masked" bare />}
           <p className={css.small} data-etch={etch ? etch.side : 0}>
             {etch && etch.side > 0
-              ? <>Trapezoid from the stackup's etch: the top is {lenText(2 * etch.side, unit, digits)} narrower than the base{etch.src ? <> ({sourceTag(etch.src.src).text})</> : null}. Widths are at the base.</>
-              : <>No etch in the stackup: the copper is a rectangle.</>}
-            {pair && !broadside && ' The gap is edge to edge at the base.'}
-            {coplanar && ' Grounds are on the signal layer, connected to the planes.'}
+              ? t('em.tr.etchTrap', { val: lenText(2 * etch.side, unit, digits), src: etch.src ? ` (${sourceTag(etch.src.src, locale).text})` : '' })
+              : t('em.tr.etchRect')}
+            {pair && !broadside && t('em.tr.gapNote')}
+            {coplanar && t('em.tr.cpwNote')}
           </p>
           {info && issues.length > 0 && (
             <div className={base.notice} data-trace-issues>
-              <h3 className={base.h3}>About this structure</h3>
+              <h3 className={base.h3}>{t('em.tr.about')}</h3>
               <Why k="structure-issues" bare />
               <IssueList issues={issues} />
             </div>
@@ -360,23 +361,23 @@ export default function TraceSection({ setup, commit, unit, digits, kicad }: Pro
           <EqLayout open={eqHere !== null}>
             <TraceResults r={res} state={state} stale={stale} quick={quickShown} message={message} where={where} unit={unit} />
             {eqHere && (
-              <Suspense fallback={<p className={css.small}>Loading the equation…</p>}>
+              <Suspense fallback={<p className={css.small}>{t('em.tr.loadingEq')}</p>}>
                 <EqPanel req={eqHere} trace={res && res.ok ? res : null} stale={stale} digits={digits} />
               </Suspense>
             )}
           </EqLayout>
           <div className={tcss.toolsArea} data-tools>
             <div className={tcss.toolsHead}>
-              <h3 className={base.h3}>Target · Sweep · Tolerance · Calculators</h3>
-              <div className={tcss.toolTabs} role="group" aria-label="Tools">
-                {TOOLS.map(([k, label]) => (
-                  <button key={k} type="button" className={base.button} aria-pressed={tool === k} data-tool-tab={k} onClick={() => { setToolsOpened(true); setTool((t) => (t === k ? null : k)); }}>{label}</button>
+              <h3 className={base.h3}>{t('em.tr.toolsHeading')}</h3>
+              <div className={tcss.toolTabs} role="group" aria-label={t('em.tr.toolsAria')}>
+                {TOOLS.map((k) => (
+                  <button key={k} type="button" className={base.button} aria-pressed={tool === k} data-tool-tab={k} onClick={() => { setToolsOpened(true); setTool((cur) => (cur === k ? null : k)); }}>{t(`em.tr.tab.${k}` as TranslationKey)}</button>
                 ))}
               </div>
             </div>
             <Why k="tools" bare />
             {toolsOpened && (
-              <Suspense fallback={<p className={css.small}>Loading the tools…</p>}>
+              <Suspense fallback={<p className={css.small}>{t('em.tr.loadingTools')}</p>}>
                 <TraceTools tool={tool} setup={setup} invalid={sec ? '' : reason} commit={commit} unit={unit} digits={digits} client={getClient} />
               </Suspense>
             )}

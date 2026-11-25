@@ -14,6 +14,8 @@ import {
   PanOffset,
   stepZoom,
 } from '../../lib/pdf/signViewport';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
 import styles from '../../styles/PdfTools.module.css';
 import signStyles from '../../styles/PdfSign.module.css';
 
@@ -88,11 +90,11 @@ interface PinchGesture {
   startMidY: number;
 }
 
-const CORNERS: Array<{ corner: CornerHandle; className: string; label: string }> = [
-  { corner: 'nw', className: styles.signHandleNw, label: 'Resize top-left corner' },
-  { corner: 'ne', className: styles.signHandleNe, label: 'Resize top-right corner' },
-  { corner: 'se', className: styles.signHandleSe, label: 'Resize bottom-right corner' },
-  { corner: 'sw', className: styles.signHandleSw, label: 'Resize bottom-left corner' },
+const CORNERS: Array<{ corner: CornerHandle; className: string; labelKey: TranslationKey }> = [
+  { corner: 'nw', className: styles.signHandleNw, labelKey: 'pdf.canvas.resizeNw' },
+  { corner: 'ne', className: styles.signHandleNe, labelKey: 'pdf.canvas.resizeNe' },
+  { corner: 'se', className: styles.signHandleSe, labelKey: 'pdf.canvas.resizeSe' },
+  { corner: 'sw', className: styles.signHandleSw, labelKey: 'pdf.canvas.resizeSw' },
 ];
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -132,6 +134,7 @@ export function SignCanvas({
   fullscreenTopSlot,
   fullscreenBottomSlot,
 }: SignCanvasProps) {
+  const { t } = useI18n();
   const stageRef = React.useRef<HTMLDivElement | null>(null);
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const overlayRef = React.useRef<HTMLDivElement | null>(null);
@@ -742,15 +745,15 @@ export function SignCanvas({
       className={fullscreen ? signStyles.viewerShellFullscreen : signStyles.viewerShell}
       role={fullscreen ? 'dialog' : undefined}
       aria-modal={fullscreen || undefined}
-      aria-label={fullscreen ? 'Full screen PDF viewer' : undefined}
+      aria-label={fullscreen ? t('pdf.canvas.fullscreenViewerAria') : undefined}
     >
-      <div className={signStyles.viewerBar} role="toolbar" aria-label="PDF viewer zoom and pan controls">
+      <div className={signStyles.viewerBar} role="toolbar" aria-label={t('pdf.canvas.zoomPanToolbarAria')}>
         <div className={signStyles.viewerBarGroup}>
           {fullscreen && fullscreenTopSlot}
           <button
             type="button"
             className={signStyles.toolBtn}
-            aria-label="Zoom out"
+            aria-label={t('pdf.canvas.zoomOut')}
             disabled={zoom <= MIN_SIGN_ZOOM + 0.01}
             onClick={() => applyZoomAt(stepZoom(zoom, 'out'))}
           >
@@ -759,8 +762,8 @@ export function SignCanvas({
           <button
             type="button"
             className={signStyles.zoomReadout}
-            title="Reset zoom to fit page"
-            aria-label={`Zoom ${zoomPercent}%, click to reset to fit`}
+            title={t('pdf.canvas.zoomResetTitle')}
+            aria-label={t('pdf.canvas.zoomResetAria', { pct: zoomPercent })}
             onClick={resetView}
           >
             {zoomPercent}%
@@ -768,7 +771,7 @@ export function SignCanvas({
           <button
             type="button"
             className={signStyles.toolBtn}
-            aria-label="Zoom in"
+            aria-label={t('pdf.canvas.zoomIn')}
             disabled={zoom >= MAX_SIGN_ZOOM - 0.01}
             onClick={() => applyZoomAt(stepZoom(zoom, 'in'))}
           >
@@ -776,7 +779,7 @@ export function SignCanvas({
           </button>
           {canResetView && (
             <button type="button" className={signStyles.toolBtn} onClick={resetView}>
-              Fit
+              {t('pdf.canvas.fit')}
             </button>
           )}
         </div>
@@ -786,10 +789,10 @@ export function SignCanvas({
             type="button"
             className={[signStyles.toolBtn, panMode ? signStyles.toolBtnActive : ''].join(' ')}
             aria-pressed={panMode}
-            title="Pan around the page without moving signatures"
+            title={t('pdf.canvas.panTitle')}
             onClick={() => setPanMode((v) => !v)}
           >
-            {panMode ? 'Pan: On' : 'Pan'}
+            {panMode ? t('pdf.canvas.panOn') : t('pdf.canvas.pan')}
           </button>
           <button
             type="button"
@@ -800,7 +803,7 @@ export function SignCanvas({
               setPan({ x: 0, y: 0 });
             }}
           >
-            {fullscreen ? 'Exit full screen' : 'Full screen'}
+            {fullscreen ? t('pdf.canvas.exitFullscreen') : t('pdf.canvas.fullscreen')}
           </button>
         </div>
       </div>
@@ -821,7 +824,7 @@ export function SignCanvas({
       >
         {armedHint && !panMode && (
           <div className={signStyles.stageArmedBanner}>
-            Tap or click on the page to place &ldquo;{armedHint.label}&rdquo;
+            {t('pdf.canvas.placeBanner', { label: armedHint.label })}
           </div>
         )}
 
@@ -871,7 +874,11 @@ export function SignCanvas({
                       key={p.id}
                       tabIndex={panMode ? -1 : 0}
                       role="button"
-                      aria-label={p.kind === 'image' ? 'Placed signature' : `Text stamp: ${p.text}`}
+                      aria-label={
+                        p.kind === 'image'
+                          ? t('pdf.canvas.placedSignatureAria')
+                          : t('pdf.canvas.textStampAria', { text: p.text })
+                      }
                       aria-pressed={selected}
                       className={[
                         styles.signBox,
@@ -904,7 +911,7 @@ export function SignCanvas({
                             style={{ opacity: p.opacity ?? 1 }}
                           />
                         ) : (
-                          <span className={styles.signBoxFallback}>Signature</span>
+                          <span className={styles.signBoxFallback}>{t('pdf.canvas.signatureFallback')}</span>
                         )
                       ) : isEditing ? (
                         <textarea
@@ -951,17 +958,17 @@ export function SignCanvas({
                               <button
                                 type="button"
                                 className={styles.signBoxActionBtn}
-                                title="Edit text"
+                                title={t('pdf.canvas.editTextTitle')}
                                 onClick={() => beginInlineEdit(p)}
                               >
-                                Edit
+                                {t('pdf.canvas.edit')}
                               </button>
                             )}
                             <button
                               type="button"
                               className={[styles.signBoxActionBtn, styles.signBoxActionDanger].join(' ')}
-                              title="Remove"
-                              aria-label="Remove placement"
+                              title={t('pdf.canvas.removeTitle')}
+                              aria-label={t('pdf.canvas.removePlacementAria')}
                               onClick={() => onDelete(p.id)}
                             >
                               &times;
@@ -972,7 +979,7 @@ export function SignCanvas({
                             <div
                               key={h.corner}
                               role="presentation"
-                              aria-label={h.label}
+                              aria-label={t(h.labelKey)}
                               className={[styles.signHandle, h.className].join(' ')}
                               onPointerDown={(e) => startResize(e, p, h.corner)}
                               onPointerMove={handleDragMove}
@@ -988,8 +995,12 @@ export function SignCanvas({
               </div>
             )}
 
-            {rendering && <div className={styles.figureLoading}>Rendering page…</div>}
-            {renderError && <div className={styles.figureLoading}>Preview error: {renderError}</div>}
+            {rendering && <div className={styles.figureLoading}>{t('pdf.canvas.renderingPage')}</div>}
+            {renderError && (
+              <div className={styles.figureLoading}>
+                {t('pdf.canvas.previewError', { error: renderError })}
+              </div>
+            )}
           </div>
         </div>
       </div>

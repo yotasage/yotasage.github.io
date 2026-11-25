@@ -9,6 +9,7 @@ import type { Structure } from '../../lib/emsim/structure';
 import type { Antipad, Backdrill, ReturnVia, ViaStructure } from '../../lib/emsim/via';
 import { stackZ } from '../../lib/emsim/stackup';
 import { barrelsOf } from '../../lib/emsim/viaGeom';
+import { emT } from './emText';
 
 const typed = (x: number): Val => val(+x.toPrecision(6));
 
@@ -57,10 +58,10 @@ export function withSignal(s: Stackup, v: ViaStructure, which: 'entry' | 'exit',
 /** Entry on the Trace section's signal layer (exit kept unless it is that layer): null with nothing to do. */
 export function withTraceLayer(s: Stackup, v: ViaStructure, t: Structure): { via: ViaStructure } | { reason: string } {
   const id = t.kind === 'general' ? '' : t.layer;
-  if (!id || layerIndex(s, id) < 0) return { reason: 'The trace has no single signal layer.' };
-  if (v.entry === id) return { reason: `The entry is already on ${id}.` };
+  if (!id || layerIndex(s, id) < 0) return { reason: emT('em.via.ed.noSingleLayer') };
+  if (v.entry === id) return { reason: emT('em.via.ed.alreadyEntry', { id }) };
   const iS = layerIndex(s, v.start), iE = layerIndex(s, v.end), i = layerIndex(s, id);
-  if (i < iS || i > iE) return { reason: `The barrel does not reach ${id}.` };
+  if (i < iS || i > iE) return { reason: emT('em.via.ed.barrelNoReach', { id }) };
   if (v.exit === id) return { via: withSignal(s, withSignal(s, v, 'exit', v.entry), 'entry', id) };
   return { via: withSignal(s, v, 'entry', id) };
 }
@@ -150,7 +151,7 @@ export function withBackdrill(s: Stackup, v: ViaStructure, on: boolean): { via: 
   const a = layerIndex(s, v.entry), b = layerIndex(s, v.exit);
   const iS = layerIndex(s, v.start), iE = layerIndex(s, v.end);
   const top = z[iS] - z[Math.min(a, b)], bottom = z[Math.max(a, b) + 1] - z[iE + 1];
-  if (!(Math.max(top, bottom) > 1e-6)) return { reason: 'There is no stub to backdrill: the barrel ends on the signal layers.' };
+  if (!(Math.max(top, bottom) > 1e-6)) return { reason: emT('em.via.ed.noStub') };
   const side: Backdrill['side'] = bottom >= top ? 'bottom' : 'top';
   const limit = side === 'top' ? z[0] - z[Math.min(a, b)] : z[Math.max(a, b) + 1];
   const depth = typed(Math.max(0.05, Math.round((limit - 0.1) * 1000) / 1000));

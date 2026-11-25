@@ -10,8 +10,47 @@ import { pdfPreview } from '../../lib/pdf/pdfjs';
 import { CLEAN_OPTIONS, CleanOption, CleanOptions, Finding, FindingId, PRESETS } from '../../lib/pdf/sanitize';
 import { REMOVE_METADATA } from '../../lib/pdf/tools';
 import { runCleanPdf, runInspectPdf } from '../../lib/pdf/workerClient';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
+
+const FINDING_KEYS: Record<FindingId, TranslationKey> = {
+  info: 'pdf.rmm.o.info',
+  xmp: 'pdf.rmm.o.xmp',
+  id: 'pdf.rmm.o.id',
+  imageMeta: 'pdf.rmm.o.imageMeta',
+  annotationAuthors: 'pdf.rmm.o.annotationAuthors',
+  signatures: 'pdf.rmm.o.signatures',
+  thumbnails: 'pdf.rmm.o.thumbnails',
+  privateData: 'pdf.rmm.o.privateData',
+  javascript: 'pdf.rmm.o.javascript',
+  attachments: 'pdf.rmm.o.attachments',
+  comments: 'pdf.rmm.o.comments',
+  formData: 'pdf.rmm.o.formData',
+  history: 'pdf.rmm.o.history',
+};
+
+const OPTION_HELP_KEYS: Record<CleanOption, TranslationKey> = {
+  info: 'pdf.rmm.o.infoHelp',
+  xmp: 'pdf.rmm.o.xmpHelp',
+  id: 'pdf.rmm.o.idHelp',
+  imageMeta: 'pdf.rmm.o.imageMetaHelp',
+  annotationAuthors: 'pdf.rmm.o.annotationAuthorsHelp',
+  signatures: 'pdf.rmm.o.signaturesHelp',
+  thumbnails: 'pdf.rmm.o.thumbnailsHelp',
+  privateData: 'pdf.rmm.o.privateDataHelp',
+  javascript: 'pdf.rmm.o.javascriptHelp',
+  attachments: 'pdf.rmm.o.attachmentsHelp',
+  comments: 'pdf.rmm.o.commentsHelp',
+  formData: 'pdf.rmm.o.formDataHelp',
+};
+
+const PRESET_KEYS: Record<string, [TranslationKey, TranslationKey]> = {
+  metadata: ['pdf.rmm.p.metadata', 'pdf.rmm.p.metadataDesc'],
+  anonymize: ['pdf.rmm.p.anonymize', 'pdf.rmm.p.anonymizeDesc'],
+  maximum: ['pdf.rmm.p.maximum', 'pdf.rmm.p.maximumDesc'],
+};
 
 interface Item {
   id: string;
@@ -33,27 +72,29 @@ interface ItemResult {
 }
 
 function Status({ id, opts, result }: { id: FindingId; opts: CleanOptions; result?: ItemResult }) {
+  const { t } = useI18n();
   const willGo = id === 'history' || opts[id];
-  if (!result || result.error) return willGo ? <span className={styles.statusPending}>Will be removed</span> : <span className={styles.statusKept}>Kept</span>;
-  if (id === 'id' && opts.id) return <span className={styles.statusDone}>Replaced</span>;
-  if (!result.after.some((f) => f.id === id)) return <span className={styles.statusDone}>Removed</span>;
-  return willGo ? <span className={styles.statusLeft}>Partly left</span> : <span className={styles.statusKept}>Kept</span>;
+  if (!result || result.error) return willGo ? <span className={styles.statusPending}>{t('pdf.rmm.willRemove')}</span> : <span className={styles.statusKept}>{t('pdf.rmm.kept')}</span>;
+  if (id === 'id' && opts.id) return <span className={styles.statusDone}>{t('pdf.rmm.replaced')}</span>;
+  if (!result.after.some((f) => f.id === id)) return <span className={styles.statusDone}>{t('pdf.rmm.removed')}</span>;
+  return willGo ? <span className={styles.statusLeft}>{t('pdf.rmm.partlyLeft')}</span> : <span className={styles.statusKept}>{t('pdf.rmm.kept')}</span>;
 }
 
 function Report({ item, opts, result }: { item: Item; opts: CleanOptions; result?: ItemResult }) {
+  const { t } = useI18n();
   return (
     <section className={styles.report}>
       <h3>{item.name}</h3>
       {item.error && <div className={styles.error}>{item.error}</div>}
-      {!item.error && item.locked && <p className={styles.note}>Password protected — enter the password above to inspect.</p>}
-      {!item.error && !item.locked && !item.findings && <p className={styles.note}>Inspecting…</p>}
-      {item.findings?.length === 0 && <p className={styles.note}>No metadata or hidden data found.</p>}
+      {!item.error && item.locked && <p className={styles.note}>{t('pdf.rmm.lockedNote')}</p>}
+      {!item.error && !item.locked && !item.findings && <p className={styles.note}>{t('pdf.p.inspecting')}</p>}
+      {item.findings?.length === 0 && <p className={styles.note}>{t('pdf.rmm.noneFound')}</p>}
       {!!item.findings?.length && (
         <table className={styles.reportTable}>
           <tbody>
             {item.findings.map((f) => (
               <tr key={f.id}>
-                <th>{f.label}</th>
+                <th>{t(FINDING_KEYS[f.id])}</th>
                 <td><ul>{f.details.map((d, i) => <li key={i}>{d}</li>)}</ul></td>
                 <td><Status id={f.id} opts={opts} result={result} /></td>
               </tr>
@@ -67,6 +108,7 @@ function Report({ item, opts, result }: { item: Item; opts: CleanOptions; result
 }
 
 export default function RemoveMetadata() {
+  const { t } = useI18n();
   const [items, setItems] = React.useState<Item[]>([]);
   const [opts, setOpts] = React.useState<CleanOptions>(PRESETS.find((p) => p.id === 'anonymize').options);
   const [neutralNames, setNeutralNames] = React.useState(false);
@@ -86,7 +128,7 @@ export default function RemoveMetadata() {
 
   async function addFiles(files: File[]) {
     const pdfs = files.filter(isPdf);
-    setNotice(pdfs.length < files.length ? `${files.length - pdfs.length} file(s) were skipped because they are not PDFs.` : null);
+    setNotice(pdfs.length < files.length ? t('pdf.p.skippedNonPdf', { n: files.length - pdfs.length }) : null);
     const added = await Promise.all(pdfs.map(async (file): Promise<Item> => ({
       id: uid(), name: file.name, bytes: await readBytes(file), pageCount: null, thumb: null, error: null, findings: null,
     })));
@@ -137,7 +179,7 @@ export default function RemoveMetadata() {
         .catch(() => undefined);
     } catch (e) {
       if (isPasswordError(e)) {
-        setPwError('Incorrect password. Try again.');
+        setPwError(t('pdf.ff.wrongPw'));
       } else {
         update(activeLocked.id, { locked: false, error: errorMessage(e) });
         setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
@@ -149,7 +191,7 @@ export default function RemoveMetadata() {
 
   function cancelUnlock() {
     if (!activeLocked) return;
-    update(activeLocked.id, { locked: false, error: 'Password required to open this PDF.' });
+    update(activeLocked.id, { locked: false, error: t('pdf.p.pwRequired') });
     setPasswordQueue((q) => q.filter((id) => id !== activeLocked.id));
     setPwError(null);
   }
@@ -188,7 +230,7 @@ export default function RemoveMetadata() {
       {CLEAN_OPTIONS.filter((o) => !!o.changesContent === changesContent).map((o) => (
         <label key={o.id} className={styles.check}>
           <input type="checkbox" checked={opts[o.id]} onChange={(e) => toggle(o.id, e.target.checked)} />
-          <span><strong>{o.label}</strong><small>{o.help}</small></span>
+          <span><strong>{t(FINDING_KEYS[o.id])}</strong><small>{t(OPTION_HELP_KEYS[o.id])}</small></span>
         </label>
       ))}
     </div>
@@ -198,54 +240,54 @@ export default function RemoveMetadata() {
     <PdfPage
       title={REMOVE_METADATA.title}
       showHub
-      lead="See what a PDF reveals about who made it and how, then remove it. Each file is inspected when you add it, and inspected again after cleaning to confirm what is gone."
+      lead={t('pdf.rmm.lead')}
     >
       <ToolWorkspace
         tool={REMOVE_METADATA}
         accept="application/pdf,.pdf"
-        selectLabel="Select PDF files"
-        dropLabel="or drop PDFs here"
+        selectLabel={t('pdf.p.selectPdfs')}
+        dropLabel={t('pdf.p.dropPdfs')}
         hasFiles={items.length > 0}
         onFiles={addFiles}
-        toolbar={<button type="button" className={styles.buttonSmall} onClick={() => setItems([])}>Remove all</button>}
+        toolbar={<button type="button" className={styles.buttonSmall} onClick={() => setItems([])}>{t('pdf.p.removeAll')}</button>}
         sidebar={
           <>
-            <div className={styles.levelList} role="radiogroup" aria-label="Preset">
-              {PRESETS.map((p) => (
-                <label key={p.id} className={[styles.level, preset === p.id ? styles.levelSelected : ''].join(' ')}>
-                  <input type="radio" name="preset" checked={preset === p.id} onChange={() => setOpts(p.options)} />
-                  <span><strong>{p.title}</strong><small>{p.text}</small></span>
-                </label>
-              ))}
+            <div className={styles.levelList} role="radiogroup" aria-label={t('pdf.rmm.presetAria')}>
+              {PRESETS.map((p) => {
+                const pair = PRESET_KEYS[p.id];
+                return (
+                  <label key={p.id} className={[styles.level, preset === p.id ? styles.levelSelected : ''].join(' ')}>
+                    <input type="radio" name="preset" checked={preset === p.id} onChange={() => setOpts(p.options)} />
+                    <span><strong>{pair ? t(pair[0]) : p.title}</strong><small>{pair ? t(pair[1]) : p.text}</small></span>
+                  </label>
+                );
+              })}
               <label className={[styles.level, preset === 'custom' ? styles.levelSelected : ''].join(' ')}>
                 <input type="radio" name="preset" checked={preset === 'custom'} readOnly />
-                <span><strong>Custom</strong><small>Pick exactly what to remove below.</small></span>
+                <span><strong>{t('pdf.rmm.p.custom')}</strong><small>{t('pdf.rmm.p.customDesc')}</small></span>
               </label>
             </div>
-            <h3>Hidden data</h3>
+            <h3>{t('pdf.rmm.hiddenData')}</h3>
             {optionList(false)}
-            <h3>Content</h3>
+            <h3>{t('pdf.rmm.content')}</h3>
             {optionList(true)}
-            <p className={styles.note}>
-              Earlier revisions and unused objects are always removed, since the file is written anew.
-              Visible text and images are never changed, so names written on the pages stay.
-            </p>
+            <p className={styles.note}>{t('pdf.rmm.revisionsNote')}</p>
             <label className={styles.check}>
               <input type="checkbox" checked={neutralNames} onChange={(e) => setNeutralNames(e.target.checked)} />
-              <span><strong>Neutral file names</strong><small>Save as document.pdf (document-1.pdf, … for several files) instead of the original names.</small></span>
+              <span><strong>{t('pdf.rmm.neutralNames')}</strong><small>{t('pdf.rmm.neutralNamesHelp')}</small></span>
             </label>
             {notice && <p className={fieldStyles.warning}>{notice}</p>}
             <button type="button" className={styles.primary} disabled={busy || ready.length === 0} onClick={clean}>
-              Clean {ready.length > 1 ? `${ready.length} PDFs` : 'PDF'}
+              {ready.length > 1 ? t('pdf.rmm.btnMany', { n: ready.length }) : t('pdf.rmm.btnOne')}
             </button>
             {busy && <Progress fraction={progress.fraction} label={progress.label} />}
             {done && (
               <div className={styles.result}>
-                <h3>{outputs.length === 1 ? 'Your PDF is clean' : `${outputs.length} PDFs are clean`}</h3>
-                <p>See the report next to the files for what was removed.</p>
+                <h3>{outputs.length === 1 ? t('pdf.rmm.doneOne') : t('pdf.rmm.doneMany', { n: outputs.length })}</h3>
+                <p>{t('pdf.rmm.doneDesc')}</p>
                 {outputs.length === 1
-                  ? <button type="button" className={styles.primary} onClick={() => download(outputs[0].bytes, outputs[0].name)}>Download {outputs[0].name}</button>
-                  : <button type="button" className={styles.primary} onClick={() => download(zipFiles(outputs), 'cleaned-pdfs.zip', 'application/zip')}>Download all (ZIP)</button>}
+                  ? <button type="button" className={styles.primary} onClick={() => download(outputs[0].bytes, outputs[0].name)}>{t('pdf.ff.downloadNamed', { name: outputs[0].name })}</button>
+                  : <button type="button" className={styles.primary} onClick={() => download(zipFiles(outputs), 'cleaned-pdfs.zip', 'application/zip')}>{t('pdf.p.downloadAllZip')}</button>}
                 <ContinueWith currentToolId={REMOVE_METADATA.id} files={outputs} />
               </div>
             )}
@@ -274,16 +316,16 @@ export default function RemoveMetadata() {
               <FileCard
                 thumb={item.thumb}
                 name={item.name}
-                meta={`${item.locked ? 'Password protected' : item.pageCount === null ? '…' : `${item.pageCount} page${item.pageCount === 1 ? '' : 's'}`} · ${formatBytes(item.bytes.length)}`}
+                meta={`${item.locked ? t('pdf.p.pwProtected') : item.pageCount === null ? '…' : t(item.pageCount === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany', { n: item.pageCount })} · ${formatBytes(item.bytes.length)}`}
                 error={item.error ?? r?.error}
                 controls={controls}
-                actions={output && <button type="button" className={styles.buttonSmall} onClick={() => download(output.bytes, output.name)}>Download</button>}
+                actions={output && <button type="button" className={styles.buttonSmall} onClick={() => download(output.bytes, output.name)}>{t('pdf.p.download')}</button>}
               >
                 {!item.error && !item.locked && (
                   <div className={styles.fileMeta}>
                     {r && !r.error
-                      ? <span className={styles.saved}>Cleaned · {formatBytes(r.bytes.length)}</span>
-                      : count === undefined ? 'Inspecting…' : count === 0 ? 'Nothing found' : `${count} kind${count === 1 ? '' : 's'} of data found`}
+                      ? <span className={styles.saved}>{t('pdf.rmm.cleanedMeta', { size: formatBytes(r.bytes.length) })}</span>
+                      : count === undefined ? t('pdf.p.inspecting') : count === 0 ? t('pdf.rmm.nothingFound') : t(count === 1 ? 'pdf.rmm.kindsOne' : 'pdf.rmm.kindsMany', { n: count })}
                   </div>
                 )}
               </FileCard>

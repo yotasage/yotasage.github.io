@@ -8,6 +8,7 @@
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
+import { useI18n } from '../../lib/ui/i18n';
 import css from '../../styles/Equations.module.css';
 import { mathHtml } from './math';
 import { markWide, watchWide } from './wide';
@@ -85,6 +86,7 @@ interface Props {
 }
 
 function DerivationDialog({ view, opening, from, onClosed, titleId, link }: Props) {
+  const { t } = useI18n();
   const [shown, setShown] = useState(1);
   const [at, setAt] = useState(opening);
   if (at !== opening) { setAt(opening); setShown(1); }
@@ -137,8 +139,8 @@ function DerivationDialog({ view, opening, from, onClosed, titleId, link }: Prop
       {view && (
         <>
           <div className={css.head}>
-            <h2 className={css.title} id={titleId}>Derivation: {view.title}</h2>
-            <button type="button" className={css.close} data-derive-close="" onClick={() => dlg.current?.close()} aria-label="Close the derivation">Close</button>
+            <h2 className={css.title} id={titleId}>{t('derive.titlePrefix', { title: view.title })}</h2>
+            <button type="button" className={css.close} data-derive-close="" onClick={() => dlg.current?.close()} aria-label={t('derive.closeAria')}>{t('derive.close')}</button>
           </div>
           <div className={css.body} data-derive-body="" ref={body} {...link?.body}>
             <div className={`${css.eqn} ${css.goal}`} data-derive-goal="" dangerouslySetInnerHTML={{ __html: view.goal }} />
@@ -146,7 +148,7 @@ function DerivationDialog({ view, opening, from, onClosed, titleId, link }: Prop
             <ol className={css.steps} ref={list} aria-live="polite">
               {view.steps.slice(0, shown).map((s, k) => (
                 <li key={k} className={css.step} tabIndex={0} data-derive-step={k} data-derive-sides={s.sides}
-                  aria-label={`Step ${k + 1} of ${n}`} onKeyDown={link?.stepKey}
+                  aria-label={t('derive.stepOf', { current: k + 1, total: n })} onKeyDown={link?.stepKey}
                   onFocus={(e) => { if (e.target === e.currentTarget) link?.stepFocus?.(); }}
                   onBlur={(e) => { if (e.target === e.currentTarget) link?.stepBlur?.(); }}>
                   <span className={css.no} aria-hidden="true">{k + 1}</span>
@@ -154,7 +156,7 @@ function DerivationDialog({ view, opening, from, onClosed, titleId, link }: Prop
                   <p className={css.why} data-derive-why="" dangerouslySetInnerHTML={{ __html: s.why }} />
                   {s.nums && (
                     <div className={css.nums} data-derive-nums="">
-                      <span className={css.numsLabel}>With your numbers</span>
+                      <span className={css.numsLabel}>{t('derive.withNumbers')}</span>
                       <div className={`${css.eqn} ${css.math}`} dangerouslySetInnerHTML={{ __html: s.nums }} />
                     </div>
                   )}
@@ -163,10 +165,10 @@ function DerivationDialog({ view, opening, from, onClosed, titleId, link }: Prop
             </ol>
           </div>
           <div className={css.controls}>
-            <button type="button" data-derive-back="" aria-disabled={shown <= 1} onClick={() => go(shown - 1)}>Back</button>
-            <button type="button" ref={next} className={css.primary} data-derive-next="" aria-disabled={shown >= n} onClick={() => go(shown + 1)}>Next step</button>
-            <button type="button" data-derive-all="" aria-disabled={shown >= n} onClick={() => go(n)}>Show all</button>
-            <span className={css.count} data-derive-count="">Step {shown} of {n}</span>
+            <button type="button" data-derive-back="" aria-disabled={shown <= 1} onClick={() => go(shown - 1)}>{t('derive.back')}</button>
+            <button type="button" ref={next} className={css.primary} data-derive-next="" aria-disabled={shown >= n} onClick={() => go(shown + 1)}>{t('derive.nextStep')}</button>
+            <button type="button" data-derive-all="" aria-disabled={shown >= n} onClick={() => go(n)}>{t('derive.showAll')}</button>
+            <span className={css.count} data-derive-count="">{t('derive.stepOf', { current: shown, total: n })}</span>
           </div>
         </>
       )}

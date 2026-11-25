@@ -10,6 +10,8 @@
 
 import React, { useEffect, useId, useRef, useState } from 'react';
 
+import { useI18n } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
 import styles from '../../styles/Smith.module.css';
 import { WHYS } from './whys';
 
@@ -37,8 +39,11 @@ const BUBBLE_W = 288, MARGIN = 12, GAP = 6;
 
 /** `topic` replaces the line's own topic where it depends on the context (the guide's step, M6.3a). */
 export function Why({ k, label, topic: topicFor }: { k: string; label?: string; topic?: string }) {
+  const { t } = useI18n();
   const why = WHYS[k];
   if (!why) throw new Error(`Unknown short line "${k}" in the Smith chart.`);
+  const about = t(`sm.why.${k}.a` as TranslationKey);
+  const text = t(`sm.why.${k}.t` as TranslationKey);
   const topic = topicFor ?? why.topic;
   const [at, setAt] = useState<React.CSSProperties | null>(null);
   const wrap = useRef<HTMLSpanElement>(null);
@@ -96,15 +101,15 @@ export function Why({ k, label, topic: topicFor }: { k: string; label?: string; 
       {/* Unlabelled, the button is the 15 px mark itself, a box of fixed size with layout containment: the side panel
           is laid out again on every drag frame (live.ts), and these boxes then cost it nothing inside. */}
       <button ref={button} type="button" className={label ? styles.whyLabelled : styles.whyButton}
-        data-why={k} data-why-topic={topicFor} aria-expanded={!!at} aria-controls={at ? id : undefined} aria-label={label ? undefined : `About ${why.about}`}
+        data-why={k} data-why-topic={topicFor} aria-expanded={!!at} aria-controls={at ? id : undefined} aria-label={label ? undefined : t('sm.why.about', { about })}
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(); }}>
         {label ? <>{label}<span className={styles.whyMark} aria-hidden="true">?</span></> : '?'}
       </button>
       {at && (
         <span className={styles.whyBubble} id={id} role="note" style={at} data-why-bubble={k}>
-          {why.text}{' '}
+          {text}{' '}
           <a href={`#${topic}`} className={styles.whyLink} data-why-link={k}
-            onClick={() => { followTopic(topic, button.current); close(); }}>→ theory</a>
+            onClick={() => { followTopic(topic, button.current); close(); }}>{t('sm.why.toTheory')}</a>
         </span>
       )}
     </span>
@@ -112,13 +117,15 @@ export function Why({ k, label, topic: topicFor }: { k: string; label?: string; 
 }
 
 export function WhyLine({ k }: { k: string }) {
+  const { t } = useI18n();
   const why = WHYS[k];
   if (!why) throw new Error(`Unknown short line "${k}" in the Smith chart.`);
+  const text = t(`sm.why.${k}.t` as TranslationKey);
   return (
     <p className={styles.whyLine} data-why={k}>
-      {why.text}{' '}
+      {text}{' '}
       <a href={`#${why.topic}`} className={styles.whyLink} data-why-link={k}
-        onClick={(e) => followTopic(why.topic, e.currentTarget)}>→ theory</a>
+        onClick={(e) => followTopic(why.topic, e.currentTarget)}>{t('sm.why.toTheory')}</a>
     </p>
   );
 }

@@ -217,7 +217,7 @@ export function StatusBar({
           type="button"
           className={styles.zoomBtn}
           onClick={() => onZoomChange(Math.max(0.15, Math.round((zoom / 1.25) * 100) / 100))}
-          aria-label="Zoom out"
+          aria-label={t('paint.zoom.outAria')}
         >
           −
         </button>
@@ -228,13 +228,13 @@ export function StatusBar({
           value={Math.min(800, Math.round(zoom * 100))}
           onChange={(e) => onZoomChange(Number(e.target.value) / 100)}
           className={styles.zoomRange}
-          aria-label="Zoom level slider"
+          aria-label={t('paint.zoom.sliderAria')}
         />
         <button
           type="button"
           className={styles.zoomBtn}
           onClick={() => onZoomChange(Math.min(16, Math.round(zoom * 1.25 * 100) / 100))}
-          aria-label="Zoom in"
+          aria-label={t('paint.zoom.inAria')}
         >
           +
         </button>
@@ -248,7 +248,7 @@ export function StatusBar({
             onZoomChange(pct / 100);
           }}
           className={styles.zoomNumInput}
-          aria-label="Zoom percentage"
+          aria-label={t('paint.zoom.pctAria')}
         />
         <span className={styles.optUnit}>%</span>
         <button type="button" className={styles.zoomFitBtn} onClick={onFitZoom}>

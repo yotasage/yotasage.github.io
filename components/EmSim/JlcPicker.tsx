@@ -11,6 +11,9 @@ import type { JlcData, JlcEntry, JlcField, JlcFilter } from '../../lib/emsim/jlc
 import type { LengthUnit } from '../../lib/emsim/units';
 import base from '../../styles/EmSim.module.css';
 import css from '../../styles/EmSimStackup.module.css';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TFunc } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
 import { errorText, jlcLoaded, loadJlc } from './jlcData';
 import Calm from './Calm';
 import { lenText } from './format';
@@ -24,15 +27,15 @@ let kept: Choice = ANY; // the filter outlives the panel for this visit
 
 const HAND = new Set(Object.values(PRESET_KEYS));
 const oz = (x: number) => (x === 0.5 ? '½ oz' : `${x} oz`);
-const LABEL: Record<Menu, string> = { layers: 'Layers', thickness: 'Thickness', outer: 'Outer copper', inner: 'Inner copper', offer: 'Offer' };
+const MENUS: readonly Menu[] = ['layers', 'thickness', 'outer', 'inner', 'offer'];
 
 // '' any; otherwise the value's text ('none' for null / no offer).
 const asText = (x: string | number | null) => (x === null ? 'none' : String(x));
-function shown(m: Menu, x: string): string {
+function shown(m: Menu, x: string, t: TFunc): string {
   if (m === 'layers') return x;
   if (m === 'thickness') return `${x} mm`;
-  if (m === 'offer') return x === 'none' ? 'not named' : x;
-  if (x === 'none') return m === 'inner' ? 'none (2 layers)' : x;
+  if (m === 'offer') return x === 'none' ? t('em.jlc.notNamed') : x;
+  if (x === 'none') return m === 'inner' ? t('em.jlc.none2l') : x;
   return oz(Number(x));
 }
 
@@ -49,6 +52,7 @@ function toFilter(c: Choice, leave?: Menu): JlcFilter {
 }
 
 function Row({ e, current, unit, digits, onPick }: { e: JlcEntry; current: boolean; unit: LengthUnit; digits: number; onPick: (e: JlcEntry) => void }) {
+  const { t: tr } = useI18n();
   const k = jlcKey(e);
   const { t, tol, stated } = jlcTarget(e);
   const pressed = jlcPressed(e);
@@ -59,14 +63,14 @@ function Row({ e, current, unit, digits, onPick }: { e: JlcEntry; current: boole
       <button type="button" className={css.jlcRow} data-jlc-key={k} aria-current={current ? 'true' : undefined} onClick={() => onPick(e)}>
         <span className={css.jlcName}>
           {e.id}
-          {HAND.has(k) && <span className={css.edited}>quick preset</span>}
-          {e.noReq && <span className={css.jlcTag} title="The stackup JLCPCB uses when you choose “No requirement”">No requirement</span>}
+          {HAND.has(k) && <span className={css.edited}>{tr('em.jlc.quickPreset')}</span>}
+          {e.noReq && <span className={css.jlcTag} title={tr('em.jlc.noReqTitle')}>{tr('em.jlc.noReq')}</span>}
           {e.offer && <span className={css.jlcTag} data-offer={e.offer}>{e.offer}</span>}
         </span>
         <span className={css.jlcMeta}>
-          {e.layers} layers · {oz(e.outer)} outer{e.inner !== null && <>, {oz(e.inner)} inner</>} ·{' '}
-          {stated ? <>finished {lenText(t, unit, digits)}{tolShown && ` ${tolShown}`}</> : <>nominal {lenText(t, unit, digits)}</>}
-          {off && <span className={css.jlcOff}> · pressed {lenText(pressed, unit, digits)}</span>}
+          {tr('em.jlc.rowMeta', { layers: e.layers, outer: oz(e.outer) })}{e.inner !== null && <>{tr('em.jlc.rowInner', { inner: oz(e.inner) })}</>} ·{' '}
+          {stated ? <>{tr('em.jlc.finished', { val: lenText(t, unit, digits) })}{tolShown && ` ${tolShown}`}</> : <>{tr('em.jlc.nominal', { val: lenText(t, unit, digits) })}</>}
+          {off && <span className={css.jlcOff}>{tr('em.jlc.pressed', { val: lenText(pressed, unit, digits) })}</span>}
           {e.note && <> · {e.note}</>}
         </span>
       </button>
@@ -84,6 +88,7 @@ interface Props {
 }
 
 export default function JlcPicker({ current, unit, digits, onPick, onClose, onLoaded }: Props) {
+  const { t } = useI18n();
   const [data, setData] = useState<JlcData | null>(jlcLoaded());
   const [error, setError] = useState('');
   const [c, setC] = useState<Choice>(kept);
@@ -103,7 +108,7 @@ export default function JlcPicker({ current, unit, digits, onPick, onClose, onLo
   const rigid = useMemo(() => (data ? jlcFilter(data.stackups, { board: 'rigid' }) : []), [data]);
   const menus = useMemo(() => {
     const out = {} as Record<Menu, string[]>;
-    for (const m of Object.keys(LABEL) as Menu[]) {
+    for (const m of MENUS) {
       const vals = jlcValues(jlcFilter(rigid, toFilter(c, m)), m as JlcField).map(asText);
       if (c[m] && !vals.includes(c[m])) vals.push(c[m]);
       out[m] = vals;
@@ -111,6 +116,7 @@ export default function JlcPicker({ current, unit, digits, onPick, onClose, onLo
     return out;
   }, [rigid, c]);
   const list = useMemo(() => jlcSort(jlcFilter(rigid, toFilter(c))), [rigid, c]);
+  const countText = list.length === 1 ? t('em.jlc.countOne') : t('em.jlc.countMany', { n: list.length });
 
   const set = (m: Menu, v: string) => setC((x) => ({ ...x, [m]: v }));
   return (
@@ -125,38 +131,34 @@ export default function JlcPicker({ current, unit, digits, onPick, onClose, onLo
       onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); onClose(); } }}
     >
       <div className={css.jlcHead}>
-        <h3 id="jlc-h" className={base.h3}>All JLCPCB stackups</h3>
-        <button type="button" className={base.button} onClick={onClose} data-jlc-close>Close</button>
+        <h3 id="jlc-h" className={base.h3}>{t('em.jlc.title')}</h3>
+        <button type="button" className={base.button} onClick={onClose} data-jlc-close>{t('em.jlc.close')}</button>
       </div>
-      {!data && !error && <p className={css.layerNote} role="status" data-jlc-loading>Loading JLCPCB’s stackup list (about 50 kB)…</p>}
-      {error && <p className={css.reason} role="alert" data-jlc-error>JLCPCB’s stackup list could not be loaded: {error}. Close and open the list to try again.</p>}
+      {!data && !error && <p className={css.layerNote} role="status" data-jlc-loading>{t('em.jlc.loading')}</p>}
+      {error && <p className={css.reason} role="alert" data-jlc-error>{t('em.jlc.error', { error })}</p>}
       {data && (
         <>
-          <p className={css.layerNote}>
-            The impedance templates JLCPCB lists, read {data.fetched.to}: thicknesses as pressed and εr from its calculator. A
-            board thickness is nominal; the finished thickness and its tolerance are JLCPCB’s, and the pressed sum is shown
-            where it is off the nominal by more than that.
-          </p>
+          <p className={css.layerNote}>{t('em.jlc.note', { date: data.fetched.to })}</p>
           <div className={css.jlcFilters}>
-            {(Object.keys(LABEL) as Menu[]).map((m, i) => (
+            {MENUS.map((m, i) => (
               <label key={m} className={css.toolLabel}>
-                {LABEL[m]}
+                {t(`em.jlc.filter.${m}` as TranslationKey)}
                 <select ref={i === 0 ? first : undefined} className={base.select} data-jlc-filter={m} value={c[m]} onChange={(e) => set(m, e.target.value)}>
-                  <option value="">Any</option>
-                  {menus[m].map((v) => <option key={v} value={v}>{shown(m, v)}</option>)}
+                  <option value="">{t('em.jlc.any')}</option>
+                  {menus[m].map((v) => <option key={v} value={v}>{shown(m, v, t)}</option>)}
                 </select>
               </label>
             ))}
             <label className={css.jlcCheck}>
               <input type="checkbox" checked={c.withdrawn} data-jlc-withdrawn onChange={(e) => setC((x) => ({ ...x, withdrawn: e.target.checked }))} />
-              Show withdrawn
+              {t('em.jlc.showWithdrawn')}
             </label>
-            <button type="button" className={base.button} onClick={() => setC(ANY)} disabled={JSON.stringify(c) === JSON.stringify(ANY)} data-jlc-reset>Clear filters</button>
+            <button type="button" className={base.button} onClick={() => setC(ANY)} disabled={JSON.stringify(c) === JSON.stringify(ANY)} data-jlc-reset>{t('em.jlc.clearFilters')}</button>
           </div>
           <Whys ks="jlc-filter jlc-withdrawn jlc-row" />
-          <p className={css.layerNote} data-jlc-count={list.length}>{list.length} stackup{list.length === 1 ? '' : 's'}</p>
-          <Calm text={`${list.length} stackup${list.length === 1 ? '' : 's'}`} name="jlc-count" />
-          <ul className={css.jlcList} aria-label="Matching stackups">
+          <p className={css.layerNote} data-jlc-count={list.length}>{countText}</p>
+          <Calm text={countText} name="jlc-count" />
+          <ul className={css.jlcList} aria-label={t('em.jlc.matchingAria')}>
             {list.map((e) => <Row key={jlcKey(e)} e={e} current={jlcKey(e) === current} unit={unit} digits={digits} onPick={(x) => onPick(x, data)} />)}
           </ul>
         </>

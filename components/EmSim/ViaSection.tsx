@@ -45,6 +45,7 @@ import {
   withPlane, withReturn, withSignal, withTraceLayer,
 } from './viaEdit';
 import { Why, Whys } from './Why';
+import { useI18n } from '../../lib/ui/i18n';
 
 /**
  * The job's options (M3.2a): the TDR at the rise time and the sweep of 401 points for the plots, every single-ended
@@ -61,6 +62,7 @@ const PRESET_TEXT: Record<ViaPreset, string> = { single: 'Single via 0.6/0.3', p
 interface Props { setup: Setup; commit: Commit; unit: LengthUnit; digits: number }
 
 export default function ViaSection({ setup, commit, unit, digits }: Props) {
+  const { t: tr } = useI18n();
   const s = setup.stackup, v = setup.via, t = setup.trace;
   const cu = useMemo(() => s.layers.filter((l) => l.kind === 'copper'), [s]);
   const issues = useMemo(() => (v ? viaIssues(s, v) : []), [s, v]);
@@ -73,7 +75,7 @@ export default function ViaSection({ setup, commit, unit, digits }: Props) {
   const edit = useMemo<ViaEdit>(() => {
     const on = <T,>(f: (cur: Setup, via: ViaStructure) => { via: ViaStructure } | { reason: string }, then: (cur: Setup, via: ViaStructure) => T): T | string => {
       const cur = setupRef.current;
-      if (!cur.via) return 'There is no via.';
+      if (!cur.via) return tr('em.via.noVia');
       const r = f(cur, cur.via);
       return 'reason' in r ? r.reason : then(cur, r.via);
     };
@@ -90,7 +92,7 @@ export default function ViaSection({ setup, commit, unit, digits }: Props) {
       add: (x, y) => why(on((cur, via) => (Number.isFinite(x) ? addReturnAt(cur.stackup, via, x, y) : { via: addReturn(via) }), (cur, n) => { commit({ ...cur, via: n }); return true; })),
       remove: (k) => commit((cur) => (cur.via ? { ...cur, via: removeReturn(cur.via, k) } : cur)),
     };
-  }, [commit, store]);
+  }, [commit, store, tr]);
 
   // ---- edits ----
   const setVia = (f: (via: ViaStructure, cur: Setup) => ViaStructure, group = '') => {
@@ -104,7 +106,7 @@ export default function ViaSection({ setup, commit, unit, digits }: Props) {
   const preset = (k: ViaPreset) => commit((cur) => { const p = presetVia(k, cur.stackup); return p ? { ...cur, via: p } : cur; });
 
   if (!v) {
-    return <p className={base.lede} data-via-none>A via needs at least two copper layers; pick a stackup with more.</p>;
+    return <p className={base.lede} data-via-none>{tr('em.via.needTwo')}</p>;
   }
   const iS = layerIndex(s, v.start), iE = layerIndex(s, v.end);
   const pair = !!v.pitch;
@@ -123,22 +125,19 @@ export default function ViaSection({ setup, commit, unit, digits }: Props) {
 
   return (
     <>
-      <p className={base.lede}>
-        A via or a differential pair of vias through this stackup. Type its sizes, planes and return vias; the
-        drawings are to scale and the results follow every change.
-      </p>
+      <p className={base.lede}>{tr('em.via.lede')}</p>
       <div className={css.tools}>
-        <div className={base.seg} role="group" aria-label="Single via or pair" data-via-kind={pair ? 'pair' : 'single'}>
-          <button type="button" aria-pressed={!pair} onClick={() => setVia((via) => withPair(via, false))}>Single</button>
-          <button type="button" aria-pressed={pair} onClick={() => setVia((via) => withPair(via, true))}>Pair</button>
+        <div className={base.seg} role="group" aria-label={tr('em.via.kindAria')} data-via-kind={pair ? 'pair' : 'single'}>
+          <button type="button" aria-pressed={!pair} onClick={() => setVia((via) => withPair(via, false))}>{tr('em.via.single')}</button>
+          <button type="button" aria-pressed={pair} onClick={() => setVia((via) => withPair(via, true))}>{tr('em.via.pair')}</button>
         </div>
         {VIA_PRESETS.map((k) => (
-          <button key={k} type="button" className={base.button} data-via-preset={k} onClick={() => preset(k)}>{PRESET_TEXT[k]}</button>
+          <button key={k} type="button" className={base.button} data-via-preset={k} onClick={() => preset(k)}>{tr(`em.via.preset.${k}`)}</button>
         ))}
         <button type="button" className={base.button} data-via-use-trace onClick={() => {
           const r = withTraceLayer(s, v, t);
           if ('reason' in r) setRefused(r.reason); else setVia(() => r.via);
-        }}>Entry on the trace’s layer</button>
+        }}>{tr('em.via.entryTrace')}</button>
       </div>
       <Whys ks="via-kind via-preset via-use-trace" />
 
@@ -149,23 +148,23 @@ export default function ViaSection({ setup, commit, unit, digits }: Props) {
 
         <div className={css.controls} data-via-form>
           <div className={css.selects}>
-            {layerSelect('Barrel from', 'data-via-start', v.start, (id) => setVia((via, cur) => withBarrel(cur.stackup, via, id, via.end)))}
-            {layerSelect('Barrel to', 'data-via-end', v.end, (id) => setVia((via, cur) => withBarrel(cur.stackup, via, via.start, id)))}
-            {layerSelect('Entry layer', 'data-via-entry', v.entry, (id) => setVia((via, cur) => withSignal(cur.stackup, via, 'entry', id)), (i) => i >= iS && i <= iE)}
-            {layerSelect('Exit layer', 'data-via-exit', v.exit, (id) => setVia((via, cur) => withSignal(cur.stackup, via, 'exit', id)), (i) => i >= iS && i <= iE)}
+            {layerSelect(tr('em.via.barrelFrom'), 'data-via-start', v.start, (id) => setVia((via, cur) => withBarrel(cur.stackup, via, id, via.end)))}
+            {layerSelect(tr('em.via.barrelTo'), 'data-via-end', v.end, (id) => setVia((via, cur) => withBarrel(cur.stackup, via, via.start, id)))}
+            {layerSelect(tr('em.via.entryLayer'), 'data-via-entry', v.entry, (id) => setVia((via, cur) => withSignal(cur.stackup, via, 'entry', id)), (i) => i >= iS && i <= iE)}
+            {layerSelect(tr('em.via.exitLayer'), 'data-via-exit', v.exit, (id) => setVia((via, cur) => withSignal(cur.stackup, via, 'exit', id)), (i) => i >= iS && i <= iE)}
           </div>
           <Whys ks="via-barrel via-signal" />
           <div className={stk.fields}>
-            <ValField name="via.drill" label="Drill" x={v.drill} unit={unit} digits={digits} onChange={onVal('drill', (via, x) => ({ ...via, drill: x }))} />
-            <ValField name="via.plating" label="Plating" x={v.plating} unit={unit} digits={digits} zero onChange={onVal('plating', (via, x) => ({ ...via, plating: x }))} />
-            {pair && <ValField name="via.pitch" label="Pitch" x={v.pitch} unit={unit} digits={digits} onChange={onVal('pitch', (via, x) => ({ ...via, pitch: x }))} />}
+            <ValField name="via.drill" label={tr('em.via.drill')} x={v.drill} unit={unit} digits={digits} onChange={onVal('drill', (via, x) => ({ ...via, drill: x }))} />
+            <ValField name="via.plating" label={tr('em.via.plating')} x={v.plating} unit={unit} digits={digits} zero onChange={onVal('plating', (via, x) => ({ ...via, plating: x }))} />
+            {pair && <ValField name="via.pitch" label={tr('em.via.pitch')} x={v.pitch} unit={unit} digits={digits} onChange={onVal('pitch', (via, x) => ({ ...via, pitch: x }))} />}
           </div>
           <Whys ks={`via-drill via-plating${pair ? ' via-pitch' : ''}`} />
 
-          <h3 className={base.h3}>Layers</h3>
+          <h3 className={base.h3}>{tr('em.via.layers')}</h3>
           {v.antipads.length > 0 && (
             <div className={stk.fields}>
-              <ValField name="via.antipad-all" label="All antipads" x={allSame} unit={unit} digits={digits} nullable placeholder="differ" onChange={onVal('antipad-all', (via, x) => withAllAntipads(via, x))} />
+              <ValField name="via.antipad-all" label={tr('em.via.allAntipads')} x={allSame} unit={unit} digits={digits} nullable placeholder={tr('em.via.differ')} onChange={onVal('antipad-all', (via, x) => withAllAntipads(via, x))} />
             </div>
           )}
           <ul className={vcss.rows} data-via-layers>
@@ -180,28 +179,28 @@ export default function ViaSection({ setup, commit, unit, digits }: Props) {
                 <li key={l.id} className={vcss.row} data-via-layer={l.id} data-in-barrel={inB}>
                   <div className={vcss.rowHead}>
                     <b>{l.name || l.id}</b>
-                    {sig && <span className={vcss.tag}>{sig === 'in' ? 'entry' : 'exit'}</span>}
-                    {!inB && <span className={vcss.dim}>no barrel here</span>}
+                    {sig && <span className={vcss.tag}>{tr(sig === 'in' ? 'em.via.entry' : 'em.via.exit')}</span>}
+                    {!inB && <span className={vcss.dim}>{tr('em.via.noBarrel')}</span>}
                     <label className={vcss.check}>
                       <input type="checkbox" checked={plane} disabled={sigs.includes(l.id)} data-via-plane={l.id} onChange={(e) => { const on = e.target.checked; setVia((via, cur) => withPlane(cur.stackup, via, l.id, on)); }} />
-                      plane
+                      {tr('em.via.plane')}
                     </label>
                   </div>
                   {inB && (
                     <div className={stk.fields}>
-                      <ValField name={`via.pad.${l.id}`} label="Pad" x={pad?.d ?? null} unit={unit} digits={digits} nullable placeholder="removed" onChange={onVal(`pad.${l.id}`, (via, x) => withPad(via, l.id, x), true)} />
+                      <ValField name={`via.pad.${l.id}`} label={tr('em.via.pad')} x={pad?.d ?? null} unit={unit} digits={digits} nullable placeholder={tr('em.via.removed')} onChange={onVal(`pad.${l.id}`, (via, x) => withPad(via, l.id, x), true)} />
                       {plane && ap && (
                         <>
                           <label className={css.ctl}>
-                            Antipad
+                            {tr('em.via.antipad')}
                             <select className={base.select} data-via-shape={l.id} value={ap.shape} onChange={(e) => { const shape = e.target.value as typeof ap.shape; setVia((via) => withAntipad(via, l.id, { shape })); }}>
-                              <option value="round">round</option>
-                              <option value="oblong" disabled={!pair}>oblong (pair)</option>
-                              <option value="joined" disabled={!pair}>joined by a bridge (pair)</option>
+                              <option value="round">{tr('em.via.shape.round')}</option>
+                              <option value="oblong" disabled={!pair}>{tr('em.via.shape.oblong')}</option>
+                              <option value="joined" disabled={!pair}>{tr('em.via.shape.joined')}</option>
                             </select>
                           </label>
-                          <ValField name={`via.antipad.${l.id}`} label="Antipad Ø" x={ap.d} unit={unit} digits={digits} onChange={onVal(`antipad.${l.id}`, (via, x) => withAntipad(via, l.id, { d: x }))} />
-                          {ap.shape === 'joined' && <ValField name={`via.bridge.${l.id}`} label="Bridge" x={ap.bridge} unit={unit} digits={digits} onChange={onVal(`bridge.${l.id}`, (via, x) => withAntipad(via, l.id, { bridge: x }))} />}
+                          <ValField name={`via.antipad.${l.id}`} label={tr('em.via.antipadDia')} x={ap.d} unit={unit} digits={digits} onChange={onVal(`antipad.${l.id}`, (via, x) => withAntipad(via, l.id, { d: x }))} />
+                          {ap.shape === 'joined' && <ValField name={`via.bridge.${l.id}`} label={tr('em.via.bridge')} x={ap.bridge} unit={unit} digits={digits} onChange={onVal(`bridge.${l.id}`, (via, x) => withAntipad(via, l.id, { bridge: x }))} />}
                         </>
                       )}
                     </div>
@@ -212,7 +211,7 @@ export default function ViaSection({ setup, commit, unit, digits }: Props) {
           </ul>
           <Whys ks={`via-layer-table via-pad via-plane${v.antipads.length ? ' via-antipad via-shape via-antipad-all' : ''}`} />
 
-          <h3 className={base.h3}>Return vias</h3>
+          <h3 className={base.h3}>{tr('em.via.returnVias')}</h3>
           <ul className={vcss.rows} data-via-returns={v.returns.length}>
             {v.returns.map((r, k) => (
               <li key={k} className={vcss.row} data-via-ret={k + 1}>
@@ -224,39 +223,39 @@ export default function ViaSection({ setup, commit, unit, digits }: Props) {
                       {p}
                     </label>
                   ))}
-                  <button type="button" className={`${base.button} ${vcss.remove}`} data-via-ret-remove={k + 1} aria-label={`Remove return via ${k + 1}`} onClick={() => setVia((via) => removeReturn(via, k))}>Remove</button>
+                  <button type="button" className={`${base.button} ${vcss.remove}`} data-via-ret-remove={k + 1} aria-label={tr('em.via.removeRetAria', { n: k + 1 })} onClick={() => setVia((via) => removeReturn(via, k))}>{tr('em.via.remove')}</button>
                 </div>
                 <div className={stk.fields}>
                   <ValField name={`via.ret.${k + 1}.x`} label="x" x={r.x} unit={unit} digits={digits} negative zero onChange={onVal(`ret.${k}.x`, (via, x) => withReturn(via, k, { x }))} />
                   <ValField name={`via.ret.${k + 1}.y`} label="y" x={r.y} unit={unit} digits={digits} negative zero onChange={onVal(`ret.${k}.y`, (via, x) => withReturn(via, k, { y: x }))} />
-                  <ValField name={`via.ret.${k + 1}.drill`} label="Drill" x={r.drill} unit={unit} digits={digits} onChange={onVal(`ret.${k}.drill`, (via, x) => withReturn(via, k, { drill: x }))} />
-                  <ValField name={`via.ret.${k + 1}.pad`} label="Pad" x={r.pad} unit={unit} digits={digits} nullable placeholder="none" onChange={onVal(`ret.${k}.pad`, (via, x) => withReturn(via, k, { pad: x }), true)} />
+                  <ValField name={`via.ret.${k + 1}.drill`} label={tr('em.via.drill')} x={r.drill} unit={unit} digits={digits} onChange={onVal(`ret.${k}.drill`, (via, x) => withReturn(via, k, { drill: x }))} />
+                  <ValField name={`via.ret.${k + 1}.pad`} label={tr('em.via.pad')} x={r.pad} unit={unit} digits={digits} nullable placeholder={tr('em.via.none')} onChange={onVal(`ret.${k}.pad`, (via, x) => withReturn(via, k, { pad: x }), true)} />
                 </div>
               </li>
             ))}
           </ul>
-          <button type="button" className={base.button} data-via-ret-add onClick={() => setVia((via) => addReturn(via))}>Add return via</button>
+          <button type="button" className={base.button} data-via-ret-add onClick={() => setVia((via) => addReturn(via))}>{tr('em.via.addReturn')}</button>
           <Whys ks={`via-returns via-return-add${v.returns.length ? ' via-return-remove via-return-planes' : ''}`} />
 
-          <h3 className={base.h3}>Backdrill and feeds</h3>
+          <h3 className={base.h3}>{tr('em.via.backdrillFeeds')}</h3>
           <label className={vcss.check}>
             <input type="checkbox" checked={!!v.backdrill} data-via-backdrill-on onChange={(e) => {
               const r = withBackdrill(s, v, e.target.checked);
               if ('reason' in r) setRefused(r.reason); else setVia(() => r.via);
             }} />
-            Backdrill
+            {tr('em.via.backdrill')}
           </label>
           {v.backdrill && (
             <div className={stk.fields}>
               <label className={css.ctl}>
-                From
+                {tr('em.via.from')}
                 <select className={base.select} data-via-backdrill-side value={v.backdrill.side} onChange={(e) => { const side = e.target.value as 'top' | 'bottom'; setVia((via) => ({ ...via, backdrill: { ...via.backdrill, side } })); }}>
-                  <option value="top">top</option>
-                  <option value="bottom">bottom</option>
+                  <option value="top">{tr('em.via.top')}</option>
+                  <option value="bottom">{tr('em.via.bottom')}</option>
                 </select>
               </label>
-              <ValField name="via.bd.depth" label="Depth" x={v.backdrill.depth} unit={unit} digits={digits} onChange={onVal('bd.depth', (via, x) => ({ ...via, backdrill: { ...via.backdrill, depth: x } }))} />
-              <ValField name="via.bd.d" label="Diameter" x={v.backdrill.d} unit={unit} digits={digits} onChange={onVal('bd.d', (via, x) => ({ ...via, backdrill: { ...via.backdrill, d: x } }))} />
+              <ValField name="via.bd.depth" label={tr('em.via.depth')} x={v.backdrill.depth} unit={unit} digits={digits} onChange={onVal('bd.depth', (via, x) => ({ ...via, backdrill: { ...via.backdrill, depth: x } }))} />
+              <ValField name="via.bd.d" label={tr('em.via.diameter')} x={v.backdrill.d} unit={unit} digits={digits} onChange={onVal('bd.d', (via, x) => ({ ...via, backdrill: { ...via.backdrill, d: x } }))} />
             </div>
           )}
           {refused && <p className={css.refused} role="alert" data-via-refused>{refused}</p>}
@@ -266,25 +265,25 @@ export default function ViaSection({ setup, commit, unit, digits }: Props) {
               <li key={k} className={vcss.row} data-via-feed-row={k + 1}>
                 <div className={stk.fields}>
                   <label className={css.ctl}>
-                    Feed on
+                    {tr('em.via.feedOn')}
                     <select className={base.select} data-via-feed-layer={k + 1} value={f.layer} onChange={(e) => { const layer = e.target.value; setVia((via) => withFeed(via, k, { layer })); }}>
-                      {sigs.map((id) => <option key={id} value={id}>{id}{id === v.entry ? ' (entry)' : ' (exit)'}</option>)}
+                      {sigs.map((id) => <option key={id} value={id}>{id}{tr(id === v.entry ? 'em.via.entryParen' : 'em.via.exitParen')}</option>)}
                     </select>
                   </label>
-                  <ValField name={`via.feed.${k + 1}.length`} label="Length" x={f.length} unit={unit} digits={digits} onChange={onVal(`feed.${k}.length`, (via, x) => withFeed(via, k, { length: x }))} />
+                  <ValField name={`via.feed.${k + 1}.length`} label={tr('em.via.length')} x={f.length} unit={unit} digits={digits} onChange={onVal(`feed.${k}.length`, (via, x) => withFeed(via, k, { length: x }))} />
                   <AngleField k={k} angle={f.angle} onAngle={(a) => setVia((via) => withFeed(via, k, { angle: a }), `via.feed.${k}.angle`)} />
-                  <button type="button" className={`${base.button} ${vcss.remove}`} data-via-feed-remove={k + 1} aria-label={`Remove feed ${k + 1}`} onClick={() => setVia((via) => removeFeed(via, k))}>Remove</button>
+                  <button type="button" className={`${base.button} ${vcss.remove}`} data-via-feed-remove={k + 1} aria-label={tr('em.via.removeFeedAria', { n: k + 1 })} onClick={() => setVia((via) => removeFeed(via, k))}>{tr('em.via.remove')}</button>
                 </div>
               </li>
             ))}
           </ul>
           {sigs.filter((id) => !v.feeds.some((f) => f.layer === id)).map((id) => (
-            <button key={id} type="button" className={base.button} data-via-feed-add={id} onClick={() => setVia((via) => addFeed(via, id))}>Add feed on {id}</button>
+            <button key={id} type="button" className={base.button} data-via-feed-add={id} onClick={() => setVia((via) => addFeed(via, id))}>{tr('em.via.addFeedOn', { id })}</button>
           ))}
           <Why k="via-feeds" bare />
           {issues.length > 0 && (
             <div className={base.notice} data-via-issues={issues.length}>
-              <h3 className={base.h3}>About this via</h3>
+              <h3 className={base.h3}>{tr('em.via.about')}</h3>
               <Why k="via-issues" bare />
               <IssueList issues={issues} />
             </div>
@@ -299,12 +298,13 @@ export default function ViaSection({ setup, commit, unit, digits }: Props) {
 }
 
 function AngleField({ k, angle, onAngle }: { k: number; angle: number; onAngle: (a: number) => void }) {
+  const { t } = useI18n();
   const [reason, setReason] = useState('');
   return (
     <div className={stk.field} data-field={`via.feed.${k + 1}.angle`}>
-      <label className={stk.fieldLabel} htmlFor={`via-feed-angle-${k}`}>Direction</label>
+      <label className={stk.fieldLabel} htmlFor={`via-feed-angle-${k}`}>{t('em.via.direction')}</label>
       <div className={stk.valueRow}>
-        <NumInput id={`via-feed-angle-${k}`} className={base.input} shown={String(angle)} aria-invalid={reason ? true : undefined} parse={(x) => readPlain(x, { min: -360, max: 360, what: 'The direction' })} onReason={setReason} onValue={onAngle} />
+        <NumInput id={`via-feed-angle-${k}`} className={base.input} shown={String(angle)} aria-invalid={reason ? true : undefined} parse={(x) => readPlain(x, { min: -360, max: 360, what: t('em.via.directionWhat') })} onReason={setReason} onValue={onAngle} />
         <span className={stk.unit}>°</span>
       </div>
       {reason && <p className={stk.reason} role="alert">{reason}</p>}
@@ -317,6 +317,7 @@ function AngleField({ k, angle, onAngle }: { k: number; angle: number; onAngle: 
 // round trip took over QUICK_ABOVE_MS or no result came for STARVED_MS, the drag solves without error estimates and
 // the panel says so; the full solve follows a pause of PAUSE_MS and the drag's end.
 function ViaSolve({ s, t, v: v0, store, unit, digits }: { s: Setup['stackup']; t: Setup['trace']; v: ViaStructure; store: LiveVia; unit: LengthUnit; digits: number }) {
+  const { t: trText } = useI18n();
   const live = useLive(store);
   const v = live.via ?? v0;
   const dragging = live.dragging;
@@ -349,7 +350,7 @@ function ViaSolve({ s, t, v: v0, store, unit, digits }: { s: Setup['stackup']; t
   useEffect(() => {
     if (errors.length) {
       setState('invalid');
-      setMessage(`Not solved: ${errors[0].message}`);
+      setMessage(trText('em.via.notSolved', { msg: errors[0].message }));
       setStale(false);
       void getClient().then((c) => c.cancel('via'));
       return;
@@ -377,13 +378,13 @@ function ViaSolve({ s, t, v: v0, store, unit, digits }: { s: Setup['stackup']; t
       }, (e) => {
         if (!on) return;
         setState('error');
-        setMessage(`The via model failed: ${e instanceof Error ? e.message : String(e)}`);
+        setMessage(trText('em.via.modelFailed', { msg: e instanceof Error ? e.message : String(e) }));
         setStale(false);
       });
     return () => { on = false; };
     // errors follow s and v.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s, v, t, quick, tr, z0]);
+  }, [s, v, t, quick, tr, z0, trText]);
   useEffect(() => { if (dragging) lastArrival.current = performance.now(); }, [dragging]);
   const eqReq = useEqRequest();
   const eqHere = eqReq?.section === 'via' ? eqReq : null;
@@ -397,7 +398,7 @@ function ViaSolve({ s, t, v: v0, store, unit, digits }: { s: Setup['stackup']; t
       <EqLayout open={eqHere !== null}>
         <ViaResults r={res ? res.r : null} s={s} v={res ? res.v : v} state={state} stale={stale} message={message} ms={rt} unit={unit} digits={digits} quick={quickShown} />
         {eqHere && (
-          <Suspense fallback={<p className={css.small}>Loading the equation…</p>}>
+          <Suspense fallback={<p className={css.small}>{trText('em.via.loadingEq')}</p>}>
             <EqPanel req={eqHere} via={eqVia} stale={stale} digits={digits} />
           </Suspense>
         )}

@@ -39,6 +39,7 @@ import type { Commit, KicadState } from './StackupSection';
 import { Status } from './Status';
 import TraceSection from './TraceSection';
 import { EqEnv } from './eqLinks';
+import { emT, setEmLocale } from './emText';
 import { Why, Whys } from './Why';
 
 export const UNIT_KEY = 'emsim.units';
@@ -114,7 +115,7 @@ function splitQuery(search: string): { setupPart: string; unit: ShownUnit | null
       let u = '';
       try { u = decodeURIComponent(pair.slice(UNIT_PARAM.length + 1)); } catch { /* reported below */ }
       if ((SHOWN_UNITS as readonly string[]).includes(u)) unit = u as ShownUnit;
-      else issues.push(issue('note', 'link', UNIT_PARAM, `The link's unit "${u}" is not one of ${SHOWN_UNITS.join(', ')}; the page shows your own choice.`));
+      else issues.push(issue('note', 'link', UNIT_PARAM, emT('em.link.badUnit', { unit: u, choices: SHOWN_UNITS.join(', ') })));
     } else keep.push(pair);
   }
   return { setupPart: keep.join('&'), unit, issues };
@@ -130,7 +131,8 @@ export default function EmSimTool({ references }: { references: BibEntry[] }) {
   useDesignSystemPage('#0d9488', '#2fb3a0');
   useReplayHighlight();
 
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  setEmLocale(locale);
   const { mode: expMode, setMode: setExpMode } = useExperienceMode();
   const expModeRef = useRef(expMode);
   expModeRef.current = expMode;
@@ -329,7 +331,7 @@ export default function EmSimTool({ references }: { references: BibEntry[] }) {
       () => { if (live) done(decodeLink(q.setupPart, jlcResolve)); },
       (e) => {
         const why = errorText(e);
-        if (live) done(decodeLink(q.setupPart, () => { throw new Error(`JLCPCB’s stackup list could not be loaded: ${why}`); }));
+        if (live) done(decodeLink(q.setupPart, () => { throw new Error(emT('em.jlc.loadErr', { why })); }));
       },
     );
     return () => { live = false; };
@@ -393,7 +395,7 @@ export default function EmSimTool({ references }: { references: BibEntry[] }) {
     if (!asked || jlcLoaded()) { finish(r); return; }
     loadJlc().then(
       () => finish(openProject(text, jlcResolve)),
-      (e) => { const why = errorText(e); finish(openProject(text, () => { throw new Error(`JLCPCB’s stackup list could not be loaded: ${why}`); })); },
+      (e) => { const why = errorText(e); finish(openProject(text, () => { throw new Error(emT('em.jlc.loadErr', { why })); })); },
     );
   }, [commit, showExportNote]);
 
@@ -429,7 +431,7 @@ export default function EmSimTool({ references }: { references: BibEntry[] }) {
     if (!asked || jlcLoaded()) { finish(r); return; }
     loadJlc().then(
       () => finish(decodeLink(q.setupPart, jlcResolve)),
-      (e) => { const why = errorText(e); finish(decodeLink(q.setupPart, () => { throw new Error(`JLCPCB’s stackup list could not be loaded: ${why}`); })); },
+      (e) => { const why = errorText(e); finish(decodeLink(q.setupPart, () => { throw new Error(emT('em.jlc.loadErr', { why })); })); },
     );
   }, [commit, setExpMode]);
 
@@ -445,8 +447,8 @@ export default function EmSimTool({ references }: { references: BibEntry[] }) {
         setOpened({ name: f.name, ok: false, message, issues: [], at: Date.now() });
         showExportNote();
       };
-      if (f.size > PROJECT_MAX_BYTES) { no('The file is too large to be a project of this tool.'); return; }
-      f.text().then((txt) => openText(txt, f.name, true), () => no('The file could not be read.'));
+      if (f.size > PROJECT_MAX_BYTES) { no(emT('em.file.tooLarge')); return; }
+      f.text().then((txt) => openText(txt, f.name, true), () => no(emT('em.file.unreadable')));
     };
     window.addEventListener('dragover', over);
     window.addEventListener('drop', drop);
@@ -587,7 +589,7 @@ export default function EmSimTool({ references }: { references: BibEntry[] }) {
 
             {linkIssues.length > 0 && (
               <div className={styles.notice} data-link-issues="">
-                <h3 className={styles.h3}>The link</h3>
+                <h3 className={styles.h3}>{t('em.link.heading')}</h3>
                 <Why k="link-issues" bare />
                 <IssueList issues={linkIssues} />
               </div>

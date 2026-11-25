@@ -4,6 +4,7 @@
 import React from 'react';
 
 import type { Download } from '../../lib/qrread/types';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/QrRead.module.css';
 
 export async function copyText(text: string): Promise<boolean> {
@@ -24,12 +25,13 @@ export async function copyText(text: string): Promise<boolean> {
   }
 }
 
-export function CopyButton({ text, label = 'Copy', small }: { text: string; label?: string; small?: boolean }) {
+export function CopyButton({ text, label, small }: { text: string; label?: string; small?: boolean }) {
+  const { t } = useI18n();
   const [state, setState] = React.useState<'idle' | 'done' | 'failed'>('idle');
   React.useEffect(() => {
     if (state === 'idle') return undefined;
-    const t = setTimeout(() => setState('idle'), 1500);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setState('idle'), 1500);
+    return () => clearTimeout(timer);
   }, [state]);
   return (
     <button
@@ -37,7 +39,9 @@ export function CopyButton({ text, label = 'Copy', small }: { text: string; labe
       className={small ? styles.smallButton : styles.button}
       onClick={async () => setState((await copyText(text)) ? 'done' : 'failed')}
     >
-      <span aria-live="polite">{state === 'done' ? 'Copied' : state === 'failed' ? 'Copy failed' : label}</span>
+      <span aria-live="polite">
+        {state === 'done' ? t('qrread.bits.copied') : state === 'failed' ? t('qrread.bits.copyFailed') : (label ?? t('qrread.bits.copy'))}
+      </span>
     </button>
   );
 }
@@ -55,6 +59,7 @@ export function save(d: Download) {
 
 /** A value hidden behind dots until "Show" is pressed. */
 export function Secret({ value, mono }: { value: string; mono?: boolean }) {
+  const { t } = useI18n();
   const [shown, setShown] = React.useState(false);
   return (
     <span className={styles.secret}>
@@ -62,7 +67,7 @@ export function Secret({ value, mono }: { value: string; mono?: boolean }) {
         {shown ? value : '•'.repeat(Math.min(12, Math.max(6, [...value].length)))}
       </span>
       <button type="button" className={styles.linkButton} onClick={() => setShown(!shown)} aria-pressed={shown}>
-        {shown ? 'Hide' : 'Show'}
+        {shown ? t('qrread.bits.hide') : t('qrread.bits.show')}
       </button>
       <CopyButton text={value} small />
     </span>

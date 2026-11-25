@@ -24,7 +24,10 @@ import {
 import { goalNode, isCircleGoal } from '../../lib/smith/goal';
 import { askOf } from '../../lib/smith/state';
 import type { Circuit as StateCircuit } from '../../lib/smith/state';
+import { translate } from '../../lib/ui/i18n';
+import type { Locale } from '../../lib/ui/translations';
 import { complexText } from './readout';
+import { eqTitle, getSmithLocale } from './smithText';
 
 const TAU = 2 * Math.PI;
 
@@ -280,11 +283,15 @@ function pointTargets(out: Spec[]): void {
 }
 
 /** The subject in words, for the panel's head ("Part 2: series L", "Node 1", "The input", "The readout's point"). */
-export function subjectName(c: Circuit, s: Subject): string {
+export function subjectName(c: Circuit, s: Subject, locale: Locale = getSmithLocale()): string {
   const n = c.parts.length;
-  if (s.t === 'point') return 'the readout’s point';
-  if (s.t === 'part') return `part ${s.i + 1}`;
-  return s.k === 0 ? (n === 0 ? 'the load (the input)' : 'the load') : s.k === n ? 'the input' : `node ${s.k}`;
+  if (s.t === 'point') return translate(locale, 'sm.math.subPoint');
+  if (s.t === 'part') return translate(locale, 'sm.math.subPart', { n: s.i + 1 });
+  return s.k === 0
+    ? translate(locale, n === 0 ? 'sm.math.subLoadInput' : 'sm.math.subLoad')
+    : s.k === n
+      ? translate(locale, 'sm.math.subInput')
+      : translate(locale, 'sm.math.subNode', { k: s.k });
 }
 
 const GAMMAS = new Set(['Gamma', 'Gamma_in', 'Gamma_L', 'Gamma_c']);
@@ -326,12 +333,13 @@ export function rowOf(sp: Spec, digits: number): MathRow {
   const lhsName = eq.tree.t === 'eq' && eq.tree.xs[0].t === 'id' ? eq.tree.xs[0].v : '';
   const target = tg[lhsName] ?? '';
   const sub = substitutions(eq.tree, values, colour);
+  const title = eqTitle(sp.id, eq.title);
   if (!sub) {
     // The left side has no finite value here (an open, a part at ∞): the symbolic line only.
     const sides = eq.tree.t === 'eq' ? eq.tree.xs : [eq.tree];
     const deco = { variable: colour };
     const rhs = sides.slice(1).map((x) => { const t = tex(x, deco); return t.startsWith('-') ? `{${t}}` : t; }).join(' = ');
-    return { id: sp.id, title: eq.title, lhs: tex(sides[0], deco), rhs, lines: [], result: '\\text{not a finite number here}', bound: true, raw: '', binding, targets, target };
+    return { id: sp.id, title, lhs: tex(sides[0], deco), rhs, lines: [], result: `\\text{${translate(getSmithLocale(), 'sm.math.notFinite')}}`, bound: true, raw: '', binding, targets, target };
   }
   const shown = values[lhsName]!;
   const lines = sub.lines;
@@ -354,5 +362,5 @@ export function rowOf(sp: Spec, digits: number): MathRow {
   if (bound || (x.floor > 0 && (fl(x.re, x.floor) !== x.re || fl(x.im, x.floor) !== x.im))) {
     raw = x.im === 0 ? formatAmount(x.re, x.unit, digits, true) : complexText(x.re, x.im, x.unit, digits, 0);
   }
-  return { id: sp.id, title: eq.title, lhs: sub.lhs, rhs: sub.rhs, lines, result, bound, raw, binding, targets, target };
+  return { id: sp.id, title, lhs: sub.lhs, rhs: sub.rhs, lines, result, bound, raw, binding, targets, target };
 }

@@ -3,6 +3,8 @@ import React from 'react';
 
 import { renderPage } from '../../lib/pdf/pdfjs';
 import type { RedactBox } from '../../lib/pdf/redact';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
 import styles from '../../styles/PdfRedact.module.css';
 
 type HandleDir = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
@@ -31,15 +33,15 @@ interface RedactCanvasProps {
 
 const MIN_SPAN = 0.008;
 
-const HANDLES: Array<{ dir: HandleDir; className: string; label: string }> = [
-  { dir: 'nw', className: styles.handleNw, label: 'Resize top-left corner' },
-  { dir: 'n', className: styles.handleN, label: 'Resize top edge' },
-  { dir: 'ne', className: styles.handleNe, label: 'Resize top-right corner' },
-  { dir: 'e', className: styles.handleE, label: 'Resize right edge' },
-  { dir: 'se', className: styles.handleSe, label: 'Resize bottom-right corner' },
-  { dir: 's', className: styles.handleS, label: 'Resize bottom edge' },
-  { dir: 'sw', className: styles.handleSw, label: 'Resize bottom-left corner' },
-  { dir: 'w', className: styles.handleW, label: 'Resize left edge' },
+const HANDLES: Array<{ dir: HandleDir; className: string; labelKey: TranslationKey }> = [
+  { dir: 'nw', className: styles.handleNw, labelKey: 'pdf.canvas.resizeNw' },
+  { dir: 'n', className: styles.handleN, labelKey: 'pdf.canvas.resizeN' },
+  { dir: 'ne', className: styles.handleNe, labelKey: 'pdf.canvas.resizeNe' },
+  { dir: 'e', className: styles.handleE, labelKey: 'pdf.canvas.resizeE' },
+  { dir: 'se', className: styles.handleSe, labelKey: 'pdf.canvas.resizeSe' },
+  { dir: 's', className: styles.handleS, labelKey: 'pdf.canvas.resizeS' },
+  { dir: 'sw', className: styles.handleSw, labelKey: 'pdf.canvas.resizeSw' },
+  { dir: 'w', className: styles.handleW, labelKey: 'pdf.canvas.resizeW' },
 ];
 
 type DragState =
@@ -115,6 +117,7 @@ export function RedactCanvas({
   onUpdateBox,
   onDeleteBox,
 }: RedactCanvasProps) {
+  const { t } = useI18n();
   const stageRef = React.useRef<HTMLDivElement | null>(null);
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const overlayRef = React.useRef<HTMLDivElement | null>(null);
@@ -419,7 +422,10 @@ export function RedactCanvas({
                   key={box.id}
                   role="region"
                   tabIndex={0}
-                  aria-label={`Redaction box ${idx + 1}${box.matchedText ? ` (${box.matchedText})` : ''}. Use arrow keys to nudge, Shift+arrows for larger steps, Delete to remove.`}
+                  aria-label={t('pdf.canvas.redactBoxAria', {
+                    n: idx + 1,
+                    match: box.matchedText ? ` (${box.matchedText})` : '',
+                  })}
                   className={[
                     styles.box,
                     previewFinal ? styles.boxPreviewFinal : '',
@@ -454,8 +460,8 @@ export function RedactCanvas({
                       <button
                         type="button"
                         className={styles.boxDeleteBtn}
-                        aria-label="Remove redaction box"
-                        title="Remove redaction box (Delete)"
+                        aria-label={t('pdf.canvas.removeRedactAria')}
+                        title={t('pdf.canvas.removeRedactTitle')}
                         onPointerDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -468,7 +474,7 @@ export function RedactCanvas({
                         <div
                           key={h.dir}
                           role="slider"
-                          aria-label={h.label}
+                          aria-label={t(h.labelKey)}
                           aria-valuemin={0}
                           aria-valuemax={100}
                           aria-valuenow={Math.round(
@@ -507,7 +513,7 @@ export function RedactCanvas({
           </div>
         )}
 
-        {rendering && <div className={styles.loadingBadge}>Rendering page…</div>}
+        {rendering && <div className={styles.loadingBadge}>{t('pdf.canvas.renderingPage')}</div>}
         {renderError && !rendering && <div className={styles.loadingBadge}>{renderError}</div>}
       </div>
     </div>

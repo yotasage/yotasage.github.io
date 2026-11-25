@@ -4,6 +4,7 @@
 
 import React from 'react';
 
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Smith.module.css';
 import { mathLink } from './mathLink';
 import type { Subject } from './mathRows';
@@ -20,7 +21,8 @@ export interface ShowEqProps {
 }
 
 export function ShowEq({ subject, row = '', k, what, back }: ShowEqProps) {
-  const label = `Show the equation of ${what}`;
+  const { t } = useI18n();
+  const label = t('sm.showEq.aria', { what });
   return (
     <button type="button" className={styles.showEq} data-show-eq={k} aria-label={label} title={label}
       onClick={(e) => { e.stopPropagation(); mathLink.show({ subject, row, from: e.currentTarget, key: k, back }); }}>=</button>

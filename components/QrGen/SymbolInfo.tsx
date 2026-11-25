@@ -1,49 +1,57 @@
 import React from 'react';
 
 import { QrSymbol, SYMBOLOGY_LABELS } from '../../lib/qr/encoder';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/QrGen.module.css';
 
-const RECOVERY: Record<string, string> = { L: 'about 7 %', M: 'about 15 %', Q: 'about 25 %', H: 'about 30 %' };
-
 export default function SymbolInfo({ sym }: { sym: QrSymbol }) {
+  const { t } = useI18n();
+  const recovery: Record<string, string> = {
+    L: t('qrgen.info.recL'),
+    M: t('qrgen.info.recM'),
+    Q: t('qrgen.info.recQ'),
+    H: t('qrgen.info.recH'),
+  };
   const usedPct = sym.capacityBits ? (100 * sym.usedBits) / sym.capacityBits : 100;
-  const blocks = sym.blocks.map((b) => `${b.count} × (${b.data} data + ${b.ec} EC)`).join(' + ');
-  const maskLabel = sym.symbology === 'rmqr' ? 'Fixed pattern (rMQR has a single mask)' : String(sym.mask);
-  const scoreTitle = sym.symbology === 'micro' ? 'Mask scores (higher is better)' : 'Mask penalties (lower is better)';
+  const blocks = sym.blocks
+    .map((b) => t('qrgen.info.blockFmt', { count: b.count, data: b.data, ec: b.ec }))
+    .join(' + ');
+  const maskLabel = sym.symbology === 'rmqr' ? t('qrgen.info.fixedMask') : String(sym.mask);
+  const scoreTitle = sym.symbology === 'micro' ? t('qrgen.info.scoreHigher') : t('qrgen.info.scoreLower');
 
   return (
     <>
       <table className={styles.infoTable}>
         <tbody>
-          <tr><th>Symbol</th><td>{SYMBOLOGY_LABELS[sym.symbology]}</td></tr>
-          <tr><th>Version</th><td>{sym.versionName} ({sym.width} × {sym.height} modules)</td></tr>
+          <tr><th>{t('qrgen.info.thSymbol')}</th><td>{SYMBOLOGY_LABELS[sym.symbology]}</td></tr>
+          <tr><th>{t('qrgen.info.thVersion')}</th><td>{sym.versionName} ({sym.width} × {sym.height} {t('qrgen.preview.modules')})</td></tr>
           <tr>
-            <th>Error correction</th>
-            <td>{sym.ecLevel ? `${sym.ecLevel}, restores ${RECOVERY[sym.ecLevel]} of the codewords` : 'Error detection only (M1)'}</td>
+            <th>{t('qrgen.info.thEc')}</th>
+            <td>{sym.ecLevel ? t('qrgen.info.ecRestores', { level: sym.ecLevel, rec: recovery[sym.ecLevel] }) : t('qrgen.info.ecM1Only')}</td>
           </tr>
-          <tr><th>Data mask</th><td>{maskLabel}</td></tr>
+          <tr><th>{t('qrgen.info.thMask')}</th><td>{maskLabel}</td></tr>
           <tr>
-            <th>Data bits</th>
+            <th>{t('qrgen.info.thDataBits')}</th>
             <td>
-              {sym.usedBits} of {sym.capacityBits} ({usedPct.toFixed(1)} %)
+              {t('qrgen.info.bitsOf', { used: sym.usedBits, cap: sym.capacityBits, pct: usedPct.toFixed(1) })}
               <div className={styles.meter}><div style={{ width: `${Math.min(100, usedPct)}%` }} /></div>
             </td>
           </tr>
-          <tr><th>Codewords</th><td>{sym.dataCodewords} data + {sym.ecCodewords} error correction</td></tr>
-          <tr><th>Blocks</th><td>{blocks}</td></tr>
-          {sym.remainderBits > 0 && <tr><th>Remainder modules</th><td>{sym.remainderBits}</td></tr>}
+          <tr><th>{t('qrgen.info.thCodewords')}</th><td>{t('qrgen.info.codewordsVal', { data: sym.dataCodewords, ec: sym.ecCodewords })}</td></tr>
+          <tr><th>{t('qrgen.info.thBlocks')}</th><td>{blocks}</td></tr>
+          {sym.remainderBits > 0 && <tr><th>{t('qrgen.info.thRemainder')}</th><td>{sym.remainderBits}</td></tr>}
         </tbody>
       </table>
 
-      <h3>Segments</h3>
+      <h3>{t('qrgen.info.segmentsHeading')}</h3>
       <table className={styles.infoTable}>
         <tbody>
-          {sym.segments.length === 0 && <tr><td>No data (empty symbol)</td></tr>}
+          {sym.segments.length === 0 && <tr><td>{t('qrgen.info.emptySymbol')}</td></tr>}
           {sym.segments.map((s, i) => (
             <tr key={i}>
               <th>{s.label}{s.mode !== 'header' ? ` (${s.count})` : ''}</th>
               <td>
-                {s.bits} bits
+                {t('qrgen.info.bitsUnit', { bits: s.bits })}
                 {s.preview && <div className={styles.mono}>{s.preview.length > 80 ? s.preview.slice(0, 80) + '…' : s.preview}</div>}
               </td>
             </tr>

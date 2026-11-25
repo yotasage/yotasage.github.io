@@ -4,9 +4,11 @@ import {
   AXIAL_BODIES, BODY_COATS, CHIP_SIZES, DrawStyle, IMAGE_FORMATS, ImageFormat, MAX_EXPORT_WIDTH, copyImage, drawAxial, drawChip,
   drawingFileName, exportBlob, exportHeight, exportSvg, formatOhms, formatRkm, formatTolerance, saveBlob, tikzAxial, tikzChip,
 } from '../../lib/resistor';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TranslationKey } from '../../lib/ui/translations';
 import styles from '../../styles/Resistor.module.css';
 import { CopyIcon, SaveIcon, Segmented } from './parts';
-import { Change, PartType, Resolved } from './view';
+import { Change, PartType, Resolved, colourLabel } from './view';
 
 interface Props {
   resolved: Resolved;
@@ -33,6 +35,7 @@ const SILHOUETTE = 7;
 
 // The Drawing section: the part that is drawn (body and colour, or chip size) and the export of the drawing.
 export default function DrawingSection({ resolved: r, drawStyle, onStyle, onChange }: Props) {
+  const { t, locale } = useI18n();
   const [width, setWidth] = useState(1024);
   const [scale, setScale] = useState(1);
   const [background, setBackground] = useState<Background>('transparent');
@@ -46,9 +49,19 @@ export default function DrawingSection({ resolved: r, drawStyle, onStyle, onChan
 
   const lines = useMemo(() => {
     const value = `${formatOhms(r.ohms)}${r.ohms > 0 ? ` ${formatTolerance(axial && r.colours.length === 3 ? 20 : r.tolerance)}` : ''}`;
-    if (axial) return [value, r.colours.join(' · '), `${r.body.rating} axial, ${r.body.length} × ${r.body.diameter} mm`];
-    return [value, r.marking && !r.unmarked ? `marking ${r.marking}` : 'no marking', `${r.chip.imperial} (${r.chip.metric} metric), ${r.chip.length} × ${r.chip.width} mm`];
-  }, [axial, r.ohms, r.tolerance, r.colours.join(), r.body, r.marking, r.unmarked, r.chip]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (axial) {
+      return [
+        value,
+        r.colours.map((c) => colourLabel(c, locale)).join(' · '),
+        t('res.dr.axialLine', { rating: r.body.rating, l: r.body.length, d: r.body.diameter }),
+      ];
+    }
+    return [
+      value,
+      r.marking && !r.unmarked ? t('res.dr.markingLine', { m: r.marking }) : t('res.dr.noMarkingLine'),
+      t('res.dr.chipLine', { imp: r.chip.imperial, metric: r.chip.metric, l: r.chip.length, w: r.chip.width }),
+    ];
+  }, [axial, r.ohms, r.tolerance, r.colours.join(), r.body, r.marking, r.unmarked, r.chip, locale, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const drawing = useMemo(() => {
     const options = { style: drawStyle, ink: fill && isDark(fill) ? INK_ON_DARK : INK_ON_LIGHT, background: fill, caption: caption ? lines : undefined, scale: caption, id: 'out' };
@@ -63,7 +76,7 @@ export default function DrawingSection({ resolved: r, drawStyle, onStyle, onChan
   const save = async (format: ImageFormat) => {
     try {
       saveBlob(await exportBlob(drawing, pixels, format), name(format));
-      setStatus({ text: `Saved ${name(format)}, ${pixels} × ${height} px${format === 'jpg' && !fill ? ', on white: JPG has no transparency' : ''}.` });
+      setStatus({ text: t('res.dr.saved', { name: name(format), w: pixels, h: height, jpgNote: format === 'jpg' && !fill ? t('res.dr.jpgWhite') : '' }) });
     } catch (error) {
       setStatus({ text: (error as Error).message, failed: true });
     }
@@ -72,15 +85,15 @@ export default function DrawingSection({ resolved: r, drawStyle, onStyle, onChan
   const copyPicture = async () => {
     try {
       await copyImage(drawing, pixels);
-      setStatus({ text: `Copied as a PNG of ${pixels} × ${height} px.` });
+      setStatus({ text: t('res.dr.copiedPng', { w: pixels, h: height }) });
     } catch (error) {
-      setStatus({ text: (error as Error).message || 'The picture could not be copied.', failed: true });
+      setStatus({ text: (error as Error).message || t('res.dr.copyPngErr'), failed: true });
     }
   };
 
   // TikZ is made from the flat drawing, whatever the style of the picture, with the caption and background chosen.
   const tikz = () => {
-    const options = { caption: caption ? lines : undefined, scale: caption, background: fill, title: `Resistor ${formatRkm(r.ohms)}, ${lines.slice(1).join(', ')}` };
+    const options = { caption: caption ? lines : undefined, scale: caption, background: fill, title: t('res.dr.tikzTitle', { rkm: formatRkm(r.ohms), rest: lines.slice(1).join(', ') }) };
     return axial
       ? tikzAxial(r.colours, r.body, r.coat.id, { ...options, bandNotes: r.code.ok ? r.code.bands.map((b) => b.meaning) : undefined })
       : tikzChip(r.chip, r.unmarked ? null : r.marking ?? null, options);
@@ -90,7 +103,7 @@ export default function DrawingSection({ resolved: r, drawStyle, onStyle, onChan
     try {
       const made = tikz();
       saveBlob(new Blob([made.document], { type: 'application/x-tex;charset=utf-8' }), name('tex'));
-      setStatus({ text: `Saved ${name('tex')}: it compiles as it is and draws the ${drawStyle === 'flat' ? '' : 'flat '}part ${Math.round(made.width)} mm wide.` });
+      setStatus({ text: t('res.dr.savedTex', { name: name('tex'), flat: drawStyle === 'flat' ? '' : t('res.dr.flatWord'), mm: Math.round(made.width) }) });
     } catch (error) {
       setStatus({ text: (error as Error).message, failed: true });
     }
@@ -99,18 +112,18 @@ export default function DrawingSection({ resolved: r, drawStyle, onStyle, onChan
   const copyTikz = async () => {
     try {
       await navigator.clipboard.writeText(tikz().picture);
-      setStatus({ text: `Copied the tikzpicture with its colours, to paste into a document that loads TikZ.` });
+      setStatus({ text: t('res.dr.copiedTikz') });
     } catch {
-      setStatus({ text: 'The TikZ could not be copied.', failed: true });
+      setStatus({ text: t('res.dr.copyTikzErr'), failed: true });
     }
   };
 
   const copySvg = async () => {
     try {
       await navigator.clipboard.writeText(exportSvg(drawing, pixels));
-      setStatus({ text: 'Copied the SVG as text.' });
+      setStatus({ text: t('res.dr.copiedSvg') });
     } catch {
-      setStatus({ text: 'The SVG could not be copied.', failed: true });
+      setStatus({ text: t('res.dr.copySvgErr'), failed: true });
     }
   };
 
@@ -118,22 +131,22 @@ export default function DrawingSection({ resolved: r, drawStyle, onStyle, onChan
     <>
       <div className={styles.block}>
         <div className={styles.blockHead}>
-          <h3>The part</h3>
-          <span className={styles.blockMeta}>what the drawing shows</span>
+          <h3>{t('res.dr.thePart')}</h3>
+          <span className={styles.blockMeta}>{t('res.dr.whatShows')}</span>
         </div>
         <div className={styles.optionRow}>
-          <span className={styles.label}>Kind</span>
-          <Segmented<PartType> label="Kind of resistor" value={r.type} options={[{ value: 'axial', label: 'Axial, through-hole' }, { value: 'chip', label: 'Chip, surface-mount' }]} onChange={(type) => onChange({ view: { type } })} />
+          <span className={styles.label}>{t('res.dr.kind')}</span>
+          <Segmented<PartType> label={t('res.st.kindAria')} value={r.type} options={[{ value: 'axial', label: t('res.dr.axialOpt') }, { value: 'chip', label: t('res.dr.chipOpt') }]} onChange={(type) => onChange({ view: { type } })} />
         </div>
         <div className={styles.optionRow}>
-          <span className={styles.label}>Style</span>
-          <Segmented<DrawStyle> label="Style of the drawing" value={drawStyle} options={[{ value: 'realistic', label: 'Realistic' }, { value: 'flat', label: 'Flat, for documents' }]} onChange={onStyle} />
+          <span className={styles.label}>{t('res.dr.style')}</span>
+          <Segmented<DrawStyle> label={t('res.st.styleAria')} value={drawStyle} options={[{ value: 'realistic', label: t('res.st.realistic') }, { value: 'flat', label: t('res.dr.flatOpt') }]} onChange={onStyle} />
         </div>
         {axial ? (
           <>
             <div className={styles.optionRow}>
-              <span className={styles.label}>Body</span>
-              <div className={styles.cards} role="radiogroup" aria-label="Body size">
+              <span className={styles.label}>{t('res.dr.body')}</span>
+              <div className={styles.cards} role="radiogroup" aria-label={t('res.dr.bodyAria')}>
                 {AXIAL_BODIES.map((body, i) => (
                   <button key={body.rating} type="button" role="radio" aria-checked={body === r.body} className={styles.card} onClick={() => onChange({ view: { type: 'axial', body: i } })}>
                     <span className={styles.cardShape}><span className={styles.axialShape} style={{ width: body.length * 4, height: body.diameter * 4 }} /></span>
@@ -144,98 +157,101 @@ export default function DrawingSection({ resolved: r, drawStyle, onStyle, onChan
               </div>
             </div>
             <div className={styles.optionRow}>
-              <span className={styles.label}>Colour</span>
-              <div className={styles.cards} role="radiogroup" aria-label="Body colour">
+              <span className={styles.label}>{t('res.dr.colour')}</span>
+              <div className={styles.cards} role="radiogroup" aria-label={t('res.dr.colourAria')}>
                 {BODY_COATS.map((coat) => (
                   <button key={coat.id} type="button" role="radio" aria-checked={coat.id === r.coat.id} className={styles.coat} onClick={() => onChange({ view: { type: 'axial', coat: coat.id } })}>
                     <span className={styles.coatSwatch} style={{ background: coat.hex }} />
-                    <span>{coat.label}{coat.what && <span className={styles.cardMeta}>, {coat.what}</span>}</span>
+                    <span>
+                      {t(`res.coat.${coat.id}` as TranslationKey)}
+                      {coat.what && <span className={styles.cardMeta}>, {t(`res.coat.${coat.id}.what` as TranslationKey)}</span>}
+                    </span>
                   </button>
                 ))}
               </div>
             </div>
-            <p className={styles.caption}>The bodies are those of a carbon film series; sizes differ a little by maker. The size does not fix the rating: a metal film part in the 1/4 W body is rated 0.6 W. The sources are with the table in <a href="#reference" className={styles.textLink}>Reference</a>.</p>
+            <p className={styles.caption}>{t('res.dr.axialCaptionPre')}<a href="#reference" className={styles.textLink}>{t('res.dr.refLink')}</a>.</p>
           </>
         ) : (
           <>
             <div className={styles.optionRow}>
-              <span className={styles.label}>Size</span>
-              <div className={styles.cards} role="radiogroup" aria-label="Chip size">
+              <span className={styles.label}>{t('res.st.size')}</span>
+              <div className={styles.cards} role="radiogroup" aria-label={t('res.dr.chipAria')}>
                 {CHIP_SIZES.map((size) => (
                   <button key={size.imperial} type="button" role="radio" aria-checked={size === r.chip} className={styles.card} onClick={() => onChange({ view: { type: 'chip', size: size.imperial } })} title={`${size.length} × ${size.width} mm`}>
                     <span className={styles.cardShape}><span className={styles.chipShape} style={{ width: size.length * SILHOUETTE, height: size.width * SILHOUETTE }} /></span>
                     <span className={[styles.num, styles.cardName].join(' ')}>{size.imperial}</span>
-                    <span className={[styles.num, styles.cardMeta].join(' ')}>{size.metric} metric</span>
+                    <span className={[styles.num, styles.cardMeta].join(' ')}>{size.metric} {t('res.metric')}</span>
                   </button>
                 ))}
               </div>
             </div>
-            <p className={styles.caption}>The outlines show the sizes next to each other, at one scale. Imperial 0402 and metric 0402 are different parts, as are 0603 and 0603, so both names are always given.</p>
+            <p className={styles.caption}>{t('res.dr.chipCaption')}</p>
           </>
         )}
       </div>
 
       <div className={styles.block}>
         <div className={styles.blockHead}>
-          <h3>Save the drawing</h3>
-          <span className={styles.blockMeta}>made in the browser, nothing is uploaded</span>
+          <h3>{t('res.dr.saveTitle')}</h3>
+          <span className={styles.blockMeta}>{t('res.dr.saveMeta')}</span>
         </div>
         <div className={styles.export}>
           <div className={styles.preview} data-bg={background} style={fill ? { background: fill } : undefined} dangerouslySetInnerHTML={{ __html: drawing.svg }} />
           <div className={styles.exportControls}>
             <div className={styles.optionRow}>
-              <span className={styles.label}>Width</span>
+              <span className={styles.label}>{t('res.dr.width')}</span>
               <div className={styles.inline}>
-                <Segmented<number> label="Width in pixels" value={WIDTHS.includes(width) ? width : -1} options={WIDTHS.map((value) => ({ value, label: String(value) }))} onChange={setWidth} />
-                <input className={styles.numberInput} type="number" min={16} max={MAX_EXPORT_WIDTH} step={1} value={width || ''} onChange={(event) => setWidth(Number(event.target.value))} aria-label="Width in pixels" />
+                <Segmented<number> label={t('res.dr.widthAria')} value={WIDTHS.includes(width) ? width : -1} options={WIDTHS.map((value) => ({ value, label: String(value) }))} onChange={setWidth} />
+                <input className={styles.numberInput} type="number" min={16} max={MAX_EXPORT_WIDTH} step={1} value={width || ''} onChange={(event) => setWidth(Number(event.target.value))} aria-label={t('res.dr.widthAria')} />
                 <span className={styles.stageUnit}>px</span>
-                <Segmented<number> label="Pixel density" value={scale} options={[1, 2, 4].map((value) => ({ value, label: `${value}×` }))} onChange={setScale} />
+                <Segmented<number> label={t('res.dr.densityAria')} value={scale} options={[1, 2, 4].map((value) => ({ value, label: `${value}×` }))} onChange={setScale} />
               </div>
             </div>
             <div className={styles.optionRow}>
-              <span className={styles.label}>Background</span>
+              <span className={styles.label}>{t('res.dr.background')}</span>
               <div className={styles.inline}>
                 <Segmented<Background>
-                  label="Background"
+                  label={t('res.dr.background')}
                   value={background}
-                  options={[{ value: 'transparent', label: 'None' }, { value: 'white', label: 'White' }, { value: 'dark', label: 'Dark' }, { value: 'custom', label: 'Colour' }]}
+                  options={[{ value: 'transparent', label: t('res.dr.bgNone') }, { value: 'white', label: t('res.dr.bgWhite') }, { value: 'dark', label: t('res.dr.bgDark') }, { value: 'custom', label: t('res.dr.bgCustom') }]}
                   onChange={setBackground}
                 />
-                {background === 'custom' && <input className={styles.colourInput} type="color" value={custom} onChange={(event) => setCustom(event.target.value)} aria-label="Background colour" />}
+                {background === 'custom' && <input className={styles.colourInput} type="color" value={custom} onChange={(event) => setCustom(event.target.value)} aria-label={t('res.dr.bgCustomAria')} />}
               </div>
             </div>
             <div className={styles.optionRow}>
-              <span className={styles.label}>Caption</span>
-              <Segmented<number> label="Caption" value={caption ? 1 : 0} options={[{ value: 1, label: 'Value, code and size' }, { value: 0, label: 'None', title: 'The part alone: no caption and no scale bar' }]} onChange={(value) => setCaption(value === 1)} />
+              <span className={styles.label}>{t('res.dr.caption')}</span>
+              <Segmented<number> label={t('res.dr.caption')} value={caption ? 1 : 0} options={[{ value: 1, label: t('res.dr.capFull') }, { value: 0, label: t('res.dr.bgNone'), title: t('res.dr.capNoneTitle') }]} onChange={(value) => setCaption(value === 1)} />
             </div>
             <div className={styles.optionRow}>
-              <span className={styles.label}>Save as</span>
+              <span className={styles.label}>{t('res.dr.saveAs')}</span>
               <div className={styles.inline}>
                 {IMAGE_FORMATS.map((format) => (
-                  <button key={format.id} type="button" className={styles.copy} onClick={() => save(format.id)} title={`Save ${name(format.id)}`}>
+                  <button key={format.id} type="button" className={styles.copy} onClick={() => save(format.id)} title={t('res.dr.saveFileTitle', { name: name(format.id) })}>
                     <SaveIcon /><span>{format.label}</span>
                   </button>
                 ))}
-                <button type="button" className={styles.copy} onClick={saveTikz} title={`Save ${name('tex')}, for LaTeX`}>
+                <button type="button" className={styles.copy} onClick={saveTikz} title={t('res.dr.saveTexTitle', { name: name('tex') })}>
                   <SaveIcon /><span>TikZ</span>
                 </button>
               </div>
             </div>
             <div className={styles.optionRow}>
-              <span className={styles.label}>Copy</span>
+              <span className={styles.label}>{t('res.hero.copy')}</span>
               <div className={styles.inline}>
-                <button type="button" className={styles.copy} onClick={copyPicture} title="Copy the picture as a PNG"><CopyIcon /><span>Image</span></button>
-                <button type="button" className={styles.copy} onClick={copySvg} title="Copy the SVG as text"><CopyIcon /><span>SVG</span></button>
-                <button type="button" className={styles.copy} onClick={copyTikz} title="Copy the tikzpicture, for LaTeX"><CopyIcon /><span>TikZ</span></button>
+                <button type="button" className={styles.copy} onClick={copyPicture} title={t('res.dr.copyImgTitle')}><CopyIcon /><span>{t('res.dr.image')}</span></button>
+                <button type="button" className={styles.copy} onClick={copySvg} title={t('res.dr.copySvgTitle')}><CopyIcon /><span>SVG</span></button>
+                <button type="button" className={styles.copy} onClick={copyTikz} title={t('res.dr.copyTikzTitle')}><CopyIcon /><span>TikZ</span></button>
               </div>
             </div>
-            {drawStyle !== 'flat' && <p className={styles.exportHint}>TikZ, for LaTeX, is always the flat drawing.</p>}
+            {drawStyle !== 'flat' && <p className={styles.exportHint}>{t('res.dr.tikzHint')}</p>}
             <p className={styles.exportStatus} role="status" data-failed={status?.failed ? true : undefined}>
               {status?.text ?? (
                 <>
                   <span className={styles.num}>{name('png').replace(/\.png$/, '')}</span>, <span className={styles.num}>{pixels} × {height} px</span>
-                  {pixels !== Math.round(width || 0) * scale ? ` (between 16 and ${MAX_EXPORT_WIDTH} px wide)` : ''}.
-                  {!fill && ` Without a background the lines${caption ? ' and the caption' : ''} are dark, for light pages; JPG is saved on white.`}
+                  {pixels !== Math.round(width || 0) * scale ? t('res.dr.clamped', { max: MAX_EXPORT_WIDTH }) : ''}.
+                  {!fill && t('res.dr.noBgHint', { cap: caption ? t('res.dr.andCap') : '' })}
                 </>
               )}
             </p>

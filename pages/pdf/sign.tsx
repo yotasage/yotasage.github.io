@@ -28,6 +28,7 @@ import {
 } from '../../lib/pdf/sign';
 import { SIGN } from '../../lib/pdf/tools';
 import { runApplySignatures } from '../../lib/pdf/workerClient';
+import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PdfTools.module.css';
 import fieldStyles from '../../styles/Fields.module.css';
 
@@ -76,6 +77,7 @@ function clamp(v: number, lo: number, hi: number): number {
 }
 
 export default function SignPdfPage() {
+  const { t } = useI18n();
   const [doc, setDoc] = React.useState<LoadedDoc | null>(null);
   const [pdfProxy, setPdfProxy] = React.useState<PDFDocumentProxy | null>(null);
   const closeProxyRef = React.useRef<(() => Promise<void>) | null>(null);
@@ -235,7 +237,7 @@ export default function SignPdfPage() {
         setLocked({
           name,
           bytes,
-          error: password !== undefined ? 'Incorrect password. Try again.' : null,
+          error: password !== undefined ? t('pdf.ff.wrongPw') : null,
           busy: false,
         });
       } else {
@@ -250,10 +252,10 @@ export default function SignPdfPage() {
   async function loadFile(files: File[]) {
     const pdf = files.find(isPdf);
     if (!pdf) {
-      setNotice('Please select a PDF file.');
+      setNotice(t('pdf.ff.pickPdf'));
       return;
     }
-    setNotice(files.length > 1 ? 'Only the first PDF was opened. Sign PDF works on one file at a time.' : null);
+    setNotice(files.length > 1 ? t('pdf.sg.onlyFirst') : null);
     setLocked(null);
     try {
       const bytes = await readBytes(pdf);
@@ -372,7 +374,7 @@ export default function SignPdfPage() {
       created = buildTextPlacement(formatTodayIso(), normX, normY, { widthFrac: 0.18, fontSize: 12 });
     } else {
       const activeAsset = library.find((item) => item.id === activeAssetId);
-      const defaultName = activeAsset && activeAsset.source === 'type' ? activeAsset.label : 'Full Name';
+      const defaultName = activeAsset && activeAsset.source === 'type' ? activeAsset.label : t('pdf.sg.fullName');
       created = buildTextPlacement(defaultName, normX, normY, { widthFrac: 0.24, fontSize: 13 });
     }
 
@@ -388,7 +390,7 @@ export default function SignPdfPage() {
     const asset = library.find((item) => item.id === activeAssetId) ?? library[0] ?? null;
     if (!asset) {
       setShowPad(true);
-      setNotice('Create a signature first using the Draw, Type, or Upload pad.');
+      setNotice(t('pdf.sg.needSig'));
       return;
     }
     setActiveAssetId(asset.id);
@@ -412,7 +414,7 @@ export default function SignPdfPage() {
 
   function handleQuickAddText() {
     const activeAsset = library.find((item) => item.id === activeAssetId);
-    const defaultName = activeAsset && activeAsset.source === 'type' ? activeAsset.label : 'Printed Name';
+    const defaultName = activeAsset && activeAsset.source === 'type' ? activeAsset.label : t('pdf.sg.printedName');
     const offset = (currentPageCount % 5) * 0.03;
     const item = buildTextPlacement(defaultName, 0.35 + offset, 0.85 - offset, {
       widthFrac: 0.24,
@@ -437,7 +439,7 @@ export default function SignPdfPage() {
     }
     if (clones.length === 0) return;
     commitPlacements((prev) => [...prev, ...clones]);
-    setNotice(`Copied selected item to ${clones.length} other page${clones.length === 1 ? '' : 's'}.`);
+    setNotice(t(clones.length === 1 ? 'pdf.sg.copiedOne' : 'pdf.sg.copiedMany', { n: clones.length }));
   }
 
   function handleDuplicateSelected() {
@@ -494,8 +496,8 @@ export default function SignPdfPage() {
       const asset = library.find((item) => item.id === armed.assetId);
       return asset ? { label: asset.label } : null;
     }
-    return { label: armed.kind === 'date' ? "Today's date" : 'Text stamp' };
-  }, [armed, library]);
+    return { label: t(armed.kind === 'date' ? 'pdf.sg.todayDate' : 'pdf.sg.textStamp') };
+  }, [armed, library, t]);
 
   const outputName = `${safeFileName(fileName, 'signed').replace(/\.pdf$/i, '')}.pdf`;
 
@@ -516,11 +518,7 @@ export default function SignPdfPage() {
   const pageCount = doc?.pageCount ?? 0;
 
   return (
-    <PdfPage
-      title={SIGN.title}
-      showHub
-      lead="Draw, type or upload a handwritten signature, place signatures, dates and text stamps anywhere on your PDF, and save locally without uploading a single byte."
-    >
+    <PdfPage title={SIGN.title} showHub lead={t('pdf.sg.lead')}>
       {locked && (
         <PasswordPrompt
           fileName={locked.name}
@@ -534,15 +532,15 @@ export default function SignPdfPage() {
         />
       )}
       {error && !doc && <div className={styles.error} style={{ marginBottom: '1rem' }}>{error}</div>}
-      {loading && !doc && !locked && <Progress fraction={0.45} label="Opening PDF…" />}
+      {loading && !doc && !locked && <Progress fraction={0.45} label={t('pdf.p.opening')} />}
 
       <ToolWorkspace
         tool={SIGN}
         accept="application/pdf,.pdf"
         multiple={false}
-        selectLabel="Select a PDF file"
-        dropLabel="or drop a PDF here"
-        addLabel="Replace PDF"
+        selectLabel={t('pdf.p.selectPdfFile')}
+        dropLabel={t('pdf.p.dropPdf')}
+        addLabel={t('pdf.p.replacePdf')}
         hasFiles={!!doc}
         onFiles={loadFile}
         toolbar={
@@ -557,11 +555,11 @@ export default function SignPdfPage() {
                   setSelectedId(null);
                 }}
               >
-                &larr; Prev
+                {t('pdf.p.prev')}
               </button>
               <select
                 className={styles.signPageSelect}
-                aria-label="Select page"
+                aria-label={t('pdf.sg.selectPage')}
                 value={pageIndex}
                 onChange={(e) => {
                   setPageIndex(Number(e.target.value));
@@ -572,7 +570,7 @@ export default function SignPdfPage() {
                   const cnt = countsByPage.get(idx) ?? 0;
                   return (
                     <option key={idx} value={idx}>
-                      Page {idx + 1} / {pageCount}
+                      {t('pdf.sg.pageOf', { n: idx + 1, total: pageCount })}
                       {cnt > 0 ? ` (${cnt})` : ''}
                     </option>
                   );
@@ -587,11 +585,11 @@ export default function SignPdfPage() {
                   setSelectedId(null);
                 }}
               >
-                Next &rarr;
+                {t('pdf.p.next')}
               </button>
             </div>
             <button type="button" className={styles.buttonSmall} onClick={clearDoc}>
-              Close
+              {t('pdf.ff.close')}
             </button>
           </>
         }
@@ -599,33 +597,21 @@ export default function SignPdfPage() {
           <>
             <div className={styles.signLibSection}>
               <div className={styles.signLibHeader}>
-                <span className={styles.signSectionTitle}>Your signatures ({library.length})</span>
-                <button
-                  type="button"
-                  className={styles.miniBtn}
-                  onClick={() => setShowPad((v) => !v)}
-                >
-                  {showPad ? 'Hide pad' : '+ New signature'}
+                <span className={styles.signSectionTitle}>{t('pdf.sg.yourSigs', { n: library.length })}</span>
+                <button type="button" className={styles.miniBtn} onClick={() => setShowPad((v) => !v)}>
+                  {t(showPad ? 'pdf.sg.hidePad' : 'pdf.sg.newSig')}
                 </button>
               </div>
 
               {library.length === 0 ? (
-                <p className={styles.note}>
-                  Create a signature or initials using the pad on the left to add it to your session library.
-                </p>
+                <p className={styles.note}>{t('pdf.sg.emptyLib')}</p>
               ) : (
                 <div className={styles.signLibList}>
                   {library.map((asset) => {
                     const isActive = asset.id === activeAssetId;
                     const isArmed = armed?.kind === 'signature' && armed.assetId === asset.id;
                     return (
-                      <div
-                        key={asset.id}
-                        className={[
-                          styles.signLibCard,
-                          isActive ? styles.signLibCardActive : '',
-                        ].join(' ')}
-                      >
+                      <div key={asset.id} className={[styles.signLibCard, isActive ? styles.signLibCardActive : ''].join(' ')}>
                         <button
                           type="button"
                           className={styles.signLibPickBtn}
@@ -639,14 +625,14 @@ export default function SignPdfPage() {
                           </div>
                           <span className={styles.signLibMeta}>
                             <strong>{asset.label}</strong>
-                            <small>{isArmed ? 'Click page to place' : 'Click to place'}</small>
+                            <small>{t(isArmed ? 'pdf.sg.clickPagePlace' : 'pdf.sg.clickToPlace')}</small>
                           </span>
                         </button>
                         <button
                           type="button"
                           className={[styles.miniBtn, styles.miniBtnDanger].join(' ')}
-                          aria-label={`Delete ${asset.label}`}
-                          title="Delete from library"
+                          aria-label={t('pdf.sg.delAria', { label: asset.label })}
+                          title={t('pdf.sg.delTitle')}
                           onClick={() => handleDeleteAsset(asset.id)}
                         >
                           &times;
@@ -661,40 +647,36 @@ export default function SignPdfPage() {
             {selectedPlacement && (
               <div className={styles.inspectorBox}>
                 <div className={styles.inspectorHeader}>
-                  <span>
-                    {selectedPlacement.kind === 'image' ? 'Selected signature' : 'Selected text stamp'}
-                  </span>
-                  <span className={styles.inspectorMeta}>Page {selectedPlacement.pageIndex + 1}</span>
+                  <span>{t(selectedPlacement.kind === 'image' ? 'pdf.sg.selSig' : 'pdf.sg.selText')}</span>
+                  <span className={styles.inspectorMeta}>{t('pdf.ff.pageN', { n: selectedPlacement.pageIndex + 1 })}</span>
                 </div>
 
                 {selectedPlacement.kind === 'text' && (
                   <>
-                    <Field label="Text">
+                    <Field label={t('pdf.sg.text')}>
                       <textarea
                         rows={2}
                         className={styles.formTextarea}
                         value={selectedPlacement.text}
-                        onChange={(e) =>
-                          handleCommitChange(selectedPlacement.id, { text: e.target.value })
-                        }
+                        onChange={(e) => handleCommitChange(selectedPlacement.id, { text: e.target.value })}
                       />
                     </Field>
 
                     <div className={styles.signInspectorGrid}>
-                      <Field label="Font">
+                      <Field label={t('pdf.p.font')}>
                         <Select<SignatureTextFont>
                           value={selectedPlacement.font ?? 'helvetica'}
                           onChange={(font) => handleCommitChange(selectedPlacement.id, { font })}
                           options={[
-                            ['helvetica', 'Helvetica'],
-                            ['helvetica-bold', 'Helvetica Bold'],
-                            ['times', 'Times'],
-                            ['times-italic', 'Times Italic'],
-                            ['courier', 'Courier'],
+                            ['helvetica', t('pdf.p.fontHelv')],
+                            ['helvetica-bold', t('pdf.p.fontHelvBold')],
+                            ['times', t('pdf.sg.times')],
+                            ['times-italic', t('pdf.sg.timesItalic')],
+                            ['courier', t('pdf.p.fontCourier')],
                           ]}
                         />
                       </Field>
-                      <Field label="Size (pt)">
+                      <Field label={t('pdf.sg.sizePt')}>
                         <NumberInput
                           value={selectedPlacement.fontSize ?? 13}
                           min={6}
@@ -706,19 +688,17 @@ export default function SignPdfPage() {
                     </div>
 
                     <div className={styles.sigControlsRow}>
-                      <span className={styles.note}>Color</span>
+                      <span className={styles.note}>{t('pdf.p.color')}</span>
                       <div className={styles.sigSwatchGroup}>
                         {SIGNATURE_INK_COLORS.map((swatch) => (
                           <button
                             key={swatch.hex}
                             type="button"
-                            title={swatch.label}
-                            aria-label={swatch.label}
+                            title={t(swatch.labelKey)}
+                            aria-label={t(swatch.labelKey)}
                             className={[
                               styles.sigSwatch,
-                              (selectedPlacement.color ?? '#111827') === swatch.hex
-                                ? styles.sigSwatchActive
-                                : '',
+                              (selectedPlacement.color ?? '#111827') === swatch.hex ? styles.sigSwatchActive : '',
                             ].join(' ')}
                             style={{ backgroundColor: swatch.hex }}
                             onClick={() => handleCommitChange(selectedPlacement.id, { color: swatch.hex })}
@@ -730,42 +710,32 @@ export default function SignPdfPage() {
                 )}
 
                 <label className={styles.sigRangeLabel}>
-                  <span>Opacity {Math.round((selectedPlacement.opacity ?? 1) * 100)}%</span>
+                  <span>{t('pdf.sg.opacityPct', { n: Math.round((selectedPlacement.opacity ?? 1) * 100) })}</span>
                   <input
                     type="range"
                     min={0.1}
                     max={1}
                     step={0.05}
                     value={selectedPlacement.opacity ?? 1}
-                    onChange={(e) =>
-                      handleCommitChange(selectedPlacement.id, { opacity: Number(e.target.value) })
-                    }
+                    onChange={(e) => handleCommitChange(selectedPlacement.id, { opacity: Number(e.target.value) })}
                   />
                 </label>
 
                 <div className={styles.presetRow}>
                   {pageCount > 1 && (
-                    <button
-                      type="button"
-                      className={styles.presetBtn}
-                      onClick={handleApplySelectedToAllPages}
-                    >
-                      Apply to all pages
+                    <button type="button" className={styles.presetBtn} onClick={handleApplySelectedToAllPages}>
+                      {t('pdf.sg.applyAll')}
                     </button>
                   )}
-                  <button
-                    type="button"
-                    className={styles.presetBtn}
-                    onClick={handleDuplicateSelected}
-                  >
-                    Duplicate
+                  <button type="button" className={styles.presetBtn} onClick={handleDuplicateSelected}>
+                    {t('pdf.p.duplicate')}
                   </button>
                   <button
                     type="button"
                     className={[styles.presetBtn, styles.miniBtnDanger].join(' ')}
                     onClick={() => handleDeletePlacement(selectedPlacement.id)}
                   >
-                    Remove
+                    {t('pdf.edm.remove')}
                   </button>
                 </div>
               </div>
@@ -773,19 +743,21 @@ export default function SignPdfPage() {
 
             <div className={styles.summaryBox}>
               <div className={styles.summaryRow}>
-                <span>Placed on this page</span>
+                <span>{t('pdf.sg.placedPage')}</span>
                 <strong>{currentPageCount}</strong>
               </div>
               <div className={styles.summaryRow}>
-                <span>Total across document</span>
+                <span>{t('pdf.sg.totalDoc')}</span>
                 <strong>
-                  {totalCount} item{totalCount === 1 ? '' : 's'} ({countsByPage.size} page
-                  {countsByPage.size === 1 ? '' : 's'})
+                  {t('pdf.sg.itemsPages', {
+                    items: t(totalCount === 1 ? 'pdf.sg.itemOne' : 'pdf.sg.itemMany', { n: totalCount }),
+                    pages: t(countsByPage.size === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany', { n: countsByPage.size }),
+                  })}
                 </strong>
               </div>
             </div>
 
-            <Field label="File name">
+            <Field label={t('pdf.ff.fileName')}>
               <input className={fieldStyles.input} value={fileName} onChange={(e) => setFileName(e.target.value)} />
             </Field>
 
@@ -799,26 +771,26 @@ export default function SignPdfPage() {
               onClick={() => void handleSavePdf()}
             >
               {busy
-                ? 'Embedding signatures…'
+                ? t('pdf.sg.embedding')
                 : totalCount === 0
-                  ? 'Place a signature or stamp to save'
-                  : `Sign & save PDF (${totalCount} item${totalCount === 1 ? '' : 's'})`}
+                  ? t('pdf.sg.placeFirst')
+                  : t('pdf.sg.saveBtn', {
+                      items: t(totalCount === 1 ? 'pdf.sg.itemOne' : 'pdf.sg.itemMany', { n: totalCount }),
+                    })}
             </button>
 
             {result && (
               <div className={styles.result}>
-                <h3>PDF signed</h3>
+                <h3>{t('pdf.sg.doneTitle')}</h3>
                 <p>
-                  Embedded <strong>{result.placedCount}</strong> item{result.placedCount === 1 ? '' : 's'} across{' '}
-                  <strong>{result.pagesModified}</strong> page{result.pagesModified === 1 ? '' : 's'} ·{' '}
-                  {formatBytes(result.bytes.length)}.
+                  {t('pdf.sg.doneDesc', {
+                    items: t(result.placedCount === 1 ? 'pdf.sg.itemOne' : 'pdf.sg.itemMany', { n: result.placedCount }),
+                    pages: t(result.pagesModified === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany', { n: result.pagesModified }),
+                    size: formatBytes(result.bytes.length),
+                  })}
                 </p>
-                <button
-                  type="button"
-                  className={styles.primary}
-                  onClick={() => download(result.bytes, outputName)}
-                >
-                  Download {outputName}
+                <button type="button" className={styles.primary} onClick={() => download(result.bytes, outputName)}>
+                  {t('pdf.ff.downloadNamed', { name: outputName })}
                 </button>
                 <ContinueWith currentToolId={SIGN.id} files={[{ name: outputName, bytes: result.bytes }]} />
               </div>
@@ -831,11 +803,14 @@ export default function SignPdfPage() {
             <div className={styles.fileBanner}>
               <strong>{doc.name}</strong>
               <span className={styles.fileBannerMeta}>
-                {pageCount} page{pageCount === 1 ? '' : 's'} · {formatBytes(doc.bytes.length)}
+                {t(pageCount === 1 ? 'pdf.ff.pagesOne' : 'pdf.ff.pagesMany', { n: pageCount })} · {formatBytes(doc.bytes.length)}
               </span>
               {currentPageCount > 0 && (
                 <span className={[styles.previewBadge, styles.previewBadgeInfo].join(' ')}>
-                  {currentPageCount} item{currentPageCount === 1 ? '' : 's'} on page {pageIndex + 1}
+                  {t('pdf.sg.itemsOnPage', {
+                    items: t(currentPageCount === 1 ? 'pdf.sg.itemOne' : 'pdf.sg.itemMany', { n: currentPageCount }),
+                    page: pageIndex + 1,
+                  })}
                 </span>
               )}
             </div>
@@ -843,19 +818,16 @@ export default function SignPdfPage() {
             <div className={styles.signActionBar}>
               <button
                 type="button"
-                className={[
-                  styles.buttonSmall,
-                  armed?.kind === 'signature' ? styles.signBtnArmed : '',
-                ].join(' ')}
+                className={[styles.buttonSmall, armed?.kind === 'signature' ? styles.signBtnArmed : ''].join(' ')}
                 onClick={handleQuickPlaceSignature}
               >
-                {armed?.kind === 'signature' ? 'Cancel place' : 'Place signature'}
+                {t(armed?.kind === 'signature' ? 'pdf.sg.cancelPlace' : 'pdf.sg.placeSig')}
               </button>
               <button type="button" className={styles.buttonSmall} onClick={handleQuickAddDate}>
-                + Today&apos;s date
+                {t('pdf.sg.addDate')}
               </button>
               <button type="button" className={styles.buttonSmall} onClick={handleQuickAddText}>
-                + Text stamp
+                {t('pdf.sg.addText')}
               </button>
               {pageCount > 1 && (
                 <button
@@ -864,55 +836,33 @@ export default function SignPdfPage() {
                   disabled={!selectedPlacement}
                   onClick={handleApplySelectedToAllPages}
                 >
-                  Apply selected to all pages
+                  {t('pdf.red.applyAll')}
                 </button>
               )}
-              <button
-                type="button"
-                className={styles.buttonSmall}
-                disabled={history.past.length === 0}
-                onClick={handleUndo}
-              >
-                Undo
+              <button type="button" className={styles.buttonSmall} disabled={history.past.length === 0} onClick={handleUndo}>
+                {t('pdf.p.undo')}
               </button>
-              <button
-                type="button"
-                className={styles.buttonSmall}
-                disabled={history.future.length === 0}
-                onClick={handleRedo}
-              >
-                Redo
+              <button type="button" className={styles.buttonSmall} disabled={history.future.length === 0} onClick={handleRedo}>
+                {t('pdf.p.redo')}
               </button>
-              <button
-                type="button"
-                className={styles.buttonSmall}
-                disabled={currentPageCount === 0}
-                onClick={handleClearCurrentPage}
-              >
-                Clear page
+              <button type="button" className={styles.buttonSmall} disabled={currentPageCount === 0} onClick={handleClearCurrentPage}>
+                {t('pdf.red.clearPage')}
               </button>
-              <button
-                type="button"
-                className={styles.buttonSmall}
-                disabled={totalCount === 0}
-                onClick={handleClearAll}
-              >
-                Clear all
+              <button type="button" className={styles.buttonSmall} disabled={totalCount === 0} onClick={handleClearAll}>
+                {t('pdf.ff.clearAll')}
               </button>
             </div>
 
             {showPad && (
               <SignaturePad
-                defaultLabel={`Signature ${library.length + 1}`}
+                defaultLabel={t('pdf.sg.defaultSig', { n: library.length + 1 })}
                 onCreate={handleSignatureCreated}
                 onCancel={library.length > 0 ? () => setShowPad(false) : undefined}
               />
             )}
 
             <p className={styles.canvasTip}>
-              {armedHint
-                ? `Click on the page to place "${armedHint.label}", or press Escape to cancel.`
-                : 'Drag any placed signature or stamp to reposition, drag corners to resize, double-click text to edit inline, or use arrow keys / Delete.'}
+              {armedHint ? t('pdf.sg.armedTip', { label: armedHint.label }) : t('pdf.sg.idleTip')}
             </p>
 
             <SignCanvas
@@ -944,7 +894,7 @@ export default function SignPdfPage() {
                   </button>
                   <select
                     className={styles.signPageSelect}
-                    aria-label="Select page in full screen"
+                    aria-label={t('pdf.sg.selectPageFs')}
                     value={pageIndex}
                     onChange={(e) => {
                       setPageIndex(Number(e.target.value));
@@ -975,51 +925,30 @@ export default function SignPdfPage() {
                   <div className={styles.signActionBar}>
                     <button
                       type="button"
-                      className={[
-                        styles.buttonSmall,
-                        armed?.kind === 'signature' ? styles.signBtnArmed : '',
-                      ].join(' ')}
+                      className={[styles.buttonSmall, armed?.kind === 'signature' ? styles.signBtnArmed : ''].join(' ')}
                       onClick={() => {
                         if (library.length === 0) setPadModalFullscreen(true);
                         else handleQuickPlaceSignature();
                       }}
                     >
-                      {armed?.kind === 'signature'
-                        ? 'Cancel place'
-                        : library.length === 0
-                          ? '+ Draw signature'
-                          : 'Place signature'}
+                      {t(armed?.kind === 'signature' ? 'pdf.sg.cancelPlace' : library.length === 0 ? 'pdf.sg.drawSig' : 'pdf.sg.placeSig')}
                     </button>
                     {library.length > 0 && (
-                      <button
-                        type="button"
-                        className={styles.buttonSmall}
-                        onClick={() => setPadModalFullscreen(true)}
-                      >
-                        + New signature
+                      <button type="button" className={styles.buttonSmall} onClick={() => setPadModalFullscreen(true)}>
+                        {t('pdf.sg.newSig')}
                       </button>
                     )}
                     <button type="button" className={styles.buttonSmall} onClick={handleQuickAddDate}>
-                      + Date
+                      {t('pdf.sg.shortDate')}
                     </button>
                     <button type="button" className={styles.buttonSmall} onClick={handleQuickAddText}>
-                      + Text
+                      {t('pdf.sg.shortText')}
                     </button>
-                    <button
-                      type="button"
-                      className={styles.buttonSmall}
-                      disabled={history.past.length === 0}
-                      onClick={handleUndo}
-                    >
-                      Undo
+                    <button type="button" className={styles.buttonSmall} disabled={history.past.length === 0} onClick={handleUndo}>
+                      {t('pdf.p.undo')}
                     </button>
-                    <button
-                      type="button"
-                      className={styles.buttonSmall}
-                      disabled={history.future.length === 0}
-                      onClick={handleRedo}
-                    >
-                      Redo
+                    <button type="button" className={styles.buttonSmall} disabled={history.future.length === 0} onClick={handleRedo}>
+                      {t('pdf.p.redo')}
                     </button>
                   </div>
                 </>
@@ -1029,7 +958,7 @@ export default function SignPdfPage() {
             {padModalFullscreen && (
               <SignaturePad
                 initialFullscreen
-                defaultLabel={`Signature ${library.length + 1}`}
+                defaultLabel={t('pdf.sg.defaultSig', { n: library.length + 1 })}
                 onCreate={handleSignatureCreated}
                 onCancel={() => setPadModalFullscreen(false)}
               />

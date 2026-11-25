@@ -10,10 +10,13 @@ import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 
 import styles from '../../styles/Smith.module.css';
 import learn from '../../styles/SmithLearn.module.css';
-import { CHALLENGE_KINDS, CHALLENGE_TITLES, challengeTask, challengeText, hintLadder, reached } from '../../lib/smith/challenge';
+import { CHALLENGE_KINDS, challengeText, hintLadder, reached } from '../../lib/smith/challenge';
 import type { Challenge, ChallengeKind, Hint, Revealed } from '../../lib/smith/challenge';
-import { KIND_NAMES, formValue, formsOf } from '../../lib/smith/state';
+import { formValue, formsOf } from '../../lib/smith/state';
 import type { Circuit } from '../../lib/smith/state';
+import { translate, useI18n } from '../../lib/ui/i18n';
+import type { Locale, TranslationKey } from '../../lib/ui/translations';
+import { kindName } from './smithText';
 import type { CircleShape } from './solveLayer';
 import { formText } from './Strip';
 import { Why } from './Why';
@@ -64,17 +67,109 @@ export function addProgress(p: Progress, kind: ChallengeKind, e: ProgressEvent):
   return { ...p, [kind]: k };
 }
 
-const progressText = (p: KindProgress): string =>
-  `tried ${p.tried} · solved ${p.solved} · revealed ${p.revealed} · hints ${p.hints}${p.fewest ? ` · fewest parts ${p.fewest}` : ''}`;
+const progressText = (p: KindProgress, locale: Locale): string =>
+  translate(locale, 'sm.ch.progress', { tried: p.tried, solved: p.solved, revealed: p.revealed, hints: p.hints })
+  + (p.fewest ? translate(locale, 'sm.ch.fewest', { n: p.fewest }) : '');
 
-/** What each kind allows, in a few words under its title. */
-const KIND_INTRO: Readonly<Record<ChallengeKind, string>> = {
-  two: 'A random load to |Γ| ≤ 0.05 with at most two L or C.',
-  stub: 'A line and one open or short stub, both of Zc = Z0.',
-  qw: 'A λ/4 transformer, after a line for a complex load.',
-  e24: 'Two L or C, every one an E24 value, to the drawn |Γ|.',
-  read: 'Read z, y, |Γ|, VSWR or return loss of a point.',
+// ---------------------------------------------------------------------------------------------------------------
+// UI-layer localizers for lib/smith/challenge.ts strings (keeps lib/smith tests untouched)
+
+const EN_KIND_TO_INDEX: Readonly<Record<string, number>> = {
+  'series R': 0, 'series L': 1, 'series C': 2, 'shunt R': 3, 'shunt L': 4, 'shunt C': 5,
+  'line': 6, 'open stub': 7, 'short stub': 8, 'λ/4 transformer': 9,
+  'A series R': 0, 'A series L': 1, 'A series C': 2, 'A shunt R': 3, 'A shunt L': 4, 'A shunt C': 5,
 };
+
+function localizedTask(ch: Challenge, locale: Locale): string {
+  if (ch.kind === 'read' && ch.read) {
+    return translate(locale, 'sm.ch.task.read', { ask: translate(locale, `sm.ch.ask.${ch.read.ask}` as TranslationKey) });
+  }
+  const goal = `|Γ| ≤ ${ch.goal.value}`;
+  switch (ch.kind) {
+    case 'two': return translate(locale, 'sm.ch.task.two', { goal });
+    case 'e24': return translate(locale, 'sm.ch.task.e24', { goal });
+    case 'stub': return translate(locale, 'sm.ch.task.stub', { goal, stub: kindName(ch.allowed[1], locale).toLowerCase() });
+    case 'qw': return translate(locale, ch.complex ? 'sm.ch.task.qwComplex' : 'sm.ch.task.qwReal', { goal });
+  }
+}
+
+function localizedWhy(why: string, locale: Locale): string {
+  if (!why || locale === 'en') return why;
+  if (why === 'Type two numbers.') return translate(locale, 'sm.ch.typeTwo');
+  if (why === 'Type a number.') return translate(locale, 'sm.ch.typeOne');
+  if (why === 'Not yet: that is not where the point is.') return translate(locale, 'sm.ch.why.notPoint');
+  if (why.startsWith('Z0, f0 or the load')) return translate(locale, 'sm.ch.why.changedBase');
+  if (why === 'At most one part.') return translate(locale, 'sm.ch.why.maxOne');
+  let m = /^At most (\d+) parts\.$/.exec(why);
+  if (m) return translate(locale, 'sm.ch.why.maxParts', { n: m[1] });
+  m = /^Part (\d+) is a (.+), which this challenge does not allow\.$/.exec(why);
+  if (m) {
+    const idx = EN_KIND_TO_INDEX[m[2]];
+    return translate(locale, 'sm.ch.why.disallowed', { n: m[1], kind: idx !== undefined ? kindName(idx, locale).toLowerCase() : m[2] });
+  }
+  m = /^Part (\d+)’s Zc must be Z0\.$/.exec(why);
+  if (m) return translate(locale, 'sm.ch.why.zc', { n: m[1] });
+  m = /^Part (\d+)’s (L|C) is not an E24 value\.$/.exec(why);
+  if (m) return translate(locale, 'sm.ch.why.e24', { n: m[1], lc: m[2] });
+  m = /^Not yet: \|Γ\| at the input is above (.+)\.$/.exec(why);
+  if (m) return translate(locale, 'sm.ch.why.above', { v: m[1] });
+  return why;
+}
+
+const EXACT_HINTS: Readonly<Record<string, TranslationKey>> = {
+  'The point lies where its r circle and its x circle cross; both are drawn.': 'sm.ch.h.readZ1',
+  'Read r and x where their circles’ labels are: r on the axis, x on the rim.': 'sm.ch.h.readZ2',
+  'The point lies where its g circle and its b circle cross; both are drawn.': 'sm.ch.h.readY1',
+  'Read g and b where their circles’ labels are, on the Y grid (the Z grid turned half a turn).': 'sm.ch.h.readY2',
+  'The point’s |Γ| circle about the centre is drawn.': 'sm.ch.h.readG1',
+  '|Γ| is the distance from the centre, the rim being 1.': 'sm.ch.h.readMag2',
+  'The VSWR is r where the |Γ| circle crosses the right half of the axis.': 'sm.ch.h.readVswr2',
+  'RL = −20 log₁₀|Γ|, with |Γ| the distance from the centre.': 'sm.ch.h.readRl2',
+  'Reveal shows the solver’s answers.': 'sm.ch.h.fallbackReveal',
+  'The solver’s answers; Apply sets one.': 'sm.ch.h.solverApply',
+  'The line turns the point on this circle until it meets g = 1.': 'sm.ch.h.stub1',
+  'A line of Z0, clockwise to the first crossing; the stub then cancels b.': 'sm.ch.h.stub2',
+  'A line first turns the point to the axis, where the load is real.': 'sm.ch.h.qwC1',
+  'A line, clockwise to either crossing of the axis.': 'sm.ch.h.qwC2',
+  'As Zt changes, the input moves on this circle through the centre.': 'sm.ch.h.qwR1',
+  'Zt lies between Z0 and the load’s R.': 'sm.ch.h.qwR2',
+};
+
+function localizedHintText(text: string, locale: Locale): string {
+  if (!text || locale === 'en') return text;
+  const exact = EXACT_HINTS[text];
+  if (exact) return translate(locale, exact);
+  let m = /^About (.+)\.$/.exec(text);
+  if (m) return translate(locale, 'sm.ch.h.about', { v: m[1] });
+  m = /^The answer: (.+)\.$/.exec(text);
+  if (m) return translate(locale, 'sm.ch.h.answer', { v: m[1] });
+  m = /^Your first part must bring the point onto this circle \((.+)\); the second runs along it to the centre\.$/.exec(text);
+  if (m) return translate(locale, 'sm.ch.h.two1', { onto: m[1] });
+  m = /^(A (?:series|shunt) [RLC]): (clockwise|counter-clockwise) (up|down) the (.+) circle\.$/.exec(text);
+  if (m) {
+    const idx = EN_KIND_TO_INDEX[m[1]];
+    return translate(locale, 'sm.ch.h.two2', {
+      kind: idx !== undefined ? kindName(idx, locale) : m[1],
+      sense: translate(locale, m[2] === 'clockwise' ? 'sm.ch.h.cw' : 'sm.ch.h.ccw'),
+      dir: translate(locale, m[3] === 'up' ? 'sm.ch.h.up' : 'sm.ch.h.down'),
+      circle: m[4],
+    });
+  }
+  m = /^The first value: about ([^;.]+)(.*)\.$/.exec(text);
+  if (m) {
+    let extra = m[2];
+    const ex1 = /^; (.+) is an E24 value$/.exec(extra);
+    const ex2 = /^; the E24 values beside it are (.+) and (.+)$/.exec(extra);
+    if (ex1) extra = translate(locale, 'sm.ch.h.e24Exact', { v: ex1[1] });
+    else if (ex2) extra = translate(locale, 'sm.ch.h.e24Pair', { lo: ex2[1], hi: ex2[2] });
+    return translate(locale, 'sm.ch.h.firstVal', { val: m[1], extra });
+  }
+  m = /^The line: about (.+)\.$/.exec(text);
+  if (m) return translate(locale, 'sm.ch.h.lineVal', { val: m[1] });
+  m = /^Zt: about (.+)\.$/.exec(text);
+  if (m) return translate(locale, 'sm.ch.h.ztVal', { val: m[1] });
+  return text;
+}
 
 // ---------------------------------------------------------------------------------------------------------------
 // The list in the Learn section
@@ -89,10 +184,11 @@ export interface ChallengeListProps {
 }
 
 export function ChallengeList({ running, progress, onStart, blocked }: ChallengeListProps) {
+  const { t, locale } = useI18n();
   return (
     <>
-      <h3 className={learn.listHead} id="smith-challenges">Challenges <Why k="challenge" /><span className={learn.space} />
-        <span className={learn.headNote}>Your progress <Why k="challenge-progress" /></span></h3>
+      <h3 className={learn.listHead} id="smith-challenges">{t('sm.ch.sectionTitle')} <Why k="challenge" /><span className={learn.space} />
+        <span className={learn.headNote}>{t('sm.ch.yourProgress')} <Why k="challenge-progress" /></span></h3>
       {blocked && <p className={learn.note} data-challenge-blocked="">{blocked}</p>}
       <ol className={learn.list} data-challenges="" aria-labelledby="smith-challenges">
         {CHALLENGE_KINDS.map((k) => (
@@ -100,9 +196,9 @@ export function ChallengeList({ running, progress, onStart, blocked }: Challenge
             <button type="button" className={learn.item} data-challenge-kind={k} aria-current={running === k ? 'true' : undefined}
               disabled={!!blocked} onClick={() => onStart(k)}>
               <span className={learn.num}>{k}</span>
-              <span className={learn.itemTitle}>{CHALLENGE_TITLES[k]}</span>
-              <span className={learn.itemIntro}>{KIND_INTRO[k]}</span>
-              <span className={learn.progress} data-progress={k}>{progressText(progress[k])}</span>
+              <span className={learn.itemTitle}>{t(`sm.ch.title.${k}` as TranslationKey)}</span>
+              <span className={learn.itemIntro}>{t(`sm.ch.intro.${k}` as TranslationKey)}</span>
+              <span className={learn.progress} data-progress={k}>{progressText(progress[k], locale)}</span>
             </button>
           </li>
         ))}
@@ -115,11 +211,12 @@ export function ChallengeList({ running, progress, onStart, blocked }: Challenge
 // The panel
 
 /** A part as the strip's tile writes it: its kind and its main value. */
-function partText(c: Circuit, i: number): string {
+function partText(c: Circuit, i: number, locale: Locale): string {
   const p = c.parts[i], form = formsOf(p.kind)[0];
-  return `${KIND_NAMES[p.kind]} ${formText(form, formValue(form.id, p, c))}`;
+  return `${kindName(p.kind, locale)} ${formText(form, formValue(form.id, p, c))}`;
 }
-const circuitText = (c: Circuit): string => c.parts.map((_, i) => partText(c, i)).join(', then ');
+const circuitText = (c: Circuit, locale: Locale): string =>
+  c.parts.map((_, i) => partText(c, i, locale)).join(translate(locale, 'sm.ch.then'));
 
 /**
  * The numbers the visitor typed: one (a comma may be the decimal point) or two ("0.5, −1", "0.5 − j1"); a typographic
@@ -156,10 +253,9 @@ export interface ChallengePanelProps {
   onProgress: (kind: ChallengeKind, e: ProgressEvent) => void;
 }
 
-const LADDER = ['The circle', 'The part and its way', 'The first value', 'Reveal'];
-
 /** The running challenge; the page gives it a new key for every problem. */
 export const ChallengePanel = memo(function ChallengePanel({ ch, circuit, noReveal, fixed, onApply, onNew, onClose, onCircles, onProgress }: ChallengePanelProps) {
+  const { t, locale } = useI18n();
   const isRead = ch.kind === 'read';
   const two = isRead && (ch.read.ask === 'z' || ch.read.ask === 'y');
   const [draft, setDraft] = useState('');
@@ -222,19 +318,19 @@ export const ChallengePanel = memo(function ChallengePanel({ ch, circuit, noReve
   };
 
   const why = !state.reached && (isRead ? answer !== null || unread : checked === circuit)
-    ? (unread ? (two ? 'Type two numbers.' : 'Type a number.') : state.why) : '';
+    ? (unread ? t(two ? 'sm.ch.typeTwo' : 'sm.ch.typeOne') : localizedWhy(state.why, locale)) : '';
   const revealList = (list: Revealed[]) => (
     <ol className={learn.reveal} data-challenge-revealed="">
       {list.map((r, j) => (
         <li key={j}>
-          <span className={learn.revealText} data-challenge-solution={j}>{circuitText(r.circuit)}</span>
-          <button type="button" className={`${styles.button} ${learn.btn}`} data-challenge-apply={j} onClick={() => onApply(r.circuit)}>Apply</button>
+          <span className={learn.revealText} data-challenge-solution={j}>{circuitText(r.circuit, locale)}</span>
+          <button type="button" className={`${styles.button} ${learn.btn}`} data-challenge-apply={j} onClick={() => onApply(r.circuit)}>{t('sm.ch.apply')}</button>
           {r.standard && r.standard.length > 0 && (
             <ul className={learn.standard}>
               {r.standard.map((sv, k) => (
                 <li key={k}>
-                  <span className={learn.revealText}>E24: {circuitText(sv.circuit)}</span>
-                  <button type="button" className={`${styles.button} ${learn.btn}`} data-challenge-apply-std={`${j}.${k}`} onClick={() => onApply(sv.circuit)}>Apply</button>
+                  <span className={learn.revealText}>E24: {circuitText(sv.circuit, locale)}</span>
+                  <button type="button" className={`${styles.button} ${learn.btn}`} data-challenge-apply-std={`${j}.${k}`} onClick={() => onApply(sv.circuit)}>{t('sm.ch.apply')}</button>
                 </li>
               ))}
             </ul>
@@ -244,38 +340,39 @@ export const ChallengePanel = memo(function ChallengePanel({ ch, circuit, noReve
     </ol>
   );
 
+  const code = challengeText(ch.kind, ch.seed);
   return (
-    <section className={learn.guide} aria-labelledby="smith-challenge" data-challenge={challengeText(ch.kind, ch.seed)}
+    <section className={learn.guide} aria-labelledby="smith-challenge" data-challenge={code}
       data-reached={state.reached ? '' : undefined} data-hints={shown}>
       <h2 className={learn.head} id="smith-challenge" ref={head} tabIndex={-1}>
-        Challenge · {CHALLENGE_TITLES[ch.kind]} <Why k="challenge" />
+        {t('sm.ch.panelHead', { title: t(`sm.ch.title.${ch.kind}` as TranslationKey) })} <Why k="challenge" />
       </h2>
       <p className={learn.step} data-challenge-task="">
-        <span className={learn.stepNo}>Problem {challengeText(ch.kind, ch.seed)}: the link holds it</span>
-        {challengeTask(ch)}
+        <span className={learn.stepNo}>{t('sm.ch.problemNote', { code })}</span>
+        {localizedTask(ch, locale)}
       </p>
       <form className={learn.answer} onSubmit={check} data-challenge-form="">
         {isRead && (
           <>
-            <span className={learn.answerHead}><label htmlFor="smith-challenge-answer">Your answer{two ? ' (two numbers)' : ''}</label></span>
+            <span className={learn.answerHead}><label htmlFor="smith-challenge-answer">{t('sm.ch.yourAnswer')}{two ? t('sm.ch.twoNumsSuffix') : ''}</label></span>
             <input id="smith-challenge-answer" className={styles.input} value={draft} inputMode={two ? 'text' : 'decimal'} autoComplete="off" spellCheck={false}
               aria-invalid={(!!why) || undefined} aria-describedby="smith-challenge-state" data-challenge-answer=""
               onChange={(e) => setDraft(e.target.value)} />
           </>
         )}
         <span className={learn.checkRow}>
-          <button type="submit" className={`${styles.button} ${learn.btn}`} data-challenge-check="">Check</button>
+          <button type="submit" className={`${styles.button} ${learn.btn}`} data-challenge-check="">{t('sm.ch.check')}</button>
           <Why k="challenge-check" />
         </span>
       </form>
       <p className={learn.state} id="smith-challenge-state" role="status" data-done={state.reached ? '' : undefined} data-challenge-state="">
         {state.reached
-          ? <><span className={learn.tick} aria-hidden="true">✓</span> Reached{revealed ? ': counted as revealed, not solved.' : '.'}</>
-          : why || 'Not yet.'}
+          ? <><span className={learn.tick} aria-hidden="true">✓</span> {t(revealed ? 'sm.ch.reachedRevealed' : 'sm.ch.reached')}</>
+          : why || t('sm.ch.notYet')}
       </p>
       <div className={learn.hintRow}>
         <button type="button" className={`${styles.button} ${learn.btn}`} data-challenge-hint="" disabled={shown >= max} onClick={hint}>
-          {shown >= max ? 'No more hints' : shown === 3 ? 'Reveal' : `Hint ${shown + 1} of 3`}
+          {shown >= max ? t('sm.ch.noMoreHints') : shown === 3 ? t('sm.ch.reveal') : t('sm.ch.hintOf', { n: shown + 1 })}
         </button>
         <Why k="challenge-hint" />
         {!noReveal && <Why k="challenge-reveal" />}
@@ -284,11 +381,11 @@ export const ChallengePanel = memo(function ChallengePanel({ ch, circuit, noReve
         <ol className={learn.hints} data-challenge-hints="">
           {ladder.slice(0, shown).map((h, k) => (
             <li key={k} ref={k === shown - 1 ? lastHint : undefined} tabIndex={-1} data-hint={k + 1}>
-              <strong>{LADDER[k]}:</strong> {h.text}
+              <strong>{t(`sm.ch.ladder.${k}` as TranslationKey)}:</strong> {localizedHintText(h.text, locale)}
               {k === 3 && h.revealed && revealList(h.revealed)}
               {k === 3 && h.answer && (
                 <span className={learn.revealText} data-challenge-answer-shown="" data-equation={h.equation}>
-                  {' '}The answer: {h.answer.map((v) => String(Number(v.toPrecision(4))).replace('-', '−')).join(', ')}.
+                  {' '}{t('sm.ch.theAnswer', { vals: h.answer.map((v) => String(Number(v.toPrecision(4))).replace('-', '−')).join(', ') })}
                 </span>
               )}
             </li>
@@ -297,11 +394,11 @@ export const ChallengePanel = memo(function ChallengePanel({ ch, circuit, noReve
       )}
       <div className={learn.bar}>
         {!fixed && (
-          <button type="button" className={`${styles.button} ${learn.btn} ${learn.next}`} data-challenge-new="" onClick={() => onNew(ch.kind)}>New problem</button>
+          <button type="button" className={`${styles.button} ${learn.btn} ${learn.next}`} data-challenge-new="" onClick={() => onNew(ch.kind)}>{t('sm.ch.newProblem')}</button>
         )}
         <span className={learn.space} />
         <button type="button" className={`${styles.button} ${learn.btn}`} data-challenge-close="" onClick={onClose}
-          aria-label="Close the challenge">Close</button>
+          aria-label={t('sm.ch.closeAria')}>{t('sm.ch.close')}</button>
       </div>
     </section>
   );

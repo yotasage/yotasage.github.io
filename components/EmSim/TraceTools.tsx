@@ -28,6 +28,8 @@ import type { Commit } from './StackupSection';
 import { FLOOR, qText } from './trace';
 import { PLACEHOLDER, SWEEP_MAX, SWEEP_POINTS, TARGET_DEFAULT, defaultRange, linesOf, mainKeyOf, outputsOf, readTarget, shares, targetChoices, withPlaceholders } from './tools';
 import type { Quantity } from './tools';
+import { useI18n } from '../../lib/ui/i18n';
+import type { TFunc } from '../../lib/ui/i18n';
 import { feedExport } from './exportFeed';
 import { feedTheory } from './theoryFeed';
 import { Why, Whys } from './Why';
@@ -46,8 +48,8 @@ interface Props {
 }
 
 const now = () => performance.now();
-const keyLabel = (k: string): string => (k === 'z0' ? 'Z0' : k === 'zdiff' ? 'Zdiff' : k === 'zcm' ? 'Zcm' : k === 'z0.1' ? 'Z0 of line 1' : k);
-const ohm = (v: number, e = 0) => { const t = qText(v, e, FLOOR.ohm); return t.e ? `${t.v} ± ${t.e} Ω` : `${t.v} Ω`; };
+const keyLabel = (k: string, t: TFunc): string => (k === 'z0' ? 'Z0' : k === 'zdiff' ? 'Zdiff' : k === 'zcm' ? 'Zcm' : k === 'z0.1' ? t('em.res.z0Line', { n: 1 }) : k);
+const ohm = (v: number, e = 0) => { const qt = qText(v, e, FLOOR.ohm); return qt.e ? `${qt.v} ± ${qt.e} Ω` : `${qt.v} Ω`; };
 const mainQ = (r: LineResults | null, key: InverseKey) => (!r || !r.ok ? null : key === 'z0' ? r.lines[0].z0 : r.pair ? (key === 'zdiff' ? r.pair.zdiff : r.pair.zcm) : null);
 
 export default function TraceTools({ tool, ...p }: Props) {
@@ -78,7 +80,8 @@ function useCancelOnChange(setup: Setup, client: GetClient, channels: string[], 
 }
 
 function Old({ show }: { show: boolean }) {
-  return show ? <p className={css.old} data-old>Made for the setup before the last change.</p> : null;
+  const { t } = useI18n();
+  return show ? <p className={css.old} data-old>{t('em.tt.old')}</p> : null;
 }
 
 // ---------------- the target ----------------
@@ -86,7 +89,8 @@ function Old({ show }: { show: boolean }) {
 interface TargetRun { r: InverseResult; rel: number; ms: number; total: number; setup: Setup }
 
 function TargetTool({ setup, invalid, commit, unit, client }: ToolProps) {
-  const ch = useMemo(() => targetChoices(setup), [setup]);
+  const { t, locale } = useI18n();
+  const ch = useMemo(() => targetChoices(setup, locale), [setup, locale]);
   const [key, setKey] = useState<InverseKey>(ch.keys[0]?.key ?? 'z0');
   const [vary, setVary] = useState<InverseVary>('w');
   const [text, setText] = useState(String(TARGET_DEFAULT[ch.keys[0]?.key ?? 'z0']));
@@ -101,7 +105,7 @@ function TargetTool({ setup, invalid, commit, unit, client }: ToolProps) {
   const solve = async (e: React.FormEvent) => {
     e.preventDefault();
     const target = readTarget(text);
-    if (target === null) { setMsg('Type the target in Ω, such as 50.'); return; }
+    if (target === null) { setMsg(t('em.tt.errTarget')); return; }
     setMsg('');
     setBusy(true);
     const t0 = now();
@@ -146,52 +150,51 @@ function TargetTool({ setup, invalid, commit, unit, client }: ToolProps) {
       },
     }));
   };
-  const useLabel = ch.varies.find((c) => c.vary === (r?.vary ?? v))?.use ?? 'Use this width';
+  const useLabel = ch.varies.find((c) => c.vary === (r?.vary ?? v))?.use ?? ch.varies[0]?.use ?? '';
   const u = UNIT_TEXT[unit];
   if (ch.reason) return <section className={css.tool} data-tool="target"><p className={css.small}>{ch.reason}</p></section>;
   return (
-    <section className={css.tool} data-tool="target" aria-label="Target">
+    <section className={css.tool} data-tool="target" aria-label={t('em.tt.targetAria')}>
       <form className={css.row} onSubmit={solve}>
         <label className={css.ctl}>
-          Quantity
+          {t('em.tt.qty')}
           <select className={base.select} value={k} data-target-key onChange={(e) => { const x = e.target.value as InverseKey; setKey(x); setText(String(TARGET_DEFAULT[x])); }}>
             {ch.keys.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
           </select>
         </label>
         <label className={css.ctl}>
-          Solve for
+          {t('em.tt.solveFor')}
           <select className={base.select} value={v} data-target-vary onChange={(e) => setVary(e.target.value as InverseVary)}>
             {ch.varies.map((c) => <option key={c.vary} value={c.vary}>{c.label}</option>)}
           </select>
         </label>
         <label className={css.ctl}>
-          Target (Ω)
+          {t('em.tt.targetOhm')}
           <input className={`${base.input} ${css.num}`} inputMode="decimal" value={text} data-target-input onChange={(e) => setText(e.target.value)} aria-invalid={!!msg} />
         </label>
-        <button type="submit" className={base.button} data-target-solve disabled={!!invalid}>Solve</button>
+        <button type="submit" className={base.button} data-target-solve disabled={!!invalid}>{t('em.tt.solve')}</button>
       </form>
       <Whys ks="target-key target-vary target-input target-result target-use" />
       {msg && <p className={css.reason} role="alert">{msg}</p>}
       {invalid && <p className={css.small}>{invalid}</p>}
-      <p className={css.busy} aria-live="polite">{busy ? 'Solving…' : ''}</p>
+      <p className={css.busy} aria-live="polite">{busy ? t('em.tt.solving') : ''}</p>
       {r && run && (
         <div className={css.result} data-target-result data-reached={r.reached} data-w={r.w} data-s={r.s} data-v={q?.v ?? NaN} data-e={q?.e ?? NaN} data-ms={run.ms.toFixed(1)} data-total={run.total.toFixed(1)} data-rel={run.rel}>
           <Old show={run.setup !== setup} />
           {r.reached && wT ? (
             <>
               <dl className={css.pairs}>
-                <div><dt>Width</dt><dd><span className={css.num} data-target-w>{wT.v}</span>{wT.e && <span className={css.err}> ± {wT.e}</span>} {u}</dd></div>
-                {sT && <div><dt>Gap</dt><dd><span className={css.num} data-target-s>{sT.v}</span>{sT.e && <span className={css.err}> ± {sT.e}</span>} {u}</dd></div>}
-                {q && <div><dt>{keyLabel(r.key)} there</dt><dd className={css.num}>{ohm(q.v, q.e)}</dd></div>}
+                <div><dt>{t('em.tt.width')}</dt><dd><span className={css.num} data-target-w>{wT.v}</span>{wT.e && <span className={css.err}> ± {wT.e}</span>} {u}</dd></div>
+                {sT && <div><dt>{t('em.tt.gap')}</dt><dd><span className={css.num} data-target-s>{sT.v}</span>{sT.e && <span className={css.err}> ± {sT.e}</span>} {u}</dd></div>}
+                {q && <div><dt>{t('em.tt.keyThere', { key: keyLabel(r.key, t) })}</dt><dd className={css.num}>{ohm(q.v, q.e)}</dd></div>}
               </dl>
               <p className={css.small}>
-                The {r.vary === 'ws' ? 'width and gap are' : r.vary === 's' ? 'gap is' : 'width is'} shown to the digits the solver&apos;s error allows: its ± is what the
-                error of {keyLabel(r.key)} means for the {r.vary === 's' ? 'gap' : 'width'}. Found in {Math.round(run.ms)} ms.
+                {t(r.vary === 'ws' ? 'em.tt.targetNoteWS' : r.vary === 's' ? 'em.tt.targetNoteS' : 'em.tt.targetNoteW', { key: keyLabel(r.key, t), ms: Math.round(run.ms) })}
               </p>
               <button type="button" className={base.button} data-target-use onClick={use} disabled={run.setup !== setup}>{useLabel}</button>
             </>
           ) : (
-            <p className={css.reason} data-target-reason>{r.reason || 'The target could not be reached.'}</p>
+            <p className={css.reason} data-target-reason>{r.reason || t('em.tt.notReached')}</p>
           )}
         </div>
       )}
@@ -204,9 +207,10 @@ function TargetTool({ setup, invalid, commit, unit, client }: ToolProps) {
 interface SweepRun { id: number; input: string; label: string; kind: 'length' | 'er'; xs: number[]; points: (SweepPoint | null)[]; state: 'running' | 'done' | 'cancelled' | 'failed'; reason: string; ms: number; setup: Setup; nominal: number }
 
 function SweepTool({ setup, invalid, unit, client }: ToolProps) {
+  const { t, locale } = useI18n();
   const inputs = useMemo(() => inputsOf(setup, true), [setup]);
   const n = linesOf(setup);
-  const outs = useMemo(() => outputsOf(n), [n]);
+  const outs = useMemo(() => outputsOf(n, locale), [n, locale]);
   const [inputId, setInputId] = useState(inputs[0]?.id ?? 'w');
   const inp = inputs.find((i) => i.id === inputId) ?? inputs[0];
   const shownOf = (x: number, kind: 'length' | 'er') => (kind === 'er' ? x : fromMm(x, unit));
@@ -242,8 +246,8 @@ function SweepTool({ setup, invalid, unit, client }: ToolProps) {
     e.preventDefault();
     if (!inp) return;
     const a = Number(lo.replace(',', '.')), b = Number(hi.replace(',', '.')), m = Math.round(Number(count));
-    if (!lo.trim() || !hi.trim() || !Number.isFinite(a) || !Number.isFinite(b) || a === b) { setMsg('Type two different numbers for the range.'); return; }
-    if (!(m >= 3 && m <= SWEEP_MAX)) { setMsg(`Points: 3 to ${SWEEP_MAX}.`); return; }
+    if (!lo.trim() || !hi.trim() || !Number.isFinite(a) || !Number.isFinite(b) || a === b) { setMsg(t('em.tt.errRange')); return; }
+    if (!(m >= 3 && m <= SWEEP_MAX)) { setMsg(t('em.tt.errPoints', { max: SWEEP_MAX })); return; }
     setMsg('');
     const toIn = (x: number) => (inp.kind === 'er' ? x : toMm(x, unit));
     const xs = linspace(toIn(Math.min(a, b)), toIn(Math.max(a, b)), m);
@@ -299,51 +303,51 @@ function SweepTool({ setup, invalid, unit, client }: ToolProps) {
         const u = unitOf(o.q);
         return {
           id: `sweep-${o.id}`,
-          label: `Sweep: ${o.label} against ${run.label}`,
+          label: t('em.tt.exportSweep', { out: o.label, inp: run.label }),
           spec: {
-            name: `sweep-${o.id}`, what: `${o.label} against ${run.label}`, x,
+            name: `sweep-${o.id}`, what: t('em.tt.exportAgainst', { out: o.label, inp: run.label }), x,
             y: { ...niceAxis(...extent(...series.map((q) => q.ys)), 6), label: `${o.label}${u ? ` (${u})` : ''}` },
             series: series.map((q) => ({ xs: xsShown, ys: q.ys, ...(series.length > 1 ? { label: q.name } : {}) })),
-            refs: [{ x: shownOf(run.nominal, run.kind), label: 'now' }],
+            refs: [{ x: shownOf(run.nominal, run.kind), label: t('em.tt.now') }],
           },
         };
       }),
     });
     // unitOf follows unit
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [run, setup, plots, xsShown, xUnit]);
+  }, [run, setup, plots, xsShown, xUnit, t]);
   useEffect(() => () => feedExport({ sweep: [] }), []);
   const done = run ? run.points.filter(Boolean).length : 0;
   const xText = (x: number) => (run?.kind === 'er' ? x.toFixed(3) : `${Number(x.toPrecision(4))} ${xUnit}`);
 
   return (
-    <section className={css.tool} data-tool="sweep" aria-label="Sweep">
+    <section className={css.tool} data-tool="sweep" aria-label={t('em.tt.sweepAria')}>
       <form className={css.row} onSubmit={start}>
         <label className={css.ctl}>
-          Input
+          {t('em.tt.input')}
           <select className={base.select} value={inp?.id ?? ''} data-sweep-input onChange={(e) => pickInput(e.target.value)}>
             {inputs.map((i) => <option key={i.id} value={i.id}>{i.label}</option>)}
           </select>
         </label>
         <label className={css.ctl}>
-          From{inp && inp.kind === 'length' ? ` (${UNIT_TEXT[unit]})` : ''}
+          {t('em.tt.from')}{inp && inp.kind === 'length' ? ` (${UNIT_TEXT[unit]})` : ''}
           <input className={`${base.input} ${css.num}`} inputMode="decimal" value={lo} data-sweep-from onChange={(e) => setLo(e.target.value)} />
         </label>
         <label className={css.ctl}>
-          To{inp && inp.kind === 'length' ? ` (${UNIT_TEXT[unit]})` : ''}
+          {t('em.tt.to')}{inp && inp.kind === 'length' ? ` (${UNIT_TEXT[unit]})` : ''}
           <input className={`${base.input} ${css.num}`} inputMode="decimal" value={hi} data-sweep-to onChange={(e) => setHi(e.target.value)} />
         </label>
         <label className={css.ctl}>
-          Points
+          {t('em.tt.points')}
           <input className={`${base.input} ${css.num}`} inputMode="numeric" value={count} data-sweep-points onChange={(e) => setCount(e.target.value)} />
         </label>
         <div className={css.buttons}>
-          <button type="submit" className={base.button} data-sweep-run disabled={!!invalid || !inp}>Sweep</button>
-          <button type="button" className={base.button} data-sweep-cancel onClick={cancel} disabled={run?.state !== 'running'}>Cancel</button>
+          <button type="submit" className={base.button} data-sweep-run disabled={!!invalid || !inp}>{t('em.tt.sweepBtn')}</button>
+          <button type="button" className={base.button} data-sweep-cancel onClick={cancel} disabled={run?.state !== 'running'}>{t('em.tt.cancel')}</button>
         </div>
       </form>
       <fieldset className={css.outs}>
-        <legend>Plot</legend>
+        <legend>{t('em.tt.plotLegend')}</legend>
         {outs.map((o) => (
           <label key={o.id} className={css.check}>
             <input type="checkbox" checked={picked.has(o.id)} data-sweep-out={o.id} onChange={(e) => { const s = new Set(picked); if (e.target.checked) s.add(o.id); else s.delete(o.id); setChosen(s); }} />
@@ -357,9 +361,9 @@ function SweepTool({ setup, invalid, unit, client }: ToolProps) {
       {run && (
         <div className={css.result} data-sweep-result data-state={run.state} data-points={done} data-total={run.xs.length} data-ms={run.ms.toFixed(1)} data-input={run.input}>
           <Old show={run.setup !== setup} />
-          <Calm name="sweep" text={run.state === 'running' ? 'Sweeping…' : run.state === 'cancelled' ? `Cancelled after ${done} of ${run.xs.length} points` : run.state === 'failed' ? '' : `${run.xs.length} points in ${Math.round(run.ms)} ms`} />
+          <Calm name="sweep" text={run.state === 'running' ? t('em.tt.sweeping') : run.state === 'cancelled' ? t('em.tt.cancelledN', { done, total: run.xs.length }) : run.state === 'failed' ? '' : t('em.tt.doneN', { total: run.xs.length, ms: Math.round(run.ms) })} />
           <p className={css.busy}>
-            {run.state === 'running' ? `Sweeping: ${done} of ${run.xs.length} points` : run.state === 'cancelled' ? `Cancelled after ${done} of ${run.xs.length} points` : run.state === 'failed' ? '' : `${run.xs.length} points in ${Math.round(run.ms)} ms`}
+            {run.state === 'running' ? t('em.tt.sweepingN', { done, total: run.xs.length }) : run.state === 'cancelled' ? t('em.tt.cancelledN', { done, total: run.xs.length }) : run.state === 'failed' ? '' : t('em.tt.doneN', { total: run.xs.length, ms: Math.round(run.ms) })}
           </p>
           {run.state === 'running' && <progress className={css.progress} max={run.xs.length} value={done} />}
           {run.state === 'failed' && <p className={css.reason}>{run.reason}</p>}
@@ -371,24 +375,24 @@ function SweepTool({ setup, invalid, unit, client }: ToolProps) {
               xs={xsShown}
               series={series}
               xDomain={[xsShown[0], xsShown[xsShown.length - 1]]}
-              xLabel={`${run.label}${xUnit ? ` (${xUnit})` : ''}; dashed: the current value; the band is the solver's error`}
+              xLabel={t('em.tt.sweepXLabel', { label: `${run.label}${xUnit ? ` (${xUnit})` : ''}` })}
               marker={shownOf(run.nominal, run.kind)}
               cursor={cursor}
               onCursor={setCursor}
               readout={(x) => {
-                if (!Number.isFinite(x)) return 'Move the cursor with the pointer, a tap or the arrow keys to read the values.';
+                if (!Number.isFinite(x)) return t('em.tt.plotCursorHint');
                 const parts = series.map((s) => {
                   const v = readAt(xsShown, s.ys, x), e = readAt(xsShown, s.e, x);
                   if (!Number.isFinite(v)) return `${s.name} –`;
-                  const t = qText(v, e, floorOf(o.q));
-                  return `${s.name} ${t.v}${t.e ? ` ± ${t.e}` : ''}${unitOf(o.q) ? ` ${unitOf(o.q)}` : ''}`;
+                  const qt = qText(v, e, floorOf(o.q));
+                  return `${s.name} ${qt.v}${qt.e ? ` ± ${qt.e}` : ''}${unitOf(o.q) ? ` ${unitOf(o.q)}` : ''}`;
                 });
                 return `${run.label} ${xText(x)}: ${parts.join(', ')}`;
               }}
             />
           ))}
           <details className={css.table} data-sweep-table>
-            <summary>Values as a table</summary>
+            <summary>{t('em.tt.tableSummary')}</summary>
             <div className={css.tableScroll}>
               <table>
                 <thead><tr><th>{run.label}{xUnit ? ` (${xUnit})` : ''}</th>{plots.flatMap(({ o }) => o.keys.map((k, i) => <th key={k}>{o.keys.length > 1 ? `${o.label.split(' ')[0]} ${o.names[i]}` : o.label}{unitOf(o.q) ? ` (${unitOf(o.q)})` : ''}</th>))}</tr></thead>
@@ -398,8 +402,8 @@ function SweepTool({ setup, invalid, unit, client }: ToolProps) {
                       <td>{xText(xsShown[i])}</td>
                       {plots.flatMap(({ o }) => o.keys.map((k) => {
                         if (!pt.ok) return <td key={k}>–</td>;
-                        const t = qText(pt.values[k] * scaleOf(o.q), (pt.err[k] ?? 0) * scaleOf(o.q), floorOf(o.q));
-                        return <td key={k} data-key={k} data-v={pt.values[k]} data-e={pt.err[k]}>{t.v}{t.e ? ` ± ${t.e}` : ''}</td>;
+                        const qt = qText(pt.values[k] * scaleOf(o.q), (pt.err[k] ?? 0) * scaleOf(o.q), floorOf(o.q));
+                        return <td key={k} data-key={k} data-v={pt.values[k]} data-e={pt.err[k]}>{qt.v}{qt.e ? ` ± ${qt.e}` : ''}</td>;
                       }))}
                     </tr>
                   ))}
@@ -418,6 +422,7 @@ function SweepTool({ setup, invalid, unit, client }: ToolProps) {
 interface TolRun<T> { r: T; ms: number; setup: Setup }
 
 function ToleranceTool({ setup, invalid, unit, digits, client }: ToolProps) {
+  const { t } = useI18n();
   const ph = useMemo(() => withPlaceholders(setup), [setup]);
   const n = linesOf(setup);
   const key = mainKeyOf(n);
@@ -465,28 +470,26 @@ function ToleranceTool({ setup, invalid, unit, digits, client }: ToolProps) {
     return /\.er$/.test(id) ? `± ${lim.toFixed(2)}` : `± ${Number(fromMm(lim, unit).toPrecision(Math.max(2, digits - 1)))} ${UNIT_TEXT[unit]}`;
   };
   return (
-    <section className={css.tool} data-tool="tolerance" aria-label="Tolerance">
+    <section className={css.tool} data-tool="tolerance" aria-label={t('em.tt.tolAria')}>
       <p className={css.note} data-tol-note>
-        The tolerances are placeholders until JLCPCB&apos;s or your own figures are entered: where a field has no tolerance,
-        the band takes ±{PLACEHOLDER.rel * 100} % for widths, gaps and thicknesses, εr ±{PLACEHOLDER.er} and the mask&apos;s
-        thicknesses ±{PLACEHOLDER.mask * 100} %. A tolerance typed in a field (Stackup or Trace) is used as it is.
+        {t('em.tt.tolNote', { rel: PLACEHOLDER.rel * 100, er: PLACEHOLDER.er, mask: PLACEHOLDER.mask * 100 })}
       </p>
       <Why k="tol-note" bare />
       {invalid && <p className={css.small}>{invalid}</p>}
-      <p className={css.busy} aria-live="polite">{cBusy ? 'Computing the corners…' : ''}</p>
+      <p className={css.busy} aria-live="polite">{cBusy ? t('em.tt.cornersBusy') : ''}</p>
       {cr && !cr.r.ok && <p className={css.reason}>{cr.r.reason}</p>}
       {c && corner && (
         <div className={css.result} data-tol-corners data-lo={corner.lo} data-hi={corner.hi} data-nominal={nominal} data-ms={cr!.ms.toFixed(1)}>
           <Old show={cr!.setup !== setup} />
           <dl className={css.pairs}>
-            <div><dt>{keyLabel(key)} nominal</dt><dd className={css.num}>{ohm(nominal, nomErr)}</dd></div>
-            <div><dt>Worst case (corners)</dt><dd className={css.num}>{ohm(corner.lo)} … {ohm(corner.hi)}</dd></div>
+            <div><dt>{t('em.tt.nominal', { key: keyLabel(key, t) })}</dt><dd className={css.num}>{ohm(nominal, nomErr)}</dd></div>
+            <div><dt>{t('em.tt.worstCase')}</dt><dd className={css.num}>{ohm(corner.lo)} … {ohm(corner.hi)}</dd></div>
             {st && (
               <>
-                <div><dt>Monte Carlo median</dt><dd className={css.num}>{ohm(st.p[2])}</dd></div>
+                <div><dt>{t('em.tt.mcMedian')}</dt><dd className={css.num}>{ohm(st.p[2])}</dd></div>
                 <div><dt>95 % (±2σ)</dt><dd className={css.num}>{ohm(st.p[1])} … {ohm(st.p[3])}</dd></div>
                 <div><dt>99.73 % (±3σ)</dt><dd className={css.num}>{ohm(st.p[0])} … {ohm(st.p[4])}</dd></div>
-                <div><dt>Standard deviation</dt><dd className={css.num}>{ohm(st.sd)}</dd></div>
+                <div><dt>{t('em.tt.mcSd')}</dt><dd className={css.num}>{ohm(st.sd)}</dd></div>
               </>
             )}
           </dl>
@@ -494,14 +497,14 @@ function ToleranceTool({ setup, invalid, unit, digits, client }: ToolProps) {
         </div>
       )}
       <div className={css.buttons}>
-        <button type="button" className={base.button} data-mc-run onClick={() => void runMc()} disabled={!!invalid || mcBusy}>{mc ? 'Run Monte Carlo again' : `Run Monte Carlo (${MC_SAMPLES} samples)`}</button>
-        <button type="button" className={base.button} data-mc-cancel onClick={cancelMc} disabled={!mcBusy}>Cancel</button>
+        <button type="button" className={base.button} data-mc-run onClick={() => void runMc()} disabled={!!invalid || mcBusy}>{mc ? t('em.tt.mcAgain') : t('em.tt.mcRun', { n: MC_SAMPLES })}</button>
+        <button type="button" className={base.button} data-mc-cancel onClick={cancelMc} disabled={!mcBusy}>{t('em.tt.cancel')}</button>
       </div>
       <Whys ks="tol-corners mc mc-stats rank" />
-      <Calm name="mc" text={mcBusy ? 'Running Monte Carlo…' : mc ? `Monte Carlo of ${MC_SAMPLES} samples done` : ''} />
+      <Calm name="mc" text={mcBusy ? t('em.tt.mcRunning') : mc ? t('em.tt.mcDone', { n: MC_SAMPLES }) : ''} />
       {mcBusy && (
         <p className={css.busy}>
-          <progress className={css.progress} max={MC_SAMPLES} value={prog} aria-label="Monte Carlo progress" /> {prog} of {MC_SAMPLES} samples
+          <progress className={css.progress} max={MC_SAMPLES} value={prog} aria-label={t('em.tt.mcProgAria')} /> {t('em.tt.mcProg', { prog, total: MC_SAMPLES })}
         </p>
       )}
       {mc && (
@@ -509,19 +512,19 @@ function ToleranceTool({ setup, invalid, unit, digits, client }: ToolProps) {
           <Old show={mc.setup !== setup} />
           <p className={css.small}>
             {mc.r.ok
-              ? `${mc.r.samples} samples (seed ${mc.r.seed}, each input normal with σ = its tolerance / 3, cut at the tolerance)${mc.r.failed ? `, ${mc.r.failed} failed` : ''}, in ${(mc.ms / 1000).toFixed(1)} s.`
+              ? t('em.tt.mcSummary', { samples: mc.r.samples, seed: mc.r.seed, failed: mc.r.failed ? t('em.tt.mcFailed', { n: mc.r.failed }) : '', sec: (mc.ms / 1000).toFixed(1) })
               : mc.r.reason}
           </p>
         </div>
       )}
       {c && (
         <div className={css.rank} data-tol-ranking>
-          <h4 className={css.h4}>What moves {keyLabel(key)} most</h4>
-          <p className={css.small}>Each input alone at its tolerance: the change of {keyLabel(key)} and its share of the spread (the squares of the changes, summed).</p>
+          <h4 className={css.h4}>{t('em.tt.rankTitle', { key: keyLabel(key, t) })}</h4>
+          <p className={css.small}>{t('em.tt.rankNote', { key: keyLabel(key, t) })}</p>
           <ol className={css.rankList}>
             {c.inputs.map((i, k) => (
               <li key={i.id} data-rank-id={i.id} data-d={i.d[key]}>
-                <span className={css.rankName}>{i.label} <span className={css.err}>{limText(i.id, i.lim)}</span>{ph.filled.has(i.id) && <span className={css.tag}>placeholder</span>}</span>
+                <span className={css.rankName}>{i.label} <span className={css.err}>{limText(i.id, i.lim)}</span>{ph.filled.has(i.id) && <span className={css.tag}>{t('em.tt.placeholder')}</span>}</span>
                 <span className={css.num}>{i.d[key] >= 0 ? '+' : '−'}{qText(Math.abs(i.d[key]), 0, FLOOR.ohm).v} Ω</span>
                 <span className={css.share}><i style={{ width: `${(sh[k] * 80).toFixed(1)}%` }} /><b className={css.num}>{(sh[k] * 100).toFixed(sh[k] < 0.1 ? 1 : 0)} %</b></span>
               </li>
@@ -535,21 +538,22 @@ function ToleranceTool({ setup, invalid, unit, digits, client }: ToolProps) {
 
 // The band as bars on one axis: worst-case corners, ±3σ and ±2σ of the Monte Carlo, the median and the nominal.
 function BandStrip({ nominal, corner, p }: { nominal: number; corner: [number, number]; p: number[] | null }) {
+  const { t } = useI18n();
   const [lo, hi] = extent(corner, p ?? undefined, [nominal]);
   const a = niceAxis(lo, hi, 4, { pad: 0.03 });
   const tk = ticks(a, 4);
   const x = (v: number) => `${(frac(v, a) * 100).toFixed(3)}%`;
-  const rows: [string, number, number][] = [['Worst case', corner[0], corner[1]]];
+  const rows: [string, number, number][] = [[t('em.tt.worstCaseShort'), corner[0], corner[1]]];
   if (p) rows.push(['±3σ', p[0], p[4]], ['±2σ', p[1], p[3]]);
   return (
     <div className={css.strip} aria-hidden="true">
-      {rows.map(([name, l, h]) => (
+      {rows.map(([name, l, h], idx) => (
         <div key={name} className={css.stripRow}>
           <span className={css.stripName}>{name}</span>
           <span className={css.stripTrack}>
             <i className={css.stripBar} style={{ left: x(l), width: `${((frac(h, a) - frac(l, a)) * 100).toFixed(3)}%` }} />
             <i className={css.stripNominal} style={{ left: x(nominal) }} />
-            {p && name !== 'Worst case' && <i className={css.stripMedian} style={{ left: x(p[2]) }} />}
+            {p && idx > 0 && <i className={css.stripMedian} style={{ left: x(p[2]) }} />}
           </span>
         </div>
       ))}

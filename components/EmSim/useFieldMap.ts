@@ -19,6 +19,7 @@ import type { Stackup } from '../../lib/emsim/stackup';
 import type { StaticClient } from '../../lib/emsim/staticClient';
 import type { Structure } from '../../lib/emsim/structure';
 import type { ViaStructure } from '../../lib/emsim/via';
+import { emT } from './emText';
 import { feedExport } from './exportFeed';
 import type { Painted } from './fieldPaint';
 import type { FieldSettings } from './fieldTypes';
@@ -154,12 +155,12 @@ export function useFieldMap(f: FieldSettings | undefined, env: FieldEnv | undefi
           if (r.ok && r.grid) {
             store.set({ painted: mod.prepare(r.grid, qty, scaleKind, { contours: r.contours, lines: r.lines, surface: r.surface }), state: 'done', message: '' });
             record('done', rr.cached);
-          } else store.set({ painted: null, state: 'error', message: r.reason || 'No field.' });
+          } else store.set({ painted: null, state: 'error', message: r.reason || emT('em.fld.noField') });
         }
         flush.current();
       }, (e: unknown) => {
         if (inflight.current === id) inflight.current = 0;
-        store.set({ state: 'error', message: `The field could not be computed: ${e instanceof Error ? e.message : String(e)}` });
+        store.set({ state: 'error', message: emT('em.fld.computeErr', { err: e instanceof Error ? e.message : String(e) }) });
       });
     };
     if (dragging) { waiting.current = send; flush.current(); return; }

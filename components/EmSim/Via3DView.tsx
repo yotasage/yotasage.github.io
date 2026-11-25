@@ -21,6 +21,7 @@ import type { FieldPlane, Via3D } from './via3dRender';
 import { viaDriveText } from './useViaField';
 import type { ViaFieldSettings } from './useViaField';
 import { Whys } from './Why';
+import { useI18n } from '../../lib/ui/i18n';
 
 const planeOf = (p: Painted | null): FieldPlane | null => (p && p.image ? { image: p.image, x0: p.grid.view.x0, x1: p.grid.view.x1, z0: p.grid.view.z0, z1: p.grid.view.z1 } : null);
 
@@ -37,6 +38,7 @@ const STEP = Math.PI / 24; // a key's turn, as in the Waves section's 3D view (M
 interface Props { s: Stackup; v: ViaStructure; traceW: number; fields: ViaFieldSettings; t0: number }
 
 export default function Via3DView({ s, v, traceW, fields, t0 }: Props) {
+  const { t, locale } = useI18n();
   const fieldsOn = fields.on;
   const host = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<Via3D | null>(null);
@@ -61,7 +63,7 @@ export default function Via3DView({ s, v, traceW, fields, t0 }: Props) {
       x.onFrame = () => setOpenMs(performance.now() - t0);
       x.setColors(colorsOf(el));
       setView(x);
-    }, (e: unknown) => { if (live) setErr(`The 3D view needs WebGL, which this browser did not give (${e instanceof Error ? e.message : String(e)}).`); });
+    }, (e: unknown) => { if (live) setErr(t('em.via.3d.webglErr', { msg: e instanceof Error ? e.message : String(e) })); });
     return () => { live = false; made?.dispose(); };
     // t0 is the click that opened the view; it does not change while the view is open.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -101,32 +103,43 @@ export default function Via3DView({ s, v, traceW, fields, t0 }: Props) {
   return (
     <div className={vcss.v3d} data-via3d data-via3d-ready={!!view && Number.isFinite(openMs)} data-open-ms={Number.isFinite(openMs) ? openMs.toFixed(0) : ''} data-fields={side || top ? 'on' : 'off'}>
       <div ref={host} className={vcss.v3dHost} tabIndex={0} onKeyDown={onKey} data-via3d-host
-        aria-label="The via in 3D: drag or use the arrow keys to turn, wheel, pinch or + and − to zoom, Home to reset, right-drag or two fingers to pan" role="img" />
+        aria-label={t('em.via.3d.hostAria')} role="img" />
       {err && <p className={css.refused} role="alert" data-via3d-error>{err}</p>}
       <div className={vcss.viewTools}>
-        <button type="button" className={base.button} data-via3d-reset onClick={() => view?.reset()}>Reset view</button>
-        <button type="button" className={base.button} aria-pressed={cut} data-via3d-cut onClick={() => setCut((c) => !c)}>Cut away half</button>
-        <button type="button" className={base.button} aria-pressed={!laminate} data-via3d-laminate onClick={() => setLaminate((l) => !l)}>Hide the laminate</button>
+        <button type="button" className={base.button} data-via3d-reset onClick={() => view?.reset()}>{t('em.via.3d.reset')}</button>
+        <button type="button" className={base.button} aria-pressed={cut} data-via3d-cut onClick={() => setCut((c) => !c)}>{t('em.via.3d.cut')}</button>
+        <button type="button" className={base.button} aria-pressed={!laminate} data-via3d-laminate onClick={() => setLaminate((l) => !l)}>{t('em.via.3d.hideLam')}</button>
       </div>
       <Whys ks="via-3d-reset via-3d-cut via-3d-laminate" />
       <div className={vcss.viewTools}>
-        <div className={base.seg} role="group" aria-label="PNG size">
+        <div className={base.seg} role="group" aria-label={t('em.via.3d.pngSizeAria')}>
           {[1, 2].map((k) => <button key={k} type="button" aria-pressed={scale === k} data-via3d-scale={k} onClick={() => setScale(k)}>{k}×</button>)}
         </div>
-        <button type="button" className={base.button} data-via3d-png disabled={!view} onClick={png}>Save PNG</button>
+        <button type="button" className={base.button} data-via3d-png disabled={!view} onClick={png}>{t('em.via.3d.savePng')}</button>
         {saved && <span className={vcss.dim} data-via3d-saved>{saved}</span>}
       </div>
       <Whys ks="via-3d-png" />
       {(side || top) && (
         <div data-via3d-fields>
-          {side && <><p className={vcss.dim}>Side plane, through the barrels</p><FieldScaleBar mod={fieldPaint} painted={side} drive={viaDriveText('side', fields, !!v.pitch)} /></>}
-          {top && <><p className={vcss.dim}>Top plane, between two planes</p><FieldScaleBar mod={fieldPaint} painted={top} drive={viaDriveText('top', fields, !!v.pitch)} /></>}
+          {side && <><p className={vcss.dim}>{t('em.via.3d.sidePlane')}</p><FieldScaleBar mod={fieldPaint} painted={side} drive={viaDriveText('side', fields, !!v.pitch, locale)} /></>}
+          {top && <><p className={vcss.dim}>{t('em.via.3d.topPlane')}</p><FieldScaleBar mod={fieldPaint} painted={top} drive={viaDriveText('top', fields, !!v.pitch, locale)} /></>}
         </div>
       )}
       {fieldsOn && <Whys ks="via-3d-fields" />}
       <p className={css.caption} data-via3d-counts={JSON.stringify(scene.counts)} data-via3d-drilled={scene.drilled.length}>
-        Copper: {n('barrel')} barrel{n('barrel') > 1 ? 's' : ''}, {n('pad')} pads, {n('plane')} plane{n('plane') === 1 ? '' : 's'} with their antipads, {n('return')} return via{n('return') === 1 ? '' : 's'}, {n('feed')} feed{n('feed') === 1 ? '' : 's'}; the laminate see-through{scene.drilled.length ? ', the backdrilled hole pale' : ''}.
-        {fieldsOn && !side && !top ? ' The fields appear on their planes once the maps above are done.' : ''}
+        {t('em.via.3d.cap', {
+          barrels: n('barrel'),
+          barrelW: t(n('barrel') > 1 ? 'em.via.3d.barrelN' : 'em.via.3d.barrel1'),
+          pads: n('pad'),
+          planes: n('plane'),
+          planeW: t(n('plane') === 1 ? 'em.via.3d.plane1' : 'em.via.3d.planeN'),
+          returns: n('return'),
+          returnW: t(n('return') === 1 ? 'em.via.3d.return1' : 'em.via.3d.returnN'),
+          feeds: n('feed'),
+          feedW: t(n('feed') === 1 ? 'em.via.3d.feed1' : 'em.via.3d.feedN'),
+          drilled: scene.drilled.length ? t('em.via.3d.drilled') : '',
+          pending: fieldsOn && !side && !top ? t('em.via.3d.pending') : '',
+        })}
       </p>
     </div>
   );

@@ -7,12 +7,15 @@ import React, { memo, useEffect, useRef, useState } from 'react';
 
 import styles from '../../styles/Smith.module.css';
 import learn from '../../styles/SmithLearn.module.css';
-import { CHALLENGE_TITLES, challengeText } from '../../lib/smith/challenge';
+import { challengeText } from '../../lib/smith/challenge';
 import type { ChallengeKind } from '../../lib/smith/challenge';
 import { PANELS, TEXT_MAX, cutText, lessonParams } from '../../lib/smith/lesson';
 import type { Lesson, Lock, Panel } from '../../lib/smith/lesson';
-import { KIND_NAMES, LINK_VERSION, LISTS_PARAM, encodeCircuit } from '../../lib/smith/state';
+import { LINK_VERSION, LISTS_PARAM, encodeCircuit } from '../../lib/smith/state';
 import type { Circuit } from '../../lib/smith/state';
+import { translate, useI18n } from '../../lib/ui/i18n';
+import type { Locale, TranslationKey } from '../../lib/ui/translations';
+import { getSmithLocale, kindName } from './smithText';
 import { Why } from './Why';
 
 /** The page's link (after "?"): the circuit, the value lists, the lesson part and the challenge. A "read this point"
@@ -25,14 +28,21 @@ export function linkSearch(c: Circuit, lists: string, lesson: Lesson | null, ch:
 }
 
 /** A lock in words. */
-export function lockWords(lock: Lock): string {
+export function lockWords(lock: Lock, locale: Locale = getSmithLocale()): string {
   if (lock === 'z0') return 'Z0';
   if (lock === 'f0') return 'f0';
-  if (lock === 'zl') return 'the load';
-  if (lock === 'parts') return 'the parts’ list';
-  return 'kind' in lock ? `part ${lock.kind + 1}’s kind` : `part ${lock.value + 1}’s value`;
+  if (lock === 'zl') return translate(locale, 'sm.ls.lockLoad');
+  if (lock === 'parts') return translate(locale, 'sm.ls.lockParts');
+  return 'kind' in lock
+    ? translate(locale, 'sm.ls.lockKind', { n: lock.kind + 1 })
+    : translate(locale, 'sm.ls.lockValue', { n: lock.value + 1 });
 }
-const PANEL_WORDS: Readonly<Record<Panel, string>> = { solve: 'the Solve panel', suggest: 'the suggestions', reveal: 'a challenge’s reveal' };
+const PANEL_KEYS: Readonly<Record<Panel, TranslationKey>> = {
+  solve: 'sm.ls.panelSolve', suggest: 'sm.ls.panelSuggest', reveal: 'sm.ls.panelReveal',
+};
+const HIDE_KEYS: Readonly<Record<Panel, TranslationKey>> = {
+  solve: 'sm.ls.hideSolve', suggest: 'sm.ls.hideSuggest', reveal: 'sm.ls.hideReveal',
+};
 
 // ---------------------------------------------------------------------------------------------------------------
 // The Lesson box (where the guide goes)
@@ -43,6 +53,7 @@ export interface LessonBoxProps {
 }
 
 export const LessonBox = memo(function LessonBox({ lesson, onLeave }: LessonBoxProps) {
+  const { t, locale } = useI18n();
   const head = useRef<HTMLHeadingElement>(null);
   // Opened from a link: the focus goes to the box (as to the guide) unless the visitor is already somewhere.
   useEffect(() => {
@@ -51,13 +62,17 @@ export const LessonBox = memo(function LessonBox({ lesson, onLeave }: LessonBoxP
   }, []);
   return (
     <section className={learn.guide} aria-labelledby="smith-lesson" data-lesson-box="">
-      <h2 className={learn.head} id="smith-lesson" ref={head} tabIndex={-1}>Lesson <Why k="lesson-box" /></h2>
+      <h2 className={learn.head} id="smith-lesson" ref={head} tabIndex={-1}>{t('sm.ls.title')} <Why k="lesson-box" /></h2>
       {lesson.text && <p className={learn.lessonText} data-lesson-text-shown="">{lesson.text}</p>}
-      {lesson.locks.length > 0 && <p className={learn.intro} data-lesson-locks="">Locked: {lesson.locks.map(lockWords).join(', ')}.</p>}
-      {lesson.hidden.length > 0 && <p className={learn.intro} data-lesson-hidden="">Hidden: {lesson.hidden.map((p) => PANEL_WORDS[p]).join(', ')}.</p>}
+      {lesson.locks.length > 0 && (
+        <p className={learn.intro} data-lesson-locks="">{t('sm.ls.locked', { items: lesson.locks.map((lk) => lockWords(lk, locale)).join(', ') })}</p>
+      )}
+      {lesson.hidden.length > 0 && (
+        <p className={learn.intro} data-lesson-hidden="">{t('sm.ls.hidden', { items: lesson.hidden.map((p) => t(PANEL_KEYS[p])).join(', ') })}</p>
+      )}
       <div className={learn.bar}>
         <span className={learn.space} />
-        <button type="button" className={`${styles.button} ${learn.btn}`} data-lesson-leave="" onClick={onLeave}>Leave the lesson</button>
+        <button type="button" className={`${styles.button} ${learn.btn}`} data-lesson-leave="" onClick={onLeave}>{t('sm.ls.leave')}</button>
       </div>
     </section>
   );
@@ -74,9 +89,9 @@ export interface LessonMakerProps {
   challenge: { kind: ChallengeKind; seed: number } | null;
 }
 
-const LOCK_ROWS: { lock: Lock; label: string }[] = [
-  { lock: 'z0', label: 'Z0' }, { lock: 'f0', label: 'f0' }, { lock: 'zl', label: 'The load (R and X)' },
-  { lock: 'parts', label: 'The parts’ list (no add, remove or move)' },
+const LOCK_ROWS: { lock: Lock; label?: string; key?: TranslationKey }[] = [
+  { lock: 'z0', label: 'Z0' }, { lock: 'f0', label: 'f0' }, { lock: 'zl', key: 'sm.ls.lockLoadLabel' },
+  { lock: 'parts', key: 'sm.ls.lockPartsLabel' },
 ];
 
 /**
@@ -84,18 +99,20 @@ const LOCK_ROWS: { lock: Lock; label: string }[] = [
  * it last showed, so a commit (the end of every drag) renders the summary alone and the memoised body is skipped.
  */
 export const LessonMaker = memo(function LessonMaker({ circuit, lists, challenge }: LessonMakerProps) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const kept = useRef(circuit);
   if (open) kept.current = circuit;
   return (
     <details className={learn.maker} data-lesson-maker="" onToggle={(e) => setOpen(e.currentTarget.open)}>
-      <summary className={learn.makerHead}>Make a lesson link <Why k="lesson" /></summary>
+      <summary className={learn.makerHead}>{t('sm.ls.makerHead')} <Why k="lesson" /></summary>
       <MakerBody circuit={kept.current} lists={lists} challenge={challenge} />
     </details>
   );
 });
 
 const MakerBody = memo(function MakerBody({ circuit, lists, challenge }: LessonMakerProps) {
+  const { t, locale } = useI18n();
   const [locks, setLocks] = useState<ReadonlySet<string>>(() => new Set());
   const [hidden, setHidden] = useState<ReadonlySet<Panel>>(() => new Set());
   const [text, setText] = useState('');
@@ -117,13 +134,13 @@ const MakerBody = memo(function MakerBody({ circuit, lists, challenge }: LessonM
   const link = `${origin}?${linkSearch(circuit, lists, lesson.locks.length || lesson.hidden.length || text ? lesson : null, ch)}`;
   useEffect(() => { setCopied(''); }, [link]);
 
-  const flip = (token: string, on: boolean) => setLocks((s) => { const t = new Set(s); if (on) t.add(token); else t.delete(token); return t; });
-  const hide = (p: Panel, on: boolean) => setHidden((s) => { const t = new Set(s); if (on) t.add(p); else t.delete(p); return t; });
+  const flip = (token: string, on: boolean) => setLocks((s) => { const next = new Set(s); if (on) next.add(token); else next.delete(token); return next; });
+  const hide = (p: Panel, on: boolean) => setHidden((s) => { const next = new Set(s); if (on) next.add(p); else next.delete(p); return next; });
   const copy = () => {
-    const done = () => setCopied('Copied.');
+    const done = () => setCopied(t('sm.ls.copied'));
     const fallback = () => {
       out.current?.select();
-      try { setCopied(document.execCommand('copy') ? 'Copied.' : 'Select the link and copy it.'); } catch { setCopied('Select the link and copy it.'); }
+      try { setCopied(document.execCommand('copy') ? t('sm.ls.copied') : t('sm.ls.copyFallback')); } catch { setCopied(t('sm.ls.copyFallback')); }
     };
     if (navigator.clipboard?.writeText) navigator.clipboard.writeText(link).then(done, fallback);
     else fallback();
@@ -138,32 +155,30 @@ const MakerBody = memo(function MakerBody({ circuit, lists, challenge }: LessonM
 
   return (
     <>
-      <p className={learn.lead}>
-        The link holds the circuit as it is now. A lock is a teaching aid, not security: anyone can edit the link.
-      </p>
+      <p className={learn.lead}>{t('sm.ls.makerLead')}</p>
       <fieldset className={learn.set}>
-        <legend>Lock <Why k="lesson-lock" /></legend>
-        {LOCK_ROWS.map((r) => box(r.lock as string, r.label))}
+        <legend>{t('sm.ls.lockLegend')} <Why k="lesson-lock" /></legend>
+        {LOCK_ROWS.map((r) => box(r.lock as string, r.key ? t(r.key) : r.label!))}
         {circuit.parts.map((p, i) => (
           <span key={i} className={learn.partLocks}>
-            <span className={learn.partName}>Part {i + 1}, {KIND_NAMES[p.kind]}:</span>
-            {box(`k${i + 1}`, 'kind')}
-            {box(`v${i + 1}`, 'value')}
+            <span className={learn.partName}>{t('sm.ls.partLabel', { n: i + 1, kind: kindName(p.kind, locale) })}</span>
+            {box(`k${i + 1}`, t('sm.ls.kindBox'))}
+            {box(`v${i + 1}`, t('sm.ls.valueBox'))}
           </span>
         ))}
       </fieldset>
       <fieldset className={learn.set}>
-        <legend>Hide <Why k="lesson-hide" /></legend>
+        <legend>{t('sm.ls.hideLegend')} <Why k="lesson-hide" /></legend>
         {PANELS.map((p) => (
           <label key={p} className={learn.check}>
             <input type="checkbox" data-hide={p} checked={hidden.has(p)} onChange={(e) => hide(p, e.target.checked)} />
-            {PANEL_WORDS[p].replace(/^(the|a) /, '').replace(/^./, (c) => c.toUpperCase())}
+            {t(HIDE_KEYS[p])}
           </label>
         ))}
       </fieldset>
       <div className={learn.textRow}>
         <span className={learn.answerHead}>
-          <label htmlFor="smith-lesson-text">Text for the student</label> <Why k="lesson-text" />
+          <label htmlFor="smith-lesson-text">{t('sm.ls.textLabel')}</label> <Why k="lesson-text" />
           <span className={learn.space} />
           <span className={learn.counter} data-lesson-count="" aria-live="polite">{count} / {TEXT_MAX}</span>
         </span>
@@ -173,12 +188,15 @@ const MakerBody = memo(function MakerBody({ circuit, lists, challenge }: LessonM
       {challenge && (
         <label className={learn.check}>
           <input type="checkbox" data-lesson-ch="" checked={withCh} onChange={(e) => setWithCh(e.target.checked)} />
-          With the running challenge ({CHALLENGE_TITLES[challenge.kind]}, {challengeText(challenge.kind, challenge.seed)})
+          {t('sm.ls.withCh', {
+            title: t(`sm.ch.title.${challenge.kind}` as TranslationKey),
+            code: challengeText(challenge.kind, challenge.seed),
+          })}
         </label>
       )}
       <div className={learn.linkRow}>
-        <input ref={out} className={styles.input} readOnly value={link} aria-label="The lesson link" data-lesson-link="" onFocus={(e) => e.currentTarget.select()} />
-        <button type="button" className={`${styles.button} ${learn.btn} ${learn.next}`} data-lesson-copy="" onClick={copy}>Copy link</button>
+        <input ref={out} className={styles.input} readOnly value={link} aria-label={t('sm.ls.linkAria')} data-lesson-link="" onFocus={(e) => e.currentTarget.select()} />
+        <button type="button" className={`${styles.button} ${learn.btn} ${learn.next}`} data-lesson-copy="" onClick={copy}>{t('sm.ls.copyLink')}</button>
       </div>
       <p className={learn.state} role="status" data-lesson-copied="">{copied}</p>
     </>
