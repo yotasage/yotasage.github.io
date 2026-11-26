@@ -2,7 +2,7 @@ import React from 'react';
 
 // Icons for the tool cards on the main page, in the style of components/PdfTools/ToolIcon.tsx. Filled shapes use
 // currentColor, which the <svg> sets to the tool's colour.
-export type HomeIconName = 'base' | 'boolean' | 'calculator' | 'integral' | 'derivative' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'python' | 'hash' | 'chmod' | 'color' | 'timedate' | 'textcase' | 'lorem' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
+export type HomeIconName = 'base' | 'boolean' | 'calculator' | 'integral' | 'derivative' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'python' | 'hash' | 'chmod' | 'color' | 'timedate' | 'timestamp' | 'textcase' | 'lorem' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
 
 const SAMPLES: [number, number][] = [[6, 24], [12, 12], [18, 12], [24, 24], [30, 36], [36, 36], [42, 24]];
 
@@ -190,6 +190,17 @@ const ICONS: Record<HomeIconName, React.ReactNode> = {
       <circle cx={20} cy={30} r={1.5} fill="currentColor" stroke="none" />
       <circle cx={34} cy={34} r={9} />
       <path d="M34 29.5V34l3 2" />
+    </>
+  ),
+  // Timestamp converter: chronometer dial with bidirectional epoch arrows and tick marks.
+  timestamp: (
+    <>
+      <path d="M19 5h10M24 5v4" />
+      <circle cx={24} cy={26} r={16} />
+      <path d="M24 14v2.2M24 35.8V38M12 26h2.2M33.8 26H36" opacity={0.55} />
+      <path d="M24 26V18.5M24 26l5.5 3.5" />
+      <circle cx={24} cy={26} r={1.8} fill="currentColor" stroke="none" />
+      <path d="M35.5 11.5l3-3M37 7.5l3 3" opacity={0.75} />
     </>
   ),
   textcase: (

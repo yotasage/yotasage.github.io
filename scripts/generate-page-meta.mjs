@@ -55,6 +55,7 @@ const CANONICAL_TITLES = {
   '/hash/main': 'Hash generator',
   '/base-converter/main': 'Number base converter',
   '/chmod/main': 'Chmod calculator',
+  '/timestamp/main': 'Timestamp converter',
   '/calculator/main': 'Smart Calculator',
   '/integral/main': 'Integral solver',
   '/derivative/main': 'Derivative solver',

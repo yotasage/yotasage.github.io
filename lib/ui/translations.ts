@@ -67,6 +67,7 @@ import { en as smithTheory4En, nb as smithTheory4Nb } from './i18n/smithTheory4'
 import { en as smithWhysEn, nb as smithWhysNb } from './i18n/smithWhys';
 import { en as textcaseEn, nb as textcaseNb } from './i18n/textcase';
 import { en as timedateEn, nb as timedateNb } from './i18n/timedate';
+import { en as timestampEn, nb as timestampNb } from './i18n/timestamp';
 import { en as utilitiesEn, nb as utilitiesNb } from './i18n/utilities';
 import { en as viewer3dEn, nb as viewer3dNb } from './i18n/viewer3d';
 import { en as viewersEn, nb as viewersNb } from './i18n/viewers';
@@ -123,6 +124,7 @@ export const en = {
   ...loremEn,
   ...textcaseEn,
   ...timedateEn,
+  ...timestampEn,
   ...qrGenEn,
   ...qrReadEn,
   ...utilitiesEn,
@@ -200,6 +202,7 @@ export const nb: Record<TranslationKey, string> = {
   ...loremNb,
   ...textcaseNb,
   ...timedateNb,
+  ...timestampNb,
   ...qrGenNb,
   ...qrReadNb,
   ...utilitiesNb,

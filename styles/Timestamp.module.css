@@ -1,0 +1,989 @@
+/* ==========================================================================
+   Timestamp Converter (/timestamp/main) — Design System v2
+   Uses --ds-* tokens exclusively for Light, Dark, and High Contrast AAA.
+   ========================================================================== */
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 20px 64px;
+  flex: 1;
+}
+
+.workspacePanel[hidden] {
+  display: none;
+}
+
+.lead {
+  margin: 0 0 16px;
+  max-width: 78ch;
+  color: var(--ds-ink-2);
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+/* --------------------------------------------------------------------------
+   Quick Mode Banner
+   -------------------------------------------------------------------------- */
+
+.quickBanner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 16px;
+  padding: 11px 16px;
+  border-radius: var(--ds-radius-ctrl);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  background: var(--ds-accent-soft);
+  color: var(--ds-ink);
+  font-size: 0.875rem;
+}
+
+.quickBannerText {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--ds-ink-2);
+}
+
+.quickBadge {
+  font-weight: 700;
+  color: var(--ds-accent);
+  font-size: 0.82rem;
+}
+
+.quickActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* --------------------------------------------------------------------------
+   Layout & Surface Cards (Single-Elevation)
+   -------------------------------------------------------------------------- */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.twoCol {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.equalCol {
+  display: grid;
+  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.card {
+  padding: 18px 20px;
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px 14px;
+  margin-bottom: 14px;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  color: var(--ds-ink);
+}
+
+.cardSub {
+  margin: 4px 0 0;
+  font-size: 0.84rem;
+  color: var(--ds-ink-2);
+  line-height: 1.45;
+}
+
+/* --------------------------------------------------------------------------
+   Buttons & Segmented Controls
+   -------------------------------------------------------------------------- */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0.4rem 0.88rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.button:hover:not(:disabled),
+.button:focus-visible {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  color: var(--ds-ink);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.primaryButton {
+  composes: button;
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+}
+
+.primaryButton:hover:not(:disabled),
+.primaryButton:focus-visible {
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  filter: brightness(1.08);
+}
+
+.buttonSmall {
+  composes: button;
+  min-height: 30px;
+  padding: 0.24rem 0.65rem;
+  font-size: 0.78rem;
+}
+
+.copyBtn {
+  composes: button;
+  min-height: 30px;
+  padding: 0.22rem 0.66rem;
+  font-size: 0.78rem;
+}
+
+.copyBtnCopied {
+  border-color: var(--ds-good);
+  background: var(--ds-good-soft);
+  color: var(--ds-good);
+}
+
+.segmented {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  gap: 2px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-well);
+}
+
+.segBtn {
+  min-height: 28px;
+  padding: 0.22rem 0.66rem;
+  border: none;
+  border-radius: calc(var(--ds-radius-sm) - 2px);
+  background: transparent;
+  color: var(--ds-ink-2);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.segBtn:hover {
+  color: var(--ds-ink);
+}
+
+.segBtnActive {
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+/* --------------------------------------------------------------------------
+   Live Epoch Strip
+   -------------------------------------------------------------------------- */
+
+.liveBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 18px;
+  padding: 13px 18px;
+  border-radius: var(--ds-radius-card);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-surface);
+  box-shadow: var(--ds-shadow-card);
+}
+
+.liveReadouts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 22px;
+  min-width: 0;
+}
+
+.livePrimary {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.liveLabel {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ds-ink-3);
+  white-space: nowrap;
+}
+
+.liveEpochNum {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.32rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--ds-accent);
+  user-select: all;
+}
+
+.liveSecondary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  font-size: 0.83rem;
+  color: var(--ds-ink-2);
+}
+
+.liveMono {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 550;
+  color: var(--ds-ink);
+}
+
+.liveSep {
+  color: var(--ds-ink-3);
+}
+
+.livePaused {
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--ds-warn);
+}
+
+.liveActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* --------------------------------------------------------------------------
+   Smart Input Card
+   -------------------------------------------------------------------------- */
+
+.inputRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.primaryInput {
+  flex: 1 1 280px;
+  min-width: 0;
+  height: 44px;
+  padding: 0 0.9rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 1.05rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.primaryInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.inputErrorState {
+  border-color: var(--ds-bad);
+}
+
+.inputErrorState:focus {
+  border-color: var(--ds-bad);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ds-bad) 26%, transparent);
+}
+
+.inputActionRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.statusRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 14px;
+  margin-top: 8px;
+  min-height: 22px;
+}
+
+.detectedNote {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 550;
+  color: var(--ds-good);
+}
+
+.errorBanner {
+  margin: 8px 0 0;
+  padding: 9px 12px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid color-mix(in srgb, var(--ds-bad) 45%, transparent);
+  background: var(--ds-bad-soft);
+  color: var(--ds-bad);
+  font-size: 0.83rem;
+  font-weight: 550;
+  line-height: 1.45;
+}
+
+.toolbarBlock {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ds-border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toolbarLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.toolbarLabel {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ds-ink-3);
+  margin-right: 4px;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   Date & Time Builder
+   -------------------------------------------------------------------------- */
+
+.tzBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.selectInput {
+  flex: 1 1 200px;
+  min-width: 0;
+  height: 36px;
+  padding: 0 0.7rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 550;
+}
+
+.selectInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.fieldsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.fieldsGridTime {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fieldLabel {
+  font-size: 0.77rem;
+  font-weight: 600;
+  color: var(--ds-ink-2);
+}
+
+.numInput {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 0.65rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.94rem;
+  font-weight: 600;
+}
+
+.numInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.offsetNote {
+  margin: 12px 0 0;
+  font-size: 0.81rem;
+  color: var(--ds-ink-3);
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------------------
+   Formats Table & Calendar Metadata
+   -------------------------------------------------------------------------- */
+
+.formatSectionTitle {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: var(--ds-ink-3);
+}
+
+.formatSectionGap {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ds-border);
+}
+
+.formatList {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--ds-border);
+}
+
+.formatRow {
+  display: grid;
+  grid-template-columns: minmax(150px, 230px) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 9px 4px;
+  border-bottom: 1px solid var(--ds-border);
+  transition: background 0.12s ease;
+}
+
+.formatRow:hover {
+  background: var(--ds-well);
+}
+
+.formatRowHero {
+  background: var(--ds-accent-soft);
+  padding: 10px 10px;
+  border-radius: var(--ds-radius-sm);
+  border-bottom: none;
+  margin-bottom: 4px;
+}
+
+.formatRowHero:hover {
+  background: var(--ds-accent-soft);
+}
+
+.equalCol .formatRow {
+  grid-template-columns: minmax(112px, 136px) minmax(0, 1fr) auto;
+  gap: 6px 10px;
+}
+
+.formatLabel {
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--ds-ink-2);
+}
+
+.formatValue {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ds-ink);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.equalCol .formatValue {
+  font-size: 0.84rem;
+}
+
+.formatValueHero {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ds-ink);
+}
+
+.equalCol .formatValueHero {
+  font-size: 0.93rem;
+}
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 18px;
+  padding: 12px 0 2px;
+}
+
+.metaItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.metaKey {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--ds-ink-3);
+}
+
+.metaVal {
+  font-size: 0.88rem;
+  font-weight: 650;
+  color: var(--ds-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.metaGood {
+  color: var(--ds-good);
+}
+
+.metaWarn {
+  color: var(--ds-warn);
+}
+
+.metaBad {
+  color: var(--ds-bad);
+}
+
+/* --------------------------------------------------------------------------
+   World Timezones & Batch Tables
+   -------------------------------------------------------------------------- */
+
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.tableSpacer {
+  margin-top: 12px;
+}
+
+.dataTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.dataTable th,
+.dataTable td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--ds-border);
+  text-align: left;
+  color: var(--ds-ink);
+  vertical-align: middle;
+}
+
+.dataTable thead th {
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--ds-ink-2);
+  background: var(--ds-well);
+  white-space: nowrap;
+}
+
+.dataTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.dataTable tbody tr:hover td {
+  background: var(--ds-well);
+}
+
+.monoCell {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.subMeta {
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: var(--ds-ink-3);
+  margin-top: 2px;
+}
+
+.zoneAddBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ds-border);
+}
+
+.rowActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.zoneActiveRow td {
+  background: var(--ds-accent-soft);
+}
+
+/* --------------------------------------------------------------------------
+   Difference & Offset Math Panel
+   -------------------------------------------------------------------------- */
+
+.diffInputsGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+
+.diffInputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.diffInputHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.textInput {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  padding: 0 0.78rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.textInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.diffSummaryHero {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: var(--ds-radius-ctrl);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  background: var(--ds-accent-soft);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.diffSummaryValue {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--ds-ink);
+}
+
+.diffStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 18px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ds-border);
+}
+
+.deltaFieldsGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.mathResultBox {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: var(--ds-radius-ctrl);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+}
+
+/* --------------------------------------------------------------------------
+   Batch Panel
+   -------------------------------------------------------------------------- */
+
+.batchTextarea {
+  width: 100%;
+  min-height: 156px;
+  margin-top: 6px;
+  padding: 12px 14px;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.batchTextarea:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.batchToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  margin-top: 12px;
+}
+
+.batchSummary {
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--ds-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.emptyState {
+  margin-top: 14px;
+  padding: 20px 16px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) dashed var(--ds-border-strong);
+  text-align: center;
+  color: var(--ds-ink-2);
+  font-size: 0.88rem;
+}
+
+.errorCell {
+  color: var(--ds-bad);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   Teaching & Guide Sections
+   -------------------------------------------------------------------------- */
+
+.teachingGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.guideLayout {
+  max-width: 980px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.guideHeader h2 {
+  margin: 0 0 6px;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.024em;
+  color: var(--ds-ink);
+}
+
+.guideHeader p {
+  margin: 0;
+  color: var(--ds-ink-2);
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+.guideGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.guideCard p {
+  margin: 0.5rem 0 0;
+  color: var(--ds-ink-2);
+  font-size: 0.88rem;
+  line-height: 1.58;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive Breakpoints
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 1020px) {
+  .twoCol,
+  .equalCol {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .deltaFieldsGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .diffInputsGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .metaGrid,
+  .diffStatsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .teachingGrid,
+  .guideGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .formatRow,
+  .equalCol .formatRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 10px;
+  }
+
+  .formatLabel {
+    grid-column: 1 / -1;
+    font-size: 0.77rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .main {
+    padding: 14px 12px 48px;
+  }
+
+  .card,
+  .liveBar {
+    padding: 14px;
+  }
+
+  .fieldsGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .fieldsGridTime {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .deltaFieldsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metaGrid,
+  .diffStatsGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .liveEpochNum {
+    font-size: 1.15rem;
+  }
+}
