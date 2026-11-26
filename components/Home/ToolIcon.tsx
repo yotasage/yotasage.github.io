@@ -2,7 +2,7 @@ import React from 'react';
 
 // Icons for the tool cards on the main page, in the style of components/PdfTools/ToolIcon.tsx. Filled shapes use
 // currentColor, which the <svg> sets to the tool's colour.
-export type HomeIconName = 'boolean' | 'calculator' | 'integral' | 'derivative' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'python' | 'hash' | 'color' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
+export type HomeIconName = 'boolean' | 'calculator' | 'integral' | 'derivative' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'python' | 'hash' | 'color' | 'timedate' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
 
 const SAMPLES: [number, number][] = [[6, 24], [12, 12], [18, 12], [24, 24], [30, 36], [36, 36], [42, 24]];
 
@@ -151,6 +151,21 @@ const ICONS: Record<HomeIconName, React.ReactNode> = {
       <path d="M31 23l9.5-9.5a3 3 0 0 1 4.2 4.2L35.2 27.2" />
       <path d="M29 21l8 8" />
       <path d="M31 25l-7 7-2 5 5-2 7-7" />
+    </>
+  ),
+  // Time & date calendar: calendar sheet with week grid and a clock dial in the bottom-right corner.
+  timedate: (
+    <>
+      <path d="M14 5v6M30 5v6" />
+      <path d="M25 40H9a3 3 0 0 1-3-3V11a3 3 0 0 1 3-3h26a3 3 0 0 1 3 3v11" />
+      <path d="M6 16h32" />
+      <circle cx={13} cy={23} r={1.5} fill="currentColor" stroke="none" />
+      <circle cx={20} cy={23} r={1.5} fill="currentColor" stroke="none" />
+      <circle cx={27} cy={23} r={1.5} fill="currentColor" stroke="none" opacity={0.6} />
+      <circle cx={13} cy={30} r={1.5} fill="currentColor" stroke="none" opacity={0.6} />
+      <circle cx={20} cy={30} r={1.5} fill="currentColor" stroke="none" />
+      <circle cx={34} cy={34} r={9} />
+      <path d="M34 29.5V34l3 2" />
     </>
   ),
   textcase: (

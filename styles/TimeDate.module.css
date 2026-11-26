@@ -1,0 +1,982 @@
+/* ==========================================================================
+   Time & Date Tool (/time-date/main) — Design System v2
+   Uses --ds-* tokens exclusively for Light, Dark, and High Contrast AAA.
+   ========================================================================== */
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 20px 20px 64px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* --------------------------------------------------------------------------
+   Top Current Time & Date Highlight Card
+   -------------------------------------------------------------------------- */
+
+.heroCard {
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  overflow: hidden;
+}
+
+.heroTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 28px;
+  padding: 22px 24px 18px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ds-accent) 7%, transparent) 0%,
+    transparent 100%
+  );
+}
+
+.clockBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.heroEyebrow {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ds-accent);
+  letter-spacing: 0.01em;
+}
+
+.clockRow {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.clockDigits {
+  font-family: var(--ds-font-mono);
+  font-size: clamp(2.15rem, 4.2vw, 3.1rem);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ds-ink);
+}
+
+.timezoneMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--ds-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.metaSep {
+  color: var(--ds-ink-3);
+}
+
+.dateHeadlineBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  gap: 6px;
+  min-width: 0;
+}
+
+.dateHeadline {
+  margin: 0;
+  font-size: clamp(1.3rem, 2.3vw, 1.85rem);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.022em;
+  color: var(--ds-ink);
+  text-wrap: balance;
+}
+
+.dateSubMeta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.84rem;
+  color: var(--ds-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.monoInline {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Structured Day / Month / Year / Week Strip */
+
+.componentsStrip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: var(--ds-border-w) solid var(--ds-border);
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-surface-solid);
+}
+
+.componentCell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 13px 20px;
+  min-width: 0;
+}
+
+.componentCell + .componentCell {
+  border-left: var(--ds-border-w) solid var(--ds-border);
+}
+
+.componentLabel {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--ds-ink-3);
+}
+
+.componentValue {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  flex-wrap: wrap;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ds-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.componentNum {
+  font-family: var(--ds-font-mono);
+  color: var(--ds-accent);
+  font-weight: 700;
+}
+
+.componentSub {
+  font-size: 0.77rem;
+  color: var(--ds-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Date Formats Copy Strip */
+
+.formatsStrip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  background: var(--ds-well);
+}
+
+.formatItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 18px;
+  min-width: 0;
+}
+
+.formatItem + .formatItem {
+  border-left: var(--ds-border-w) solid var(--ds-border);
+}
+
+.formatText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.formatLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ds-ink-3);
+  white-space: nowrap;
+}
+
+.formatValue {
+  font-family: var(--ds-font-mono);
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: var(--ds-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --------------------------------------------------------------------------
+   Shared Buttons & Segmented Controls
+   -------------------------------------------------------------------------- */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0.36rem 0.8rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
+  font-size: 0.83rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+
+.button:hover:not(:disabled),
+.button:focus-visible {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  color: var(--ds-ink);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.buttonSmall {
+  composes: button;
+  min-height: 30px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.78rem;
+}
+
+.buttonAccent {
+  composes: button;
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+}
+
+.buttonAccent:hover:not(:disabled),
+.buttonAccent:focus-visible {
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  filter: brightness(1.06);
+}
+
+.buttonCopied {
+  border-color: var(--ds-good);
+  background: var(--ds-good-soft);
+  color: var(--ds-good);
+}
+
+.iconBtn {
+  composes: button;
+  width: 36px;
+  padding: 0;
+}
+
+.segmented {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  gap: 2px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-well);
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.segBtn {
+  min-height: 30px;
+  padding: 0.22rem 0.72rem;
+  border: none;
+  border-radius: calc(var(--ds-radius-sm) - 2px);
+  background: transparent;
+  color: var(--ds-ink-2);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+.segBtn:hover {
+  color: var(--ds-ink);
+}
+
+.segBtnActive {
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+:global(html[data-ds-theme='hc']) .segBtnActive {
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  box-shadow: none;
+}
+
+.segBtnCompact {
+  composes: segBtn;
+  min-height: 26px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+/* --------------------------------------------------------------------------
+   Calendar Toolbar
+   -------------------------------------------------------------------------- */
+
+.toolbarCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 18px;
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+}
+
+.toolbarRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+
+.toolbarGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.toolbarSecondary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding-top: 10px;
+  border-top: var(--ds-border-w) solid var(--ds-border);
+}
+
+.spanLabel {
+  font-size: 0.92rem;
+  font-weight: 650;
+  color: var(--ds-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  padding: 0 4px;
+}
+
+.modeHint {
+  font-size: 0.8rem;
+  color: var(--ds-ink-3);
+}
+
+.yearControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fieldLabel {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ds-ink-2);
+  white-space: nowrap;
+}
+
+.yearInput {
+  width: 82px;
+  height: 36px;
+  padding: 0 0.55rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.92rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.yearInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.selectInput {
+  height: 36px;
+  padding: 0 0.65rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
+  font-size: 0.83rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.selectInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.checkboxLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.83rem;
+  font-weight: 550;
+  color: var(--ds-ink-2);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.checkboxLabel input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--ds-accent);
+  cursor: pointer;
+}
+
+/* --------------------------------------------------------------------------
+   Selected Date / ISO Week Inspector Strip
+   -------------------------------------------------------------------------- */
+
+.inspectorBar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 13px 18px;
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+}
+
+.inspectorTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+}
+
+.inspectorTitleGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+}
+
+.inspectorKicker {
+  font-size: 0.76rem;
+  font-weight: 650;
+  color: var(--ds-accent);
+}
+
+.inspectorHeadline {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--ds-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.inspectorMeta {
+  font-size: 0.82rem;
+  color: var(--ds-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.inspectorFormats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding-top: 8px;
+  border-top: var(--ds-border-w) solid var(--ds-border);
+}
+
+.inspectorFormatCell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  min-width: 0;
+}
+
+.hintLine {
+  margin: 0;
+  font-size: 0.81rem;
+  color: var(--ds-ink-3);
+  padding: 0 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Calendar Grid & Section Dividers
+   -------------------------------------------------------------------------- */
+
+.calendarSections {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.sectionBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sectionHeadingRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sectionHeading {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--ds-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sectionRule {
+  flex: 1;
+  height: 1px;
+  background: var(--ds-border);
+}
+
+.sectionCount {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ds-ink-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.monthsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+
+:global(html[data-ds-wide='true']) .monthsGridMany {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* --------------------------------------------------------------------------
+   Individual Month Card (inspired by timeanddate.no/kalender/)
+   -------------------------------------------------------------------------- */
+
+.monthCard {
+  display: flex;
+  flex-direction: column;
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  padding: 14px 14px 12px;
+  min-width: 0;
+  transition: border-color 0.14s ease;
+}
+
+.monthCardCurrent {
+  border-color: var(--ds-accent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ds-accent) 6%, transparent) 0%,
+    var(--ds-surface) 76px
+  );
+}
+
+.monthCardMargin {
+  border-style: dashed;
+  border-color: var(--ds-border-strong);
+}
+
+.monthHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 4px 10px;
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+  margin-bottom: 6px;
+}
+
+.monthTitleGroup {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+
+.monthIndex {
+  font-family: var(--ds-font-mono);
+  font-size: 0.76rem;
+  font-weight: 650;
+  color: var(--ds-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.monthName {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: -0.012em;
+  color: var(--ds-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.monthYearText {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--ds-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.monthStatusText {
+  font-size: 0.74rem;
+  font-weight: 650;
+  color: var(--ds-accent);
+  white-space: nowrap;
+}
+
+.monthStatusMuted {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--ds-ink-3);
+  white-space: nowrap;
+}
+
+/* Month Table */
+
+.monthTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-variant-numeric: tabular-nums;
+}
+
+.monthTable th {
+  padding: 4px 0 6px;
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--ds-ink-3);
+  text-align: center;
+}
+
+.monthTable th.sundayHeader {
+  color: var(--ds-bad);
+}
+
+.monthTable th.weekHeader {
+  width: 34px;
+  color: var(--ds-ink-3);
+  border-right: var(--ds-border-w) solid var(--ds-border);
+}
+
+.weekRow {
+  transition: background 0.12s ease;
+}
+
+.weekRowCurrent {
+  background: var(--ds-accent-soft);
+}
+
+.weekRowSelected {
+  background: color-mix(in srgb, var(--ds-accent) 18%, transparent);
+}
+
+.weekCell {
+  width: 34px;
+  padding: 2px 2px;
+  text-align: center;
+  border-right: var(--ds-border-w) solid var(--ds-border);
+  vertical-align: middle;
+}
+
+.weekBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ds-ink-3);
+  font-family: var(--ds-font-mono);
+  font-size: 0.73rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.weekBtn:hover {
+  background: var(--ds-well-hover);
+  color: var(--ds-ink);
+}
+
+.weekBtnCurrent {
+  color: var(--ds-accent);
+  font-weight: 700;
+}
+
+.dayCell {
+  padding: 2px 1px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.dayBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 34px;
+  height: 30px;
+  padding: 0;
+  border: 1.5px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ds-ink);
+  font-family: var(--ds-font-ui);
+  font-size: 0.83rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.dayBtn:hover {
+  background: var(--ds-well-hover);
+}
+
+.daySaturday {
+  color: var(--ds-ink-2);
+}
+
+.daySunday {
+  color: var(--ds-bad);
+  font-weight: 550;
+}
+
+.dayOutside {
+  color: var(--ds-ink-3);
+  opacity: 0.34;
+}
+
+.dayOutside:hover {
+  opacity: 0.78;
+}
+
+.daySelected {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  color: var(--ds-ink);
+  font-weight: 700;
+}
+
+.dayToday {
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  font-weight: 750;
+}
+
+.dayToday:hover {
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  filter: brightness(1.06);
+}
+
+.dayToday.daySelected {
+  box-shadow: 0 0 0 2px var(--ds-surface-solid), 0 0 0 4px var(--ds-accent);
+}
+
+/* --------------------------------------------------------------------------
+   Responsive Breakpoints
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 1060px) {
+  .monthsGrid,
+  :global(html[data-ds-wide='true']) .monthsGridMany {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .formatsStrip,
+  .inspectorFormats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .formatItem + .formatItem {
+    border-left: none;
+    border-top: var(--ds-border-w) solid var(--ds-border);
+  }
+}
+
+@media (max-width: 820px) {
+  .heroTop {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dateHeadlineBlock {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .dateSubMeta {
+    justify-content: flex-start;
+  }
+
+  .componentsStrip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .componentCell:nth-child(3) {
+    border-left: none;
+    border-top: var(--ds-border-w) solid var(--ds-border);
+  }
+
+  .componentCell:nth-child(4) {
+    border-top: var(--ds-border-w) solid var(--ds-border);
+  }
+}
+
+@media (max-width: 680px) {
+  .main {
+    padding: 14px 12px 48px;
+    gap: 14px;
+  }
+
+  .heroTop {
+    padding: 16px 16px 14px;
+  }
+
+  .componentCell {
+    padding: 11px 14px;
+  }
+
+  .formatItem {
+    padding: 10px 14px;
+  }
+
+  .toolbarCard {
+    padding: 12px 14px;
+  }
+
+  .modeTabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    overflow-x: visible;
+  }
+
+  .modeTabs .segBtn {
+    width: 100%;
+    min-height: 36px;
+    padding: 0.3rem 0.5rem;
+    text-align: center;
+  }
+
+  .periodNav {
+    width: 100%;
+  }
+
+  .periodNav .spanLabel {
+    order: -1;
+    flex: 1 0 100%;
+    text-align: center;
+    padding: 2px 0 4px;
+  }
+
+  .periodNav .button {
+    flex: 1 1 auto;
+    min-height: 38px;
+  }
+
+  .monthsGrid,
+  :global(html[data-ds-wide='true']) .monthsGridMany {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dayBtn {
+    height: 36px;
+    max-width: 40px;
+  }
+
+  .weekBtn {
+    height: 34px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Print Layout (clean 3-column paper calendar)
+   -------------------------------------------------------------------------- */
+
+@media print {
+  .main {
+    max-width: none;
+    padding: 0;
+    gap: 12px;
+  }
+
+  .monthsGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 10px;
+  }
+
+  .monthCard {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    padding: 8px;
+  }
+
+  .heroCard {
+    break-inside: avoid;
+  }
+}

@@ -96,6 +96,10 @@ export const en = {
   'home.tool.color.category': 'Color & Design',
   'home.tool.color.desc':
     'Convert between HEX, RGB, HSL, HSV, HWB, CMYK, OKLCH, and Lab using square, circular wheel, or OKLCH pickers — plus pick pixels and dominant palettes from images and check WCAG / APCA contrast.',
+  'home.tool.timedate.title': 'Time & date',
+  'home.tool.timedate.category': 'Calendar & Time',
+  'home.tool.timedate.desc':
+    'Live local time and date with day, month, year, ISO 8601 week numbers, copyable YYYY-MM-DD / ordinal / dot formats, and 3-month, ±6-month, full-year, or year-plus-margin calendars.',
   'home.tool.textcase.title': 'Text case converter',
   'home.tool.textcase.category': 'Text',
   'home.tool.textcase.desc':
@@ -121,6 +125,7 @@ export const en = {
   'home.tool.notepad.tags': 'Monaco Editor|Code · CSV · TeX|Side-by-side · Grid|Diff · Regex|Auto-saved',
   'home.tool.hash.tags': 'MD5 · SHA-2 · SHA-3|BLAKE2 · CRC32|Multi-field · Files|Verifier · Diff',
   'home.tool.color.tags': 'HEX · RGB · OKLCH · CMYK|Wheel · Square|Image picker|Harmonies · WCAG',
+  'home.tool.timedate.tags': 'Live clock|ISO week numbers|3 mo · ±6 mo|Year + margin|YYYY-MM-DD',
   'home.tool.textcase.tags': 'Sentence · Title|UPPER · lower|camelCase|snake_case|kebab-case',
 } as const;
 
@@ -222,6 +227,10 @@ export const nb: Record<keyof typeof en, string> = {
   'home.tool.color.category': 'Farge og design',
   'home.tool.color.desc':
     'Konverter mellom HEX, RGB, HSL, HSV, HWB, CMYK, OKLCH og Lab med firkant-, hjul- eller OKLCH-velger — plukk farger og paletter fra bilder og sjekk WCAG/APCA-kontrast.',
+  'home.tool.timedate.title': 'Tid og dato',
+  'home.tool.timedate.category': 'Kalender og tid',
+  'home.tool.timedate.desc':
+    'Lokal klokke og dato med dag, måned, år, ISO 8601-ukenummer, kopierbare datoformater og kalender for 3 måneder, ±6 måneder, bestemt år eller år med margin fremover.',
   'home.tool.textcase.title': 'Tekstformatkonverterer',
   'home.tool.textcase.category': 'Tekst',
   'home.tool.textcase.desc':
@@ -247,5 +256,6 @@ export const nb: Record<keyof typeof en, string> = {
   'home.tool.notepad.tags': 'Monaco-editor|Kode · CSV · TeX|Side ved side · Rutenett|Diff · Regex|Autolagret',
   'home.tool.hash.tags': 'MD5 · SHA-2 · SHA-3|BLAKE2 · CRC32|Flere felt · Filer|Verifiserer · Diff',
   'home.tool.color.tags': 'HEX · RGB · OKLCH · CMYK|Hjul · Firkant|Bildevelger|Harmonier · WCAG',
+  'home.tool.timedate.tags': 'Sanntidsklokke|ISO-ukenummer|3 mnd · ±6 mnd|År + margin|YYYY-MM-DD',
   'home.tool.textcase.tags': 'Setning · Tittel|STORE · små|camelCase|snake_case|kebab-case',
 };
