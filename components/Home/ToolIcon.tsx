@@ -2,7 +2,7 @@ import React from 'react';
 
 // Icons for the tool cards on the main page, in the style of components/PdfTools/ToolIcon.tsx. Filled shapes use
 // currentColor, which the <svg> sets to the tool's colour.
-export type HomeIconName = 'boolean' | 'calculator' | 'integral' | 'derivative' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'python' | 'hash' | 'color' | 'timedate' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
+export type HomeIconName = 'boolean' | 'calculator' | 'integral' | 'derivative' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'python' | 'hash' | 'chmod' | 'color' | 'timedate' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
 
 const SAMPLES: [number, number][] = [[6, 24], [12, 12], [18, 12], [24, 24], [30, 36], [36, 36], [42, 24]];
 
@@ -138,6 +138,19 @@ const ICONS: Record<HomeIconName, React.ReactNode> = {
     <>
       <path d="M24 5l15 5.5v11.5c0 9.8-6.4 16.9-15 20.5C15.4 38.9 9 31.8 9 22V10.5L24 5z" />
       <path d="M19.5 16.5l-2 14M29.5 16.5l-2 14M15 20.5h17M14 26.5h17" />
+    </>
+  ),
+  // Chmod calculator: padlock body with three permission-bit indicator rows (r/w/x).
+  chmod: (
+    <>
+      <path d="M16 20v-5a8 8 0 0 1 16 0v5" />
+      <rect x={9} y={20} width={30} height={22} rx={4} />
+      <circle cx={16.5} cy={27.5} r={1.8} fill="currentColor" stroke="none" />
+      <circle cx={24} cy={27.5} r={1.8} fill="currentColor" stroke="none" />
+      <circle cx={31.5} cy={27.5} r={1.8} fill="currentColor" stroke="none" />
+      <circle cx={16.5} cy={34.5} r={1.8} fill="currentColor" stroke="none" />
+      <path d="M22.2 34.5h3.6" opacity={0.55} />
+      <circle cx={31.5} cy={34.5} r={1.8} fill="currentColor" stroke="none" />
     </>
   ),
   // Color converter & picker: palette wheel with swatch wells and an angled eyedropper.

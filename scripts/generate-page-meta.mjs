@@ -52,6 +52,7 @@ const CANONICAL_TITLES = {
   '/paint/main': 'Paint & Image Editor',
   '/text-case/main': 'Text case converter',
   '/hash/main': 'Hash generator',
+  '/chmod/main': 'Chmod calculator',
   '/calculator/main': 'Smart Calculator',
   '/integral/main': 'Integral solver',
   '/derivative/main': 'Derivative solver',

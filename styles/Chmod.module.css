@@ -1,0 +1,1128 @@
+/* ==========================================================================
+   Chmod Calculator (/chmod/main) — Design System v2
+   Uses --ds-* tokens exclusively for Light, Dark, and High Contrast AAA.
+   ========================================================================== */
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 20px 64px;
+  flex: 1;
+}
+
+.workspacePanel[hidden] {
+  display: none;
+}
+
+.lead {
+  margin: 0 0 18px;
+  max-width: 78ch;
+  color: var(--ds-ink-2);
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+/* --------------------------------------------------------------------------
+   Quick Mode Banner
+   -------------------------------------------------------------------------- */
+
+.quickBanner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 16px;
+  padding: 11px 16px;
+  border-radius: var(--ds-radius-ctrl);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  background: var(--ds-accent-soft);
+  color: var(--ds-ink);
+  font-size: 0.875rem;
+}
+
+.quickBannerText {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--ds-ink-2);
+}
+
+.quickBadge {
+  font-weight: 700;
+  color: var(--ds-accent);
+  font-size: 0.82rem;
+}
+
+.quickActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* --------------------------------------------------------------------------
+   Layout & Surface Cards
+   -------------------------------------------------------------------------- */
+
+.workbenchStack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.topGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.card {
+  padding: 18px 20px;
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  margin-bottom: 14px;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  color: var(--ds-ink);
+}
+
+.cardSub {
+  margin: 4px 0 0;
+  font-size: 0.84rem;
+  color: var(--ds-ink-2);
+  line-height: 1.45;
+}
+
+/* --------------------------------------------------------------------------
+   Buttons & Segmented Controls
+   -------------------------------------------------------------------------- */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0.4rem 0.9rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.button:hover:not(:disabled),
+.button:focus-visible {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  color: var(--ds-ink);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.primaryButton {
+  composes: button;
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+}
+
+.primaryButton:hover:not(:disabled),
+.primaryButton:focus-visible {
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  filter: brightness(1.08);
+}
+
+.buttonSmall {
+  composes: button;
+  min-height: 30px;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.79rem;
+}
+
+.copyBtn {
+  composes: button;
+  min-height: 30px;
+  padding: 0.22rem 0.68rem;
+  font-size: 0.78rem;
+}
+
+.copyBtnCopied {
+  border-color: var(--ds-good);
+  background: var(--ds-good-soft);
+  color: var(--ds-good);
+}
+
+.segmented {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  gap: 2px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-well);
+}
+
+.segBtn {
+  min-height: 28px;
+  padding: 0.22rem 0.68rem;
+  border: none;
+  border-radius: calc(var(--ds-radius-sm) - 2px);
+  background: transparent;
+  color: var(--ds-ink-2);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.segBtn:hover {
+  color: var(--ds-ink);
+}
+
+.segBtnActive {
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+/* --------------------------------------------------------------------------
+   Code Decoder Input Bar
+   -------------------------------------------------------------------------- */
+
+.decodeCard {
+  composes: card;
+  padding: 14px 18px;
+}
+
+.decodeHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+  margin-bottom: 10px;
+}
+
+.decodeHeaderText {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.decodeSubLabel {
+  font-size: 0.81rem;
+  font-weight: 550;
+  color: var(--ds-ink-3);
+}
+
+.decodeForm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.decodeRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.decodeInputWrap {
+  flex: 1 1 260px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.decodeInput {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  padding: 0 0.85rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 1.02rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.decodeInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.decodeInputError {
+  border-color: var(--ds-bad);
+}
+
+.decodeInputError:focus {
+  border-color: var(--ds-bad);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ds-bad) 26%, transparent);
+}
+
+.decodeActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.decodeHint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ds-ink-3);
+  line-height: 1.45;
+}
+
+.decodeError {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid color-mix(in srgb, var(--ds-bad) 45%, transparent);
+  background: var(--ds-bad-soft);
+  color: var(--ds-bad);
+  font-size: 0.83rem;
+  font-weight: 550;
+  line-height: 1.45;
+}
+
+.decodeStatus {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ds-good);
+  font-weight: 550;
+}
+
+/* --------------------------------------------------------------------------
+   Permissions Checkbox Matrix
+   -------------------------------------------------------------------------- */
+
+.matrixTableWrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.matrixTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.matrixTable th,
+.matrixTable td {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--ds-border);
+  vertical-align: middle;
+}
+
+.matrixTable thead th {
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--ds-ink-2);
+  text-align: left;
+  padding-top: 4px;
+  padding-bottom: 10px;
+  white-space: nowrap;
+}
+
+.matrixTable thead th.colRight,
+.matrixTable td.colRight {
+  text-align: center;
+}
+
+.matrixTable thead th.colOctal,
+.matrixTable td.colOctal {
+  text-align: right;
+}
+
+.matrixTable tbody tr:last-child td,
+.matrixTable tbody tr:last-child th {
+  border-bottom: none;
+}
+
+.weightHint {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--ds-ink-3);
+  margin-left: 4px;
+}
+
+.roleCell {
+  text-align: left;
+  font-weight: 600;
+  min-width: 120px;
+}
+
+.roleBtn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 4px 6px;
+  margin: -4px -6px;
+  border: none;
+  border-radius: var(--ds-radius-sm);
+  background: transparent;
+  color: var(--ds-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.roleBtn:hover {
+  background: var(--ds-well);
+}
+
+.roleName {
+  font-size: 0.94rem;
+  font-weight: 650;
+  color: var(--ds-ink);
+}
+
+.roleSub {
+  font-family: var(--ds-font-mono);
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--ds-ink-3);
+}
+
+.checkCellLabel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  min-width: 90px;
+  padding: 6px 10px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  color: var(--ds-ink-2);
+  font-size: 0.85rem;
+  font-weight: 550;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.checkCellLabel:hover {
+  border-color: var(--ds-accent);
+  color: var(--ds-ink);
+}
+
+.checkCellChecked {
+  border-color: var(--ds-accent-border);
+  background: var(--ds-accent-soft);
+  color: var(--ds-ink);
+  font-weight: 650;
+}
+
+.checkCellText {
+  line-height: 1.2;
+}
+
+.checkInput {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: var(--ds-accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.rowSummary {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.rowDigit {
+  font-size: 1.08rem;
+  font-weight: 700;
+  color: var(--ds-accent);
+  line-height: 1.15;
+}
+
+.rowTriplet {
+  font-size: 0.76rem;
+  color: var(--ds-ink-3);
+}
+
+/* Special Bits Section */
+
+.specialSection {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ds-border);
+}
+
+.specialToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  margin: -5px -8px;
+  border: none;
+  border-radius: var(--ds-radius-sm);
+  background: transparent;
+  color: var(--ds-ink-2);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.specialToggleBtn:hover {
+  color: var(--ds-ink);
+  background: var(--ds-well);
+}
+
+.specialActiveMeta {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--ds-accent);
+}
+
+.specialGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.specialCardLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 11px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.specialCardLabel:hover {
+  border-color: var(--ds-accent);
+}
+
+.specialCardChecked {
+  border-color: var(--ds-accent-border);
+  background: var(--ds-accent-soft);
+}
+
+.specialCardText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.specialCardTitle {
+  font-size: 0.83rem;
+  font-weight: 650;
+  color: var(--ds-ink);
+}
+
+.specialCardDesc {
+  font-size: 0.76rem;
+  color: var(--ds-ink-2);
+  line-height: 1.38;
+}
+
+/* --------------------------------------------------------------------------
+   Command & Output Summary Panel
+   -------------------------------------------------------------------------- */
+
+.outputRows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.notationPair {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  gap: 10px;
+}
+
+.outputRow {
+  display: flex;
+  align-items: stretch;
+  padding: 10px 12px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-well);
+  min-width: 0;
+}
+
+.outputMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  width: 100%;
+}
+
+.outputRowTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.outputLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ds-ink-3);
+}
+
+.outputValueBig {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.32rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ds-ink);
+  line-height: 1.25;
+}
+
+.outputValueSub {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.75rem;
+  color: var(--ds-ink-3);
+  overflow-wrap: anywhere;
+}
+
+.commandHero {
+  margin-top: 2px;
+  padding: 13px 14px;
+  border-radius: var(--ds-radius-ctrl);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  background: var(--ds-accent-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.commandHeroTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.commandLabel {
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--ds-accent);
+}
+
+.commandCode {
+  display: block;
+  margin: 0;
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.02rem;
+  font-weight: 650;
+  color: var(--ds-ink);
+  word-break: break-all;
+  line-height: 1.45;
+  user-select: all;
+}
+
+.commandControls {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ds-border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.targetField {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.fieldLabel {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ds-ink-2);
+}
+
+.textInput {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  padding: 0 0.75rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.86rem;
+}
+
+.textInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.optionsBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+}
+
+.flagGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.inlineCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.83rem;
+  font-weight: 550;
+  color: var(--ds-ink-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.inlineCheck input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--ds-accent);
+  cursor: pointer;
+}
+
+.breakdownBox {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ds-border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.breakdownList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.84rem;
+  color: var(--ds-ink-2);
+}
+
+.breakdownList li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.breakdownRole {
+  font-weight: 650;
+  color: var(--ds-ink);
+  min-width: 60px;
+}
+
+.matchedLine {
+  margin: 4px 0 0;
+  font-size: 0.81rem;
+  color: var(--ds-accent);
+  font-weight: 550;
+}
+
+.warningList {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.warningBanner {
+  padding: 9px 12px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid color-mix(in srgb, var(--ds-warn) 45%, transparent);
+  background: var(--ds-warn-soft);
+  color: var(--ds-ink);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.warningDanger {
+  border-color: color-mix(in srgb, var(--ds-bad) 45%, transparent);
+  background: var(--ds-bad-soft);
+}
+
+/* --------------------------------------------------------------------------
+   Presets Grid
+   -------------------------------------------------------------------------- */
+
+.presetsHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-bottom: 14px;
+}
+
+.presetsHeader .segmented {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+.presetsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.presetCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 13px 14px;
+  border-radius: var(--ds-radius-ctrl);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+}
+
+.presetCard:hover {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+}
+
+.presetCard:active {
+  transform: translateY(1px);
+}
+
+.presetCardActive {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--ds-accent);
+}
+
+.presetCardCaution:hover {
+  border-color: var(--ds-bad);
+  background: var(--ds-bad-soft);
+}
+
+.presetCardCautionActive {
+  border-color: var(--ds-bad);
+  background: var(--ds-bad-soft);
+  box-shadow: inset 0 0 0 1px var(--ds-bad);
+}
+
+.presetTopRow {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.presetCodeGroup {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.presetOctal {
+  font-size: 1.05rem;
+  font-weight: 750;
+  color: var(--ds-accent);
+}
+
+.presetOctalCaution {
+  color: var(--ds-bad);
+}
+
+.presetSymbolic {
+  font-size: 0.8rem;
+  color: var(--ds-ink-2);
+}
+
+.presetMeta {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--ds-ink-3);
+  white-space: nowrap;
+}
+
+.presetMetaCaution {
+  color: var(--ds-bad);
+}
+
+.presetMetaActive {
+  color: var(--ds-accent);
+}
+
+.presetTitle {
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: var(--ds-ink);
+  line-height: 1.3;
+}
+
+.presetDesc {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ds-ink-2);
+  line-height: 1.45;
+}
+
+/* --------------------------------------------------------------------------
+   Teaching & Guide Sections
+   -------------------------------------------------------------------------- */
+
+.teachingGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.guideLayout {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.guideHeader h2 {
+  margin: 0 0 6px;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.024em;
+  color: var(--ds-ink);
+}
+
+.guideHeader p {
+  margin: 0;
+  color: var(--ds-ink-2);
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+.guideGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.guideCard p {
+  margin: 0.5rem 0 0;
+  color: var(--ds-ink-2);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 8px;
+}
+
+.guideTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.guideTable th,
+.guideTable td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--ds-border);
+  text-align: left;
+  color: var(--ds-ink);
+  vertical-align: top;
+}
+
+.guideTable th {
+  color: var(--ds-ink-2);
+  font-weight: 600;
+  background: var(--ds-well);
+  white-space: nowrap;
+}
+
+.guideTable tr:last-child td {
+  border-bottom: none;
+}
+
+.monoCell {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive Breakpoints
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 1020px) {
+  .topGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .presetsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .specialGrid,
+  .presetsGrid,
+  .teachingGrid,
+  .guideGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .main {
+    padding: 14px 12px 48px;
+  }
+
+  .card,
+  .decodeCard {
+    padding: 14px;
+  }
+
+  .notationPair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .matrixTable thead th {
+    font-size: 0.72rem;
+    padding: 4px 2px 8px;
+  }
+
+  .weightHint {
+    margin-left: 2px;
+    font-size: 0.68rem;
+  }
+
+  .roleCell {
+    min-width: 56px;
+  }
+
+  .roleName {
+    font-size: 0.86rem;
+  }
+
+  .roleSub {
+    display: none;
+  }
+
+  .checkCellLabel {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 6px;
+    gap: 0;
+  }
+
+  .checkCellText {
+    display: none;
+  }
+
+  .matrixTable th,
+  .matrixTable td {
+    padding: 7px 3px;
+  }
+
+  .presetsHeader .segmented {
+    width: 100%;
+  }
+
+  .presetsHeader .segBtn {
+    flex: 1 1 auto;
+    text-align: center;
+    padding: 0.28rem 0.55rem;
+    font-size: 0.78rem;
+  }
+}

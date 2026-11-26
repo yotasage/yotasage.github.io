@@ -5,6 +5,7 @@ import { en as booleanGuideEn, nb as booleanGuideNb } from './i18n/booleanGuide'
 import { en as calculatorEn, nb as calculatorNb } from './i18n/calculator';
 import { en as calculusEn, nb as calculusNb } from './i18n/calculus';
 import { en as calculusIdentitiesEn, nb as calculusIdentitiesNb } from './i18n/calculusIdentities';
+import { en as chmodEn, nb as chmodNb } from './i18n/chmod';
 import { en as colorEn, nb as colorNb } from './i18n/color';
 import { en as commonEn, nb as commonNb } from './i18n/common';
 import { en as eeEn, nb as eeNb } from './i18n/ee';
@@ -114,6 +115,7 @@ export const en = {
   ...resistorRefEn,
   ...resistorTheoryEn,
   ...hashEn,
+  ...chmodEn,
   ...colorEn,
   ...textcaseEn,
   ...timedateEn,
@@ -188,6 +190,7 @@ export const nb: Record<TranslationKey, string> = {
   ...resistorRefNb,
   ...resistorTheoryNb,
   ...hashNb,
+  ...chmodNb,
   ...colorNb,
   ...textcaseNb,
   ...timedateNb,

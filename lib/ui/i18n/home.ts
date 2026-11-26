@@ -92,6 +92,10 @@ export const en = {
   'home.tool.hash.category': 'Hashing & Checksums',
   'home.tool.hash.desc':
     'Generate MD5, SHA-1, SHA-2, SHA-3, BLAKE2, RIPEMD-160, CRC32, and Adler-32 digests across multiple text or file inputs at once, verify expected hashes, and compare fields side by side.',
+  'home.tool.chmod.title': 'Chmod calculator',
+  'home.tool.chmod.category': 'Unix & Linux',
+  'home.tool.chmod.desc':
+    'Build Unix file permissions with Owner, Group, and Others checkboxes, decode octal or symbolic codes back to checkboxes, copy ready-to-run chmod commands, and pick explained presets.',
   'home.tool.color.title': 'Color converter & picker',
   'home.tool.color.category': 'Color & Design',
   'home.tool.color.desc':
@@ -124,6 +128,7 @@ export const en = {
   'home.tool.paint.tags': 'Layers|Crop · Resize · Scale down|Rotate|B&W styles|Paint.NET Ctrl+C/V',
   'home.tool.notepad.tags': 'Monaco Editor|Code · CSV · TeX|Side-by-side · Grid|Diff · Regex|Auto-saved',
   'home.tool.hash.tags': 'MD5 · SHA-2 · SHA-3|BLAKE2 · CRC32|Multi-field · Files|Verifier · Diff',
+  'home.tool.chmod.tags': 'Octal · Symbolic|Owner · Group · Others|Explained presets|SUID · SGID · Sticky',
   'home.tool.color.tags': 'HEX · RGB · OKLCH · CMYK|Wheel · Square|Image picker|Harmonies · WCAG',
   'home.tool.timedate.tags': 'Live clock|ISO week numbers|3 mo · ±6 mo|Year + margin|YYYY-MM-DD',
   'home.tool.textcase.tags': 'Sentence · Title|UPPER · lower|camelCase|snake_case|kebab-case',
@@ -223,6 +228,10 @@ export const nb: Record<keyof typeof en, string> = {
   'home.tool.hash.category': 'Hashing og kontrollsummer',
   'home.tool.hash.desc':
     'Generer MD5-, SHA-1-, SHA-2-, SHA-3-, BLAKE2-, RIPEMD-160-, CRC32- og Adler-32-summer for flere tekst- eller filfelt samtidig, verifiser forventede hasher og sammenlign felt side om side.',
+  'home.tool.chmod.title': 'Chmod-kalkulator',
+  'home.tool.chmod.category': 'Unix og Linux',
+  'home.tool.chmod.desc':
+    'Beregn Unix-filrettigheter med avkrysningsbokser for Eier, Gruppe og Andre, dekod oktale eller symbolske koder, kopier ferdige chmod-kommandoer og velg forhåndsvalg med forklaringer.',
   'home.tool.color.title': 'Fargekonverterer og fargevelger',
   'home.tool.color.category': 'Farge og design',
   'home.tool.color.desc':
@@ -255,6 +264,7 @@ export const nb: Record<keyof typeof en, string> = {
   'home.tool.paint.tags': 'Lag|Beskjær · Skalering|Roter|Svart-hvitt-stiler|Paint.NET Ctrl+C/V',
   'home.tool.notepad.tags': 'Monaco-editor|Kode · CSV · TeX|Side ved side · Rutenett|Diff · Regex|Autolagret',
   'home.tool.hash.tags': 'MD5 · SHA-2 · SHA-3|BLAKE2 · CRC32|Flere felt · Filer|Verifiserer · Diff',
+  'home.tool.chmod.tags': 'Oktal · Symbolsk|Eier · Gruppe · Andre|Forklarte forhåndsvalg|SUID · SGID · Sticky',
   'home.tool.color.tags': 'HEX · RGB · OKLCH · CMYK|Hjul · Firkant|Bildevelger|Harmonier · WCAG',
   'home.tool.timedate.tags': 'Sanntidsklokke|ISO-ukenummer|3 mnd · ±6 mnd|År + margin|YYYY-MM-DD',
   'home.tool.textcase.tags': 'Setning · Tittel|STORE · små|camelCase|snake_case|kebab-case',
