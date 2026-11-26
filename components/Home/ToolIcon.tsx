@@ -2,7 +2,7 @@ import React from 'react';
 
 // Icons for the tool cards on the main page, in the style of components/PdfTools/ToolIcon.tsx. Filled shapes use
 // currentColor, which the <svg> sets to the tool's colour.
-export type HomeIconName = 'boolean' | 'calculator' | 'integral' | 'derivative' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'python' | 'hash' | 'chmod' | 'color' | 'timedate' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
+export type HomeIconName = 'boolean' | 'calculator' | 'integral' | 'derivative' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'python' | 'hash' | 'chmod' | 'color' | 'timedate' | 'textcase' | 'lorem' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
 
 const SAMPLES: [number, number][] = [[6, 24], [12, 12], [18, 12], [24, 24], [30, 36], [36, 36], [42, 24]];
 
@@ -186,6 +186,14 @@ const ICONS: Record<HomeIconName, React.ReactNode> = {
       <path d="M3 40 13 10l10 30M6.3 30h13.4" />
       <circle cx={34} cy={33} r={7} />
       <path d="M41 26v14" />
+    </>
+  ),
+  // Lorem ipsum generator: editorial pilcrow (¶) paired with clean paragraph lines.
+  lorem: (
+    <>
+      <path d="M19 10H13a6 6 0 0 0 0 12h6" />
+      <path d="M16 10v28M21 10v28" />
+      <path d="M28 13h14M28 21h14M28 29h14M28 37h9" opacity={0.75} />
     </>
   ),
   // A cube seen from a corner, with an orbit around it.

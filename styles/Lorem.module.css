@@ -1,0 +1,851 @@
+/* ==========================================================================
+   Lorem Ipsum Generator (/lorem-ipsum/main) — Design System v2
+   Uses --ds-* tokens exclusively for Light, Dark, and High Contrast AAA.
+   ========================================================================== */
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 20px 20px 64px;
+  flex: 1;
+}
+
+.workspacePanel[hidden] {
+  display: none;
+}
+
+.lead {
+  margin: 0 0 18px;
+  max-width: 78ch;
+  color: var(--ds-ink-2);
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+/* --------------------------------------------------------------------------
+   Quick Mode Banner
+   -------------------------------------------------------------------------- */
+
+.quickBanner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 16px;
+  padding: 11px 16px;
+  border-radius: var(--ds-radius-ctrl);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  background: var(--ds-accent-soft);
+  color: var(--ds-ink);
+  font-size: 0.875rem;
+}
+
+.quickBannerText {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--ds-ink-2);
+}
+
+.quickBadge {
+  font-weight: 700;
+  color: var(--ds-accent);
+  font-size: 0.82rem;
+}
+
+.quickActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* --------------------------------------------------------------------------
+   Workbench Split Layout
+   -------------------------------------------------------------------------- */
+
+.workbench {
+  display: grid;
+  grid-template-columns: minmax(370px, 430px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.card {
+  padding: 20px 22px;
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  margin-bottom: 16px;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 1.04rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  color: var(--ds-ink);
+}
+
+/* --------------------------------------------------------------------------
+   Buttons & Segmented Controls
+   -------------------------------------------------------------------------- */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0.42rem 0.9rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.button:hover:not(:disabled),
+.button:focus-visible {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  color: var(--ds-ink);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.primaryButton {
+  composes: button;
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+}
+
+.primaryButton:hover:not(:disabled),
+.primaryButton:focus-visible {
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  filter: brightness(1.07);
+}
+
+.copiedButton {
+  composes: button;
+  border-color: var(--ds-good);
+  background: var(--ds-good-soft);
+  color: var(--ds-good);
+}
+
+.copiedButton:hover:not(:disabled),
+.copiedButton:focus-visible {
+  border-color: var(--ds-good);
+  background: var(--ds-good-soft);
+  color: var(--ds-good);
+}
+
+.buttonSmall {
+  composes: button;
+  min-height: 30px;
+  padding: 0.24rem 0.65rem;
+  font-size: 0.79rem;
+}
+
+.segmented {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  padding: 3px;
+  gap: 2px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-well);
+}
+
+.segBtn {
+  flex: 1 1 auto;
+  min-height: 31px;
+  padding: 0.24rem 0.44rem;
+  border: none;
+  border-radius: calc(var(--ds-radius-sm) - 2px);
+  background: transparent;
+  color: var(--ds-ink-2);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.segBtn:hover {
+  color: var(--ds-ink);
+}
+
+.segBtnActive {
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.09);
+}
+
+/* --------------------------------------------------------------------------
+   Controls Stack
+   -------------------------------------------------------------------------- */
+
+.controlsStack {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.sectionBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.sectionDivider {
+  padding-top: 12px;
+  border-top: 1px solid var(--ds-border);
+}
+
+.sectionLabel {
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: var(--ds-ink-2);
+}
+
+.numberControl {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.numberHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.fieldLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ds-ink);
+}
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  overflow: hidden;
+}
+
+.stepBtn {
+  width: 30px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--ds-ink-2);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.stepBtn:hover:not(:disabled) {
+  background: var(--ds-well);
+  color: var(--ds-ink);
+}
+
+.stepBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.numberInput {
+  width: 68px;
+  height: 32px;
+  padding: 0 6px;
+  border: none;
+  border-left: 1px solid var(--ds-border);
+  border-right: 1px solid var(--ds-border);
+  background: transparent;
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.88rem;
+  font-weight: 650;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+
+.numberInput::-webkit-outer-spin-button,
+.numberInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.numberInput:focus {
+  outline: none;
+  background: var(--ds-accent-soft);
+}
+
+.rangeInput {
+  width: 100%;
+  height: 6px;
+  margin: 2px 0;
+  accent-color: var(--ds-accent);
+  cursor: pointer;
+}
+
+.fieldHelp {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ds-ink-3);
+  line-height: 1.4;
+}
+
+.selectInput {
+  width: 100%;
+  height: 38px;
+  padding: 0 0.75rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
+  font-size: 0.87rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.selectInput:hover {
+  border-color: var(--ds-accent);
+}
+
+.selectInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.styleSeedGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 104px;
+  gap: 10px;
+  align-items: end;
+}
+
+.formatGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.formatBtn {
+  flex: 1 0 auto;
+  min-height: 33px;
+  padding: 0.28rem 0.68rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink-2);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.formatBtn:hover {
+  border-color: var(--ds-accent);
+  color: var(--ds-ink);
+}
+
+.formatBtnActive {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  color: var(--ds-accent);
+}
+
+.checkRow {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.checkLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 0.85rem;
+  font-weight: 550;
+  color: var(--ds-ink);
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkInput {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--ds-accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.checkHelp {
+  padding-left: 25px;
+  font-size: 0.77rem;
+  color: var(--ds-ink-3);
+  line-height: 1.4;
+}
+
+.seedRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.seedInput {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 0.65rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.seedInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+/* --------------------------------------------------------------------------
+   Presets Grid
+   -------------------------------------------------------------------------- */
+
+.presetsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.presetBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 9px 11px;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  color: var(--ds-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.presetBtn:hover {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+}
+
+.presetTitle {
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: var(--ds-ink);
+  line-height: 1.25;
+}
+
+.presetMeta {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.73rem;
+  color: var(--ds-ink-3);
+}
+
+/* --------------------------------------------------------------------------
+   Output Stage
+   -------------------------------------------------------------------------- */
+
+.outputHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--ds-border);
+}
+
+.outputTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.outputActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.statsBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 10px 0 14px;
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  color: var(--ds-ink-2);
+}
+
+.statSep {
+  color: var(--ds-ink-3);
+  user-select: none;
+}
+
+.statStrong {
+  color: var(--ds-ink);
+  font-weight: 650;
+}
+
+.proseSheet {
+  padding: 20px 24px;
+  border-radius: var(--ds-radius-ctrl);
+  border: var(--ds-border-w) solid var(--ds-border);
+  background: var(--ds-surface-solid);
+  min-height: 340px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.proseInner {
+  max-width: 72ch;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.proseBlock {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  margin: -8px -10px;
+  border-radius: var(--ds-radius-sm);
+  transition: background 0.14s ease;
+}
+
+.proseBlock:hover {
+  background: var(--ds-well);
+}
+
+.proseBlockTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.proseHeading {
+  margin: 0;
+  font-size: 1.08rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--ds-ink);
+}
+
+.proseText {
+  margin: 0;
+  font-size: 0.98rem;
+  line-height: 1.7;
+  color: var(--ds-ink);
+}
+
+.blockFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.blockWordMeta {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.73rem;
+  color: var(--ds-ink-3);
+}
+
+.blockCopyBtn {
+  border: none;
+  background: transparent;
+  color: var(--ds-ink-3);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.proseBlock:hover .blockCopyBtn,
+.blockCopyBtn:focus-visible {
+  opacity: 1;
+  color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+}
+
+.proseList {
+  margin: 0;
+  padding-left: 1.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 0.97rem;
+  line-height: 1.62;
+  color: var(--ds-ink);
+}
+
+.proseList li::marker {
+  color: var(--ds-accent);
+}
+
+.rawTextarea {
+  width: 100%;
+  min-height: 360px;
+  max-height: 70vh;
+  padding: 16px 18px;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-ctrl);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.86rem;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.rawTextarea:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.copyError {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid color-mix(in srgb, var(--ds-bad) 45%, transparent);
+  background: var(--ds-bad-soft);
+  color: var(--ds-bad);
+  font-size: 0.83rem;
+}
+
+/* --------------------------------------------------------------------------
+   Teaching & Guide Sections
+   -------------------------------------------------------------------------- */
+
+.teachingGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.guideLayout {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.guideHeader h2 {
+  margin: 0 0 6px;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.024em;
+  color: var(--ds-ink);
+}
+
+.guideHeader p {
+  margin: 0;
+  color: var(--ds-ink-2);
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+.guideGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.guideCard p {
+  margin: 0.55rem 0 0;
+  color: var(--ds-ink-2);
+  font-size: 0.89rem;
+  line-height: 1.58;
+}
+
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 10px;
+}
+
+.guideTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.guideTable th,
+.guideTable td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--ds-border);
+  text-align: left;
+  color: var(--ds-ink);
+  vertical-align: top;
+}
+
+.guideTable th {
+  color: var(--ds-ink-2);
+  font-weight: 600;
+  background: var(--ds-well);
+  white-space: nowrap;
+}
+
+.guideTable tr:last-child td {
+  border-bottom: none;
+}
+
+.monoCell {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive Breakpoints
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 960px) {
+  .workbench {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .teachingGrid,
+  .guideGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .main {
+    padding: 14px 12px 48px;
+  }
+
+  .card {
+    padding: 15px 14px;
+  }
+
+  .segmented {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .outputTitleGroup .segmented {
+    display: inline-flex;
+  }
+
+  .presetsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .styleSeedGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .proseSheet {
+    padding: 14px 15px;
+    min-height: 240px;
+  }
+
+  .outputActions {
+    width: 100%;
+  }
+
+  .outputActions > button {
+    flex: 1 1 auto;
+  }
+}

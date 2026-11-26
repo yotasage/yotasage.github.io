@@ -108,6 +108,10 @@ export const en = {
   'home.tool.textcase.category': 'Text',
   'home.tool.textcase.desc':
     'Transform prose and code identifiers live across Sentence, Title, UPPER, camelCase, snake_case, and kebab-case with character, word, and line counts.',
+  'home.tool.lorem.title': 'Lorem ipsum generator',
+  'home.tool.lorem.category': 'Text',
+  'home.tool.lorem.desc':
+    'Generate exact-length placeholder text by paragraphs, words per paragraph, total words, sentences, lists, or characters — in Latin, Cicero, English, or Norwegian, ready for Plain, HTML, Markdown, JSON, or LaTeX.',
   'home.tool.notepad.title': 'Scratchpad',
   'home.tool.notepad.category': 'Text & Code',
   'home.tool.notepad.desc':
@@ -132,6 +136,7 @@ export const en = {
   'home.tool.color.tags': 'HEX · RGB · OKLCH · CMYK|Wheel · Square|Image picker|Harmonies · WCAG',
   'home.tool.timedate.tags': 'Live clock|ISO week numbers|3 mo · ±6 mo|Year + margin|YYYY-MM-DD',
   'home.tool.textcase.tags': 'Sentence · Title|UPPER · lower|camelCase|snake_case|kebab-case',
+  'home.tool.lorem.tags': 'Words · Paragraphs|Words / paragraph|Lists · Chars|HTML · MD · JSON · TeX',
 } as const;
 
 export const nb: Record<keyof typeof en, string> = {
@@ -244,6 +249,10 @@ export const nb: Record<keyof typeof en, string> = {
   'home.tool.textcase.category': 'Tekst',
   'home.tool.textcase.desc':
     'Endre store/små bokstaver og kodeidentifikatorer i sanntid (Sentence, Title, UPPER, camelCase, snake_case, kebab-case) med tegn-, ord- og linjeteller.',
+  'home.tool.lorem.title': 'Lorem ipsum-generator',
+  'home.tool.lorem.category': 'Tekst',
+  'home.tool.lorem.desc':
+    'Generer plassholdertekst med eksakt kontroll over antall avsnitt, ord per avsnitt, antall ord, setninger, lister eller tegn — på latin, Cicero, engelsk eller norsk, klart for ren tekst, HTML, Markdown, JSON eller LaTeX.',
   'home.tool.notepad.title': 'Scratchpad',
   'home.tool.notepad.category': 'Tekst og kode',
   'home.tool.notepad.desc':
@@ -268,4 +277,5 @@ export const nb: Record<keyof typeof en, string> = {
   'home.tool.color.tags': 'HEX · RGB · OKLCH · CMYK|Hjul · Firkant|Bildevelger|Harmonier · WCAG',
   'home.tool.timedate.tags': 'Sanntidsklokke|ISO-ukenummer|3 mnd · ±6 mnd|År + margin|YYYY-MM-DD',
   'home.tool.textcase.tags': 'Setning · Tittel|STORE · små|camelCase|snake_case|kebab-case',
+  'home.tool.lorem.tags': 'Ord · Avsnitt|Ord / avsnitt|Lister · Tegn|HTML · MD · JSON · TeX',
 };

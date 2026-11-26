@@ -51,6 +51,7 @@ const CANONICAL_TITLES = {
   '/base64-image/main': 'Base64 image converter',
   '/paint/main': 'Paint & Image Editor',
   '/text-case/main': 'Text case converter',
+  '/lorem-ipsum/main': 'Lorem ipsum generator',
   '/hash/main': 'Hash generator',
   '/chmod/main': 'Chmod calculator',
   '/calculator/main': 'Smart Calculator',
