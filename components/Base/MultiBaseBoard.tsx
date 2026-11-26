@@ -8,12 +8,13 @@ import {
   MIN_RADIX,
   normalizeAlphabetForRadix,
 } from '../../lib/base/presets';
-import type {
-  AlphabetId,
-  BaseSpec,
-  FormatOptions,
-  ParsedNumber,
-  ParseError,
+import {
+  isParseError,
+  type AlphabetId,
+  type BaseSpec,
+  type FormatOptions,
+  type ParsedNumber,
+  type ParseError,
 } from '../../lib/base/types';
 import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/BaseConverter.module.css';
@@ -217,7 +218,7 @@ export default function MultiBaseBoard({
                     setEditingKey(key);
                     setEditDraft(nextVal);
                     const check = parseInBase(nextVal, spec.radix, spec.alphabetId);
-                    if (check.ok) {
+                    if (!isParseError(check)) {
                       setEditError(null);
                       onEditFromBoard(spec, nextVal);
                     } else if (check.code === 'empty') {
@@ -240,15 +241,17 @@ export default function MultiBaseBoard({
               </div>
 
               <div className={styles.boardActions}>
-                {!isTo && (
-                  <button
-                    type="button"
-                    className={styles.buttonSmall}
-                    onClick={() => onSetTargetSpec(spec)}
-                  >
-                    {t('base.toLabel')}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className={[styles.buttonSmall, isTo ? styles.toBtnActive : '']
+                    .filter(Boolean)
+                    .join(' ')}
+                  disabled={isTo}
+                  aria-current={isTo ? 'true' : undefined}
+                  onClick={() => onSetTargetSpec(spec)}
+                >
+                  {t('base.toLabel')}
+                </button>
                 <button
                   type="button"
                   className={[styles.buttonSmall, isCopied ? styles.copyBtnCopied : '']

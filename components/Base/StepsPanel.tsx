@@ -37,6 +37,13 @@ export default function StepsPanel({
     [parsed, fromSpec.radix, fromSpec.alphabetId, toSpec.radix, toSpec.alphabetId],
   );
 
+  const routeSummary =
+    fromSpec.radix === toSpec.radix && fromSpec.alphabetId === toSpec.alphabetId
+      ? `Base ${fromSpec.radix}`
+      : fromSpec.radix === 10 || toSpec.radix === 10 || steps.powerOfTwoGroup !== null
+        ? `Base ${fromSpec.radix} → Base ${toSpec.radix}`
+        : `Base ${fromSpec.radix} → Base 10 → Base ${toSpec.radix}`;
+
   return (
     <section className={styles.card} aria-labelledby="base-steps-title">
       <div className={styles.cardHeader}>
@@ -44,9 +51,7 @@ export default function StepsPanel({
           <h2 id="base-steps-title" className={styles.cardTitle}>
             {t('base.steps.title')}
           </h2>
-          <p className={styles.cardSub}>
-            Base {fromSpec.radix} → Base 10 → Base {toSpec.radix}
-          </p>
+          <p className={styles.cardSub}>{routeSummary}</p>
         </div>
 
         <button

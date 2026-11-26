@@ -50,6 +50,14 @@ export interface ParseError {
 
 export type ParseResult = ParsedNumber | ParseError;
 
+export function isParsedNumber(result: ParseResult): result is ParsedNumber {
+  return result.ok === true;
+}
+
+export function isParseError(result: ParseResult): result is ParseError {
+  return result.ok === false;
+}
+
 export interface FormatOptions {
   grouping: GroupingMode;
   letterCase: LetterCase;

@@ -12,12 +12,14 @@ import {
   isCaseSensitive,
   SAMPLE_VALUES,
 } from '../../lib/base/presets';
-import type {
-  BaseSpec,
-  FormatOptions,
-  GroupingMode,
-  LetterCase,
-  ParseError,
+import {
+  isParsedNumber,
+  isParseError,
+  type BaseSpec,
+  type FormatOptions,
+  type GroupingMode,
+  type LetterCase,
+  type ParseError,
 } from '../../lib/base/types';
 import { TranslationKey, useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/BaseConverter.module.css';
@@ -97,7 +99,8 @@ export default function BaseWorkbench({ quickMode, teachingMode }: BaseWorkbench
     [inputText, fromSpec.radix, fromSpec.alphabetId],
   );
 
-  const parsed = parseResult.ok ? parseResult : null;
+  const parsed = isParsedNumber(parseResult) ? parseResult : null;
+  const parseError = isParseError(parseResult) && parseResult.code !== 'empty' ? parseResult : null;
 
   const targetFormatted = React.useMemo(() => {
     if (!parsed) return null;
@@ -182,12 +185,10 @@ export default function BaseWorkbench({ quickMode, teachingMode }: BaseWorkbench
                 spellCheck={false}
                 autoComplete="off"
                 autoCapitalize="off"
-                aria-invalid={!parseResult.ok && parseResult.code !== 'empty'}
+                aria-invalid={parseError !== null}
                 className={[
                   styles.valueTextarea,
-                  !parseResult.ok && parseResult.code !== 'empty'
-                    ? styles.valueTextareaError
-                    : '',
+                  parseError !== null ? styles.valueTextareaError : '',
                 ]
                   .filter(Boolean)
                   .join(' ')}
@@ -213,9 +214,9 @@ export default function BaseWorkbench({ quickMode, teachingMode }: BaseWorkbench
                 </div>
               )}
 
-              {!parseResult.ok && parseResult.code !== 'empty' && (
+              {parseError && (
                 <div className={styles.errorBox} role="alert">
-                  {formatError(parseResult)}
+                  {formatError(parseError)}
                 </div>
               )}
 

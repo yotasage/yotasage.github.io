@@ -7,13 +7,15 @@ import {
   isValidRadix,
   normalizeAlphabetForRadix,
 } from './presets';
-import type {
-  AlphabetId,
-  FormatOptions,
-  FormattedBaseValue,
-  GroupingMode,
-  ParsedNumber,
-  ParseResult,
+import {
+  isParseError,
+  type AlphabetId,
+  type FormatOptions,
+  type FormattedBaseValue,
+  type GroupingMode,
+  type ParsedNumber,
+  type ParseError,
+  type ParseResult,
 } from './types';
 
 function gcdBigInt(a: bigint, b: bigint): bigint {
@@ -331,9 +333,9 @@ export function convertBaseString(
   options: FormatOptions,
   fromAlphabet: AlphabetId = 'standard',
   toAlphabet: AlphabetId = 'standard',
-): { ok: true; parsed: ParsedNumber; output: FormattedBaseValue } | { ok: false; error: Extract<ParseResult, { ok: false }> } {
+): { ok: true; parsed: ParsedNumber; output: FormattedBaseValue } | { ok: false; error: ParseError } {
   const parsed = parseInBase(input, fromRadix, fromAlphabet);
-  if (!parsed.ok) {
+  if (isParseError(parsed)) {
     return { ok: false, error: parsed };
   }
   const output = formatInBase(parsed, toRadix, toAlphabet, options);

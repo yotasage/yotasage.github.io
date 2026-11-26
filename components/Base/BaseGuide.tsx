@@ -1,5 +1,3 @@
-import React from 'react';
-
 import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/BaseConverter.module.css';
 

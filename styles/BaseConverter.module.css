@@ -750,8 +750,17 @@
 .boardActions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
   flex-shrink: 0;
+}
+
+.toBtnActive:disabled {
+  opacity: 1;
+  border-color: var(--ds-accent-border);
+  background: var(--ds-accent-soft);
+  color: var(--ds-accent);
+  cursor: default;
 }
 
 .removeRowBtn {
@@ -1071,7 +1080,7 @@
   .swapCol {
     padding-top: 0;
     flex-direction: row;
-    justify-content: flex-start;
+    justify-content: center;
   }
 
   .swapBtn {

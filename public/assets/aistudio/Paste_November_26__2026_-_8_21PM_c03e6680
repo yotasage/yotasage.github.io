@@ -1,0 +1,324 @@
+2026-11-26T19:19:20.0864836Z Current runner version: '2.338.2'
+2026-11-26T19:19:20.0900230Z ##[group]Runner Image Provisioner
+2026-11-26T19:19:20.0901448Z Hosted Compute Agent
+2026-11-26T19:19:20.0902518Z Version: 20261111.635
+2026-11-26T19:19:20.0903742Z Commit: b8a594ea514ff44cadb5342986c68b1eac6e22ed
+2026-11-26T19:19:20.0904995Z Build Date: 2026-11-11T01:49:01Z
+2026-11-26T19:19:20.0906110Z Worker ID: {caebf341-b416-496f-9662-40cbe91230af}
+2026-11-26T19:19:20.0907298Z Region: northcentralus
+2026-11-26T19:19:20.0908305Z Cloud: Azure
+2026-11-26T19:19:20.0909207Z ##[endgroup]
+2026-11-26T19:19:20.0911778Z ##[group]Operating System
+2026-11-26T19:19:20.0912807Z Ubuntu
+2026-11-26T19:19:20.0913893Z 26.04.1
+2026-11-26T19:19:20.0914797Z LTS
+2026-11-26T19:19:20.0915585Z ##[endgroup]
+2026-11-26T19:19:20.0916400Z ##[group]Runner Image
+2026-11-26T19:19:20.0917431Z Image: ubuntu-26.04
+2026-11-26T19:19:20.0918418Z Version: 20261116.202.1
+2026-11-26T19:19:20.0920509Z Included Software: https://github.com/actions/runner-images/blob/ubuntu26/20261116.202/images/ubuntu/Ubuntu2604-Readme.md
+2026-11-26T19:19:20.0923340Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu26%2F20261116.202
+2026-11-26T19:19:20.0925103Z ##[endgroup]
+2026-11-26T19:19:20.0927064Z ##[group]GITHUB_TOKEN Permissions
+2026-11-26T19:19:20.0930140Z Contents: read
+2026-11-26T19:19:20.0931134Z Metadata: read
+2026-11-26T19:19:20.0932155Z Pages: write
+2026-11-26T19:19:20.0933277Z ##[endgroup]
+2026-11-26T19:19:20.0935934Z Secret source: Actions
+2026-11-26T19:19:20.0937418Z Cache mode: write
+2026-11-26T19:19:20.0939040Z Prepare workflow directory
+2026-11-26T19:19:20.1320187Z Prepare all required actions
+2026-11-26T19:19:20.1423529Z Getting action download info
+2026-11-26T19:19:20.3914018Z Download action repository 'actions/checkout@v7' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-11-26T19:19:20.4703807Z Download action repository 'actions/setup-node@v7' (SHA:949feb2413d6458794dcd2491c4babbbce0c15c1)
+2026-11-26T19:19:20.5307162Z Download action repository 'actions/configure-pages@v6' (SHA:45bfe0192ca1faeb007ade9deae92b16b8254a0d)
+2026-11-26T19:19:20.8460170Z Download action repository 'actions/cache@v6' (SHA:55cc8345863c7cc4c66a329aec7e433d2d1c52a9)
+2026-11-26T19:19:20.9317376Z Download action repository 'actions/upload-pages-artifact@v5' (SHA:fc324d3547104276b827a68afc52ff2a11cc49c9)
+2026-11-26T19:19:21.1607676Z Getting action download info
+2026-11-26T19:19:21.2494352Z Download action repository 'actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f' (SHA:bbbca2ddaa5d8feaa63e36b76fdaad77386f024f)
+2026-11-26T19:19:21.3571531Z Complete job name: build
+2026-11-26T19:19:21.4570414Z ##[group]Run actions/checkout@v7
+2026-11-26T19:19:21.4571765Z with:
+2026-11-26T19:19:21.4572305Z   fetch-depth: 0
+2026-11-26T19:19:21.4573242Z   repository: yotasage/yotasage.github.io
+2026-11-26T19:19:21.4582398Z   token: ***
+2026-11-26T19:19:21.4583265Z   ssh-strict: true
+2026-11-26T19:19:21.4584055Z   ssh-user: git
+2026-11-26T19:19:21.4584842Z   persist-credentials: true
+2026-11-26T19:19:21.4585813Z   clean: true
+2026-11-26T19:19:21.4586655Z   sparse-checkout-cone-mode: true
+2026-11-26T19:19:21.4587580Z   fetch-tags: false
+2026-11-26T19:19:21.4588367Z   show-progress: true
+2026-11-26T19:19:21.4589205Z   lfs: false
+2026-11-26T19:19:21.4589844Z   submodules: false
+2026-11-26T19:19:21.4590440Z   set-safe-directory: true
+2026-11-26T19:19:21.4591143Z   allow-unsafe-pr-checkout: false
+2026-11-26T19:19:21.4592308Z ##[endgroup]
+2026-11-26T19:19:21.6761871Z Syncing repository: yotasage/yotasage.github.io
+2026-11-26T19:19:21.6764591Z ##[group]Getting Git version info
+2026-11-26T19:19:21.6766003Z Working directory is '/home/runner/work/yotasage.github.io/yotasage.github.io'
+2026-11-26T19:19:21.6767809Z [command]/usr/bin/git version
+2026-11-26T19:19:21.6768583Z git version 2.56.1
+2026-11-26T19:19:21.6774370Z ##[endgroup]
+2026-11-26T19:19:21.6788332Z Temporarily overriding HOME='/home/runner/work/_temp/9eb6a2f3-7438-4203-a7ee-5a3cea24570b' before making global git config changes
+2026-11-26T19:19:21.6793809Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-26T19:19:21.6796568Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/yotasage.github.io/yotasage.github.io
+2026-11-26T19:19:21.6866244Z Deleting the contents of '/home/runner/work/yotasage.github.io/yotasage.github.io'
+2026-11-26T19:19:21.6869028Z ##[group]Determining repository object format
+2026-11-26T19:19:21.6870557Z ##[endgroup]
+2026-11-26T19:19:21.6871522Z ##[group]Initializing the repository
+2026-11-26T19:19:21.6875856Z [command]/usr/bin/git init /home/runner/work/yotasage.github.io/yotasage.github.io
+2026-11-26T19:19:21.6976417Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-26T19:19:21.6978302Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-26T19:19:21.6979945Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-26T19:19:21.6981227Z hint: call:
+2026-11-26T19:19:21.6981908Z hint:
+2026-11-26T19:19:21.6982754Z hint: 	git config --global init.defaultBranch <name>
+2026-11-26T19:19:21.6984543Z hint:
+2026-11-26T19:19:21.6986035Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-26T19:19:21.6988384Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-26T19:19:21.6990298Z hint:
+2026-11-26T19:19:21.6992487Z hint: 	git branch -m <name>
+2026-11-26T19:19:21.6993762Z hint:
+2026-11-26T19:19:21.6995294Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-26T19:19:21.6998029Z Initialized empty Git repository in /home/runner/work/yotasage.github.io/yotasage.github.io/.git/
+2026-11-26T19:19:21.7006277Z [command]/usr/bin/git remote add origin https://github.com/yotasage/yotasage.github.io
+2026-11-26T19:19:21.7062767Z ##[endgroup]
+2026-11-26T19:19:21.7064099Z ##[group]Disabling automatic garbage collection
+2026-11-26T19:19:21.7069033Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-26T19:19:21.7105803Z ##[endgroup]
+2026-11-26T19:19:21.7107143Z ##[group]Setting up auth
+2026-11-26T19:19:21.7107959Z Removing SSH command configuration
+2026-11-26T19:19:21.7112787Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-26T19:19:21.7154179Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-26T19:19:21.7581995Z Removing HTTP extra header
+2026-11-26T19:19:21.7590637Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-26T19:19:21.7635798Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-26T19:19:21.7927885Z Removing includeIf entries pointing to credentials config files
+2026-11-26T19:19:21.7934037Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-26T19:19:21.7970868Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-26T19:19:21.8266051Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-1431b56b-8638-454d-9ab3-df40007bee34.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-26T19:19:21.8307827Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/yotasage.github.io/yotasage.github.io/.git.path /home/runner/work/_temp/git-credentials-1431b56b-8638-454d-9ab3-df40007bee34.config
+2026-11-26T19:19:21.8340927Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/yotasage.github.io/yotasage.github.io/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-1431b56b-8638-454d-9ab3-df40007bee34.config
+2026-11-26T19:19:21.8376869Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-1431b56b-8638-454d-9ab3-df40007bee34.config
+2026-11-26T19:19:21.8409718Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-1431b56b-8638-454d-9ab3-df40007bee34.config
+2026-11-26T19:19:21.8441802Z ##[endgroup]
+2026-11-26T19:19:21.8442772Z ##[group]Fetching the repository
+2026-11-26T19:19:21.8448336Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/*
+2026-11-26T19:19:22.5815033Z From https://github.com/yotasage/yotasage.github.io
+2026-11-26T19:19:22.5817481Z  * [new branch]      main             -> origin/main
+2026-11-26T19:19:22.5819726Z  * [new branch]      pdf-tools        -> origin/pdf-tools
+2026-11-26T19:19:22.5821763Z  * [new branch]      python           -> origin/python
+2026-11-26T19:19:22.5823929Z  * [new branch]      qr-reader        -> origin/qr-reader
+2026-11-26T19:19:22.5826033Z  * [new branch]      resistor-lookup  -> origin/resistor-lookup
+2026-11-26T19:19:22.5828497Z  * [new branch]      smart-calculator -> origin/smart-calculator
+2026-11-26T19:19:22.5833806Z [command]/usr/bin/git branch --list --remote origin/main
+2026-11-26T19:19:22.5863239Z   origin/main
+2026-11-26T19:19:22.5873124Z [command]/usr/bin/git rev-parse refs/remotes/origin/main
+2026-11-26T19:19:22.5902324Z 5a676f1973d6c3461b285bc86ce9bbabf57eddd6
+2026-11-26T19:19:22.5908666Z ##[endgroup]
+2026-11-26T19:19:22.5910731Z ##[group]Determining the checkout info
+2026-11-26T19:19:22.5913875Z ##[endgroup]
+2026-11-26T19:19:22.5916043Z [command]/usr/bin/git sparse-checkout disable
+2026-11-26T19:19:22.5970730Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-26T19:19:22.6008528Z ##[group]Checking out the ref
+2026-11-26T19:19:22.6010278Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2026-11-26T19:19:22.7796321Z Switched to a new branch 'main'
+2026-11-26T19:19:22.7799992Z branch 'main' set up to track 'origin/main'.
+2026-11-26T19:19:22.7826399Z ##[endgroup]
+2026-11-26T19:19:22.7885958Z [command]/usr/bin/git log -1 --format=%H
+2026-11-26T19:19:22.7921430Z 5a676f1973d6c3461b285bc86ce9bbabf57eddd6
+2026-11-26T19:19:22.8220504Z ##[group]Run if [ -f "/home/runner/work/yotasage.github.io/yotasage.github.io/yarn.lock" ]; then
+2026-11-26T19:19:22.8222964Z [36;1mif [ -f "/home/runner/work/yotasage.github.io/yotasage.github.io/yarn.lock" ]; then[0m
+2026-11-26T19:19:22.8225156Z [36;1m  echo "manager=yarn" >> $GITHUB_OUTPUT[0m
+2026-11-26T19:19:22.8226582Z [36;1m  echo "command=install" >> $GITHUB_OUTPUT[0m
+2026-11-26T19:19:22.8227978Z [36;1m  echo "runner=yarn" >> $GITHUB_OUTPUT[0m
+2026-11-26T19:19:22.8229244Z [36;1m  exit 0[0m
+2026-11-26T19:19:22.8230844Z [36;1melif [ -f "/home/runner/work/yotasage.github.io/yotasage.github.io/package.json" ]; then[0m
+2026-11-26T19:19:22.8232753Z [36;1m  echo "manager=npm" >> $GITHUB_OUTPUT[0m
+2026-11-26T19:19:22.8234314Z [36;1m  echo "command=ci" >> $GITHUB_OUTPUT[0m
+2026-11-26T19:19:22.8235757Z [36;1m  echo "runner=npx --no-install" >> $GITHUB_OUTPUT[0m
+2026-11-26T19:19:22.8237088Z [36;1m  exit 0[0m
+2026-11-26T19:19:22.8238044Z [36;1melse[0m
+2026-11-26T19:19:22.8239177Z [36;1m  echo "Unable to determine package manager"[0m
+2026-11-26T19:19:22.8240424Z [36;1m  exit 1[0m
+2026-11-26T19:19:22.8241329Z [36;1mfi[0m
+2026-11-26T19:19:22.8284655Z shell: /usr/bin/bash -e {0}
+2026-11-26T19:19:22.8285710Z ##[endgroup]
+2026-11-26T19:19:22.8584312Z ##[group]Run actions/setup-node@v7
+2026-11-26T19:19:22.8585390Z with:
+2026-11-26T19:19:22.8586249Z   node-version: 22
+2026-11-26T19:19:22.8587158Z   cache: npm
+2026-11-26T19:19:22.8588039Z   check-latest: false
+2026-11-26T19:19:22.8595952Z   token: ***
+2026-11-26T19:19:22.8596910Z   package-manager-cache: true
+2026-11-26T19:19:22.8597950Z ##[endgroup]
+2026-11-26T19:19:22.9973879Z Found in cache @ /opt/hostedtoolcache/node/22.23.5/x64
+2026-11-26T19:19:23.0627155Z ##[group]Environment details
+2026-11-26T19:19:23.3669994Z node: v22.23.5
+2026-11-26T19:19:23.3671389Z npm: 10.9.9
+2026-11-26T19:19:23.3672493Z yarn: 1.22.22
+2026-11-26T19:19:23.3674563Z ##[endgroup]
+2026-11-26T19:19:23.3695509Z [command]/opt/hostedtoolcache/node/22.23.5/x64/bin/npm config get cache
+2026-11-26T19:19:23.4803746Z /home/runner/.npm
+2026-11-26T19:19:23.6063479Z Cache hit for: node-cache-Linux-x64-npm-b2924c286326af48766b9f4868646b3bed2429ed687840caa3a1d3e3044f91d3
+2026-11-26T19:19:24.8195360Z Received 117440512 of 331502612 (35.4%), 111.9 MBs/sec
+2026-11-26T19:19:25.8184832Z Received 281018368 of 331502612 (84.8%), 133.9 MBs/sec
+2026-11-26T19:19:26.1379626Z Received 331502612 of 331502612 (100.0%), 136.2 MBs/sec
+2026-11-26T19:19:26.1380404Z Cache Size: ~316 MB (331502612 B)
+2026-11-26T19:19:26.1444234Z [command]/usr/bin/tar -xf /home/runner/work/_temp/a96fcdb2-e7a0-424a-8daa-d63a72f0fc7a/cache.tzst -P -C /home/runner/work/yotasage.github.io/yotasage.github.io --use-compress-program unzstd
+2026-11-26T19:19:26.6042653Z Cache restored successfully
+2026-11-26T19:19:26.6193900Z Cache restored from key: node-cache-Linux-x64-npm-b2924c286326af48766b9f4868646b3bed2429ed687840caa3a1d3e3044f91d3
+2026-11-26T19:19:26.6474880Z ##[group]Run actions/configure-pages@v6
+2026-11-26T19:19:26.6475214Z with:
+2026-11-26T19:19:26.6475440Z   static_site_generator: next
+2026-11-26T19:19:26.6477797Z   token: ***
+2026-11-26T19:19:26.6478020Z   enablement: false
+2026-11-26T19:19:26.6478254Z ##[endgroup]
+2026-11-26T19:19:27.0240252Z Using default blank configuration
+2026-11-26T19:19:27.0241338Z Injecting property=output and value=export in:
+2026-11-26T19:19:27.0242015Z // Default Pages configuration for Next
+2026-11-26T19:19:27.0242543Z const nextConfig = {}
+2026-11-26T19:19:27.0243192Z module.exports = nextConfig
+2026-11-26T19:19:27.0243463Z 
+2026-11-26T19:19:27.0298633Z Found configuration object in indirect module export
+2026-11-26T19:19:27.0310807Z Injection successful, new configuration:
+2026-11-26T19:19:27.0318168Z // Default Pages configuration for Next
+2026-11-26T19:19:27.0318808Z const nextConfig = {output: "export"}
+2026-11-26T19:19:27.0319333Z module.exports = nextConfig
+2026-11-26T19:19:27.0319592Z 
+2026-11-26T19:19:27.0319951Z Injecting property=basePath and value= in:
+2026-11-26T19:19:27.0320537Z // Default Pages configuration for Next
+2026-11-26T19:19:27.0321062Z const nextConfig = {output: "export"}
+2026-11-26T19:19:27.0321418Z module.exports = nextConfig
+2026-11-26T19:19:27.0321653Z 
+2026-11-26T19:19:27.0321878Z Found configuration object in indirect module export
+2026-11-26T19:19:27.0322284Z Injection successful, new configuration:
+2026-11-26T19:19:27.0322644Z // Default Pages configuration for Next
+2026-11-26T19:19:27.0323310Z const nextConfig = {basePath: "",output: "export"}
+2026-11-26T19:19:27.0323721Z module.exports = nextConfig
+2026-11-26T19:19:27.0323891Z 
+2026-11-26T19:19:27.0324136Z Injecting property=images.unoptimized and value=true in:
+2026-11-26T19:19:27.0324552Z // Default Pages configuration for Next
+2026-11-26T19:19:27.0324978Z const nextConfig = {basePath: "",output: "export"}
+2026-11-26T19:19:27.0325375Z module.exports = nextConfig
+2026-11-26T19:19:27.0325571Z 
+2026-11-26T19:19:27.0325832Z Found configuration object in indirect module export
+2026-11-26T19:19:27.0326333Z Injection successful, new configuration:
+2026-11-26T19:19:27.0326691Z // Default Pages configuration for Next
+2026-11-26T19:19:27.0327202Z const nextConfig = {images: {unoptimized: true},basePath: "",output: "export"}
+2026-11-26T19:19:27.0327641Z module.exports = nextConfig
+2026-11-26T19:19:27.0327813Z 
+2026-11-26T19:19:27.5045136Z ##[group]Run actions/cache@v6
+2026-11-26T19:19:27.5045440Z with:
+2026-11-26T19:19:27.5045665Z   path: .next/cache
+
+2026-11-26T19:19:27.5046359Z   key: Linux-nextjs-9280c952ba140f1ec6a0c00cd74f14a3a03137192a37ce615b1a03d8ff4ede09-13c94e2b25a24718d9a19b3106b583a514edbcad455fe28ff8c4d5f13e97835f
+2026-11-26T19:19:27.5047311Z   restore-keys: Linux-nextjs-9280c952ba140f1ec6a0c00cd74f14a3a03137192a37ce615b1a03d8ff4ede09-
+
+2026-11-26T19:19:27.5048068Z   enableCrossOsArchive: false
+2026-11-26T19:19:27.5048342Z   fail-on-cache-miss: false
+2026-11-26T19:19:27.5048588Z   lookup-only: false
+2026-11-26T19:19:27.5048820Z   save-always: false
+2026-11-26T19:19:27.5049035Z env:
+2026-11-26T19:19:27.5049240Z   GITHUB_PAGES: true
+2026-11-26T19:19:27.5049462Z ##[endgroup]
+2026-11-26T19:19:27.7578005Z Cache hit for: Linux-nextjs-9280c952ba140f1ec6a0c00cd74f14a3a03137192a37ce615b1a03d8ff4ede09-13c94e2b25a24718d9a19b3106b583a514edbcad455fe28ff8c4d5f13e97835f
+2026-11-26T19:19:28.5997497Z Received 109182995 of 109182995 (100.0%), 141.3 MBs/sec
+2026-11-26T19:19:28.5998174Z Cache Size: ~104 MB (109182995 B)
+2026-11-26T19:19:28.6065161Z [command]/usr/bin/tar -xf /home/runner/work/_temp/947db106-4235-4edd-8933-398f265adfcd/cache.tzst -P -C /home/runner/work/yotasage.github.io/yotasage.github.io --use-compress-program unzstd
+2026-11-26T19:19:28.7944498Z Cache restored successfully
+2026-11-26T19:19:28.8137516Z Cache restored from key: Linux-nextjs-9280c952ba140f1ec6a0c00cd74f14a3a03137192a37ce615b1a03d8ff4ede09-13c94e2b25a24718d9a19b3106b583a514edbcad455fe28ff8c4d5f13e97835f
+2026-11-26T19:19:28.8375584Z ##[group]Run npm ci
+2026-11-26T19:19:28.8375870Z [36;1mnpm ci[0m
+2026-11-26T19:19:28.8416051Z shell: /usr/bin/bash -e {0}
+2026-11-26T19:19:28.8416337Z env:
+2026-11-26T19:19:28.8416569Z   GITHUB_PAGES: true
+2026-11-26T19:19:28.8416811Z ##[endgroup]
+2026-11-26T19:19:38.6633301Z 
+2026-11-26T19:19:38.6633937Z > postinstall
+2026-11-26T19:19:38.6637579Z > node scripts/copy-pdfjs-assets.mjs && node scripts/copy-pdf-wasm-assets.mjs && node scripts/copy-3d-assets.mjs && node scripts/copy-qr-assets.mjs && node scripts/copy-monaco-assets.mjs && node scripts/copy-fonts.mjs && node scripts/copy-flags.mjs && node scripts/copy-pyodide-assets.mjs && node scripts/copy-xterm-assets.mjs && node scripts/collect-licenses.mjs && node scripts/generate-sitemap.mjs && node scripts/generate-page-meta.mjs
+2026-11-26T19:19:38.6640062Z 
+2026-11-26T19:19:38.7654596Z Copied the pdf.js assets to public/pdfjs.
+2026-11-26T19:19:38.8297633Z Copied 18 PDF WASM and OCR files (55.83 MB) to public/pdf-wasm and public/ocr.
+2026-11-26T19:19:38.8727793Z Copied the 3D viewer assets to public/3d.
+2026-11-26T19:19:38.9084542Z Copied the QR code reader to public/qr.
+2026-11-26T19:19:38.9572225Z Copied Monaco Editor assets to public/monaco/vs.
+2026-11-26T19:19:38.9948824Z Copied 5 self-hosted font files to public/fonts.
+2026-11-26T19:19:39.0314248Z Copied 2 self-hosted SVG flags to public/flags.
+2026-11-26T19:19:39.0701308Z yotasage_rt: synced 8/8 Python runtime modules into public/python/rt.
+2026-11-26T19:19:39.6095935Z Pyodide 314.0.8: copied 4/4 core, downloaded 17/17 packages (49.62 MB total in public/pyodide).
+2026-11-26T19:19:39.6572637Z Copied @xterm/xterm CSS to public/python/xterm.css.
+2026-11-26T19:19:39.7983769Z Collected the licences of 56 packages, 10 pdf.js data files, 4 PDF WASM/OCR entries, 8 3D viewer files, 2 PCB viewer files, 1 QR code reader file, 2 site fonts and 7 Python runtime entries.
+2026-11-26T19:19:39.8436278Z Generated public/sitemap.xml with 61 routes.
+2026-11-26T19:19:40.5027512Z Generated lib/generated/page-meta.json with 61 routes (HEAD 5a676f1, sha256:ea1a42db2e4b).
+2026-11-26T19:19:40.5203464Z 
+2026-11-26T19:19:40.5204333Z added 98 packages, and audited 99 packages in 12s
+2026-11-26T19:19:40.5204786Z 
+2026-11-26T19:19:40.5205054Z 18 packages are looking for funding
+2026-11-26T19:19:40.5205553Z   run `npm fund` for details
+2026-11-26T19:19:40.5381962Z 
+2026-11-26T19:19:40.5383324Z 2 low severity vulnerabilities
+2026-11-26T19:19:40.5384210Z 
+2026-11-26T19:19:40.5385048Z To address all issues (including breaking changes), run:
+2026-11-26T19:19:40.5385940Z   npm audit fix --force
+2026-11-26T19:19:40.5386423Z 
+2026-11-26T19:19:40.5386826Z Run `npm audit` for details.
+2026-11-26T19:19:40.6924762Z ##[group]Run npm run typecheck && npm run check:repo
+2026-11-26T19:19:40.6925451Z [36;1mnpm run typecheck && npm run check:repo[0m
+2026-11-26T19:19:40.6970838Z shell: /usr/bin/bash -e {0}
+2026-11-26T19:19:40.6971395Z env:
+2026-11-26T19:19:40.6971624Z   GITHUB_PAGES: true
+2026-11-26T19:19:40.6971866Z ##[endgroup]
+2026-11-26T19:19:40.8350481Z 
+2026-11-26T19:19:40.8358241Z > typecheck
+2026-11-26T19:19:40.8383983Z > tsc --noEmit && tsc -p tsconfig.strict.json --noEmit
+2026-11-26T19:19:40.8403353Z 
+2026-11-26T19:19:46.2382083Z ##[error]components/Base/BaseWorkbench.tsx(185,62): error TS2339: Property 'code' does not exist on type 'ParseResult'.
+2026-11-26T19:19:46.2393442Z   Property 'code' does not exist on type 'ParsedNumber'.
+2026-11-26T19:19:46.2395247Z ##[error]components/Base/BaseWorkbench.tsx(188,50): error TS2339: Property 'code' does not exist on type 'ParseResult'.
+2026-11-26T19:19:46.2397003Z   Property 'code' does not exist on type 'ParsedNumber'.
+2026-11-26T19:19:46.2398501Z ##[error]components/Base/BaseWorkbench.tsx(216,47): error TS2339: Property 'code' does not exist on type 'ParseResult'.
+2026-11-26T19:19:46.2400052Z   Property 'code' does not exist on type 'ParsedNumber'.
+2026-11-26T19:19:46.2401789Z ##[error]components/Base/BaseWorkbench.tsx(218,32): error TS2345: Argument of type 'ParseResult' is not assignable to parameter of type 'ParseError'.
+2026-11-26T19:19:46.2404113Z   Type 'ParsedNumber' is missing the following properties from type 'ParseError': code, radix, allowedPreview
+2026-11-26T19:19:46.2405815Z ##[error]components/Base/MultiBaseBoard.tsx(223,38): error TS2339: Property 'code' does not exist on type 'ParseResult'.
+2026-11-26T19:19:46.2407420Z   Property 'code' does not exist on type 'ParsedNumber'.
+2026-11-26T19:19:46.2409323Z ##[error]components/Base/MultiBaseBoard.tsx(227,48): error TS2345: Argument of type 'ParseResult' is not assignable to parameter of type 'ParseError'.
+2026-11-26T19:19:46.2411475Z   Type 'ParsedNumber' is missing the following properties from type 'ParseError': code, radix, allowedPreview
+2026-11-26T19:19:46.2413561Z ##[error]lib/base/convert.ts(337,25): error TS2322: Type 'ParseResult' is not assignable to type 'ParseError'.
+2026-11-26T19:19:46.2415432Z   Type 'ParsedNumber' is missing the following properties from type 'ParseError': code, radix, allowedPreview
+2026-11-26T19:19:46.3602634Z ##[error]Process completed with exit code 1.
+2026-11-26T19:19:46.3727670Z Post job cleanup.
+2026-11-26T19:19:46.4632956Z [command]/usr/bin/git version
+2026-11-26T19:19:46.4680705Z git version 2.56.1
+2026-11-26T19:19:46.4718361Z Temporarily overriding HOME='/home/runner/work/_temp/b372010e-f06e-42c5-842a-587c0257a13a' before making global git config changes
+2026-11-26T19:19:46.4720110Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-26T19:19:46.4723962Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/yotasage.github.io/yotasage.github.io
+2026-11-26T19:19:46.4762303Z Removing SSH command configuration
+2026-11-26T19:19:46.4769368Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-26T19:19:46.4814129Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-26T19:19:46.5166038Z Removing HTTP extra header
+2026-11-26T19:19:46.5173451Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-26T19:19:46.5216409Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-26T19:19:46.5550343Z Removing includeIf entries pointing to credentials config files
+2026-11-26T19:19:46.5556541Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-26T19:19:46.5587767Z includeif.gitdir:/home/runner/work/yotasage.github.io/yotasage.github.io/.git.path
+2026-11-26T19:19:46.5588959Z includeif.gitdir:/home/runner/work/yotasage.github.io/yotasage.github.io/.git/worktrees/*.path
+2026-11-26T19:19:46.5590385Z includeif.gitdir:/github/workspace/.git.path
+2026-11-26T19:19:46.5591097Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-26T19:19:46.5598074Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/yotasage.github.io/yotasage.github.io/.git.path
+2026-11-26T19:19:46.5624062Z /home/runner/work/_temp/git-credentials-1431b56b-8638-454d-9ab3-df40007bee34.config
+2026-11-26T19:19:46.5634971Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/yotasage.github.io/yotasage.github.io/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-1431b56b\-8638\-454d\-9ab3\-df40007bee34\.config
+2026-11-26T19:19:46.5676334Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/yotasage.github.io/yotasage.github.io/.git/worktrees/*.path
+2026-11-26T19:19:46.5702382Z /home/runner/work/_temp/git-credentials-1431b56b-8638-454d-9ab3-df40007bee34.config
+2026-11-26T19:19:46.5711791Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/yotasage.github.io/yotasage.github.io/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-1431b56b\-8638\-454d\-9ab3\-df40007bee34\.config
+2026-11-26T19:19:46.5746989Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-11-26T19:19:46.5772146Z /github/runner_temp/git-credentials-1431b56b-8638-454d-9ab3-df40007bee34.config
+2026-11-26T19:19:46.5780457Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-1431b56b\-8638\-454d\-9ab3\-df40007bee34\.config
+2026-11-26T19:19:46.5815734Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-26T19:19:46.5840953Z /github/runner_temp/git-credentials-1431b56b-8638-454d-9ab3-df40007bee34.config
+2026-11-26T19:19:46.5848888Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-1431b56b\-8638\-454d\-9ab3\-df40007bee34\.config
+2026-11-26T19:19:46.5883863Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-26T19:19:46.6172925Z Removing credentials config '/home/runner/work/_temp/git-credentials-1431b56b-8638-454d-9ab3-df40007bee34.config'
+2026-11-26T19:19:46.6338276Z Cleaning up orphan processes
