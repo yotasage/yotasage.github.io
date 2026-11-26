@@ -53,6 +53,7 @@ const CANONICAL_TITLES = {
   '/text-case/main': 'Text case converter',
   '/lorem-ipsum/main': 'Lorem ipsum generator',
   '/hash/main': 'Hash generator',
+  '/base-converter/main': 'Number base converter',
   '/chmod/main': 'Chmod calculator',
   '/calculator/main': 'Smart Calculator',
   '/integral/main': 'Integral solver',

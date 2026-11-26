@@ -92,6 +92,10 @@ export const en = {
   'home.tool.hash.category': 'Hashing & Checksums',
   'home.tool.hash.desc':
     'Generate MD5, SHA-1, SHA-2, SHA-3, BLAKE2, RIPEMD-160, CRC32, and Adler-32 digests across multiple text or file inputs at once, verify expected hashes, and compare fields side by side.',
+  'home.tool.base.title': 'Number base converter',
+  'home.tool.base.category': 'Radix & Binary',
+  'home.tool.base.desc':
+    'Convert integers and fractions across Base 2, 8, 10, 16, 36, 58, 62, 64, or any custom base from 2 to 64 — with live multi-base sync, interactive bit inspector, and step-by-step math.',
   'home.tool.chmod.title': 'Chmod calculator',
   'home.tool.chmod.category': 'Unix & Linux',
   'home.tool.chmod.desc':
@@ -132,6 +136,7 @@ export const en = {
   'home.tool.paint.tags': 'Layers|Crop · Resize · Scale down|Rotate|B&W styles|Paint.NET Ctrl+C/V',
   'home.tool.notepad.tags': 'Monaco Editor|Code · CSV · TeX|Side-by-side · Grid|Diff · Regex|Auto-saved',
   'home.tool.hash.tags': 'MD5 · SHA-2 · SHA-3|BLAKE2 · CRC32|Multi-field · Files|Verifier · Diff',
+  'home.tool.base.tags': 'Base 2–64|Hex · Dec · Bin · Oct|Fractions · BigInt|Bit inspector|Step-by-step',
   'home.tool.chmod.tags': 'Octal · Symbolic|Owner · Group · Others|Explained presets|SUID · SGID · Sticky',
   'home.tool.color.tags': 'HEX · RGB · OKLCH · CMYK|Wheel · Square|Image picker|Harmonies · WCAG',
   'home.tool.timedate.tags': 'Live clock|ISO week numbers|3 mo · ±6 mo|Year + margin|YYYY-MM-DD',
@@ -233,6 +238,10 @@ export const nb: Record<keyof typeof en, string> = {
   'home.tool.hash.category': 'Hashing og kontrollsummer',
   'home.tool.hash.desc':
     'Generer MD5-, SHA-1-, SHA-2-, SHA-3-, BLAKE2-, RIPEMD-160-, CRC32- og Adler-32-summer for flere tekst- eller filfelt samtidig, verifiser forventede hasher og sammenlign felt side om side.',
+  'home.tool.base.title': 'Tallsystemkonverterer',
+  'home.tool.base.category': 'Tallsystem og binært',
+  'home.tool.base.desc':
+    'Konverter heltall og desimaltall mellom Base 2, 8, 10, 16, 36, 58, 62, 64 eller valgfri base fra 2 til 64 — med synkronisert flertallsvisning, bitinspektør og steg-for-steg-utregning.',
   'home.tool.chmod.title': 'Chmod-kalkulator',
   'home.tool.chmod.category': 'Unix og Linux',
   'home.tool.chmod.desc':
@@ -273,6 +282,7 @@ export const nb: Record<keyof typeof en, string> = {
   'home.tool.paint.tags': 'Lag|Beskjær · Skalering|Roter|Svart-hvitt-stiler|Paint.NET Ctrl+C/V',
   'home.tool.notepad.tags': 'Monaco-editor|Kode · CSV · TeX|Side ved side · Rutenett|Diff · Regex|Autolagret',
   'home.tool.hash.tags': 'MD5 · SHA-2 · SHA-3|BLAKE2 · CRC32|Flere felt · Filer|Verifiserer · Diff',
+  'home.tool.base.tags': 'Base 2–64|Hex · Des · Bin · Okt|Brøker · BigInt|Bitinspektør|Steg-for-steg',
   'home.tool.chmod.tags': 'Oktal · Symbolsk|Eier · Gruppe · Andre|Forklarte forhåndsvalg|SUID · SGID · Sticky',
   'home.tool.color.tags': 'HEX · RGB · OKLCH · CMYK|Hjul · Firkant|Bildevelger|Harmonier · WCAG',
   'home.tool.timedate.tags': 'Sanntidsklokke|ISO-ukenummer|3 mnd · ±6 mnd|År + margin|YYYY-MM-DD',

@@ -1,0 +1,1135 @@
+/* ==========================================================================
+   Number Base Converter (/base-converter/main) — Design System v2
+   Uses --ds-* tokens exclusively for Light, Dark, and High Contrast AAA.
+   ========================================================================== */
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 20px 64px;
+  flex: 1;
+}
+
+.workspacePanel[hidden] {
+  display: none;
+}
+
+.lead {
+  margin: 0 0 18px;
+  max-width: 78ch;
+  color: var(--ds-ink-2);
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+/* --------------------------------------------------------------------------
+   Quick Mode Banner
+   -------------------------------------------------------------------------- */
+
+.quickBanner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 16px;
+  padding: 11px 16px;
+  border-radius: var(--ds-radius-ctrl);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  background: var(--ds-accent-soft);
+  color: var(--ds-ink);
+  font-size: 0.875rem;
+}
+
+.quickBannerText {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--ds-ink-2);
+}
+
+.quickBadge {
+  font-weight: 700;
+  color: var(--ds-accent);
+  font-size: 0.82rem;
+}
+
+.quickActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* --------------------------------------------------------------------------
+   Workbench Stack & Cards (Single Elevation)
+   -------------------------------------------------------------------------- */
+
+.workbenchStack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.card {
+  padding: 20px 22px;
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 1.04rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  color: var(--ds-ink);
+}
+
+.cardSub {
+  margin: 4px 0 0;
+  font-size: 0.84rem;
+  color: var(--ds-ink-2);
+  line-height: 1.45;
+}
+
+/* --------------------------------------------------------------------------
+   Buttons & Segmented Controls
+   -------------------------------------------------------------------------- */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0.42rem 0.88rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.button:hover:not(:disabled),
+.button:focus-visible {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  color: var(--ds-ink);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.primaryButton {
+  composes: button;
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+}
+
+.primaryButton:hover:not(:disabled),
+.primaryButton:focus-visible {
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  filter: brightness(1.08);
+}
+
+.buttonSmall {
+  composes: button;
+  min-height: 30px;
+  padding: 0.24rem 0.65rem;
+  font-size: 0.78rem;
+}
+
+.copyBtnCopied {
+  border-color: var(--ds-good);
+  background: var(--ds-good-soft);
+  color: var(--ds-good);
+}
+
+.segmented {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  gap: 2px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-well);
+}
+
+.segBtn {
+  min-height: 28px;
+  padding: 0.22rem 0.65rem;
+  border: none;
+  border-radius: calc(var(--ds-radius-sm) - 2px);
+  background: transparent;
+  color: var(--ds-ink-2);
+  font: inherit;
+  font-size: 0.79rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.segBtn:hover {
+  color: var(--ds-ink);
+}
+
+.segBtnActive {
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.09);
+}
+
+/* --------------------------------------------------------------------------
+   Direct Converter Hero (Source -> Swap -> Target)
+   -------------------------------------------------------------------------- */
+
+.converterGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.converterCol {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.colTopHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.colRoleLabel {
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: var(--ds-ink-2);
+}
+
+.colMetaInline {
+  font-size: 0.78rem;
+  color: var(--ds-ink-3);
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Base Selector Bar */
+.selectorWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.presetRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.presetBtn {
+  min-height: 34px;
+  padding: 0.28rem 0.68rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink-2);
+  font: inherit;
+  font-size: 0.81rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.presetBtn:hover {
+  border-color: var(--ds-accent);
+  color: var(--ds-ink);
+}
+
+.presetBtnActive {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+}
+
+.presetBtnActive:hover {
+  color: var(--ds-accent-ink);
+}
+
+.presetBtnSub {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.72rem;
+  opacity: 0.82;
+}
+
+.customControlsRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.presetSelect {
+  flex: 1 1 160px;
+  min-width: 0;
+  height: 34px;
+  padding: 0 0.65rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.presetSelect:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.radixStepper {
+  display: inline-flex;
+  align-items: center;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.radixStepperLabel {
+  padding: 0 0.55rem 0 0.65rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--ds-ink-3);
+  white-space: nowrap;
+}
+
+.stepBtn {
+  width: 30px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--ds-ink-2);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.stepBtn:hover:not(:disabled) {
+  background: var(--ds-well);
+  color: var(--ds-ink);
+}
+
+.stepBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.radixNumberInput {
+  width: 44px;
+  height: 32px;
+  border: none;
+  border-left: 1px solid var(--ds-border);
+  border-right: 1px solid var(--ds-border);
+  background: transparent;
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+
+.radixNumberInput::-webkit-inner-spin-button,
+.radixNumberInput::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.radixNumberInput:focus {
+  outline: none;
+  background: var(--ds-accent-soft);
+}
+
+/* Swap column */
+.swapCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: 96px;
+}
+
+.swapBtn {
+  composes: button;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+/* Value Input & Output Surfaces */
+.valueFieldWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.valueTextarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 92px;
+  padding: 12px 14px;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-ctrl);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.18rem;
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: 0.015em;
+  resize: vertical;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.valueTextarea:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.valueTextareaError {
+  border-color: var(--ds-bad);
+}
+
+.valueTextareaError:focus {
+  border-color: var(--ds-bad);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ds-bad) 26%, transparent);
+}
+
+.outputSurface {
+  min-height: 92px;
+  padding: 12px 14px;
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  border-radius: var(--ds-radius-ctrl);
+  background: var(--ds-accent-soft);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.18rem;
+  font-weight: 700;
+  line-height: 1.45;
+  letter-spacing: 0.015em;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  user-select: all;
+  display: flex;
+  align-items: flex-start;
+}
+
+.outputSurfaceEmpty {
+  border-color: var(--ds-border);
+  background: var(--ds-well);
+  color: var(--ds-ink-3);
+  font-weight: 500;
+  font-size: 0.92rem;
+  user-select: none;
+}
+
+.fieldFooterRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.metaTextLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--ds-ink-3);
+}
+
+.metaSep {
+  opacity: 0.55;
+}
+
+.metaAccent {
+  color: var(--ds-accent);
+  font-weight: 600;
+}
+
+.metaWarn {
+  color: var(--ds-warn);
+  font-weight: 600;
+}
+
+.fieldActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.errorBox {
+  padding: 9px 12px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid color-mix(in srgb, var(--ds-bad) 45%, transparent);
+  background: var(--ds-bad-soft);
+  color: var(--ds-bad);
+  font-size: 0.83rem;
+  font-weight: 550;
+  line-height: 1.45;
+}
+
+.prefixBanner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 8px 12px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  background: var(--ds-accent-soft);
+  color: var(--ds-ink);
+  font-size: 0.81rem;
+}
+
+/* Format & Samples Bar */
+.optionsDivider {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--ds-border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.optionsBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+}
+
+.optionGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.optionLabel {
+  font-size: 0.79rem;
+  font-weight: 600;
+  color: var(--ds-ink-2);
+  white-space: nowrap;
+}
+
+.inlineCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.82rem;
+  font-weight: 550;
+  color: var(--ds-ink-2);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.inlineCheck input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--ds-accent);
+  cursor: pointer;
+}
+
+.compactSelect {
+  height: 30px;
+  padding: 0 0.5rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.samplesRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.sampleBtn {
+  min-height: 28px;
+  padding: 0.2rem 0.58rem;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  color: var(--ds-ink-2);
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.77rem;
+  font-weight: 550;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.sampleBtn:hover {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  color: var(--ds-ink);
+}
+
+/* --------------------------------------------------------------------------
+   Multi-Base Live Board
+   -------------------------------------------------------------------------- */
+
+.addBaseBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.boardList {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--ds-border);
+}
+
+.boardRow {
+  display: grid;
+  grid-template-columns: 185px minmax(0, 1fr) auto;
+  gap: 10px 14px;
+  align-items: center;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--ds-border);
+}
+
+.boardRow:last-child {
+  border-bottom: none;
+}
+
+.boardRowActive {
+  background: color-mix(in srgb, var(--ds-accent) 5%, transparent);
+}
+
+.boardLabelCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.boardName {
+  font-size: 0.88rem;
+  font-weight: 650;
+  color: var(--ds-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.boardMeta {
+  font-size: 0.74rem;
+  color: var(--ds-ink-3);
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.boardInputWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.boardInput {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 0.75rem;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.94rem;
+  font-weight: 600;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.boardInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.boardInputError {
+  border-color: var(--ds-bad);
+}
+
+.boardRowError {
+  font-size: 0.76rem;
+  color: var(--ds-bad);
+  font-weight: 550;
+}
+
+.boardActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.removeRowBtn {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: var(--ds-border-w) solid transparent;
+  border-radius: var(--ds-radius-sm);
+  background: transparent;
+  color: var(--ds-ink-3);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.removeRowBtn:hover {
+  border-color: color-mix(in srgb, var(--ds-bad) 40%, transparent);
+  background: var(--ds-bad-soft);
+  color: var(--ds-bad);
+}
+
+/* --------------------------------------------------------------------------
+   Interactive Bit Inspector
+   -------------------------------------------------------------------------- */
+
+.bitsToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  margin-bottom: 14px;
+}
+
+.bitsOps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.bitsWarning {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid color-mix(in srgb, var(--ds-warn) 45%, transparent);
+  background: var(--ds-warn-soft);
+  color: var(--ds-ink);
+  font-size: 0.81rem;
+  line-height: 1.45;
+}
+
+.nibblesWrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 14px;
+}
+
+.nibbleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nibbleBits {
+  display: grid;
+  grid-template-columns: repeat(4, 34px);
+  gap: 4px;
+}
+
+.bitBtn {
+  height: 36px;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  border-radius: 6px;
+  background: var(--ds-well);
+  color: var(--ds-ink-2);
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.94rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease, transform 0.08s ease;
+}
+
+.bitBtn:hover {
+  border-color: var(--ds-accent);
+  color: var(--ds-ink);
+}
+
+.bitBtn:active {
+  transform: translateY(1px);
+}
+
+.bitBtnOn {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent);
+  color: var(--ds-accent-ink);
+}
+
+.bitBtnOn:hover {
+  color: var(--ds-accent-ink);
+  filter: brightness(1.06);
+}
+
+.bitBtnSign {
+  border-style: dashed;
+}
+
+.nibbleIndices {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.7rem;
+  color: var(--ds-ink-3);
+  padding: 0 2px;
+}
+
+.nibbleHexLabel {
+  font-weight: 700;
+  color: var(--ds-accent);
+}
+
+.bitMetricsRow {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--ds-border);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.bitMetric {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.bitMetricLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ds-ink-3);
+}
+
+.bitMetricValue {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.88rem;
+  font-weight: 650;
+  color: var(--ds-ink);
+  overflow-wrap: anywhere;
+}
+
+/* --------------------------------------------------------------------------
+   Step-by-Step Breakdown
+   -------------------------------------------------------------------------- */
+
+.stepsBody {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.shortcutNote {
+  padding: 10px 13px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  background: var(--ds-accent-soft);
+  color: var(--ds-ink);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.stepSectionTitle {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: var(--ds-ink);
+}
+
+.polyEquation {
+  padding: 12px 14px;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.86rem;
+  line-height: 1.7;
+  color: var(--ds-ink);
+  overflow-wrap: anywhere;
+}
+
+.polyTermHighlight {
+  color: var(--ds-accent);
+  font-weight: 700;
+}
+
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.dataTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.dataTable th,
+.dataTable td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--ds-border);
+  text-align: left;
+  color: var(--ds-ink);
+  vertical-align: top;
+}
+
+.dataTable th {
+  color: var(--ds-ink-2);
+  font-weight: 600;
+  background: var(--ds-well);
+  white-space: nowrap;
+}
+
+.dataTable tr:last-child td {
+  border-bottom: none;
+}
+
+.monoCell {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.monoCellAccent {
+  composes: monoCell;
+  color: var(--ds-accent);
+  font-weight: 700;
+}
+
+.stepFootnote {
+  margin: 8px 0 0;
+  font-size: 0.8rem;
+  color: var(--ds-ink-3);
+}
+
+/* --------------------------------------------------------------------------
+   Teaching & Guide Layout
+   -------------------------------------------------------------------------- */
+
+.teachingGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.guideLayout {
+  max-width: 980px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.guideHeader h2 {
+  margin: 0 0 6px;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.024em;
+  color: var(--ds-ink);
+}
+
+.guideHeader p {
+  margin: 0;
+  color: var(--ds-ink-2);
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+.guideGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.guideProse {
+  margin: 8px 0 0;
+  color: var(--ds-ink-2);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.nibbleRefGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive Breakpoints
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 960px) {
+  .converterGrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .swapCol {
+    padding-top: 0;
+    flex-direction: row;
+    justify-content: flex-start;
+  }
+
+  .swapBtn {
+    width: auto;
+    height: 36px;
+    padding: 0 0.85rem;
+    border-radius: var(--ds-radius-sm);
+  }
+
+  .bitMetricsRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .boardRow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    padding: 12px 0;
+  }
+
+  .boardActions {
+    justify-content: flex-end;
+  }
+
+  .teachingGrid,
+  .guideGrid,
+  .nibbleRefGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .main {
+    padding: 14px 12px 48px;
+  }
+
+  .card {
+    padding: 15px 14px;
+  }
+
+  .valueTextarea,
+  .outputSurface {
+    font-size: 1.02rem;
+    min-height: 76px;
+  }
+
+  .nibbleBits {
+    grid-template-columns: repeat(4, 30px);
+    gap: 3px;
+  }
+
+  .bitBtn {
+    height: 34px;
+    font-size: 0.86rem;
+  }
+
+  .bitMetricsRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

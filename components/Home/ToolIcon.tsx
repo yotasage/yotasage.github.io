@@ -2,7 +2,7 @@ import React from 'react';
 
 // Icons for the tool cards on the main page, in the style of components/PdfTools/ToolIcon.tsx. Filled shapes use
 // currentColor, which the <svg> sets to the tool's colour.
-export type HomeIconName = 'boolean' | 'calculator' | 'integral' | 'derivative' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'python' | 'hash' | 'chmod' | 'color' | 'timedate' | 'textcase' | 'lorem' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
+export type HomeIconName = 'base' | 'boolean' | 'calculator' | 'integral' | 'derivative' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'python' | 'hash' | 'chmod' | 'color' | 'timedate' | 'textcase' | 'lorem' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
 
 const SAMPLES: [number, number][] = [[6, 24], [12, 12], [18, 12], [24, 24], [30, 36], [36, 36], [42, 24]];
 
@@ -11,6 +11,17 @@ const QR_MODULES: [number, number][] = [
 ];
 
 const ICONS: Record<HomeIconName, React.ReactNode> = {
+  // Number base converter: binary 01 stacked above hexadecimal 0x with bidirectional conversion arrows.
+  base: (
+    <>
+      <rect x={6} y={7} width={11} height={14} rx={5.5} />
+      <path d="M23 11l3-3v13M23 21h6" />
+      <path d="M35 12h7M39 9l3 3-3 3" opacity={0.75} />
+      <path d="M13 36H6M9 33l-3 3 3 3" opacity={0.75} />
+      <path d="M20 28h9M20 34h7M20 28v13" />
+      <path d="M33 28l9 13M42 28l-9 13" />
+    </>
+  ),
   // Boolean simplifier: IEEE NAND gate with input/output leads and logic bubble.
   boolean: (
     <>

@@ -1,3 +1,4 @@
+import { en as baseEn, nb as baseNb } from './i18n/base';
 import { en as booleanEn, nb as booleanNb } from './i18n/boolean';
 import { en as booleanCatalogEn, nb as booleanCatalogNb } from './i18n/booleanCatalog';
 import { en as booleanExamplesEn, nb as booleanExamplesNb } from './i18n/booleanExamples';
@@ -115,6 +116,7 @@ export const en = {
   ...resistorDesignEn,
   ...resistorRefEn,
   ...resistorTheoryEn,
+  ...baseEn,
   ...hashEn,
   ...chmodEn,
   ...colorEn,
@@ -191,6 +193,7 @@ export const nb: Record<TranslationKey, string> = {
   ...resistorDesignNb,
   ...resistorRefNb,
   ...resistorTheoryNb,
+  ...baseNb,
   ...hashNb,
   ...chmodNb,
   ...colorNb,
