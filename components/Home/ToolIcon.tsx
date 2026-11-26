@@ -2,7 +2,7 @@ import React from 'react';
 
 // Icons for the tool cards on the main page, in the style of components/PdfTools/ToolIcon.tsx. Filled shapes use
 // currentColor, which the <svg> sets to the tool's colour.
-export type HomeIconName = 'boolean' | 'calculator' | 'integral' | 'derivative' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'python' | 'hash' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
+export type HomeIconName = 'boolean' | 'calculator' | 'integral' | 'derivative' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'python' | 'hash' | 'color' | 'textcase' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
 
 const SAMPLES: [number, number][] = [[6, 24], [12, 12], [18, 12], [24, 24], [30, 36], [36, 36], [42, 24]];
 
@@ -138,6 +138,19 @@ const ICONS: Record<HomeIconName, React.ReactNode> = {
     <>
       <path d="M24 5l15 5.5v11.5c0 9.8-6.4 16.9-15 20.5C15.4 38.9 9 31.8 9 22V10.5L24 5z" />
       <path d="M19.5 16.5l-2 14M29.5 16.5l-2 14M15 20.5h17M14 26.5h17" />
+    </>
+  ),
+  // Color converter & picker: palette wheel with swatch wells and an angled eyedropper.
+  color: (
+    <>
+      <path d="M24 6a18 18 0 1 0 14.5 28.6" />
+      <circle cx={15} cy={17} r={2.3} fill="currentColor" stroke="none" />
+      <circle cx={23.5} cy={13.5} r={2.3} fill="currentColor" stroke="none" opacity={0.75} />
+      <circle cx={12.5} cy={26} r={2.3} fill="currentColor" stroke="none" opacity={0.55} />
+      <circle cx={19} cy={34} r={2.3} fill="currentColor" stroke="none" opacity={0.85} />
+      <path d="M31 23l9.5-9.5a3 3 0 0 1 4.2 4.2L35.2 27.2" />
+      <path d="M29 21l8 8" />
+      <path d="M31 25l-7 7-2 5 5-2 7-7" />
     </>
   ),
   textcase: (

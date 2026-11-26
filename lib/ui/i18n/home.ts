@@ -92,6 +92,10 @@ export const en = {
   'home.tool.hash.category': 'Hashing & Checksums',
   'home.tool.hash.desc':
     'Generate MD5, SHA-1, SHA-2, SHA-3, BLAKE2, RIPEMD-160, CRC32, and Adler-32 digests across multiple text or file inputs at once, verify expected hashes, and compare fields side by side.',
+  'home.tool.color.title': 'Color converter & picker',
+  'home.tool.color.category': 'Color & Design',
+  'home.tool.color.desc':
+    'Convert between HEX, RGB, HSL, HSV, HWB, CMYK, OKLCH, and Lab using square, circular wheel, or OKLCH pickers — plus pick pixels and dominant palettes from images and check WCAG / APCA contrast.',
   'home.tool.textcase.title': 'Text case converter',
   'home.tool.textcase.category': 'Text',
   'home.tool.textcase.desc':
@@ -116,6 +120,7 @@ export const en = {
   'home.tool.paint.tags': 'Layers|Crop · Resize · Scale down|Rotate|B&W styles|Paint.NET Ctrl+C/V',
   'home.tool.notepad.tags': 'Monaco Editor|Code · CSV · TeX|Side-by-side · Grid|Diff · Regex|Auto-saved',
   'home.tool.hash.tags': 'MD5 · SHA-2 · SHA-3|BLAKE2 · CRC32|Multi-field · Files|Verifier · Diff',
+  'home.tool.color.tags': 'HEX · RGB · OKLCH · CMYK|Wheel · Square|Image picker|Harmonies · WCAG',
   'home.tool.textcase.tags': 'Sentence · Title|UPPER · lower|camelCase|snake_case|kebab-case',
 } as const;
 
@@ -213,6 +218,10 @@ export const nb: Record<keyof typeof en, string> = {
   'home.tool.hash.category': 'Hashing og kontrollsummer',
   'home.tool.hash.desc':
     'Generer MD5-, SHA-1-, SHA-2-, SHA-3-, BLAKE2-, RIPEMD-160-, CRC32- og Adler-32-summer for flere tekst- eller filfelt samtidig, verifiser forventede hasher og sammenlign felt side om side.',
+  'home.tool.color.title': 'Fargekonverterer og fargevelger',
+  'home.tool.color.category': 'Farge og design',
+  'home.tool.color.desc':
+    'Konverter mellom HEX, RGB, HSL, HSV, HWB, CMYK, OKLCH og Lab med firkant-, hjul- eller OKLCH-velger — plukk farger og paletter fra bilder og sjekk WCAG/APCA-kontrast.',
   'home.tool.textcase.title': 'Tekstformatkonverterer',
   'home.tool.textcase.category': 'Tekst',
   'home.tool.textcase.desc':
@@ -237,5 +246,6 @@ export const nb: Record<keyof typeof en, string> = {
   'home.tool.paint.tags': 'Lag|Beskjær · Skalering|Roter|Svart-hvitt-stiler|Paint.NET Ctrl+C/V',
   'home.tool.notepad.tags': 'Monaco-editor|Kode · CSV · TeX|Side ved side · Rutenett|Diff · Regex|Autolagret',
   'home.tool.hash.tags': 'MD5 · SHA-2 · SHA-3|BLAKE2 · CRC32|Flere felt · Filer|Verifiserer · Diff',
+  'home.tool.color.tags': 'HEX · RGB · OKLCH · CMYK|Hjul · Firkant|Bildevelger|Harmonier · WCAG',
   'home.tool.textcase.tags': 'Setning · Tittel|STORE · små|camelCase|snake_case|kebab-case',
 };
