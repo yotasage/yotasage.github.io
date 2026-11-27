@@ -3,6 +3,13 @@ import test from 'node:test';
 
 import { hexToRgba, hsvToRgb, isValidHexInput, rgbaToHex, rgbToHsv } from './color';
 import {
+  makeDuplicateName,
+  makeUniqueDocName,
+  nextUntitledName,
+  renderDocumentThumbnail,
+  stripFileExtension,
+} from './documents';
+import {
   applyAdjustmentsBuffer,
   applyColorStyleBuffer,
   applyConvolution3x3Buffer,
@@ -189,4 +196,24 @@ test('floodFill fills contiguous region and stops at boundary', () => {
   // Filling again with same color is a no-op
   const second = floodFillBuffer(buf, w, h, 0, 0, { r: 255, g: 0, b: 0, a: 255 }, 10);
   assert.equal(second, false);
+});
+
+test('multi-document naming helpers strip extensions and produce unique names', () => {
+  assert.equal(stripFileExtension('photo.png'), 'photo');
+  assert.equal(stripFileExtension('diagram.img.json'), 'diagram');
+  assert.equal(stripFileExtension('legacy.paint.json'), 'legacy');
+  assert.equal(stripFileExtension('  sketch.v2.webp  '), 'sketch.v2');
+
+  assert.equal(nextUntitledName([], 'Untitled'), 'Untitled 1');
+  assert.equal(nextUntitledName(['Untitled 1', 'Untitled 2'], 'Untitled'), 'Untitled 3');
+  assert.equal(nextUntitledName(['untitled 1'], 'Untitled'), 'Untitled 2');
+
+  assert.equal(makeUniqueDocName('Banner', ['Other']), 'Banner');
+  assert.equal(makeUniqueDocName('Banner', ['Banner', 'banner (2)']), 'Banner (3)');
+
+  assert.equal(makeDuplicateName('Logo', ['Logo']), 'Logo copy');
+  assert.equal(makeDuplicateName('Logo', ['Logo', 'Logo copy']), 'Logo copy (2)');
+
+  // Safe no-op in non-DOM environments
+  assert.equal(renderDocumentThumbnail([], 100, 100), '');
 });

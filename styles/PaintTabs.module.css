@@ -1,0 +1,491 @@
+/* Multi-file Tab Strip & File Browser Panel */
+
+.tabBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  padding: 0.28rem 0.55rem 0;
+  background: var(--ds-well);
+  border-bottom: var(--ds-border-w) solid var(--ds-border);
+  flex-shrink: 0;
+  min-height: 36px;
+}
+
+.tabStrip {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.24rem;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding-bottom: 0;
+}
+
+.docTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.16rem;
+  min-height: 30px;
+  padding: 0.18rem 0.28rem 0.22rem 0.42rem;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  background: color-mix(in srgb, var(--ds-surface-elevated) 65%, var(--ds-well));
+  color: var(--ds-ink-2);
+  flex-shrink: 0;
+  max-width: 248px;
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+
+.docTabWithThumb {
+  min-height: 38px;
+  padding: 0.2rem 0.28rem 0.22rem 0.34rem;
+}
+
+.docTab:hover {
+  background: var(--ds-surface-elevated);
+  color: var(--ds-ink);
+}
+
+.docTabActive {
+  background: var(--ds-surface-solid);
+  border-color: var(--ds-border-strong);
+  color: var(--ds-ink);
+  box-shadow: inset 0 2px 0 var(--ds-accent);
+}
+
+.tabSelectBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+  min-width: 0;
+  text-align: left;
+  font-family: var(--ds-font-ui);
+}
+
+.tabThumbFrame {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  border: 1px solid var(--ds-border-strong);
+  overflow: hidden;
+  background-color: #ffffff;
+  background-image:
+    linear-gradient(45deg, #d4d4d8 25%, transparent 25%),
+    linear-gradient(-45deg, #d4d4d8 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #d4d4d8 75%),
+    linear-gradient(-45deg, transparent 75%, #d4d4d8 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+}
+
+.tabThumbImg {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.tabTextGroup {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.tabNameRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.pinMark {
+  color: var(--ds-accent);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.tabName {
+  font-size: 0.76rem;
+  font-weight: 600;
+  max-width: 112px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tabDims {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.64rem;
+  color: var(--ds-ink-3);
+  white-space: nowrap;
+}
+
+.tabRenameInput {
+  width: 112px;
+  height: 22px;
+  padding: 0 0.35rem;
+  border-radius: 5px;
+  border: 1px solid var(--ds-accent);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-size: 0.75rem;
+  font-family: var(--ds-font-ui);
+  outline: none;
+}
+
+.tabActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.05rem;
+  margin-left: 0.16rem;
+}
+
+.tabActionBtn,
+.tabCloseBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ds-ink-3);
+  font-size: 0.76rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.tabActionBtn:hover {
+  background: var(--ds-well);
+  color: var(--ds-ink);
+}
+
+.tabCloseBtn:hover {
+  background: color-mix(in srgb, #ef4444 18%, transparent);
+  color: #dc2626;
+}
+
+.tabAddBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin: 0 0 0.25rem 0.12rem;
+  border: 1px solid var(--ds-border);
+  border-radius: 7px;
+  background: var(--ds-surface-elevated);
+  color: var(--ds-ink);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.14s ease, border-color 0.14s ease;
+}
+
+.tabAddBtn:hover {
+  background: var(--ds-accent-soft);
+  border-color: var(--ds-accent-border);
+  color: var(--ds-accent);
+}
+
+.tabBarControls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+  flex-shrink: 0;
+  padding-bottom: 0.25rem;
+}
+
+.tabControlBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 0.45rem;
+  border-radius: 6px;
+  border: 1px solid var(--ds-border);
+  background: var(--ds-surface-elevated);
+  color: var(--ds-ink-2);
+  font-family: var(--ds-font-ui);
+  font-size: 0.72rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+
+.tabControlBtn:hover {
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+}
+
+.tabControlBtnActive {
+  background: var(--ds-accent-soft);
+  border-color: var(--ds-accent-border);
+  color: var(--ds-accent);
+}
+
+/* File Browser Panel */
+.browserRoot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.browserToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+}
+
+.browserBtnGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+}
+
+.browserBtn {
+  height: 25px;
+  padding: 0 0.45rem;
+  border-radius: 6px;
+  border: 1px solid var(--ds-border);
+  background: var(--ds-well);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-ui);
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.browserBtn:hover {
+  background: var(--ds-well-hover);
+}
+
+.browserBtnActive {
+  background: var(--ds-accent-soft);
+  border-color: var(--ds-accent-border);
+  color: var(--ds-accent);
+}
+
+.browserMetaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--ds-ink-2);
+}
+
+.browserCount {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.browserToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+  color: var(--ds-ink-2);
+}
+
+.browserSearch {
+  width: 100%;
+  height: 28px;
+  padding: 0 0.5rem;
+  border-radius: 7px;
+  border: 1px solid var(--ds-border-strong);
+  background: var(--ds-well);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-ui);
+  font-size: 0.75rem;
+}
+
+.browserGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.browserList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.browserCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.32rem;
+  padding: 0.35rem;
+  border-radius: 8px;
+  border: 1px solid var(--ds-border);
+  background: var(--ds-well);
+  cursor: pointer;
+  transition: border-color 0.14s ease, background-color 0.14s ease;
+}
+
+.browserCard:hover,
+.browserRow:hover {
+  border-color: var(--ds-border-strong);
+  background: var(--ds-surface-elevated);
+}
+
+.browserRow {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.32rem 0.4rem;
+  border-radius: 8px;
+  border: 1px solid var(--ds-border);
+  background: var(--ds-well);
+  cursor: pointer;
+  transition: border-color 0.14s ease, background-color 0.14s ease;
+}
+
+.browserItemActive {
+  background: var(--ds-accent-soft);
+  border-color: var(--ds-accent);
+}
+
+.browserCardThumb,
+.browserRowThumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  border: 1px solid var(--ds-border-strong);
+  overflow: hidden;
+  background-color: #ffffff;
+  background-image:
+    linear-gradient(45deg, #d4d4d8 25%, transparent 25%),
+    linear-gradient(-45deg, #d4d4d8 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #d4d4d8 75%),
+    linear-gradient(-45deg, transparent 75%, #d4d4d8 75%);
+  background-size: 10px 10px;
+  background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+}
+
+.browserCardThumb {
+  width: 100%;
+  height: 68px;
+}
+
+.browserRowThumb {
+  width: 44px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.browserThumbImg {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.browserItemInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.browserItemName {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--ds-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browserItemMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.65rem;
+  color: var(--ds-ink-3);
+}
+
+.browserRenameInput {
+  width: 100%;
+  height: 22px;
+  padding: 0 0.3rem;
+  border-radius: 4px;
+  border: 1px solid var(--ds-accent);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-size: 0.73rem;
+  outline: none;
+}
+
+.browserItemActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.08rem;
+}
+
+.browserEmpty {
+  grid-column: 1 / -1;
+  padding: 0.85rem 0.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--ds-ink-3);
+}
+
+.browserHint {
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--ds-ink-3);
+  line-height: 1.35;
+}
+
+@media (max-width: 900px) {
+  .tabBar {
+    flex-wrap: wrap;
+    padding: 0.25rem 0.4rem 0;
+  }
+
+  .tabBarControls {
+    width: 100%;
+    justify-content: flex-end;
+    padding-top: 0.2rem;
+    border-top: 1px solid var(--ds-border);
+  }
+
+  .browserGrid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    max-height: 260px;
+  }
+}

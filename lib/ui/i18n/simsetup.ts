@@ -1,7 +1,7 @@
 export const en = {
-  // Simulation setup namespace
-  'simsetup.pageTitle': 'Simulation Setup · yotasage',
-  'simsetup.title': 'Simulation Setup',
+  // FFT & coherent sampling namespace
+  'simsetup.pageTitle': 'FFT & Coherent Sampling · yotasage',
+  'simsetup.title': 'FFT & Coherent Sampling',
   'simsetup.subtitle':
     'Compute coherent sampling parameters (f₀, Fs, Ncyc, Npts) for FFTs and simulations, and validate them against prime-ratio and power-of-two rules.',
   'simsetup.workbench': 'Workbench',
@@ -212,9 +212,9 @@ export const en = {
 } as const;
 
 export const nb: Record<keyof typeof en, string> = {
-  // Simulation setup namespace
-  'simsetup.pageTitle': 'Simuleringsoppsett · yotasage',
-  'simsetup.title': 'Simuleringsoppsett',
+  // FFT & coherent sampling namespace
+  'simsetup.pageTitle': 'FFT og koherent sampling · yotasage',
+  'simsetup.title': 'FFT og koherent sampling',
   'simsetup.subtitle':
     'Beregn koherente samplingsparametre (f₀, Fs, Ncyc, Npts) for FFT og simuleringer, og kontroller dem mot regler for primtall og toerpotenser.',
   'simsetup.workbench': 'Arbeidsbenk',

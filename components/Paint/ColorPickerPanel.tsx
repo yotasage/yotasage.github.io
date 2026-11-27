@@ -303,7 +303,7 @@ export default function ColorPickerPanel({
         </div>
       )}
 
-      {/* 32-Swatch Paint.NET Palette */}
+      {/* 32-Swatch Palette */}
       <div className={styles.paletteSection}>
         <div className={styles.subLabel}>{t('paint.color.palette')}</div>
         <div className={styles.paletteGrid}>

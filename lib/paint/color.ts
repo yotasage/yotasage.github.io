@@ -122,7 +122,7 @@ export function isValidHexInput(input: string): boolean {
   return /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(input.trim());
 }
 
-// Paint.NET-inspired 32-swatch palette: two balanced rows of standard & vivid hues.
+// 32-swatch raster palette: two balanced rows of standard & vivid hues.
 export const DEFAULT_PALETTE: readonly string[] = [
   '#000000', '#404040', '#FF0000', '#FF6A00', '#FFD800', '#B6FF00', '#4CFF00', '#00FF21',
   '#00FF90', '#00FFFF', '#0094FF', '#0026FF', '#4800FF', '#B200FF', '#FF00DC', '#FF006E',

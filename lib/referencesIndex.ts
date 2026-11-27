@@ -15,7 +15,7 @@ const CODE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];
 // Preferred display order and translation keys for known citing tools; any future page
 // calling loadReferences() is automatically discovered and appended with a humanized title.
 const KNOWN_TOOL_META: Record<string, { titleKey: string; fallbackTitle: string; order: number }> = {
-  '/simsetup/main': { titleKey: 'home.tool.simsetup.title', fallbackTitle: 'Simulation setup', order: 1 },
+  '/simsetup/main': { titleKey: 'home.tool.simsetup.title', fallbackTitle: 'FFT & coherent sampling', order: 1 },
   '/resistor/main': { titleKey: 'home.tool.resistor.title', fallbackTitle: 'Resistor lookup', order: 2 },
   '/smith-chart/main': { titleKey: 'home.tool.smith.title', fallbackTitle: 'Smith chart', order: 3 },
   '/em-sim/main': { titleKey: 'home.tool.emsim.title', fallbackTitle: 'EM simulation', order: 4 },

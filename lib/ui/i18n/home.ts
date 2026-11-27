@@ -44,7 +44,7 @@ export const en = {
   'home.tool.boolean.category': 'Digital logic',
   'home.tool.boolean.desc':
     'Simplify Boolean expressions step by step with truth tables, TikZ/IEEE logic circuits, Karnaugh maps, and WaveDrom timing diagrams with gate delays and D flip-flop clocking.',
-  'home.tool.simsetup.title': 'Simulation setup',
+  'home.tool.simsetup.title': 'FFT & coherent sampling',
   'home.tool.simsetup.category': 'Signal processing',
   'home.tool.simsetup.desc':
     'Compute coherent sampling parameters (f₀, Fs, Ncyc, Npts) for FFTs and simulations, and validate them against prime-ratio and power-of-two rules.',
@@ -84,10 +84,10 @@ export const en = {
   'home.tool.base64.category': 'Images',
   'home.tool.base64.desc':
     'Encode images into Base64 or ready-to-paste data URLs for HTML, CSS, and Markdown, or decode Base64 strings back into downloadable previews.',
-  'home.tool.paint.title': 'Paint & image editor',
+  'home.tool.paint.title': 'Image editor',
   'home.tool.paint.category': 'Images',
   'home.tool.paint.desc':
-    'Paint.NET-style raster editor with layers, crop, resize, scale down, rotate, black & white color styles, Paint.NET Ctrl+C/V clipboard sync, and dockable panels.',
+    'Multi-tab raster image editor with thumbnail previews, file browser, layers, crop, resize, scale down, rotate, black & white color styles, Ctrl+C/V clipboard sync, and dockable panels.',
   'home.tool.hash.title': 'Hash generator',
   'home.tool.hash.category': 'Hashing & Checksums',
   'home.tool.hash.desc':
@@ -141,7 +141,7 @@ export const en = {
   'home.tool.qrcode.tags': 'Model 1 & 2|Micro QR · rMQR|Custom mask|PNG · SVG · PDF',
   'home.tool.qrreader.tags': 'Camera · PDF · paste|Micro QR · rMQR|Wi-Fi · eSIM|2FA · Payments|Raw hex',
   'home.tool.base64.tags': 'Data URL|HTML · CSS · MD|PNG · JPEG · WebP|Live preview',
-  'home.tool.paint.tags': 'Layers|Crop · Resize · Scale down|Rotate|B&W styles|Paint.NET Ctrl+C/V',
+  'home.tool.paint.tags': 'Multi-tab · Previews|Layers|Crop · Resize · Scale down|Rotate|B&W styles',
   'home.tool.notepad.tags': 'Monaco Editor|Code · CSV · TeX|Side-by-side · Grid|Diff · Regex|Auto-saved',
   'home.tool.hash.tags': 'MD5 · SHA-2 · SHA-3|BLAKE2 · CRC32|Multi-field · Files|Verifier · Diff',
   'home.tool.base.tags': 'Base 2–64|Hex · Dec · Bin · Oct|Fractions · BigInt|Bit inspector|Step-by-step',
@@ -200,7 +200,7 @@ export const nb: Record<keyof typeof en, string> = {
   'home.tool.boolean.category': 'Digitalteknikk',
   'home.tool.boolean.desc':
     'Forenkle boolske uttrykk steg for steg med sannhetstabeller, TikZ/IEEE-logikkretser, Karnaugh-kart og WaveDrom-tidsdiagrammer med portforsinkelser og D-vippe-klokking.',
-  'home.tool.simsetup.title': 'Simuleringsoppsett',
+  'home.tool.simsetup.title': 'FFT og koherent sampling',
   'home.tool.simsetup.category': 'Signalbehandling',
   'home.tool.simsetup.desc':
     'Beregn koherente samplingsparametre (f₀, Fs, Ncyc, Npts) for FFT og simuleringer, og kontroller dem mot regler for primtall og toerpotenser.',
@@ -240,10 +240,10 @@ export const nb: Record<keyof typeof en, string> = {
   'home.tool.base64.category': 'Bilder',
   'home.tool.base64.desc':
     'Konverter bilder til Base64 eller data-URL-er for HTML, CSS og Markdown, eller dekod Base64-strenger tilbake til bilder du kan forhåndsvise og laste ned.',
-  'home.tool.paint.title': 'Tegne- og bilderedigering',
+  'home.tool.paint.title': 'Bilderedigering',
   'home.tool.paint.category': 'Bilder',
   'home.tool.paint.desc':
-    'Paint.NET-inspirert bildeeditor med lag, beskjæring, nedskalering, rotering, svart-hvitt fargestiler, Ctrl+C/V mot Paint.NET og flyttbare paneler.',
+    'Bildeeditor med flere faner, forhåndsvisninger, filutforsker, lag, beskjæring, nedskalering, rotering, svart-hvitt fargestiler, Ctrl+C/V utklippstavle og flyttbare paneler.',
   'home.tool.hash.title': 'Hash-generator',
   'home.tool.hash.category': 'Hashing og kontrollsummer',
   'home.tool.hash.desc':
@@ -297,7 +297,7 @@ export const nb: Record<keyof typeof en, string> = {
   'home.tool.qrcode.tags': 'Modell 1 og 2|Micro QR · rMQR|Egen maske|PNG · SVG · PDF',
   'home.tool.qrreader.tags': 'Kamera · PDF · lim inn|Micro QR · rMQR|Wi-Fi · eSIM|2FA · Betaling|Rå hex',
   'home.tool.base64.tags': 'Data-URL|HTML · CSS · MD|PNG · JPEG · WebP|Direktevisning',
-  'home.tool.paint.tags': 'Lag|Beskjær · Skalering|Roter|Svart-hvitt-stiler|Paint.NET Ctrl+C/V',
+  'home.tool.paint.tags': 'Flere faner · Forhåndsvisning|Lag|Beskjær · Skalering|Roter|Svart-hvitt-stiler',
   'home.tool.notepad.tags': 'Monaco-editor|Kode · CSV · TeX|Side ved side · Rutenett|Diff · Regex|Autolagret',
   'home.tool.hash.tags': 'MD5 · SHA-2 · SHA-3|BLAKE2 · CRC32|Flere felt · Filer|Verifiserer · Diff',
   'home.tool.base.tags': 'Base 2–64|Hex · Des · Bin · Okt|Brøker · BigInt|Bitinspektør|Steg-for-steg',

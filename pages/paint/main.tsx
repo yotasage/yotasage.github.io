@@ -16,7 +16,7 @@ export default function PaintPage() {
         description={t('paint.metaDescription')}
         path="/paint/main"
         ogImage="/og/home.png"
-        ogAlt="Paint and raster image editor with layers, crop, resize, scale down, rotate, black and white color styles, and dockable panels"
+        ogAlt="Raster image editor with multi-file tabs, thumbnail previews, layers, crop, resize, scale down, rotate, black and white color styles, and dockable panels"
       />
 
       <ToolHeader title={t('paint.title')} showExperienceMode={false} />

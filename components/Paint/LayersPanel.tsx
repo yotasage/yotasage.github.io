@@ -76,7 +76,7 @@ export default function LayersPanel({
   const activeIndex = layers.findIndex((l) => l.id === activeLayerId);
   const activeLayer = activeIndex >= 0 ? layers[activeIndex] : layers[layers.length - 1];
 
-  // Display top-most layer first (Paint.NET / Photoshop order)
+  // Display top-most layer first (standard raster layer stack order)
   const displayLayers = [...layers].reverse();
 
   const startRename = (layer: PaintLayer) => {

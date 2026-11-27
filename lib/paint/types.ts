@@ -43,6 +43,7 @@ export type AnchorPosition =
   | 'bl' | 'bc' | 'br';
 
 export type DockSide = 'left' | 'right' | 'floating';
+export type PanelId = 'files' | 'colors' | 'layers';
 
 export interface PanelLayout {
   dock: DockSide;
@@ -50,6 +51,18 @@ export interface PanelLayout {
   x: number;
   y: number;
   zIndex: number;
+}
+
+export interface ImageDocMeta {
+  id: string;
+  name: string;
+  pinned: boolean;
+  width: number;
+  height: number;
+  layerCount: number;
+  zoom: number;
+  thumbDataUrl: string;
+  updatedAt: number;
 }
 
 export interface RGBA {

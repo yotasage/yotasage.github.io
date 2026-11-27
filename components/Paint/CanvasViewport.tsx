@@ -21,7 +21,6 @@ export interface CanvasViewportProps {
   textDraft: { x: number; y: number; value: string } | null;
   toolOptions: ToolOptions;
   primaryColor: RGBA;
-  onViewportWheel: (e: React.WheelEvent<HTMLDivElement>) => void;
   onCanvasPointerDown: (e: React.PointerEvent<HTMLCanvasElement>) => void;
   onCanvasPointerMove: (e: React.PointerEvent<HTMLCanvasElement>) => void;
   onCanvasPointerUp: (e: React.PointerEvent<HTMLCanvasElement>) => void;
@@ -45,7 +44,6 @@ export function CanvasViewport({
   textDraft,
   toolOptions,
   primaryColor,
-  onViewportWheel,
   onCanvasPointerDown,
   onCanvasPointerMove,
   onCanvasPointerUp,
@@ -59,7 +57,7 @@ export function CanvasViewport({
   const scaledH = Math.round(docSize.height * zoom);
 
   return (
-    <div ref={viewportRef} className={styles.viewport} onWheel={onViewportWheel}>
+    <div ref={viewportRef} className={styles.viewport}>
       <div className={styles.canvasStage} style={{ width: `${scaledW}px`, height: `${scaledH}px` }}>
         <canvas
           ref={displayCanvasRef}
@@ -216,14 +214,14 @@ export function StatusBar({
         <button
           type="button"
           className={styles.zoomBtn}
-          onClick={() => onZoomChange(Math.max(0.15, Math.round((zoom / 1.25) * 100) / 100))}
+          onClick={() => onZoomChange(Math.max(0.1, Math.round((zoom / 1.25) * 100) / 100))}
           aria-label={t('paint.zoom.outAria')}
         >
           −
         </button>
         <input
           type="range"
-          min={15}
+          min={10}
           max={800}
           value={Math.min(800, Math.round(zoom * 100))}
           onChange={(e) => onZoomChange(Number(e.target.value) / 100)}
@@ -240,11 +238,11 @@ export function StatusBar({
         </button>
         <input
           type="number"
-          min={15}
+          min={10}
           max={1600}
           value={Math.round(zoom * 100)}
           onChange={(e) => {
-            const pct = Math.max(15, Math.min(1600, Math.round(Number(e.target.value) || 100)));
+            const pct = Math.max(10, Math.min(1600, Math.round(Number(e.target.value) || 100)));
             onZoomChange(pct / 100);
           }}
           className={styles.zoomNumInput}

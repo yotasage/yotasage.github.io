@@ -1,13 +1,13 @@
 import React, { useRef } from 'react';
 
 import { clampFloatingPanel } from '../../lib/paint/geometry';
-import type { DockSide, PanelLayout } from '../../lib/paint/types';
+import type { DockSide, PanelId, PanelLayout } from '../../lib/paint/types';
 import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/PaintPanels.module.css';
 import { CloseIcon, DockLeftIcon, DockRightIcon, FloatIcon } from './icons';
 
 export interface DockablePanelProps {
-  id: 'colors' | 'layers';
+  id: PanelId;
   title: string;
   layout: PanelLayout;
   workspaceRef: React.RefObject<HTMLDivElement | null>;

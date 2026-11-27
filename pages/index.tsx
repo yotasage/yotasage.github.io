@@ -99,7 +99,7 @@ const TOOLS: readonly SiteTool[] = [
     accentLight: '#0891b2',
     accentDark: '#3cc4dc',
     tagsKey: 'home.tool.simsetup.tags',
-    searchKeywords: ['f0', 'fs', 'ncyc', 'npts', 'sampling', 'nyquist', 'signal', 'dsp'],
+    searchKeywords: ['fft', 'coherent', 'adc', 'spice', 'simulation', 'simsetup', 'f0', 'fs', 'ncyc', 'npts', 'sampling', 'nyquist', 'signal', 'dsp'],
   },
   {
     id: 'resistor',
@@ -230,7 +230,7 @@ const TOOLS: readonly SiteTool[] = [
     accentLight: '#2563eb',
     accentDark: '#60a5fa',
     tagsKey: 'home.tool.paint.tags',
-    searchKeywords: ['paint', 'paint.net', 'draw', 'brush', 'layers', 'crop', 'resize', 'rotate', 'black white', 'grayscale', 'colorpicker', 'editor', 'image', 'tegne', 'bilde'],
+    searchKeywords: ['raster', 'photo', 'draw', 'brush', 'layers', 'tabs', 'crop', 'resize', 'rotate', 'black white', 'grayscale', 'colorpicker', 'editor', 'image', 'tegne', 'bilde', 'bilderedigering'],
   },
   {
     id: 'scratchpad',

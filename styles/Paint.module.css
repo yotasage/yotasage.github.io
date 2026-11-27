@@ -312,8 +312,6 @@
   position: relative;
   overflow: auto;
   display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 1rem;
   background-color: color-mix(in srgb, var(--ds-well) 82%, var(--ds-bg));
 }
@@ -321,6 +319,7 @@
 .canvasStage {
   position: relative;
   flex-shrink: 0;
+  margin: auto;
   box-shadow: 0 10px 34px rgba(0, 0, 0, 0.24), 0 0 0 1px var(--ds-border-strong);
   /* Classic transparency checkerboard */
   background-color: #ffffff;

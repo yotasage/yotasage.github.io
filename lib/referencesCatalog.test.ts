@@ -68,7 +68,7 @@ const SAMPLE_ITEMS: IndexedReference[] = [
 ];
 
 const TOOL_LABELS = new Map<string, string>([
-  ['/simsetup/main', 'Simulation setup'],
+  ['/simsetup/main', 'FFT & coherent sampling'],
   ['/resistor/main', 'Resistor lookup'],
   ['/smith-chart/main', 'Smith chart'],
 ]);

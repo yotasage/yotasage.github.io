@@ -14,6 +14,7 @@ import type { ModalId } from './ToolBar';
 
 export interface TransformModalsProps {
   modal: ModalId;
+  activeDocName?: string;
   canvasWidth: number;
   canvasHeight: number;
   onClose: () => void;
@@ -59,6 +60,7 @@ const COLOR_STYLES: readonly ColorStyleId[] = [
 
 export default function TransformModals({
   modal,
+  activeDocName,
   canvasWidth,
   canvasHeight,
   onClose,
@@ -129,7 +131,10 @@ export default function TransformModals({
     setContrast(0);
     setHue(0);
     setSaturation(0);
-  }, [modal, canvasWidth, canvasHeight]);
+    if (modal === 'export' && activeDocName) {
+      setExportName(activeDocName);
+    }
+  }, [modal, activeDocName, canvasWidth, canvasHeight]);
 
   useEffect(() => {
     if (!modal) return;
@@ -709,7 +714,7 @@ export default function TransformModals({
                   onClose();
                 }}
               >
-                {t('paint.action.saveProject')} (.paint.json)
+                {t('paint.action.saveProject')} (.img.json)
               </button>
               <button type="button" className={styles.cmdBtn} onClick={onClose}>{t('paint.modal.cancel')}</button>
               <button

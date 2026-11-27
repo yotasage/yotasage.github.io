@@ -21,6 +21,7 @@ import {
 } from '../../lib/paint/geometry';
 import {
   DEFAULT_TOOL_OPTIONS,
+  type PanelId,
   type PanelLayout,
   type Point,
   type RGBA,
@@ -32,12 +33,23 @@ import styles from '../../styles/Paint.module.css';
 import { CanvasViewport, type CropHandle, StatusBar } from './CanvasViewport';
 import ColorPickerPanel from './ColorPickerPanel';
 import DockablePanel from './DockablePanel';
+import FileBrowserPanel from './FileBrowserPanel';
+import ImageTabStrip from './ImageTabStrip';
 import LayersPanel from './LayersPanel';
 import { LeftToolStrip, type ModalId, ToolOptionsBar, TopCommandBar } from './ToolBar';
 import TransformModals from './TransformModals';
 import { usePaintActions } from './usePaintActions';
+import { useViewportZoom } from './useViewportZoom';
 
 const LAYOUT_STORAGE_KEY = 'yotasage:paint:panels:v1';
+
+const DEFAULT_FILES_LAYOUT: PanelLayout = {
+  dock: 'left',
+  visible: false,
+  x: 64,
+  y: 20,
+  zIndex: 29,
+};
 
 const DEFAULT_COLORS_LAYOUT: PanelLayout = {
   dock: 'right',
@@ -93,13 +105,16 @@ export default function PaintWorkspace() {
   const [activeColorSlot, setActiveColorSlot] = useState<'primary' | 'secondary'>('primary');
   const [recentColors, setRecentColors] = useState<RGBA[]>([]);
 
-  const [zoom, setZoom] = useState(1);
+  const { zoom, zoomRef, setZoom, fitZoom } = useViewportZoom(viewportRef, displayCanvasRef);
   const [showPixelGrid, setShowPixelGrid] = useState(true);
+  const [showTabStrip, setShowTabStrip] = useState(true);
+  const [showTabThumbs, setShowTabThumbs] = useState(true);
   const [cursorPos, setCursorPos] = useState<Point | null>(null);
   const [textDraft, setTextDraft] = useState<{ x: number; y: number; value: string } | null>(null);
   const [spacePressed, setSpacePressed] = useState(false);
   const [modal, setModal] = useState<ModalId>(null);
 
+  const [filesLayout, setFilesLayout] = useState<PanelLayout>(DEFAULT_FILES_LAYOUT);
   const [colorsLayout, setColorsLayout] = useState<PanelLayout>(DEFAULT_COLORS_LAYOUT);
   const [layersLayout, setLayersLayout] = useState<PanelLayout>(DEFAULT_LAYERS_LAYOUT);
   const [snapPreview, setSnapPreview] = useState<'left' | 'right' | null>(null);
@@ -114,8 +129,10 @@ export default function PaintWorkspace() {
     secondary: RGBA;
   } | null>(null);
 
-  const actions = usePaintActions(setActiveTool);
+  const actions = usePaintActions(setActiveTool, zoomRef, setZoom);
   const {
+    docs,
+    activeDocId,
     docSize,
     layersRef,
     layersVersion,
@@ -179,9 +196,18 @@ export default function PaintWorkspace() {
     try {
       const saved = localStorage.getItem(LAYOUT_STORAGE_KEY);
       if (saved) {
-        const parsed = JSON.parse(saved) as { colors?: PanelLayout; layers?: PanelLayout };
+        const parsed = JSON.parse(saved) as {
+          files?: PanelLayout;
+          colors?: PanelLayout;
+          layers?: PanelLayout;
+          showTabStrip?: boolean;
+          showTabThumbs?: boolean;
+        };
+        if (parsed.files) setFilesLayout(parsed.files);
         if (parsed.colors) setColorsLayout(parsed.colors);
         if (parsed.layers) setLayersLayout(parsed.layers);
+        if (typeof parsed.showTabStrip === 'boolean') setShowTabStrip(parsed.showTabStrip);
+        if (typeof parsed.showTabThumbs === 'boolean') setShowTabThumbs(parsed.showTabThumbs);
       }
     } catch {
       // ignore storage errors
@@ -190,11 +216,20 @@ export default function PaintWorkspace() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify({ colors: colorsLayout, layers: layersLayout }));
+      localStorage.setItem(
+        LAYOUT_STORAGE_KEY,
+        JSON.stringify({
+          files: filesLayout,
+          colors: colorsLayout,
+          layers: layersLayout,
+          showTabStrip,
+          showTabThumbs,
+        }),
+      );
     } catch {
       // ignore
     }
-  }, [colorsLayout, layersLayout]);
+  }, [filesLayout, colorsLayout, layersLayout, showTabStrip, showTabThumbs]);
 
   useEffect(() => {
     redrawDisplay();
@@ -208,15 +243,10 @@ export default function PaintWorkspace() {
   }, []);
 
   const handleFitZoom = useCallback(() => {
-    const vp = viewportRef.current;
-    if (!vp) return;
-    const availW = Math.max(200, vp.clientWidth - 48);
-    const availH = Math.max(160, vp.clientHeight - 48);
-    const scale = Math.min(availW / docSize.width, availH / docSize.height, 2);
-    setZoom(Math.max(0.15, Math.round(scale * 20) / 20));
-  }, [docSize.height, docSize.width]);
+    fitZoom(docSize.width, docSize.height);
+  }, [docSize.height, docSize.width, fitZoom]);
 
-  // Global keyboard shortcuts, arrow-key 1px selection nudge, and Paint.NET Ctrl+V paste
+  // Global keyboard shortcuts, arrow-key 1px selection nudge, and clipboard Ctrl+V paste
   useEffect(() => {
     const onPaste = async (e: ClipboardEvent) => {
       if (isEditableElement(e.target)) return;
@@ -271,6 +301,17 @@ export default function PaintWorkspace() {
       }
       if (mod && e.key === '0') { e.preventDefault(); handleFitZoom(); return; }
       if (mod && e.key === '1') { e.preventDefault(); setZoom(1); return; }
+      if (mod && (e.key === '=' || e.key === '+')) {
+        e.preventDefault();
+        setZoom((z) => Math.round(z * 1.25 * 100) / 100);
+        return;
+      }
+      if (mod && e.key === '-') {
+        e.preventDefault();
+        setZoom((z) => Math.round((z / 1.25) * 100) / 100);
+        return;
+      }
+      if (e.key === 'F6') { e.preventDefault(); setFilesLayout((p) => ({ ...p, visible: !p.visible })); return; }
       if (e.key === 'F7') { e.preventDefault(); setLayersLayout((p) => ({ ...p, visible: !p.visible })); return; }
       if (e.key === 'F8') { e.preventDefault(); setColorsLayout((p) => ({ ...p, visible: !p.visible })); return; }
       if (e.key === 'Escape') {
@@ -356,6 +397,7 @@ export default function PaintWorkspace() {
     selection,
     setCropRect,
     setSelection,
+    setZoom,
   ]);
 
   const getCanvasPoint = (e: React.PointerEvent | PointerEvent): Point => {
@@ -755,45 +797,81 @@ export default function PaintWorkspace() {
     window.addEventListener('pointercancel', onUp);
   };
 
-  const handleViewportWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    if (!e.ctrlKey && !e.metaKey) return;
-    e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
-    setZoom((z) => Math.max(0.15, Math.min(16, Math.round(z * factor * 100) / 100)));
+  const openFilePicker = (asLayer: boolean) => {
+    openAsLayerRef.current = asLayer;
+    fileInputRef.current?.click();
   };
 
-  const focusPanel = (panel: 'colors' | 'layers') => {
+  const togglePanel = (panel: PanelId) => {
+    if (panel === 'files') setFilesLayout((cur) => ({ ...cur, visible: !cur.visible }));
+    else if (panel === 'colors') setColorsLayout((cur) => ({ ...cur, visible: !cur.visible }));
+    else setLayersLayout((cur) => ({ ...cur, visible: !cur.visible }));
+  };
+
+  const focusPanel = (panel: PanelId) => {
     zCounterRef.current += 1;
     const z = zCounterRef.current;
-    if (panel === 'colors') setColorsLayout((p) => ({ ...p, zIndex: z }));
+    if (panel === 'files') setFilesLayout((p) => ({ ...p, zIndex: z }));
+    else if (panel === 'colors') setColorsLayout((p) => ({ ...p, zIndex: z }));
     else setLayersLayout((p) => ({ ...p, zIndex: z }));
   };
 
-  const renderPanel = (id: 'colors' | 'layers') =>
-    id === 'colors' ? (
-      <DockablePanel
-        key="colors"
-        id="colors"
-        title={t('paint.panel.colors')}
-        layout={colorsLayout}
-        workspaceRef={workspaceRef}
-        onChangeLayout={(patch) => setColorsLayout((p) => ({ ...p, ...patch }))}
-        onFocus={() => focusPanel('colors')}
-        onDragSnapPreview={setSnapPreview}
-      >
-        <ColorPickerPanel
-          primary={primary}
-          secondary={secondary}
-          activeSlot={activeColorSlot}
-          recentColors={recentColors}
-          onSelectSlot={setActiveColorSlot}
-          onChangePrimary={setPrimary}
-          onChangeSecondary={setSecondary}
-          onSwap={() => { setPrimary(secondary); setSecondary(primary); }}
-          onResetBW={() => { setPrimary(BLACK); setSecondary(WHITE); }}
-        />
-      </DockablePanel>
-    ) : (
+  const renderPanel = (id: PanelId) => {
+    if (id === 'files') {
+      return (
+        <DockablePanel
+          key="files"
+          id="files"
+          title={t('paint.panel.files')}
+          layout={filesLayout}
+          workspaceRef={workspaceRef}
+          onChangeLayout={(patch) => setFilesLayout((p) => ({ ...p, ...patch }))}
+          onFocus={() => focusPanel('files')}
+          onDragSnapPreview={setSnapPreview}
+        >
+          <FileBrowserPanel
+            docs={docs}
+            activeDocId={activeDocId}
+            showTabStrip={showTabStrip}
+            onSelectDoc={actions.handleSelectDoc}
+            onRenameDoc={actions.handleRenameDoc}
+            onDuplicateDoc={actions.handleDuplicateDoc}
+            onTogglePin={actions.handleTogglePinDoc}
+            onCloseDoc={actions.handleCloseDoc}
+            onQuickNewDoc={actions.handleQuickNewDoc}
+            onOpenFiles={() => openFilePicker(false)}
+            onToggleTabStrip={() => setShowTabStrip((v) => !v)}
+          />
+        </DockablePanel>
+      );
+    }
+    if (id === 'colors') {
+      return (
+        <DockablePanel
+          key="colors"
+          id="colors"
+          title={t('paint.panel.colors')}
+          layout={colorsLayout}
+          workspaceRef={workspaceRef}
+          onChangeLayout={(patch) => setColorsLayout((p) => ({ ...p, ...patch }))}
+          onFocus={() => focusPanel('colors')}
+          onDragSnapPreview={setSnapPreview}
+        >
+          <ColorPickerPanel
+            primary={primary}
+            secondary={secondary}
+            activeSlot={activeColorSlot}
+            recentColors={recentColors}
+            onSelectSlot={setActiveColorSlot}
+            onChangePrimary={setPrimary}
+            onChangeSecondary={setSecondary}
+            onSwap={() => { setPrimary(secondary); setSecondary(primary); }}
+            onResetBW={() => { setPrimary(BLACK); setSecondary(WHITE); }}
+          />
+        </DockablePanel>
+      );
+    }
+    return (
       <DockablePanel
         key="layers"
         id="layers"
@@ -823,16 +901,23 @@ export default function PaintWorkspace() {
         />
       </DockablePanel>
     );
+  };
 
-  const leftDocked: ('colors' | 'layers')[] = [];
-  const rightDocked: ('colors' | 'layers')[] = [];
-  const floatingPanels: ('colors' | 'layers')[] = [];
-  for (const [id, layout] of [['colors', colorsLayout], ['layers', layersLayout]] as const) {
+  const leftDocked: PanelId[] = [];
+  const rightDocked: PanelId[] = [];
+  const floatingPanels: PanelId[] = [];
+  for (const [id, layout] of [
+    ['files', filesLayout],
+    ['colors', colorsLayout],
+    ['layers', layersLayout],
+  ] as const) {
     if (!layout.visible) continue;
     if (layout.dock === 'left') leftDocked.push(id);
     else if (layout.dock === 'right') rightDocked.push(id);
     else floatingPanels.push(id);
   }
+
+  const activeDoc = docs.find((d) => d.id === activeDocId);
 
   const canvasCursor =
     activeTool === 'pan' || spacePressed
@@ -852,7 +937,8 @@ export default function PaintWorkspace() {
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*,.paint.json,application/json"
+        multiple
+        accept="image/*,.img.json,.paint.json,application/json"
         className={styles.srOnly}
         onChange={(e) => { void actions.handleFiles(e.target.files, openAsLayerRef.current); e.target.value = ''; }}
       />
@@ -861,26 +947,49 @@ export default function PaintWorkspace() {
         canUndo={historyState.canUndo || hasFloatingSelection}
         canRedo={historyState.canRedo}
         hasSelection={Boolean(selection && selection.w > 0 && selection.h > 0)}
+        filesLayout={filesLayout}
         colorsLayout={colorsLayout}
         layersLayout={layersLayout}
+        showTabStrip={showTabStrip}
         showPixelGrid={showPixelGrid}
         onUndo={handleUndo}
         onRedo={handleRedo}
         onOpenModal={setModal}
-        onOpenFile={(asLayer) => { openAsLayerRef.current = asLayer; fileInputRef.current?.click(); }}
+        onOpenFile={openFilePicker}
         onLoadSample={actions.handleLoadSample}
         onCopy={(merged) => void handleCopy(merged)}
         onPaste={() => void handlePasteAction()}
         onActivateCrop={handleActivateCrop}
         onCropToSelection={handleCropToSelection}
-        onTogglePanel={(p) =>
-          p === 'colors'
-            ? setColorsLayout((cur) => ({ ...cur, visible: !cur.visible }))
-            : setLayersLayout((cur) => ({ ...cur, visible: !cur.visible }))
-        }
-        onResetPanels={() => { setColorsLayout(DEFAULT_COLORS_LAYOUT); setLayersLayout(DEFAULT_LAYERS_LAYOUT); }}
+        onTogglePanel={togglePanel}
+        onToggleTabStrip={() => setShowTabStrip((v) => !v)}
+        onResetPanels={() => {
+          setFilesLayout(DEFAULT_FILES_LAYOUT);
+          setColorsLayout(DEFAULT_COLORS_LAYOUT);
+          setLayersLayout(DEFAULT_LAYERS_LAYOUT);
+          setShowTabStrip(true);
+          setShowTabThumbs(true);
+        }}
         onTogglePixelGrid={() => setShowPixelGrid((v) => !v)}
       />
+
+      {showTabStrip && (
+        <ImageTabStrip
+          docs={docs}
+          activeDocId={activeDocId}
+          showThumbnails={showTabThumbs}
+          fileBrowserVisible={filesLayout.visible}
+          onSelectDoc={actions.handleSelectDoc}
+          onRenameDoc={actions.handleRenameDoc}
+          onDuplicateDoc={actions.handleDuplicateDoc}
+          onTogglePin={actions.handleTogglePinDoc}
+          onCloseDoc={actions.handleCloseDoc}
+          onQuickNewDoc={actions.handleQuickNewDoc}
+          onOpenFiles={() => openFilePicker(false)}
+          onToggleThumbnails={() => setShowTabThumbs((v) => !v)}
+          onToggleFileBrowser={() => togglePanel('files')}
+        />
+      )}
 
       <ToolOptionsBar
         activeTool={activeTool}
@@ -934,7 +1043,6 @@ export default function PaintWorkspace() {
           textDraft={textDraft}
           toolOptions={toolOptions}
           primaryColor={primary}
-          onViewportWheel={handleViewportWheel}
           onCanvasPointerDown={handleCanvasPointerDown}
           onCanvasPointerMove={handleCanvasPointerMove}
           onCanvasPointerUp={handleCanvasPointerUp}
@@ -976,6 +1084,7 @@ export default function PaintWorkspace() {
 
       <TransformModals
         modal={modal}
+        activeDocName={activeDoc?.name}
         canvasWidth={docSize.width}
         canvasHeight={docSize.height}
         onClose={() => setModal(null)}

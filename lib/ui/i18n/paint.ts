@@ -1,8 +1,8 @@
 export const en = {
-  'paint.pageTitle': 'Paint & Image Editor · yotasage',
-  'paint.title': 'Paint & Image Editor',
+  'paint.pageTitle': 'Image Editor · yotasage',
+  'paint.title': 'Image Editor',
   'paint.metaDescription':
-    'Client-side Paint.NET-inspired raster image editor with layers, crop, resize, scale down, rotate, black & white color styles, Ctrl+C/Ctrl+V clipboard sync, and floating dockable panels.',
+    'Client-side raster image editor with multi-file tabs, thumbnail previews, layers, crop, resize, scale down, rotate, black & white color styles, Ctrl+C/Ctrl+V clipboard sync, and floating dockable panels.',
 
   // Toolbar & Menus
   'paint.action.new': 'New',
@@ -14,8 +14,10 @@ export const en = {
   'paint.action.undo': 'Undo',
   'paint.action.redo': 'Redo',
   'paint.action.copy': 'Copy',
+  'paint.action.copyTooltip': 'Copy PNG to clipboard (Ctrl+C)',
   'paint.action.copyMerged': 'Copy Merged',
   'paint.action.paste': 'Paste',
+  'paint.action.pasteTooltip': 'Paste image from clipboard (Ctrl+V)',
   'paint.action.crop': 'Crop',
   'paint.action.cropToSel': 'Crop to Selection',
   'paint.action.resize': 'Resize',
@@ -24,6 +26,8 @@ export const en = {
   'paint.action.rotate': 'Rotate / Flip',
   'paint.action.colorStyles': 'Color Styles',
   'paint.action.adjustments': 'Adjustments',
+  'paint.action.tabsBar': 'Tabs',
+  'paint.action.filesPanel': 'Files',
   'paint.action.colorsPanel': 'Colors',
   'paint.action.layersPanel': 'Layers',
   'paint.action.resetLayout': 'Reset Panels',
@@ -37,7 +41,7 @@ export const en = {
   'paint.tool.brush': 'Brush (B)',
   'paint.tool.pencil': 'Pencil (P)',
   'paint.tool.eraser': 'Eraser (E)',
-  'paint.tool.fill': 'Paint Bucket (F)',
+  'paint.tool.fill': 'Fill Bucket (F)',
   'paint.tool.picker': 'Color Picker (K)',
   'paint.tool.line': 'Line / Arrow (L)',
   'paint.tool.rect': 'Rectangle (R)',
@@ -68,6 +72,7 @@ export const en = {
   'paint.opt.textHint': 'Click canvas to place text',
 
   // Dockable panels
+  'paint.panel.files': 'Files',
   'paint.panel.colors': 'Colors',
   'paint.panel.layers': 'Layers',
   'paint.panel.float': 'Undock (Float)',
@@ -76,6 +81,30 @@ export const en = {
   'paint.panel.close': 'Hide panel',
   'paint.panel.dropDockLeft': 'Drop to dock left',
   'paint.panel.dropDockRight': 'Drop to dock right',
+
+  // Multi-file tabs & browser
+  'paint.doc.untitled': 'Untitled',
+  'paint.doc.sampleName': 'Sample',
+  'paint.doc.copySuffix': 'copy',
+  'paint.tabs.openFilesAria': 'Open image files',
+  'paint.tabs.tabTooltip': '{name} ({w} × {h} px) — double-click to rename',
+  'paint.tabs.rename': 'Rename file',
+  'paint.tabs.duplicate': 'Duplicate file',
+  'paint.tabs.pin': 'Pin file',
+  'paint.tabs.unpin': 'Unpin file',
+  'paint.tabs.close': 'Close file',
+  'paint.tabs.newFile': 'New image tab',
+  'paint.tabs.openMultipleTooltip': 'Open one or more image files as tabs',
+  'paint.tabs.thumbs': 'Previews',
+  'paint.tabs.toggleThumbsTooltip': 'Toggle image preview thumbnails on tabs',
+  'paint.browser.gridView': 'Thumbnail grid view',
+  'paint.browser.listView': 'Compact list view',
+  'paint.browser.openCount': '{count} open',
+  'paint.browser.showTabs': 'Show tabs',
+  'paint.browser.searchPlaceholder': 'Filter open files…',
+  'paint.browser.layersCount': '{count} L',
+  'paint.browser.noMatches': 'No open files match your filter.',
+  'paint.browser.dropHint': 'Tip: Drag & drop multiple images anywhere to open them as tabs.',
 
   // Color Picker
   'paint.color.primary': 'Primary',
@@ -179,7 +208,7 @@ export const en = {
   'paint.modal.download': 'Download',
 
   // Status & Toast messages
-  'paint.status.copiedOs': 'Copied {w} × {h} px PNG to clipboard — paste into Paint.NET with Ctrl+V',
+  'paint.status.copiedOs': 'Copied {w} × {h} px PNG to clipboard — paste into other apps with Ctrl+V',
   'paint.status.copiedInternal': 'Copied {w} × {h} px (in-app clipboard)',
   'paint.status.pasted': 'Pasted {w} × {h} px — drag or use Arrow keys (1 px), click outside to apply',
   'paint.status.pastedCommitted': 'Applied pasted selection to active layer',
@@ -190,7 +219,8 @@ export const en = {
   'paint.status.rotated': 'Rotated image',
   'paint.status.styleApplied': 'Applied {style}',
   'paint.status.selection': 'Sel: {w} × {h}',
-  'paint.status.clipboardHint': 'Ctrl+C / Ctrl+V works directly with Paint.NET',
+  'paint.status.clipboardHint': 'Ctrl+C / Ctrl+V syncs PNG images with clipboard · Ctrl+Wheel to zoom',
+  'paint.status.openedMultiple': 'Opened {count} files in tabs',
   'paint.text.placeholder': 'Type text and press Enter',
   'paint.zoom.outAria': 'Zoom out',
   'paint.zoom.sliderAria': 'Zoom level slider',
@@ -212,10 +242,10 @@ export const en = {
 } as const;
 
 export const nb: Record<keyof typeof en, string> = {
-  'paint.pageTitle': 'Tegne- og bilderedigering · yotasage',
-  'paint.title': 'Tegne- og bilderedigering',
+  'paint.pageTitle': 'Bilderedigering · yotasage',
+  'paint.title': 'Bilderedigering',
   'paint.metaDescription':
-    'Paint.NET-inspirert bilderedigering i nettleseren med lag, beskjæring, endring av størrelse, nedskalering, rotering, svart-hvitt fargestiler, Ctrl+C/Ctrl+V utklippstavle og flyttbare paneler.',
+    'Bilderedigering i nettleseren med flere åpne filer i faner, forhåndsvisninger, lag, beskjæring, endring av størrelse, nedskalering, rotering, svart-hvitt fargestiler, Ctrl+C/Ctrl+V utklippstavle og flyttbare paneler.',
 
   // Toolbar & Menus
   'paint.action.new': 'Ny',
@@ -227,8 +257,10 @@ export const nb: Record<keyof typeof en, string> = {
   'paint.action.undo': 'Angre',
   'paint.action.redo': 'Gjør om',
   'paint.action.copy': 'Kopier',
+  'paint.action.copyTooltip': 'Kopier PNG til utklippstavle (Ctrl+C)',
   'paint.action.copyMerged': 'Kopier sammenslått',
   'paint.action.paste': 'Lim inn',
+  'paint.action.pasteTooltip': 'Lim inn bilde fra utklippstavle (Ctrl+V)',
   'paint.action.crop': 'Beskjær',
   'paint.action.cropToSel': 'Beskjær til utvalg',
   'paint.action.resize': 'Endre størrelse',
@@ -237,6 +269,8 @@ export const nb: Record<keyof typeof en, string> = {
   'paint.action.rotate': 'Roter / Vend',
   'paint.action.colorStyles': 'Fargestiler',
   'paint.action.adjustments': 'Justeringer',
+  'paint.action.tabsBar': 'Faner',
+  'paint.action.filesPanel': 'Filer',
   'paint.action.colorsPanel': 'Farger',
   'paint.action.layersPanel': 'Lag',
   'paint.action.resetLayout': 'Tilbakestill paneler',
@@ -250,7 +284,7 @@ export const nb: Record<keyof typeof en, string> = {
   'paint.tool.brush': 'Pensel (B)',
   'paint.tool.pencil': 'Blyant (P)',
   'paint.tool.eraser': 'Viskelær (E)',
-  'paint.tool.fill': 'Malingsbøtte (F)',
+  'paint.tool.fill': 'Fyllverktøy (F)',
   'paint.tool.picker': 'Fargevelger (K)',
   'paint.tool.line': 'Linje / Pil (L)',
   'paint.tool.rect': 'Rektangel (R)',
@@ -281,6 +315,7 @@ export const nb: Record<keyof typeof en, string> = {
   'paint.opt.textHint': 'Klikk på lerretet for å plassere tekst',
 
   // Dockable panels
+  'paint.panel.files': 'Filer',
   'paint.panel.colors': 'Farger',
   'paint.panel.layers': 'Lag',
   'paint.panel.float': 'Løsne (Flytende)',
@@ -289,6 +324,30 @@ export const nb: Record<keyof typeof en, string> = {
   'paint.panel.close': 'Skjul panel',
   'paint.panel.dropDockLeft': 'Slipp for å feste til venstre',
   'paint.panel.dropDockRight': 'Slipp for å feste til høyre',
+
+  // Multi-file tabs & browser
+  'paint.doc.untitled': 'Uten navn',
+  'paint.doc.sampleName': 'Eksempel',
+  'paint.doc.copySuffix': 'kopi',
+  'paint.tabs.openFilesAria': 'Åpne bildefiler',
+  'paint.tabs.tabTooltip': '{name} ({w} × {h} px) — dobbeltklikk for å gi nytt navn',
+  'paint.tabs.rename': 'Gi filen nytt navn',
+  'paint.tabs.duplicate': 'Dupliser fil',
+  'paint.tabs.pin': 'Fest fil',
+  'paint.tabs.unpin': 'Løsne fil',
+  'paint.tabs.close': 'Lukk fil',
+  'paint.tabs.newFile': 'Ny bildefane',
+  'paint.tabs.openMultipleTooltip': 'Åpne én eller flere bildefiler som faner',
+  'paint.tabs.thumbs': 'Forhåndsvisning',
+  'paint.tabs.toggleThumbsTooltip': 'Vis eller skjul miniatyrbilder i fanene',
+  'paint.browser.gridView': 'Rutenettvisning med forhåndsvisning',
+  'paint.browser.listView': 'Kompakt listevisning',
+  'paint.browser.openCount': '{count} åpne',
+  'paint.browser.showTabs': 'Vis faner',
+  'paint.browser.searchPlaceholder': 'Filtrer åpne filer…',
+  'paint.browser.layersCount': '{count} lag',
+  'paint.browser.noMatches': 'Ingen åpne filer passer filteret.',
+  'paint.browser.dropHint': 'Tips: Dra og slipp flere bilder hvor som helst for å åpne dem som faner.',
 
   // Color Picker
   'paint.color.primary': 'Primær',
@@ -392,7 +451,7 @@ export const nb: Record<keyof typeof en, string> = {
   'paint.modal.download': 'Last ned',
 
   // Status & Toast messages
-  'paint.status.copiedOs': 'Kopierte {w} × {h} px PNG til utklippstavle — lim inn i Paint.NET med Ctrl+V',
+  'paint.status.copiedOs': 'Kopierte {w} × {h} px PNG til utklippstavle — lim inn i andre apper med Ctrl+V',
   'paint.status.copiedInternal': 'Kopierte {w} × {h} px (intern utklippstavle)',
   'paint.status.pasted': 'Limte inn {w} × {h} px — dra eller bruk piltaster (1 px), klikk utenfor for å feste',
   'paint.status.pastedCommitted': 'Festet innlimt utvalg til aktivt lag',
@@ -403,7 +462,8 @@ export const nb: Record<keyof typeof en, string> = {
   'paint.status.rotated': 'Roterte bildet',
   'paint.status.styleApplied': 'Brukte {style}',
   'paint.status.selection': 'Utvalg: {w} × {h}',
-  'paint.status.clipboardHint': 'Ctrl+C / Ctrl+V fungerer direkte med Paint.NET',
+  'paint.status.clipboardHint': 'Ctrl+C / Ctrl+V synkroniserer PNG med utklippstavlen · Ctrl+rullehjul for zoom',
+  'paint.status.openedMultiple': 'Åpnet {count} filer i faner',
   'paint.text.placeholder': 'Skriv tekst og trykk Enter',
   'paint.zoom.outAria': 'Zoom ut',
   'paint.zoom.sliderAria': 'Glidebryter for zoomnivå',

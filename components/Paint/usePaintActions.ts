@@ -12,16 +12,15 @@ import {
   renderCompositeCanvas,
   resampleCanvas,
   resizeCanvasBounds,
-  restoreLayers,
   rotateCanvas,
   serializeProject,
-  snapshotLayers,
 } from '../../lib/paint/canvasOps';
 import {
   copyCanvasToClipboard,
   decodeBlobToCanvas,
   readImageFromClipboardApi,
 } from '../../lib/paint/clipboard';
+import { createRuntimeFromLayers, stripFileExtension } from '../../lib/paint/documents';
 import {
   applyAdjustmentsBuffer,
   applyColorStyleBuffer,
@@ -34,33 +33,54 @@ import {
   type AnchorPosition,
   type BlendMode,
   type ColorStyleId,
-  type HistorySnapshot,
-  MAX_HISTORY,
   type PaintLayer,
   type Rect,
   type ResampleQuality,
   type ToolId,
 } from '../../lib/paint/types';
 import { type TranslationKey, useI18n } from '../../lib/ui/i18n';
+import { usePaintDocuments } from './usePaintDocuments';
 
-export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
+export function usePaintActions(
+  onSetActiveTool: (tool: ToolId) => void,
+  zoomRef: React.MutableRefObject<number>,
+  onSetZoom: (zoom: number) => void,
+) {
   const { t } = useI18n();
 
-  const [docSize, setDocSize] = useState({ width: 960, height: 640 });
-  const layersRef = useRef<PaintLayer[]>([]);
-  const [layersVersion, setLayersVersion] = useState(0);
-  const [activeLayerId, setActiveLayerId] = useState('');
-
-  const historyRef = useRef<HistorySnapshot[]>([]);
-  const historyIdxRef = useRef(-1);
-  const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false });
-
-  const [selection, setSelection] = useState<Rect | null>(null);
-  const [cropRect, setCropRect] = useState<Rect | null>(null);
-
-  // Floating movable paste/lifted selection (committed to active layer only when deselected!)
-  const floatingRef = useRef<FloatingPastePreview | null>(null);
-  const [hasFloatingSelection, setHasFloatingSelection] = useState(false);
+  const docStore = usePaintDocuments({ zoomRef, onSetZoom });
+  const {
+    docs,
+    activeDocId,
+    docSize,
+    layersRef,
+    layersVersion,
+    setLayersVersion,
+    activeLayerId,
+    setActiveLayerId,
+    historyState,
+    selection,
+    setSelection,
+    cropRect,
+    setCropRect,
+    floatingRef,
+    hasFloatingSelection,
+    setHasFloatingSelection,
+    refreshActiveDocMeta,
+    initDefaultDocument,
+    commitLayers,
+    openNewDocument,
+    handleSelectDoc,
+    handleNewCanvas,
+    handleQuickNewDoc,
+    handleDuplicateDoc,
+    handleRenameDoc,
+    handleTogglePinDoc,
+    handleCloseDoc,
+    discardFloatingSelection,
+    handleUndo,
+    handleRedo,
+  } = docStore;
 
   const [statusMsg, setStatusMsg] = useState('');
   const statusTimerRef = useRef<number | null>(null);
@@ -71,71 +91,13 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
     statusTimerRef.current = window.setTimeout(() => setStatusMsg(''), 4400);
   }, []);
 
-  const syncHistoryFlags = useCallback(() => {
-    setHistoryState({
-      canUndo: historyIdxRef.current > 0,
-      canRedo: historyIdxRef.current < historyRef.current.length - 1,
-    });
-  }, []);
-
   const getActiveLayer = useCallback((): PaintLayer | undefined => {
     return (
       layersRef.current.find((l) => l.id === activeLayerId) ??
       layersRef.current[layersRef.current.length - 1]
     );
-  }, [activeLayerId]);
+  }, [activeLayerId, layersRef]);
 
-  const commitLayers = useCallback(
-    (label: string, nextLayers: PaintLayer[], nextActiveId: string, nextW?: number, nextH?: number) => {
-      layersRef.current = nextLayers;
-      const w = nextW ?? (nextLayers[0]?.canvas.width || docSize.width);
-      const h = nextH ?? (nextLayers[0]?.canvas.height || docSize.height);
-      if (w !== docSize.width || h !== docSize.height) {
-        setDocSize({ width: w, height: h });
-      }
-      setActiveLayerId(nextActiveId);
-
-      const snap: HistorySnapshot = {
-        label,
-        width: w,
-        height: h,
-        activeLayerId: nextActiveId,
-        layers: snapshotLayers(nextLayers),
-      };
-      const truncated = historyRef.current.slice(0, historyIdxRef.current + 1);
-      truncated.push(snap);
-      if (truncated.length > MAX_HISTORY) truncated.shift();
-      historyRef.current = truncated;
-      historyIdxRef.current = truncated.length - 1;
-      syncHistoryFlags();
-      setLayersVersion((v) => v + 1);
-    },
-    [docSize.height, docSize.width, syncHistoryFlags],
-  );
-
-  const initDefaultDocument = useCallback(() => {
-    const bg = createLayer(960, 640, 'Background', '#ffffff');
-    const sketch = createLayer(960, 640, 'Layer 2');
-    const initLayers = [bg, sketch];
-    layersRef.current = initLayers;
-    setActiveLayerId(sketch.id);
-    historyRef.current = [
-      {
-        label: 'Init',
-        width: 960,
-        height: 640,
-        activeLayerId: sketch.id,
-        layers: snapshotLayers(initLayers),
-      },
-    ];
-    historyIdxRef.current = 0;
-    syncHistoryFlags();
-    setLayersVersion(1);
-  }, [syncHistoryFlags]);
-
-  /**
-   * Stamps the floating pasted/moved selection permanently onto the active layer and clears selection.
-   */
   const commitFloatingSelection = useCallback(
     (clearSel = true, announce = false) => {
       const floating = floatingRef.current;
@@ -156,20 +118,9 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
         if (announce) showStatus(t('paint.status.pastedCommitted'));
       }
     },
-    [commitLayers, getActiveLayer, showStatus, t],
+    [commitLayers, floatingRef, getActiveLayer, layersRef, setHasFloatingSelection, setSelection, showStatus, t],
   );
 
-  const discardFloatingSelection = useCallback(() => {
-    if (!floatingRef.current) return;
-    floatingRef.current = null;
-    setHasFloatingSelection(false);
-    setSelection(null);
-    setLayersVersion((v) => v + 1);
-  }, []);
-
-  /**
-   * Lifts the pixels inside the current marquee selection out of the active layer into a movable floating selection.
-   */
   const liftSelectionToFloating = useCallback((): FloatingPastePreview | null => {
     if (floatingRef.current) return floatingRef.current;
     if (!selection || selection.w <= 0 || selection.h <= 0) return null;
@@ -201,11 +152,8 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
     setSelection({ x: preview.x, y: preview.y, w: preview.w, h: preview.h });
     setLayersVersion((v) => v + 1);
     return preview;
-  }, [docSize.height, docSize.width, getActiveLayer, selection]);
+  }, [docSize.height, docSize.width, floatingRef, getActiveLayer, selection, setHasFloatingSelection, setLayersVersion, setSelection]);
 
-  /**
-   * Nudges active floating selection (or lifts regular selection first) by dx, dy pixels (arrow keys = 1px).
-   */
   const nudgeActiveSelection = useCallback(
     (dx: number, dy: number) => {
       const floating = floatingRef.current ?? liftSelectionToFloating();
@@ -220,15 +168,11 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
       setSelection(next);
       setLayersVersion((v) => v + 1);
     },
-    [liftSelectionToFloating],
+    [floatingRef, liftSelectionToFloating, setLayersVersion, setSelection],
   );
 
-  /**
-   * Pastes an incoming image as a selected, movable floating selection (not committed until deselected!).
-   */
   const pasteCanvasAsFloatingSelection = useCallback(
     (incoming: HTMLCanvasElement) => {
-      // Commit any prior floating selection first
       if (floatingRef.current) {
         commitFloatingSelection(false, false);
       }
@@ -261,7 +205,21 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
       setLayersVersion((v) => v + 1);
       showStatus(t('paint.status.pasted', { w: incoming.width, h: incoming.height }));
     },
-    [activeLayerId, commitFloatingSelection, commitLayers, docSize.height, docSize.width, onSetActiveTool, showStatus, t],
+    [
+      activeLayerId,
+      commitFloatingSelection,
+      commitLayers,
+      docSize.height,
+      docSize.width,
+      floatingRef,
+      layersRef,
+      onSetActiveTool,
+      setHasFloatingSelection,
+      setLayersVersion,
+      setSelection,
+      showStatus,
+      t,
+    ],
   );
 
   const insertCanvasAsNewLayer = useCallback(
@@ -285,38 +243,8 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
 
       commitLayers('Add Image Layer', [...updatedExisting, newLayer], newLayer.id, targetW, targetH);
     },
-    [commitFloatingSelection, commitLayers, docSize.height, docSize.width],
+    [commitFloatingSelection, commitLayers, docSize.height, docSize.width, floatingRef, layersRef],
   );
-
-  const handleUndo = useCallback(() => {
-    if (floatingRef.current) {
-      discardFloatingSelection();
-      return;
-    }
-    if (historyIdxRef.current <= 0) return;
-    historyIdxRef.current -= 1;
-    const snap = historyRef.current[historyIdxRef.current];
-    layersRef.current = restoreLayers(snap.layers);
-    setDocSize({ width: snap.width, height: snap.height });
-    setActiveLayerId(snap.activeLayerId);
-    setSelection(null);
-    setCropRect(null);
-    syncHistoryFlags();
-    setLayersVersion((v) => v + 1);
-  }, [discardFloatingSelection, syncHistoryFlags]);
-
-  const handleRedo = useCallback(() => {
-    if (historyIdxRef.current >= historyRef.current.length - 1) return;
-    historyIdxRef.current += 1;
-    const snap = historyRef.current[historyIdxRef.current];
-    layersRef.current = restoreLayers(snap.layers);
-    setDocSize({ width: snap.width, height: snap.height });
-    setActiveLayerId(snap.activeLayerId);
-    setSelection(null);
-    setCropRect(null);
-    syncHistoryFlags();
-    setLayersVersion((v) => v + 1);
-  }, [syncHistoryFlags]);
 
   const handleCopy = useCallback(
     async (merged = true) => {
@@ -341,7 +269,7 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
           : t('paint.status.copiedInternal', { w: res.width, h: res.height }),
       );
     },
-    [docSize.height, docSize.width, getActiveLayer, selection, showStatus, t],
+    [docSize.height, docSize.width, floatingRef, getActiveLayer, layersRef, selection, showStatus, t],
   );
 
   const handlePasteAction = useCallback(async () => {
@@ -364,7 +292,7 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
     if (!ctx) return;
     ctx.clearRect(selection.x, selection.y, selection.w, selection.h);
     commitLayers('Clear Selection', [...layersRef.current], layer.id);
-  }, [commitLayers, discardFloatingSelection, getActiveLayer, selection]);
+  }, [commitLayers, discardFloatingSelection, floatingRef, getActiveLayer, layersRef, selection]);
 
   const handleCut = useCallback(async () => {
     if (floatingRef.current) {
@@ -378,7 +306,7 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
     }
     await handleCopy(false);
     handleClearSelection();
-  }, [discardFloatingSelection, handleClearSelection, handleCopy, selection]);
+  }, [discardFloatingSelection, floatingRef, handleClearSelection, handleCopy, selection]);
 
   const applyCropRect = useCallback(
     (rect: Rect) => {
@@ -394,7 +322,7 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
       commitLayers('Crop', croppedLayers, activeLayerId, clamped.w, clamped.h);
       showStatus(t('paint.status.cropped', { w: clamped.w, h: clamped.h }));
     },
-    [activeLayerId, commitFloatingSelection, commitLayers, docSize.height, docSize.width, showStatus, t],
+    [activeLayerId, commitFloatingSelection, commitLayers, docSize.height, docSize.width, floatingRef, layersRef, setCropRect, setSelection, showStatus, t],
   );
 
   const handleActivateCrop = useCallback(() => {
@@ -413,7 +341,7 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
         h: Math.max(16, docSize.height - padY * 2),
       });
     }
-  }, [commitFloatingSelection, docSize.height, docSize.width, onSetActiveTool, selection]);
+  }, [commitFloatingSelection, docSize.height, docSize.width, floatingRef, onSetActiveTool, selection, setCropRect, setSelection]);
 
   const handleCropToSelection = useCallback(() => {
     if (selection && selection.w > 0 && selection.h > 0) {
@@ -421,28 +349,19 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
     }
   }, [applyCropRect, selection]);
 
-  const handleNewCanvas = useCallback(
-    (w: number, h: number, bg: 'white' | 'transparent' | 'black') => {
-      floatingRef.current = null;
-      setHasFloatingSelection(false);
-      const fill = bg === 'white' ? '#ffffff' : bg === 'black' ? '#000000' : undefined;
-      const base = createLayer(w, h, t('paint.layer.background'), fill);
-      const top = createLayer(w, h, 'Layer 2');
-      setSelection(null);
-      setCropRect(null);
-      commitLayers('New Canvas', [base, top], top.id, w, h);
-    },
-    [commitLayers, t],
-  );
-
   const handleLoadSample = useCallback(() => {
-    floatingRef.current = null;
-    setHasFloatingSelection(false);
     const sampleLayers = createSampleDocument(960, 640);
-    setSelection(null);
-    setCropRect(null);
-    commitLayers('Sample', sampleLayers, sampleLayers[sampleLayers.length - 1].id, 960, 640);
-  }, [commitLayers]);
+    const rt = createRuntimeFromLayers(
+      sampleLayers,
+      960,
+      640,
+      sampleLayers[sampleLayers.length - 1].id,
+      'Sample',
+      1,
+      false,
+    );
+    openNewDocument(rt, t('paint.doc.sampleName'), true);
+  }, [openNewDocument, t]);
 
   const handleResize = useCallback(
     (w: number, h: number, quality: ResampleQuality, isScaleDown = false) => {
@@ -456,7 +375,7 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
       commitLayers(isScaleDown ? 'Scale Down' : 'Resize', next, activeLayerId, w, h);
       showStatus(t(isScaleDown ? 'paint.status.scaledDown' : 'paint.status.resized', { w, h }));
     },
-    [activeLayerId, commitFloatingSelection, commitLayers, showStatus, t],
+    [activeLayerId, commitFloatingSelection, commitLayers, floatingRef, layersRef, setCropRect, setSelection, showStatus, t],
   );
 
   const handleCanvasSize = useCallback(
@@ -470,7 +389,7 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
       setCropRect(null);
       commitLayers('Canvas Size', next, activeLayerId, w, h);
     },
-    [activeLayerId, commitFloatingSelection, commitLayers],
+    [activeLayerId, commitFloatingSelection, commitLayers, floatingRef, layersRef, setCropRect, setSelection],
   );
 
   const handleRotate = useCallback(
@@ -496,7 +415,7 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
       }
       showStatus(t('paint.status.rotated'));
     },
-    [activeLayerId, commitFloatingSelection, commitLayers, showStatus, t],
+    [activeLayerId, commitFloatingSelection, commitLayers, floatingRef, layersRef, setCropRect, setSelection, showStatus, t],
   );
 
   const handleFlip = useCallback(
@@ -507,7 +426,7 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
       );
       commitLayers(`Flip ${dir}`, next, activeLayerId);
     },
-    [activeLayerId, commitFloatingSelection, commitLayers],
+    [activeLayerId, commitFloatingSelection, commitLayers, floatingRef, layersRef],
   );
 
   const handleApplyColorStyle = useCallback(
@@ -531,7 +450,7 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
       commitLayers(`Style ${style}`, next, activeLayerId);
       showStatus(t('paint.status.styleApplied', { style: t(`paint.style.${style}` as TranslationKey) }));
     },
-    [activeLayerId, commitFloatingSelection, commitLayers, selection, showStatus, t],
+    [activeLayerId, commitFloatingSelection, commitLayers, floatingRef, layersRef, selection, showStatus, t],
   );
 
   const handleApplyAdjustments = useCallback(
@@ -550,7 +469,7 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
       });
       commitLayers('Adjustments', next, activeLayerId);
     },
-    [activeLayerId, commitFloatingSelection, commitLayers, selection],
+    [activeLayerId, commitFloatingSelection, commitLayers, floatingRef, layersRef, selection],
   );
 
   const handleApplyQuickFilter = useCallback(
@@ -570,7 +489,7 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
       });
       commitLayers(`Filter ${kind}`, next, activeLayerId);
     },
-    [activeLayerId, commitFloatingSelection, commitLayers, selection],
+    [activeLayerId, commitFloatingSelection, commitLayers, floatingRef, layersRef, selection],
   );
 
   const handleSelectLayer = useCallback(
@@ -578,7 +497,7 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
       if (floatingRef.current && id !== activeLayerId) commitFloatingSelection(true, false);
       setActiveLayerId(id);
     },
-    [activeLayerId, commitFloatingSelection],
+    [activeLayerId, commitFloatingSelection, floatingRef, setActiveLayerId],
   );
 
   const handleAddLayer = useCallback(() => {
@@ -588,7 +507,7 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
     const next = [...layersRef.current];
     next.splice(idx >= 0 ? idx + 1 : next.length, 0, layer);
     commitLayers('Add Layer', next, layer.id);
-  }, [activeLayerId, commitFloatingSelection, commitLayers, docSize.height, docSize.width]);
+  }, [activeLayerId, commitFloatingSelection, commitLayers, docSize.height, docSize.width, floatingRef, layersRef]);
 
   const handleDuplicateLayer = useCallback(() => {
     if (floatingRef.current) commitFloatingSelection(true, false);
@@ -598,7 +517,7 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
     const next = [...layersRef.current];
     next.splice(idx + 1, 0, copy);
     commitLayers('Duplicate Layer', next, copy.id);
-  }, [activeLayerId, commitFloatingSelection, commitLayers]);
+  }, [activeLayerId, commitFloatingSelection, commitLayers, floatingRef, layersRef]);
 
   const handleDeleteLayer = useCallback(() => {
     if (layersRef.current.length <= 1) return;
@@ -607,7 +526,7 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
     if (idx < 0) return;
     const next = layersRef.current.filter((l) => l.id !== activeLayerId);
     commitLayers('Delete Layer', next, next[Math.max(0, idx - 1)].id);
-  }, [activeLayerId, commitLayers, discardFloatingSelection]);
+  }, [activeLayerId, commitLayers, discardFloatingSelection, floatingRef, layersRef]);
 
   const handleMoveLayer = useCallback(
     (direction: 'up' | 'down') => {
@@ -620,7 +539,7 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
       next.splice(target, 0, item);
       commitLayers('Reorder Layer', next, activeLayerId);
     },
-    [activeLayerId, commitLayers],
+    [activeLayerId, commitLayers, layersRef],
   );
 
   const handleMergeDown = useCallback(() => {
@@ -645,7 +564,7 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
     const next = [...layersRef.current];
     next.splice(idx - 1, 2, mergedLayer);
     commitLayers('Merge Down', next, mergedLayer.id);
-  }, [activeLayerId, commitFloatingSelection, commitLayers, docSize.height, docSize.width]);
+  }, [activeLayerId, commitFloatingSelection, commitLayers, docSize.height, docSize.width, floatingRef, layersRef]);
 
   const handleFlatten = useCallback(() => {
     if (floatingRef.current) commitFloatingSelection(true, false);
@@ -661,7 +580,7 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
       canvas: flatCanvas,
     };
     commitLayers('Flatten', [flatLayer], flatLayer.id);
-  }, [commitFloatingSelection, commitLayers, docSize.height, docSize.width, t]);
+  }, [commitFloatingSelection, commitLayers, docSize.height, docSize.width, floatingRef, layersRef, t]);
 
   const handleClearLayer = useCallback(() => {
     if (floatingRef.current) discardFloatingSelection();
@@ -670,66 +589,110 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
     const ctx = layer.canvas.getContext('2d');
     if (ctx) ctx.clearRect(0, 0, layer.canvas.width, layer.canvas.height);
     commitLayers('Clear Layer', [...layersRef.current], layer.id);
-  }, [commitLayers, discardFloatingSelection, getActiveLayer]);
+  }, [commitLayers, discardFloatingSelection, floatingRef, getActiveLayer, layersRef]);
 
-  const handleToggleVisibility = useCallback((id: string) => {
-    layersRef.current = layersRef.current.map((l) => (l.id === id ? { ...l, visible: !l.visible } : l));
-    setLayersVersion((v) => v + 1);
-  }, []);
+  const handleToggleVisibility = useCallback(
+    (id: string) => {
+      layersRef.current = layersRef.current.map((l) => (l.id === id ? { ...l, visible: !l.visible } : l));
+      refreshActiveDocMeta();
+      setLayersVersion((v) => v + 1);
+    },
+    [layersRef, refreshActiveDocMeta, setLayersVersion],
+  );
 
-  const handleRenameLayer = useCallback((id: string, name: string) => {
-    layersRef.current = layersRef.current.map((l) => (l.id === id ? { ...l, name } : l));
-    setLayersVersion((v) => v + 1);
-  }, []);
+  const handleRenameLayer = useCallback(
+    (id: string, name: string) => {
+      layersRef.current = layersRef.current.map((l) => (l.id === id ? { ...l, name } : l));
+      setLayersVersion((v) => v + 1);
+    },
+    [layersRef, setLayersVersion],
+  );
 
-  const handleChangeOpacity = useCallback((id: string, opacity: number) => {
-    layersRef.current = layersRef.current.map((l) => (l.id === id ? { ...l, opacity } : l));
-    setLayersVersion((v) => v + 1);
-  }, []);
+  const handleChangeOpacity = useCallback(
+    (id: string, opacity: number) => {
+      layersRef.current = layersRef.current.map((l) => (l.id === id ? { ...l, opacity } : l));
+      refreshActiveDocMeta();
+      setLayersVersion((v) => v + 1);
+    },
+    [layersRef, refreshActiveDocMeta, setLayersVersion],
+  );
 
-  const handleChangeBlendMode = useCallback((id: string, blendMode: BlendMode) => {
-    layersRef.current = layersRef.current.map((l) => (l.id === id ? { ...l, blendMode } : l));
-    setLayersVersion((v) => v + 1);
-  }, []);
+  const handleChangeBlendMode = useCallback(
+    (id: string, blendMode: BlendMode) => {
+      layersRef.current = layersRef.current.map((l) => (l.id === id ? { ...l, blendMode } : l));
+      refreshActiveDocMeta();
+      setLayersVersion((v) => v + 1);
+    },
+    [layersRef, refreshActiveDocMeta, setLayersVersion],
+  );
 
   const handleFiles = useCallback(
     async (files: FileList | null, asLayer: boolean) => {
       if (!files || files.length === 0) return;
-      const file = files[0];
-      try {
-        if (file.name.endsWith('.paint.json') || file.type === 'application/json') {
-          floatingRef.current = null;
-          setHasFloatingSelection(false);
-          const proj = await deserializeProject(await file.text());
-          setSelection(null);
-          setCropRect(null);
-          commitLayers(t('paint.history.openProject'), proj.layers, proj.layers[proj.layers.length - 1].id, proj.width, proj.height);
-          return;
+      const list = Array.from(files);
+      let openedCount = 0;
+
+      for (let i = 0; i < list.length; i += 1) {
+        const file = list[i];
+        const baseName = stripFileExtension(file.name) || 'Image';
+        try {
+          const isJson =
+            file.name.endsWith('.paint.json') ||
+            file.name.endsWith('.img.json') ||
+            file.name.endsWith('.json') ||
+            file.type === 'application/json';
+
+          if (isJson && !asLayer) {
+            const proj = await deserializeProject(await file.text());
+            const rt = createRuntimeFromLayers(
+              proj.layers,
+              proj.width,
+              proj.height,
+              proj.layers[proj.layers.length - 1].id,
+              t('paint.history.openProject'),
+              1,
+              false,
+            );
+            openNewDocument(rt, baseName, i === 0);
+            openedCount += 1;
+            continue;
+          }
+
+          const imgCanvas = await decodeBlobToCanvas(file);
+          if (asLayer) {
+            insertCanvasAsNewLayer(imgCanvas, baseName);
+          } else {
+            const layer: PaintLayer = {
+              id: createLayer(1, 1, '').id,
+              name: baseName,
+              visible: true,
+              opacity: 1,
+              blendMode: 'source-over',
+              locked: false,
+              canvas: imgCanvas,
+            };
+            const rt = createRuntimeFromLayers(
+              [layer],
+              imgCanvas.width,
+              imgCanvas.height,
+              layer.id,
+              t('paint.history.openImage'),
+              1,
+              false,
+            );
+            openNewDocument(rt, baseName, i === 0);
+          }
+          openedCount += 1;
+        } catch (err) {
+          showStatus(err instanceof Error ? err.message : t('paint.status.openFailed'));
         }
-        const imgCanvas = await decodeBlobToCanvas(file);
-        if (asLayer) {
-          insertCanvasAsNewLayer(imgCanvas, file.name.replace(/\.[^.]+$/, '') || 'Image');
-        } else {
-          floatingRef.current = null;
-          setHasFloatingSelection(false);
-          const layer: PaintLayer = {
-            id: createLayer(1, 1, '').id,
-            name: file.name.replace(/\.[^.]+$/, '') || 'Background',
-            visible: true,
-            opacity: 1,
-            blendMode: 'source-over',
-            locked: false,
-            canvas: imgCanvas,
-          };
-          setSelection(null);
-          setCropRect(null);
-          commitLayers(t('paint.history.openImage'), [layer], layer.id, imgCanvas.width, imgCanvas.height);
-        }
-      } catch (err) {
-        showStatus(err instanceof Error ? err.message : t('paint.status.openFailed'));
+      }
+
+      if (!asLayer && openedCount > 1) {
+        showStatus(t('paint.status.openedMultiple', { count: openedCount }));
       }
     },
-    [commitLayers, insertCanvasAsNewLayer, showStatus, t],
+    [insertCanvasAsNewLayer, openNewDocument, showStatus, t],
   );
 
   const handleExportImage = useCallback(
@@ -751,7 +714,7 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
         quality,
       );
     },
-    [commitFloatingSelection, docSize.height, docSize.width],
+    [commitFloatingSelection, docSize.height, docSize.width, floatingRef, layersRef],
   );
 
   const handleSaveProject = useCallback(
@@ -762,14 +725,16 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${filename}.paint.json`;
+      a.download = `${filename}.img.json`;
       a.click();
       URL.revokeObjectURL(url);
     },
-    [commitFloatingSelection, docSize.height, docSize.width],
+    [commitFloatingSelection, docSize.height, docSize.width, floatingRef, layersRef],
   );
 
   return {
+    docs,
+    activeDocId,
     docSize,
     layersRef,
     layersVersion,
@@ -791,6 +756,12 @@ export function usePaintActions(onSetActiveTool: (tool: ToolId) => void) {
     liftSelectionToFloating,
     nudgeActiveSelection,
     pasteCanvasAsFloatingSelection,
+    handleSelectDoc,
+    handleQuickNewDoc,
+    handleDuplicateDoc,
+    handleRenameDoc,
+    handleTogglePinDoc,
+    handleCloseDoc,
     handleUndo,
     handleRedo,
     handleCopy,

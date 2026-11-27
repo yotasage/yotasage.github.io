@@ -1,4 +1,4 @@
-import type { PanelLayout, Rect, ShapeFillMode, ToolId, ToolOptions } from '../../lib/paint/types';
+import type { PanelId, PanelLayout, Rect, ShapeFillMode, ToolId, ToolOptions } from '../../lib/paint/types';
 import { type TranslationKey, useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Paint.module.css';
 import { RedoIcon, ToolSvgIcon, UndoIcon } from './icons';
@@ -34,8 +34,10 @@ export interface TopCommandBarProps {
   canUndo: boolean;
   canRedo: boolean;
   hasSelection: boolean;
+  filesLayout: PanelLayout;
   colorsLayout: PanelLayout;
   layersLayout: PanelLayout;
+  showTabStrip: boolean;
   showPixelGrid: boolean;
   onUndo: () => void;
   onRedo: () => void;
@@ -46,7 +48,8 @@ export interface TopCommandBarProps {
   onPaste: () => void;
   onActivateCrop: () => void;
   onCropToSelection: () => void;
-  onTogglePanel: (panel: 'colors' | 'layers') => void;
+  onTogglePanel: (panel: PanelId) => void;
+  onToggleTabStrip: () => void;
   onResetPanels: () => void;
   onTogglePixelGrid: () => void;
 }
@@ -55,8 +58,10 @@ export function TopCommandBar({
   canUndo,
   canRedo,
   hasSelection,
+  filesLayout,
   colorsLayout,
   layersLayout,
+  showTabStrip,
   showPixelGrid,
   onUndo,
   onRedo,
@@ -68,6 +73,7 @@ export function TopCommandBar({
   onActivateCrop,
   onCropToSelection,
   onTogglePanel,
+  onToggleTabStrip,
   onResetPanels,
   onTogglePixelGrid,
 }: TopCommandBarProps) {
@@ -125,7 +131,7 @@ export function TopCommandBar({
           type="button"
           className={styles.cmdBtn}
           onClick={() => onCopy(true)}
-          title="Ctrl+C (Paint.NET compatible PNG)"
+          title={t('paint.action.copyTooltip')}
         >
           {t('paint.action.copy')}
         </button>
@@ -133,7 +139,7 @@ export function TopCommandBar({
           type="button"
           className={styles.cmdBtn}
           onClick={onPaste}
-          title="Ctrl+V (Paste from Paint.NET or clipboard)"
+          title={t('paint.action.pasteTooltip')}
         >
           {t('paint.action.paste')}
         </button>
@@ -178,6 +184,23 @@ export function TopCommandBar({
       <span className={styles.cmdSep} aria-hidden="true" />
 
       <div className={styles.cmdGroup}>
+        <button
+          type="button"
+          className={[styles.cmdBtn, showTabStrip ? styles.cmdBtnActive : ''].join(' ')}
+          onClick={onToggleTabStrip}
+          aria-pressed={showTabStrip}
+        >
+          {t('paint.action.tabsBar')}
+        </button>
+        <button
+          type="button"
+          className={[styles.cmdBtn, filesLayout.visible ? styles.cmdBtnActive : ''].join(' ')}
+          onClick={() => onTogglePanel('files')}
+          aria-pressed={filesLayout.visible}
+          title="F6"
+        >
+          {t('paint.action.filesPanel')}
+        </button>
         <button
           type="button"
           className={[styles.cmdBtn, colorsLayout.visible ? styles.cmdBtnActive : ''].join(' ')}

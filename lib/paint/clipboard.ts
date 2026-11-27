@@ -51,7 +51,7 @@ export function extractRegionCanvas(
 
 /**
  * Copies a canvas (or selected sub-region) to the OS clipboard as PNG
- * (compatible with Paint.NET, Photoshop, GIMP, MS Paint) and updates the internal buffer.
+ * (compatible with desktop image editors) and updates the internal buffer.
  */
 export async function copyCanvasToClipboard(
   source: HTMLCanvasElement,
@@ -116,7 +116,7 @@ export function decodeBlobToCanvas(blob: Blob): Promise<HTMLCanvasElement> {
 }
 
 /**
- * Reads an image from a native ClipboardEvent (triggered by Ctrl+V — works directly with Paint.NET!).
+ * Reads an image from a native ClipboardEvent (triggered by Ctrl+V).
  */
 export async function readImageFromPasteEvent(
   event: ClipboardEvent,
@@ -124,7 +124,7 @@ export async function readImageFromPasteEvent(
   const dt = event.clipboardData;
   if (!dt) return null;
 
-  // Prefer image items (Paint.NET puts image/png or image/bmp here)
+  // Prefer image items (image/png, image/bmp, etc.)
   if (dt.items) {
     for (let i = 0; i < dt.items.length; i++) {
       const item = dt.items[i];

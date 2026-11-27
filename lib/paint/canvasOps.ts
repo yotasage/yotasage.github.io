@@ -566,7 +566,7 @@ export async function deserializeProject(
 ): Promise<{ width: number; height: number; layers: PaintLayer[] }> {
   const parsed = JSON.parse(jsonText) as Partial<SerializedProjectV1>;
   if (parsed.format !== 'yotasage-paint-v1' || !Array.isArray(parsed.layers) || parsed.layers.length === 0) {
-    throw new Error('Invalid Paint project file.');
+    throw new Error('Invalid image project file.');
   }
   const width = Math.max(1, Math.round(Number(parsed.width) || 800));
   const height = Math.max(1, Math.round(Number(parsed.height) || 600));
