@@ -6,6 +6,7 @@ import type { Terminal } from '@xterm/xterm';
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 
 import type { ReplCompletionsResult, ReplPushResult } from '../../lib/python/workerClient';
+import { splitTokensIntoLines, tokenizeTerminalData } from '../../lib/python/terminalInput';
 import { loadXterm, XTERM_THEMES } from '../../lib/python/xtermLoader';
 import { useI18n } from '../../lib/ui/i18n';
 import type { ResolvedTheme } from '../../lib/ui/theme';
@@ -81,6 +82,7 @@ const PythonTerminal = React.forwardRef<PythonTerminalHandle, PythonTerminalProp
     const replHistIdxRef = useRef<number>(-1);
     const replContinuationRef = useRef<boolean>(false);
     const replBusyRef = useRef<boolean>(false);
+    const replPasteCancelRef = useRef<boolean>(false);
     const replBannerShownRef = useRef<boolean>(false);
 
     // Latest prop refs for stable event handlers
@@ -152,8 +154,8 @@ const PythonTerminal = React.forwardRef<PythonTerminalHandle, PythonTerminalProp
     }, []);
 
     const submitReplLine = useCallback(
-      async (line: string, echoInTerm: boolean) => {
-        if (replDisabledRef.current || replBusyRef.current || !onReplPushRef.current) return;
+      async (line: string, echoInTerm: boolean): Promise<ReplPushResult | null> => {
+        if (replDisabledRef.current || replBusyRef.current || !onReplPushRef.current) return null;
         replBusyRef.current = true;
         if (echoInTerm) {
           writeRaw(`${line}\r\n`);
@@ -181,15 +183,40 @@ const PythonTerminal = React.forwardRef<PythonTerminalHandle, PythonTerminalProp
           } else {
             printReplPrompt(false);
           }
+          return res;
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           writeRaw(`\x1b[31m${normalizeTerminalNewlines(msg)}\r\n\x1b[0m`);
           printReplPrompt(false);
+          return null;
         } finally {
           replBusyRef.current = false;
         }
       },
       [printReplPrompt, writeRaw],
+    );
+
+    const submitReplLines = useCallback(
+      async (lines: readonly string[], trailing: string) => {
+        if (lines.length === 0) return;
+        replPasteCancelRef.current = false;
+        const first = lines[0];
+        if (first !== lineBufRef.current) {
+          replaceCurrentInputLine(first);
+        }
+        for (let i = 0; i < lines.length; i += 1) {
+          if (replPasteCancelRef.current || replDisabledRef.current) return;
+          const res = await submitReplLine(lines[i], i > 0);
+          if (!res || res.interrupted || res.forceStopped || res.status === 'syntax-error' || res.status === 'error') {
+            return;
+          }
+        }
+        if (!replPasteCancelRef.current && trailing.length > 0 && termRef.current) {
+          lineBufRef.current = trailing;
+          termRef.current.write(trailing);
+        }
+      },
+      [replaceCurrentInputLine, submitReplLine],
     );
 
     useEffect(() => {
@@ -273,9 +300,11 @@ const PythonTerminal = React.forwardRef<PythonTerminalHandle, PythonTerminalProp
                 onStopRef.current?.();
               } else if (replBusyRef.current) {
                 // A line is running: stop it, as Ctrl+C does in the Console (KeyboardInterrupt follows).
+                replPasteCancelRef.current = true;
                 onStopRef.current?.();
               } else if (!replDisabledRef.current) {
                 // At the prompt, as in Python: drop the input (and an unfinished statement) with KeyboardInterrupt.
+                replPasteCancelRef.current = true;
                 if (replContinuationRef.current) onReplCancelInputRef.current?.();
                 lineBufRef.current = '';
                 replHistIdxRef.current = -1;
@@ -288,26 +317,29 @@ const PythonTerminal = React.forwardRef<PythonTerminalHandle, PythonTerminalProp
           });
 
           term.onData((data) => {
+            const tokens = tokenizeTerminalData(data);
+            if (tokens.length === 0) return;
+
             if (mode === 'console') {
               if (!awaitingStdinRef.current) return;
-              for (const ch of data) {
-                if (ch === '\r' || ch === '\n') {
+              for (const tok of tokens) {
+                if (tok.kind === 'newline') {
                   const line = lineBufRef.current;
                   lineBufRef.current = '';
                   writeRaw('\r\n');
                   onSendStdinRef.current?.(line);
-                } else if (ch === '\x7f' || ch === '\b') {
+                } else if (tok.kind === 'backspace') {
                   if (lineBufRef.current.length > 0) {
                     lineBufRef.current = lineBufRef.current.slice(0, -1);
                     term.write('\b \b');
                   }
-                } else if (ch === '\x04') {
+                } else if (tok.kind === 'eof') {
                   lineBufRef.current = '';
                   writeRaw('^D\r\n');
                   onSendStdinEofRef.current?.();
-                } else if (ch >= ' ') {
-                  lineBufRef.current += ch;
-                  term.write(ch);
+                } else if (tok.kind === 'text') {
+                  lineBufRef.current += tok.text;
+                  term.write(tok.text);
                 }
               }
               return;
@@ -316,65 +348,73 @@ const PythonTerminal = React.forwardRef<PythonTerminalHandle, PythonTerminalProp
             // REPL mode interactive editing
             if (replDisabledRef.current || replBusyRef.current) return;
 
-            // Arrow Up / Down history navigation
-            if (data === '\x1b[A') {
-              const hist = replHistoryRef.current;
-              if (hist.length === 0) return;
-              const nextIdx =
-                replHistIdxRef.current === -1
-                  ? hist.length - 1
-                  : Math.max(0, replHistIdxRef.current - 1);
-              replHistIdxRef.current = nextIdx;
-              replaceCurrentInputLine(hist[nextIdx] ?? '');
-              return;
-            }
-            if (data === '\x1b[B') {
-              const hist = replHistoryRef.current;
-              if (replHistIdxRef.current === -1) return;
-              const nextIdx = replHistIdxRef.current + 1;
-              if (nextIdx >= hist.length) {
-                replHistIdxRef.current = -1;
-                replaceCurrentInputLine('');
-              } else {
+            // Single navigation / completion keystrokes
+            if (tokens.length === 1) {
+              const only = tokens[0];
+              if (only.kind === 'up') {
+                const hist = replHistoryRef.current;
+                if (hist.length === 0) return;
+                const nextIdx =
+                  replHistIdxRef.current === -1
+                    ? hist.length - 1
+                    : Math.max(0, replHistIdxRef.current - 1);
                 replHistIdxRef.current = nextIdx;
                 replaceCurrentInputLine(hist[nextIdx] ?? '');
-              }
-              return;
-            }
-
-            // Tab completion via client.replComplete()
-            if (data === '\t') {
-              const current = lineBufRef.current;
-              if (!onReplCompleteRef.current) return;
-              void onReplCompleteRef.current(current).then((res) => {
-                if (!res.completions.length) return;
-                if (res.completions.length === 1) {
-                  const completion = res.completions[0];
-                  const next = current.slice(0, res.start) + completion;
-                  replaceCurrentInputLine(next);
-                } else {
-                  const preview = res.completions.slice(0, 12).join('  ');
-                  writeRaw(`\r\n\x1b[90m${preview}\x1b[0m\r\n`);
-                  printReplPrompt(replContinuationRef.current);
-                  term.write(lineBufRef.current);
-                }
-              });
-              return;
-            }
-
-            for (const ch of data) {
-              if (ch === '\r' || ch === '\n') {
-                const line = lineBufRef.current;
-                void submitReplLine(line, false);
                 return;
-              } else if (ch === '\x7f' || ch === '\b') {
+              }
+              if (only.kind === 'down') {
+                const hist = replHistoryRef.current;
+                if (replHistIdxRef.current === -1) return;
+                const nextIdx = replHistIdxRef.current + 1;
+                if (nextIdx >= hist.length) {
+                  replHistIdxRef.current = -1;
+                  replaceCurrentInputLine('');
+                } else {
+                  replHistIdxRef.current = nextIdx;
+                  replaceCurrentInputLine(hist[nextIdx] ?? '');
+                }
+                return;
+              }
+              if (only.kind === 'tab') {
+                const current = lineBufRef.current;
+                if (!onReplCompleteRef.current) return;
+                void onReplCompleteRef.current(current).then((res) => {
+                  if (!res.completions.length) return;
+                  if (res.completions.length === 1) {
+                    const completion = res.completions[0];
+                    const next = current.slice(0, res.start) + completion;
+                    replaceCurrentInputLine(next);
+                  } else {
+                    const preview = res.completions.slice(0, 12).join('  ');
+                    writeRaw(`\r\n\x1b[90m${preview}\x1b[0m\r\n`);
+                    printReplPrompt(replContinuationRef.current);
+                    term.write(lineBufRef.current);
+                  }
+                });
+                return;
+              }
+            }
+
+            if (tokens.some((tok) => tok.kind === 'newline')) {
+              const { lines, trailing } = splitTokensIntoLines(lineBufRef.current, tokens, {
+                tabAsSpaces: true,
+              });
+              void submitReplLines(lines, trailing);
+              return;
+            }
+
+            for (const tok of tokens) {
+              if (tok.kind === 'backspace') {
                 if (lineBufRef.current.length > 0) {
                   lineBufRef.current = lineBufRef.current.slice(0, -1);
                   term.write('\b \b');
                 }
-              } else if (ch >= ' ') {
-                lineBufRef.current += ch;
-                term.write(ch);
+              } else if (tok.kind === 'text') {
+                lineBufRef.current += tok.text;
+                term.write(tok.text);
+              } else if (tok.kind === 'tab') {
+                lineBufRef.current += '    ';
+                term.write('    ');
               }
             }
           });
@@ -434,7 +474,7 @@ const PythonTerminal = React.forwardRef<PythonTerminalHandle, PythonTerminalProp
         termRef.current = null;
         fitRef.current = null;
       };
-    }, [mode, printReplPrompt, replaceCurrentInputLine, submitReplLine, writeRaw]);
+    }, [mode, printReplPrompt, replaceCurrentInputLine, submitReplLines, writeRaw]);
 
     // Sync xterm theme when site theme changes
     useEffect(() => {

@@ -414,6 +414,94 @@ async def _fetch_restore(item: dict) -> dict | None:
     return None
 
 
+async def _fetch_hashed_pypi(item: dict, index_urls: list) -> dict | None:
+    """Resolve and fetch a PyPI requirement with --hash=sha256:..., checking SHA-256 before install."""
+    from micropip._utils import check_compatible
+    from micropip._vendored.packaging.src.packaging.requirements import Requirement
+    from micropip._vendored.packaging.src.packaging.specifiers import SpecifierSet
+    from micropip._vendored.packaging.src.packaging.version import Version
+    from pyodide.http import pyfetch
+
+    requirement = str(item.get("requirement", ""))
+    expected = {str(h).lower() for h in (item.get("hashes") or []) if re.fullmatch(r"[0-9a-fA-F]{64}", str(h))}
+    if not expected:
+        return _fail("invalid-request", requirement, "no valid sha256 hashes provided", requirement)
+    try:
+        req = Requirement(requirement)
+    except Exception as exc:  # noqa: BLE001
+        return _fail("invalid-request", requirement, f"{type(exc).__name__}: {exc}", requirement)
+    if not index_urls:
+        return _fail("offline", requirement, "no package index URLs", req.name)
+    url = _index_page(index_urls[0], canonical(req.name))
+    if not _host_allowed(url):
+        return _fail("host-blocked", requirement, "", req.name, info=urlparse(url).hostname or url)
+    try:
+        resp = await asyncio.wait_for(
+            pyfetch(url, headers={"accept": "application/vnd.pypi.simple.v1+json"}),
+            _PRECHECK_TIMEOUT_S,
+        )
+        if resp.status == 404:
+            return _fail("not-found", requirement, "", req.name)
+        if not resp.ok:
+            return _fail("offline", requirement, f"HTTP {resp.status}", req.name)
+        data_json = json.loads(await resp.string())
+    except Exception as exc:  # noqa: BLE001
+        return _fail("offline", requirement, f"{type(exc).__name__}: {exc}", req.name)
+
+    spec_set = SpecifierSet(str(req.specifier)) if str(req.specifier) else SpecifierSet()
+    candidates = []
+    for entry in data_json.get("files") or []:
+        fname = str(entry.get("filename") or "")
+        if not _WHEEL_RE.match(fname) or entry.get("yanked"):
+            continue
+        parts = fname[:-4].split("-")
+        if len(parts) < 5:
+            continue
+        try:
+            ver = Version(parts[1])
+        except Exception:  # noqa: BLE001
+            continue
+        if not spec_set.contains(ver, prereleases=True):
+            continue
+        try:
+            check_compatible(fname)
+        except ValueError:
+            continue
+        adv_sha = str((entry.get("hashes") or {}).get("sha256") or "").lower()
+        wheel_url = str(entry.get("url") or "")
+        candidates.append((ver, adv_sha in expected, adv_sha, fname, wheel_url))
+
+    if not candidates:
+        return _fail("no-browser-wheel", requirement, "no compatible wheel found on PyPI", req.name)
+    candidates.sort(key=lambda c: (c[1], c[0]), reverse=True)
+    matched = [c for c in candidates if not c[2] or c[1]]
+    if not matched:
+        return _fail("hash-mismatch", requirement, f"no compatible wheel matched --hash for {req.name}", req.name)
+
+    _, _, _, file_name, wheel_url = matched[0]
+    if not wheel_url or urlparse(wheel_url).hostname != "files.pythonhosted.org" or not _host_allowed(wheel_url):
+        return _fail("host-blocked", requirement, "", req.name, info=urlparse(wheel_url).hostname or wheel_url)
+    try:
+        wresp = await asyncio.wait_for(pyfetch(wheel_url), 60.0)
+        if not wresp.ok:
+            return _fail("offline", requirement, f"HTTP {wresp.status}", req.name)
+        wbytes = await wresp.bytes()
+    except Exception as exc:  # noqa: BLE001
+        return _fail("offline", requirement, f"{type(exc).__name__}: {exc}", req.name)
+
+    actual_sha = hashlib.sha256(wbytes).hexdigest()
+    if actual_sha not in expected:
+        return _fail("hash-mismatch", requirement, f"got {actual_sha}, not in --hash list", req.name)
+
+    os.makedirs(WHEEL_DIR, exist_ok=True)
+    with open(f"{WHEEL_DIR}/{file_name}", "wb") as fh:
+        fh.write(wbytes)
+    item["fileName"] = file_name
+    item["sha256"] = actual_sha
+    item["url"] = wheel_url
+    return None
+
+
 def _installed_keys() -> set:
     keys = set(_loaded())
     for dist in importlib.metadata.distributions():
@@ -459,6 +547,15 @@ async def install(items_json: str) -> dict:
                 failed.append(problem)
                 continue
             item["kind"] = "wheel"
+        elif item.get("kind") == "pypi" and item.get("hashes"):
+            if _mode != "pkg":
+                failed.append(_fail("network-off" if _mode == "off" else "needs-package-index", item["requirement"], "", _req_name(item["requirement"])[0]))
+                continue
+            problem = await _fetch_hashed_pypi(item, _index_urls(micropip))
+            if problem:
+                failed.append(problem)
+                continue
+            item["kind"] = "wheel"
         if item.get("kind") != "wheel":
             continue
         problem = _check_wheel_file(item)
@@ -487,7 +584,7 @@ async def install(items_json: str) -> dict:
             pass
 
     for item in items:
-        if item.get("kind") != "pypi" or item.get("url"):
+        if item.get("kind") != "pypi" or item.get("url") or item.get("hashes"):
             continue
         requirement = str(item.get("requirement", ""))
         name, _ = _req_name(requirement)

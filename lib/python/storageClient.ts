@@ -155,6 +155,7 @@ export class PythonStorageClient {
   private wheelWorker: Promise<Worker> | null = null;
   private nextId = 1;
   private pending = new Map<number, PendingRpc>();
+  private wheelPending = new Map<number, PendingRpc>();
   private listeners = new Set<StorageClientListeners>();
   private _latestRev = 0;
   private _closed = false;
@@ -254,6 +255,37 @@ export class PythonStorageClient {
       rpc.reject(err);
     }
     this.pending.clear();
+  }
+
+  private rejectAllWheelPending(err: Error): void {
+    for (const rpc of this.wheelPending.values()) {
+      rpc.reject(err);
+    }
+    this.wheelPending.clear();
+  }
+
+  private handleWheelMessage(raw: unknown): void {
+    if (!raw || typeof raw !== 'object') return;
+    const msg = raw as Record<string, unknown>;
+
+    if (typeof msg.id === 'number') {
+      const rpc = this.wheelPending.get(msg.id);
+      if (!rpc) return;
+      this.wheelPending.delete(msg.id);
+      if (msg.ok === true) {
+        rpc.resolve(msg.result);
+      } else {
+        const errObj = (msg.error || {}) as { code?: unknown; message?: unknown };
+        const code = (typeof errObj.code === 'string' ? errObj.code : 'UNKNOWN') as StorageErrorCode;
+        const message = typeof errObj.message === 'string' ? errObj.message : 'Wheel storage RPC failed';
+        rpc.reject(new StorageWorkerError(code, message));
+      }
+      return;
+    }
+
+    if (msg.type === 'storage.quotaExceeded' && typeof msg.message === 'string') {
+      for (const l of this.listeners) l.quotaExceeded?.(msg.message);
+    }
   }
 
   private call<T>(
@@ -442,11 +474,13 @@ export class PythonStorageClient {
       this.wheelWorker = this.call('stats').then(() => {
         if (this._closed) throw new StorageWorkerError('WORKER_CLOSED', 'Storage client has been closed');
         const worker = new Worker(getPythonWheelWorkerUrl(), { type: 'module' });
-        worker.onmessage = (event: MessageEvent) => this.handleMessage(event.data);
+        worker.onmessage = (event: MessageEvent) => this.handleWheelMessage(event.data);
         worker.onerror = (event: ErrorEvent) => {
           event.preventDefault();
           this.wheelWorker = null;
-          this.rejectAllPending(new StorageWorkerError('UNKNOWN', event.message || 'Wheel worker crashed unexpectedly'));
+          this.rejectAllWheelPending(
+            new StorageWorkerError('UNKNOWN', event.message || 'Wheel worker crashed unexpectedly'),
+          );
         };
         return worker;
       });
@@ -461,7 +495,7 @@ export class PythonStorageClient {
     const worker = await this.ensureWheelWorker();
     const id = this.nextId++;
     return new Promise<T>((resolve, reject) => {
-      this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject });
+      this.wheelPending.set(id, { resolve: resolve as (v: unknown) => void, reject });
       worker.postMessage({ id, op, ...payload }, transfer);
     });
   }
@@ -529,23 +563,22 @@ export class PythonStorageClient {
     }
   }
 
-  /** Gracefully closes the IndexedDB connection inside the Storage Worker, then terminates it. */
+  /** Gracefully closes IndexedDB connections inside both Storage and Wheel workers, then terminates them. */
   async close(): Promise<void> {
     if (this._closed) return;
     this._closed = true;
     activeStorageClients.delete(this);
 
-    const worker = this.worker;
-    if (!worker) {
-      this.listeners.clear();
-      return;
-    }
-
-    try {
+    const closeOne = (
+      target: Worker | null,
+      map: Map<number, PendingRpc>,
+      payload: Record<string, unknown>,
+    ): Promise<void> => {
+      if (!target) return Promise.resolve();
       const id = this.nextId++;
-      await new Promise<void>((resolve) => {
+      return new Promise<void>((resolve) => {
         const timer = setTimeout(resolve, 2000);
-        this.pending.set(id, {
+        map.set(id, {
           resolve: () => {
             clearTimeout(timer);
             resolve();
@@ -556,14 +589,38 @@ export class PythonStorageClient {
           },
         });
         try {
-          worker.postMessage({ id, op: 'close', workspaceId: this.workspaceId });
+          target.postMessage({ id, op: 'close', ...payload });
         } catch {
           clearTimeout(timer);
           resolve();
         }
       });
+    };
+
+    const worker = this.worker;
+    const wheelPromise = this.wheelWorker;
+    if (!worker && !wheelPromise) {
+      this.listeners.clear();
+      return;
+    }
+
+    let resolvedWheel: Worker | null = null;
+    try {
+      const wheelClose = wheelPromise
+        ? wheelPromise.then(
+            (w) => {
+              resolvedWheel = w;
+              return closeOne(w, this.wheelPending, {});
+            },
+            () => undefined,
+          )
+        : Promise.resolve();
+      await Promise.all([
+        closeOne(worker, this.pending, { workspaceId: this.workspaceId }),
+        wheelClose,
+      ]);
     } finally {
-      this.terminateWorker();
+      this.terminateWorker(resolvedWheel);
     }
   }
 
@@ -571,17 +628,18 @@ export class PythonStorageClient {
     void this.close();
   }
 
-  private terminateWorker(): void {
+  private terminateWorker(resolvedWheel: Worker | null = null): void {
     const wheel = this.wheelWorker;
     this.wheelWorker = null;
-    if (wheel) {
-      void wheel.then(
-        (w) => {
-          w.postMessage({ id: -1, op: 'close' });
-          w.terminate();
-        },
-        () => undefined,
-      );
+    const stopWheel = (w: Worker) => {
+      w.onmessage = null;
+      w.onerror = null;
+      w.terminate();
+    };
+    if (resolvedWheel) {
+      stopWheel(resolvedWheel);
+    } else if (wheel) {
+      void wheel.then(stopWheel, () => undefined);
     }
     const worker = this.worker;
     this.worker = null;
@@ -590,7 +648,9 @@ export class PythonStorageClient {
       worker.onerror = null;
       worker.terminate();
     }
-    this.rejectAllPending(new StorageWorkerError('WORKER_CLOSED', 'Storage worker closed'));
+    const closedErr = new StorageWorkerError('WORKER_CLOSED', 'Storage worker closed');
+    this.rejectAllPending(closedErr);
+    this.rejectAllWheelPending(closedErr);
     this.listeners.clear();
   }
 }

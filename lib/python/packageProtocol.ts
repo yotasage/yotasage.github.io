@@ -13,6 +13,7 @@ export const MAX_PACKAGE_DEPS = 200;
 export const MAX_MISSING_PACKAGES = 64;
 export const MAX_WHEEL_BYTES = 50 * 1024 * 1024;
 export const MAX_INSTALL_BYTES = 150 * 1024 * 1024;
+export const MAX_ITEM_HASHES = 16;
 
 export type PackageSource = 'bundled' | 'pypi' | 'wheel' | 'code';
 export type PackageInstallReason = 'user' | 'restore' | 'script-header';
@@ -80,6 +81,8 @@ export type PackageInstallItem =
       /** Restore by URL (Package index mode only): both set, checked by the worker before install. */
       readonly sha256?: string;
       readonly url?: string;
+      /** Allowed SHA-256 wheel digests from requirements.txt --hash=sha256:..., checked before install. */
+      readonly hashes?: readonly string[];
     }
   | {
       readonly kind: 'wheel';
@@ -292,6 +295,16 @@ export function checkInstallRequest(
       if (hasUrl !== (item.sha256 !== undefined)) return 'A restore needs both url and sha256';
       if (hasUrl && (!isPythonHostedUrl(item.url) || !isSha256Hex(item.sha256))) {
         return 'Invalid restore url or sha256';
+      }
+      if (item.hashes !== undefined) {
+        if (
+          !Array.isArray(item.hashes) ||
+          item.hashes.length === 0 ||
+          item.hashes.length > MAX_ITEM_HASHES ||
+          !item.hashes.every(isSha256Hex)
+        ) {
+          return 'Invalid requirement hashes';
+        }
       }
     } else if (item.kind === 'wheel') {
       if (!isWheelFileName(item.fileName)) return 'Invalid wheel file name';

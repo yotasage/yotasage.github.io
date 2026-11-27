@@ -1194,15 +1194,16 @@ async function handleReplPush(msg) {
     self.postMessage({ type: 'error', id: msg.id, message: 'Pyodide is not initialized' });
     return;
   }
+  if (runInProgress) {
+    self.postMessage({ type: 'error', id: msg.id, message: 'Another run is already in progress' });
+    return;
+  }
 
-  await pkgQueue;
-  resetRunBuffers();
+  runInProgress = true;
   try {
+    await pkgQueue;
+    resetRunBuffers();
     const line = String(msg.line ?? '');
-    if (/import/.test(line)) {
-      // Load bundled packages a console line imports, as handleRun does for scripts.
-      await pyodide.loadPackagesFromImports(line.trim()).catch(() => {});
-    }
     pyodide.globals.set('_yotasage_repl_line', line);
     const raw = await pyodide.runPythonAsync(
       'import yotasage_rt; await yotasage_rt.repl_push(_yotasage_repl_line)',
@@ -1222,6 +1223,7 @@ async function handleReplPush(msg) {
     flushStreamDecoders();
     self.postMessage({ type: 'repl.result', id: msg.id, status: 'error', error: c.error });
   } finally {
+    runInProgress = false;
     dropGlobals('_yotasage_repl_line');
     resetRunBuffers();
   }

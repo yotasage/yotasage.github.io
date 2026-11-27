@@ -17,12 +17,11 @@ export function tierTexts(t: ReturnType<typeof useI18n>['t'], tier: CapabilityTi
 /** W2: collapsible so the workspace stays front and centre. */
 export function W2StatusNote({ tier }: { tier: CapabilityTier }) {
   const { t } = useI18n();
-  const { badge, desc } = tierTexts(t, tier);
+  const { desc } = tierTexts(t, tier);
   return (
     <details className={styles.statusNote} data-testid="python-w2-note">
       <summary className={styles.statusNoteSummary}>
         <span className={styles.statusNoteLead}>{t('python.w2Summary')}</span>
-        <span className={styles.statusNoteBadge}>{badge}</span>
       </summary>
       <div className={styles.statusNoteBody}>
         <p>

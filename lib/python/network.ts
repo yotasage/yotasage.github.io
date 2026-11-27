@@ -42,6 +42,7 @@ export const PYTHON_SW_ALLOWED_PREFIXES = [
   '/pyodide/',
   '/monaco/',
   '/fonts/',
+  '/flags/',
   '/_next/',
   '/favicon.ico',
   '/og/',

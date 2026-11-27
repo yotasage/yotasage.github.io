@@ -99,7 +99,15 @@ function getWorkspaceId(raw) {
 function getLedger(ws) {
   let l = ledgers.get(ws);
   if (!l) {
-    l = { entries: new Map(), totalBytes: 0, entryCount: 0, loaded: false, rev: 0 };
+    l = {
+      entries: new Map(),
+      totalBytes: 0,
+      entryCount: 0,
+      loaded: false,
+      rev: 0,
+      name: ws === 'default' ? 'Default' : ws,
+      createdAt: 0,
+    };
     ledgers.set(ws, l);
   }
   return l;
@@ -325,10 +333,12 @@ async function ensureWorkspaceLoaded(ws) {
 
   const now = Date.now();
   const existingWs = await reqPromise(wsStore.get(ws));
+  ledger.name = existingWs && existingWs.name ? existingWs.name : ws === 'default' ? 'Default' : ws;
+  ledger.createdAt = existingWs && existingWs.createdAt ? existingWs.createdAt : now;
   wsStore.put({
     id: ws,
-    name: existingWs ? existingWs.name : ws === 'default' ? 'Default' : ws,
-    createdAt: existingWs ? existingWs.createdAt : now,
+    name: ledger.name,
+    createdAt: ledger.createdAt,
     updatedAt: now,
     totalBytes: ledger.totalBytes,
     entryCount: ledger.entryCount,
@@ -338,12 +348,13 @@ async function ensureWorkspaceLoaded(ws) {
   return { database, ledger };
 }
 
-function updateWsRecord(wsStore, ws, totalBytes, entryCount) {
+function updateWsRecord(wsStore, ws, totalBytes, entryCount, ledger) {
   const now = Date.now();
+  if (ledger && !ledger.createdAt) ledger.createdAt = now;
   wsStore.put({
     id: ws,
-    name: ws === 'default' ? 'Default' : ws,
-    createdAt: now,
+    name: ledger && ledger.name ? ledger.name : ws === 'default' ? 'Default' : ws,
+    createdAt: ledger && ledger.createdAt ? ledger.createdAt : now,
     updatedAt: now,
     totalBytes,
     entryCount,
@@ -431,7 +442,7 @@ async function doWrite(ws, rawPath, rawData, opts = {}) {
     bytes,
     createdByRun,
   });
-  updateWsRecord(wsStore, ws, newTotalBytes, newEntryCount);
+  updateWsRecord(wsStore, ws, newTotalBytes, newEntryCount, ledger);
   await txDone(tx);
 
   // Commit to in-memory ledger only AFTER IDB transaction succeeds.
@@ -496,7 +507,7 @@ async function doMkdir(ws, rawPath, opts = {}) {
   for (const dir of dirsToCreate) {
     fileStore.put({ ws, path: dir, isDir: true, size: 0, mtime: now, bytes: null, createdByRun });
   }
-  updateWsRecord(wsStore, ws, ledger.totalBytes, newEntryCount);
+  updateWsRecord(wsStore, ws, ledger.totalBytes, newEntryCount, ledger);
   await txDone(tx);
 
   for (const dir of dirsToCreate) {
@@ -541,7 +552,7 @@ async function doDelete(ws, rawPath, opts = {}) {
   for (const key of toDelete) {
     fileStore.delete([ws, key]);
   }
-  updateWsRecord(wsStore, ws, newTotalBytes, newEntryCount);
+  updateWsRecord(wsStore, ws, newTotalBytes, newEntryCount, ledger);
   await txDone(tx);
 
   for (const key of toDelete) {
@@ -624,7 +635,7 @@ async function doDeleteMany(ws, rawPaths, opts = {}) {
   for (const key of toDelete) {
     fileStore.delete([ws, key]);
   }
-  updateWsRecord(wsStore, ws, newTotalBytes, newEntryCount);
+  updateWsRecord(wsStore, ws, newTotalBytes, newEntryCount, ledger);
   await txDone(tx);
 
   for (const key of toDelete) {
@@ -728,7 +739,7 @@ async function doRename(ws, rawFrom, rawTo, opts = {}) {
   }
 
   const newTotalBytes = Math.max(0, ledger.totalBytes - overwrittenBytes);
-  updateWsRecord(wsStore, ws, newTotalBytes, newEntryCount);
+  updateWsRecord(wsStore, ws, newTotalBytes, newEntryCount, ledger);
   await txDone(tx);
 
   for (const k of overwrittenKeys) ledger.entries.delete(k);
@@ -848,7 +859,7 @@ async function doBulkWrite(ws, rawEntries, opts = {}) {
   for (const rec of puts.values()) {
     fileStore.put(rec);
   }
-  updateWsRecord(wsStore, ws, newTotalBytes, newEntryCount);
+  updateWsRecord(wsStore, ws, newTotalBytes, newEntryCount, ledger);
   await txDone(tx);
 
   ledger.entries = simEntries;
@@ -886,7 +897,7 @@ async function doClearWorkspace(ws, opts = {}) {
   for (const path of ledger.entries.keys()) {
     fileStore.delete([ws, path]);
   }
-  updateWsRecord(wsStore, ws, 0, 0);
+  updateWsRecord(wsStore, ws, 0, 0, ledger);
   await txDone(tx);
 
   ledger.entries.clear();

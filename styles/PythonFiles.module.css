@@ -83,6 +83,8 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
+  height: 100%;
   border: var(--ds-border-w) solid var(--ds-border);
   border-radius: var(--ds-radius-card);
   background: var(--ds-surface-solid);

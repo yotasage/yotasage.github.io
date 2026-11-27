@@ -510,7 +510,9 @@ export default function FileTree({
         <span className={fileStyles.filesTitle}>{t('python.filesTitle')}</span>
         {stats && (
           <span className={fileStyles.treeSize}>
-            {t('python.filesEntriesCount', { count: stats.entryCount })}
+            {stats.entryCount === 1
+              ? t('python.filesEntriesCountOne')
+              : t('python.filesEntriesCount', { count: stats.entryCount })}
           </span>
         )}
       </div>

@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { fileExtension, formatByteSize } from '../../lib/python/paths';
+import { buildSandboxedHtmlSrcDoc } from '../../lib/python/sandboxHtml';
 import { useI18n } from '../../lib/ui/i18n';
 import plotStyles from '../../styles/PythonPlots.module.css';
 import DataTableViewer from './DataTableViewer';
@@ -35,26 +36,6 @@ const IMAGE_MIME_MAP: Readonly<Record<string, string>> = {
   '.webp': 'image/webp',
   '.svg': 'image/svg+xml',
 };
-
-const SANDBOX_HTML_CSP_META =
-  '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'unsafe-inline\'; style-src \'unsafe-inline\'; img-src data: blob:; font-src data:;">';
-
-function buildSandboxedHtmlSrcDoc(rawHtml: string, allowScripts: boolean): string {
-  if (!allowScripts) return rawHtml;
-  if (/<head(\s[^>]*)?>/i.test(rawHtml)) {
-    return rawHtml.replace(/<head(\s[^>]*)?>/i, (m) => `${m}${SANDBOX_HTML_CSP_META}`);
-  }
-  if (/<html(\s[^>]*)?>/i.test(rawHtml)) {
-    return rawHtml.replace(/<html(\s[^>]*)?>/i, (m) => `${m}<head>${SANDBOX_HTML_CSP_META}</head>`);
-  }
-  if (/^\s*<!doctype[^>]*>/i.test(rawHtml)) {
-    return rawHtml.replace(
-      /^\s*<!doctype[^>]*>/i,
-      (m) => `${m}<head>${SANDBOX_HTML_CSP_META}</head>`,
-    );
-  }
-  return `${SANDBOX_HTML_CSP_META}\n${rawHtml}`;
-}
 
 export default function FileViewer({
   path,

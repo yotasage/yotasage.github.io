@@ -1064,12 +1064,34 @@ export class PythonWorkerClient {
           const p = this.pendingInit;
           this.pendingInit = null;
           this.initPromise = null;
+          this._activity = null;
           this.setState('crashed', msg.message);
           p.reject(new Error(msg.message));
         } else if (this.pendingRun && msg.id === this.pendingRun.id) {
+          this.clearStopTimers();
+          this._activeStdin = null;
+          this.pendingTransfer = null;
+          this._activity = null;
           const p = this.pendingRun;
           this.pendingRun = null;
           this.setState(this.isFailClosedBlocked ? 'blocked' : 'ready');
+          p.reject(new Error(msg.message));
+        } else if (this.pendingRepl && msg.id === this.pendingRepl.id) {
+          this.clearStopTimers();
+          this._activeStdin = null;
+          this.pendingTransfer = null;
+          this._activity = null;
+          const p = this.pendingRepl;
+          this.pendingRepl = null;
+          this.setState(this.isFailClosedBlocked ? 'blocked' : 'ready');
+          p.reject(new Error(msg.message));
+        } else if (this.pendingCompletions && msg.id === this.pendingCompletions.id) {
+          const p = this.pendingCompletions;
+          this.pendingCompletions = null;
+          p.reject(new Error(msg.message));
+        } else if (typeof msg.id === 'number' && this.pendingPkg.has(msg.id)) {
+          const p = this.pendingPkg.get(msg.id)!;
+          this.pendingPkg.delete(msg.id);
           p.reject(new Error(msg.message));
         }
         break;

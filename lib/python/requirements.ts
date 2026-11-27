@@ -45,7 +45,7 @@ export interface Requirement {
   /** Normalised specifier, e.g. ">=1.0,<2" ('' for any version). */
   readonly specifier: string;
   readonly marker?: string;
-  /** sha256 values from --hash=sha256:… (checked after install with hashProblems()). */
+  /** sha256 values from --hash=sha256:… (enforced before install, with post-install defense-in-depth). */
   readonly hashes: readonly string[];
   /** PEP 508 text sent to micropip (without hashes). */
   readonly requirement: string;
@@ -278,7 +278,11 @@ export function planRequirements(parsed: ParsedRequirements, mode: NetworkMode, 
         skipped.push({ line: r.line, text, reason: 'bundled-version', name: r.name, info: b.version });
       }
     } else if (mode === 'pkg') {
-      items.push({ kind: 'pypi', requirement: r.requirement });
+      items.push({
+        kind: 'pypi',
+        requirement: r.requirement,
+        ...(r.hashes.length > 0 ? { hashes: r.hashes } : {}),
+      });
       planned.push({ requirement: r, via: 'pypi' });
     } else {
       skipped.push({ line: r.line, text, reason: mode === 'off' ? 'network-off' : 'needs-package-index', name: r.name });

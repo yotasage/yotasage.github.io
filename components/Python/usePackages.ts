@@ -268,7 +268,11 @@ export function usePackages({ mode, running, locked, visible }: UsePackagesOptio
   }, []);
 
   const doInstall = useCallback(
-    async (items: readonly PackageInstallItem[], requested: readonly string[], after?: (installed: readonly PackageInfo[]) => Msg[]) => {
+    async (
+      items: readonly PackageInstallItem[],
+      requested: readonly string[],
+      after?: (installed: readonly PackageInfo[]) => Msg[] | Promise<Msg[]>,
+    ) => {
       const client = clientRef.current;
       if (!client) return;
       await guarded(msg('python.pkgBusyInstall'), async () => {
@@ -284,9 +288,10 @@ export function usePackages({ mode, running, locked, visible }: UsePackagesOptio
         const lines: Msg[] = [];
         if (res.installed.length) lines.push(msg('python.pkgInstalled', { names }), msg('python.pkgInstalledKeepHint'));
         lines.push(...failureLines(res.failed));
-        if (after) lines.push(...after(res.installed));
+        const afterLines = after ? await after(res.installed) : [];
+        lines.push(...afterLines);
         setNotice({
-          tone: res.failed.length ? (res.installed.length ? 'warn' : 'bad') : 'good',
+          tone: res.failed.length || afterLines.length ? (res.installed.length ? 'warn' : 'bad') : 'good',
           lines,
           details: res.failed.map((f) => f.detail).filter(Boolean).join('\n\n') || undefined,
         });
@@ -515,9 +520,14 @@ export function usePackages({ mode, running, locked, visible }: UsePackagesOptio
           doInstall(
             plan.items,
             plan.planned.map((p) => p.requirement.name),
-            (inst) => {
+            async (inst) => {
               const bad = hashProblems(inst, parsed.requirements);
-              return bad.length ? [msg('python.pkgHashProblem', { names: bad.join(', ') })] : [];
+              if (bad.length > 0) {
+                // Defense-in-depth: unload any unverified code if a mismatch slipped past pre-install checks.
+                await clientRef.current?.restart();
+                return [msg('python.pkgHashProblem', { names: bad.join(', ') })];
+              }
+              return [];
             },
           ),
       });
