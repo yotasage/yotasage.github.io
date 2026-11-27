@@ -1,0 +1,660 @@
+/* Scoped Design System v2 styles for the FFT / Spectrum Analyzer (/fft/main) */
+
+.shell {
+  width: 100%;
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 0 20px 48px;
+  color: var(--ds-ink);
+  font-family: var(--ds-font-ui);
+}
+
+.shellWide {
+  max-width: 1760px;
+}
+
+.workbenchGrid {
+  display: grid;
+  grid-template-columns: 330px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.mainColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.card {
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.cardTitle {
+  font-size: 0.92rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--ds-ink);
+  margin: 0;
+}
+
+.cardSub {
+  font-size: 0.78rem;
+  color: var(--ds-ink-muted);
+  margin: 2px 0 0;
+}
+
+/* Dropzone & Data Panel */
+.dropzone {
+  border: 1.5px dashed var(--ds-border-strong, var(--ds-border));
+  border-radius: 8px;
+  background: var(--ds-well);
+  padding: 14px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 140ms ease, background-color 140ms ease;
+  font-size: 0.8rem;
+  color: var(--ds-ink-muted);
+}
+
+.dropzone:hover,
+.dropzoneActive {
+  border-color: var(--ds-accent);
+  background: color-mix(in srgb, var(--ds-accent) 6%, var(--ds-well));
+  color: var(--ds-ink);
+}
+
+.rowActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.presetGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.presetBtn {
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 7px;
+  border: 1px solid var(--ds-border);
+  background: var(--ds-well);
+  color: var(--ds-ink);
+  font-size: 0.74rem;
+  font-weight: 550;
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease;
+  line-height: 1.25;
+}
+
+.presetBtn:hover {
+  border-color: var(--ds-accent);
+}
+
+.presetBtnActive {
+  border-color: var(--ds-accent);
+  background: color-mix(in srgb, var(--ds-accent) 12%, var(--ds-surface));
+  color: var(--ds-accent);
+}
+
+.datasetList {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.datasetRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--ds-border);
+  background: var(--ds-well);
+  font-size: 0.76rem;
+}
+
+.datasetRowActive {
+  border-color: var(--ds-accent);
+  background: color-mix(in srgb, var(--ds-accent) 9%, var(--ds-surface));
+}
+
+.datasetNameBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: var(--ds-ink);
+  font-size: 0.77rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.datasetMeta {
+  font-family: var(--ds-font-mono);
+  font-size: 0.7rem;
+  color: var(--ds-ink-muted);
+  white-space: nowrap;
+}
+
+/* Form controls */
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.formRow {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.formRowFull {
+  grid-column: 1 / -1;
+}
+
+.label {
+  font-size: 0.73rem;
+  font-weight: 550;
+  color: var(--ds-ink-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--ds-border);
+  background: var(--ds-well);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+.select {
+  font-family: var(--ds-font-ui);
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: 2px solid color-mix(in srgb, var(--ds-accent) 45%, transparent);
+  border-color: var(--ds-accent);
+}
+
+.textarea {
+  min-height: 88px;
+  resize: vertical;
+  font-size: 0.74rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--ds-border);
+  background: var(--ds-well);
+  color: var(--ds-ink);
+  font-size: 0.76rem;
+  font-weight: 550;
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  border-color: var(--ds-accent);
+  color: var(--ds-accent);
+}
+
+.btnPrimary {
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+  color: #ffffff;
+}
+
+.btnPrimary:hover {
+  opacity: 0.92;
+  color: #ffffff;
+}
+
+.btnSmall {
+  padding: 3px 7px;
+  font-size: 0.72rem;
+}
+
+.checkLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  color: var(--ds-ink);
+  cursor: pointer;
+  user-select: none;
+}
+
+.detailsBox {
+  margin-top: 10px;
+  border-top: 1px solid var(--ds-border);
+  padding-top: 8px;
+}
+
+.detailsSummary {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ds-ink-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.detailsBody {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 8px;
+}
+
+.bridgeLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ds-accent);
+  text-decoration: none;
+}
+
+.bridgeLink:hover {
+  text-decoration: underline;
+}
+
+/* KPI Strip */
+.kpiStrip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.kpiCell {
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  border-radius: 8px;
+  padding: 9px 11px;
+  min-width: 0;
+}
+
+.kpiLabel {
+  font-size: 0.69rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ds-ink-muted);
+}
+
+.kpiValue {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ds-ink);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kpiSub {
+  font-family: var(--ds-font-mono);
+  font-size: 0.69rem;
+  color: var(--ds-ink-muted);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.statusGood {
+  color: var(--ds-good, #15803d);
+}
+
+.statusWarn {
+  color: var(--ds-warn, #b45309);
+}
+
+.statusBad {
+  color: var(--ds-bad, #b91c1c);
+}
+
+/* Plot Stage */
+.plotToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.plotTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.plotTab {
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--ds-border);
+  background: var(--ds-well);
+  color: var(--ds-ink-muted);
+  font-size: 0.77rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.plotTabActive {
+  border-color: var(--ds-accent);
+  background: color-mix(in srgb, var(--ds-accent) 12%, var(--ds-surface));
+  color: var(--ds-accent);
+}
+
+.plotControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.canvasWrap {
+  position: relative;
+  width: 100%;
+  border: 1px solid var(--ds-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--ds-well);
+}
+
+.plotCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  cursor: crosshair;
+}
+
+.plotFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ds-border);
+}
+
+.cursorReadout {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.75rem;
+  color: var(--ds-ink-muted);
+}
+
+.exportRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.exportLabel {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--ds-ink-muted);
+}
+
+/* Diagnostics */
+.checkList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.checkItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  border-left: 3px solid var(--ds-border);
+  background: var(--ds-well);
+}
+
+.checkInfo {
+  border-left-color: var(--ds-accent);
+}
+
+.checkWarn {
+  border-left-color: var(--ds-warn, #d97706);
+  background: color-mix(in srgb, var(--ds-warn, #d97706) 8%, var(--ds-surface));
+}
+
+.checkError {
+  border-left-color: var(--ds-bad, #dc2626);
+  background: color-mix(in srgb, var(--ds-bad, #dc2626) 9%, var(--ds-surface));
+}
+
+.checkCode {
+  font-family: var(--ds-font-mono);
+  font-weight: 700;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+/* Metrics table */
+.tableScroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.table th {
+  text-align: left;
+  padding: 7px 8px;
+  border-bottom: 1.5px solid var(--ds-border);
+  font-size: 0.73rem;
+  font-weight: 650;
+  color: var(--ds-ink-muted);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--ds-border);
+  vertical-align: middle;
+}
+
+.mono {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.numCell {
+  text-align: right;
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.convCell {
+  font-size: 0.73rem;
+  color: var(--ds-ink-muted);
+}
+
+.infoBtn {
+  background: none;
+  border: 1px solid var(--ds-border);
+  border-radius: 50%;
+  width: 19px;
+  height: 19px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--ds-ink-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+}
+
+.infoBtn:hover {
+  border-color: var(--ds-accent);
+  color: var(--ds-accent);
+}
+
+/* Metric info popover modal */
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 90;
+}
+
+.modalCard {
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  max-width: 520px;
+  width: 100%;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+}
+
+.formulaBox {
+  margin: 10px 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--ds-well);
+  border: 1px solid var(--ds-border);
+  overflow-x: auto;
+  text-align: center;
+}
+
+/* Theory & Compare workspaces */
+.theorySection {
+  margin-bottom: 20px;
+}
+
+.theorySection h2 {
+  font-size: 1.05rem;
+  margin: 0 0 8px;
+  color: var(--ds-ink);
+}
+
+.theorySection p {
+  font-size: 0.87rem;
+  line-height: 1.6;
+  color: var(--ds-ink-muted);
+  margin: 0 0 10px;
+}
+
+.noticeBanner {
+  padding: 8px 11px;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  background: color-mix(in srgb, var(--ds-warn, #d97706) 10%, var(--ds-surface));
+  border: 1px solid color-mix(in srgb, var(--ds-warn, #d97706) 35%, var(--ds-border));
+  color: var(--ds-ink);
+  margin-bottom: 8px;
+}
+
+.errorBanner {
+  padding: 8px 11px;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  background: color-mix(in srgb, var(--ds-bad, #dc2626) 10%, var(--ds-surface));
+  border: 1px solid color-mix(in srgb, var(--ds-bad, #dc2626) 40%, var(--ds-border));
+  color: var(--ds-bad, #dc2626);
+  margin-top: 6px;
+}
+
+@media (max-width: 1040px) {
+  .workbenchGrid {
+    grid-template-columns: 1fr;
+  }
+  .kpiStrip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .shell {
+    padding: 0 12px 36px;
+  }
+  .kpiStrip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+  .presetGrid {
+    grid-template-columns: 1fr;
+  }
+}

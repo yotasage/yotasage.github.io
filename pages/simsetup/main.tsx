@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import React from 'react';
 
 import Bibliography from '../../components/Bibliography';
@@ -159,6 +160,30 @@ export default function SimSetup({ references }: { references: BibEntry[] }) {
       window.removeEventListener('hashchange', onHashChange);
       document.removeEventListener('click', onDocClick);
     };
+  }, []);
+
+  // Optional query bridge from /fft/main (?fs=&f0=&n=)
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const fs = params.get('fs');
+    const f0 = params.get('f0');
+    const n = params.get('n');
+    if (!fs && !f0 && !n) return;
+    setBoxes((all) =>
+      all.map((box, idx) => {
+        if (idx !== 0) return box;
+        return {
+          ...box,
+          solveFor: f0 && fs && n ? 'ncyc' : box.solveFor,
+          text: {
+            ...box.text,
+            ...(fs ? { fs } : {}),
+            ...(f0 ? { f0 } : {}),
+            ...(n ? { npts: n } : {}),
+          },
+        };
+      }),
+    );
   }, []);
 
   const precisionValid = parsePrecision(precisionText) !== null;
@@ -545,6 +570,16 @@ export default function SimSetup({ references }: { references: BibEntry[] }) {
                         >
                           {t('simsetup.rules.openTheory')}
                         </button>
+                        <Link
+                          href={`/fft/main?${new URLSearchParams({
+                            ...(box1Result.values.fs ? { fs: String(box1Result.values.fs) } : {}),
+                            ...(box1Result.values.f0 ? { f0: String(box1Result.values.f0) } : {}),
+                            ...(box1Result.values.npts ? { n: String(Math.round(box1Result.values.npts)) } : {}),
+                          }).toString()}`}
+                          className={styles.buttonGhost}
+                        >
+                          {t('simsetup.rules.openFft')}
+                        </Link>
                       </div>
                     </section>
                   </div>

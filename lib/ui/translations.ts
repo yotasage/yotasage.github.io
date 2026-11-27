@@ -25,6 +25,7 @@ import { en as emWavesEn, nb as emWavesNb } from './i18n/emWaves';
 import { en as emWhys1En, nb as emWhys1Nb } from './i18n/emWhys1';
 import { en as emWhys2En, nb as emWhys2Nb } from './i18n/emWhys2';
 import { en as emWhys3En, nb as emWhys3Nb } from './i18n/emWhys3';
+import { en as fftEn, nb as fftNb } from './i18n/fft';
 import { en as hashEn, nb as hashNb } from './i18n/hash';
 import { en as homeEn, nb as homeNb } from './i18n/home';
 import { en as loremEn, nb as loremNb } from './i18n/lorem';
@@ -90,6 +91,7 @@ export const en = {
   ...calculatorEn,
   ...calculusEn,
   ...calculusIdentitiesEn,
+  ...fftEn,
   ...simsetupEn,
   ...smithCoreEn,
   ...smithExamplesEn,
@@ -171,6 +173,7 @@ export const nb: Record<TranslationKey, string> = {
   ...calculatorNb,
   ...calculusNb,
   ...calculusIdentitiesNb,
+  ...fftNb,
   ...simsetupNb,
   ...smithCoreNb,
   ...smithExamplesNb,

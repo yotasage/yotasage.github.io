@@ -89,6 +89,7 @@ export const en = {
   'simsetup.rules.openPrimes': 'Pick prime',
   'simsetup.rules.openPowers': 'Pick 2ⁿ',
   'simsetup.rules.openTheory': 'Read full theory & references →',
+  'simsetup.rules.openFft': 'Open in FFT analyzer →',
   'simsetup.rules.noData': 'Enter valid parameters to run checks.',
 
   'simsetup.quick.badge': 'Quick mode',
@@ -302,6 +303,7 @@ export const nb: Record<keyof typeof en, string> = {
   'simsetup.rules.openPrimes': 'Velg primtall',
   'simsetup.rules.openPowers': 'Velg 2ⁿ',
   'simsetup.rules.openTheory': 'Les full teori og referanser →',
+  'simsetup.rules.openFft': 'Åpne i FFT-analysator →',
   'simsetup.rules.noData': 'Skriv inn gyldige verdier for å kjøre sjekker.',
 
   'simsetup.quick.badge': 'Rask modus',

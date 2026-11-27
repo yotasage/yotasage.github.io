@@ -40,6 +40,7 @@ const CANONICAL_TITLES = {
   '/licenses': 'Open-Source Licenses',
   '/references': 'References',
   '/simsetup/main': 'FFT & coherent sampling',
+  '/fft/main': 'FFT & spectrum analyzer',
   '/resistor/main': 'Resistor lookup',
   '/smith-chart/main': 'Smith chart',
   '/pcb-viewer/main': 'PCB viewer',

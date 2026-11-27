@@ -2,7 +2,7 @@ import React from 'react';
 
 // Icons for the tool cards on the main page, in the style of components/PdfTools/ToolIcon.tsx. Filled shapes use
 // currentColor, which the <svg> sets to the tool's colour.
-export type HomeIconName = 'base' | 'boolean' | 'calculator' | 'integral' | 'derivative' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'python' | 'hash' | 'chmod' | 'color' | 'timedate' | 'timestamp' | 'textcase' | 'lorem' | 'regex' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
+export type HomeIconName = 'base' | 'boolean' | 'calculator' | 'integral' | 'derivative' | 'simsetup' | 'fft' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'python' | 'hash' | 'chmod' | 'color' | 'timedate' | 'timestamp' | 'textcase' | 'lorem' | 'regex' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
 
 const SAMPLES: [number, number][] = [[6, 24], [12, 12], [18, 12], [24, 24], [30, 36], [36, 36], [42, 24]];
 
@@ -67,6 +67,15 @@ const ICONS: Record<HomeIconName, React.ReactNode> = {
       <path d="M4 24h40M6 24C12 5 18 5 24 24S36 43 42 24" opacity={0.45} />
       <path d="M12 24V12M18 24V12M30 24v12M36 24v12" />
       {SAMPLES.map(([x, y]) => <circle key={x} cx={x} cy={y} r={2.6} fill="currentColor" stroke="none" />)}
+    </>
+  ),
+  // Spectrum analyzer: axes with fundamental peak, harmonic spikes, and noise floor.
+  fft: (
+    <>
+      <path d="M6 38h36M6 10v28" opacity={0.65} />
+      <path d="M9 34h4l3-22 3 22h5l2-12 2 12h4l2-7 2 7h5" />
+      <circle cx={16} cy={12} r={2.3} fill="currentColor" stroke="none" />
+      <path d="M9 30h32" opacity={0.35} strokeDasharray="2.5 2.5" />
     </>
   ),
   qrcode: (

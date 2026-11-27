@@ -48,6 +48,10 @@ export const en = {
   'home.tool.simsetup.category': 'Signal processing',
   'home.tool.simsetup.desc':
     'Compute coherent sampling parameters (f₀, Fs, Ncyc, Npts) for FFTs and simulations, and validate them against prime-ratio and power-of-two rules.',
+  'home.tool.fft.title': 'FFT & spectrum analyzer',
+  'home.tool.fft.category': 'Signal processing',
+  'home.tool.fft.desc':
+    'Analyze CSV, NumPy .npy, WAV, and SPICE .raw waveforms locally with SNDR, ENOB, SFDR, THD, Welch PSD, diagnostics, and Matplotlib-style PNG/SVG/PDF/TikZ exports.',
   'home.tool.resistor.title': 'Resistor lookup',
   'home.tool.resistor.category': 'Electronics',
   'home.tool.resistor.desc':
@@ -133,6 +137,7 @@ export const en = {
   'home.tool.derivative.tags': 'Orders 1–4|Chain · Product · Quotient|Tangent line|Step-by-step & theory|Identities',
   'home.tool.boolean.tags': 'Truth tables|TikZ · IEEE circuits|WaveDrom timing|DFF · Delays|K-Map · QM',
   'home.tool.simsetup.tags': 'Coherent sampling|FFT|Powers of 2|Prime ratios',
+  'home.tool.fft.tags': 'SNDR · ENOB · SFDR|CSV · .npy · WAV · SPICE|Welch · CZT|PNG · SVG · PDF · TikZ',
   'home.tool.resistor.tags': 'E3–E192|Colour bands|SMD · EIA-96|Combinations|Temp design',
   'home.tool.smith.tags': 'Z · Y · ZY grids|Drag & snap|Auto-solver|Freq sweep|SVG · TikZ · S1P',
   'home.tool.pcb.tags': 'Gerber · Excellon|KiCad · Altium|PADS · EAGLE|Realistic view|To KiCad',
@@ -204,6 +209,10 @@ export const nb: Record<keyof typeof en, string> = {
   'home.tool.simsetup.category': 'Signalbehandling',
   'home.tool.simsetup.desc':
     'Beregn koherente samplingsparametre (f₀, Fs, Ncyc, Npts) for FFT og simuleringer, og kontroller dem mot regler for primtall og toerpotenser.',
+  'home.tool.fft.title': 'FFT- og spektrumanalysator',
+  'home.tool.fft.category': 'Signalbehandling',
+  'home.tool.fft.desc':
+    'Analyser CSV-, NumPy .npy-, WAV- og SPICE .raw-bølgeformer lokalt med SNDR, ENOB, SFDR, THD, Welch PSD, diagnostikk og Matplotlib-eksport til PNG/SVG/PDF/TikZ.',
   'home.tool.resistor.title': 'Motstandsoppslag',
   'home.tool.resistor.category': 'Elektronikk',
   'home.tool.resistor.desc':
@@ -289,6 +298,7 @@ export const nb: Record<keyof typeof en, string> = {
   'home.tool.derivative.tags': 'Orden 1–4|Kjerne · Produkt · Brøk|Tangentlinje|Steg-for-steg og teori|Identiteter',
   'home.tool.boolean.tags': 'Sannhetstabeller|TikZ · IEEE-kretser|WaveDrom-tidsdiagram|DFF · Forsinkelser|K-kart · QM',
   'home.tool.simsetup.tags': 'Koherent sampling|FFT|Toerpotenser|Primtallsforhold',
+  'home.tool.fft.tags': 'SNDR · ENOB · SFDR|CSV · .npy · WAV · SPICE|Welch · CZT|PNG · SVG · PDF · TikZ',
   'home.tool.resistor.tags': 'E3–E192|Fargebånd|SMD · EIA-96|Kombinasjoner|Temperaturdesign',
   'home.tool.smith.tags': 'Z · Y · ZY-rutenett|Dra og fest|Autoløser|Frekvenssveip|SVG · TikZ · S1P',
   'home.tool.pcb.tags': 'Gerber · Excellon|KiCad · Altium|PADS · EAGLE|Realistisk visning|Til KiCad',
