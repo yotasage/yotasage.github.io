@@ -49,6 +49,7 @@ import { en as pythonLayoutEn, nb as pythonLayoutNb } from './i18n/python-layout
 import { en as pythonPackagesEn, nb as pythonPackagesNb } from './i18n/python-packages';
 import { en as qrGenEn, nb as qrGenNb } from './i18n/qrGen';
 import { en as qrReadEn, nb as qrReadNb } from './i18n/qrRead';
+import { en as regexEn, nb as regexNb } from './i18n/regex';
 import { en as resistorEn, nb as resistorNb } from './i18n/resistor';
 import { en as resistorCombosEn, nb as resistorCombosNb } from './i18n/resistorCombos';
 import { en as resistorDesignEn, nb as resistorDesignNb } from './i18n/resistorDesign';
@@ -122,6 +123,7 @@ export const en = {
   ...chmodEn,
   ...colorEn,
   ...loremEn,
+  ...regexEn,
   ...textcaseEn,
   ...timedateEn,
   ...timestampEn,
@@ -200,6 +202,7 @@ export const nb: Record<TranslationKey, string> = {
   ...chmodNb,
   ...colorNb,
   ...loremNb,
+  ...regexNb,
   ...textcaseNb,
   ...timedateNb,
   ...timestampNb,

@@ -2,7 +2,7 @@ import React from 'react';
 
 // Icons for the tool cards on the main page, in the style of components/PdfTools/ToolIcon.tsx. Filled shapes use
 // currentColor, which the <svg> sets to the tool's colour.
-export type HomeIconName = 'base' | 'boolean' | 'calculator' | 'integral' | 'derivative' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'python' | 'hash' | 'chmod' | 'color' | 'timedate' | 'timestamp' | 'textcase' | 'lorem' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
+export type HomeIconName = 'base' | 'boolean' | 'calculator' | 'integral' | 'derivative' | 'simsetup' | 'qrcode' | 'qrreader' | 'pdf' | 'base64' | 'paint' | 'notepad' | 'python' | 'hash' | 'chmod' | 'color' | 'timedate' | 'timestamp' | 'textcase' | 'lorem' | 'regex' | 'viewer3d' | 'pcb' | 'resistor' | 'smith' | 'emsim';
 
 const SAMPLES: [number, number][] = [[6, 24], [12, 12], [18, 12], [24, 24], [30, 36], [36, 36], [42, 24]];
 
@@ -216,6 +216,15 @@ const ICONS: Record<HomeIconName, React.ReactNode> = {
       <path d="M19 10H13a6 6 0 0 0 0 12h6" />
       <path d="M16 10v28M21 10v28" />
       <path d="M28 13h14M28 21h14M28 29h14M28 37h9" opacity={0.75} />
+    </>
+  ),
+  // Regex tester: forward-slash delimiters flanking a wildcard dot and asterisk quantifier.
+  regex: (
+    <>
+      <path d="M13 10L6 38" />
+      <path d="M42 10L35 38" />
+      <circle cx={17.5} cy={30.5} r={2.4} fill="currentColor" stroke="none" />
+      <path d="M27.5 16v12M22.3 19l10.4 6M32.7 19l-10.4 6" />
     </>
   ),
   // A cube seen from a corner, with an orbit around it.

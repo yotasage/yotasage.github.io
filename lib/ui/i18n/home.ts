@@ -120,6 +120,10 @@ export const en = {
   'home.tool.lorem.category': 'Text',
   'home.tool.lorem.desc':
     'Generate exact-length placeholder text by paragraphs, words per paragraph, total words, sentences, lists, or characters — in Latin, Cicero, English, or Norwegian, ready for Plain, HTML, Markdown, JSON, or LaTeX.',
+  'home.tool.regex.title': 'Regex tester',
+  'home.tool.regex.category': 'Text & Code',
+  'home.tool.regex.desc':
+    'Test regular expressions live with token-by-token explanations linked to matched text, extraction and replacement templates, language flavors, flags, custom delimiters, examples, and theory.',
   'home.tool.notepad.title': 'Scratchpad',
   'home.tool.notepad.category': 'Text & Code',
   'home.tool.notepad.desc':
@@ -147,6 +151,7 @@ export const en = {
   'home.tool.timestamp.tags': 'Unix s · ms · µs · ns|ISO 8601 · RFC 2822|IANA timezones|Duration · Batch',
   'home.tool.textcase.tags': 'Sentence · Title|UPPER · lower|camelCase|snake_case|kebab-case',
   'home.tool.lorem.tags': 'Words · Paragraphs|Words / paragraph|Lists · Chars|HTML · MD · JSON · TeX',
+  'home.tool.regex.tags': 'Live explainer|Extract · Replace|7 flavors|Delimiters · Flags|Examples · Theory',
 } as const;
 
 export const nb: Record<keyof typeof en, string> = {
@@ -271,6 +276,10 @@ export const nb: Record<keyof typeof en, string> = {
   'home.tool.lorem.category': 'Tekst',
   'home.tool.lorem.desc':
     'Generer plassholdertekst med eksakt kontroll over antall avsnitt, ord per avsnitt, antall ord, setninger, lister eller tegn — på latin, Cicero, engelsk eller norsk, klart for ren tekst, HTML, Markdown, JSON eller LaTeX.',
+  'home.tool.regex.title': 'Regex-tester',
+  'home.tool.regex.category': 'Tekst og kode',
+  'home.tool.regex.desc':
+    'Test regulære uttrykk i sanntid med del-for-del-forklaring koblet til matchet tekst, uttrekks- og erstatningsmaler, språkdialekter, flagg, skilletegn, eksempler og teori.',
   'home.tool.notepad.title': 'Scratchpad',
   'home.tool.notepad.category': 'Tekst og kode',
   'home.tool.notepad.desc':
@@ -298,4 +307,5 @@ export const nb: Record<keyof typeof en, string> = {
   'home.tool.timestamp.tags': 'Unix s · ms · µs · ns|ISO 8601 · RFC 2822|IANA-tidssoner|Differanse · Masse',
   'home.tool.textcase.tags': 'Setning · Tittel|STORE · små|camelCase|snake_case|kebab-case',
   'home.tool.lorem.tags': 'Ord · Avsnitt|Ord / avsnitt|Lister · Tegn|HTML · MD · JSON · TeX',
+  'home.tool.regex.tags': 'Sanntidsforklaring|Uttrekk · Erstatt|7 dialekter|Skilletegn · Flagg|Eksempler · Teori',
 };
