@@ -7,7 +7,7 @@ export const en = {
   'boolean.workspace.solver': 'Simplifier',
   'boolean.workspace.examples': 'Examples',
   'boolean.workspace.gates': 'Gates & symbols',
-  'boolean.workspace.laws': 'Theory & laws',
+  'boolean.workspace.laws': 'Theory',
 
   // Layout & analysis tabs
   'boolean.layout.label': 'Layout',
@@ -345,7 +345,7 @@ export const nb: Record<keyof typeof en, string> = {
   'boolean.workspace.solver': 'Forenkler',
   'boolean.workspace.examples': 'Eksempler',
   'boolean.workspace.gates': 'Porter og symboler',
-  'boolean.workspace.laws': 'Teori og lover',
+  'boolean.workspace.laws': 'Teori',
 
   // Layout & analysis tabs
   'boolean.layout.label': 'Visning',

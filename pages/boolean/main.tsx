@@ -1,13 +1,14 @@
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import BooleanCompareTab, { type CompareSeedPayload } from '../../components/Boolean/BooleanCompareTab';
 import type { BooleanSubmitOverride } from '../../components/Boolean/BooleanInput';
 import BooleanLawsTab, { type TheorySubTab } from '../../components/Boolean/BooleanLawsTab';
 import BooleanSolverView, { type BooleanInputMode } from '../../components/Boolean/BooleanSolverView';
 import ExamplesTab, { type LoadExamplePayload } from '../../components/Boolean/ExamplesTab';
-import GateReferenceTab from '../../components/Boolean/GateReferenceTab';
 import PageHead from '../../components/PageHead';
 import ToolHeader, { type WorkspaceTab } from '../../components/UI/ToolHeader';
+import type { ComparePreset } from '../../lib/boolean/compare';
 import type {
   AnalysisTabId,
   GateInputMode,
@@ -21,7 +22,7 @@ import { useI18n } from '../../lib/ui/i18n';
 import { useDesignSystemPage } from '../../lib/ui/theme';
 import styles from '../../styles/Boolean.module.css';
 
-type WorkspaceId = 'solver' | 'examples' | 'gates' | 'laws';
+type WorkspaceId = 'solver' | 'compare' | 'examples' | 'laws';
 
 const DEFAULT_EQUATIONS: readonly string[] = ["Y = A*B + A'*C + B*C"];
 
@@ -33,6 +34,7 @@ export default function BooleanSimplifierPage() {
   const [workspace, setWorkspace] = useState<WorkspaceId>('solver');
   const [theorySubTab, setTheorySubTab] = useState<TheorySubTab>('overview');
   const [highlightedLawId, setHighlightedLawId] = useState<string | null>(null);
+  const [compareSeed, setCompareSeed] = useState<CompareSeedPayload | null>(null);
 
   const [inputMode, setInputMode] = useState<BooleanInputMode>('expression');
   const [equations, setEquations] = useState<string[]>([...DEFAULT_EQUATIONS]);
@@ -68,7 +70,16 @@ export default function BooleanSimplifierPage() {
         setSubmitted((prev) => ({ ...prev, equations: nextEqs }));
       }
     }
-  }, [router.isReady, router.query.expr]);
+    const qTab = typeof router.query.tab === 'string' ? router.query.tab.trim().toLowerCase() : '';
+    if (qTab === 'compare' || qTab === 'examples' || qTab === 'laws' || qTab === 'solver') {
+      setWorkspace(qTab);
+    } else if (qTab === 'theory') {
+      setWorkspace('laws');
+    } else if (qTab === 'gates') {
+      setWorkspace('laws');
+      setTheorySubTab('gates');
+    }
+  }, [router.isReady, router.query.expr, router.query.tab]);
 
   const handleSolve = useCallback(
     (override?: BooleanSubmitOverride) => {
@@ -150,11 +161,30 @@ export default function BooleanSimplifierPage() {
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [method, effort, targetForm]);
 
+  const handleCompareFromSolver = useCallback((origExpr: string, simplifiedExpr: string) => {
+    setCompareSeed((prev) => ({
+      exprA: origExpr,
+      exprB: simplifiedExpr,
+      seq: (prev?.seq ?? 0) + 1,
+    }));
+    setWorkspace('compare');
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const handleLoadComparePreset = useCallback((preset: ComparePreset) => {
+    setCompareSeed((prev) => ({
+      preset,
+      seq: (prev?.seq ?? 0) + 1,
+    }));
+    setWorkspace('compare');
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   const workspaces: readonly WorkspaceTab<WorkspaceId>[] = useMemo(
     () => [
       { id: 'solver', label: t('boolean.workspace.solver') },
+      { id: 'compare', label: t('boolean.workspace.compare') },
       { id: 'examples', label: t('boolean.workspace.examples') },
-      { id: 'gates', label: t('boolean.workspace.gates') },
       { id: 'laws', label: t('boolean.workspace.laws') },
     ],
     [t],
@@ -210,6 +240,22 @@ export default function BooleanSimplifierPage() {
             onSolve={handleSolve}
             onInspectLaw={handleInspectLaw}
             onOpenKMapGuide={handleOpenKMapGuide}
+            onCompareWork={handleCompareFromSolver}
+          />
+        </section>
+
+        <section
+          className={styles.workspacePanel}
+          hidden={workspace !== 'compare'}
+          aria-label={t('boolean.workspace.compare')}
+        >
+          <BooleanCompareTab
+            notation={notation}
+            onNotationChange={setNotation}
+            explicitAnd={explicitAnd}
+            solverEquations={equations}
+            seedPayload={compareSeed}
+            onOpenInSimplifier={handleTrySingleExample}
           />
         </section>
 
@@ -218,15 +264,10 @@ export default function BooleanSimplifierPage() {
           hidden={workspace !== 'examples'}
           aria-label={t('boolean.workspace.examples')}
         >
-          <ExamplesTab onLoadExample={handleLoadCuratedExample} />
-        </section>
-
-        <section
-          className={styles.workspacePanel}
-          hidden={workspace !== 'gates'}
-          aria-label={t('boolean.workspace.gates')}
-        >
-          <GateReferenceTab onTryGate={handleTrySingleExample} />
+          <ExamplesTab
+            onLoadExample={handleLoadCuratedExample}
+            onLoadComparePreset={handleLoadComparePreset}
+          />
         </section>
 
         <section

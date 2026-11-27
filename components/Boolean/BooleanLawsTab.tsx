@@ -9,10 +9,11 @@ import styles from '../../styles/Boolean.module.css';
 import dStyles from '../../styles/BooleanDiagrams.module.css';
 import KatexSpan from '../KatexSpan';
 import PillTabs, { type PillTabItem } from '../UI/PillTabs';
+import GateReferenceTab from './GateReferenceTab';
 import KMapGuideSection from './KMapGuideSection';
 
 type LawCategoryFilter = 'all' | BooleanLaw['category'];
-export type TheorySubTab = 'overview' | 'kmap-guide';
+export type TheorySubTab = 'overview' | 'gates' | 'kmap-guide';
 
 export interface BooleanLawsTabProps {
   readonly highlightedLawId: string | null;
@@ -129,6 +130,21 @@ export default function BooleanLawsTab({
           <button
             type="button"
             role="tab"
+            aria-selected={activeSubTab === 'gates'}
+            data-testid="theory-subtab-gates"
+            className={[
+              styles.analysisTab,
+              activeSubTab === 'gates' ? styles.analysisTabActive : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            onClick={() => onSubTabChange('gates')}
+          >
+            {t('boolean.workspace.gates')}
+          </button>
+          <button
+            type="button"
+            role="tab"
             aria-selected={activeSubTab === 'kmap-guide'}
             data-testid="theory-subtab-kmap-guide"
             className={[
@@ -144,7 +160,9 @@ export default function BooleanLawsTab({
         </div>
       </div>
 
-      {activeSubTab === 'kmap-guide' ? (
+      {activeSubTab === 'gates' ? (
+        <GateReferenceTab onTryGate={onTryExample} />
+      ) : activeSubTab === 'kmap-guide' ? (
         <KMapGuideSection onOpenExampleInKMap={onOpenKMapExample} />
       ) : (
         <>

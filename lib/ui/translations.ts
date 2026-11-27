@@ -1,6 +1,7 @@
 import { en as baseEn, nb as baseNb } from './i18n/base';
 import { en as booleanEn, nb as booleanNb } from './i18n/boolean';
 import { en as booleanCatalogEn, nb as booleanCatalogNb } from './i18n/booleanCatalog';
+import { en as booleanCompareEn, nb as booleanCompareNb } from './i18n/booleanCompare';
 import { en as booleanExamplesEn, nb as booleanExamplesNb } from './i18n/booleanExamples';
 import { en as booleanGuideEn, nb as booleanGuideNb } from './i18n/booleanGuide';
 import { en as calculatorEn, nb as calculatorNb } from './i18n/calculator';
@@ -83,6 +84,7 @@ export const en = {
   ...homeEn,
   ...booleanEn,
   ...booleanCatalogEn,
+  ...booleanCompareEn,
   ...booleanExamplesEn,
   ...booleanGuideEn,
   ...calculatorEn,
@@ -163,6 +165,7 @@ export const nb: Record<TranslationKey, string> = {
   ...homeNb,
   ...booleanNb,
   ...booleanCatalogNb,
+  ...booleanCompareNb,
   ...booleanExamplesNb,
   ...booleanGuideNb,
   ...calculatorNb,

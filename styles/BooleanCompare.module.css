@@ -1,0 +1,729 @@
+/* Boolean Comparison & Equivalence Checker — Design System v2 */
+
+.compareRoot {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.topToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem 1rem;
+  padding: 0.65rem 0.95rem;
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  box-shadow: var(--ds-shadow-card);
+}
+
+.toolbarGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 0.85rem;
+  min-width: 0;
+}
+
+.toolScopeLabel {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.74rem;
+  font-weight: 640;
+  color: var(--ds-ink-2);
+  padding: 0.18rem 0.5rem;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  border: var(--ds-border-w) solid var(--ds-border);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.toolScopeCompare {
+  color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  border-color: var(--ds-accent-border);
+}
+
+/* Dual-panel comparison inputs */
+.dualInputGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+.compareExprInput {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+.sideCard {
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  padding: 1.05rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.sideHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+}
+
+.sideTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.sideTag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  font-family: var(--ds-font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.sideTagA {
+  background: var(--ds-accent-soft);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  color: var(--ds-accent);
+}
+
+.sideTagB {
+  background: var(--ds-well);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  color: var(--ds-ink);
+}
+
+.sideTitle {
+  margin: 0;
+  font-size: 0.94rem;
+  font-weight: 650;
+  color: var(--ds-ink);
+}
+
+.sideFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  margin-top: auto;
+  padding-top: 0.45rem;
+  border-top: var(--ds-border-w) solid var(--ds-border);
+}
+
+/* Compact truth-table editor inside Compare */
+.ttControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem 0.7rem;
+}
+
+.ttVarChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ttVarInput {
+  width: 48px;
+  min-height: 28px;
+  padding: 0.15rem 0.35rem;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.ttVarInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.ttVarInputInvalid {
+  border-color: var(--ds-bad);
+}
+
+.ttPasteRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.ttPasteInput {
+  flex: 1 1 0%;
+  min-width: 0;
+  min-height: 32px;
+  padding: 0.28rem 0.6rem;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.8rem;
+}
+
+.ttPasteInput:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.ttScrollBox {
+  max-height: 360px;
+  overflow: auto;
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+}
+
+.ttCellBtn {
+  width: 100%;
+  min-width: 38px;
+  min-height: 28px;
+  border: var(--ds-border-w) solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  font-family: var(--ds-font-mono);
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.ttCellBtn:hover {
+  border-color: var(--ds-accent-border);
+  background: var(--ds-accent-soft);
+}
+
+.ttCellOne {
+  color: var(--bool-high);
+  background: color-mix(in srgb, var(--bool-high) 10%, transparent);
+}
+
+.ttCellZero {
+  color: var(--bool-low);
+}
+
+.ttCellDC {
+  color: var(--ds-warn, #d97706);
+  background: color-mix(in srgb, #f59e0b 12%, transparent);
+}
+
+.checkboxLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--ds-ink-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkboxLabel input {
+  accent-color: var(--ds-accent);
+  cursor: pointer;
+}
+
+/* Verdict Banner */
+.verdictCard {
+  border-radius: var(--ds-radius-card);
+  border: var(--ds-border-w) solid var(--ds-border);
+  box-shadow: var(--ds-shadow-card);
+  padding: 1.15rem 1.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.verdictEquivalent {
+  background: color-mix(in srgb, var(--ds-good) 8%, var(--ds-surface-solid));
+  border-color: color-mix(in srgb, var(--ds-good) 42%, transparent);
+}
+
+.verdictMismatch {
+  background: color-mix(in srgb, var(--ds-bad) 7%, var(--ds-surface-solid));
+  border-color: color-mix(in srgb, var(--ds-bad) 40%, transparent);
+}
+
+.verdictTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem 1.1rem;
+}
+
+.verdictLeadBlock {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-width: 0;
+  flex: 1 1 280px;
+}
+
+.verdictIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  flex-shrink: 0;
+  margin-top: 0.08rem;
+}
+
+.verdictIconOk {
+  background: color-mix(in srgb, var(--ds-good) 16%, transparent);
+  color: var(--ds-good);
+  border: var(--ds-border-w) solid color-mix(in srgb, var(--ds-good) 38%, transparent);
+}
+
+.verdictIconBad {
+  background: color-mix(in srgb, var(--ds-bad) 15%, transparent);
+  color: var(--ds-bad);
+  border: var(--ds-border-w) solid color-mix(in srgb, var(--ds-bad) 38%, transparent);
+}
+
+.verdictHeading {
+  margin: 0;
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: var(--ds-ink);
+  letter-spacing: -0.015em;
+}
+
+.verdictExplain {
+  margin: 0.25rem 0 0;
+  font-size: 0.88rem;
+  color: var(--ds-ink-2);
+  line-height: 1.5;
+}
+
+.verdictMetrics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 1.4rem;
+  padding-top: 0.65rem;
+  border-top: var(--ds-border-w) solid var(--ds-border);
+  font-size: 0.84rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.varWarnBanner {
+  padding: 0.65rem 0.9rem;
+  border-radius: var(--ds-radius-sm);
+  background: color-mix(in srgb, #f59e0b 10%, var(--ds-surface-solid));
+  border: var(--ds-border-w) solid color-mix(in srgb, #f59e0b 38%, transparent);
+  color: var(--ds-ink);
+  font-size: 0.83rem;
+  line-height: 1.48;
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+}
+
+.varWarnTitle {
+  font-weight: 650;
+}
+
+/* Diagnostics Grid (Counterexample, Diff Formula, Missing/Extra Formulas) */
+.diagGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 0.85rem;
+}
+
+.diagBox {
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  padding: 0.8rem 0.95rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.diagLabel {
+  font-size: 0.75rem;
+  font-weight: 640;
+  color: var(--ds-ink-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.diagValue {
+  font-family: var(--ds-font-mono);
+  font-size: 0.9rem;
+  font-weight: 620;
+  color: var(--ds-ink);
+  overflow-x: auto;
+  padding-block: 0.15rem;
+}
+
+.diagSub {
+  font-size: 0.78rem;
+  color: var(--ds-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Analysis grid: Diff K-Map + Diff Truth Table */
+.analysisSplit {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.9fr);
+  gap: 1.1rem;
+  align-items: start;
+}
+
+.analysisSingle {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.1rem;
+}
+
+/* Diff Truth Table row highlights */
+.rowMissing {
+  background: color-mix(in srgb, var(--ds-bad) 10%, transparent);
+}
+
+.rowExtra {
+  background: color-mix(in srgb, #f59e0b 11%, transparent);
+}
+
+.rowDC {
+  opacity: 0.78;
+}
+
+.statusTextOk {
+  color: var(--ds-good);
+  font-weight: 620;
+  font-family: var(--ds-font-ui);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.statusTextMissing {
+  color: var(--ds-bad);
+  font-weight: 650;
+  font-family: var(--ds-font-ui);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.statusTextExtra {
+  color: #b45309;
+  font-weight: 650;
+  font-family: var(--ds-font-ui);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+:global(html[data-ds-theme="dark"]) .statusTextExtra {
+  color: #fbbf24;
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(html:not([data-ds-theme])) .statusTextExtra {
+    color: #fbbf24;
+  }
+}
+
+.statusTextDC {
+  color: var(--ds-ink-3);
+  font-family: var(--ds-font-ui);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+/* Diff K-Map */
+.kmapGrid {
+  border-collapse: collapse;
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  margin: 0 auto;
+}
+
+.kmapCorner {
+  padding: 0.45rem 0.65rem;
+  font-size: 0.76rem;
+  font-weight: 650;
+  color: var(--ds-ink-3);
+  text-align: right;
+  border-bottom: var(--ds-border-w) solid var(--ds-border-strong);
+  border-right: var(--ds-border-w) solid var(--ds-border-strong);
+}
+
+.kmapHeader {
+  padding: 0.42rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--ds-ink-2);
+  text-align: center;
+  background: var(--ds-well);
+}
+
+.kmapCell {
+  min-width: 56px;
+  height: 52px;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  text-align: center;
+  vertical-align: middle;
+  padding: 0.25rem;
+  position: relative;
+}
+
+.kmapCellMatch1 {
+  background: color-mix(in srgb, var(--bool-high) 10%, var(--ds-surface-solid));
+  color: var(--bool-high);
+}
+
+.kmapCellMatch0 {
+  background: var(--ds-surface-solid);
+  color: var(--bool-low);
+}
+
+.kmapCellMissing {
+  background: color-mix(in srgb, var(--ds-bad) 15%, var(--ds-surface-solid));
+  color: var(--ds-bad);
+}
+
+.kmapCellExtra {
+  background: color-mix(in srgb, #f59e0b 16%, var(--ds-surface-solid));
+  color: #b45309;
+}
+
+:global(html[data-ds-theme="dark"]) .kmapCellExtra {
+  color: #fbbf24;
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(html:not([data-ds-theme])) .kmapCellExtra {
+    color: #fbbf24;
+  }
+}
+
+.kmapCellDC {
+  background: var(--ds-well);
+  color: var(--ds-ink-3);
+}
+
+.kmapCellVal {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.kmapCellIdx {
+  display: block;
+  font-size: 0.66rem;
+  color: var(--ds-ink-3);
+  margin-top: 0.12rem;
+}
+
+.kmapLegend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 1rem;
+  font-size: 0.76rem;
+  color: var(--ds-ink-2);
+}
+
+.kmapLegendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.kmapSwatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  display: inline-block;
+}
+
+/* Multi-step Derivation Chain Checker */
+.chainList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.chainRow {
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-solid);
+  padding: 0.75rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+.chainRowSelected {
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+.chainRowError {
+  border-color: color-mix(in srgb, var(--ds-bad) 48%, transparent);
+  background: color-mix(in srgb, var(--ds-bad) 4%, var(--ds-surface-solid));
+}
+
+.chainRowValid {
+  border-color: color-mix(in srgb, var(--ds-good) 32%, transparent);
+}
+
+.chainRowTop {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.chainStepNum {
+  font-family: var(--ds-font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ds-ink-3);
+  min-width: 3.6rem;
+  flex-shrink: 0;
+}
+
+.chainStatusLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 0.8rem;
+  padding-left: 4.1rem;
+  font-size: 0.82rem;
+}
+
+.chainStatusGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.8rem;
+  min-width: 0;
+}
+
+.chainBadgeOk {
+  color: var(--ds-good);
+  font-weight: 640;
+}
+
+.chainBadgeErr {
+  color: var(--ds-bad);
+  font-weight: 660;
+}
+
+.chainBadgeWarn {
+  color: #b45309;
+  font-weight: 640;
+}
+
+:global(html[data-ds-theme="dark"]) .chainBadgeWarn {
+  color: #fbbf24;
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(html:not([data-ds-theme])) .chainBadgeWarn {
+    color: #fbbf24;
+  }
+}
+
+.pasteBox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-well);
+  border: var(--ds-border-w) solid var(--ds-border);
+}
+
+.pasteArea {
+  width: 100%;
+  min-height: 92px;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid var(--ds-border-strong);
+  background: var(--ds-surface-solid);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-mono);
+  font-size: 0.86rem;
+  resize: vertical;
+}
+
+.pasteArea:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  box-shadow: var(--ds-focus-ring);
+}
+
+@media (max-width: 980px) {
+  .dualInputGrid,
+  .analysisSplit {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .sideCard,
+  .verdictCard {
+    padding: 0.9rem 0.95rem;
+  }
+
+  .chainRowTop {
+    flex-wrap: wrap;
+  }
+
+  .chainStatusLine {
+    padding-left: 0;
+  }
+
+  .kmapCell {
+    min-width: 46px;
+    height: 46px;
+  }
+}

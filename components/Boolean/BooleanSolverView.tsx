@@ -66,6 +66,7 @@ export interface BooleanSolverViewProps {
   readonly onSolve: (override?: BooleanSubmitOverride) => void;
   readonly onInspectLaw: (lawId: string) => void;
   readonly onOpenKMapGuide?: () => void;
+  readonly onCompareWork?: (origExpr: string, simplifiedExpr: string) => void;
 }
 
 const ZERO_GATE_DELAYS: GateDelayMap = {
@@ -103,6 +104,7 @@ export default function BooleanSolverView({
   onSolve,
   onInspectLaw,
   onOpenKMapGuide,
+  onCompareWork,
 }: BooleanSolverViewProps) {
   const { t } = useI18n();
   const { mode } = useExperienceMode();
@@ -497,6 +499,21 @@ export default function BooleanSolverView({
             >
               {copiedKey === 'text' ? t('boolean.result.copied') : t('boolean.result.copyText')}
             </button>
+            {onCompareWork && activeResult && (
+              <button
+                type="button"
+                className={[styles.btn, styles.btnSmall].join(' ')}
+                onClick={() =>
+                  onCompareWork(
+                    `${activeResult.outputName} = ${activeResult.originalText}`,
+                    `${activeResult.outputName} = ${activeResult.simplifiedText}`,
+                  )
+                }
+                data-testid="solver-compare-work-btn"
+              >
+                {t('boolean.compare.openFromSolver')}
+              </button>
+            )}
           </div>
         </div>
 
