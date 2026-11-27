@@ -1,40 +1,81 @@
+import React from 'react';
+
 import { FLAVOR_LIST } from '../../lib/regex/flavors';
 import { SYNTAX_REFERENCE_GROUPS, TheoryTrySnippet } from '../../lib/regex/theory';
 import { TranslationKey, useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Regex.module.css';
+import RegexCheatSheet from './RegexCheatSheet';
 
 interface RegexTheoryProps {
   onTrySnippet: (snippet: TheoryTrySnippet) => void;
 }
 
+type TheorySubTab = 'theory' | 'cheatsheet';
+
 export default function RegexTheory({ onTrySnippet }: RegexTheoryProps) {
   const { t } = useI18n();
+  const [subTab, setSubTab] = React.useState<TheorySubTab>('theory');
 
   return (
     <div className={styles.theoryLayout}>
-      <header className={styles.theoryHeader}>
-        <h2>{t('regex.theory.heading')}</h2>
-        <p>{t('regex.theory.intro')}</p>
-      </header>
+      <div className={styles.theoryTopRow}>
+        <header className={styles.theoryHeader}>
+          <h2>{t('regex.theory.heading')}</h2>
+          <p>{t('regex.theory.intro')}</p>
+        </header>
 
-      <div className={styles.theoryGrid}>
-        <section className={styles.card}>
-          <h3 className={styles.cardTitle}>{t('regex.theory.engineTitle')}</h3>
-          <p className={styles.theoryProse}>{t('regex.theory.engineBody1')}</p>
-          <p className={styles.theoryProse}>{t('regex.theory.engineBody2')}</p>
-        </section>
-
-        <section className={styles.card}>
-          <h3 className={styles.cardTitle}>{t('regex.theory.perfTitle')}</h3>
-          <p className={styles.theoryProse}>{t('regex.theory.perfBody')}</p>
-          <h3 className={styles.cardTitle} style={{ marginTop: 14 }}>
-            {t('regex.theory.delimiterTitle')}
-          </h3>
-          <p className={styles.theoryProse}>{t('regex.theory.delimiterBody')}</p>
-        </section>
+        <div
+          className={styles.segmented}
+          role="tablist"
+          aria-label={t('regex.theory.subTab.aria')}
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={subTab === 'theory'}
+            className={[styles.segBtn, subTab === 'theory' ? styles.segBtnActive : '']
+              .filter(Boolean)
+              .join(' ')}
+            onClick={() => setSubTab('theory')}
+          >
+            {t('regex.theory.subTab.theory')}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={subTab === 'cheatsheet'}
+            className={[styles.segBtn, subTab === 'cheatsheet' ? styles.segBtnActive : '']
+              .filter(Boolean)
+              .join(' ')}
+            onClick={() => setSubTab('cheatsheet')}
+          >
+            {t('regex.theory.subTab.cheatsheet')}
+          </button>
+        </div>
       </div>
 
-      {SYNTAX_REFERENCE_GROUPS.map((group) => (
+      {subTab === 'cheatsheet' ? (
+        <RegexCheatSheet />
+      ) : (
+        <>
+          <div className={styles.theoryGrid}>
+            <section className={styles.card}>
+              <h3 className={styles.cardTitle}>{t('regex.theory.engineTitle')}</h3>
+              <p className={styles.theoryProse}>{t('regex.theory.engineBody1')}</p>
+              <p className={styles.theoryProse}>{t('regex.theory.engineBody2')}</p>
+            </section>
+
+            <section className={styles.card}>
+              <h3 className={styles.cardTitle}>{t('regex.theory.perfTitle')}</h3>
+              <p className={styles.theoryProse}>{t('regex.theory.perfBody')}</p>
+              <h3 className={[styles.cardTitle, styles.theorySubHeading].join(' ')}>
+                {t('regex.theory.delimiterTitle')}
+              </h3>
+              <p className={styles.theoryProse}>{t('regex.theory.delimiterBody')}</p>
+            </section>
+          </div>
+
+          {SYNTAX_REFERENCE_GROUPS.map((group) => (
         <section key={group.id} className={styles.card}>
           <h3 className={styles.cardTitle}>{t(group.titleKey as TranslationKey)}</h3>
           <p className={styles.theoryProse}>{t(group.introKey as TranslationKey)}</p>
@@ -151,6 +192,8 @@ export default function RegexTheory({ onTrySnippet }: RegexTheoryProps) {
           </table>
         </div>
       </section>
+        </>
+      )}
     </div>
   );
 }

@@ -7,11 +7,9 @@ import {
   DelimiterOption,
   ExtractJoinMode,
   ExtractionMode,
-  RegexExample,
   RegexFlavorId,
   RegexFlagId,
 } from '../../lib/regex/types';
-import { TranslationKey, useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Regex.module.css';
 import ExplanationPanel, { InspectorTab } from './ExplanationPanel';
 import ExtractionPanel from './ExtractionPanel';
@@ -34,6 +32,7 @@ interface RegexWorkbenchProps {
   state: RegexWorkbenchState;
   onStateChange: React.Dispatch<React.SetStateAction<RegexWorkbenchState>>;
   quickMode: boolean;
+  resetVersion?: number;
 }
 
 export function createInitialWorkbenchState(): RegexWorkbenchState {
@@ -55,8 +54,8 @@ export default function RegexWorkbench({
   state,
   onStateChange,
   quickMode,
+  resetVersion = 0,
 }: RegexWorkbenchProps) {
-  const { t } = useI18n();
   const [inspectorTab, setInspectorTab] = React.useState<InspectorTab>('explain');
   const [hoveredTokenId, setHoveredTokenId] = React.useState<string | null>(null);
   const [pinnedTokenId, setPinnedTokenId] = React.useState<string | null>(null);
@@ -64,6 +63,12 @@ export default function RegexWorkbench({
     start: number;
     end: number;
   } | null>(null);
+
+  React.useEffect(() => {
+    setPinnedTokenId(null);
+    setHoveredTokenId(null);
+    setSelectedMatchRange(null);
+  }, [resetVersion]);
 
   // Press Escape to clear a pinned token highlight
   React.useEffect(() => {
@@ -136,23 +141,6 @@ export default function RegexWorkbench({
       ...prev,
       flags: [...FLAVORS[prev.flavor].defaultFlags],
     }));
-  };
-
-  const handleLoadExample = (ex: RegexExample) => {
-    onStateChange({
-      pattern: ex.pattern,
-      testText: ex.testText,
-      flavor: ex.flavor,
-      delimiter: ex.delimiter,
-      flags: [...ex.flags],
-      template: ex.template,
-      extractionMode: ex.extractionMode,
-      joinMode: ex.joinMode,
-      activeExampleId: ex.id,
-    });
-    setPinnedTokenId(null);
-    setHoveredTokenId(null);
-    setSelectedMatchRange(null);
   };
 
   const handleClearAll = () => {
@@ -265,42 +253,6 @@ export default function RegexWorkbench({
           </div>
         )}
       </div>
-
-      <section className={styles.card} aria-label={t('regex.examples.label')}>
-        <div className={styles.cardHeader}>
-          <div className={styles.cardTitleGroup}>
-            <h2 className={styles.cardTitle}>{t('regex.examples.label')}</h2>
-            <span className={styles.metaText}>{REGEX_EXAMPLES.length} presets</span>
-          </div>
-        </div>
-
-        <div className={styles.examplesGrid}>
-          {REGEX_EXAMPLES.map((ex) => {
-            const active = state.activeExampleId === ex.id;
-            const flavorLabel = FLAVORS[ex.flavor].shortName;
-            const flagLabel = ex.flags.join('');
-            return (
-              <button
-                key={ex.id}
-                type="button"
-                className={[styles.exampleBtn, active ? styles.exampleBtnActive : ''].filter(Boolean).join(' ')}
-                aria-pressed={active}
-                onClick={() => handleLoadExample(ex)}
-              >
-                <span className={styles.exampleTitle}>
-                  {t(`regex.ex.${ex.id}.title` as TranslationKey)}
-                </span>
-                <span className={styles.exampleMeta}>
-                  {flavorLabel} · {ex.delimiter === 'none' ? 'raw' : `${ex.delimiter}…${ex.delimiter}`}{flagLabel ? ` ${flagLabel}` : ''}
-                </span>
-                <p className={styles.exampleDesc}>
-                  {t(`regex.ex.${ex.id}.desc` as TranslationKey)}
-                </p>
-              </button>
-            );
-          })}
-        </div>
-      </section>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { CHEAT_SHEET_SECTIONS } from './cheatsheet';
 import { applyExtractionTemplate, compileForExecution, executeRegex } from './engine';
 import { REGEX_EXAMPLES } from './examples';
 import { filterFlagsForFlavor, generateLanguageSnippet } from './flavors';
@@ -155,4 +156,19 @@ test('flavor helpers filter unsupported flags and generate language snippets', (
     extractionMode: 'extract',
   });
   assert.ok(pcreCode.includes('#https://example.com#i'));
+});
+
+test('cheat sheet sections have unique IDs and valid tokens', () => {
+  assert.ok(CHEAT_SHEET_SECTIONS.length >= 6);
+  const seen = new Set<string>();
+  for (const sec of CHEAT_SHEET_SECTIONS) {
+    assert.ok(sec.items.length > 0, `Section ${sec.id} should not be empty`);
+    for (const item of sec.items) {
+      const key = `${sec.id}:${item.id}`;
+      assert.equal(seen.has(key), false, `Duplicate cheat sheet key ${key}`);
+      seen.add(key);
+      assert.ok(item.token.trim().length > 0);
+      assert.ok(item.descKey.startsWith('regex.cs.'));
+    }
+  }
 });

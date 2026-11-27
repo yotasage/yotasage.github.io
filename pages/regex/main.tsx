@@ -1,6 +1,7 @@
 import React from 'react';
 
 import PageHead from '../../components/PageHead';
+import RegexExamples from '../../components/Regex/RegexExamples';
 import RegexTheory from '../../components/Regex/RegexTheory';
 import RegexWorkbench, {
   createInitialWorkbenchState,
@@ -10,12 +11,13 @@ import TeachingCallout from '../../components/UI/TeachingCallout';
 import ToolHeader, { WorkspaceTab } from '../../components/UI/ToolHeader';
 import { FLAVORS } from '../../lib/regex/flavors';
 import { TheoryTrySnippet } from '../../lib/regex/theory';
+import { RegexExample } from '../../lib/regex/types';
 import { useI18n } from '../../lib/ui/i18n';
 import { useExperienceMode } from '../../lib/ui/mode';
 import { useDesignSystemPage } from '../../lib/ui/theme';
 import styles from '../../styles/Regex.module.css';
 
-type WorkspaceId = 'workbench' | 'theory';
+type WorkspaceId = 'workbench' | 'examples' | 'theory';
 
 export default function RegexToolPage() {
   useDesignSystemPage('#be123c', '#fb7185');
@@ -23,14 +25,35 @@ export default function RegexToolPage() {
   const { mode, setMode } = useExperienceMode();
 
   const [workspace, setWorkspace] = React.useState<WorkspaceId>('workbench');
+  const [resetVersion, setResetVersion] = React.useState(0);
   const [workbenchState, setWorkbenchState] = React.useState<RegexWorkbenchState>(
     createInitialWorkbenchState,
   );
 
   const workspaces: readonly WorkspaceTab<WorkspaceId>[] = [
     { id: 'workbench', label: t('regex.tab.workbench') },
+    { id: 'examples', label: t('regex.tab.examples') },
     { id: 'theory', label: t('regex.tab.theory') },
   ];
+
+  const handleLoadExample = (ex: RegexExample) => {
+    setWorkbenchState({
+      pattern: ex.pattern,
+      testText: ex.testText,
+      flavor: ex.flavor,
+      delimiter: ex.delimiter,
+      flags: [...ex.flags],
+      template: ex.template,
+      extractionMode: ex.extractionMode,
+      joinMode: ex.joinMode,
+      activeExampleId: ex.id,
+    });
+    setResetVersion((v) => v + 1);
+    setWorkspace('workbench');
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   const handleTrySnippet = (snippet: TheoryTrySnippet) => {
     const flavor = snippet.flavor ?? 'js';
@@ -45,6 +68,7 @@ export default function RegexToolPage() {
       joinMode: 'newline',
       activeExampleId: null,
     });
+    setResetVersion((v) => v + 1);
     setWorkspace('workbench');
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -107,6 +131,7 @@ export default function RegexToolPage() {
             state={workbenchState}
             onStateChange={setWorkbenchState}
             quickMode={mode === 'quick'}
+            resetVersion={resetVersion}
           />
 
           {mode === 'teaching' && (
@@ -125,6 +150,17 @@ export default function RegexToolPage() {
               </TeachingCallout>
             </div>
           )}
+        </section>
+
+        <section
+          className={styles.workspacePanel}
+          hidden={workspace !== 'examples'}
+          aria-label={t('regex.tab.examples')}
+        >
+          <RegexExamples
+            activeExampleId={workbenchState.activeExampleId}
+            onLoadExample={handleLoadExample}
+          />
         </section>
 
         <section

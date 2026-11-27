@@ -50,6 +50,7 @@ import { en as pythonPackagesEn, nb as pythonPackagesNb } from './i18n/python-pa
 import { en as qrGenEn, nb as qrGenNb } from './i18n/qrGen';
 import { en as qrReadEn, nb as qrReadNb } from './i18n/qrRead';
 import { en as regexEn, nb as regexNb } from './i18n/regex';
+import { en as regexCheatEn, nb as regexCheatNb } from './i18n/regexCheat';
 import { en as resistorEn, nb as resistorNb } from './i18n/resistor';
 import { en as resistorCombosEn, nb as resistorCombosNb } from './i18n/resistorCombos';
 import { en as resistorDesignEn, nb as resistorDesignNb } from './i18n/resistorDesign';
@@ -124,6 +125,7 @@ export const en = {
   ...colorEn,
   ...loremEn,
   ...regexEn,
+  ...regexCheatEn,
   ...textcaseEn,
   ...timedateEn,
   ...timestampEn,
@@ -203,6 +205,7 @@ export const nb: Record<TranslationKey, string> = {
   ...colorNb,
   ...loremNb,
   ...regexNb,
+  ...regexCheatNb,
   ...textcaseNb,
   ...timedateNb,
   ...timestampNb,
