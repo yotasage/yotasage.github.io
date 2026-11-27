@@ -4,12 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import IdentitiesTab from '../../components/Calculus/IdentitiesTab';
 import IntegralSolverView from '../../components/Calculus/IntegralSolverView';
 import PageHead from '../../components/PageHead';
+import ExamplesGallery, { type ExampleCardItem } from '../../components/UI/ExamplesGallery';
 import ToolHeader, { type WorkspaceTab } from '../../components/UI/ToolHeader';
-import { useI18n } from '../../lib/ui/i18n';
+import { INTEGRAL_EXAMPLES } from '../../lib/calculus/examples';
+import { type TranslationKey, useI18n } from '../../lib/ui/i18n';
 import { useDesignSystemPage } from '../../lib/ui/theme';
 import styles from '../../styles/Calculus.module.css';
 
-type WorkspaceId = 'solver' | 'identities';
+type WorkspaceId = 'solver' | 'examples' | 'identities';
 
 const DEFAULT_EXPR = 'x * exp(x^2)';
 
@@ -96,9 +98,41 @@ export default function IntegralSolverPage() {
     setWorkspace('solver');
   }, []);
 
+  const handleSelectExample = useCallback((id: string) => {
+    const ex = INTEGRAL_EXAMPLES.find((p) => p.id === id);
+    if (!ex) return;
+    setExpr(ex.expr);
+    setVariable(ex.variable);
+    setIsDefinite(ex.definite);
+    if (ex.lower !== undefined) setLower(ex.lower);
+    if (ex.upper !== undefined) setUpper(ex.upper);
+    setSubmitted((prev) => ({
+      expr: ex.expr,
+      variable: ex.variable,
+      definite: ex.definite,
+      lower: ex.lower ?? '0',
+      upper: ex.upper ?? 'pi',
+      seq: prev.seq + 1,
+    }));
+    setWorkspace('solver');
+  }, []);
+
+  const exampleItems: readonly ExampleCardItem[] = useMemo(
+    () =>
+      INTEGRAL_EXAMPLES.map((p) => ({
+        id: p.id,
+        tag: t(p.tagKey as TranslationKey),
+        code: p.code,
+        title: t(p.titleKey as TranslationKey),
+        description: t(p.descKey as TranslationKey),
+      })),
+    [t],
+  );
+
   const workspaces: readonly WorkspaceTab<WorkspaceId>[] = useMemo(
     () => [
       { id: 'solver', label: t('calculus.workspace.solver') },
+      { id: 'examples', label: t('ex.tab') },
       { id: 'identities', label: t('calculus.workspace.identities') },
     ],
     [t],
@@ -143,6 +177,20 @@ export default function IntegralSolverPage() {
             submitted={submitted}
             onSolve={handleSolve}
             onInspectRule={handleInspectRule}
+          />
+        </section>
+
+        <section
+          className={styles.workspacePanel}
+          hidden={workspace !== 'examples'}
+          aria-label={t('ex.tab')}
+        >
+          <ExamplesGallery
+            title={t('ex.int.title')}
+            subtitle={t('ex.int.lead')}
+            items={exampleItems}
+            defaultActionLabel={t('ex.int.action')}
+            onSelect={handleSelectExample}
           />
         </section>
 

@@ -22,6 +22,7 @@ export default function FftPage({ references }: { references: BibEntry[] }) {
   const workspaces: readonly WorkspaceTab<FftWorkspaceId>[] = [
     { id: 'analyzer', label: t('fft.ws.analyzer') },
     { id: 'compare', label: t('fft.ws.compare') },
+    { id: 'examples', label: t('ex.tab') },
     { id: 'theory', label: t('fft.ws.theory') },
   ];
 
@@ -43,7 +44,12 @@ export default function FftPage({ references }: { references: BibEntry[] }) {
         allowWideView
       />
 
-      <FftTool workspace={workspace} wideView={wide} references={references} />
+      <FftTool
+        workspace={workspace}
+        onWorkspaceChange={setWorkspace}
+        wideView={wide}
+        references={references}
+      />
     </div>
   );
 }

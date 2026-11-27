@@ -2,22 +2,65 @@ import React from 'react';
 
 import PageHead from '../../components/PageHead';
 import PcbViewer, { PCB_FORMATS } from '../../components/PcbViewer/PcbViewer';
+import ExamplesGallery, { type ExampleCardItem } from '../../components/UI/ExamplesGallery';
 import ToolHeader, { WorkspaceTab } from '../../components/UI/ToolHeader';
-import { useI18n } from '../../lib/ui/i18n';
+import {
+  loadPcbExampleFiles,
+  PCB_EXAMPLE_PRESETS,
+  type PcbExampleId,
+} from '../../lib/pcb/examples';
+import type { PickedFile } from '../../lib/pcb/load';
+import { type TranslationKey, useI18n } from '../../lib/ui/i18n';
 import { useDesignSystemPage } from '../../lib/ui/theme';
 import styles from '../../styles/PcbViewer.module.css';
 
-type WorkspaceId = 'workbench' | 'guide';
+type WorkspaceId = 'workbench' | 'examples' | 'guide';
 
 export default function PcbViewerPage() {
   useDesignSystemPage('#65a30d', '#9ccc3c');
   const { t } = useI18n();
   const [workspace, setWorkspace] = React.useState<WorkspaceId>('workbench');
+  const [externalLoad, setExternalLoad] = React.useState<{ files: PickedFile[]; seq: number } | null>(null);
+  const [loadingExampleId, setLoadingExampleId] = React.useState<PcbExampleId | null>(null);
+  const [exampleError, setExampleError] = React.useState<string | null>(null);
 
   const workspaces: readonly WorkspaceTab<WorkspaceId>[] = [
     { id: 'workbench', label: t('pcb.workbench') },
+    { id: 'examples', label: t('ex.tab') },
     { id: 'guide', label: t('pcb.guide') },
   ];
+
+  const exampleItems: readonly ExampleCardItem<PcbExampleId>[] = React.useMemo(
+    () =>
+      PCB_EXAMPLE_PRESETS.map((p) => ({
+        id: p.id,
+        tag: t(`ex.pcb.${p.id}.tag` as TranslationKey),
+        code: p.code,
+        title: t(`ex.pcb.${p.id}.title` as TranslationKey),
+        description: t(`ex.pcb.${p.id}.desc` as TranslationKey),
+      })),
+    [t],
+  );
+
+  const handleSelectExample = React.useCallback(
+    async (id: PcbExampleId) => {
+      if (loadingExampleId) return;
+      setLoadingExampleId(id);
+      setExampleError(null);
+      try {
+        const files = await loadPcbExampleFiles(id);
+        setExternalLoad((prev) => ({ files, seq: (prev?.seq ?? 0) + 1 }));
+        setWorkspace('workbench');
+      } catch (e) {
+        setExampleError(
+          t('ex.errorLoad', { msg: e instanceof Error ? e.message : String(e) }),
+        );
+      } finally {
+        setLoadingExampleId(null);
+      }
+    },
+    [loadingExampleId, t],
+  );
 
   return (
     <div className={styles.page} data-ds="v2">
@@ -39,14 +82,34 @@ export default function PcbViewerPage() {
       />
 
       <main className={styles.main}>
-        {/* Kept mounted so an opened board is never lost when reading the guide. */}
+        {/* Kept mounted so an opened board is never lost when reading the guide or browsing examples. */}
         <section
           className={styles.workspacePanel}
           hidden={workspace !== 'workbench'}
           aria-label={t('pcb.workbench')}
         >
           <p className={styles.lead}>{t('pcb.lead')}</p>
-          <PcbViewer onOpenGuide={() => setWorkspace('guide')} />
+          <PcbViewer
+            onOpenGuide={() => setWorkspace('guide')}
+            externalLoad={externalLoad}
+          />
+        </section>
+
+        <section
+          className={styles.workspacePanel}
+          hidden={workspace !== 'examples'}
+          aria-label={t('ex.tab')}
+        >
+          <ExamplesGallery<PcbExampleId>
+            title={t('ex.pcb.title')}
+            subtitle={t('ex.pcb.lead')}
+            items={exampleItems}
+            defaultActionLabel={t('ex.pcb.action')}
+            loadingLabel={t('ex.loading')}
+            loadingId={loadingExampleId}
+            error={exampleError}
+            onSelect={handleSelectExample}
+          />
         </section>
 
         <section

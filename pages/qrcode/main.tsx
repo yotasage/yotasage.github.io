@@ -7,10 +7,12 @@ import { Checkbox, Field, NumberInput, Select } from '../../components/UI/Fields
 import SegmentEditor from '../../components/QrGen/SegmentEditor';
 import SymbolInfo from '../../components/QrGen/SymbolInfo';
 import SymbolPreview from '../../components/QrGen/SymbolPreview';
+import ExamplesGallery from '../../components/UI/ExamplesGallery';
 import PillTabs, { PillTabItem } from '../../components/UI/PillTabs';
 import TeachingCallout from '../../components/UI/TeachingCallout';
 import ToolHeader, { WorkspaceTab } from '../../components/UI/ToolHeader';
 import { Charset, CHARSET_LABELS, encodeString } from '../../lib/qr/charsets';
+import { QR_GEN_EXAMPLES, type QrGenExampleId } from '../../lib/qr/examples';
 import {
   EcLevel,
   ecLevelsFor,
@@ -44,7 +46,7 @@ import { useExperienceMode } from '../../lib/ui/mode';
 import { useDesignSystemPage } from '../../lib/ui/theme';
 import styles from '../../styles/QrGen.module.css';
 
-type WorkspaceId = 'workbench' | 'guide';
+type WorkspaceId = 'workbench' | 'examples' | 'guide';
 type ControlTabId = 'content' | 'symbol' | 'encoding' | 'style' | 'decrypt';
 
 // Proprietary Denso Wave formats, listed so it is clear why they cannot be produced here.
@@ -375,10 +377,26 @@ export default function QrCodeGenerator() {
   const workspaces: readonly WorkspaceTab<WorkspaceId>[] = React.useMemo(
     () => [
       { id: 'workbench', label: t('qrgen.workbench') },
+      { id: 'examples', label: t('ex.tab') },
       { id: 'guide', label: t('qrgen.guide') },
     ],
     [t],
   );
+
+  const loadExample = (id: QrGenExampleId) => {
+    const ex = QR_GEN_EXAMPLES.find((item) => item.id === id);
+    if (!ex) return;
+    const ct = CONTENT_TYPES.find((c) => c.id === ex.typeId);
+    setTypeId(ex.typeId);
+    if (ct) setValuesByType((prev) => ({ ...prev, [ex.typeId]: { ...initialValues(ct), ...ex.values } }));
+    changeSymbology(ex.symbology);
+    setEcLevel(ex.ecLevel);
+    if (ex.foreground) setForeground(ex.foreground);
+    if (ex.background) setBackground(ex.background);
+    if (ex.shape) setShape(ex.shape);
+    setControlTab('content');
+    setWorkspace('workbench');
+  };
 
   const controlTabs: readonly PillTabItem<ControlTabId>[] = React.useMemo(() => {
     if (expMode === 'quick') {
@@ -819,6 +837,17 @@ export default function QrCodeGenerator() {
               )}
             </aside>
           </div>
+        </div>
+
+        {/* Examples Workspace */}
+        <div className={styles.workspacePanel} hidden={workspace !== 'examples'}>
+          <ExamplesGallery<QrGenExampleId>
+            title={t('ex.qrgen.title')}
+            subtitle={t('ex.qrgen.lead')}
+            items={QR_GEN_EXAMPLES.map((ex) => ({ id: ex.id, tag: t(ex.tagKey), code: ex.code, title: t(ex.titleKey), description: t(ex.descKey) }))}
+            defaultActionLabel={t('ex.qrgen.action')}
+            onSelect={loadExample}
+          />
         </div>
 
         {/* Guide & Theory Workspace */}

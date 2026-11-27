@@ -765,3 +765,189 @@
     height: 10px;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Shared Examples Gallery Workspace (matches Resistor Lookup Examples tab)
+   -------------------------------------------------------------------------- */
+
+.examplesContainer {
+  max-width: 1120px;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.examplesPadded {
+  padding: 24px 20px 48px;
+}
+
+.examplesHeader {
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  padding: 20px 24px;
+}
+
+.examplesTitle {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--ds-ink);
+}
+
+.examplesLead {
+  margin: 6px 0 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--ds-ink-2);
+}
+
+.examplesError {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border-radius: var(--ds-radius-sm);
+  border: var(--ds-border-w) solid rgba(220, 38, 38, 0.35);
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+  font-size: 0.86rem;
+  font-weight: 500;
+}
+
+:global(html[data-ds-theme="dark"]) .examplesError {
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.4);
+  background: rgba(248, 113, 113, 0.12);
+}
+
+.examplesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.exampleCard {
+  appearance: none;
+  font-family: var(--ds-font-ui);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 10px;
+  padding: 20px 22px;
+  background: var(--ds-surface);
+  border: var(--ds-border-w) solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow-card);
+  cursor: pointer;
+  width: 100%;
+  transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.exampleCard:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: var(--ds-accent-border);
+  box-shadow: var(--ds-shadow-elev);
+}
+
+.exampleCard:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.exampleCard:focus-visible {
+  outline: 2px solid var(--ds-accent);
+  outline-offset: 2px;
+}
+
+.exampleCard:disabled {
+  opacity: 0.72;
+  cursor: progress;
+}
+
+:global(html[data-ds-theme="hc"]) .exampleCard:hover:not(:disabled) {
+  transform: none;
+  border-color: var(--ds-accent);
+  box-shadow: none;
+}
+
+.exampleCardTop {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.exampleTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-well);
+  border: var(--ds-border-w) solid var(--ds-border);
+  color: var(--ds-ink-2);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.exampleCode {
+  padding: 3px 9px;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-accent-soft);
+  border: var(--ds-border-w) solid var(--ds-accent-border);
+  color: var(--ds-accent);
+  font-family: var(--ds-font-mono);
+  font-size: 0.8rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exampleTitle {
+  margin: 2px 0 0;
+  font-size: 1.02rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  color: var(--ds-ink);
+}
+
+.exampleDesc {
+  margin: 0;
+  font-size: 0.87rem;
+  line-height: 1.5;
+  color: var(--ds-ink-2);
+  flex: 1;
+}
+
+.exampleAction {
+  margin-top: 4px;
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--ds-accent);
+}
+
+@media (max-width: 680px) {
+  .examplesPadded {
+    padding: 16px 12px 36px;
+  }
+
+  .examplesHeader {
+    padding: 16px;
+  }
+
+  .examplesGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .exampleCard {
+    padding: 16px;
+  }
+}
+

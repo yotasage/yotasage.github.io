@@ -2,14 +2,16 @@ import React from 'react';
 
 import PageHead from '../../components/PageHead';
 import CaseConverter from '../../components/TextCase/CaseConverter';
+import ExamplesGallery from '../../components/UI/ExamplesGallery';
 import TeachingCallout from '../../components/UI/TeachingCallout';
 import ToolHeader, { WorkspaceTab } from '../../components/UI/ToolHeader';
-import { useI18n } from '../../lib/ui/i18n';
+import { TEXT_CASE_EXAMPLES, type TextCaseExamplePreset } from '../../lib/textcase/examples';
+import { type TranslationKey, useI18n } from '../../lib/ui/i18n';
 import { useExperienceMode } from '../../lib/ui/mode';
 import { useDesignSystemPage } from '../../lib/ui/theme';
 import styles from '../../styles/TextCase.module.css';
 
-type WorkspaceId = 'workbench' | 'guide';
+type WorkspaceId = 'workbench' | 'examples' | 'guide';
 
 export default function TextCase() {
   useDesignSystemPage('#7c3aed', '#a585ff');
@@ -17,11 +19,33 @@ export default function TextCase() {
   const { mode, setMode } = useExperienceMode();
 
   const [workspace, setWorkspace] = React.useState<WorkspaceId>('workbench');
+  const [exampleRequest, setExampleRequest] = React.useState<{ preset: TextCaseExamplePreset; seq: number } | null>(null);
+  const seqRef = React.useRef(0);
 
   const workspaces: readonly WorkspaceTab<WorkspaceId>[] = [
     { id: 'workbench', label: t('textcase.workbench') },
+    { id: 'examples', label: t('ex.tab') },
     { id: 'guide', label: t('textcase.guide') },
   ];
+
+  const exampleItems = React.useMemo(
+    () =>
+      TEXT_CASE_EXAMPLES.map((ex) => ({
+        id: ex.id,
+        tag: t(ex.tagKey as TranslationKey),
+        code: ex.code,
+        title: t(ex.titleKey as TranslationKey),
+        description: t(ex.descKey as TranslationKey),
+      })),
+    [t],
+  );
+
+  const handleSelectExample = React.useCallback((id: string) => {
+    const preset = TEXT_CASE_EXAMPLES.find((ex) => ex.id === id);
+    if (!preset) return;
+    setExampleRequest({ preset, seq: ++seqRef.current });
+    setWorkspace('workbench');
+  }, []);
 
   return (
     <div className={styles.page} data-ds="v2">
@@ -63,7 +87,7 @@ export default function TextCase() {
             </div>
           )}
 
-          <CaseConverter hideOptions={mode === 'quick'} />
+          <CaseConverter hideOptions={mode === 'quick'} exampleRequest={exampleRequest} />
 
           {mode === 'teaching' && (
             <div className={styles.teachingGrid}>
@@ -81,6 +105,16 @@ export default function TextCase() {
               </TeachingCallout>
             </div>
           )}
+        </section>
+
+        <section className={styles.workspacePanel} hidden={workspace !== 'examples'} aria-label={t('ex.tab')}>
+          <ExamplesGallery
+            title={t('ex.textcase.title')}
+            subtitle={t('ex.textcase.lead')}
+            items={exampleItems}
+            defaultActionLabel={t('ex.textcase.action')}
+            onSelect={handleSelectExample}
+          />
         </section>
 
         <section className={styles.workspacePanel} hidden={workspace !== 'guide'} aria-label={t('textcase.guide')}>

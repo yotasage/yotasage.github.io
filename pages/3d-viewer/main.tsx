@@ -1,24 +1,66 @@
 import React from 'react';
 
 import PageHead from '../../components/PageHead';
+import ExamplesGallery, { type ExampleCardItem } from '../../components/UI/ExamplesGallery';
 import ToolHeader, { WorkspaceTab } from '../../components/UI/ToolHeader';
 import Viewer3D from '../../components/Viewer3D/Viewer3D';
-import { useI18n } from '../../lib/ui/i18n';
+import { type TranslationKey, useI18n } from '../../lib/ui/i18n';
 import { useDesignSystemPage } from '../../lib/ui/theme';
+import {
+  loadViewer3dExampleFiles,
+  VIEWER3D_EXAMPLE_PRESETS,
+  type Viewer3dExampleId,
+} from '../../lib/viewer3d/examples';
 import { FORMAT_GROUPS } from '../../lib/viewer3d/formats';
 import styles from '../../styles/Viewer3D.module.css';
 
-type WorkspaceId = 'workbench' | 'guide';
+type WorkspaceId = 'workbench' | 'examples' | 'guide';
 
 export default function Viewer3DPage() {
   useDesignSystemPage('#ea580c', '#f08c3c');
   const { t } = useI18n();
   const [workspace, setWorkspace] = React.useState<WorkspaceId>('workbench');
+  const [externalLoad, setExternalLoad] = React.useState<{ files: File[]; seq: number } | null>(null);
+  const [loadingExampleId, setLoadingExampleId] = React.useState<Viewer3dExampleId | null>(null);
+  const [exampleError, setExampleError] = React.useState<string | null>(null);
 
   const workspaces: readonly WorkspaceTab<WorkspaceId>[] = [
     { id: 'workbench', label: t('viewer3d.workbench') },
+    { id: 'examples', label: t('ex.tab') },
     { id: 'guide', label: t('viewer3d.guide') },
   ];
+
+  const exampleItems: readonly ExampleCardItem<Viewer3dExampleId>[] = React.useMemo(
+    () =>
+      VIEWER3D_EXAMPLE_PRESETS.map((p) => ({
+        id: p.id,
+        tag: t(`ex.v3d.${p.id}.tag` as TranslationKey),
+        code: p.code,
+        title: t(`ex.v3d.${p.id}.title` as TranslationKey),
+        description: t(`ex.v3d.${p.id}.desc` as TranslationKey),
+      })),
+    [t],
+  );
+
+  const handleSelectExample = React.useCallback(
+    async (id: Viewer3dExampleId) => {
+      if (loadingExampleId) return;
+      setLoadingExampleId(id);
+      setExampleError(null);
+      try {
+        const files = await loadViewer3dExampleFiles(id);
+        setExternalLoad((prev) => ({ files, seq: (prev?.seq ?? 0) + 1 }));
+        setWorkspace('workbench');
+      } catch (e) {
+        setExampleError(
+          t('ex.errorLoad', { msg: e instanceof Error ? e.message : String(e) }),
+        );
+      } finally {
+        setLoadingExampleId(null);
+      }
+    },
+    [loadingExampleId, t],
+  );
 
   return (
     <div className={styles.page} data-ds="v2">
@@ -40,14 +82,34 @@ export default function Viewer3DPage() {
       />
 
       <main className={styles.main}>
-        {/* Kept mounted so an opened 3D scene is never discarded when reading the guide. */}
+        {/* Kept mounted so an opened 3D scene is never discarded when browsing examples or reading the guide. */}
         <section
           className={styles.workspacePanel}
           hidden={workspace !== 'workbench'}
           aria-label={t('viewer3d.workbench')}
         >
           <p className={styles.lead}>{t('viewer3d.lead')}</p>
-          <Viewer3D onOpenGuide={() => setWorkspace('guide')} />
+          <Viewer3D
+            onOpenGuide={() => setWorkspace('guide')}
+            externalLoad={externalLoad}
+          />
+        </section>
+
+        <section
+          className={styles.workspacePanel}
+          hidden={workspace !== 'examples'}
+          aria-label={t('ex.tab')}
+        >
+          <ExamplesGallery<Viewer3dExampleId>
+            title={t('ex.v3d.title')}
+            subtitle={t('ex.v3d.lead')}
+            items={exampleItems}
+            defaultActionLabel={t('ex.v3d.action')}
+            loadingLabel={t('ex.loading')}
+            loadingId={loadingExampleId}
+            error={exampleError}
+            onSelect={handleSelectExample}
+          />
         </section>
 
         <section

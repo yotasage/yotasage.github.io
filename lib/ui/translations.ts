@@ -72,6 +72,8 @@ import { en as smithWhysEn, nb as smithWhysNb } from './i18n/smithWhys';
 import { en as textcaseEn, nb as textcaseNb } from './i18n/textcase';
 import { en as timedateEn, nb as timedateNb } from './i18n/timedate';
 import { en as timestampEn, nb as timestampNb } from './i18n/timestamp';
+import { en as toolExamples1En, nb as toolExamples1Nb } from './i18n/toolExamples1';
+import { en as toolExamples2En, nb as toolExamples2Nb } from './i18n/toolExamples2';
 import { en as utilitiesEn, nb as utilitiesNb } from './i18n/utilities';
 import { en as viewer3dEn, nb as viewer3dNb } from './i18n/viewer3d';
 import { en as viewersEn, nb as viewersNb } from './i18n/viewers';
@@ -158,6 +160,8 @@ export const en = {
   ...pythonLayoutEn,
   ...pythonPackagesEn,
   ...viewersEn,
+  ...toolExamples1En,
+  ...toolExamples2En,
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -240,6 +244,8 @@ export const nb: Record<TranslationKey, string> = {
   ...pythonLayoutNb,
   ...pythonPackagesNb,
   ...viewersNb,
+  ...toolExamples1Nb,
+  ...toolExamples2Nb,
 };
 
 export const TRANSLATIONS: Record<Locale, Record<TranslationKey, string>> = {

@@ -3,14 +3,16 @@ import React from 'react';
 import HashGuide from '../../components/Hash/HashGuide';
 import HashWorkbench from '../../components/Hash/HashWorkbench';
 import PageHead from '../../components/PageHead';
+import ExamplesGallery from '../../components/UI/ExamplesGallery';
 import TeachingCallout from '../../components/UI/TeachingCallout';
 import ToolHeader, { WorkspaceTab } from '../../components/UI/ToolHeader';
-import { useI18n } from '../../lib/ui/i18n';
+import { HASH_EXAMPLES, type HashExamplePreset } from '../../lib/toolExamples/presets';
+import { type TranslationKey, useI18n } from '../../lib/ui/i18n';
 import { useExperienceMode } from '../../lib/ui/mode';
 import { useDesignSystemPage } from '../../lib/ui/theme';
 import styles from '../../styles/Hash.module.css';
 
-type WorkspaceId = 'workbench' | 'guide';
+type WorkspaceId = 'workbench' | 'examples' | 'guide';
 
 export default function HashGeneratorPage() {
   useDesignSystemPage('#0369a1', '#38bdf8');
@@ -18,11 +20,33 @@ export default function HashGeneratorPage() {
   const { mode, setMode } = useExperienceMode();
 
   const [workspace, setWorkspace] = React.useState<WorkspaceId>('workbench');
+  const [exampleRequest, setExampleRequest] = React.useState<{ preset: HashExamplePreset; seq: number } | null>(null);
+  const seqRef = React.useRef(0);
 
   const workspaces: readonly WorkspaceTab<WorkspaceId>[] = [
     { id: 'workbench', label: t('hash.workbench') },
+    { id: 'examples', label: t('ex.tab') },
     { id: 'guide', label: t('hash.guide') },
   ];
+
+  const exampleItems = React.useMemo(
+    () =>
+      HASH_EXAMPLES.map((ex) => ({
+        id: ex.id,
+        tag: t(ex.tagKey as TranslationKey),
+        code: ex.code,
+        title: t(ex.titleKey as TranslationKey),
+        description: t(ex.descKey as TranslationKey),
+      })),
+    [t],
+  );
+
+  const handleSelectExample = React.useCallback((id: string) => {
+    const preset = HASH_EXAMPLES.find((ex) => ex.id === id);
+    if (!preset) return;
+    setExampleRequest({ preset, seq: ++seqRef.current });
+    setWorkspace('workbench');
+  }, []);
 
   return (
     <div className={styles.page} data-ds="v2">
@@ -68,7 +92,7 @@ export default function HashGeneratorPage() {
             </div>
           )}
 
-          <HashWorkbench quickMode={mode === 'quick'} />
+          <HashWorkbench quickMode={mode === 'quick'} exampleRequest={exampleRequest} />
 
           {mode === 'teaching' && (
             <div className={styles.teachingGrid}>
@@ -86,6 +110,20 @@ export default function HashGeneratorPage() {
               </TeachingCallout>
             </div>
           )}
+        </section>
+
+        <section
+          className={styles.workspacePanel}
+          hidden={workspace !== 'examples'}
+          aria-label={t('ex.tab')}
+        >
+          <ExamplesGallery
+            title={t('ex.hash.title')}
+            subtitle={t('ex.hash.lead')}
+            items={exampleItems}
+            defaultActionLabel={t('ex.hash.action')}
+            onSelect={handleSelectExample}
+          />
         </section>
 
         <section

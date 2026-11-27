@@ -6,6 +6,7 @@ import { groupDigits } from '../../lib/simsetup/numbers';
 import { CaseId, CaseInfo, CODE_CASES, convertCase, PROSE_CASES, TEXT_CASES } from '../../lib/textcase/cases';
 import { TitleStyle } from '../../lib/textcase/prose';
 import { textStats } from '../../lib/textcase/stats';
+import type { TextCaseExamplePreset } from '../../lib/textcase/examples';
 import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/TextCase.module.css';
 import { DropTarget, FilePickerButton } from '../PdfTools/ToolPage';
@@ -53,7 +54,13 @@ function Option({ label, help, checked, onChange }: { label: string; help: strin
   );
 }
 
-export default function CaseConverter({ hideOptions = false }: { hideOptions?: boolean }) {
+export default function CaseConverter({
+  hideOptions = false,
+  exampleRequest = null,
+}: {
+  hideOptions?: boolean;
+  exampleRequest?: { preset: TextCaseExamplePreset; seq: number } | null;
+}) {
   const { t } = useI18n();
   const [text, setText] = React.useState('');
   const [file, setFile] = React.useState({ name: 'text', ext: '.txt' });
@@ -78,6 +85,18 @@ export default function CaseConverter({ hideOptions = false }: { hideOptions?: b
       // Storage is blocked, so the terms are not remembered.
     }
   }, []);
+
+  const lastExampleSeqRef = React.useRef(0);
+  React.useEffect(() => {
+    if (!exampleRequest || exampleRequest.seq === lastExampleSeqRef.current) return;
+    lastExampleSeqRef.current = exampleRequest.seq;
+    const { preset } = exampleRequest;
+    setText(preset.text);
+    setCaseId(preset.caseId);
+    if (preset.titleStyle) setTitleStyle(preset.titleStyle);
+    setAscii(Boolean(preset.ascii));
+    setNotice(null);
+  }, [exampleRequest]);
 
   function changeTerms(value: string) {
     setTermsText(value);

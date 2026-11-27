@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import ColorFormatsPanel from '../../components/Color/ColorFormatsPanel';
 import ColorGuide from '../../components/Color/ColorGuide';
@@ -8,17 +8,19 @@ import ImageColorPicker from '../../components/Color/ImageColorPicker';
 import PaletteHarmoniesPanel from '../../components/Color/PaletteHarmoniesPanel';
 import SavedSwatchesBar from '../../components/Color/SavedSwatchesBar';
 import PageHead from '../../components/PageHead';
+import ExamplesGallery from '../../components/UI/ExamplesGallery';
 import TeachingCallout from '../../components/UI/TeachingCallout';
 import ToolHeader, { WorkspaceTab } from '../../components/UI/ToolHeader';
 import { normalizeRgba } from '../../lib/color/convert';
 import { formatHex } from '../../lib/color/parse';
 import type { HarmonyKind, RGBA, SavedSwatch } from '../../lib/color/types';
-import { useI18n } from '../../lib/ui/i18n';
+import { COLOR_EXAMPLES } from '../../lib/toolExamples/presets';
+import { type TranslationKey, useI18n } from '../../lib/ui/i18n';
 import { useExperienceMode } from '../../lib/ui/mode';
 import { useDesignSystemPage } from '../../lib/ui/theme';
 import styles from '../../styles/Color.module.css';
 
-type WorkspaceId = 'workbench' | 'image' | 'guide';
+type WorkspaceId = 'workbench' | 'image' | 'examples' | 'guide';
 
 const STORAGE_KEY_SAVED = 'yotasage.color.savedSwatches.v1';
 
@@ -129,8 +131,32 @@ export default function ColorConverterPage() {
   const workspaces: readonly WorkspaceTab<WorkspaceId>[] = [
     { id: 'workbench', label: t('color.tab.workbench') },
     { id: 'image', label: t('color.tab.image') },
+    { id: 'examples', label: t('ex.tab') },
     { id: 'guide', label: t('color.tab.guide') },
   ];
+
+  const exampleItems = useMemo(
+    () =>
+      COLOR_EXAMPLES.map((ex) => ({
+        id: ex.id,
+        tag: t(ex.tagKey as TranslationKey),
+        code: ex.code,
+        title: t(ex.titleKey as TranslationKey),
+        description: t(ex.descKey as TranslationKey),
+      })),
+    [t],
+  );
+
+  const handleSelectExample = useCallback(
+    (id: string) => {
+      const ex = COLOR_EXAMPLES.find((item) => item.id === id);
+      if (!ex) return;
+      handleColorChange(ex.color, true);
+      setHarmonyKind(ex.harmony);
+      setWorkspace('workbench');
+    },
+    [handleColorChange],
+  );
 
   const isQuick = mode === 'quick';
 
@@ -282,6 +308,21 @@ export default function ColorConverterPage() {
               onClearSaved={() => setSavedSwatches([])}
             />
           </div>
+        </section>
+
+        {/* Examples Workspace */}
+        <section
+          className={styles.workspacePanel}
+          hidden={workspace !== 'examples'}
+          aria-label={t('ex.tab')}
+        >
+          <ExamplesGallery
+            title={t('ex.color.title')}
+            subtitle={t('ex.color.lead')}
+            items={exampleItems}
+            defaultActionLabel={t('ex.color.action')}
+            onSelect={handleSelectExample}
+          />
         </section>
 
         {/* Color Guide & Theory Workspace */}

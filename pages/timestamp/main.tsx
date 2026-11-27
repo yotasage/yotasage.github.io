@@ -9,6 +9,7 @@ import LiveClockBar from '../../components/Timestamp/LiveClockBar';
 import SmartInputCard from '../../components/Timestamp/SmartInputCard';
 import TimestampGuide from '../../components/Timestamp/TimestampGuide';
 import WorldZonesCard from '../../components/Timestamp/WorldZonesCard';
+import ExamplesGallery from '../../components/UI/ExamplesGallery';
 import TeachingCallout from '../../components/UI/TeachingCallout';
 import ToolHeader, { WorkspaceTab } from '../../components/UI/ToolHeader';
 import {
@@ -23,12 +24,13 @@ import {
   zonedPartsToEpochNs,
 } from '../../lib/timestamp/timezone';
 import type { EpochUnit } from '../../lib/timestamp/types';
-import { useI18n } from '../../lib/ui/i18n';
+import { TIMESTAMP_EXAMPLES } from '../../lib/toolExamples/presets';
+import { type TranslationKey, useI18n } from '../../lib/ui/i18n';
 import { useExperienceMode } from '../../lib/ui/mode';
 import { useDesignSystemPage } from '../../lib/ui/theme';
 import styles from '../../styles/Timestamp.module.css';
 
-type WorkspaceId = 'converter' | 'difference' | 'batch' | 'guide';
+type WorkspaceId = 'converter' | 'difference' | 'batch' | 'examples' | 'guide';
 
 // Deterministic SSR fallback before client mount so static export is reproducible.
 const FALLBACK_NOW_MS = 1_795_635_565_000; // 2026-11-26T19:39:25.000Z
@@ -152,8 +154,33 @@ export default function TimestampConverterPage() {
     { id: 'converter', label: t('ts.tab.converter') },
     { id: 'difference', label: t('ts.tab.difference') },
     { id: 'batch', label: t('ts.tab.batch') },
+    { id: 'examples', label: t('ex.tab') },
     { id: 'guide', label: t('ts.tab.guide') },
   ];
+
+  const exampleItems = React.useMemo(
+    () =>
+      TIMESTAMP_EXAMPLES.map((ex) => ({
+        id: ex.id,
+        tag: t(ex.tagKey as TranslationKey),
+        code: ex.code,
+        title: t(ex.titleKey as TranslationKey),
+        description: t(ex.descKey as TranslationKey),
+      })),
+    [t],
+  );
+
+  const handleSelectExample = React.useCallback(
+    (id: string) => {
+      const ex = TIMESTAMP_EXAMPLES.find((item) => item.id === id);
+      if (!ex) return;
+      setUnitOverride(ex.unitOverride ?? 'auto');
+      if (ex.rawInput !== undefined) setRawInput(ex.rawInput);
+      if (ex.selectedZone) setSelectedZone(ex.selectedZone);
+      handleWorkspaceChange(ex.targetWorkspace);
+    },
+    [handleWorkspaceChange],
+  );
 
   return (
     <div className={styles.page} data-ds="v2">
@@ -296,6 +323,21 @@ export default function TimestampConverterPage() {
           <BatchPanel
             selectedZone={selectedZone}
             onOpenInConverter={handleOpenInConverter}
+          />
+        </section>
+
+        {/* Examples Workspace */}
+        <section
+          className={styles.workspacePanel}
+          hidden={workspace !== 'examples'}
+          aria-label={t('ex.tab')}
+        >
+          <ExamplesGallery
+            title={t('ex.ts.title')}
+            subtitle={t('ex.ts.lead')}
+            items={exampleItems}
+            defaultActionLabel={t('ex.ts.action')}
+            onSelect={handleSelectExample}
           />
         </section>
 

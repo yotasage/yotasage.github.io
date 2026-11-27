@@ -10,6 +10,7 @@ import {
 } from '../../lib/paint/canvasOps';
 import { readImageFromPasteEvent } from '../../lib/paint/clipboard';
 import { BLACK, rgbaToCss, WHITE } from '../../lib/paint/color';
+import { buildPaintExampleRuntime, type PaintExampleId } from '../../lib/paint/examples';
 import { floodFillBuffer } from '../../lib/paint/floodFill';
 import {
   clampRect,
@@ -89,7 +90,11 @@ function isEditableElement(target: EventTarget | null): boolean {
   );
 }
 
-export default function PaintWorkspace() {
+export interface PaintWorkspaceProps {
+  exampleRequest?: { id: PaintExampleId; seq: number } | null;
+}
+
+export default function PaintWorkspace({ exampleRequest }: PaintWorkspaceProps) {
   const { t } = useI18n();
 
   const workspaceRef = useRef<HTMLDivElement | null>(null);
@@ -148,6 +153,7 @@ export default function PaintWorkspace() {
     getActiveLayer,
     commitLayers,
     initDefaultDocument,
+    openNewDocument,
     commitFloatingSelection,
     liftSelectionToFloating,
     nudgeActiveSelection,
@@ -213,6 +219,14 @@ export default function PaintWorkspace() {
       // ignore storage errors
     }
   }, [initDefaultDocument]);
+
+  const lastExampleSeqRef = useRef(0);
+  useEffect(() => {
+    if (!exampleRequest || exampleRequest.seq === lastExampleSeqRef.current) return;
+    lastExampleSeqRef.current = exampleRequest.seq;
+    const { runtime, docName } = buildPaintExampleRuntime(exampleRequest.id);
+    openNewDocument(runtime, docName, true);
+  }, [exampleRequest, openNewDocument]);
 
   useEffect(() => {
     try {

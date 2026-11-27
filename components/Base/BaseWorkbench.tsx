@@ -21,6 +21,7 @@ import {
   type LetterCase,
   type ParseError,
 } from '../../lib/base/types';
+import type { BaseExamplePreset } from '../../lib/toolExamples/presets';
 import { TranslationKey, useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/BaseConverter.module.css';
 import BaseSelector, { getBaseDisplayName } from './BaseSelector';
@@ -31,11 +32,16 @@ import StepsPanel from './StepsPanel';
 interface BaseWorkbenchProps {
   quickMode: boolean;
   teachingMode: boolean;
+  exampleRequest?: { preset: BaseExamplePreset; seq: number } | null;
 }
 
 const FRAC_PRECISION_OPTIONS = [8, 16, 32, 64] as const;
 
-export default function BaseWorkbench({ quickMode, teachingMode }: BaseWorkbenchProps) {
+export default function BaseWorkbench({
+  quickMode,
+  teachingMode,
+  exampleRequest = null,
+}: BaseWorkbenchProps) {
   const { t } = useI18n();
 
   const [fromSpec, setFromSpec] = React.useState<BaseSpec>({
@@ -57,6 +63,15 @@ export default function BaseWorkbench({ quickMode, teachingMode }: BaseWorkbench
     ...DEFAULT_BOARD_BASES,
   ]);
   const [copiedOutput, setCopiedOutput] = React.useState(false);
+
+  const lastExampleSeqRef = React.useRef(0);
+  React.useEffect(() => {
+    if (!exampleRequest || exampleRequest.seq === lastExampleSeqRef.current) return;
+    lastExampleSeqRef.current = exampleRequest.seq;
+    setFromSpec(exampleRequest.preset.from);
+    setToSpec(exampleRequest.preset.to);
+    setInputText(exampleRequest.preset.value);
+  }, [exampleRequest]);
 
   const formatOptions: FormatOptions = React.useMemo(
     () => ({

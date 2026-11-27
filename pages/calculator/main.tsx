@@ -7,9 +7,11 @@ import NotebookView from '../../components/Calculator/NotebookView';
 import QuickBarView from '../../components/Calculator/QuickBarView';
 import type { EvaluatedVariableInfo } from '../../components/Calculator/VariablesPanel';
 import PageHead from '../../components/PageHead';
+import ExamplesGallery, { type ExampleCardItem } from '../../components/UI/ExamplesGallery';
 import PillTabs, { type PillTabItem } from '../../components/UI/PillTabs';
 import ToolHeader, { type WorkspaceTab } from '../../components/UI/ToolHeader';
 import { type EvalEnv, type EvalResult, evaluateInput } from '../../lib/calc/eval';
+import { CALC_EXAMPLES } from '../../lib/calc/examples';
 import type { SmartCalcLayoutV1 } from '../../lib/calc/layouts';
 import {
   type CalcWorkflowTab,
@@ -31,11 +33,11 @@ import {
   type StoredVariable,
 } from '../../lib/calc/storage';
 import type { CalcValue } from '../../lib/calc/value';
-import { useI18n } from '../../lib/ui/i18n';
+import { type TranslationKey, useI18n } from '../../lib/ui/i18n';
 import { useDesignSystemPage } from '../../lib/ui/theme';
 import styles from '../../styles/Calculator.module.css';
 
-type WorkspaceId = 'calculator' | 'layouts' | 'guide';
+type WorkspaceId = 'calculator' | 'layouts' | 'examples' | 'guide';
 
 function splitValueAndUnit(formatted: string): { numericPart: string; unitPart: string } {
   const trimmed = formatted.trim();
@@ -261,10 +263,45 @@ export default function SmartCalculatorPage() {
     [workflow],
   );
 
+  const handleSelectExample = useCallback((id: string) => {
+    const ex = CALC_EXAMPLES.find((p) => p.id === id);
+    if (!ex) return;
+    if (ex.variables.length > 0) {
+      setVariables((prev) => {
+        const next = [...prev];
+        for (const v of ex.variables) {
+          const idx = next.findIndex((item) => item.name === v.name);
+          if (idx === -1) next.push({ ...v });
+          else next[idx] = { ...v };
+        }
+        return next;
+      });
+    }
+    setExpr(ex.expr);
+    if (ex.notebookText) {
+      setNotebookText(ex.notebookText);
+    }
+    setWorkflow(ex.workflow);
+    setWorkspace('calculator');
+  }, []);
+
+  const exampleItems: readonly ExampleCardItem[] = useMemo(
+    () =>
+      CALC_EXAMPLES.map((p) => ({
+        id: p.id,
+        tag: t(p.tagKey as TranslationKey),
+        code: p.code,
+        title: t(p.titleKey as TranslationKey),
+        description: t(p.descKey as TranslationKey),
+      })),
+    [t],
+  );
+
   const workspaces: readonly WorkspaceTab<WorkspaceId>[] = useMemo(
     () => [
       { id: 'calculator', label: t('calc.workspace.calculator') },
       { id: 'layouts', label: t('calc.workspace.layouts') },
+      { id: 'examples', label: t('ex.tab') },
       { id: 'guide', label: t('calc.workspace.guide') },
     ],
     [t],
@@ -364,6 +401,20 @@ export default function SmartCalculatorPage() {
             onImportCustomLayouts={handleImportCustomLayouts}
             onDeleteCustomLayout={handleDeleteCustomLayout}
             onSendToCalculator={handleSendToCalculator}
+          />
+        </section>
+
+        <section
+          className={styles.workspacePanel}
+          hidden={workspace !== 'examples'}
+          aria-label={t('ex.tab')}
+        >
+          <ExamplesGallery
+            title={t('ex.calc.title')}
+            subtitle={t('ex.calc.lead')}
+            items={exampleItems}
+            defaultActionLabel={t('ex.calc.action')}
+            onSelect={handleSelectExample}
           />
         </section>
 

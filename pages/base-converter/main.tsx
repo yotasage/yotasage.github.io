@@ -3,14 +3,16 @@ import React from 'react';
 import BaseGuide from '../../components/Base/BaseGuide';
 import BaseWorkbench from '../../components/Base/BaseWorkbench';
 import PageHead from '../../components/PageHead';
+import ExamplesGallery from '../../components/UI/ExamplesGallery';
 import TeachingCallout from '../../components/UI/TeachingCallout';
 import ToolHeader, { WorkspaceTab } from '../../components/UI/ToolHeader';
-import { useI18n } from '../../lib/ui/i18n';
+import { BASE_EXAMPLES, type BaseExamplePreset } from '../../lib/toolExamples/presets';
+import { type TranslationKey, useI18n } from '../../lib/ui/i18n';
 import { useExperienceMode } from '../../lib/ui/mode';
 import { useDesignSystemPage } from '../../lib/ui/theme';
 import styles from '../../styles/BaseConverter.module.css';
 
-type WorkspaceId = 'converter' | 'guide';
+type WorkspaceId = 'converter' | 'examples' | 'guide';
 
 export default function NumberBaseConverterPage() {
   useDesignSystemPage('#0284c7', '#38bdf8');
@@ -18,11 +20,33 @@ export default function NumberBaseConverterPage() {
   const { mode, setMode } = useExperienceMode();
 
   const [workspace, setWorkspace] = React.useState<WorkspaceId>('converter');
+  const [exampleRequest, setExampleRequest] = React.useState<{ preset: BaseExamplePreset; seq: number } | null>(null);
+  const seqRef = React.useRef(0);
 
   const workspaces: readonly WorkspaceTab<WorkspaceId>[] = [
     { id: 'converter', label: t('base.tab.converter') },
+    { id: 'examples', label: t('ex.tab') },
     { id: 'guide', label: t('base.tab.guide') },
   ];
+
+  const exampleItems = React.useMemo(
+    () =>
+      BASE_EXAMPLES.map((ex) => ({
+        id: ex.id,
+        tag: t(ex.tagKey as TranslationKey),
+        code: ex.code,
+        title: t(ex.titleKey as TranslationKey),
+        description: t(ex.descKey as TranslationKey),
+      })),
+    [t],
+  );
+
+  const handleSelectExample = React.useCallback((id: string) => {
+    const preset = BASE_EXAMPLES.find((ex) => ex.id === id);
+    if (!preset) return;
+    setExampleRequest({ preset, seq: ++seqRef.current });
+    setWorkspace('converter');
+  }, []);
 
   return (
     <div className={styles.page} data-ds="v2">
@@ -76,7 +100,11 @@ export default function NumberBaseConverterPage() {
             </div>
           )}
 
-          <BaseWorkbench quickMode={mode === 'quick'} teachingMode={mode === 'teaching'} />
+          <BaseWorkbench
+            quickMode={mode === 'quick'}
+            teachingMode={mode === 'teaching'}
+            exampleRequest={exampleRequest}
+          />
 
           {mode === 'teaching' && (
             <div className={styles.teachingGrid}>
@@ -94,6 +122,20 @@ export default function NumberBaseConverterPage() {
               </TeachingCallout>
             </div>
           )}
+        </section>
+
+        <section
+          className={styles.workspacePanel}
+          hidden={workspace !== 'examples'}
+          aria-label={t('ex.tab')}
+        >
+          <ExamplesGallery
+            title={t('ex.base.title')}
+            subtitle={t('ex.base.lead')}
+            items={exampleItems}
+            defaultActionLabel={t('ex.base.action')}
+            onSelect={handleSelectExample}
+          />
         </section>
 
         <section

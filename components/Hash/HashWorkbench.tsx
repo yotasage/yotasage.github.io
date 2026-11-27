@@ -22,6 +22,7 @@ import {
   runFieldHashJob,
   WorkerInputPayload,
 } from '../../lib/hash/workerClient';
+import type { HashExamplePreset } from '../../lib/toolExamples/presets';
 import { useI18n } from '../../lib/ui/i18n';
 import styles from '../../styles/Hash.module.css';
 import HashFieldCard from './HashFieldCard';
@@ -30,6 +31,7 @@ import HashVerifierPanel from './HashVerifierPanel';
 
 interface HashWorkbenchProps {
   quickMode: boolean;
+  exampleRequest?: { preset: HashExamplePreset; seq: number } | null;
 }
 
 interface WorkbenchField extends HashFieldEntry {
@@ -101,7 +103,7 @@ function digestsEqual(
   return true;
 }
 
-export default function HashWorkbench({ quickMode }: HashWorkbenchProps) {
+export default function HashWorkbench({ quickMode, exampleRequest = null }: HashWorkbenchProps) {
   const { t } = useI18n();
   const nextIdRef = React.useRef(3);
   const batchFileInputRef = React.useRef<HTMLInputElement>(null);
@@ -581,32 +583,31 @@ export default function HashWorkbench({ quickMode }: HashWorkbenchProps) {
     setFields((prev) => (prev.length <= 1 ? prev : prev.filter((f) => f.id !== id)));
   }, []);
 
-  const handleLoadExample = React.useCallback(() => {
+  const lastExampleSeqRef = React.useRef(0);
+  React.useEffect(() => {
+    if (!exampleRequest || exampleRequest.seq === lastExampleSeqRef.current) return;
+    lastExampleSeqRef.current = exampleRequest.seq;
+    const { preset } = exampleRequest;
     for (const id of Array.from(cacheRef.current.keys())) {
       cancelFieldHashJob(id);
     }
     cacheRef.current.clear();
-    nextIdRef.current = 4;
-    setFields([
-      {
-        ...createEmptyField('field-1', 'Release payload'),
-        text: 'Hello, world!',
+    const nextAlgos = new Set(preset.algorithms);
+    setSelectedAlgorithms(ORDERED_ALGO_IDS.filter((id) => nextAlgos.has(id)));
+    setEncoding(preset.encoding);
+    setHmacEnabled(Boolean(preset.hmacEnabled));
+    setHmacKey(preset.hmacKey ?? '');
+    setExpectedHash(preset.expectedHash ?? '');
+    nextIdRef.current = preset.fields.length + 1;
+    setFields(
+      preset.fields.map((f, idx) => ({
+        ...createEmptyField(`field-${idx + 1}`, f.label),
+        text: f.text,
+        textEncoding: f.textEncoding ?? 'utf8',
         inputRevision: 1,
-      },
-      {
-        ...createEmptyField('field-2', 'Verified copy'),
-        text: 'Hello, world!',
-        inputRevision: 1,
-      },
-      {
-        ...createEmptyField('field-3', 'Modified copy'),
-        text: 'Hello, world.',
-        inputRevision: 1,
-      },
-    ]);
-    // SHA-256 of "Hello, world!"
-    setExpectedHash('315f5bdb76d078c43b8ac0064e4a0164612b1fce77c869345bfc94c75894edd3');
-  }, []);
+      })),
+    );
+  }, [exampleRequest]);
 
   const handleClearAll = React.useCallback(() => {
     for (const id of Array.from(cacheRef.current.keys())) {
@@ -705,9 +706,6 @@ export default function HashWorkbench({ quickMode }: HashWorkbenchProps) {
               onClick={() => batchFileInputRef.current?.click()}
             >
               + {t('hash.fields.addFiles')}
-            </button>
-            <button type="button" className={styles.button} onClick={handleLoadExample}>
-              {t('hash.fields.loadExample')}
             </button>
             {hasAnyActiveField && (
               <button type="button" className={styles.button} onClick={handleCopyManifest}>

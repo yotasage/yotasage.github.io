@@ -10,7 +10,7 @@ import type {
   SignalDef,
   YAxisUnit,
 } from '../../lib/fft/types';
-import { generateBuiltinPreset, type BuiltinPresetId } from '../../lib/fft/data/presets';
+import { BUILTIN_PRESETS, generateBuiltinPreset, type BuiltinPresetId } from '../../lib/fft/data/presets';
 import { parseTextDataset, parseUploadedFile } from '../../lib/fft/data/parsers';
 import { analyzeDataset, createDefaultSetup } from '../../lib/fft/metrics/analyze';
 import { runAnalysisAsync } from '../../lib/fft/worker/client';
@@ -27,14 +27,17 @@ import DataPanel from './DataPanel';
 import SetupPanel from './SetupPanel';
 import PlotStage from './PlotStage';
 import ResultsAndChecks from './ResultsAndChecks';
+import { useI18n } from '../../lib/ui/i18n';
+import ExamplesGallery, { type ExampleCardItem } from '../UI/ExamplesGallery';
 import CompareWorkspace from './CompareWorkspace';
 import TheoryWorkspace from './TheoryWorkspace';
 import styles from '../../styles/Fft.module.css';
 
-export type FftWorkspaceId = 'analyzer' | 'compare' | 'theory';
+export type FftWorkspaceId = 'analyzer' | 'compare' | 'examples' | 'theory';
 
 export interface FftToolProps {
   workspace: FftWorkspaceId;
+  onWorkspaceChange: (ws: FftWorkspaceId) => void;
   wideView: boolean;
   references: BibEntry[];
 }
@@ -64,7 +67,8 @@ function defaultSetupFor(ds: ParsedDataset): Setup {
   });
 }
 
-export default function FftTool({ workspace, wideView, references }: FftToolProps) {
+export default function FftTool({ workspace, onWorkspaceChange, wideView, references }: FftToolProps) {
+  const { t } = useI18n();
   const initialDs = useMemo(() => generateBuiltinPreset('adc-12bit'), []);
   const [datasets, setDatasets] = useState<ParsedDataset[]>([initialDs]);
   const [activeId, setActiveId] = useState<string>(initialDs.id);
@@ -370,6 +374,27 @@ export default function FftTool({ workspace, wideView, references }: FftToolProp
           plotTheme={plotTheme}
           onChangeXScale={setXScale}
           onAddPresetToCompare={handleAddPresetToCompare}
+        />
+      )}
+
+      {workspace === 'examples' && (
+        <ExamplesGallery<BuiltinPresetId>
+          title={t('ex.fft.title')}
+          subtitle={t('ex.fft.lead')}
+          items={BUILTIN_PRESETS.map(
+            (p): ExampleCardItem<BuiltinPresetId> => ({
+              id: p.id,
+              tag: p.badge,
+              code: p.id,
+              title: p.label,
+              description: p.summary,
+            }),
+          )}
+          defaultActionLabel={t('ex.fft.action')}
+          onSelect={(id) => {
+            handleLoadPreset(id);
+            onWorkspaceChange('analyzer');
+          }}
         />
       )}
 

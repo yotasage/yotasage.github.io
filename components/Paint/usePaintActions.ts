@@ -751,6 +751,7 @@ export function usePaintActions(
     getActiveLayer,
     commitLayers,
     initDefaultDocument,
+    openNewDocument,
     commitFloatingSelection,
     discardFloatingSelection,
     liftSelectionToFloating,

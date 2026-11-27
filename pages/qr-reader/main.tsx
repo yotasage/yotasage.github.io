@@ -5,10 +5,15 @@ import Camera, { CameraHit } from '../../components/QrRead/Camera';
 import ResultCard, { Reading } from '../../components/QrRead/ResultCard';
 import SourceView, { Source } from '../../components/QrRead/SourceView';
 import { Status } from '../../components/QrRead/Status';
+import ExamplesGallery from '../../components/UI/ExamplesGallery';
 import PillTabs, { PillTabItem } from '../../components/UI/PillTabs';
 import TeachingCallout from '../../components/UI/TeachingCallout';
 import ToolHeader, { WorkspaceTab } from '../../components/UI/ToolHeader';
-import { encode } from '../../lib/qr/encoder';
+import {
+  buildQrReaderExampleFile,
+  QR_READER_EXAMPLES,
+  type QrReaderExampleId,
+} from '../../lib/qr/examples';
 import { scanImageFile, scanPdf, Scanned } from '../../lib/qrread/images';
 import { stopScanWorker } from '../../lib/qrread/scanClient';
 import { sequences } from '../../lib/qrread/sequence';
@@ -18,7 +23,7 @@ import { useExperienceMode } from '../../lib/ui/mode';
 import { useDesignSystemPage } from '../../lib/ui/theme';
 import styles from '../../styles/QrRead.module.css';
 
-type WorkspaceId = 'workbench' | 'guide';
+type WorkspaceId = 'workbench' | 'examples' | 'guide';
 type InputTabId = 'file' | 'camera' | 'text';
 
 const IMAGE_TYPES = 'image/*,application/pdf,.pdf,.svg,.heic,.heif,.avif,.webp';
@@ -26,36 +31,6 @@ const IMAGE_TYPES = 'image/*,application/pdf,.pdf,.svg,.heic,.heif,.avif,.webp';
 const reading = (d: Detection): Reading => ({ text: d.text, bytes: d.bytes, detection: d });
 
 const isPdf = (f: File) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
-
-/** A picture of three codes made with the site's own generator, to try the reader without a code at hand. */
-function exampleImage(): Promise<Blob> {
-  const codes: [string, Parameters<typeof encode>[1]][] = [
-    ['WIFI:T:WPA;S:Example network;P:correct horse battery staple;;', { symbology: 'qr2', version: 'auto', ecLevel: 'M', mask: 'auto', mode: 'auto', charset: 'utf-8', eci: 'auto' }],
-    ['BEGIN:VCARD\r\nVERSION:3.0\r\nN:Lovelace;Ada;;;\r\nFN:Ada Lovelace\r\nORG:Analytical Engines\r\nTEL;TYPE=CELL:+4712345678\r\nEMAIL:ada@example.com\r\nEND:VCARD', { symbology: 'qr2', version: 'auto', ecLevel: 'L', mask: 'auto', mode: 'auto', charset: 'utf-8', eci: 'auto' }],
-    ['https://yotasage.github.io/qrcode/main', { symbology: 'rmqr', version: 'auto', ecLevel: 'M', mask: 'auto', mode: 'auto', charset: 'utf-8', eci: 'auto' }],
-  ];
-  const scale = 6;
-  const syms = codes.map(([text, o]) => encode(text, o));
-  const gap = 8 * scale;
-  const width = syms.reduce((w, s) => w + (s.width + 8) * scale + gap, gap);
-  const height = Math.max(...syms.map((s) => (s.height + 8) * scale)) + 2 * gap;
-  const c = document.createElement('canvas');
-  c.width = width;
-  c.height = height;
-  const ctx = c.getContext('2d');
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, width, height);
-  ctx.fillStyle = '#000000';
-  let ox = gap;
-  for (const s of syms) {
-    const oy = gap + 4 * scale;
-    for (let y = 0; y < s.height; y++) for (let x = 0; x < s.width; x++) {
-      if (s.modules[y * s.width + x]) ctx.fillRect(ox + (x + 4) * scale, oy + y * scale, scale, scale);
-    }
-    ox += (s.width + 8) * scale + gap;
-  }
-  return new Promise((resolve) => c.toBlob((b) => resolve(b), 'image/png'));
-}
 
 function ScanEmptyIcon() {
   return (
@@ -84,6 +59,8 @@ export default function QrReader() {
   const [text, setText] = React.useState('');
   const [dragging, setDragging] = React.useState(false);
   const [pasteNote, setPasteNote] = React.useState('');
+  const [loadingExampleId, setLoadingExampleId] = React.useState<QrReaderExampleId | null>(null);
+  const [exampleError, setExampleError] = React.useState<string | null>(null);
   const nextId = React.useRef(1);
   const fileInput = React.useRef<HTMLInputElement>(null);
   const formatsRef = React.useRef(formats);
@@ -138,8 +115,17 @@ export default function QrReader() {
     add({ name: t('qrread.src.text'), kind: 'text', status: 'done', readings: [{ text: value, bytes: new TextEncoder().encode(value), detection: null }] });
   }, [add, t]);
 
-  const runExample = React.useCallback(async () => {
-    await readFiles([new File([await exampleImage()], t('qrread.src.exampleCodes'), { type: 'image/png' })], 'example');
+  const runExampleById = React.useCallback(async (id: QrReaderExampleId) => {
+    setLoadingExampleId(id);
+    setExampleError(null);
+    try {
+      const file = await buildQrReaderExampleFile(id);
+      await readFiles([file], 'example');
+    } catch (e) {
+      setExampleError(e instanceof Error ? e.message : t('qrread.src.imgErr'));
+    } finally {
+      setLoadingExampleId(null);
+    }
   }, [readFiles, t]);
 
   const onCamera = React.useCallback((hit: CameraHit) => {
@@ -212,9 +198,22 @@ export default function QrReader() {
   const workspaces: readonly WorkspaceTab<WorkspaceId>[] = React.useMemo(
     () => [
       { id: 'workbench', label: t('qrread.workbench'), badge: sources.length > 0 ? sources.length : undefined },
+      { id: 'examples', label: t('ex.tab') },
       { id: 'guide', label: t('qrread.guide') },
     ],
     [t, sources.length],
+  );
+
+  const exampleItems = React.useMemo(
+    () =>
+      QR_READER_EXAMPLES.map((ex) => ({
+        id: ex.id,
+        tag: t(ex.tagKey),
+        code: ex.code,
+        title: t(ex.titleKey),
+        description: t(ex.descKey),
+      })),
+    [t],
   );
 
   const inputTabs: readonly PillTabItem<InputTabId>[] = React.useMemo(() => {
@@ -312,7 +311,6 @@ export default function QrReader() {
                     <div className={styles.controlRow}>
                       <button type="button" className={styles.primaryButton} onClick={() => fileInput.current?.click()}>{t('qrread.open.chooseFiles')}</button>
                       <button type="button" className={styles.button} onClick={pasteButton}>{t('qrread.open.pasteImage')}</button>
-                      <button type="button" className={styles.button} onClick={runExample}>{t('qrread.results.tryExample')}</button>
                     </div>
                     <input
                       ref={fileInput}
@@ -403,8 +401,8 @@ export default function QrReader() {
                   <h3 className={styles.emptyTitle}>{t('qrread.results.emptyTitle')}</h3>
                   <p className={styles.empty}>{t('qrread.results.emptyDesc')}</p>
                   <div className={styles.controlRow}>
-                    <button type="button" className={styles.primaryButton} onClick={runExample}>
-                      {t('qrread.results.tryExample')}
+                    <button type="button" className={styles.primaryButton} onClick={() => setWorkspace('examples')}>
+                      {t('ex.tab')}
                     </button>
                   </div>
                 </div>
@@ -441,6 +439,20 @@ export default function QrReader() {
               ))}
             </section>
           </div>
+        </div>
+
+        {/* Examples Workspace */}
+        <div className={styles.workspacePanel} hidden={workspace !== 'examples'}>
+          <ExamplesGallery<QrReaderExampleId>
+            title={t('ex.qrread.title')}
+            subtitle={t('ex.qrread.lead')}
+            items={exampleItems}
+            defaultActionLabel={t('ex.qrread.action')}
+            loadingLabel={t('ex.loading')}
+            loadingId={loadingExampleId}
+            error={exampleError}
+            onSelect={(id) => void runExampleById(id)}
+          />
         </div>
 
         {/* Supported Formats & Privacy Guide Workspace */}

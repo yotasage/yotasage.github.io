@@ -3,15 +3,22 @@ import React from 'react';
 import Decoder from '../../components/Base64Image/Decoder';
 import Encoder from '../../components/Base64Image/Encoder';
 import PageHead from '../../components/PageHead';
+import ExamplesGallery from '../../components/UI/ExamplesGallery';
 import PillTabs, { PillTabItem } from '../../components/UI/PillTabs';
 import TeachingCallout from '../../components/UI/TeachingCallout';
 import ToolHeader, { WorkspaceTab } from '../../components/UI/ToolHeader';
+import {
+  BASE64_IMAGE_EXAMPLES,
+  type Base64ImageExampleId,
+  buildBase64DecodePayload,
+  buildBase64EncodeFile,
+} from '../../lib/base64image/examples';
 import { useI18n } from '../../lib/ui/i18n';
 import { useExperienceMode } from '../../lib/ui/mode';
 import { useDesignSystemPage } from '../../lib/ui/theme';
 import styles from '../../styles/Base64Image.module.css';
 
-type WorkspaceId = 'workbench' | 'guide';
+type WorkspaceId = 'workbench' | 'examples' | 'guide';
 type DirectionTab = 'encode' | 'decode';
 
 export default function Base64Image() {
@@ -21,11 +28,58 @@ export default function Base64Image() {
 
   const [workspace, setWorkspace] = React.useState<WorkspaceId>('workbench');
   const [direction, setDirection] = React.useState<DirectionTab>('encode');
+  const [encodeReq, setEncodeReq] = React.useState<{ file: File; seq: number } | null>(null);
+  const [decodeReq, setDecodeReq] = React.useState<{ text: string; fileName: string; seq: number } | null>(null);
+  const [loadingId, setLoadingId] = React.useState<Base64ImageExampleId | null>(null);
+  const [exampleError, setExampleError] = React.useState<string | null>(null);
+  const seqRef = React.useRef(0);
 
   const workspaces: readonly WorkspaceTab<WorkspaceId>[] = [
     { id: 'workbench', label: t('base64.workbench') },
+    { id: 'examples', label: t('ex.tab') },
     { id: 'guide', label: t('base64.guide') },
   ];
+
+  const exampleItems = React.useMemo(
+    () =>
+      BASE64_IMAGE_EXAMPLES.map((ex) => ({
+        id: ex.id,
+        tag: t(ex.tagKey),
+        code: ex.code,
+        title: t(ex.titleKey),
+        description: t(ex.descKey),
+        actionLabel: ex.direction === 'encode' ? t('ex.b64.actionEncode') : t('ex.b64.actionDecode'),
+      })),
+    [t],
+  );
+
+  const handleSelectExample = React.useCallback(async (id: Base64ImageExampleId) => {
+    setLoadingId(id);
+    setExampleError(null);
+    try {
+      const preset = BASE64_IMAGE_EXAMPLES.find((e) => e.id === id);
+      if (!preset) return;
+      const seq = ++seqRef.current;
+      if (preset.direction === 'encode') {
+        const file = await buildBase64EncodeFile(
+          id as 'encode-svg-badge' | 'encode-png-chart' | 'encode-pixel-icon',
+        );
+        setEncodeReq({ file, seq });
+        setDirection('encode');
+      } else {
+        const payload = await buildBase64DecodePayload(
+          id as 'decode-svg-datauri' | 'decode-png-datauri' | 'decode-raw-base64',
+        );
+        setDecodeReq({ ...payload, seq });
+        setDirection('decode');
+      }
+      setWorkspace('workbench');
+    } catch (e) {
+      setExampleError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoadingId(null);
+    }
+  }, []);
 
   const directionTabs: readonly PillTabItem<DirectionTab>[] = [
     { id: 'encode', label: t('base64.tab.encode') },
@@ -93,14 +147,14 @@ export default function Base64Image() {
               className={styles.tabPanel}
               hidden={isQuick && direction !== 'encode'}
             >
-              <Encoder />
+              <Encoder sampleRequest={encodeReq} />
             </div>
             <div
               id="b64-dir-panel-decode"
               className={styles.tabPanel}
               hidden={isQuick && direction !== 'decode'}
             >
-              <Decoder />
+              <Decoder sampleRequest={decodeReq} />
             </div>
           </div>
 
@@ -128,6 +182,19 @@ export default function Base64Image() {
               </TeachingCallout>
             </div>
           )}
+        </section>
+
+        <section className={styles.workspacePanel} hidden={workspace !== 'examples'} aria-label={t('ex.tab')}>
+          <ExamplesGallery<Base64ImageExampleId>
+            title={t('ex.b64.title')}
+            subtitle={t('ex.b64.lead')}
+            items={exampleItems}
+            defaultActionLabel={t('ex.b64.actionEncode')}
+            loadingLabel={t('ex.loading')}
+            loadingId={loadingId}
+            error={exampleError}
+            onSelect={(id) => void handleSelectExample(id)}
+          />
         </section>
 
         <section className={styles.workspacePanel} hidden={workspace !== 'guide'} aria-label={t('base64.guide')}>

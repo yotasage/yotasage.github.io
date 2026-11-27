@@ -49,7 +49,11 @@ function utf8OrNull(bytes: Uint8Array): string | null {
   }
 }
 
-export default function Encoder() {
+export interface EncoderProps {
+  sampleRequest?: { file: File; seq: number } | null;
+}
+
+export default function Encoder({ sampleRequest = null }: EncoderProps) {
   const { t } = useI18n();
   const outputOptions: [Output, string][] = [
     ['dataUrl', t('base64.opt.dataUrl')],
@@ -112,6 +116,15 @@ export default function Encoder() {
       if (id === loading.current) setLoadError(errorMessage(e));
     }
   }
+
+  // Load externally requested example files into the encoder.
+  const lastSampleSeq = React.useRef(0);
+  React.useEffect(() => {
+    if (!sampleRequest || sampleRequest.seq === lastSampleSeq.current) return;
+    lastSampleSeq.current = sampleRequest.seq;
+    setCameraOpen(false);
+    void load(sampleRequest.file);
+  }, [sampleRequest]);
 
   // An image pasted anywhere on the page (but not into a text field) is loaded here.
   React.useEffect(() => {

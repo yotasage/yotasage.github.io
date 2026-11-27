@@ -17,7 +17,11 @@ const UNKNOWN = { mime: 'application/octet-stream', ext: 'bin', name: 'Unknown',
 
 type Preview = { url: string; width: number; height: number } | { url: string; failed: true };
 
-export default function Decoder() {
+export interface DecoderProps {
+  sampleRequest?: { text: string; fileName: string; seq: number } | null;
+}
+
+export default function Decoder({ sampleRequest = null }: DecoderProps) {
   const { t } = useI18n();
   const [text, setText] = React.useState('');
   const [fileName, setFileName] = React.useState('image');
@@ -29,6 +33,16 @@ export default function Decoder() {
   // Clipboard support is only known in the browser, so the buttons appear after the page has loaded.
   const [clipboard, setClipboard] = React.useState({ read: false, image: false });
   React.useEffect(() => setClipboard({ read: canReadText(), image: canCopyImages() }), []);
+
+  const lastSampleSeq = React.useRef(0);
+  React.useEffect(() => {
+    if (!sampleRequest || sampleRequest.seq === lastSampleSeq.current) return;
+    lastSampleSeq.current = sampleRequest.seq;
+    setNotice(null);
+    setActionError(null);
+    setText(sampleRequest.text);
+    setFileName(sampleRequest.fileName);
+  }, [sampleRequest]);
 
   // Decoding megabytes of pasted text takes a moment, so it does not hold up typing.
   const input = React.useDeferredValue(text);

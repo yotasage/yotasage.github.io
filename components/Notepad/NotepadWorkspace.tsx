@@ -8,6 +8,7 @@ import {
   encodeTextWithEncoding,
   getEncodingLabel,
 } from '../../lib/notepad/encoding';
+import { buildScratchpadExample, type ScratchpadExampleId } from '../../lib/notepad/examples';
 import {
   createNewNotepadDoc,
   downloadDocumentEncoded,
@@ -59,7 +60,11 @@ import WorkspacePane from './WorkspacePane';
 
 const DEFAULT_PANE_VIEW: PaneViewState = { mode: 'editor', kind: 'auto' };
 
-export default function NotepadWorkspace() {
+export interface NotepadWorkspaceProps {
+  exampleRequest?: { id: ScratchpadExampleId; seq: number } | null;
+}
+
+export default function NotepadWorkspace({ exampleRequest }: NotepadWorkspaceProps) {
   const { t } = useI18n();
   const { theme } = useTheme();
 
@@ -127,6 +132,46 @@ export default function NotepadWorkspace() {
       setToast((prev) => (prev === msg ? null : prev));
     }, 3400);
   }, []);
+
+  const lastExampleSeqRef = useRef(0);
+  useEffect(() => {
+    if (!exampleRequest || exampleRequest.seq === lastExampleSeqRef.current) return;
+    lastExampleSeqRef.current = exampleRequest.seq;
+    const payload = buildScratchpadExample(exampleRequest.id);
+    const now = Date.now();
+    const created: NotepadDoc[] = payload.docs.map((d, idx) => ({
+      ...d,
+      id: `ex-${exampleRequest.id}-${now}-${idx}`,
+      createdAt: now + idx,
+      updatedAt: now + idx,
+    }));
+    if (created.length === 0) return;
+
+    updateDocs((prev) => [...prev, ...created]);
+    const firstId = created[0].id;
+    const secondId = created[1]?.id ?? firstId;
+    setViewState((prev) => {
+      const nextPaneDocIds = prev.paneDocIds.slice();
+      nextPaneDocIds[0] = firstId;
+      if (created.length > 1) {
+        nextPaneDocIds[1] = secondId;
+      }
+      const nextPaneViews = { ...prev.paneViews };
+      nextPaneViews[0] = payload.paneView ?? DEFAULT_PANE_VIEW;
+      if (created.length > 1) {
+        nextPaneViews[1] = DEFAULT_PANE_VIEW;
+      }
+      return {
+        ...prev,
+        layout: payload.layout,
+        paneDocIds: nextPaneDocIds,
+        activePane: 0,
+        diffLeftId: firstId,
+        diffRightId: secondId,
+        paneViews: nextPaneViews,
+      };
+    });
+  }, [exampleRequest, setViewState, updateDocs]);
 
   useEffect(() => {
     let alive = true;

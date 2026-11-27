@@ -49,37 +49,25 @@ const FORMAT_CHIPS = [
 
 export interface PcbViewerProps {
   onOpenGuide?: () => void;
+  externalLoad?: { files: PickedFile[]; seq: number } | null;
 }
 
-export default function PcbViewer({ onOpenGuide }: PcbViewerProps) {
+export default function PcbViewer({ onOpenGuide, externalLoad }: PcbViewerProps) {
   const [files, setFiles] = React.useState<PickedFile[] | null>(null);
+  const [workspaceKey, setWorkspaceKey] = React.useState(0);
   const [folders, setFolders] = React.useState(false);
-  const [loadingExample, setLoadingExample] = React.useState(false);
-  const [exampleError, setExampleError] = React.useState<string | null>(null);
   const { t } = useI18n();
   const { mode, setMode } = useExperienceMode();
 
   React.useEffect(() => setFolders(canPickFolders()), []);
 
-  const handleLoadExample = React.useCallback(async (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    if (loadingExample) return;
-    setLoadingExample(true);
-    setExampleError(null);
-    try {
-      const res = await fetch('/samples/example-board.kicad_pcb');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const buf = await res.arrayBuffer();
-      const file = new File([buf], 'example-board.kicad_pcb', { type: 'text/plain' });
-      setFiles([{ file, path: file.name }]);
-    } catch {
-      setExampleError(t('pcb.drop.exampleError'));
-    } finally {
-      setLoadingExample(false);
-    }
-  }, [loadingExample, t]);
+  React.useEffect(() => {
+    if (!externalLoad) return;
+    setFiles(externalLoad.files);
+    setWorkspaceKey(externalLoad.seq);
+  }, [externalLoad]);
 
-  if (files) return <Workspace initial={files} />;
+  if (files) return <Workspace key={workspaceKey} initial={files} />;
 
   return (
     <div className={styles.startWrap}>
@@ -115,21 +103,7 @@ export default function PcbViewer({ onOpenGuide }: PcbViewerProps) {
               {t('pcb.drop.selectFolder')}
             </PickButton>
           )}
-          <button
-            type="button"
-            className={styles.heroButtonSecondary}
-            onClick={handleLoadExample}
-            disabled={loadingExample}
-            aria-busy={loadingExample || undefined}
-          >
-            {loadingExample ? t('pcb.drop.loadingExample') : t('pcb.drop.tryExample')}
-          </button>
         </div>
-        {exampleError && (
-          <p className={styles.exampleError} role="alert">
-            {exampleError}
-          </p>
-        )}
         <span className={styles.hint}>{t('pcb.drop.hint')}</span>
 
         <div className={styles.formatBar}>
